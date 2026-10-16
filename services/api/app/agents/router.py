@@ -41,16 +41,21 @@ def actor(request: Request, principal: Principal) -> service.Actor:
     )
 
 
+Created = tuple[str, list[dict[str, str]]]
+
+
 async def _idempotent_create(
-    request: Request, principal: Principal, key: str | None, create: Callable[[], Awaitable[str]]
+    request: Request, principal: Principal, key: str | None, create: Callable[[], Awaitable[Created]]
 ) -> JSONResponse:
-    """Run ``create`` (which returns the new agent id) once per Idempotency-Key, then answer
-    with the agent's detail."""
+    """Run ``create`` (which returns the new agent id and its creation warnings, such as
+    replaced template components) once per Idempotency-Key, then answer with the agent's
+    detail."""
     guard = AgentIdempotency(request.app.state.redis, principal.workspace_id, key) if key else None
     agent_id = await guard.claim_or_existing() if guard else None
+    created_warnings: list[dict[str, str]] = []
     if agent_id is None:
         try:
-            agent_id = await create()
+            agent_id, created_warnings = await create()
         except BaseException:
             if guard:
                 await guard.release()
@@ -62,6 +67,7 @@ async def _idempotent_create(
         result = await service.validate_config(
             agent.type, agent.draft_config, agent.id, session=session, workspace_id=agent.workspace_id
         )
+        result.warnings[:0] = [w for w in created_warnings if w not in result.warnings]
         body = await views.agent_detail(session, agent, result)
     return JSONResponse(body, status_code=201, headers={"ETag": views.etag(agent)})
 
@@ -103,7 +109,7 @@ async def create_agent(
     principal: CurrentPrincipal,
     idempotency_key: IdempotencyKey = None,
 ) -> JSONResponse:
-    async def create() -> str:
+    async def create() -> Created:
         async with _tx(request, principal) as session:
             saved = await service.create_agent(
                 session,
@@ -114,7 +120,7 @@ async def create_agent(
                 config=body.config,
                 template_id=body.template_id,
             )
-            return saved.agent.id
+            return saved.agent.id, saved.validation.warnings
 
     return await _idempotent_create(request, principal, idempotency_key, create)
 
@@ -211,11 +217,11 @@ async def duplicate_agent(
     idempotency_key: IdempotencyKey = None,
     body: Annotated[DuplicateRequest | None, Body()] = None,
 ) -> JSONResponse:
-    async def create() -> str:
+    async def create() -> Created:
         async with _tx(request, principal) as session:
             saved = await service.duplicate_agent(
                 session, actor(request, principal), agent_id, body.name if body else None
             )
-            return saved.agent.id
+            return saved.agent.id, saved.validation.warnings
 
     return await _idempotent_create(request, principal, idempotency_key, create)
