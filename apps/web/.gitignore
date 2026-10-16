@@ -7,3 +7,4 @@ playwright-report/
 # The root .gitignore excludes .env.*; these two carry no secrets and are committed.
 !.env.example
 !.env.mock
+.vercel
