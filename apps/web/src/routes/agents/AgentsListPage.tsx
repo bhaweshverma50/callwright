@@ -56,6 +56,7 @@ export function AgentsListPage() {
   const [inUse, setInUse] = useState<{ agent: AgentSummary; attachments: Attachment[] } | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
   const dupKeys = useRef(new Map<string, string>());
+  const inFlight = useRef(new Set<string>());
 
   const duplicate = useMutation({
     mutationFn: async (a: AgentSummary) => {
@@ -87,7 +88,11 @@ export function AgentsListPage() {
   const remove = useMutation({
     mutationFn: async (a: AgentSummary) => {
       const { error, response } = await api.DELETE("/agents/{agent_id}", { params: { path: { agent_id: a.id } } });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
+      if (!response.ok) {
+        // 409 agent_in_use carries the attachments to remove first; keep them next to the problem.
+        const attachments = (error as { attachments?: Attachment[] } | undefined)?.attachments ?? [];
+        throw Object.assign(new ApiError(response.status, toProblem(response.status, error)), { attachments });
+      }
       return a;
     },
     onSuccess: (a) => {
@@ -102,8 +107,7 @@ export function AgentsListPage() {
     onError: (e, a) => {
       setDeleting(null);
       if (e instanceof ApiError && e.status === 409) {
-        const attachments = ((e.problem as unknown as { attachments?: Attachment[] }).attachments ?? []) as Attachment[];
-        setInUse({ agent: a, attachments });
+        setInUse({ agent: a, attachments: (e as ApiError & { attachments?: Attachment[] }).attachments ?? [] });
       } else toast({ tone: "error", title: "Not deleted", description: problemMessage(e, "agent") });
     },
   });
@@ -241,7 +245,12 @@ export function AgentsListPage() {
                       modelLabel={llmLabel(llm.data, a.llm_model)}
                       languageLabel={languageLabel(voice.data, a.language)}
                       duplicating={duplicate.isPending && duplicate.variables?.id === a.id}
-                      onDuplicate={() => !duplicate.isPending && duplicate.mutate(a)}
+                      onDuplicate={() => {
+                        // A second click while the first copy is on its way does nothing (FR-038).
+                        if (inFlight.current.has(a.id)) return;
+                        inFlight.current.add(a.id);
+                        duplicate.mutate(a, { onSettled: () => inFlight.current.delete(a.id) });
+                      }}
                       onDelete={() => setDeleting(a)}
                     />
                   ))}

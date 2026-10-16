@@ -230,11 +230,15 @@ export const agentHandlers = [
     if (!ws) return unauthorized();
     const key = request.headers.get("idempotency-key");
     const s = store();
+    const body = (await request.json()) as { name?: string; type?: AgentType; language?: string; template_id?: string; config?: unknown };
+    // Check and insert with no await between them, so concurrent repeats of a key create one agent.
     if (key && s.idem[`${ws}:${key}`]) {
       const prior = findAgent(ws, s.idem[`${ws}:${key}`]!);
-      if (prior) return json(toDetail(prior), 201, etagOf(prior));
+      if (prior) {
+        await delay(300);
+        return json(toDetail(prior), 201, etagOf(prior));
+      }
     }
-    const body = (await request.json()) as { name?: string; type?: AgentType; language?: string; template_id?: string; config?: unknown };
     const type = body.type ?? "single_prompt";
     let base = defaultConfig(type, body.language ?? (body.config as { language?: string } | undefined)?.language ?? "en-US");
     let note: string | null = null;
@@ -252,13 +256,13 @@ export const agentHandlers = [
     const result = validateConfig(type, config, { uploadKeys: workspaceUploadKeys(ws) });
     const errors = [...(nameError(body.name) ? [nameError(body.name)!] : []), ...result.errors];
     if (errors.length) return failValidation(errors);
-    await delay(300);
     const agent = insertAgent(ws, body.name!.trim(), type, result.normalized_config, body.template_id ? "template" : "create", {
       template_id: body.template_id ?? null,
       note,
     });
     if (key) s.idem[`${ws}:${key}`] = agent.id;
     save();
+    await delay(300);
     return json(toDetail(agent), 201, etagOf(agent));
   }),
 
@@ -337,18 +341,21 @@ export const agentHandlers = [
     if (!ws) return unauthorized();
     const s = store();
     const key = request.headers.get("idempotency-key");
+    const body = ((await request.json().catch(() => ({}))) ?? {}) as { name?: string };
     if (key && s.idem[`${ws}:${key}`]) {
       const prior = findAgent(ws, s.idem[`${ws}:${key}`]!);
-      if (prior) return json(toDetail(prior), 201, etagOf(prior));
+      if (prior) {
+        await delay(260);
+        return json(toDetail(prior), 201, etagOf(prior));
+      }
     }
     const a = findAgent(ws, String(params.agent_id));
     if (!a) return notFound();
-    const body = ((await request.json().catch(() => ({}))) ?? {}) as { name?: string };
-    await delay(260);
     const name = (body.name ?? `${a.name} (copy)`).slice(0, 80);
     const copy = insertAgent(ws, name, a.type, structuredClone(a.draft_config), "duplicate", { note: `Copied from ${a.name}` });
     if (key) s.idem[`${ws}:${key}`] = copy.id;
     save();
+    await delay(260);
     return json(toDetail(copy), 201, etagOf(copy));
   }),
 
@@ -418,7 +425,7 @@ export const agentHandlers = [
       return problem(422, "publish_blocked", "This version cannot be published", { errors: check.publish_blockers });
     await delay(300);
     const { version } = saveDraft(a, check.normalized_config, "restore", {
-      note: body.note?.trim() || `Restored from version ${v.version_number}`,
+      note: body.note?.trim() || null,
       restoredFrom: v.id,
     });
     if (body.publish) a.pinned_version_id = version.id;
