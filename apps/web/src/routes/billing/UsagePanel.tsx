@@ -119,12 +119,7 @@ export function UsagePanel() {
           <p className="text-[12.5px] text-fg-3">Raw cost is what vendors charged; billed is what came off your balance.</p>
         </div>
         <fieldset className="flex flex-wrap items-start gap-3">
-          <legend className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-medium text-fg-2">
-            Date range
-            <InfoTip label="About the date range">
-              Both dates count, and days run midnight to midnight UTC. Pick up to {MAX_WINDOW_DAYS} days; the range opens on the last 30.
-            </InfoTip>
-          </legend>
+          <legend className="sr-only">Date range</legend>
           <Field label="From" className="w-[150px]">
             {({ id, describedBy }) => (
               <Input
