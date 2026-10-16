@@ -23,6 +23,11 @@
   --press-duration: 90ms;
   --press-scale: 0.975;
   --skeleton-duration: 1.3s;
+  /* State changes (a node becoming active: its disc fill and halo) and the halo pulse loop. */
+  --state-duration: 360ms;
+  --halo-pulse-duration: 1.8s;
+  --halo: rgb(122 60 255 / 0.5);
+  --halo-soft: rgb(122 60 255 / 0.14);
   --bg: #f4f5fa;
   --surface: #ffffff;
   --surface-2: #eceef6;
@@ -105,6 +110,8 @@
   --glow-a: rgb(75 92 240 / 0.24);
   --glow-b: rgb(122 60 255 / 0.2);
   /* Lifted above every dark surface so the tip reads as floating, not as a hole in the page. */
+  --halo: rgb(164 123 255 / 0.6);
+  --halo-soft: rgb(164 123 255 / 0.2);
   --tooltip-bg: #2b3172;
   --tooltip-fg: #eef0fb;
   --tooltip-edge: rgb(255 255 255 / 0.08);
@@ -166,7 +173,7 @@
   --animate-fade-in: fade-in 160ms ease-out;
   --animate-pop-in: pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
   --animate-shimmer: shimmer var(--skeleton-duration) ease-in-out infinite;
-  --animate-on-air: on-air 1.6s ease-out infinite;
+  --animate-on-air: halo-pulse 1.6s infinite;
   --animate-flow: flow 1.2s linear infinite;
 }
 
@@ -244,13 +251,24 @@
     background-position: -50% 0;
   }
 }
-@keyframes on-air {
+/*
+  Pulse for every halo (active chain node, active step, on-air dot). It starts inside the node at
+  0.85 of its size and invisible, so it grows out of the node's own edge instead of appearing at
+  full size. Transform eases out over the whole loop (only 0% and 100% set it); opacity rises
+  quickly, then fades as the ring spreads. --halo-to and --halo-peak tune its reach and strength.
+*/
+@keyframes halo-pulse {
   0% {
-    transform: scale(1);
-    opacity: 0.7;
+    transform: scale(0.85);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  18% {
+    opacity: var(--halo-peak, 0.9);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
   }
   100% {
-    transform: scale(2.6);
+    transform: scale(var(--halo-to, 1.6));
     opacity: 0;
   }
 }
@@ -634,6 +652,42 @@
     color: color-mix(in srgb, var(--tooltip-fg) 78%, transparent);
   }
 
+  /*
+    Active disc (FlowChain, Stepper): the gradient fill and the halo come in together over
+    --state-duration from 0.85 of the disc's size, and leave the same way. The halo is a steady
+    soft ring plus a pulse that loops out from under the fill; reduced motion keeps only the ring.
+  */
+  .disc-fill {
+    position: absolute;
+    inset: -1px;
+    border-radius: 9999px;
+    opacity: 0;
+    transform: scale(0.85);
+    transition:
+      opacity var(--state-duration) var(--ease-out-soft),
+      transform var(--state-duration) var(--ease-out-soft);
+    pointer-events: none;
+  }
+  .disc-fill[data-on="true"] {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .halo,
+  .halo > i {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+  .halo > .halo-ring {
+    box-shadow: 0 0 0 4px var(--halo-soft);
+  }
+  .halo > .halo-pulse {
+    border: 2px solid var(--halo);
+    opacity: 0;
+    animation: halo-pulse var(--halo-pulse-duration) infinite;
+  }
+
   .ripple {
     position: absolute;
     border-radius: 9999px;
@@ -701,6 +755,10 @@
   }
   .lift:hover {
     transform: none;
+  }
+  .halo > .halo-pulse,
+  .on-air-pulse {
+    display: none;
   }
 }
 

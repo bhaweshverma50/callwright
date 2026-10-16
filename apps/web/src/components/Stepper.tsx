@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
-import { Halo } from "./FlowChain";
+import { ActiveDisc } from "./FlowChain";
 
 export type StepStatus = "done" | "active" | "pending";
 
@@ -52,14 +52,19 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
             )}
             <span
               className={cn(
-                "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full font-mono text-[14px] font-medium tnum",
-                s.status === "done" && "bg-success-soft text-success-text ring-4 ring-surface",
-                s.status === "active" && "grad-action text-white",
-                s.status === "pending" && "border border-line-strong bg-surface text-fg-2 ring-4 ring-surface",
+                "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full border font-mono text-[14px] font-medium tnum",
+                // A ring in the surface colour cuts the connector short of each disc; the active disc has its halo instead.
+                s.status !== "active" && "ring-4 ring-surface",
+                "transition-[background-color,border-color,color] duration-[var(--state-duration)] ease-[var(--ease-out-soft)]",
+                s.status === "done" && "border-transparent bg-success-soft text-success-text",
+                s.status === "active" && "border-transparent bg-surface text-white",
+                s.status === "pending" && "border-line-strong bg-surface text-fg-2",
               )}
             >
-              {s.status === "active" && <Halo />}
-              {s.status === "done" ? <Check className="size-4" strokeWidth={2.5} aria-label="Done" /> : i + 1}
+              <ActiveDisc on={s.status === "active"} />
+              <span className="relative grid place-items-center">
+                {s.status === "done" ? <Check className="size-4" strokeWidth={2.5} aria-label="Done" /> : i + 1}
+              </span>
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-3 pt-[9px] @[30rem]:flex-row @[30rem]:items-start @[30rem]:justify-between @[30rem]:gap-6">
               <div className="flex min-w-0 flex-col gap-1">

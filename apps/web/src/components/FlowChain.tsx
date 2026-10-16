@@ -1,6 +1,7 @@
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "./cn";
+import { EASE_OUT_SOFT, STATE_DURATION } from "./motion";
 
 export interface FlowNode {
   key: string;
@@ -95,10 +96,12 @@ export function FlowChain({
             <>
               <span
                 className={cn(
-                  "relative grid shrink-0 place-items-center rounded-full border transition-[background-color,border-color,color] duration-200",
+                  "relative grid shrink-0 place-items-center rounded-full border transition-[background-color,border-color,color] duration-[var(--state-duration)] ease-[var(--ease-out-soft)]",
                   size === "sm" ? "[&_svg]:size-3.5" : size === "md" ? "[&_svg]:size-4" : "[&_svg]:size-5",
                   on
-                    ? "grad-action border-transparent text-white"
+                    ? onConsole
+                      ? "border-transparent bg-console-2 text-white"
+                      : "border-transparent bg-surface text-white"
                     : n.off
                       ? onConsole
                         ? "border-dashed border-console-line bg-console text-console-fg-2"
@@ -111,8 +114,8 @@ export function FlowChain({
                 data-flow-disc=""
                 aria-current={on ? "step" : undefined}
               >
-                {on && <Halo />}
-                {n.icon}
+                <ActiveDisc on={on} />
+                <span className="relative grid place-items-center">{n.icon}</span>
               </span>
               <span className={cn("flex min-w-0 max-w-full flex-col gap-0.5", hideLabels && "sr-only")}>
                 <span
@@ -138,16 +141,43 @@ export function FlowChain({
   );
 }
 
-/** Soft halo around an active disc (stepper and chain); a static ring under reduced motion. */
-export function Halo() {
-  const reduce = useReducedMotion();
+/**
+ * The active state of a disc (chain node or step): the halo behind, then the gradient fill. Both
+ * come in together from 0.85 of the disc's size over --state-duration and leave the same way, so
+ * activation never snaps. Render it as the disc's first children, before the disc's content
+ * (wrapped in a positioned element so it paints above the fill).
+ */
+export function ActiveDisc({ on }: { on: boolean }) {
   return (
-    <motion.span
-      aria-hidden
-      className="pointer-events-none absolute -inset-1 rounded-full ring-4 ring-violet/25"
-      initial={false}
-      animate={reduce ? { opacity: 1, scale: 1 } : { opacity: [0.9, 0], scale: [1, 1.35] }}
-      transition={reduce ? { duration: 0 } : { duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-    />
+    <>
+      <Halo on={on} />
+      <span aria-hidden className="disc-fill grad-action" data-on={on} />
+    </>
+  );
+}
+
+/**
+ * Soft halo around an active disc: a steady ring plus a pulse that grows out of the disc's own edge
+ * (index.css `.halo`). It fades and scales in on activation and out on deactivation; under reduced
+ * motion only the steady ring shows.
+ */
+export function Halo({ on }: { on: boolean }) {
+  return (
+    <AnimatePresence initial={false}>
+      {on && (
+        <motion.span
+          key="halo"
+          aria-hidden
+          className="halo"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.85 }}
+          transition={{ duration: STATE_DURATION, ease: EASE_OUT_SOFT }}
+        >
+          <i className="halo-ring" />
+          <i className="halo-pulse" />
+        </motion.span>
+      )}
+    </AnimatePresence>
   );
 }

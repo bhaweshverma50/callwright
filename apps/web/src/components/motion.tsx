@@ -8,6 +8,10 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type React
 import { cn } from "./cn";
 
 export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+/** `--ease-out-soft` in index.css. */
+export const EASE_OUT_SOFT = [0.22, 1, 0.36, 1] as const;
+/** `--state-duration` in index.css, in seconds: a node or step becoming active, and leaving it. */
+export const STATE_DURATION = 0.36;
 
 /** Fade and 6px rise for routed pages. Keyed by the caller so each route animates in. */
 export function PageTransition({ children, className }: { children: ReactNode; className?: string }) {
