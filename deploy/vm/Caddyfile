@@ -1,0 +1,4 @@
+# TLS for LiveKit signalling (wss://rtc.bhawesh.dev). Media flows directly over UDP 50000-50200.
+rtc.bhawesh.dev {
+	reverse_proxy localhost:7880
+}
