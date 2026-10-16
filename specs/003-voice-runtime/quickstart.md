@@ -174,7 +174,7 @@ def verify(secret: str, header: str, body: bytes, tolerance: int = 300) -> bool:
 ## 8. User Story 6: voicemail and keypad
 
 ```bash
-uv run pytest services/voice-worker/tests/harness -k "voicemail or dtmf"
+uv run --directory services/voice-worker pytest tests/harness -k "voicemail or dtmf"
 ```
 
 In a browser test call with keypad input enabled, the panel's keypad sends digits; pressing
@@ -185,9 +185,19 @@ In a browser test call with keypad input enabled, the panel's keypad sends digit
 ```bash
 cd services/voice-worker
 uv run pytest tests/harness                       # offline, no network, under 5 minutes
-uv run python -m tests.harness.benchmark --callset tests/harness/benchmarks/callset.yaml \
-  --baseline tests/harness/benchmarks/baseline.json      # needs vendor keys and livekit-server
+uv run python -m tests.harness.bench.benchmark    # fake mode: harness timing model, no network
+# live mode: real WebRTC rooms on a local media server, worker with fake STT/LLM/TTS
+docker run --rm -d --name lk-bench -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0
+uv run python -m tests.harness.bench.benchmark --mode live [--calls 4 --concurrency 2] \
+  [--details /tmp/turns.json]
+docker stop lk-bench
 ```
 
-The benchmark prints p50 and p95 `e2e_ms` and exits non-zero when p50 > 800 ms, p95 > 1,500 ms
-or either regresses more than 10% against the baseline.
+Both modes print p50 and p95 `e2e_ms` and exit non-zero when p50 > 800 ms, p95 > 1,500 ms or
+either regresses more than 10% against the baseline (`tests/harness/bench/baseline.json` for
+fake mode, `baseline_live.json` for live mode; `--update-baseline` rewrites it). Live mode
+measures `e2e_ms` at the caller and also fails on missed turns or event contract violations.
+Real vendors are not wired into live mode yet: that needs `DEEPGRAM_API_KEY`,
+`AZURE_OPENAI_API_KEY` (with endpoint and API version) and `ELEVEN_API_KEY` plus a switch that
+skips the fake vendor registry (see `tests/harness/bench/live.py`).
