@@ -183,8 +183,8 @@ def main() -> None:
     tmp = tempfile.mkdtemp(prefix="cw-brand-")
     srcs = {
         "tile": svg_doc(c.mark("tile", "t"), 48, 48),
-        "apple": full_bleed(c, 0.78),
-        "maskable": full_bleed(c, 0.62),  # mark inside the 80 percent safe circle
+        "apple": full_bleed(c, 0.92),
+        "maskable": full_bleed(c, 0.74),  # mark inside the 80 percent safe circle
         "og": og_image(c),
     }
     for k, body in srcs.items():
@@ -213,6 +213,12 @@ def main() -> None:
     shutil.copyfile(os.path.join(HERE, "templates", "Logo.tsx"), os.path.join(comp, "Logo.tsx"))
     with open(os.path.join(HERE, "templates", "logo.css")) as fh:
         block = fh.read()
+
+    # Keep only the chosen concept's motion; drop the other concepts and the markers.
+    def keep(m: re.Match) -> str:
+        return m.group(2) if m.group(1) == c.key else ""
+
+    block = re.sub(r"/\* concept:([a-z-]+) \*/\n(.*?)/\* /concept \*/\n", keep, block, flags=re.S)
     for rel, patch in (("src/index.css", lambda s: patch_index_css(s, block)), ("index.html", patch_index_html)):
         src_path = os.path.join(WEB, rel)
         dst_path = os.path.join(root, rel)

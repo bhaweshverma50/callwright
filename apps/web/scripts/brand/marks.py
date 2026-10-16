@@ -76,7 +76,7 @@ class Handoff:
     key = "handoff"
     name = "Handoff"
     # Geometry: ring centre, radii, mouth half-angle, step and waist gap.
-    CX, CY, RO, RI, MOUTH, STEP, GAP = 24, 24, 19, 10.2, 40, 7, 3.2
+    CX, CY, RO, RI, MOUTH, STEP, GAP = 26.2, 24, 19, 10.2, 40, 7, 3.2  # CX centres the ink box
 
     def pieces(self) -> tuple[str, str]:
         cx, cy, ro, ri, m, s, g = self.CX, self.CY, self.RO, self.RI, self.MOUTH, self.STEP, self.GAP
@@ -98,7 +98,7 @@ class Handoff:
             top, bot = PAPER, f"url(#{uid}g)"
             defs = grad(f"{uid}g", [(0, COBALT_LIFT), (1, VIOLET_LIFT)], 4, 30, 44, 44)
         body = f'<defs>{defs}</defs><path class="lg-a" d="{up}" fill="{top}"/><path class="lg-b" d="{lo}" fill="{bot}"/>'
-        return tile(scaled(body, 0.74)) if mode == "tile" else body
+        return tile(scaled(body, 0.84)) if mode == "tile" else body
 
 
 # ---------------------------------------------------------------------------------------------
