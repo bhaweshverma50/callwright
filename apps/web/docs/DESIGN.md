@@ -222,10 +222,14 @@ Library: `motion` (`motion/react`). Helpers in `src/components/motion.tsx`.
 | Gauge arc | Billing | path length from 0 to value, 900ms |
 | On-air pulse | Live indicators | 1.6s ring pulse |
 | Logo mark | Logo tile bars | idle breathing bars on hover |
-| Hover | Cards lift 2px with a cobalt glow; primary buttons get a sheen sweep; links get an animated underline; table rows highlight | 150 to 200ms |
-| Press | Ripple from the pointer on buttons and chips | 450ms |
+| Hover | Cards lift 2px with a cobalt glow; links get an animated underline; table rows highlight | 150 to 200ms |
+| Sheen | One diagonal pass of a narrow (28 percent wide, 0.32 alpha) highlight across a primary button on hover or keyboard focus; never restarted mid-pass; never an idle loop except the single hero CTA (one pass every 7 s) | `--sheen-duration` 560ms, `--ease-out-soft` cubic-bezier(0.22, 1, 0.36, 1) |
+| Press | Scale to `--press-scale` (0.975) for `--press-duration` (90ms) plus a ripple from the pointer on buttons and chips | 90ms, ripple 450ms |
 | Focus | Animated heat-ramp border on focused feature panels; the 2px cobalt focus ring stays on every control | |
-| Loading | Shimmer skeletons for every loading state | 1.4s |
+| Loading | Shimmer skeletons for every loading state; they unmount the moment content arrives | `--skeleton-duration` 1.3s, ease-in-out |
+
+Motion tokens live on `:root` in `src/index.css`: `--ease-out-soft`, `--sheen-duration`,
+`--sheen-idle-cycle`, `--press-duration`, `--press-scale`, `--skeleton-duration`.
 
 Guardrails:
 - Animate only `transform` and `opacity` (plus SVG `stroke-dashoffset`), no layout properties.

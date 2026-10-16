@@ -62,7 +62,7 @@ export function Home() {
               </p>
             </RevealItem>
             <RevealItem className="mt-8 flex flex-wrap gap-3">
-              <Button asChild variant="primary" size="lg" icon={<UserPlus aria-hidden />}>
+              <Button asChild variant="primary" size="lg" idleSheen icon={<UserPlus aria-hidden />}>
                 <Link to="/register">Create account</Link>
               </Button>
               <Button asChild variant="secondary" size="lg" icon={<Calculator aria-hidden />}>

@@ -1,5 +1,5 @@
 import { Slot, Slottable } from "@radix-ui/react-slot";
-import { forwardRef, type ButtonHTMLAttributes, type PointerEvent, type ReactNode } from "react";
+import { forwardRef, type AnimationEvent, type ButtonHTMLAttributes, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { cn, focusRing } from "./cn";
 import { useRipple } from "./motion";
 
@@ -33,14 +33,37 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Icon before the label. */
   icon?: ReactNode;
   asChild?: boolean;
+  /** The single hero CTA only: one sheen pass every 7 s while idle. */
+  idleSheen?: boolean;
+}
+
+/** Starts one sheen pass unless one is running; the pass clears itself on animationend. */
+function startSheen(el: HTMLElement) {
+  if (!el.classList.contains("sheen") || el.dataset.sheen !== undefined) return;
+  el.dataset.sheen = "";
 }
 
 /**
- * Buttons. Primary is the one cobalt to violet action per view, with a sheen on hover and a
- * ripple on press. Labels name the action; no arrow glyph after the text.
+ * Buttons. Primary is the one cobalt to violet action per view: one sheen pass on hover or
+ * keyboard focus (never restarted mid-pass), a quick press scale and a ripple. Labels name the action; no arrow glyph after the text.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "secondary", size = "md", pending = false, icon, asChild, className, children, disabled, onPointerDown, ...rest },
+  {
+    variant = "secondary",
+    size = "md",
+    pending = false,
+    icon,
+    asChild,
+    idleSheen,
+    className,
+    children,
+    disabled,
+    onPointerDown,
+    onPointerEnter,
+    onFocus,
+    onAnimationEnd,
+    ...rest
+  },
   ref,
 ) {
   const Comp = asChild ? Slot : "button";
@@ -50,10 +73,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       className={cn(
         "relative inline-flex shrink-0 cursor-pointer select-none items-center justify-center overflow-hidden whitespace-nowrap rounded-control font-medium",
-        "transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 active:scale-[0.985]",
+        "transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150",
+        "active:scale-[var(--press-scale)] active:duration-[var(--press-duration)]",
         "disabled:cursor-not-allowed disabled:active:scale-100",
         focusRing,
         variants[variant],
+        variant === "primary" && idleSheen && "sheen-idle",
         variant !== "link" && sizes[size],
         className,
       )}
@@ -62,6 +87,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
         if (variant !== "link") ripple(e);
         onPointerDown?.(e);
+      }}
+      onPointerEnter={(e: PointerEvent<HTMLButtonElement>) => {
+        startSheen(e.currentTarget);
+        onPointerEnter?.(e);
+      }}
+      onFocus={(e: FocusEvent<HTMLButtonElement>) => {
+        try {
+          if (e.currentTarget.matches(":focus-visible")) startSheen(e.currentTarget);
+        } catch {
+          /* :focus-visible unsupported: no sheen on focus */
+        }
+        onFocus?.(e);
+      }}
+      onAnimationEnd={(e: AnimationEvent<HTMLButtonElement>) => {
+        if (e.animationName === "sheen") delete e.currentTarget.dataset.sheen;
+        onAnimationEnd?.(e);
       }}
       {...(asChild ? {} : { type: rest.type ?? "button" })}
       {...rest}

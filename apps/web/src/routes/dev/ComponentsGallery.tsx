@@ -363,7 +363,12 @@ export function ComponentsGallery() {
                 </div>
               </div>
             </Demo>
-            <Demo name="Ripple and sheen (press and hover)">
+            <Demo name="Hero CTA idle sheen (one pass every 7 s)">
+              <Button variant="primary" idleSheen icon={<Plus aria-hidden />}>
+                Create account
+              </Button>
+            </Demo>
+            <Demo name="Ripple, press and sheen (press and hover)">
               <Button variant="primary" icon={<Play aria-hidden />}>
                 Make a test call
               </Button>
@@ -430,6 +435,21 @@ export function ComponentsGallery() {
               </div>
             </Demo>
           </div>
+          <dl className="mt-6 grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["Sheen pass", "560 ms, cubic-bezier(0.22, 1, 0.36, 1), on hover or keyboard focus"],
+              ["Hero idle sheen", "one pass every 7 s, hero CTA only"],
+              ["Press", "scale 0.975 for 90 ms, plus the ripple"],
+              ["Skeleton shimmer", "1.3 s per cycle, ease-in-out, stops when content arrives"],
+              ["Route transition", "220 ms fade and 6px rise"],
+              ["Ticker", "about 700 ms, ease-out, ends on the exact figure"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex flex-col gap-0.5 border-t border-line pt-2">
+                <dt className="font-medium text-fg">{k}</dt>
+                <dd className="text-fg-3">{v}</dd>
+              </div>
+            ))}
+          </dl>
           <p className="mt-4 text-[12.5px] text-fg-3">
             Route transitions (fade and rise), drawers, dialogs, menus and toasts animate on open and close; open the overlays below to see them.
             Ticker values end on the exact figure, for example {formatUsd(BigInt(ticker), { places: 3 })}.
