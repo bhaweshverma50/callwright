@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 
 from app.billing.models import CallCost, CreditTransaction
 from app.billing.service import call_cost_json
 from app.pricing.engine import fmt6
-
-MONEY_PATTERN = r"^-?\d+\.\d{1,6}$"
-MoneyIn = Annotated[str, Field(pattern=MONEY_PATTERN)]
 
 
 class BalanceOut(BaseModel):
@@ -22,7 +20,15 @@ class BalanceOut(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    amount_usd: MoneyIn
+    amount_usd: str
+
+    @field_validator("amount_usd")
+    @classmethod
+    def _decimal_string(cls, value: str) -> str:
+        """Accept "25" as well as "25.00"; range and cents are checked by the service (FR-008)."""
+        if not re.fullmatch(r"\d{1,7}(\.\d{1,6})?", value.strip()):
+            raise ValueError("Enter an amount in dollars and cents, for example 25.00.")
+        return value.strip()
 
     def amount(self) -> Decimal:
         return Decimal(self.amount_usd)

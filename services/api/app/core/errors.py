@@ -53,6 +53,13 @@ _FIELD_CODES = {
     "less_than": "out_of_range",
     "less_than_equal": "out_of_range",
 }
+# Pydantic messages that name internals (regexes, Python types) replaced with plain text.
+_PLAIN_MESSAGES = {
+    "string_pattern_mismatch": "This value is not in the expected format.",
+    "json_invalid": "The request body is not valid JSON.",
+    "model_attributes_type": "Expected an object.",
+    "dict_type": "Expected an object.",
+}
 _CUSTOM_CODES = {"out_of_range", "invalid_format", "required", "not_in_catalog", "too_precise"}
 
 
@@ -162,6 +169,8 @@ def _field_errors(exc: RequestValidationError) -> list[dict[str, str]]:
         message = str(err.get("msg", "Invalid value"))
         if message.startswith("Value error, "):
             message = message[len("Value error, ") :]
+        elif etype in _PLAIN_MESSAGES:
+            message = _PLAIN_MESSAGES[etype]
         out.append(field_error(_pointer(err.get("loc", ())), code, message))
     return out
 

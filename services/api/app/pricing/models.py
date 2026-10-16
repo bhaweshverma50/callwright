@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, Integer, Numeric, String, func
+from sqlalchemy import BigInteger, DateTime, Identity, Integer, Numeric, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,7 +19,7 @@ class CatalogVersion(Base):
     version: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
     effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), unique=True)
     notes: Mapped[str | None] = mapped_column(String)
-    published_by: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"))
+    published_by: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -27,7 +27,7 @@ class PricingRate(Base):
     __tablename__ = "pricing_rates"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    version: Mapped[int] = mapped_column(Integer, ForeignKey("pricing_catalog_versions.version"))
+    version: Mapped[int] = mapped_column(Integer)
     component: Mapped[str] = mapped_column(String)
     provider: Mapped[str] = mapped_column(String)
     model: Mapped[str | None] = mapped_column(String)

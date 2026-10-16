@@ -20,7 +20,7 @@ from typing import Protocol
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import SecretStr
-from sqlalchemy import DateTime, ForeignKey, LargeBinary, String, UniqueConstraint, func, select
+from sqlalchemy import DateTime, LargeBinary, String, UniqueConstraint, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -118,7 +118,7 @@ class WorkspaceSecret(Base):
     __table_args__ = (UniqueConstraint("workspace_id", "name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    workspace_id: Mapped[str] = mapped_column(String, ForeignKey("workspaces.id"))
+    workspace_id: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String(200))
     ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
     wrapped_dek: Mapped[bytes] = mapped_column(LargeBinary)
