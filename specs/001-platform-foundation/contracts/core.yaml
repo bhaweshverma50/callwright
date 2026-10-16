@@ -57,9 +57,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: |
-        Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls.
-        A replay with the same key within 24 h returns the original response.
+      description: Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response.
       schema: {type: string, minLength: 8, maxLength: 255}
     AgentIdPath:
       name: agent_id
