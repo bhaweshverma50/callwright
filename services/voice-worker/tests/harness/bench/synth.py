@@ -6,8 +6,11 @@ envelopes, fricative noise bursts between some syllables and short pauses betwee
 result has speech's energy rhythm and spectrum closely enough for Silero VAD to treat it as
 voice, which is all the benchmark needs (the fake STT returns the scripted text).
 
+A turn written ``first part | second part`` is said with a pause between the parts (the call
+set's ``pause_ms``), for the mid-sentence pause and digit-group scenarios.
+
 Deterministic: the same text and seed give the same samples. Regenerate the committed fixtures
-with ``python -m tests.harness.bench.synth``.
+with ``python -m tests.harness.bench.synth [--callset bench/callset_pauses.yaml]``.
 """
 
 from __future__ import annotations
@@ -15,15 +18,18 @@ from __future__ import annotations
 import argparse
 import random
 import wave
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import yaml
 
 SAMPLE_RATE = 16000
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
+BENCH_DIR = Path(__file__).parent
+FIXTURES_DIR = BENCH_DIR / "fixtures"
 CALLSET = Path(__file__).parent / "callset.yaml"
 
 # (F1, F2, F3) in Hz for a few vowels.
@@ -105,6 +111,53 @@ def synthesize(text: str, *, seed: int = 0, rate: int = SAMPLE_RATE, f0: float =
     return audio / peak * 0.7
 
 
+PAUSE_MARK = "|"
+DEFAULT_PAUSE_MS = 800.0
+
+
+def segments(text: str) -> list[str]:
+    """The parts of a turn the caller says with a pause between them (``a | b``)."""
+    return [part.strip() for part in text.split(PAUSE_MARK) if part.strip()]
+
+
+def synthesize_turn(
+    text: str, *, pause_ms: float = DEFAULT_PAUSE_MS, seed: int = 0, rate: int = SAMPLE_RATE
+) -> Signal:
+    """A caller turn: one utterance, or segments with ``pause_ms`` of silence between them.
+
+    A turn without a pause mark is exactly :func:`synthesize`, so the committed call set
+    fixtures do not change.
+    """
+    parts = segments(text)
+    if len(parts) <= 1:
+        return synthesize(text, seed=seed, rate=rate)
+    gap = np.zeros(int(pause_ms / 1000.0 * rate))
+    pieces: list[Signal] = []
+    for i, part in enumerate(parts):
+        if i:
+            pieces.append(gap)
+        pieces.append(synthesize(part, seed=seed, rate=rate))
+    return np.concatenate(pieces)
+
+
+@dataclass(frozen=True)
+class Turn:
+    """One call set turn: ``say`` with optional pause marks and the pause length."""
+
+    say: str
+    pause_ms: float = DEFAULT_PAUSE_MS
+
+    @property
+    def segments(self) -> list[str]:
+        return segments(self.say)
+
+    @classmethod
+    def parse(cls, raw: str | Mapping[str, Any]) -> Turn:
+        if isinstance(raw, str):
+            return cls(raw)
+        return cls(str(raw["say"]), float(raw.get("pause_ms", DEFAULT_PAUSE_MS)))
+
+
 def to_pcm16(audio: Signal) -> npt.NDArray[np.int16]:
     return np.asarray(np.clip(audio, -1.0, 1.0) * 32767, dtype=np.int16)
 
@@ -129,22 +182,32 @@ def fixture_name(index: int) -> str:
     return f"turn_{index + 1}.wav"
 
 
-def generate(turns: Sequence[str], out_dir: Path = FIXTURES_DIR, seed: int = 0) -> list[Path]:
+def generate(
+    turns: Sequence[str | Mapping[str, Any]], out_dir: Path = FIXTURES_DIR, seed: int = 0
+) -> list[Path]:
     paths = []
-    for i, text in enumerate(turns):
+    for i, raw in enumerate(turns):
+        turn = Turn.parse(raw)
         path = out_dir / fixture_name(i)
-        write_wav(path, synthesize(text, seed=seed))
+        write_wav(path, synthesize_turn(turn.say, pause_ms=turn.pause_ms, seed=seed))
         paths.append(path)
     return paths
+
+
+def fixtures_dir(callset: Mapping[str, Any]) -> Path:
+    """Fixture directory of a call set (``fixtures`` key, relative to the bench directory)."""
+    rel = callset.get("fixtures")
+    return BENCH_DIR / str(rel) if rel else FIXTURES_DIR
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Regenerate the live benchmark WAV fixtures")
     parser.add_argument("--callset", type=Path, default=CALLSET)
-    parser.add_argument("--out", type=Path, default=FIXTURES_DIR)
+    parser.add_argument("--out", type=Path, help="default: the call set's fixtures directory")
     args = parser.parse_args(argv)
     callset = yaml.safe_load(args.callset.read_text())
-    for path in generate(callset["turns"], args.out):
+    out = args.out if args.out is not None else fixtures_dir(callset)
+    for path in generate(callset["turns"], out):
         print(path)
     return 0
 

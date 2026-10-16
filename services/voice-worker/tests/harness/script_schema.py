@@ -66,6 +66,7 @@ class Step(Strict):
     say: str | None = None
     duration_ms: float | None = None
     pause_ms: float = 500.0
+    segment_pause_ms: float = 800.0  # silence between the "a | b" parts of one turn
     interrupt_after_ms: float | None = None
     silence_s: float | None = None
     dtmf: str | None = None
@@ -88,6 +89,7 @@ class Step(Strict):
     expect_meter: dict[str, Any] | None = None
     expect_background: dict[str, Any] | None = None
     expect_turns: int | None = None
+    expect_cutoffs: int | None = None  # turns committed in a mid-sentence pause so far
 
 
 class Script(Strict):
