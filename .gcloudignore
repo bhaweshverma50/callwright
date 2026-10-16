@@ -1,0 +1,23 @@
+# Upload filter for `gcloud builds submit .` (deploy/cloudrun). Only the API and the voice
+# worker's adapter catalog are needed to build the API image.
+.gcloudignore
+.git
+.gitignore
+.claude/
+.github/
+.impeccable/
+.specify/
+apps/
+contracts/
+research/
+specs/
+**/node_modules/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.env
+**/.env.*
+services/api/tests/
+services/voice-worker/tests/
