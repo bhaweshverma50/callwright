@@ -46,6 +46,24 @@ class AsyncioClock:
 
 # --------------------------------------------------------------------------------------------
 # Turn-taking mapping (research R4). The table below is the only place to change calibration.
+#
+# How livekit-agents 1.8 ends a caller turn with the semantic turn detector: Silero VAD reports
+# end of speech after ``VAD_MIN_SILENCE_S`` of silence, the turn-detector model scores the
+# transcript, and the turn commits ``min_delay`` after the last speech when the model thinks the
+# caller is done, or ``max_delay`` after it when the model thinks they are not. Speech that
+# resumes inside the wait cancels it. So the shortest possible wait is
+# ``max(VAD_MIN_SILENCE_S, min_delay)`` and ``max_delay`` is the longest mid-sentence pause the
+# agent sits through. Preemptive generation runs the LLM and TTS during the wait.
+
+VAD_MIN_SILENCE_S = 0.3
+"""Silero ``min_silence_duration`` (framework default 0.55 s). It is the floor of every end of
+turn, so it must not exceed the fastest ``min_endpointing_delay``; it stays above the 0.25 s
+minimum the audio turn detector requires."""
+
+FALSE_INTERRUPTION_TIMEOUT_S = 1.0
+"""Silence after a barge-in with no transcript before the agent resumes (framework default
+2.0 s). Streaming STT finals land within about 0.5 s of the end of speech, so 1.0 s still
+tells a short word from a cough while the agent stops for half as long after noise."""
 
 
 @dataclass(frozen=True)
@@ -53,12 +71,15 @@ class InterruptionParams:
     allow_interruptions: bool
     min_interruption_duration: float
     min_interruption_words: int
+    resume_false_interruption: bool = True
+    false_interruption_timeout: float = FALSE_INTERRUPTION_TIMEOUT_S
 
 
 @dataclass(frozen=True)
 class EndpointingParams:
     min_endpointing_delay: float
     max_endpointing_delay: float
+    preemptive_tts: bool = True
 
 
 def _unit(value: float) -> float:
@@ -69,7 +90,8 @@ def map_interruption(sensitivity: float) -> InterruptionParams:
     """Interruption sensitivity s in 0..1; 0 disables interruptions, higher interrupts sooner.
 
     ``min_interruption_duration = 0.2 + (1 - s) * 0.6`` seconds;
-    ``min_interruption_words = 0 if s >= 0.7 else (1 if s >= 0.3 else 2)``.
+    ``min_interruption_words = 0 if s >= 0.7 else (1 if s >= 0.3 else 2)``. A barge-in with no
+    transcript after ``FALSE_INTERRUPTION_TIMEOUT_S`` of silence is false and the agent resumes.
     """
     s = _unit(sensitivity)
     words = 0 if s >= 0.7 else (1 if s >= 0.3 else 2)
@@ -83,13 +105,16 @@ def map_interruption(sensitivity: float) -> InterruptionParams:
 def map_responsiveness(responsiveness: float) -> EndpointingParams:
     """Responsiveness r in 0..1; higher replies sooner.
 
-    ``min_endpointing_delay = 0.2 + (1 - r) * 1.0`` and ``max_endpointing_delay = 1.5 +
-    (1 - r) * 4.5`` seconds.
+    ``min_endpointing_delay = 0.3 + (1 - r) * 0.5`` seconds: the wait after a turn the model
+    reads as finished, never below ``VAD_MIN_SILENCE_S`` (a lower value would have no effect).
+    ``max_endpointing_delay = 0.9 + (1 - r) * 1.6`` seconds: the longest mid-sentence pause the
+    agent waits through when the model reads the turn as unfinished (1.22 s at the default
+    0.8, 2.5 s at 0, the framework's ceiling).
     """
     r = _unit(responsiveness)
     return EndpointingParams(
-        min_endpointing_delay=round(0.2 + (1.0 - r) * 1.0, 4),
-        max_endpointing_delay=round(1.5 + (1.0 - r) * 4.5, 4),
+        min_endpointing_delay=round(VAD_MIN_SILENCE_S + (1.0 - r) * 0.5, 4),
+        max_endpointing_delay=round(0.9 + (1.0 - r) * 1.6, 4),
     )
 
 

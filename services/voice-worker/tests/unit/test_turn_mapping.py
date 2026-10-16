@@ -8,7 +8,12 @@ import pytest
 
 from tests.unit.conftest import make_runtime
 from worker.adapters.registry import AdapterRegistry, VendorSpec
-from worker.call_behavior import behavior_from_config, map_interruption, map_responsiveness
+from worker.call_behavior import (
+    VAD_MIN_SILENCE_S,
+    behavior_from_config,
+    map_interruption,
+    map_responsiveness,
+)
 from worker.pipeline import plan_session, select_turn_detection, turn_handling_options
 
 STEPS = [i / 20 for i in range(21)]
@@ -39,14 +44,30 @@ def test_interruption_is_monotonic() -> None:
 
 
 def test_responsiveness_formulas_and_monotonicity() -> None:
-    d = map_responsiveness(0.79)
-    assert d.min_endpointing_delay == pytest.approx(0.41)
-    assert d.max_endpointing_delay == pytest.approx(2.445)
+    d = map_responsiveness(0.8)  # the 002 default
+    assert d.min_endpointing_delay == pytest.approx(0.4)
+    assert d.max_endpointing_delay == pytest.approx(1.22)
+    assert d.preemptive_tts
     params = [map_responsiveness(r) for r in STEPS]
     for low, high in itertools.pairwise(params):
         assert high.min_endpointing_delay < low.min_endpointing_delay
         assert high.max_endpointing_delay < low.max_endpointing_delay
-    assert map_responsiveness(1.0).min_endpointing_delay == pytest.approx(0.2)
+    fastest, slowest = map_responsiveness(1.0), map_responsiveness(0.0)
+    assert fastest.min_endpointing_delay == pytest.approx(VAD_MIN_SILENCE_S)
+    assert fastest.max_endpointing_delay == pytest.approx(0.9)
+    assert slowest.min_endpointing_delay == pytest.approx(0.8)
+    assert slowest.max_endpointing_delay == pytest.approx(2.5)
+
+
+def test_endpointing_never_undercuts_the_vad_floor() -> None:
+    """A min delay under the VAD silence window would have no effect (R4)."""
+    assert 0.25 <= VAD_MIN_SILENCE_S <= 0.55  # audio detector minimum, framework default
+    for r in STEPS:
+        d = map_responsiveness(r)
+        assert d.min_endpointing_delay >= VAD_MIN_SILENCE_S
+        # The unfinished-turn wait always outlasts the finished-turn wait by at least 0.5 s,
+        # so a caller pausing mid-sentence has room to go on.
+        assert d.max_endpointing_delay - d.min_endpointing_delay >= 0.5
 
 
 def test_out_of_range_values_clamp() -> None:
@@ -89,11 +110,15 @@ def test_turn_detection_selection(provider: str, model: str, expected: str) -> N
 def test_turn_handling_options_shape() -> None:
     behavior = behavior_from_config({"call_behavior": {"interruption_sensitivity": 0.9}})
     semantic = turn_handling_options(behavior, "semantic")
-    assert set(semantic["endpointing"]) == {"min_delay", "max_delay"}
+    assert semantic["endpointing"]["mode"] == "fixed"
+    assert set(semantic["endpointing"]) == {"mode", "min_delay", "max_delay"}
     assert semantic["interruption"]["enabled"] is True
     assert semantic["interruption"]["min_duration"] == pytest.approx(0.26)
+    assert semantic["interruption"]["resume_false_interruption"] is True
+    assert semantic["interruption"]["false_interruption_timeout"] == pytest.approx(1.0)
+    assert semantic["preemptive_generation"] == {"enabled": True, "preemptive_tts": True}
     stt = turn_handling_options(behavior, "stt")
-    assert set(stt["endpointing"]) == {"min_delay"}  # R4: only the minimum applies
+    assert set(stt["endpointing"]) == {"mode", "min_delay"}  # R4: only the minimum applies
     off = turn_handling_options(
         behavior_from_config({"call_behavior": {"interruption_sensitivity": 0}}), "semantic"
     )

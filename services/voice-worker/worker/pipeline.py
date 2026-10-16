@@ -189,21 +189,36 @@ def turn_handling_options(behavior: CallBehavior, turn_detection: TurnDetection)
     """``TurnHandlingOptions`` (livekit-agents 1.8) from the R4 mapping.
 
     With STT end of turn only ``min_delay`` applies (R4). ``turn_detection`` itself is added by
-    :func:`build_session` because the semantic model is a framework object.
+    :func:`build_session` because the semantic model is a framework object. Endpointing is
+    ``fixed``: the dynamic mode only learns a longer ``min_delay`` from pauses it has already
+    cut through, and makes the builder's responsiveness value harder to reason about.
+    Preemptive generation starts the LLM, and with ``preemptive_tts`` the TTS, on the final
+    transcript, so a reply is ready when the turn commits (R4).
     """
-    endpointing: dict[str, Any] = {"min_delay": behavior.endpointing.min_endpointing_delay}
+    endpointing: dict[str, Any] = {
+        "mode": "fixed",
+        "min_delay": behavior.endpointing.min_endpointing_delay,
+    }
     if turn_detection == "semantic":
         endpointing["max_delay"] = behavior.endpointing.max_endpointing_delay
     interruption: dict[str, Any]
-    if behavior.interruption.allow_interruptions:
+    params = behavior.interruption
+    if params.allow_interruptions:
         interruption = {
             "enabled": True,
-            "min_duration": behavior.interruption.min_interruption_duration,
-            "min_words": behavior.interruption.min_interruption_words,
+            "min_duration": params.min_interruption_duration,
+            "min_words": params.min_interruption_words,
+            "resume_false_interruption": params.resume_false_interruption,
+            "false_interruption_timeout": params.false_interruption_timeout,
         }
     else:
         interruption = {"enabled": False}
-    return {"endpointing": endpointing, "interruption": interruption}
+    preemptive = {"enabled": True, "preemptive_tts": behavior.endpointing.preemptive_tts}
+    return {
+        "endpointing": endpointing,
+        "interruption": interruption,
+        "preemptive_generation": preemptive,
+    }
 
 
 def tts_gain_for(tts: VendorSpec) -> float:
