@@ -22,6 +22,7 @@ from app.core.secrets import LocalKeyWrapper, put_secret
 from app.pricing import engine
 from tests.conftest import Account, signup
 from tests.integration.billing.stripe_fixtures import start_checkout
+from tests.runtime_support import insert_call
 
 # table -> column holding the tenant key
 TENANT_TABLES = {
@@ -47,7 +48,7 @@ async def populated(client: httpx.AsyncClient, app: FastAPI) -> tuple[Account, A
             session,
             service.CallUsage(
                 workspace_id=a.workspace_id,
-                call_id=new_id("call"),
+                call_id=insert_call(a.workspace_id),
                 agent_version_id=None,
                 started_at=datetime.now(UTC),
                 duration_ms=60_000,
