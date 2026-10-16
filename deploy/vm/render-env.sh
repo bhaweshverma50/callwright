@@ -15,7 +15,10 @@ umask 077
 REDIS_PASSWORD="$(secret REDIS_PASSWORD)"
 LIVEKIT_API_KEY="$(secret LIVEKIT_API_KEY)"
 LIVEKIT_API_SECRET="$(secret LIVEKIT_API_SECRET)"
-printf 'REDIS_PASSWORD=%s\n' "$REDIS_PASSWORD" > .env
+# Keep the pinned worker image across re-renders (CW_API_IMAGE overrides it).
+PREV_API_IMAGE="$(sed -n 's/^API_IMAGE=//p' .env 2>/dev/null || true)"
+API_IMAGE="${CW_API_IMAGE:-${PREV_API_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/api:latest}}"
+printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\n' "$REDIS_PASSWORD" "$API_IMAGE" > .env
 export REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET
 envsubst < livekit.yaml.tmpl > livekit.yaml
 
