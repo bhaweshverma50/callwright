@@ -1002,7 +1002,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -1332,7 +1332,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentId"];
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -1351,7 +1351,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentId"];
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -1651,7 +1651,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                agent_id: string;
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -1753,7 +1753,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -3048,6 +3048,12 @@ export interface components {
         UserId: string;
         TransactionId: string;
         CallId: string;
+        AgentId: string;
+        /**
+         * @description Phone number in E.164 form, a plus sign and 7 to 15 digits.
+         * @example +14155550123
+         */
+        E164: string;
         PageMeta: {
             total: number;
             page: number;
@@ -3303,7 +3309,7 @@ export interface components {
             agent_id: components["schemas"]["AgentId"];
             schema_version: number;
             config: components["schemas"]["AgentConfig"];
-            publish_blockers: components["schemas"]["Issue"][];
+            publish_blockers: components["schemas"]["ConfigIssue"][];
         };
         Change: {
             /** @enum {string} */
@@ -3321,11 +3327,10 @@ export interface components {
             /** @description New value (absent for remove) */
             new?: unknown;
         };
-        AgentId: string;
         AgentVersionId: string;
         /** @enum {string} */
         AgentType: "single_prompt" | "flow";
-        Issue: {
+        ConfigIssue: {
             /**
              * @example /llm/temperature
              * @example /dynamic_variables[customer_name]/name
@@ -3334,11 +3339,11 @@ export interface components {
             code: string;
             message: string;
         };
-        ValidationResult: {
+        ConfigValidationResult: {
             valid: boolean;
-            errors: components["schemas"]["Issue"][];
-            publish_blockers: components["schemas"]["Issue"][];
-            warnings: components["schemas"]["Issue"][];
+            errors: components["schemas"]["ConfigIssue"][];
+            publish_blockers: components["schemas"]["ConfigIssue"][];
+            warnings: components["schemas"]["ConfigIssue"][];
             normalized_config: components["schemas"]["AgentConfig"];
         };
         VersionRef: {
@@ -3372,8 +3377,8 @@ export interface components {
             draft_config: components["schemas"]["AgentConfig"];
             draft_version: components["schemas"]["VersionRef"];
             published_version: components["schemas"]["VersionRef"] | null;
-            publish_blockers: components["schemas"]["Issue"][];
-            warnings: components["schemas"]["Issue"][];
+            publish_blockers: components["schemas"]["ConfigIssue"][];
+            warnings: components["schemas"]["ConfigIssue"][];
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -3384,8 +3389,8 @@ export interface components {
             /** @description false when the config was unchanged */
             created: boolean;
             version: components["schemas"]["VersionRef"];
-            warnings: components["schemas"]["Issue"][];
-            publish_blockers: components["schemas"]["Issue"][];
+            warnings: components["schemas"]["ConfigIssue"][];
+            publish_blockers: components["schemas"]["ConfigIssue"][];
         };
         ModelRef: {
             provider: string;
@@ -3799,7 +3804,7 @@ export interface components {
         TranscriptItemEvent: components["schemas"]["EventBase"] & {
             /** @constant */
             type?: "transcript_item";
-            item: components["schemas"]["TranscriptItem"];
+            item: components["schemas"]["RuntimeTranscriptItem"];
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3807,7 +3812,7 @@ export interface components {
              */
             type: "transcript_item";
         };
-        TranscriptItem: {
+        RuntimeTranscriptItem: {
             /** @enum {string} */
             type: "message" | "tool_call" | "tool_result" | "flow_transition" | "system";
             /** @enum {string} */
@@ -4269,7 +4274,7 @@ export interface components {
             name: string;
             graph: components["schemas"]["FlowGraph"];
             revision: number;
-            last_validation: components["schemas"]["ValidationResult"];
+            last_validation: components["schemas"]["FlowValidationResult"];
             last_published_version_id?: string | null;
             /** @description Revision of the 002 agent draft after this read or save; send it back as agent_settings.expected_draft_revision */
             agent_draft_revision?: number;
@@ -4468,6 +4473,13 @@ export interface components {
             node_id?: string | null;
             edge_id?: string | null;
             field?: string | null;
+        };
+        FlowValidationResult: {
+            errors: number;
+            warnings: number;
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Format: date-time */
+            validated_at?: string;
         };
         CompileResult: {
             ok: boolean;
@@ -4714,7 +4726,6 @@ export interface components {
         EndCallConfig: {
             message?: string | null;
         };
-        E164: string;
         /** @description Shared with 004 transfer nodes. */
         TransferSpec: {
             /**
@@ -4955,6 +4966,15 @@ export interface components {
             p95_ms?: number | null;
             turns_measured: number;
         };
+        CallCostLine: {
+            /** @enum {string} */
+            component: "stt" | "llm" | "tts" | "nc" | "platform";
+            provider?: string | null;
+            model?: string | null;
+            rate_per_min_usd: number;
+            billed_minutes: number;
+            cost_usd: number;
+        };
         SurchargeLine: {
             /** @enum {string} */
             component: "llm" | "tts";
@@ -4974,7 +4994,7 @@ export interface components {
                 avg_rate_per_min_usd: number;
                 total_usd: number;
             };
-            lines: components["schemas"]["CostLine"][];
+            lines: components["schemas"]["CallCostLine"][];
             surcharges: components["schemas"]["SurchargeLine"][];
             catalog_version: string;
         };
@@ -4988,6 +5008,38 @@ export interface components {
             /** @enum {string} */
             processing_state: "pending" | "done";
         };
+        CallTranscriptItem: {
+            id: string;
+            /** @constant */
+            type: "message";
+            /** @enum {string} */
+            role: "user" | "agent";
+            text: string;
+            interrupted: boolean;
+            stt_confidence?: number | null;
+            offset_ms: number;
+            turn_index?: number | null;
+        } | {
+            id: string;
+            /** @constant */
+            type: "tool_call";
+            tool_name: string;
+            arguments: {
+                [key: string]: unknown;
+            };
+            offset_ms: number;
+            turn_index?: number | null;
+        } | {
+            id: string;
+            /** @constant */
+            type: "tool_result";
+            tool_call_id: string;
+            tool_name: string;
+            output: string;
+            is_error: boolean;
+            duration_ms?: number | null;
+            offset_ms: number;
+        };
         TurnLatency: {
             turn_index: number;
             stt_final_ms?: number | null;
@@ -4995,7 +5047,7 @@ export interface components {
             tts_ttfb_ms?: number | null;
             e2e_ms?: number | null;
         };
-        VerdictSide: {
+        CallVerdictSide: {
             /** @enum {string|null} */
             verdict?: "pass" | "fail" | "not_applicable" | null;
             score?: number | null;
@@ -5020,8 +5072,8 @@ export interface components {
             verdict_diffs: {
                 evaluator_id?: string;
                 evaluator_name?: string;
-                left?: components["schemas"]["VerdictSide"];
-                right?: components["schemas"]["VerdictSide"];
+                left?: components["schemas"]["CallVerdictSide"];
+                right?: components["schemas"]["CallVerdictSide"];
                 score_delta?: number | null;
                 right_rationale?: string | null;
             }[];
@@ -5309,6 +5361,11 @@ export interface components {
         };
         /** @enum {string} */
         Verdict: "pass" | "fail" | "not_applicable";
+        EvalVerdictSide: {
+            verdict?: components["schemas"]["Verdict"] | null;
+            score?: number | null;
+            evaluator_version?: number | null;
+        };
         AgentEvalSetting: {
             evaluator_id: string;
             name: string;
@@ -5665,9 +5722,24 @@ export interface components {
             /** Format: date-time */
             finished_at?: string | null;
         };
+        /** @description Same item shape as the call transcript in 006, plus answer_source on tool outputs */
+        SimTranscriptItem: {
+            /** @enum {string} */
+            type: "message" | "function_call" | "function_call_output";
+            /** @enum {string} */
+            role?: "user" | "assistant";
+            content?: string;
+            name?: string;
+            arguments?: string;
+            output?: string;
+            is_error?: boolean;
+            /** @enum {string} */
+            answer_source?: "mock" | "recorded" | "synthesized" | "error";
+            node_id?: string | null;
+        };
         ConversationSide: {
             call_id: string;
-            transcript: components["schemas"]["TranscriptItem"][];
+            transcript: components["schemas"]["SimTranscriptItem"][];
             node_path: {
                 node_id?: string;
                 node_label?: string;
@@ -5915,6 +5987,29 @@ export interface components {
             first_seen_at?: string;
             /** Format: date-time */
             last_seen_at: string;
+        };
+        DetectedIssue: components["schemas"]["IssueSummary"] & {
+            description: string;
+            suspected_cause?: string | null;
+            evaluator_version: number;
+            window_days?: number;
+            allowed_fix_kinds: components["schemas"]["FixKind"][];
+            recommended_fix_kind: components["schemas"]["FixKind"];
+            current_fix?: components["schemas"]["FixRevision"] | null;
+            latest_validation?: components["schemas"]["ValidationAttempt"] | null;
+            can_apply?: boolean;
+            apply_blockers?: ("no_passing_validation" | "base_version_changed" | "draft_changed" | "wrong_status" | "advisory_fix")[];
+            applied_agent_version_id?: string | null;
+            /** Format: date-time */
+            applied_at?: string | null;
+            post_apply?: components["schemas"]["PostApply"] | null;
+            /** @enum {string|null} */
+            dismiss_reason?: "not_a_problem" | "evaluator_wrong" | "wont_fix" | "duplicate" | "other" | null;
+            dismiss_note?: string | null;
+            duplicate_of?: string | null;
+            /** Format: date-time */
+            dismissed_at?: string | null;
+            sample_preview?: components["schemas"]["IssueSample"][];
         };
         IssueSample: {
             call_id: string;
@@ -6442,7 +6537,16 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description RFC 9457 problem */
+        /** @description Balance at or below zero (code insufficient_credit) */
+        InsufficientCredit: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description RFC 9457 problem; the status code and `code` say what went wrong */
         Problem: {
             headers: {
                 [name: string]: unknown;
@@ -6460,32 +6564,17 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description Validation failed */
-        Unprocessable: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description Balance at or below zero */
-        InsufficientCredit: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
     };
     parameters: {
         Page: number;
         PageSize: number;
         /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
         IdempotencyKey: string;
-        VersionIdPath: components["schemas"]["AgentVersionId"];
+        /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+        IdempotencyKeyRequired: string;
         AgentIdPath: components["schemas"]["AgentId"];
+        CallIdPath: components["schemas"]["CallId"];
+        VersionIdPath: components["schemas"]["AgentVersionId"];
         DeliveryId: string;
         SignatureHeader: string;
         EventHeader: components["schemas"]["WebhookEventName"];
@@ -6494,8 +6583,6 @@ export interface components {
         KbId: string;
         DocId: string;
         ToolId: string;
-        AgentId: string;
-        CallId: string;
         /** @description Percent-encoded by the client (a leading plus is sent as %2B). The server keeps digits only (spaces, dashes, brackets and the plus are ignored) and matches numbers whose digits start with them. */
         FromNumber: string;
         /** @description Same encoding and matching as from_number. */
@@ -6509,7 +6596,9 @@ export interface components {
         Period: "all_time" | "last_7_days" | "last_30_days" | "last_90_days" | "custom";
         /** @description Comma-separated agt_ IDs; empty means all agents. */
         AgentIds: string;
-        LookbackDays: number;
+        AgentId: string;
+        CalibrationLookbackDays: number;
+        ReviewLookbackDays: number;
         DatasetId: string;
         SimulationRunId: string;
         ExperimentId: string;
@@ -7460,7 +7549,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationResult"];
+                    "application/json": components["schemas"]["ConfigValidationResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -8008,7 +8097,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -8120,9 +8209,9 @@ export interface operations {
     createWebCall: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -8237,8 +8326,8 @@ export interface operations {
                 call_id?: string;
                 event?: components["schemas"]["WebhookEventName"];
                 status?: components["schemas"]["DeliveryStatus"];
-                page?: number;
-                page_size?: number;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
             };
             header?: never;
             path?: never;
@@ -8497,7 +8586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationResult"];
+                    "application/json": components["schemas"]["FlowValidationResult"];
                 };
             };
             404: components["responses"]["NotFound"];
@@ -8630,7 +8719,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -8656,8 +8745,8 @@ export interface operations {
                 search?: string;
                 /** @description Only KBs with at least one ready document */
                 attachable?: boolean;
-                page?: number;
-                page_size?: number;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
             };
             header?: never;
             path?: never;
@@ -8794,8 +8883,8 @@ export interface operations {
         parameters: {
             query?: {
                 status?: components["schemas"]["DocumentStatus"];
-                page?: number;
-                page_size?: number;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
             };
             header?: never;
             path: {
@@ -9162,8 +9251,8 @@ export interface operations {
             query?: {
                 type?: components["schemas"]["ToolType"];
                 search?: string;
-                page?: number;
-                page_size?: number;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
             };
             header?: never;
             path?: never;
@@ -9415,7 +9504,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentId"];
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -9437,7 +9526,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentId"];
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -9475,7 +9564,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: components["parameters"]["AgentId"];
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -9535,8 +9624,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Same key returns the stored answer and is charged at most once. */
-                "Idempotency-Key": string;
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -9628,7 +9717,7 @@ export interface operations {
     listCalls: {
         parameters: {
             query?: {
-                page?: number;
+                page?: components["parameters"]["Page"];
                 /** @description The UI offers 10, 20, 50 and 100. */
                 page_size?: number;
                 sort?: "started_at" | "duration_s" | "cost_usd" | "latency_avg_ms";
@@ -9740,7 +9829,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: components["parameters"]["CallId"];
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -9763,7 +9852,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: components["parameters"]["CallId"];
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -9777,7 +9866,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         call_id: string;
-                        items: components["schemas"]["TranscriptItem"][];
+                        items: components["schemas"]["CallTranscriptItem"][];
                     };
                 };
             };
@@ -9789,7 +9878,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: components["parameters"]["CallId"];
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -9819,7 +9908,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                call_id: components["parameters"]["CallId"];
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -9935,7 +10024,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10095,7 +10184,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: string;
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -10120,7 +10209,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: string;
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -10156,7 +10245,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: string;
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -10238,7 +10327,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10260,10 +10349,11 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                "Idempotency-Key": string;
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10303,7 +10393,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10329,7 +10419,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10361,7 +10451,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10380,13 +10470,12 @@ export interface operations {
     listCalibrationRows: {
         parameters: {
             query?: {
-                lookback_days?: components["parameters"]["LookbackDays"];
+                agent_id?: components["parameters"]["AgentId"];
+                lookback_days?: components["parameters"]["CalibrationLookbackDays"];
                 version_scope?: "current" | "all";
             };
             header?: never;
-            path: {
-                agent_id: components["parameters"]["AgentId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -10409,12 +10498,11 @@ export interface operations {
     getCalibrationSummary: {
         parameters: {
             query?: {
-                lookback_days?: components["parameters"]["LookbackDays"];
+                agent_id?: components["parameters"]["AgentId"];
+                lookback_days?: components["parameters"]["CalibrationLookbackDays"];
             };
             header?: never;
-            path: {
-                agent_id: components["parameters"]["AgentId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -10441,7 +10529,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: string;
+                agent_id: components["parameters"]["AgentIdPath"];
             };
             cookie?: never;
         };
@@ -10466,7 +10554,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                agent_id: string;
+                agent_id: components["parameters"]["AgentIdPath"];
                 evaluator_id: string;
             };
             cookie?: never;
@@ -10522,7 +10610,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10544,10 +10632,11 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                "Idempotency-Key": string;
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path: {
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -10607,8 +10696,8 @@ export interface operations {
                             evaluator_id: string;
                             evaluator_name: string;
                             display_name?: string;
-                            base?: components["schemas"]["VerdictSide"];
-                            other?: components["schemas"]["VerdictSide"];
+                            base?: components["schemas"]["EvalVerdictSide"];
+                            other?: components["schemas"]["EvalVerdictSide"];
                             score_delta?: number | null;
                             other_rationale?: string | null;
                         }[];
@@ -10804,7 +10893,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                "Idempotency-Key": string;
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -10848,13 +10938,12 @@ export interface operations {
         parameters: {
             query?: {
                 strategy?: "random" | "failed" | "disagreement";
-                lookback_days?: components["parameters"]["LookbackDays"];
+                agent_id?: components["parameters"]["AgentId"];
+                lookback_days?: components["parameters"]["ReviewLookbackDays"];
                 limit?: number;
             };
             header?: never;
-            path: {
-                agent_id: components["parameters"]["AgentId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -10878,12 +10967,11 @@ export interface operations {
     getReviewQueueSummary: {
         parameters: {
             query?: {
-                lookback_days?: components["parameters"]["LookbackDays"];
+                agent_id?: components["parameters"]["AgentId"];
+                lookback_days?: components["parameters"]["ReviewLookbackDays"];
             };
             header?: never;
-            path: {
-                agent_id: components["parameters"]["AgentId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -10968,7 +11056,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     getDataset: {
@@ -11123,7 +11211,7 @@ export interface operations {
             header?: never;
             path: {
                 dataset_id: components["parameters"]["DatasetId"];
-                call_id: string;
+                call_id: components["parameters"]["CallIdPath"];
             };
             cookie?: never;
         };
@@ -11143,7 +11231,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                "Idempotency-Key": string;
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path: {
                 dataset_id: components["parameters"]["DatasetId"];
@@ -11226,7 +11315,7 @@ export interface operations {
                     };
                 };
             };
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     listSimulationRuns: {
@@ -11263,9 +11352,9 @@ export interface operations {
     startSimulationRun: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -11296,7 +11385,7 @@ export interface operations {
                 };
             };
             402: components["responses"]["InsufficientCredit"];
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     getSimulationRun: {
@@ -11415,9 +11504,9 @@ export interface operations {
     startExperiment: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -11532,7 +11621,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     cancelExperiment: {
@@ -11685,7 +11774,7 @@ export interface operations {
                 };
             };
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     deleteTestCategory: {
@@ -11768,7 +11857,7 @@ export interface operations {
                 };
             };
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     getTestCase: {
@@ -11841,7 +11930,7 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     importTestCases: {
@@ -11883,7 +11972,7 @@ export interface operations {
                     };
                 };
             };
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     exportTestCases: {
@@ -11913,9 +12002,9 @@ export interface operations {
     generateTestCases: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -11986,9 +12075,9 @@ export interface operations {
     startTestRun: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -12026,7 +12115,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     getTestRun: {
@@ -12222,9 +12311,9 @@ export interface operations {
     detectIssues: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -12338,7 +12427,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Issue"];
+                    "application/json": components["schemas"]["DetectedIssue"];
                 };
             };
             404: components["responses"]["NotFound"];
@@ -12399,8 +12488,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                /** @description Required when mode is ai */
-                "Idempotency-Key"?: string;
+                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
             };
             path: {
                 issue_id: components["parameters"]["IssueId"];
@@ -12452,9 +12541,9 @@ export interface operations {
     validateIssueFix: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path: {
                 issue_id: components["parameters"]["IssueId"];
@@ -12509,9 +12598,9 @@ export interface operations {
     draftAndValidateIssueFix: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Client-generated key (max 255 chars). A repeat with the same key returns the first result. */
-                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            header: {
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path: {
                 issue_id: components["parameters"]["IssueId"];
@@ -12592,7 +12681,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Issue"];
+                    "application/json": components["schemas"]["DetectedIssue"];
                 };
             };
             /** @description No validation running */
@@ -12637,7 +12726,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        issue: components["schemas"]["Issue"];
+                        issue: components["schemas"]["DetectedIssue"];
                         agent_version_id: string;
                         published: boolean;
                         release_notes?: string;
@@ -12686,7 +12775,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Issue"];
+                    "application/json": components["schemas"]["DetectedIssue"];
                 };
             };
             /** @description Issue already applied or dismissed */
@@ -12698,15 +12787,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            422: components["responses"]["Unprocessable"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     createOutboundCall: {
         parameters: {
             query?: never;
             header: {
-                /** @description Same key and body within 24 h returns the original call; different body is refused. */
-                "Idempotency-Key": string;
+                /** @description Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls. A replay within 24 h returns the original response. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKeyRequired"];
             };
             path?: never;
             cookie?: never;
@@ -12786,7 +12875,7 @@ export interface operations {
     listDncEntries: {
         parameters: {
             query?: {
-                page?: number;
+                page?: components["parameters"]["Page"];
                 page_size?: number;
                 /** @description Prefix search on the E.164 number */
                 number?: string;
@@ -12987,7 +13076,7 @@ export interface operations {
     listOutboundPolicyDecisions: {
         parameters: {
             query?: {
-                page?: number;
+                page?: components["parameters"]["Page"];
                 page_size?: number;
                 reason?: components["schemas"]["OutboundBlockReason"];
                 to_number?: components["schemas"]["E164"];
@@ -13019,8 +13108,8 @@ export interface operations {
     listPhoneNumbers: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
                 status?: components["schemas"]["PhoneNumberStatus"];
             };
             header?: never;
@@ -13295,8 +13384,8 @@ export interface operations {
     listWhatsAppChannels: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number;
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
             };
             header?: never;
             path?: never;
@@ -13506,7 +13595,7 @@ export interface operations {
     listCallerRoutes: {
         parameters: {
             query?: {
-                page?: number;
+                page?: components["parameters"]["Page"];
                 page_size?: number;
                 /** @description Prefix search on caller number */
                 caller?: string;
