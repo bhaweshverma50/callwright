@@ -2,7 +2,7 @@
 API := services/api
 UV := uv run --directory $(API)
 
-.PHONY: help up down migrate db-reset api worker test test-unit test-contract test-integration lint fmt typecheck contracts contracts-check
+.PHONY: help up down migrate templates-sync db-reset api worker test test-unit test-contract test-integration lint fmt typecheck contracts contracts-check
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  %-18s %s\n", $$1, $$2}'
@@ -13,8 +13,12 @@ up: ## Start Postgres (pgvector) and Redis, wait until healthy
 down: ## Stop the local stack (data volumes are kept)
 	docker compose down
 
-migrate: ## Apply Alembic migrations to the dev database
+migrate: ## Apply Alembic migrations to the dev database, then sync the agent templates
 	cd $(API) && uv sync --quiet && uv run alembic upgrade head
+	$(MAKE) templates-sync
+
+templates-sync: ## Load the launch agent templates (002) into the database (idempotent)
+	$(UV) python -m app.templates.jobs sync
 
 db-reset: ## Drop and recreate the dev database schema, then migrate
 	docker compose exec -T postgres psql -q -U callwright -d callwright \

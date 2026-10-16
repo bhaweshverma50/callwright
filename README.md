@@ -19,7 +19,7 @@ needed: the API defaults to an offline identity provider and a fake Stripe.
 ```bash
 cp .env.example .env          # optional; every value has a working default
 make up                       # Postgres 16 + pgvector on :55432, Redis on :56379
-make migrate                  # Alembic migrations s001_* (roles, tables, RLS, pricing seed)
+make migrate                  # Alembic migrations (001, 003, 002, then FKs), then the agent templates
 make api                      # API on http://localhost:8100 (docs at /v1/docs)
 make worker                   # arq jobs worker (nightly ledger reconciliation)
 make test                     # pytest: unit, contract and integration (needs `make up`)

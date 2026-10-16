@@ -68,6 +68,12 @@ jobs:
         run: uv run mypy app
       - name: Migrations apply to an empty database
         run: uv run alembic upgrade head
+      - name: Migrations step back and forward (latest revision)
+        run: |
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+      - name: Agent templates sync
+        run: uv run python -m app.templates.jobs sync
       - name: Tests (unit, contract, integration)
         run: uv run pytest -q
 
