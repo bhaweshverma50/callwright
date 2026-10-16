@@ -65,6 +65,7 @@ def test_settings_carry_the_sanas_contract(monkeypatch: pytest.MonkeyPatch) -> N
     config = sanas.SanasConfig.from_creds(WorkerSettings().vendor_credentials()["sanas"])
     assert config == sanas.SanasConfig("k", "wss://sanas.test/stream", 8000, 15.0)
     assert sanas.SanasConfig.from_creds({}) == sanas.SanasConfig()
+    assert "sk-secret-123" not in repr(sanas.SanasConfig(api_key="sk-secret-123"))
 
 
 def test_passthrough_without_sdk_is_identity_and_unmetered() -> None:

@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 from typing import Any, Protocol
 
@@ -55,7 +55,7 @@ Samples = npt.NDArray[np.int16]
 class SanasConfig:
     """The ``SANAS_*`` contract, as passed to adapters in ``creds``."""
 
-    api_key: str = ""
+    api_key: str = field(default="", repr=False)  # never in logs or reprs
     endpoint: str = ""
     sample_rate: int = 16000
     max_latency_ms: float = 20.0
