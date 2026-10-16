@@ -224,9 +224,7 @@ class InternalApiClient:
             raise InternalApiError(response.status_code, _problem_detail(response))
         return ClaimResponse.model_validate(response.json())
 
-    async def post_events(
-        self, call_id: str, events: Sequence[dict[str, Any]]
-    ) -> EventBatchResult:
+    async def post_events(self, call_id: str, events: Sequence[dict[str, Any]]) -> EventBatchResult:
         if len(events) > MAX_EVENTS_PER_BATCH:
             raise ValueError(f"at most {MAX_EVENTS_PER_BATCH} events per batch")
         response = await self._post(f"/calls/{call_id}/events", {"events": list(events)})

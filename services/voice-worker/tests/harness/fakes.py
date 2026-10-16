@@ -263,3 +263,58 @@ class FakeEventSink:
     @property
     def events(self) -> list[dict[str, Any]]:
         return [e for batch in self.batches for e in batch]
+
+
+# --------------------------------------------------------------------------------------------
+# livekit-agents compatible LLM for text-mode sessions (real AgentSession, no network)
+
+
+def scripted_llm(reply: str) -> Any:
+    """An ``llm.LLM`` that streams one fixed reply and reports token usage."""
+    from livekit.agents import llm
+    from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
+
+    class ScriptedStream(llm.LLMStream):
+        async def _run(self) -> None:
+            self._event_ch.send_nowait(
+                llm.ChatChunk(id="fake", delta=llm.ChoiceDelta(role="assistant", content=reply))
+            )
+            self._event_ch.send_nowait(
+                llm.ChatChunk(
+                    id="fake",
+                    usage=llm.CompletionUsage(
+                        completion_tokens=max(1, len(reply) // 4),
+                        prompt_tokens=100,
+                        prompt_cached_tokens=40,
+                        total_tokens=100 + max(1, len(reply) // 4),
+                    ),
+                )
+            )
+
+    class ScriptedLLM(llm.LLM):  # type: ignore[type-arg]
+        def __init__(self) -> None:
+            super().__init__()
+            self.requests: list[Any] = []
+
+        @property
+        def model(self) -> str:
+            return "gpt-5.1"
+
+        @property
+        def provider(self) -> str:
+            return "fake"
+
+        def chat(
+            self,
+            *,
+            chat_ctx: Any,
+            tools: list[Any] | None = None,
+            conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
+            **_: Any,
+        ) -> Any:
+            self.requests.append(chat_ctx)
+            return ScriptedStream(
+                self, chat_ctx=chat_ctx, tools=tools or [], conn_options=conn_options
+            )
+
+    return ScriptedLLM()

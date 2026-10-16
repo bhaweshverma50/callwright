@@ -1,0 +1,224 @@
+"""T038, T063, T116: session assembly from a frozen version for every launch vendor combination."""
+
+from __future__ import annotations
+
+import itertools
+from collections.abc import AsyncIterator
+from typing import Any
+
+import pytest
+
+from tests.unit.conftest import make_runtime
+from worker.adapters.registry import AdapterRegistry, UnsupportedVendor
+from worker.audio import PronunciationEntry, PronunciationTransform
+from worker.flow import FlowRuntimeUnavailable, NullFlowRunner, register_flow_runner
+from worker.pipeline import (
+    build_agent,
+    build_components,
+    build_session,
+    plan_session,
+    pronounce,
+    render_template,
+    tts_gain_for,
+    vendor_error_diagnostic,
+)
+
+STT = [
+    {"provider": "deepgram", "model": None},
+    {"provider": "deepgram", "model": "flux-general-en"},
+    {"provider": "assemblyai", "model": None},
+    {"provider": "sarvam", "model": "saaras:v3"},
+]
+LLM = [
+    {"provider": "azure_openai", "model": "gpt-5.1"},
+    {"provider": "openai", "model": "gpt-5-mini"},
+]
+TTS = [
+    {"provider": "elevenlabs", "model": "eleven_turbo_v2_5"},
+    {"provider": "cartesia", "model": "sonic-3"},
+    {"provider": "fishaudio", "model": "s1"},
+]
+NC = [{"provider": "sanas", "model": "st"}, {"provider": "ai_coustics", "model": "standard"}, None]
+COMBOS = list(itertools.product(STT, LLM, TTS, NC))
+CREDS = {
+    p: {"api_key": "test", "endpoint": "https://example.openai.azure.com"}
+    for p in (
+        "deepgram",
+        "assemblyai",
+        "sarvam",
+        "openai",
+        "azure_openai",
+        "elevenlabs",
+        "cartesia",
+        "fishaudio",
+        "sanas",
+        "ai_coustics",
+    )
+}
+PLUGIN_MODULE = {
+    "deepgram": "livekit.plugins.deepgram",
+    "assemblyai": "livekit.plugins.assemblyai",
+    "sarvam": "livekit.plugins.sarvam",
+    "openai": "livekit.plugins.openai",
+    "azure_openai": "livekit.plugins.openai",
+    "elevenlabs": "livekit.plugins.elevenlabs",
+    "cartesia": "livekit.plugins.cartesia",
+    "fishaudio": "livekit.plugins.fishaudio",
+}
+
+
+def combo_id(c: tuple[Any, ...]) -> str:
+    stt, llm, tts, nc = c
+    return "-".join(
+        [
+            f"{stt['provider']}:{stt['model'] or 'auto'}",
+            llm["provider"],
+            tts["provider"],
+            nc["provider"] if nc else "nc_off",
+        ]
+    )
+
+
+@pytest.mark.parametrize("combo", COMBOS, ids=[combo_id(c) for c in COMBOS])
+async def test_pipeline_assembles_for_every_vendor_combination(
+    combo: tuple[Any, ...], no_llm_prewarm: None
+) -> None:
+    stt, llm, tts, nc = combo
+    language = "hi" if stt["provider"] == "sarvam" else "en-US"
+    config = {"language": language, "stt": stt, "llm": llm, "tts": tts, "noise_cancellation": nc}
+    registry = AdapterRegistry()
+    plan = plan_session(make_runtime(config), registry)
+    expected_turn = (
+        "stt"
+        if stt["provider"] == "assemblyai" or stt["model"] == "flux-general-en"
+        else "semantic"
+    )
+    assert plan.turn_detection == expected_turn
+    assert plan.stt.model is not None  # Auto resolved
+    assert plan.nc.provider == (nc["provider"] if nc else "none")
+
+    components = build_components(plan, registry, CREDS)
+    for kind in ("stt", "llm", "tts"):
+        provider = plan.spec(kind).provider
+        assert type(components.get(kind)).__module__.startswith(PLUGIN_MODULE[provider])
+    assert (components.nc is None) == (nc is None)
+
+    session = build_session(plan, components, vad=None)
+    assert session.stt is components.stt
+    assert session.llm is components.llm
+    assert session.tts is components.tts
+
+
+def test_render_template() -> None:
+    variables = {"customer_name": "Priya", "order_id": "A1"}
+    assert render_template("Hi {{customer_name}}, order {{ order_id }}.", variables) == (
+        "Hi Priya, order A1."
+    )
+    assert render_template("{{missing}}|{{ 9bad }}", variables) == "|{{ 9bad }}"
+
+
+def test_plan_renders_prompt_and_greeting_with_variables() -> None:
+    plan = plan_session(
+        make_runtime(variables={"customer_name": "Priya", "company_name": "Northwind"}),
+        AdapterRegistry(),
+    )
+    assert plan.instructions.startswith("You are the receptionist at Northwind.")
+    assert plan.greeting == "Hi Priya, thanks for calling Northwind. How can I help?"
+    assert plan.start_speaker == "agent" and not plan.generated_greeting
+
+
+def test_empty_greeting_is_generated_and_user_first_has_none() -> None:
+    gen = plan_session(make_runtime({"begin_message": ""}), AdapterRegistry())
+    assert gen.greeting is None and gen.generated_greeting
+    user = plan_session(make_runtime({"start_speaker": "user"}), AdapterRegistry())
+    assert user.start_speaker == "user" and not user.generated_greeting
+
+
+def test_auto_stt_uses_claim_resolved_model() -> None:
+    plan = plan_session(make_runtime(stt_resolved_model="nova-2"), AdapterRegistry())
+    assert plan.stt_auto and plan.stt.model == "nova-2"
+
+
+def test_noise_cancellation_default_and_off() -> None:
+    runtime = make_runtime()
+    runtime.config.pop("noise_cancellation")
+    assert plan_session(runtime, AdapterRegistry()).nc.key == "nc/sanas/vi"
+    off = plan_session(make_runtime({"noise_cancellation": None}), AdapterRegistry())
+    assert off.nc.key == "nc/none/none"
+
+
+def test_unsupported_vendor_fails_planning() -> None:
+    with pytest.raises(UnsupportedVendor) as exc:
+        plan_session(make_runtime({"tts": {"provider": "sarvam"}}), AdapterRegistry())
+    assert exc.value.diagnostic == "unsupported_vendor:tts/sarvam"
+
+
+def test_tts_gain_only_without_native_volume() -> None:
+    eleven = plan_session(make_runtime({"tts": {"volume": 1.5}}), AdapterRegistry())
+    assert eleven.tts_gain == 1.5
+    fish = plan_session(
+        make_runtime({"tts": {"provider": "fishaudio", "model": "s1", "volume": 1.5}}),
+        AdapterRegistry(),
+    )
+    assert fish.tts_gain == 1.0
+    sonic2 = plan_session(
+        make_runtime({"tts": {"provider": "cartesia", "model": "sonic-2", "volume": 0.5}}),
+        AdapterRegistry(),
+    )
+    assert tts_gain_for(sonic2.tts) == 0.5
+
+
+def test_flow_agent_without_004_is_refused() -> None:
+    runtime = make_runtime({"type": "flow"})
+    plan = plan_session(runtime, AdapterRegistry())
+    register_flow_runner(NullFlowRunner())
+    with pytest.raises(FlowRuntimeUnavailable) as exc:
+        build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+    assert exc.value.diagnostic == "flow-runtime-unavailable"
+
+
+def test_flow_runner_port_builds_the_entry_agent() -> None:
+    runtime = make_runtime({"type": "flow"})
+    plan = plan_session(runtime, AdapterRegistry())
+
+    class Runner:
+        available = True
+
+        def build_agent(self, runtime: Any, control: Any, tools: Any) -> str:
+            return "flow-entry-agent"
+
+    register_flow_runner(Runner())
+    try:
+        assert build_agent(plan, runtime, control=None) == "flow-entry-agent"  # type: ignore[arg-type]
+    finally:
+        register_flow_runner(NullFlowRunner())
+
+
+def test_single_prompt_agent_carries_plan_and_instructions() -> None:
+    runtime = make_runtime()
+    plan = plan_session(runtime, AdapterRegistry())
+    agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+    assert agent.plan is plan
+    assert agent.instructions == plan.instructions
+
+
+async def test_pronounce_meters_text_sent_to_tts() -> None:
+    async def source() -> AsyncIterator[str]:
+        for chunk in ["We run S", "QL daily."]:
+            yield chunk
+
+    sent: list[str] = []
+    transform = PronunciationTransform([PronunciationEntry("SQL", "sequel")])
+    out = [c async for c in pronounce(source(), transform, sent.append)]
+    assert "".join(out) == "We run sequel daily."
+    assert sum(len(s) for s in sent) == len("We run sequel daily.")
+
+
+async def test_vendor_error_diagnostic(no_llm_prewarm: None) -> None:
+    registry = AdapterRegistry()
+    plan = plan_session(make_runtime(), registry)
+    components = build_components(plan, registry, CREDS)
+    assert vendor_error_diagnostic(components.stt, plan) == "vendor_error:stt/deepgram"
+    assert vendor_error_diagnostic(components.llm, plan) == "vendor_error:llm/azure_openai"
+    assert vendor_error_diagnostic(components.tts, plan) == "vendor_error:tts/elevenlabs"
+    assert vendor_error_diagnostic(object(), plan) == "vendor_error:runtime/unknown"
