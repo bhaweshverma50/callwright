@@ -25,7 +25,13 @@ const ELEVEN: Row[] = [
   ["el_will", "Will", "Friendly and optimistic; good for outbound offers.", "male", ["en", "en-US"]],
   ["el_eric", "Eric", "Smooth and trustworthy; a safe choice for collections.", "male", ["en", "en-US"]],
   ["el_river", "River", "Relaxed and neutral, neither high nor low.", "neutral", ["en", "en-US"]],
-  ["el_anika", "Anika", "Natural Hindi and Indian English customer care voice.", "female", ["hi", "hi-Latn", "en-IN", "bn", "gu", "kn", "ml", "mr", "or", "pa", "ta", "te"]],
+  [
+    "el_anika",
+    "Anika",
+    "Natural Hindi and Indian English customer care voice.",
+    "female",
+    ["hi", "hi-Latn", "en-IN", "bn", "gu", "kn", "ml", "mr", "or", "pa", "ta", "te"],
+  ],
   ["el_aarav", "Aarav", "Calm Hindi and Indian English support voice.", "male", ["hi", "hi-Latn", "en-IN"]],
   ["el_sofia", "Sofia", "Warm Spanish support voice, neutral accent.", "female", ["es", "es-419"]],
   ["el_amelie", "Amelie", "Polished French voice for European and Canadian callers.", "female", ["fr", "fr-CA"]],
@@ -49,7 +55,13 @@ const CARTESIA: Row[] = [
   ["ca_morgan", "Morgan", "Even, gender-neutral voice.", "neutral", ["en", "en-US"]],
   ["ca_ishan", "Ishan", "Clear Hindi and Indian English voice.", "male", ["hi", "en-IN"]],
   ["ca_priya", "Priya", "Friendly Hindi support voice.", "female", ["hi", "en-IN"]],
-  ["ca_lucia", "Lucia", "Multilingual voice for Spanish, French, Italian and Portuguese.", "female", ["es", "es-419", "fr", "fr-CA", "it", "pt", "pt-BR", "multi"]],
+  [
+    "ca_lucia",
+    "Lucia",
+    "Multilingual voice for Spanish, French, Italian and Portuguese.",
+    "female",
+    ["es", "es-419", "fr", "fr-CA", "it", "pt", "pt-BR", "multi"],
+  ],
   ["ca_mateo", "Mateo", "Spanish support voice with a Latin American accent.", "male", ["es", "es-419"]],
   ["ca_hanna", "Hanna", "Calm German and Dutch voice.", "female", ["de", "nl"]],
   ["ca_kenji", "Kenji", "Polite Japanese voice.", "male", ["ja"]],
@@ -67,16 +79,18 @@ const FISH: Row[] = [
   ["fa_tomas", "Tomas", "Portuguese (Brazil) support voice.", "male", ["pt", "pt-BR"]],
 ];
 
-const toVoice = (provider: string, previews: boolean) => (r: Row, i: number): Voice => ({
-  voice_id: r[0],
-  provider,
-  name: r[1],
-  description: r[2],
-  gender: r[3],
-  languages: r[4],
-  preview_url: previews ? chimeDataUri(i) : null,
-  model_ids: [],
-});
+const toVoice =
+  (provider: string, previews: boolean) =>
+  (r: Row, i: number): Voice => ({
+    voice_id: r[0],
+    provider,
+    name: r[1],
+    description: r[2],
+    gender: r[3],
+    languages: r[4],
+    preview_url: previews ? chimeDataUri(i) : null,
+    model_ids: [],
+  });
 
 export const VOICES: Record<string, Voice[]> = {
   elevenlabs: ELEVEN.map(toVoice("elevenlabs", true)),

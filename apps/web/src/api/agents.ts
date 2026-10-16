@@ -123,8 +123,7 @@ export function useAgent(id: string | undefined) {
 export function useAgentDefaults(language: string, enabled = true) {
   return useQuery({
     queryKey: agentKeys.defaults(language),
-    queryFn: () =>
-      unwrap(api.GET("/agents/defaults", { params: { query: { type: "single_prompt", language } } })) as Promise<AgentConfig>,
+    queryFn: () => unwrap(api.GET("/agents/defaults", { params: { query: { type: "single_prompt", language } } })) as Promise<AgentConfig>,
     enabled,
     staleTime: 5 * 60_000,
   });
@@ -151,7 +150,14 @@ export function fetchProviderVoices(provider: string, f: VoiceFilters, cursor?: 
     api.GET("/voices/{provider}/voices", {
       params: {
         path: { provider },
-        query: { limit: 50, ...(f.search && { search: f.search }), ...(f.gender && { gender: f.gender }), ...(f.language && { language: f.language }), ...(f.model && { model: f.model }), ...(cursor && { cursor }) },
+        query: {
+          limit: 50,
+          ...(f.search && { search: f.search }),
+          ...(f.gender && { gender: f.gender }),
+          ...(f.language && { language: f.language }),
+          ...(f.model && { model: f.model }),
+          ...(cursor && { cursor }),
+        },
       },
     }),
   ) as Promise<VoicePage>;
@@ -206,7 +212,9 @@ export function useAgentVersions(id: string | undefined, enabled = true) {
   return useQuery({
     queryKey: agentKeys.versions(id ?? ""),
     queryFn: () =>
-      unwrap(api.GET("/agents/{agent_id}/versions", { params: { path: { agent_id: id! }, query: { page: 1, page_size: 100 } } })) as Promise<VersionPage>,
+      unwrap(
+        api.GET("/agents/{agent_id}/versions", { params: { path: { agent_id: id! }, query: { page: 1, page_size: 100 } } }),
+      ) as Promise<VersionPage>,
     enabled: enabled && !!id,
   });
 }
@@ -233,6 +241,12 @@ export function useVersionDetail(id: string, vid: string | null) {
     staleTime: Infinity,
   });
 }
+
+/**
+ * The contract types free-form config objects (`{type: object}` on create and validate) as an
+ * empty record; this hands a typed AgentConfig (or a partial one) to those bodies.
+ */
+export const looseConfig = (c: unknown) => c as Record<string, never>;
 
 /** `If-Match` value for a draft revision (the ETag the server sends is the quoted revision). */
 export const etag = (revision: number) => `"${revision}"`;

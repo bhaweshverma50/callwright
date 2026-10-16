@@ -5,7 +5,7 @@
  * empty so the empty state is reachable.
  */
 import type { AgentConfig, AgentDetail, AgentSummary, AgentType, ConfigIssue, VersionRef, VersionSource, VersionSummary } from "../../api/agents";
-import { DEMO_EMAIL, db, mockId, save } from "../db";
+import { DEMO_EMAIL, db, save } from "../db";
 import { contentHash, defaultConfig, overlay, validateConfig } from "./rules";
 import { findVoice } from "./voices";
 
@@ -64,6 +64,20 @@ export interface AgentStore {
 }
 
 const DAY = 86_400_000;
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** ULID-shaped id: 10 characters of time, 16 random (prefix_ + 26 Crockford base32). */
+export function ulid(prefix: string, at = Date.now()): string {
+  let t = at;
+  let time = "";
+  for (let i = 0; i < 10; i++) {
+    time = CROCKFORD[t % 32] + time;
+    t = Math.floor(t / 32);
+  }
+  let rand = "";
+  for (let i = 0; i < 16; i++) rand += CROCKFORD[Math.floor(Math.random() * 32)];
+  return `${prefix}_${time}${rand}`;
+}
 const iso = (ms: number) => new Date(ms).toISOString();
 
 export function store(): AgentStore {
@@ -97,7 +111,7 @@ export function createVersion(
   const s = store();
   const number = s.versions.filter((v) => v.agent_id === agent.id).reduce((n, v) => Math.max(n, v.version_number), 0) + 1;
   const v: MockVersion = {
-    id: mockId("agv"),
+    id: ulid("agv", opts.at),
     workspace_id: agent.workspace_id,
     agent_id: agent.id,
     version_number: number,
@@ -194,7 +208,7 @@ export function insertAgent(
 ): MockAgent {
   const at = opts.at ?? Date.now();
   const agent: MockAgent = {
-    id: mockId("agt"),
+    id: ulid("agt", at),
     workspace_id: ws,
     name,
     type,
@@ -215,7 +229,12 @@ export function insertAgent(
 }
 
 /** Saves a new draft: a version only when the content changed (FR-022, FR-023). */
-export function saveDraft(agent: MockAgent, config: AgentConfig, source: VersionSource, opts: { note?: string | null; restoredFrom?: string | null; at?: number } = {}) {
+export function saveDraft(
+  agent: MockAgent,
+  config: AgentConfig,
+  source: VersionSource,
+  opts: { note?: string | null; restoredFrom?: string | null; at?: number } = {},
+) {
   const current = versionById(agent.draft_version_id);
   const draft = draftOf(config);
   const hash = contentHash(draft);
@@ -277,10 +296,15 @@ function seedDemo(s: AgentStore) {
     note: "Created from Symptom triage and booking",
     at: now - 34 * DAY,
   });
-  saveDraft(fd, base({ prompt: FRONT_DESK_V2, dynamic_variables: [vars[0]!], begin_message: "Thanks for calling Halcyon Dental. How can I help you today?" }), "save", {
-    note: "Insurance and cancellation policy",
-    at: now - 20 * DAY,
-  });
+  saveDraft(
+    fd,
+    base({ prompt: FRONT_DESK_V2, dynamic_variables: [vars[0]!], begin_message: "Thanks for calling Halcyon Dental. How can I help you today?" }),
+    "save",
+    {
+      note: "Insurance and cancellation policy",
+      at: now - 20 * DAY,
+    },
+  );
   fd.pinned_version_id = fd.draft_version_id;
   saveDraft(
     fd,
@@ -338,7 +362,9 @@ function seedDemo(s: AgentStore) {
   );
 
   // A flow agent (built in spec 004), so the list shows both types.
-  const fl = insertAgent(ws, "Recall reminders", "flow", overlay(defaultConfig("flow"), { prompt: "" }) as AgentConfig, "flow_publish", { at: now - 8 * DAY });
+  const fl = insertAgent(ws, "Recall reminders", "flow", overlay(defaultConfig("flow"), { prompt: "" }) as AgentConfig, "flow_publish", {
+    at: now - 8 * DAY,
+  });
   fl.pinned_version_id = fl.draft_version_id;
   void s;
 }

@@ -31,7 +31,8 @@ import { CATEGORY_LABELS, TEMPLATES } from "./templates";
 import { VOICES } from "./voices";
 
 const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200, headers: Record<string, string> = {}) => HttpResponse.json(body as unknown as JsonBodyType, { status, headers });
+const json = <T>(body: T, status = 200, headers: Record<string, string> = {}) =>
+  HttpResponse.json(body as unknown as JsonBodyType, { status, headers });
 
 function problem(status: number, code: string, title: string, extra: Partial<Problem> & Record<string, unknown> = {}) {
   const body = { type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title, status, code, ...extra };
@@ -75,7 +76,14 @@ export const agentHandlers = [
     if (!ws) return unauthorized();
     const items: AmbientAudioFile[] = store()
       .ambient.filter((a) => a.workspace_id === ws && !a.deleted_at)
-      .map((a, i) => ({ key: a.key, filename: a.filename, content_type: a.content_type, size_bytes: a.size_bytes, created_at: a.created_at, preview_url: chimeDataUri(11 + i) }));
+      .map((a, i) => ({
+        key: a.key,
+        filename: a.filename,
+        content_type: a.content_type,
+        size_bytes: a.size_bytes,
+        created_at: a.created_at,
+        preview_url: chimeDataUri(11 + i),
+      }));
     return json({ items });
   }),
 
@@ -86,10 +94,18 @@ export const agentHandlers = [
     const file = form.get("file");
     if (!(file instanceof File)) return failValidation([{ pointer: "/file", code: "required", message: "Choose an audio file." }]);
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    const types: Record<string, string> = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac", aac: "audio/aac", opus: "audio/opus" };
+    const types: Record<string, string> = {
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+      ogg: "audio/ogg",
+      flac: "audio/flac",
+      aac: "audio/aac",
+      opus: "audio/opus",
+    };
     if (!types[ext]) return problem(415, "unsupported_media_type", "Not a supported audio format");
     if (file.size > 10 * 1024 * 1024) return problem(413, "file_too_large", "File larger than 10 MB");
-    if (store().ambient.filter((a) => a.workspace_id === ws && !a.deleted_at).length >= 20) return problem(409, "upload_limit", "Workspace already has 20 uploads");
+    if (store().ambient.filter((a) => a.workspace_id === ws && !a.deleted_at).length >= 20)
+      return problem(409, "upload_limit", "Workspace already has 20 uploads");
     await delay(500);
     const row = {
       workspace_id: ws,
@@ -113,7 +129,11 @@ export const agentHandlers = [
     const row = store().ambient.find((a) => a.key === key && a.workspace_id === ws && !a.deleted_at);
     if (!row) return problem(404, "not_found", "Upload not found");
     const inUse = store().agents.some(
-      (a) => a.workspace_id === ws && !a.deleted_at && a.draft_config.advanced.background_audio.source?.kind === "upload" && (a.draft_config.advanced.background_audio.source as { key: string }).key === key,
+      (a) =>
+        a.workspace_id === ws &&
+        !a.deleted_at &&
+        a.draft_config.advanced.background_audio.source?.kind === "upload" &&
+        (a.draft_config.advanced.background_audio.source as { key: string }).key === key,
     );
     if (inUse) return problem(409, "audio_in_use", "An agent uses this sound");
     row.deleted_at = new Date().toISOString();
@@ -147,7 +167,9 @@ export const agentHandlers = [
   http.get(url("/templates/categories"), () => {
     const counts = new Map<TemplateCategory, number>();
     for (const t of TEMPLATES) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
-    const items = (Object.keys(CATEGORY_LABELS) as TemplateCategory[]).filter((c) => counts.get(c)).map((id) => ({ id, label: CATEGORY_LABELS[id], count: counts.get(id)! }));
+    const items = (Object.keys(CATEGORY_LABELS) as TemplateCategory[])
+      .filter((c) => counts.get(c))
+      .map((id) => ({ id, label: CATEGORY_LABELS[id], count: counts.get(id)! }));
     return json({ items });
   }),
   http.get(url("/templates"), async ({ request }) => {
@@ -156,7 +178,8 @@ export const agentHandlers = [
     const search = (q.get("search") ?? "").trim().toLowerCase();
     await delay(120);
     const items: TemplateSummary[] = TEMPLATES.filter(
-      (t) => (!category || t.category === category) && (!search || t.name.toLowerCase().includes(search) || t.description.toLowerCase().includes(search)),
+      (t) =>
+        (!category || t.category === category) && (!search || t.name.toLowerCase().includes(search) || t.description.toLowerCase().includes(search)),
     ).map(({ config: _c, ...rest }) => rest);
     return json({ items });
   }),
@@ -287,7 +310,8 @@ export const agentHandlers = [
     const body = (await request.json()) as { name?: string; config: AgentConfig; note?: string };
     const result = validateConfig(a.type, body.config, { uploadKeys: workspaceUploadKeys(ws) });
     const errors = [...(body.name !== undefined && nameError(body.name) ? [nameError(body.name)!] : []), ...result.errors];
-    if (body.note && body.note.length > 500) errors.push({ pointer: "/note", code: "out_of_range", message: "Keep the note to 500 characters or fewer." });
+    if (body.note && body.note.length > 500)
+      errors.push({ pointer: "/note", code: "out_of_range", message: "Keep the note to 500 characters or fewer." });
     if (errors.length) return failValidation(errors);
     await delay(320);
     const renamed = body.name !== undefined && body.name.trim() !== a.name;
@@ -357,7 +381,13 @@ export const agentHandlers = [
     const v = versionById(String(params.version_id));
     const a = store().agents.find((x) => x.id === params.agent_id && x.workspace_id === ws);
     if (!v || !a || v.agent_id !== a.id) return notFound("Version");
-    return json<VersionDetail>({ ...toVersionSummary(v, a), agent_id: a.id, schema_version: 1, config: v.config, publish_blockers: v.publish_blockers });
+    return json<VersionDetail>({
+      ...toVersionSummary(v, a),
+      agent_id: a.id,
+      schema_version: 1,
+      config: v.config,
+      publish_blockers: v.publish_blockers,
+    });
   }),
 
   http.get(url("/agents/:agent_id/versions/:version_id/diff"), async ({ request, params }) => {
@@ -380,17 +410,27 @@ export const agentHandlers = [
     const v = versionById(String(params.version_id));
     if (!a || !v || v.agent_id !== a.id) return notFound("Version");
     const match = request.headers.get("if-match")?.replace(/"/g, "");
-    if (match !== String(a.draft_revision)) return problem(412, "draft_changed", "The draft changed since it was loaded", { current_revision: a.draft_revision });
+    if (match !== String(a.draft_revision))
+      return problem(412, "draft_changed", "The draft changed since it was loaded", { current_revision: a.draft_revision });
     const body = ((await request.json().catch(() => ({}))) ?? {}) as { note?: string; publish?: boolean };
     const check = validateConfig(a.type, v.config, { uploadKeys: workspaceUploadKeys(ws) });
     if (body.publish && check.publish_blockers.length)
       return problem(422, "publish_blocked", "This version cannot be published", { errors: check.publish_blockers });
     await delay(300);
-    const { version } = saveDraft(a, check.normalized_config, "restore", { note: body.note?.trim() || `Restored from version ${v.version_number}`, restoredFrom: v.id });
+    const { version } = saveDraft(a, check.normalized_config, "restore", {
+      note: body.note?.trim() || `Restored from version ${v.version_number}`,
+      restoredFrom: v.id,
+    });
     if (body.publish) a.pinned_version_id = version.id;
     save();
     return json<SaveResult>(
-      { agent: toDetail(a), created: true, version: { id: version.id, version_number: version.version_number, created_at: version.created_at }, warnings: check.warnings, publish_blockers: check.publish_blockers },
+      {
+        agent: toDetail(a),
+        created: true,
+        version: { id: version.id, version_number: version.version_number, created_at: version.created_at },
+        warnings: check.warnings,
+        publish_blockers: check.publish_blockers,
+      },
       200,
       etagOf(a),
     );
@@ -434,9 +474,13 @@ export const agentHandlers = [
     if (balanceOf(db(), ws) <= 0n) return problem(402, "insufficient_credit", "Balance at or below zero");
     const now = Date.now();
     const recent = (s.aiCalls[ws] ?? []).filter((t) => now - t < 60_000);
-    if (recent.length >= 20) return problem(429, "rate_limited", "Too many assistant requests", { retry_after_s: Math.ceil((recent[0]! + 60_000 - now) / 1000) });
+    if (recent.length >= 20)
+      return problem(429, "rate_limited", "Too many assistant requests", { retry_after_s: Math.ceil((recent[0]! + 60_000 - now) / 1000) });
     s.aiCalls[ws] = [...recent, now];
-    const body = (await request.json()) as { messages: { role: string; content: string }[]; current?: { prompt?: string; begin_message?: string | null } | null };
+    const body = (await request.json()) as {
+      messages: { role: string; content: string }[];
+      current?: { prompt?: string; begin_message?: string | null } | null;
+    };
     const ask = body.messages.filter((m) => m.role === "user").pop()?.content ?? "";
     await delay(1100);
     const res = draftPrompt(ask, body.current?.prompt ?? "", body.current?.begin_message ?? null);
@@ -453,11 +497,20 @@ function draftPrompt(ask: string, current: string, greeting: string | null): Pro
   const lower = ask.toLowerCase();
   const billed = "0.020000";
   if (/^(hi|hello|hey|thanks|thank you)\b/.test(lower.trim()) && ask.length < 24)
-    return { reply: "Tell me what the agent should do, or ask me to change the current prompt (for example: make it more concise).", proposal: null, billed_usd: billed };
+    return {
+      reply: "Tell me what the agent should do, or ask me to change the current prompt (for example: make it more concise).",
+      proposal: null,
+      billed_usd: billed,
+    };
   if (current.trim() && /(concise|shorter|shorten|tighten|trim)/.test(lower)) {
     const lines = current.split("\n");
-    const kept = lines.filter((l, i) => l.trim() === "" || l.startsWith("#") || i < 2 || /^\s*[-\d]/.test(l)).map((l) => l.replace(/\s*\([^)]*\)/g, "").replace(/, (and|or) [^.]*\./, "."));
-    const prompt = kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    const kept = lines
+      .filter((l, i) => l.trim() === "" || l.startsWith("#") || i < 2 || /^\s*[-\d]/.test(l))
+      .map((l) => l.replace(/\s*\([^)]*\)/g, "").replace(/, (and|or) [^.]*\./, "."));
+    const prompt = kept
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
     return {
       reply: "I kept the structure and every rule, cut the parenthetical asides and shortened the longer lines.",
       proposal: { prompt, begin_message: greeting, dynamic_variables: scanPlaceholders(prompt, greeting).names },
@@ -466,9 +519,17 @@ function draftPrompt(ask: string, current: string, greeting: string | null): Pro
   }
   if (current.trim() && /(friendl|warm|polite|tone)/.test(lower)) {
     const prompt = `${current.trim()}\n\n## Tone\n- Sound warm and unhurried. Use the caller's name once you know it.\n- Acknowledge what the caller said before answering.\n- Keep each turn to one or two short sentences.`;
-    return { reply: "I added a short tone section at the end; the rest of the prompt is unchanged.", proposal: { prompt, begin_message: greeting, dynamic_variables: scanPlaceholders(prompt, greeting).names }, billed_usd: billed };
+    return {
+      reply: "I added a short tone section at the end; the rest of the prompt is unchanged.",
+      proposal: { prompt, begin_message: greeting, dynamic_variables: scanPlaceholders(prompt, greeting).names },
+      billed_usd: billed,
+    };
   }
-  const topic = ask.replace(/^(an?|the)\s+/i, "").replace(/[.?!]+$/, "").trim() || "a phone agent";
+  const topic =
+    ask
+      .replace(/^(an?|the)\s+/i, "")
+      .replace(/[.?!]+$/, "")
+      .trim() || "a phone agent";
   const prompt = `## Role
 You are ${/^(a|an)\s/i.test(ask) ? ask.replace(/[.?!]+$/, "") : `the voice agent for ${topic}`} at {{company_name}}. You answer phone calls, help callers quickly, and hand over to a person when you cannot help.
 

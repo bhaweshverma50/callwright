@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { api, unwrap } from "../../api/client";
-import type { AgentConfig, AgentDetail, SaveResult } from "../../api/agents";
+import { looseConfig, type AgentConfig, type AgentDetail, type SaveResult } from "../../api/agents";
 import { signInDemo } from "../../test/render";
 import { diffConfigs } from "./diff";
 import { defaultConfig, validateConfig } from "./rules";
@@ -71,7 +71,7 @@ describe("mock agents API", () => {
     await signInDemo();
     const config = defaultConfig("single_prompt");
     config.prompt = "Hello {{customer_name}}.";
-    const body = { name: "Desk", type: "single_prompt" as const, config };
+    const body = { name: "Desk", type: "single_prompt" as const, config: looseConfig(config) };
     const params = { header: { "Idempotency-Key": "k1" } };
     const a = (await unwrap(api.POST("/agents", { body, params }))) as AgentDetail;
     const b = (await unwrap(api.POST("/agents", { body, params }))) as AgentDetail;

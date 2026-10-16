@@ -103,7 +103,20 @@ const NOVA2 = ALL_CODES.filter((c) => !INDIC.includes(c) || c === "hi");
 const ASSEMBLY_MULTI = ["es", "es-419", "fr", "fr-CA", "de", "it", "pt", "pt-BR"];
 
 export const DEFAULT_VOICE_BY_PROVIDER: Record<string, Record<string, string>> = {
-  elevenlabs: Object.fromEntries(ALL_CODES.map((c) => [c, INDIC.includes(c) || c === "en-IN" ? "el_anika" : c.startsWith("es") ? "el_sofia" : c.startsWith("fr") ? "el_amelie" : c === "de" ? "el_jonas" : "el_jessica"])),
+  elevenlabs: Object.fromEntries(
+    ALL_CODES.map((c) => [
+      c,
+      INDIC.includes(c) || c === "en-IN"
+        ? "el_anika"
+        : c.startsWith("es")
+          ? "el_sofia"
+          : c.startsWith("fr")
+            ? "el_amelie"
+            : c === "de"
+              ? "el_jonas"
+              : "el_jessica",
+    ]),
+  ),
   cartesia: Object.fromEntries(ALL_CODES.map((c) => [c, ENGLISH.includes(c) ? "ca_skylar" : c === "hi" || c === "en-IN" ? "ca_ishan" : "ca_lucia"])),
   fishaudio: Object.fromEntries(ALL_CODES.map((c) => [c, ENGLISH.includes(c) ? "fa_aria" : "fa_mira"])),
 };
@@ -125,9 +138,33 @@ const stt: SttProvider[] = [
     default_model: null,
     auto_rule: { default: "nova-2", by_language: { en: "nova-3" } },
     models: [
-      { id: "nova-3", label: "Nova-3", description: "Most accurate for English", languages: ENGLISH, builtin_turn_detection: false, price_per_min_usd: price("stt", "deepgram", "nova-3"), withdrawn: false },
-      { id: "nova-2", label: "Nova-2", description: "Broad language coverage (36 languages)", languages: NOVA2, builtin_turn_detection: false, price_per_min_usd: price("stt", "deepgram", "nova-2"), withdrawn: false },
-      { id: "flux-general-en", label: "Flux", description: "Conversational English, lowest latency", languages: ENGLISH, builtin_turn_detection: true, price_per_min_usd: price("stt", "deepgram", "flux-general-en"), withdrawn: false },
+      {
+        id: "nova-3",
+        label: "Nova-3",
+        description: "Most accurate for English",
+        languages: ENGLISH,
+        builtin_turn_detection: false,
+        price_per_min_usd: price("stt", "deepgram", "nova-3"),
+        withdrawn: false,
+      },
+      {
+        id: "nova-2",
+        label: "Nova-2",
+        description: "Broad language coverage (36 languages)",
+        languages: NOVA2,
+        builtin_turn_detection: false,
+        price_per_min_usd: price("stt", "deepgram", "nova-2"),
+        withdrawn: false,
+      },
+      {
+        id: "flux-general-en",
+        label: "Flux",
+        description: "Conversational English, lowest latency",
+        languages: ENGLISH,
+        builtin_turn_detection: true,
+        price_per_min_usd: price("stt", "deepgram", "flux-general-en"),
+        withdrawn: false,
+      },
     ],
   },
   {
@@ -137,8 +174,24 @@ const stt: SttProvider[] = [
     default_model: null,
     auto_rule: { default: "universal-streaming-multilingual", by_language: { en: "universal-streaming" } },
     models: [
-      { id: "universal-streaming", label: "Universal Streaming", description: "English-focused", languages: ENGLISH, builtin_turn_detection: true, price_per_min_usd: price("stt", "assemblyai", "universal-streaming"), withdrawn: false },
-      { id: "universal-streaming-multilingual", label: "Universal Streaming Multilingual", description: "Spanish, French, German, Italian, Portuguese", languages: ASSEMBLY_MULTI, builtin_turn_detection: true, price_per_min_usd: price("stt", "assemblyai", "universal-streaming-multilingual"), withdrawn: false },
+      {
+        id: "universal-streaming",
+        label: "Universal Streaming",
+        description: "English-focused",
+        languages: ENGLISH,
+        builtin_turn_detection: true,
+        price_per_min_usd: price("stt", "assemblyai", "universal-streaming"),
+        withdrawn: false,
+      },
+      {
+        id: "universal-streaming-multilingual",
+        label: "Universal Streaming Multilingual",
+        description: "Spanish, French, German, Italian, Portuguese",
+        languages: ASSEMBLY_MULTI,
+        builtin_turn_detection: true,
+        price_per_min_usd: price("stt", "assemblyai", "universal-streaming-multilingual"),
+        withdrawn: false,
+      },
     ],
   },
   {
@@ -148,8 +201,24 @@ const stt: SttProvider[] = [
     default_model: null,
     auto_rule: { default: "saarika:v2.5", by_language: {} },
     models: [
-      { id: "saarika:v2.5", label: "Saarika v2.5", description: "Transcribes in the spoken language", languages: [...INDIC, "en-IN"], builtin_turn_detection: false, price_per_min_usd: price("stt", "sarvam", "saarika:v2.5"), withdrawn: false },
-      { id: "saaras:v3", label: "Saaras v3", description: "Newest Sarvam model", languages: [...INDIC, "en-IN"], builtin_turn_detection: false, price_per_min_usd: price("stt", "sarvam", "saaras:v3"), withdrawn: false },
+      {
+        id: "saarika:v2.5",
+        label: "Saarika v2.5",
+        description: "Transcribes in the spoken language",
+        languages: [...INDIC, "en-IN"],
+        builtin_turn_detection: false,
+        price_per_min_usd: price("stt", "sarvam", "saarika:v2.5"),
+        withdrawn: false,
+      },
+      {
+        id: "saaras:v3",
+        label: "Saaras v3",
+        description: "Newest Sarvam model",
+        languages: [...INDIC, "en-IN"],
+        builtin_turn_detection: false,
+        price_per_min_usd: price("stt", "sarvam", "saaras:v3"),
+        withdrawn: false,
+      },
     ],
   },
 ];
@@ -173,7 +242,14 @@ const tts: TtsProvider[] = [
       ["eleven_turbo_v2_5", "Turbo v2.5", "Fast, 32 languages"],
       ["eleven_turbo_v2", "Turbo v2", "Fast, English"],
       ["eleven_multilingual_v2", "Multilingual v2", "Highest quality, 29 languages"],
-    ].map(([id, label, description]) => ({ id: id!, label: label!, description, chars_bundle_per_min: 750, price_per_min_usd: price("tts", "elevenlabs", id!), withdrawn: false })),
+    ].map(([id, label, description]) => ({
+      id: id!,
+      label: label!,
+      description,
+      chars_bundle_per_min: 750,
+      price_per_min_usd: price("tts", "elevenlabs", id!),
+      withdrawn: false,
+    })),
   },
   {
     provider: "cartesia",
@@ -187,7 +263,14 @@ const tts: TtsProvider[] = [
       ["sonic-2-2025-03-07", "Sonic 2 (2025-03-07)", "Speed and emotion controls"],
       ["sonic-3", "Sonic 3", "Newest Cartesia model"],
       ["sonic-turbo", "Sonic Turbo", "Fastest first audio"],
-    ].map(([id, label, description]) => ({ id: id!, label: label!, description, chars_bundle_per_min: 750, price_per_min_usd: price("tts", "cartesia", id!), withdrawn: false })),
+    ].map(([id, label, description]) => ({
+      id: id!,
+      label: label!,
+      description,
+      chars_bundle_per_min: 750,
+      price_per_min_usd: price("tts", "cartesia", id!),
+      withdrawn: false,
+    })),
   },
   {
     provider: "fishaudio",
@@ -200,16 +283,44 @@ const tts: TtsProvider[] = [
       ["s2.1-pro", "S2.1 Pro", "Newest Fish Audio model"],
       ["s2-pro", "S2 Pro", "Multi-speaker conversations"],
       ["s1", "S1", "Standard quality"],
-    ].map(([id, label, description]) => ({ id: id!, label: label!, description, chars_bundle_per_min: 750, price_per_min_usd: price("tts", "fishaudio", id!), withdrawn: false })),
+    ].map(([id, label, description]) => ({
+      id: id!,
+      label: label!,
+      description,
+      chars_bundle_per_min: 750,
+      price_per_min_usd: price("tts", "fishaudio", id!),
+      withdrawn: false,
+    })),
   },
 ];
 
 // --- noise cancellation (8.5) -----------------------------------------------
 
 const noise_cancellation: NoiseCancellationOption[] = [
-  { provider: "sanas", model: "vi", label: "Voice isolation", description: "Removes background noise and other voices; best for noisy callers", default: true, price_per_min_usd: price("nc", "sanas", "vi") },
-  { provider: "sanas", model: "st", label: "Standard noise removal", description: "Removes noise and keeps every voice; best when several people speak", default: false, price_per_min_usd: price("nc", "sanas", "st") },
-  { provider: "ai_coustics", model: "standard", label: "Lightweight noise removal", description: "Light processing with the lowest overhead", default: false, price_per_min_usd: price("nc", "ai_coustics", "standard") },
+  {
+    provider: "sanas",
+    model: "vi",
+    label: "Voice isolation",
+    description: "Removes background noise and other voices; best for noisy callers",
+    default: true,
+    price_per_min_usd: price("nc", "sanas", "vi"),
+  },
+  {
+    provider: "sanas",
+    model: "st",
+    label: "Standard noise removal",
+    description: "Removes noise and keeps every voice; best when several people speak",
+    default: false,
+    price_per_min_usd: price("nc", "sanas", "st"),
+  },
+  {
+    provider: "ai_coustics",
+    model: "standard",
+    label: "Lightweight noise removal",
+    description: "Light processing with the lowest overhead",
+    default: false,
+    price_per_min_usd: price("nc", "ai_coustics", "standard"),
+  },
 ];
 
 // --- control ranges (8.6) ----------------------------------------------------

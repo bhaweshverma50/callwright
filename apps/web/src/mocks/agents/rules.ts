@@ -27,7 +27,14 @@ export function defaultConfig(type: AgentType, language = "en-US"): AgentConfig 
     start_speaker: "agent",
     dynamic_variables: [],
     stt: { provider: lang.stt_default.provider, model: lang.stt_default.model },
-    tts: { provider: lang.tts_default.provider, model: lang.tts_default.model, voice_id: lang.tts_default.voice_id, speed: 1, expressiveness: 0.9, volume: 1 },
+    tts: {
+      provider: lang.tts_default.provider,
+      model: lang.tts_default.model,
+      voice_id: lang.tts_default.voice_id,
+      speed: 1,
+      expressiveness: 0.9,
+      volume: 1,
+    },
     noise_cancellation: { provider: "sanas", model: "vi" },
     call_behavior: { end_on_silence_s: 30, max_duration_s: 600, ring_duration_ms: 5000, interruption_sensitivity: 0.9, responsiveness: 0.8 },
     advanced: {
@@ -87,8 +94,10 @@ export function webhookProblem(url: string): { code: string; message: string } |
     return { code: "invalid_format", message: "Enter a full address that starts with https://, for example https://api.example.com/calls." };
   }
   if (u.protocol !== "https:") return { code: "invalid_format", message: "Use a secure address that starts with https://." };
-  if (!u.hostname.includes(".") && !u.hostname.startsWith("[")) return { code: "invalid_format", message: "Enter a full address with a domain name." };
-  if (PRIVATE_HOST.some((r) => r.test(u.hostname))) return { code: "private_address", message: "Webhooks cannot point to a private or local network address." };
+  if (!u.hostname.includes(".") && !u.hostname.startsWith("["))
+    return { code: "invalid_format", message: "Enter a full address with a domain name." };
+  if (PRIVATE_HOST.some((r) => r.test(u.hostname)))
+    return { code: "private_address", message: "Webhooks cannot point to a private or local network address." };
   if (url.length > 2048) return { code: "out_of_range", message: "Keep the address to 2,048 characters or fewer." };
   return null;
 }
@@ -129,7 +138,12 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
     if (llmModel.price_per_min_usd === null) block("/llm/model", "unpriced", `${llmModel.label} has no price yet, so the agent cannot go live.`);
     const rule = llmModel.temperature;
     if ("fixed" in rule) {
-      if (c.llm.temperature !== rule.fixed) warn("/llm/temperature", "temperature_fixed", `${llmModel.label} only supports temperature ${rule.fixed.toFixed(1)}; it is saved as ${rule.fixed.toFixed(1)}.`);
+      if (c.llm.temperature !== rule.fixed)
+        warn(
+          "/llm/temperature",
+          "temperature_fixed",
+          `${llmModel.label} only supports temperature ${rule.fixed.toFixed(1)}; it is saved as ${rule.fixed.toFixed(1)}.`,
+        );
       c.llm.temperature = rule.fixed;
     } else range("/llm/temperature", c.llm.temperature, rule.min, rule.max, `Temperature must be between ${rule.min} and ${rule.max}.`);
   }
@@ -142,7 +156,8 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
   const greeting = (c.begin_message ?? "").trim();
   if (c.start_speaker === "agent" && !greeting)
     warn("/begin_message", "generated_greeting", "No greeting set: the agent writes its own opening line from the prompt.");
-  if (c.start_speaker === "user" && greeting) warn("/begin_message", "greeting_unused", "The greeting is kept but not spoken while the caller speaks first.");
+  if (c.start_speaker === "user" && greeting)
+    warn("/begin_message", "greeting_unused", "The greeting is kept but not spoken while the caller speaks first.");
 
   // Variables (FR-008, FR-016)
   const scan = scanPlaceholders(c.prompt, c.begin_message);
@@ -153,7 +168,11 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
   for (const v of vars) {
     const p = `/dynamic_variables[${v.name}]`;
     if (!VARIABLE_NAME.test(v.name ?? "")) {
-      err(`${p}/name`, "invalid_variable", `${v.name || "A variable"} is not a valid name. Use letters, digits and underscores, starting with a letter or underscore.`);
+      err(
+        `${p}/name`,
+        "invalid_variable",
+        `${v.name || "A variable"} is not a valid name. Use letters, digits and underscores, starting with a letter or underscore.`,
+      );
       continue;
     }
     if (isReserved(v.name)) err(`${p}/name`, "reserved_variable", `${v.name} is built in and cannot be declared.`);
@@ -174,13 +193,18 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
     if (c.stt.model == null) {
       if (!sttProvider.supports_auto) err("/stt/model", "required", "Choose a speech recognition model.");
       else if (!sttProvider.models.some((m) => covers(m.languages)))
-        err("/stt/provider", "stt_language_unsupported", `${sttProvider.label} does not recognise ${lang?.label ?? c.language}. Choose another provider.`);
+        err(
+          "/stt/provider",
+          "stt_language_unsupported",
+          `${sttProvider.label} does not recognise ${lang?.label ?? c.language}. Choose another provider.`,
+        );
       else if (sttAutoPrice(sttProvider.provider) === null) block("/stt/model", "unpriced", "Auto has no price yet for this provider.");
     } else {
       const m = sttProvider.models.find((x) => x.id === c.stt.model);
       if (!m) err("/stt/model", "not_in_catalog", "Choose a speech recognition model.");
       else {
-        if (!covers(m.languages)) err("/stt/model", "stt_language_unsupported", `${m.label} does not recognise ${lang?.label ?? c.language}. Choose Auto or another model.`);
+        if (!covers(m.languages))
+          err("/stt/model", "stt_language_unsupported", `${m.label} does not recognise ${lang?.label ?? c.language}. Choose Auto or another model.`);
         if (m.withdrawn) block("/stt/model", "withdrawn", `${m.label} is no longer offered.`);
         if (m.price_per_min_usd === null) block("/stt/model", "unpriced", `${m.label} has no price yet.`);
       }
@@ -199,7 +223,8 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
       if (m.price_per_min_usd === null) block("/tts/model", "unpriced", `${m.label} has no price yet.`);
     }
     if (!c.tts.voice_id) err("/tts/voice_id", "required", "Choose a voice.");
-    else if (!findVoice(ttsProvider.provider, c.tts.voice_id)) err("/tts/voice_id", "voice_not_in_provider", `This voice is not offered by ${ttsProvider.label}. Choose one of its voices.`);
+    else if (!findVoice(ttsProvider.provider, c.tts.voice_id))
+      err("/tts/voice_id", "voice_not_in_provider", `This voice is not offered by ${ttsProvider.label}. Choose one of its voices.`);
   }
   range("/tts/speed", c.tts?.speed, 0.5, 2, "Voice speed must be between 0.5x and 2x.");
   range("/tts/expressiveness", c.tts?.expressiveness, 0, 2, "Expressiveness must be between 0 and 2.");
@@ -245,8 +270,10 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
   if (bg.enabled) {
     const src = bg.source;
     if (!src) err("/advanced/background_audio/source", "required", "Choose a background sound.");
-    else if (src.kind === "builtin" && !voiceCatalog.ambient_sounds.some((s) => s.id === src.id)) err("/advanced/background_audio/source", "not_in_catalog", "Choose a background sound from the list.");
-    else if (src.kind === "upload" && ctx.uploadKeys && !ctx.uploadKeys.includes(src.key)) err("/advanced/background_audio/source", "missing_reference", "This upload was deleted. Choose another sound.");
+    else if (src.kind === "builtin" && !voiceCatalog.ambient_sounds.some((s) => s.id === src.id))
+      err("/advanced/background_audio/source", "not_in_catalog", "Choose a background sound from the list.");
+    else if (src.kind === "upload" && ctx.uploadKeys && !ctx.uploadKeys.includes(src.key))
+      err("/advanced/background_audio/source", "missing_reference", "This upload was deleted. Choose another sound.");
   }
   if (a.analysis_model) {
     const ok = llmCatalog.providers.find((p) => p.id === a.analysis_model!.provider)?.models.some((m) => m.id === a.analysis_model!.model);

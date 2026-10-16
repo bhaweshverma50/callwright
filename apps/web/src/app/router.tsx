@@ -5,6 +5,7 @@ import { BILLING_ITEM } from "./nav";
 import { AuthGuard } from "./AuthGuard";
 import { RouteError } from "./RouteError";
 import { Shell } from "./Shell";
+import { AgentRedirect, AgentTestingPlaceholder, FlowBuilderPlaceholder } from "../routes/agents/agentRedirect";
 import { DashboardPlaceholder } from "../routes/dashboard/DashboardPlaceholder";
 import { NotFound } from "../routes/NotFound";
 import { AreaPlaceholder, RecordPlaceholder } from "../routes/placeholders/AreaPlaceholder";
@@ -27,13 +28,26 @@ import { SettingsPage } from "../routes/settings/SettingsPage";
 const BillingPage = lazy(() => import("../routes/billing/BillingPage").then((m) => ({ default: m.BillingPage })));
 const Pricing = lazy(() => import("../routes/public/Pricing").then((m) => ({ default: m.Pricing })));
 const ComponentsGallery = lazy(() => import("../routes/dev/ComponentsGallery").then((m) => ({ default: m.ComponentsGallery })));
+const AgentsListPage = lazy(() => import("../routes/agents/AgentsListPage").then((m) => ({ default: m.AgentsListPage })));
+const NewAgentTypePage = lazy(() => import("../routes/agents/NewAgentTypePage").then((m) => ({ default: m.NewAgentTypePage })));
+const TemplatesPage = lazy(() => import("../routes/agents/TemplatesPage").then((m) => ({ default: m.TemplatesPage })));
+const AgentEditorPage = lazy(() => import("../routes/agents/editor/AgentEditorPage").then((m) => ({ default: m.AgentEditorPage })));
+
+/** Agent builder (spec 002, T024). Flow building (004) and test calls (003) are placeholders here. */
+const agentRoutes: RouteObject[] = [
+  { path: "agents", element: <AgentsListPage /> },
+  { path: "agents/new", element: <NewAgentTypePage /> },
+  { path: "agents/templates", element: <TemplatesPage /> },
+  { path: "agents/new/single", element: <AgentEditorPage /> },
+  { path: "agents/new/flow", element: <FlowBuilderPlaceholder /> },
+  { path: "agents/:id", element: <AgentRedirect /> },
+  { path: "agents/:id/edit", element: <AgentEditorPage /> },
+  { path: "agents/:id/flow", element: <FlowBuilderPlaceholder /> },
+  { path: "agents/:id/testing", element: <AgentTestingPlaceholder /> },
+];
 
 /** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */
 const placeholderRoutes: RouteObject[] = [
-  { path: "agents", element: <AreaPlaceholder to="/agents" /> },
-  { path: "agents/new", element: <AreaPlaceholder to="/agents" /> },
-  { path: "agents/templates", element: <AreaPlaceholder to="/agents" /> },
-  { path: "agents/:id/*", element: <RecordPlaceholder to="/agents" prefix="agt" kind="agent" /> },
   { path: "calls", element: <AreaPlaceholder to="/calls" /> },
   { path: "phone-numbers", element: <AreaPlaceholder to="/phone-numbers" /> },
   { path: "knowledge-base", element: <AreaPlaceholder to="/knowledge-base" /> },
@@ -87,6 +101,7 @@ export const routes: RouteObject[] = [
                   { path: "dashboard", element: <DashboardPlaceholder /> },
                   { path: BILLING_ITEM.to.slice(1), element: <BillingPage /> },
                   { path: "settings", element: <SettingsPage /> },
+                  ...agentRoutes,
                   ...placeholderRoutes,
                   { path: "*", element: <NotFound /> },
                 ],
