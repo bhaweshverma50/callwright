@@ -16,6 +16,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
+from app.agent_versions.router import router as agent_versions_router
+from app.agents.router import router as agents_router
 from app.auth.idp import build_idp
 from app.auth.router import router as auth_router
 from app.billing.router import router as billing_router
@@ -31,11 +33,18 @@ from app.core.health import router as health_router
 from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
+from app.core.storage import build_store
+from app.core.storage import dev_router as dev_storage_router
 from app.dev.router import router as dev_router
 from app.livekit_hooks.router import router as livekit_hooks_router
+from app.llms.client import LlmClient
+from app.llms.router import router as llms_router
 from app.pricing.router import router as pricing_router
+from app.prompt_ai.router import router as prompt_ai_router
 from app.sessions.router import router as sessions_router
+from app.templates.router import router as templates_router
 from app.usage.router import router as usage_router
+from app.voices.router import router as voices_router
 from app.webhooks_out.router import router as webhooks_out_router
 from app.workspaces.router import router as workspaces_router
 
@@ -105,6 +114,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         jobs = ArqJobQueue()
         app.state.jobs = jobs
         app.state.webhook_http = httpx.AsyncClient(follow_redirects=False)
+        app.state.storage = build_store(settings)
+        app.state.llm_client = LlmClient(settings)
         try:
             yield
         finally:
@@ -145,10 +156,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         call_events_router,
         webhooks_out_router,
         livekit_hooks_router,
+        agents_router,
+        agent_versions_router,
+        templates_router,
+        llms_router,
+        voices_router,
+        prompt_ai_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_tools_enabled:
         app.include_router(dev_router, prefix=API_PREFIX)
+        app.include_router(dev_storage_router, prefix=API_PREFIX)
     _setup_tracing(app, settings)
     return app
 

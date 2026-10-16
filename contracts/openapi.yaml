@@ -8,15 +8,21 @@ servers:
 - url: /v1
 tags:
 - name: admin
+- name: agent_versions
+- name: agents
 - name: auth
 - name: billing
 - name: call-events-internal
 - name: calls-internal
 - name: core
 - name: livekit-hooks
+- name: llms
 - name: pricing
+- name: prompt_ai
 - name: sessions
+- name: templates
 - name: usage
+- name: voices
 - name: webhooks
 - name: workspaces
 paths:
@@ -97,6 +103,580 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
       x-spec: 001-platform-foundation
+  /agents:
+    get:
+      operationId: listAgents
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: search
+        in: query
+        description: Partial name (case-insensitive) or an exact agent id
+        schema:
+          type: string
+          maxLength: 100
+      - name: type
+        in: query
+        schema:
+          $ref: '#/components/schemas/AgentType'
+      responses:
+        '200':
+          description: Agents, most recently updated first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/AgentSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+    post:
+      operationId: createAgent
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      summary: Create an agent from defaults, a template or a given config; records version 1
+      description: 'The resulting config must pass blocking validation (a blank form is saved with this
+        call on its first save).
+
+        Repeating the request with the same Idempotency-Key returns the agent created the first time (FR-038).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              - type
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                type:
+                  $ref: '#/components/schemas/AgentType'
+                language:
+                  type: string
+                  description: Default en-US; seeds speech and voice defaults
+                template_id:
+                  type: string
+                  pattern: ^[a-z0-9-]{3,64}$
+                  description: Overlay this template on the defaults (single_prompt only)
+                config:
+                  description: Optional partial config overlaid on defaults (and on the template if given)
+                  type: object
+      responses:
+        '201':
+          description: Created; ETag carries draft_revision
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: template_id not found or inactive
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 002-agent-builder
+  /agents/defaults:
+    get:
+      operationId: getAgentDefaults
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      summary: Fully defaulted AgentConfig for a type and language (blank form)
+      parameters:
+      - name: type
+        in: query
+        schema:
+          $ref: '#/components/schemas/AgentType'
+      - name: language
+        in: query
+        schema:
+          type: string
+          default: en-US
+      responses:
+        '200':
+          description: Defaults
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+  /agents/validate:
+    post:
+      operationId: validateAgentConfig
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      summary: Validate an unsaved config; same rules as save and publish (research R10)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - type
+              - config
+              properties:
+                type:
+                  $ref: '#/components/schemas/AgentType'
+                config:
+                  type: object
+                agent_id:
+                  $ref: '#/components/schemas/AgentId'
+                  description: Optional; lets attachment validators check workspace references
+      responses:
+        '200':
+          description: Result (always 200; `valid` says whether a save would pass)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigValidationResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      operationId: getAgent
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Agent with draft config, versions pointers and current publish blockers
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
+    patch:
+      operationId: renameAgent
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      summary: Change metadata only (no version is recorded)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 002-agent-builder
+    delete:
+      operationId: deleteAgent
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      summary: Soft delete; versions are kept for call history
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Agent is attached to a live channel (code agent_in_use)
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Problem'
+                - type: object
+                  properties:
+                    attachments:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - kind
+                        - id
+                        - label
+                        properties:
+                          kind:
+                            type: string
+                            examples:
+                            - phone_number
+                            - whatsapp_channel
+                            - outbound
+                          id:
+                            type: string
+                          label:
+                            type: string
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/draft:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    put:
+      operationId: saveAgentDraft
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      summary: Save the draft; records a new version when the config changed
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        description: The draft_revision ETag the editor loaded
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - config
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                config:
+                  $ref: '#/components/schemas/AgentConfig'
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Saved (created=false means nothing changed)
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          description: Draft changed since it was loaded (code draft_changed); body has current_revision
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Problem'
+                - type: object
+                  properties:
+                    current_revision:
+                      type: integer
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/duplicate:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    post:
+      operationId: duplicateAgent
+      tags:
+      - agents
+      security:
+      - bearerAuth: []
+      description: No confirmation step (non-destructive). The same Idempotency-Key returns the first
+        copy (FR-038).
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                  description: Default "<name> (copy)"
+      responses:
+        '201':
+          description: New agent with version 1 and no published version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/published-version:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    put:
+      operationId: publishAgentVersion
+      tags:
+      - agent_versions
+      security:
+      - bearerAuth: []
+      summary: Publish (pin) a version for live channels
+      description: Publish blockers are re-evaluated now against the current catalog and attachments.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - version_id
+              properties:
+                version_id:
+                  $ref: '#/components/schemas/AgentVersionId'
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Version has publish blockers (code publish_blocked); `errors` lists them
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 002-agent-builder
+    delete:
+      operationId: unpublishAgent
+      tags:
+      - agent_versions
+      security:
+      - bearerAuth: []
+      summary: Remove the published version; live channels then refuse calls for this agent
+      responses:
+        '204':
+          description: Unpublished
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/versions:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      operationId: listAgentVersions
+      tags:
+      - agent_versions
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: include_test
+        in: query
+        description: Include versions created only for test calls
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Versions newest first (no config bodies)
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/VersionSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/versions/{version_id}:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    - $ref: '#/components/parameters/VersionIdPath'
+    get:
+      operationId: getAgentVersion
+      tags:
+      - agent_versions
+      security:
+      - bearerAuth: []
+      description: Readable even after the agent is deleted, so call detail pages can show the config.
+      responses:
+        '200':
+          description: Full version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/versions/{version_id}/diff:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    - $ref: '#/components/parameters/VersionIdPath'
+    get:
+      operationId: diffAgentVersion
+      tags:
+      - agent_versions
+      security:
+      - bearerAuth: []
+      summary: Changes from `against` to this version (keyed list matching, research R12)
+      parameters:
+      - name: against
+        in: query
+        required: true
+        description: Another version id of the same agent, or the literal `draft`
+        schema:
+          oneOf:
+          - $ref: '#/components/schemas/AgentVersionId'
+          - const: draft
+      responses:
+        '200':
+          description: Ordered change list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - from
+                - to
+                - changes
+                properties:
+                  from:
+                    type: string
+                    description: Version id or "draft"
+                  to:
+                    $ref: '#/components/schemas/AgentVersionId'
+                  changes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Change'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
+  /agents/{agent_id}/versions/{version_id}/restore:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    - $ref: '#/components/parameters/VersionIdPath'
+    post:
+      operationId: restoreAgentVersion
+      tags:
+      - agent_versions
+      security:
+      - bearerAuth: []
+      summary: Copy this version into the draft as a new version; optionally publish it
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+                publish:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Restored; `version` is the new version
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          description: Draft changed since it was loaded (code draft_changed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: publish=true but the restored version has publish blockers (restore is not applied)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 002-agent-builder
   /auth/password-reset:
     post:
       operationId: requestPasswordReset
@@ -604,6 +1184,36 @@ paths:
         '401':
           description: Signature or body hash invalid
       x-spec: 003-voice-runtime
+  /llms/catalog:
+    get:
+      operationId: getLlmCatalog
+      tags:
+      - llms
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: include_withdrawn
+        in: query
+        description: Include withdrawn models (used to label existing selections)
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Providers and models
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                examples:
+                - private, max-age=300
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
   /me:
     get:
       operationId: getMe
@@ -681,6 +1291,120 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
       x-spec: 001-platform-foundation
+  /prompt-ai/generate:
+    post:
+      operationId: generatePrompt
+      tags:
+      - prompt_ai
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - messages
+              properties:
+                agent_id:
+                  $ref: '#/components/schemas/AgentId'
+                  description: Optional; recorded as the usage reference
+                language:
+                  type: string
+                  default: en-US
+                messages:
+                  type: array
+                  minItems: 1
+                  maxItems: 40
+                  items:
+                    type: object
+                    required:
+                    - role
+                    - content
+                    properties:
+                      role:
+                        type: string
+                        enum:
+                        - user
+                        - assistant
+                      content:
+                        type: string
+                        minLength: 1
+                        maxLength: 8000
+                current:
+                  description: The editor's current values; null for a blank agent
+                  oneOf:
+                  - type: object
+                    properties:
+                      prompt:
+                        type: string
+                        maxLength: 50000
+                      begin_message:
+                        type:
+                        - string
+                        - 'null'
+                        maxLength: 1000
+                      dynamic_variables:
+                        type: array
+                        items:
+                          type: string
+                  - type: 'null'
+      responses:
+        '200':
+          description: Assistant reply and an optional proposal
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - reply
+                - proposal
+                - billed_usd
+                properties:
+                  reply:
+                    type: string
+                  proposal:
+                    oneOf:
+                    - type: object
+                      required:
+                      - prompt
+                      properties:
+                        prompt:
+                          type: string
+                        begin_message:
+                          type:
+                          - string
+                          - 'null'
+                        dynamic_variables:
+                          type: array
+                          items:
+                            type: string
+                            pattern: ^[A-Za-z_][A-Za-z0-9_]{0,63}$
+                    - type: 'null'
+                  billed_usd:
+                    $ref: '#/components/schemas/MoneyUsd'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          description: Balance at or below zero (code insufficient_credit)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '504':
+          description: Assistant model did not answer within 60 s (not charged)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 002-agent-builder
   /sessions/web-call:
     post:
       operationId: createWebCall
@@ -772,6 +1496,104 @@ paths:
               schema:
                 $ref: '#/components/schemas/CallRefusedProblem'
       x-spec: 003-voice-runtime
+  /templates:
+    get:
+      operationId: listTemplates
+      tags:
+      - templates
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: category
+        in: query
+        schema:
+          $ref: '#/components/schemas/TemplateCategory'
+      - name: search
+        in: query
+        schema:
+          type: string
+          maxLength: 100
+      responses:
+        '200':
+          description: Active templates ordered by sort_order (no config bodies)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+  /templates/categories:
+    get:
+      operationId: listTemplateCategories
+      tags:
+      - templates
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Categories that have at least one active template
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - id
+                      - label
+                      - count
+                      properties:
+                        id:
+                          $ref: '#/components/schemas/TemplateCategory'
+                        label:
+                          type: string
+                          examples:
+                          - Healthcare
+                        count:
+                          type: integer
+                          minimum: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+  /templates/{template_id}:
+    get:
+      operationId: getTemplate
+      tags:
+      - templates
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-z0-9-]{3,64}$
+      responses:
+        '200':
+          description: Template with its partial config (for preview)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 002-agent-builder
   /usage:
     get:
       operationId: getUsage
@@ -805,6 +1627,205 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
       x-spec: 001-platform-foundation
+  /voices/ambient-audio:
+    get:
+      operationId: listAmbientAudio
+      tags:
+      - voices
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: This workspace's uploads with 10-minute preview URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AmbientAudioFile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+    post:
+      operationId: uploadAmbientAudio
+      tags:
+      - voices
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: mp3, wav, ogg, flac, aac or opus; max 10 MB
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmbientAudioFile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Workspace already has 20 uploads (code upload_limit)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: File larger than 10 MB
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '415':
+          description: Not a supported audio format
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 002-agent-builder
+    delete:
+      operationId: deleteAmbientAudio
+      tags:
+      - voices
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: key
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Referenced by a draft or published version (code audio_in_use)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 002-agent-builder
+  /voices/catalog:
+    get:
+      operationId: getVoiceCatalog
+      tags:
+      - voices
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: include_withdrawn
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Speech catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 002-agent-builder
+  /voices/{provider}/voices:
+    get:
+      operationId: listProviderVoices
+      tags:
+      - voices
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[a-z0-9_]+$
+      - name: search
+        in: query
+        schema:
+          type: string
+          maxLength: 100
+      - name: gender
+        in: query
+        schema:
+          type: string
+          enum:
+          - female
+          - male
+          - neutral
+      - name: language
+        in: query
+        schema:
+          type: string
+      - name: model
+        in: query
+        description: Only voices usable with this TTS model
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      responses:
+        '200':
+          description: Normalised voices (cached up to 1 hour)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Voice'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Provider not in the catalog
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Provider listing temporarily unavailable (code catalog_unavailable)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 002-agent-builder
   /webhooks/deliveries:
     get:
       operationId: listWebhookDeliveries
@@ -1122,6 +2143,12 @@ components:
         type: string
         examples:
         - t=1760600000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+    VersionIdPath:
+      name: version_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/AgentVersionId'
   responses:
     Conflict:
       description: State conflict
@@ -1177,9 +2204,436 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    AgentConfig:
+      type: object
+      description: 'Plain, versioned agent configuration (data-model.md section 4). Ranges are enforced
+        by
+
+        the server on save; catalog membership is checked at save and publish. Blocks owned by
+
+        other features (tool_ids, kb_ids, flow, evals) are stored and versioned here, validated by
+
+        their owners. `tools` appears only in version snapshots.
+
+        '
+      required:
+      - schema_version
+      - type
+      - language
+      - llm
+      - prompt
+      - start_speaker
+      - dynamic_variables
+      - stt
+      - tts
+      - call_behavior
+      - advanced
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        type:
+          $ref: '#/components/schemas/AgentType'
+        language:
+          type: string
+          examples:
+          - en-US
+          - hi
+          - multi
+        llm:
+          type: object
+          required:
+          - provider
+          - model
+          - temperature
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            temperature:
+              type: number
+              minimum: 0
+              maximum: 2
+        prompt:
+          type: string
+          maxLength: 50000
+        begin_message:
+          type:
+          - string
+          - 'null'
+          maxLength: 1000
+        start_speaker:
+          type: string
+          enum:
+          - agent
+          - user
+        dynamic_variables:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/DynamicVariable'
+        stt:
+          type: object
+          required:
+          - provider
+          properties:
+            provider:
+              type: string
+            model:
+              type:
+              - string
+              - 'null'
+              description: null means Auto
+        tts:
+          type: object
+          required:
+          - provider
+          - model
+          - voice_id
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            voice_id:
+              type: string
+              minLength: 1
+            speed:
+              type: number
+              minimum: 0.5
+              maximum: 2
+              default: 1.0
+            expressiveness:
+              type: number
+              minimum: 0
+              maximum: 2
+              default: 0.9
+            volume:
+              type: number
+              minimum: 0
+              maximum: 2
+              default: 1.0
+        noise_cancellation:
+          description: null means off
+          oneOf:
+          - $ref: '#/components/schemas/ModelRef'
+          - type: 'null'
+        call_behavior:
+          type: object
+          required:
+          - end_on_silence_s
+          - max_duration_s
+          - ring_duration_ms
+          - interruption_sensitivity
+          - responsiveness
+          properties:
+            end_on_silence_s:
+              type: integer
+              minimum: 10
+              maximum: 300
+            max_duration_s:
+              type: integer
+              minimum: 30
+              maximum: 3600
+            ring_duration_ms:
+              type: integer
+              minimum: 0
+              maximum: 30000
+            interruption_sensitivity:
+              type: number
+              minimum: 0
+              maximum: 1
+            responsiveness:
+              type: number
+              minimum: 0
+              maximum: 1
+        advanced:
+          type: object
+          required:
+          - webhook_timeout_ms
+          - voicemail_detection
+          - dtmf
+          - background_audio
+          - pronunciation
+          properties:
+            webhook_url:
+              type:
+              - string
+              - 'null'
+              format: uri
+              maxLength: 2048
+            webhook_timeout_ms:
+              type: integer
+              minimum: 1000
+              maximum: 30000
+            voicemail_detection:
+              type: object
+              required:
+              - enabled
+              - action
+              properties:
+                enabled:
+                  type: boolean
+                action:
+                  type: string
+                  enum:
+                  - hang_up
+                  - leave_message
+                message:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+            dtmf:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 10000
+                termination_key:
+                  type:
+                  - string
+                  - 'null'
+                  enum:
+                  - '0'
+                  - '1'
+                  - '2'
+                  - '3'
+                  - '4'
+                  - '5'
+                  - '6'
+                  - '7'
+                  - '8'
+                  - '9'
+                  - '#'
+                  - '*'
+                  - null
+                digits:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+            background_audio:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+                source:
+                  oneOf:
+                  - $ref: '#/components/schemas/BackgroundAudioSource'
+                  - type: 'null'
+                volume:
+                  type: number
+                  minimum: 0
+                  maximum: 3
+            analysis_model:
+              description: null means use the agent's llm
+              oneOf:
+              - $ref: '#/components/schemas/ModelRef'
+              - type: 'null'
+            pronunciation:
+              type: array
+              maxItems: 200
+              items:
+                $ref: '#/components/schemas/PronunciationEntry'
+            recording:
+              type: string
+              enum:
+              - inherit
+              - 'on'
+              - 'off'
+              default: inherit
+              description: Call recording override (T088); `inherit` uses the workspace recording_default.
+                Versions written without it read as inherit
+        tool_ids:
+          type: array
+          maxItems: 25
+          items:
+            type: string
+        kb_ids:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+        flow:
+          description: Owned by 004 ({flow_id, graph, graph_hash, compiled}); null for single_prompt
+          type:
+          - object
+          - 'null'
+        evals:
+          description: Owned by 007
+          type:
+          - object
+          - 'null'
+        tools:
+          description: Snapshot-only resolved tool definitions written by 005; never accepted on save
+          type: array
+          readOnly: true
+          items:
+            type: object
+        knowledge:
+          description: Snapshot-only knowledge base references and retrieval settings written by 005 (T089);
+            never accepted on save
+          type: array
+          readOnly: true
+          items:
+            type: object
+    AgentDetail:
+      type: object
+      required:
+      - id
+      - name
+      - type
+      - draft_revision
+      - draft_config
+      - draft_version
+      - published_version
+      - publish_blockers
+      - warnings
+      - created_at
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/AgentId'
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/AgentType'
+        template_id:
+          type:
+          - string
+          - 'null'
+        draft_revision:
+          type: integer
+        draft_config:
+          $ref: '#/components/schemas/AgentConfig'
+        draft_version:
+          $ref: '#/components/schemas/VersionRef'
+        published_version:
+          oneOf:
+          - $ref: '#/components/schemas/VersionRef'
+          - type: 'null'
+        publish_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     AgentId:
       type: string
       pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+    AgentSummary:
+      type: object
+      required:
+      - id
+      - name
+      - type
+      - language
+      - llm_model
+      - voice_label
+      - published_version
+      - created_at
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/AgentId'
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/AgentType'
+        language:
+          type: string
+        llm_model:
+          type: string
+          description: '"provider/model" of the draft'
+        voice_label:
+          type: string
+          description: Voice name or id of the draft
+        published_version:
+          oneOf:
+          - $ref: '#/components/schemas/VersionRef'
+          - type: 'null'
+        has_publish_blockers:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AgentType:
+      type: string
+      enum:
+      - single_prompt
+      - flow
+    AgentVersionId:
+      type: string
+      pattern: ^agv_[0-9A-HJKMNP-TV-Z]{26}$
+    AmbientAudioFile:
+      type: object
+      required:
+      - key
+      - filename
+      - content_type
+      - size_bytes
+      - preview_url
+      - created_at
+      properties:
+        key:
+          type: string
+          description: Use as background_audio.source.key
+        filename:
+          type: string
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+        preview_url:
+          type: string
+          format: uri
+          description: Signed
+          valid 10 minutes: null
+        created_at:
+          type: string
+          format: date-time
+    BackgroundAudioSource:
+      oneOf:
+      - type: object
+        required:
+        - kind
+        - id
+        properties:
+          kind:
+            const: builtin
+          id:
+            type: string
+            examples:
+            - office_ambience
+      - type: object
+        required:
+        - kind
+        - key
+        properties:
+          kind:
+            const: upload
+          key:
+            type: string
+            description: Storage key returned by the ambient audio upload
     Bundle:
       type: object
       required:
@@ -1380,6 +2834,30 @@ components:
         created_at:
           type: string
           format: date-time
+    Change:
+      type: object
+      required:
+      - op
+      - path
+      properties:
+        op:
+          type: string
+          enum:
+          - add
+          - remove
+          - replace
+        path:
+          type: string
+          description: JSON Pointer; keyed list items use the key in brackets
+          examples:
+          - /prompt
+          - /tts/speed
+          - /dynamic_variables[order_id]/default
+          - /advanced/pronunciation[sql]/replacement
+        old:
+          description: Previous value (absent for add)
+        new:
+          description: New value (absent for remove)
     ClaimRequest:
       type: object
       additionalProperties: false
@@ -1448,6 +2926,87 @@ components:
           type:
           - string
           - 'null'
+    ConfigIssue:
+      type: object
+      required:
+      - pointer
+      - code
+      - message
+      properties:
+        pointer:
+          type: string
+          examples:
+          - /llm/temperature
+          - /dynamic_variables[customer_name]/name
+        code:
+          type: string
+        message:
+          type: string
+    ConfigValidationResult:
+      type: object
+      required:
+      - valid
+      - errors
+      - publish_blockers
+      - warnings
+      - normalized_config
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
+        publish_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
+        normalized_config:
+          $ref: '#/components/schemas/AgentConfig'
+    ControlRange:
+      type: object
+      required:
+      - path
+      - label
+      - min
+      - max
+      - step
+      properties:
+        path:
+          type: string
+          examples:
+          - /tts/speed
+          - /call_behavior/ring_duration_ms
+        label:
+          type: string
+          examples:
+          - Voice speed
+        min:
+          type: number
+        max:
+          type: number
+        step:
+          type: number
+        unit:
+          type:
+          - string
+          - 'null'
+          examples:
+          - s
+          - ms
+          - x
+        display:
+          type: string
+          enum:
+          - decimal
+          - multiplier
+          - percent_of_normal
+          - duration
+          default: decimal
     CostBreakdown:
       type: object
       required:
@@ -1585,6 +3144,24 @@ components:
             - termination_key
             - digit_limit
             - timeout
+    DynamicVariable:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Za-z_][A-Za-z0-9_]{0,63}$
+        default:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 200
     DynamicVariables:
       type: object
       maxProperties: 50
@@ -1717,6 +3294,49 @@ components:
             type: string
           label:
             type: string
+    Language:
+      type: object
+      required:
+      - code
+      - label
+      - stt_default
+      - tts_default
+      properties:
+        code:
+          type: string
+          examples:
+          - en-US
+          - hi
+          - multi
+        label:
+          type: string
+          examples:
+          - English (US)
+        stt_default:
+          type: object
+          required:
+          - provider
+          - model
+          properties:
+            provider:
+              type: string
+            model:
+              type:
+              - string
+              - 'null'
+        tts_default:
+          type: object
+          required:
+          - provider
+          - model
+          - voice_id
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            voice_id:
+              type: string
     LivekitWebhookEvent:
       type: object
       required:
@@ -1797,6 +3417,86 @@ components:
                     type:
                     - integer
                     - string
+    LlmCatalog:
+      type: object
+      required:
+      - default
+      - providers
+      properties:
+        default:
+          type: object
+          required:
+          - provider
+          - model
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/LlmProvider'
+    LlmModel:
+      type: object
+      required:
+      - id
+      - label
+      - temperature
+      - supports_tools
+      - price_per_min_usd
+      - withdrawn
+      properties:
+        id:
+          type: string
+          examples:
+          - gpt-5.1
+          description: Canonical id
+          identical under every provider that offers the model: null
+        label:
+          type: string
+        family:
+          type: string
+          examples:
+          - gpt-5
+        temperature:
+          $ref: '#/components/schemas/TemperatureRule'
+        supports_tools:
+          type: boolean
+        context_window:
+          type:
+          - integer
+          - 'null'
+        input_tokens_bundle_per_min:
+          type:
+          - integer
+          - 'null'
+          description: From pricing; used by the surcharge-risk notice
+        price_per_min_usd:
+          oneOf:
+          - $ref: '#/components/schemas/MoneyUsd'
+          - type: 'null'
+          description: null means price unavailable
+        withdrawn:
+          type: boolean
+    LlmProvider:
+      type: object
+      required:
+      - id
+      - label
+      - models
+      properties:
+        id:
+          type: string
+          examples:
+          - azure_openai
+          - openai
+        label:
+          type: string
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/LlmModel'
     Me:
       type: object
       required:
@@ -1827,6 +3527,18 @@ components:
         included:
           type: string
           description: bundle_per_min times duration_minutes, decimal string
+    ModelRef:
+      type: object
+      required:
+      - provider
+      - model
+      properties:
+        provider:
+          type: string
+          pattern: ^[a-z0-9_]+$
+        model:
+          type: string
+          minLength: 1
     MoneyUsd:
       type: string
       description: USD amount as a decimal string with up to 6 fractional digits.
@@ -1834,6 +3546,29 @@ components:
       examples:
       - '30.000000'
       - '-0.477000'
+    NoiseCancellationOption:
+      type: object
+      required:
+      - provider
+      - model
+      - label
+      - default
+      - price_per_min_usd
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        label:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        default:
+          type: boolean
+        price_per_min_usd:
+          $ref: '#/components/schemas/PricePerMin'
     OutboundDial:
       type: object
       required:
@@ -1872,6 +3607,11 @@ components:
         total_pages:
           type: integer
           minimum: 0
+    PricePerMin:
+      oneOf:
+      - $ref: '#/components/schemas/MoneyUsd'
+      - type: 'null'
+      description: null means price unavailable
     Problem:
       type: object
       description: RFC 9457 problem details. `type` is a URI under https://callwright.dev/problems/.
@@ -1906,6 +3646,20 @@ components:
           description: Present on 422 responses; every failing field in one list.
           items:
             $ref: '#/components/schemas/FieldError'
+    PronunciationEntry:
+      type: object
+      required:
+      - word
+      - replacement
+      properties:
+        word:
+          type: string
+          minLength: 1
+          maxLength: 100
+        replacement:
+          type: string
+          minLength: 1
+          maxLength: 200
     Quote:
       type: object
       required:
@@ -2163,6 +3917,30 @@ components:
           type: string
         at_ms:
           type: integer
+    SaveResult:
+      type: object
+      required:
+      - agent
+      - created
+      - version
+      - warnings
+      - publish_blockers
+      properties:
+        agent:
+          $ref: '#/components/schemas/AgentDetail'
+        created:
+          type: boolean
+          description: false when the config was unchanged
+        version:
+          $ref: '#/components/schemas/VersionRef'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
+        publish_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigIssue'
     Session:
       type: object
       required:
@@ -2264,6 +4042,191 @@ components:
             type: string
           sip_status_code:
             type: integer
+    SttModel:
+      type: object
+      required:
+      - id
+      - label
+      - languages
+      - price_per_min_usd
+      - withdrawn
+      properties:
+        id:
+          type: string
+          examples:
+          - nova-3
+        label:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        languages:
+          type: array
+          items:
+            type: string
+        builtin_turn_detection:
+          type: boolean
+          default: false
+        price_per_min_usd:
+          $ref: '#/components/schemas/PricePerMin'
+        withdrawn:
+          type: boolean
+    SttProvider:
+      type: object
+      required:
+      - provider
+      - label
+      - supports_auto
+      - models
+      properties:
+        provider:
+          type: string
+          examples:
+          - deepgram
+          - sarvam
+          - assemblyai
+        label:
+          type: string
+        supports_auto:
+          type: boolean
+          description: True when model null lets the platform choose per language
+        auto:
+          description: The Auto choice (config `stt.model = null`) as the picker shows it; null when supports_auto
+            is false
+          oneOf:
+          - type: object
+            required:
+            - label
+            - languages
+            - price_per_min_usd
+            properties:
+              label:
+                type: string
+                examples:
+                - Auto
+              description:
+                type:
+                - string
+                - 'null'
+              languages:
+                type: array
+                items:
+                  type: string
+                description: Union of the provider's model coverage
+              price_per_min_usd:
+                $ref: '#/components/schemas/PricePerMin'
+          - type: 'null'
+        default_model:
+          type:
+          - string
+          - 'null'
+          description: Preselected model when supports_auto is false; the model field is never blank
+        auto_rule:
+          type:
+          - object
+          - 'null'
+          description: How Auto resolves (applied by 003 at call time)
+          properties:
+            default:
+              type: string
+            by_language:
+              type: object
+              additionalProperties:
+                type: string
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/SttModel'
+    TemperatureRule:
+      oneOf:
+      - type: object
+        required:
+        - min
+        - max
+        - step
+        - default
+        properties:
+          min:
+            type: number
+          max:
+            type: number
+          step:
+            type: number
+          default:
+            type: number
+      - type: object
+        required:
+        - fixed
+        - reason
+        properties:
+          fixed:
+            type: number
+            examples:
+            - 1.0
+          reason:
+            type: string
+            examples:
+            - This model only supports temperature 1.0
+    TemplateCategory:
+      type: string
+      enum:
+      - automotive
+      - banking
+      - ecommerce
+      - healthcare
+      - telecom
+      description: Launch categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom
+    TemplateDetail:
+      allOf:
+      - $ref: '#/components/schemas/TemplateSummary'
+      - type: object
+        required:
+        - config
+        properties:
+          config:
+            type: object
+            description: 'Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+
+              llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
+
+              tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
+
+              fixed-temperature model, nor tts.voice_id (the language default voice applies).
+
+              '
+    TemplateSummary:
+      type: object
+      required:
+      - id
+      - name
+      - category
+      - description
+      - icon
+      - direction
+      properties:
+        id:
+          type: string
+          examples:
+          - healthcare-triage-booking
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/TemplateCategory'
+        description:
+          type: string
+        icon:
+          type: string
+          examples:
+          - stethoscope
+        direction:
+          type: string
+          enum:
+          - inbound
+          - outbound
+          description: Informs the preview; not part of the agent config
+        language:
+          type: string
     ToolCallEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -2351,6 +4314,98 @@ components:
             const: transcript_item
           item:
             $ref: '#/components/schemas/RuntimeTranscriptItem'
+    TtsModel:
+      type: object
+      required:
+      - id
+      - label
+      - price_per_min_usd
+      - withdrawn
+      properties:
+        id:
+          type: string
+          examples:
+          - eleven_flash_v2_5
+        label:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        chars_bundle_per_min:
+          type:
+          - integer
+          - 'null'
+        price_per_min_usd:
+          $ref: '#/components/schemas/PricePerMin'
+        withdrawn:
+          type: boolean
+    TtsProvider:
+      type: object
+      required:
+      - provider
+      - label
+      - default_model
+      - capabilities
+      - models
+      properties:
+        provider:
+          type: string
+          examples:
+          - elevenlabs
+          - cartesia
+          - fishaudio
+        label:
+          type: string
+        default_model:
+          type: string
+        default_voice_by_language:
+          type: object
+          description: Language code to default voice id; used for new agents and on provider switch (FR-010)
+          additionalProperties:
+            type: string
+        voice_listing:
+          type: object
+          required:
+          - source
+          - server_search
+          - gender_filter
+          - language_filter
+          - previews
+          description: What the voice browser offers for this provider (FR-045); search is local when
+            server_search is false
+          properties:
+            source:
+              type: string
+              enum:
+              - live
+              - curated
+              description: curated means a platform allow-list instead of the vendor's community library
+            server_search:
+              type: boolean
+            gender_filter:
+              type: boolean
+            language_filter:
+              type: boolean
+            previews:
+              type: boolean
+        capabilities:
+          type: object
+          required:
+          - speed
+          - expressiveness
+          - volume
+          properties:
+            speed:
+              type: boolean
+            expressiveness:
+              type: boolean
+            volume:
+              type: boolean
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/TtsModel'
     TurnEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -2572,6 +4627,221 @@ components:
     UserId:
       type: string
       pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+    VersionDetail:
+      allOf:
+      - $ref: '#/components/schemas/VersionSummary'
+      - type: object
+        required:
+        - agent_id
+        - schema_version
+        - config
+        - publish_blockers
+        properties:
+          agent_id:
+            $ref: '#/components/schemas/AgentId'
+          schema_version:
+            type: integer
+          config:
+            $ref: '#/components/schemas/AgentConfig'
+          publish_blockers:
+            type: array
+            items:
+              $ref: '#/components/schemas/ConfigIssue'
+    VersionRef:
+      type: object
+      required:
+      - id
+      - version_number
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/AgentVersionId'
+        version_number:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+    VersionSource:
+      type: string
+      enum:
+      - create
+      - save
+      - restore
+      - template
+      - duplicate
+      - flow_publish
+      - test
+    VersionSummary:
+      type: object
+      required:
+      - id
+      - version_number
+      - source
+      - created_at
+      - content_hash
+      - is_published
+      - is_draft
+      - has_publish_blockers
+      properties:
+        id:
+          $ref: '#/components/schemas/AgentVersionId'
+        version_number:
+          type: integer
+          minimum: 1
+        source:
+          $ref: '#/components/schemas/VersionSource'
+        note:
+          type:
+          - string
+          - 'null'
+        restored_from_version_number:
+          type:
+          - integer
+          - 'null'
+        parent_version_number:
+          type:
+          - integer
+          - 'null'
+          description: Draft version this one was saved over; null for version 1
+        summary:
+          type: object
+          description: At-a-glance contents for the history list
+          required:
+          - llm_model
+          - tts_provider
+          - tts_voice_id
+          - tool_count
+          - kb_count
+          properties:
+            llm_model:
+              type: string
+              examples:
+              - gpt-5.1
+            tts_provider:
+              type: string
+            tts_voice_id:
+              type: string
+            tool_count:
+              type: integer
+              minimum: 0
+            kb_count:
+              type: integer
+              minimum: 0
+            node_count:
+              type:
+              - integer
+              - 'null'
+              description: Flow agents only
+        created_by_email:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        content_hash:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        is_published:
+          type: boolean
+        is_draft:
+          type: boolean
+          description: True for the version matching the saved draft
+        has_publish_blockers:
+          type: boolean
+    Voice:
+      type: object
+      required:
+      - voice_id
+      - name
+      - provider
+      - languages
+      - model_ids
+      properties:
+        voice_id:
+          type: string
+        provider:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        gender:
+          type:
+          - string
+          - 'null'
+          enum:
+          - female
+          - male
+          - neutral
+          - null
+        languages:
+          type: array
+          items:
+            type: string
+        preview_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+        model_ids:
+          type: array
+          items:
+            type: string
+          description: Empty means usable with every model of the provider
+    VoiceCatalog:
+      type: object
+      required:
+      - languages
+      - stt
+      - tts
+      - noise_cancellation
+      - ambient_sounds
+      - controls
+      properties:
+        controls:
+          type: array
+          description: Single source of ranges, steps and labels for every tunable setting (FR-042, FR-047)
+          items:
+            $ref: '#/components/schemas/ControlRange'
+        languages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Language'
+        stt:
+          type: array
+          items:
+            $ref: '#/components/schemas/SttProvider'
+        tts:
+          type: array
+          items:
+            $ref: '#/components/schemas/TtsProvider'
+        noise_cancellation:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoiseCancellationOption'
+        ambient_sounds:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - label
+            properties:
+              id:
+                type: string
+                examples:
+                - office_ambience
+              label:
+                type: string
+              preview_url:
+                type:
+                - string
+                - 'null'
+                format: uri
     WarningEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'

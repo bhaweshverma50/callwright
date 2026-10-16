@@ -199,6 +199,17 @@ components:
         provider: {type: string, examples: [deepgram, sarvam, assemblyai]}
         label: {type: string}
         supports_auto: {type: boolean, description: True when model null lets the platform choose per language}
+        auto:
+          description: The Auto choice (config `stt.model = null`) as the picker shows it; null when supports_auto is false
+          oneOf:
+            - type: object
+              required: [label, languages, price_per_min_usd]
+              properties:
+                label: {type: string, examples: [Auto]}
+                description: {type: [string, 'null']}
+                languages: {type: array, items: {type: string}, description: Union of the provider's model coverage}
+                price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
+            - {type: 'null'}
         default_model:
           type: [string, 'null']
           description: Preselected model when supports_auto is false; the model field is never blank

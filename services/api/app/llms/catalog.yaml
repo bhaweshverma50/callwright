@@ -1,0 +1,45 @@
+# Language model capability catalog (data-model.md section 8.2, research R6, R8).
+# Prices are not stored here: GET /v1/llms/catalog joins each (provider, model) with the 001
+# pricing catalog. A new model is one entry here plus one pricing row (Principle I).
+# Model ids are canonical: one id for the same model under every provider that offers it.
+
+default:
+  provider: azure_openai
+  model: gpt-5.1
+
+providers:
+  - id: azure_openai
+    label: Azure OpenAI
+  - id: openai
+    label: OpenAI
+
+models:
+  - id: gpt-5.1
+    label: GPT-5.1
+    family: gpt-5
+    providers: [azure_openai, openai]
+    temperature: {fixed: 1.0, reason: This model only supports temperature 1.0}
+    supports_tools: true
+    context_window: 400000
+  - id: gpt-5.2
+    label: GPT-5.2
+    family: gpt-5
+    providers: [azure_openai, openai]
+    temperature: {fixed: 1.0, reason: This model only supports temperature 1.0}
+    supports_tools: true
+    context_window: 400000
+  - id: gpt-5-mini
+    label: GPT-5 Mini
+    family: gpt-5
+    providers: [azure_openai, openai]
+    temperature: {fixed: 1.0, reason: This model only supports temperature 1.0}
+    supports_tools: true
+    context_window: 400000
+
+# Vendor list prices per million tokens for API-side calls (prompt assistant, later judges and
+# analytics). Used for the raw cost of feature charges; the billable amount applies the markup.
+token_prices_usd_per_mtok:
+  gpt-5.1: {input: 1.25, output: 10.00}
+  gpt-5.2: {input: 1.75, output: 14.00}
+  gpt-5-mini: {input: 0.25, output: 2.00}
+feature_markup: 1.5

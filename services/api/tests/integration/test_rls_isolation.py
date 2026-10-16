@@ -1,7 +1,8 @@
 """Tenant isolation at the database layer (T024, T045, T060, T074, T082, Principle V).
 
 Workspace B's RLS context cannot read workspace A's rows in any tenant table, even by id, and
-cannot write rows into A. Later features add their tables to ``TENANT_TABLES``.
+cannot write rows into A. Later features add their tables to ``TENANT_TABLES`` (002 T044: agents,
+agent_versions, ambient_audio_files).
 """
 
 from __future__ import annotations
@@ -30,6 +31,9 @@ TENANT_TABLES = {
     "call_costs": "workspace_id",
     "usage_events": "workspace_id",
     "secrets": "workspace_id",
+    "agents": "workspace_id",
+    "agent_versions": "workspace_id",
+    "ambient_audio_files": "workspace_id",
 }
 
 
@@ -72,6 +76,18 @@ async def populated(client: httpx.AsyncClient, app: FastAPI) -> tuple[Account, A
             "sip_password",
             "hunter2-secret",
         )
+    created = await client.post(
+        "/v1/agents",
+        json={"name": "Tenant A agent", "type": "single_prompt", "config": {"prompt": "x"}},
+        headers=a.headers,
+    )
+    assert created.status_code == 201, created.text
+    upload = await client.post(
+        "/v1/voices/ambient-audio",
+        files={"file": ("a.mp3", b"ID3" + b"\x00" * 32, "audio/mpeg")},
+        headers=a.headers,
+    )
+    assert upload.status_code == 201, upload.text
     return a, b
 
 
@@ -135,3 +151,18 @@ async def test_transaction_by_id_from_another_workspace_is_404(
     response = await client.get(f"/v1/billing/transactions/{txn_id}", headers=b.headers)
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"
+
+
+async def test_agent_and_version_of_another_workspace_are_404(
+    client: httpx.AsyncClient, populated: tuple[Account, Account]
+) -> None:
+    a, b = populated
+    agent = (await client.get("/v1/agents", headers=a.headers)).json()["items"][0]
+    detail = (await client.get(f"/v1/agents/{agent['id']}", headers=a.headers)).json()
+    version_id = detail["draft_version"]["id"]
+    assert (await client.get(f"/v1/agents/{agent['id']}", headers=b.headers)).status_code == 404
+    assert (
+        await client.get(f"/v1/agents/{agent['id']}/versions/{version_id}", headers=b.headers)
+    ).status_code == 404
+    key = (await client.get("/v1/voices/ambient-audio", headers=a.headers)).json()["items"][0]["key"]
+    assert (await client.delete(f"/v1/voices/ambient-audio?key={key}", headers=b.headers)).status_code == 404
