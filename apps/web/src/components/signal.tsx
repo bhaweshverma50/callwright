@@ -3,7 +3,7 @@
  * travels through, per-turn latency chips and the on-air indicator. Heat ramp colours appear only
  * here, inside data visualisation.
  */
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { useId, useMemo, type ReactNode } from "react";
 import { cn } from "./cn";
 
@@ -129,73 +129,6 @@ export function LatencyChip({ latency, onConsole, className }: { latency: Latenc
       </span>
       <span className="font-mono text-[11.5px] tnum">{total} ms</span>
     </span>
-  );
-}
-
-export interface ChainNode {
-  key: string;
-  label: string;
-  icon: ReactNode;
-  detail?: ReactNode;
-}
-
-/**
- * The signal chain as a row of links joined by heat-ramp lines. `active` lights one link; `flow`
- * sends dashes along the lines in the direction the voice travels.
- */
-export function ChainStrip({
-  nodes,
-  active,
-  flow = false,
-  onConsole,
-  className,
-  compact,
-}: {
-  nodes: ChainNode[];
-  active?: string | null;
-  flow?: boolean;
-  onConsole?: boolean;
-  className?: string;
-  compact?: boolean;
-}) {
-  const reduce = useReducedMotion();
-  return (
-    <ol className={cn("flex items-center", className)} aria-label="Signal chain">
-      {nodes.map((n, i) => {
-        const on = active === n.key;
-        return (
-          <li key={n.key} className={cn("flex items-center", i < nodes.length - 1 && "flex-1")}>
-            <div className="flex flex-col items-center gap-1.5" aria-current={on ? "step" : undefined}>
-              <motion.span
-                animate={on && !reduce ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-                transition={{ duration: 0.6, repeat: on && !reduce ? Infinity : 0 }}
-                className={cn(
-                  "grid place-items-center rounded-full border transition-colors duration-200",
-                  compact ? "size-7 [&_svg]:size-3.5" : "size-9 [&_svg]:size-4",
-                  on
-                    ? "grad-action border-transparent text-white shadow-[0_0_0_4px_rgb(91_60_244/0.25)]"
-                    : onConsole
-                      ? "border-console-line bg-console-2 text-console-fg-2"
-                      : "border-line-strong bg-surface text-fg-2",
-                )}
-              >
-                {n.icon}
-              </motion.span>
-              <span
-                className={cn(
-                  "whitespace-nowrap text-[11.5px]",
-                  compact && "sr-only sm:not-sr-only sm:whitespace-nowrap",
-                  onConsole ? (on ? "text-console-fg" : "text-console-fg-2") : on ? "text-fg" : "text-fg-3",
-                )}
-              >
-                {n.label}
-              </span>
-            </div>
-            {i < nodes.length - 1 && <ChainLink flow={flow} onConsole={onConsole} className={cn("mx-1.5 flex-1", compact ? "-mt-5" : "-mt-6")} />}
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

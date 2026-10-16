@@ -1,10 +1,9 @@
 import * as RP from "@radix-ui/react-popover";
 import { Check, ChevronDown, CircleAlert, Clock, Ear, Mic, Plus, SlidersHorizontal, Zap } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useCatalog, useQuote } from "../../api/queries";
 import type { Catalog, PricingComponent, QuoteLine, QuoteRequest } from "../../api/types";
-import { COMPONENT_ICONS, COMPONENT_LABELS, Field, Input, Skeleton, Slider, Ticker, cn, focusRing } from "../../components";
+import { COMPONENT_ICONS, COMPONENT_LABELS, Field, FlowChain, Input, Skeleton, Slider, Ticker, cn, focusRing, type FlowNode } from "../../components";
 import { formatUsd, toMicros } from "../../lib/money";
 import { providerLabel } from "../../lib/providers";
 import { useDebounced } from "../../lib/useDebounced";
@@ -71,7 +70,7 @@ export function PricingCalculator() {
   const catalog = useCatalog();
   const [sel, setSel] = useState<Sel>(DEFAULTS);
   const [minutes, setMinutes] = useState(10_000);
-  const [pulse, setPulse] = useState(0);
+  const [openNode, setOpenNode] = useState<keyof Sel | null>(null);
   const [profile, setProfile] = useState<Profile>({ inputTokens: 12_000, outputTokens: 150, ttsChars: 600 });
   const debouncedProfile = useDebounced(profile, 150);
 
@@ -118,9 +117,37 @@ export function PricingCalculator() {
     subtotalAfter[c] = running;
   }
 
-  const choose = (c: keyof Sel, v: string) => {
-    setSel((s) => ({ ...s, [c]: v }));
-    setPulse((p) => p + 1);
+  const choose = (c: keyof Sel, v: string) => setSel((s) => ({ ...s, [c]: v }));
+
+  const nodeFor = (c: keyof Sel): FlowNode => {
+    const off = c === "nc" && sel.nc === NONE;
+    const line = lineFor(c);
+    const current = groups?.[c].flatMap((g) => g.options).find((o) => o.value === sel[c]);
+    const Icon = COMPONENT_ICONS[c]!;
+    return {
+      key: c,
+      label: NODE_TITLES[c],
+      off,
+      icon: off ? <Plus aria-hidden /> : <Icon aria-hidden />,
+      detail: (
+        <>
+          {groups ? (
+            <span className="block max-w-full truncate text-[13px] font-medium text-fg">{off ? "Off" : current?.label}</span>
+          ) : (
+            <Skeleton className="mx-auto mt-1 h-3.5 w-16" />
+          )}
+          <span className="block font-mono text-[11.5px] text-fg-3 tnum">
+            {off
+              ? "optional"
+              : line?.rate_per_min_usd
+                ? `${formatUsd(line.rate_per_min_usd, { places: 4 })}/m`
+                : line?.status === "unpriced"
+                  ? "unavailable"
+                  : ""}
+          </span>
+        </>
+      ),
+    };
   };
 
   return (
@@ -132,19 +159,38 @@ export function PricingCalculator() {
             <SlidersHorizontal className="size-4" aria-hidden />
             Click a link in the chain to change it.
           </p>
-          <ol aria-label="Signal chain" className="flex flex-col items-stretch gap-0 xl:flex-row xl:items-start">
-            <EndNode icon={<Mic aria-hidden />} title="Caller speaks" />
-            {CHAIN.map((c) => (
-              <li key={c} className="contents">
-                <Wire subtotal={subtotalAfter[CHAIN[CHAIN.indexOf(c) - 1] as keyof Sel] ?? 0n} pulse={pulse} first={c === "nc"} loading={!q} />
-                <ChainChoice component={c} value={sel[c]} groups={groups?.[c] ?? null} line={lineFor(c)} onChoose={(v) => choose(c, v)} />
-              </li>
-            ))}
-            <li className="contents">
-              <Wire subtotal={subtotalAfter.tts ?? 0n} pulse={pulse} loading={!q} />
-            </li>
-            <EndNode icon={<Ear aria-hidden />} title="Caller hears" />
-          </ol>
+          <FlowChain
+            label="Signal chain"
+            size="lg"
+            flow
+            rowHeight={96}
+            active={openNode}
+            linkLabels={[
+              null,
+              ...CHAIN.map((c) => (q && (subtotalAfter[c] ?? 0n) > 0n ? <Ticker value={Number(subtotalAfter[c])} format={usd4} /> : null)),
+            ]}
+            nodes={[
+              { key: "caller", label: "Caller speaks", icon: <Mic aria-hidden /> },
+              ...CHAIN.map((c) => nodeFor(c)),
+              { key: "hears", label: "Caller hears", icon: <Ear aria-hidden /> },
+            ]}
+            renderNode={(n, content) => {
+              if (!(CHAIN as string[]).includes(n.key)) return <div className="flow-node-body">{content}</div>;
+              const c = n.key as keyof Sel;
+              return (
+                <ChainChoice
+                  component={c}
+                  value={sel[c]}
+                  groups={groups?.[c] ?? null}
+                  open={openNode === c}
+                  onOpenChange={(o) => setOpenNode(o ? c : null)}
+                  onChoose={(v) => choose(c, v)}
+                >
+                  {content}
+                </ChainChoice>
+              );
+            }}
+          />
         </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
@@ -269,127 +315,43 @@ export function PricingCalculator() {
   );
 }
 
-function EndNode({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <li className="flex items-center gap-3 xl:w-[88px] xl:shrink-0 xl:flex-col xl:gap-2 xl:pt-2">
-      <span className="grid size-11 place-items-center rounded-full border border-line-strong bg-surface-2 text-fg-2 [&_svg]:size-5">{icon}</span>
-      <span className="text-[12.5px] text-fg-2 xl:text-center">{title}</span>
-    </li>
-  );
-}
-
-/** A link between nodes: heat-ramp line with flowing dashes; a particle runs along it after a change. */
-function Wire({ subtotal, pulse, first, loading }: { subtotal: bigint; pulse: number; first?: boolean; loading: boolean }) {
-  const reduce = useReducedMotion();
-  const id = useId().replace(/:/g, "");
-  return (
-    <div
-      aria-hidden
-      className="relative flex h-8 items-center pl-[21px] xl:h-auto xl:min-w-6 xl:flex-1 xl:flex-col xl:items-stretch xl:pl-0 xl:pt-[29px]"
-    >
-      <span className="grad-heat absolute bottom-0 left-[21px] top-0 w-0.5 opacity-70 xl:hidden" />
-      <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="hidden h-1.5 w-full xl:block">
-        <defs>
-          <linearGradient id={`w-${id}`} x1="0" x2="100" y1="0" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--heat-1)" />
-            <stop offset="0.6" stopColor="var(--heat-2)" />
-            <stop offset="1" stopColor="var(--heat-3)" />
-          </linearGradient>
-        </defs>
-        <line x1="0" x2="100" y1="3" y2="3" stroke="var(--border-strong)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        <line
-          x1="0"
-          x2="100"
-          y1="3"
-          y2="3"
-          stroke={`url(#w-${id})`}
-          strokeWidth="2"
-          strokeDasharray="5 5"
-          vectorEffect="non-scaling-stroke"
-          className="animate-flow"
-        />
-        {!reduce && pulse > 0 && (
-          <motion.circle
-            key={pulse}
-            r="3"
-            cy="3"
-            fill="var(--heat-2)"
-            initial={{ cx: 0, opacity: 1 }}
-            animate={{ cx: 100, opacity: [1, 1, 0] }}
-            transition={{ duration: 0.9, ease: "easeInOut" }}
-          />
-        )}
-      </svg>
-      {!first && (
-        <span className="relative ml-6 min-h-4 font-mono text-[11.5px] text-fg-3 tnum xl:ml-0 xl:mt-2 xl:text-center">
-          {loading || subtotal === 0n ? "" : <Ticker value={Number(subtotal)} format={usd4} />}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function ChainChoice({
   component,
   value,
   groups,
-  line,
+  open,
+  onOpenChange,
   onChoose,
+  children,
 }: {
   component: keyof Sel;
   value: string;
   groups: ChoiceGroup[] | null;
-  line: QuoteLine | undefined;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onChoose: (v: string) => void;
+  children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const Icon = COMPONENT_ICONS[component]!;
-  const off = component === "nc" && value === NONE;
   const current = groups?.flatMap((g) => g.options).find((o) => o.value === value);
   const title = NODE_TITLES[component];
+  const off = component === "nc" && value === NONE;
+  const setOpen = onOpenChange;
   return (
-    <RP.Root open={open} onOpenChange={setOpen}>
+    <RP.Root open={open} onOpenChange={onOpenChange}>
       <RP.Trigger
-        aria-label={`${title}: ${current?.label ?? "loading"}. Change`}
+        aria-label={`${title}: ${off ? "Off" : (current?.label ?? "loading")}. Change`}
         disabled={!groups}
         className={cn(
-          "live-border group flex w-full cursor-pointer items-center gap-3 rounded-panel border bg-surface px-3.5 py-3 text-left transition-[border-color,box-shadow,transform] duration-150 xl:w-[150px] xl:shrink-0 xl:flex-col xl:items-start xl:gap-2",
-          off ? "border-dashed border-line-strong" : "border-line-strong shadow-1 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-glow",
+          "flow-node-body relative isolate w-full cursor-pointer rounded-panel before:absolute before:-inset-x-1 before:-inset-y-1.5 before:-z-10 before:rounded-panel before:transition-colors before:duration-150 hover:before:bg-accent-soft/50 data-[state=open]:before:bg-accent-soft/60",
           focusRing,
         )}
-        data-active={open}
       >
-        <span
-          className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-full [&_svg]:size-4",
-            off ? "bg-surface-2 text-fg-3" : "grad-action text-white",
-          )}
-        >
-          {off ? <Plus aria-hidden /> : <Icon aria-hidden />}
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-[12px] text-fg-3">{title}</span>
-          {groups ? (
-            <span className="truncate text-[13.5px] font-medium text-fg">{off ? "Off" : current?.label}</span>
-          ) : (
-            <Skeleton className="mt-1 h-3.5 w-20" />
-          )}
-          <span className="font-mono text-[12px] text-fg-2 tnum">
-            {off
-              ? "optional"
-              : line?.rate_per_min_usd
-                ? `${formatUsd(line.rate_per_min_usd, { places: 4 })}/m`
-                : line?.status === "unpriced"
-                  ? "unavailable"
-                  : ""}
-          </span>
-        </span>
-        <ChevronDown className="size-4 shrink-0 text-fg-3 transition-transform group-data-[state=open]:rotate-180 xl:hidden" aria-hidden />
+        {children}
       </RP.Trigger>
       <RP.Portal>
         <RP.Content
           side="bottom"
-          align="start"
+          align="center"
           sideOffset={8}
           collisionPadding={16}
           className="z-50 max-h-[min(420px,var(--radix-popover-content-available-height))] w-[300px] overflow-y-auto rounded-panel border border-line bg-surface p-1.5 shadow-pop outline-none data-[state=open]:animate-pop-in data-[state=closed]:animate-[pop-in_120ms_ease-in_reverse]"

@@ -155,6 +155,16 @@ Not every block is a card: page sections sit directly on the paper and use hairl
 - Grids that collapse to one column use `grid-cols-[minmax(0,1fr)]` so content never forces a
   phone to scroll sideways.
 
+### Flows and sequences
+
+- Every horizontal flow (pricing chain, live call chain, build loop) is a `FlowChain`: equal grid
+  columns, the circle centred in each, labels wrapping to two lines under it, connectors drawn as
+  one layer from circle edge to circle edge with the same 8px gap, the same gradient and dash on
+  every segment, flowing in sync. Below 34rem of container width (20rem for short chains) it turns
+  vertical with equal rows. Extra controls (replay, reset) live in the panel header, never inline
+  as a node. `tests/e2e/flow-geometry.spec.ts` checks every chain at 1440, 1024 and 390.
+- Vertical sequences use `Stepper`: one centre axis, a continuous connector, numbered discs.
+
 ### Don't
 
 - No side-stripe accents: no coloured left (or right) border, inset box-shadow bar or pseudo
@@ -231,7 +241,7 @@ Guardrails:
 `Field`, `Input`, `Textarea`, `Select`, `Slider`, `Switch`, `Tabs`, `Dialog`, `ConfirmDialog`,
 `Drawer`, `Table`, `Pagination`, `Toast`, `EmptyState`, `Skeleton`, `Badge`, `Chip`, `Kbd`,
 `MoneyText`, `Ticker`, `CostBreakdownCard` (receipt), `Panel`, `PageHeader`, `Inspector`,
-`Waveform`, `ChainStrip`, `LatencyChip`, `OnAir`, `Logo`, `LeaveGuard`, `ErrorSummaryDialog`.
+`Waveform`, `FlowChain`, `Stepper`, `LatencyChip`, `PanelRows` (`FieldRow`, `InfoRow`), `SwitchControl`, `OnAir`, `Logo`, `LeaveGuard`, `ErrorSummaryDialog`.
 
 ## 10. Accessibility checklist
 

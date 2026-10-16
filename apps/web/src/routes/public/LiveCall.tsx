@@ -1,12 +1,12 @@
 import { BrainCircuit, Captions, CircleCheck, Ear, Mic, RotateCcw, Volume2 } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { ChainStrip, LatencyChip, OnAir, Waveform, cn, focusRing, type ChainNode } from "../../components";
+import { FlowChain, LatencyChip, OnAir, Waveform, cn, focusRing, type FlowNode } from "../../components";
 import { formatUsd } from "../../lib/money";
 import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "../../lib/sampleCall";
 import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
 
-const NODES: ChainNode[] = [
+const NODES: FlowNode[] = [
   { key: "caller", label: "Caller", icon: <Mic aria-hidden /> },
   { key: "stt", label: "Speech to text", icon: <Captions aria-hidden /> },
   { key: "llm", label: "Model", icon: <BrainCircuit aria-hidden /> },
@@ -80,16 +80,33 @@ export function LiveCall({ className }: { className?: string }) {
           ) : (
             <OnAir label="Live call" onConsole />
           )}
-          <dl className="flex items-center gap-4 text-[12px] text-console-fg-2">
-            <div className="flex items-center gap-1.5">
-              <dt className="sr-only">Duration</dt>
-              <dd className="w-9 text-right font-mono text-console-fg tnum">{mss(t)}</dd>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <dt>Cost so far</dt>
-              <dd className="w-[62px] text-right font-mono text-console-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
-            </div>
-          </dl>
+          <div className="flex items-center gap-3">
+            <dl className="flex items-center gap-4 text-[12px] text-console-fg-2">
+              <div className="flex items-center gap-1.5">
+                <dt className="sr-only">Duration</dt>
+                <dd className="w-9 text-right font-mono text-console-fg tnum">{mss(t)}</dd>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <dt>Cost so far</dt>
+                <dd className="w-[62px] text-right font-mono text-console-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => {
+                setT(0);
+                setRun((r) => r + 1);
+              }}
+              disabled={!ended || Boolean(reduce)}
+              aria-label="Replay the call"
+              className={cn(
+                "grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-console-line text-console-fg-2 transition-[opacity,color,border-color] hover:border-[#8b97ff] hover:text-console-fg disabled:pointer-events-none disabled:opacity-0",
+                focusRing,
+              )}
+            >
+              <RotateCcw className="size-4" aria-hidden />
+            </button>
+          </div>
         </header>
 
         <div className="px-5 pt-4">
@@ -123,23 +140,8 @@ export function LiveCall({ className }: { className?: string }) {
           })}
         </ol>
 
-        <footer className="flex items-center gap-4 border-t border-console-line px-5 py-4">
-          <ChainStrip nodes={NODES} active={link} flow={!ended} onConsole compact className="min-w-0 flex-1" />
-          <button
-            type="button"
-            onClick={() => {
-              setT(0);
-              setRun((r) => r + 1);
-            }}
-            disabled={!ended || Boolean(reduce)}
-            aria-label="Replay the call"
-            className={cn(
-              "grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-console-line text-console-fg-2 transition-[opacity,color,border-color] hover:border-[#8b97ff] hover:text-console-fg disabled:pointer-events-none disabled:opacity-0",
-              focusRing,
-            )}
-          >
-            <RotateCcw className="size-4" aria-hidden />
-          </button>
+        <footer className="border-t border-console-line px-5 pb-4 pt-5">
+          <FlowChain nodes={NODES} active={link} flow={!ended} onConsole size="sm" stack="never" />
         </footer>
       </figure>
     </div>

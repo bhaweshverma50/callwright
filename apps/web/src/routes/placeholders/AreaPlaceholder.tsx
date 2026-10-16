@@ -1,12 +1,12 @@
 import { Calculator, Clock3, Eye, Hammer, RefreshCcw, ShieldCheck, Wallet } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { ALL_NAV_ITEMS, groupOf, type NavItem } from "../../app/nav";
-import { Badge, Button, ChainStrip, PageHeader, type ChainNode } from "../../components";
+import { Badge, Button, FlowChain, PageHeader, type FlowNode } from "../../components";
 import { RecordNotFound } from "../NotFound";
 
 const ULID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
-const LOOP: ChainNode[] = [
+const LOOP: FlowNode[] = [
   { key: "Build", label: "Build", icon: <Hammer aria-hidden /> },
   { key: "Observe", label: "Observe", icon: <Eye aria-hidden /> },
   { key: "Quality", label: "Quality", icon: <ShieldCheck aria-hidden /> },
@@ -48,7 +48,7 @@ export function AreaPlaceholder({ to }: { to: string }) {
           {group && (
             <div className="rounded-panel border border-line bg-surface-2/70 px-5 py-6">
               <p className="text-[13px] font-medium text-fg">Where {item.label.toLowerCase()} fits</p>
-              <ChainStrip nodes={LOOP} active={group.label} flow className="mt-5" />
+              <FlowChain label="Build, observe, test and fix" nodes={LOOP} active={group.label} flow stack="tight" className="mt-5" />
               <p className="mt-5 text-[13.5px] leading-relaxed text-fg-2">
                 <span className="font-medium text-fg">{group.label}:</span> {group.role}
               </p>

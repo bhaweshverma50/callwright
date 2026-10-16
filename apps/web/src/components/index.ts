@@ -19,7 +19,8 @@ export { Panel, PageHeader, Label, WorkLayout, PanelRows, FieldRow, InfoRow } fr
 export { LeaveGuard } from "./LeaveGuard";
 export { ErrorSummaryDialog, type ErrorSummaryItem } from "./ErrorSummaryDialog";
 export { Logo } from "./Logo";
-export { Waveform, OnAir, LatencyChip, ChainStrip, ChainLink, waveHeights, type ChainNode, type Latency } from "./signal";
+export { Waveform, OnAir, LatencyChip, ChainLink, waveHeights, type Latency } from "./signal";
+export { FlowChain, Halo, type FlowNode } from "./FlowChain";
 export { PageTransition, Reveal, RevealItem, Ticker, useTicker, useRipple, EASE_OUT } from "./motion";
 export { cn, focusRing } from "./cn";
 export { Stepper, type Step, type StepStatus } from "./Stepper";

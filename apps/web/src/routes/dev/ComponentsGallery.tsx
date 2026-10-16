@@ -7,7 +7,7 @@ import { resolvedTheme, setThemePref, useThemePref } from "../../app/theme";
 import {
   Badge,
   Button,
-  ChainStrip,
+  FlowChain,
   Chip,
   ConfirmDialog,
   CostBreakdownCard,
@@ -41,7 +41,7 @@ import {
   Ticker,
   Waveform,
   toast,
-  type ChainNode,
+  type FlowNode,
   type Column,
 } from "../../components";
 import { formatUsd } from "../../lib/money";
@@ -64,7 +64,7 @@ const SWATCHES = [
   ["danger", "--danger"],
 ] as const;
 
-const NODES: ChainNode[] = [
+const NODES: FlowNode[] = [
   { key: "caller", label: "Caller", icon: <Mic aria-hidden /> },
   { key: "stt", label: "Speech to text", icon: <Captions aria-hidden /> },
   { key: "llm", label: "Model", icon: <BrainCircuit aria-hidden /> },
@@ -295,8 +295,8 @@ export function ComponentsGallery() {
                 <OnAir label="Live call" />
               </div>
             </Demo>
-            <Demo name="Chain strip">
-              <ChainStrip nodes={NODES} active="llm" flow />
+            <Demo name="Flow chain, active node and flowing links">
+              <FlowChain nodes={NODES} active="llm" flow />
             </Demo>
             <Demo name="Console surface">
               <div className="rounded-feature bg-console p-4">
@@ -378,7 +378,7 @@ export function ComponentsGallery() {
             </Demo>
             <Demo name="Chain flow (click to move)">
               <button type="button" className="cursor-pointer text-left" onClick={() => setChainActive((a) => (a + 1) % NODES.length)}>
-                <ChainStrip nodes={NODES} active={NODES[chainActive]!.key} flow compact />
+                <FlowChain nodes={NODES} active={NODES[chainActive]!.key} flow size="sm" stack="never" />
               </button>
             </Demo>
             <Demo name="Gauge arc">

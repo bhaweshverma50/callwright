@@ -1,7 +1,8 @@
 import { Check } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { Halo } from "./FlowChain";
 
 export type StepStatus = "done" | "active" | "pending";
 
@@ -80,19 +81,5 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
         );
       })}
     </ol>
-  );
-}
-
-/** Soft halo around the active step's disc; a static ring under reduced motion. */
-function Halo() {
-  const reduce = useReducedMotion();
-  return (
-    <motion.span
-      aria-hidden
-      className="pointer-events-none absolute -inset-1 rounded-full ring-4 ring-violet/25"
-      initial={false}
-      animate={reduce ? { opacity: 1, scale: 1 } : { opacity: [0.9, 0], scale: [1, 1.35] }}
-      transition={reduce ? { duration: 0 } : { duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-    />
   );
 }

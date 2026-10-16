@@ -318,6 +318,153 @@
   background-image: linear-gradient(90deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3));
 }
 
+/*
+  FlowChain geometry (components/FlowChain.tsx). Nodes sit in equal grid columns with the circle
+  centred in each; connectors are one absolutely positioned layer, each running from one circle's
+  edge to the next with the same gap (--g) on both sides, so every segment has the same length and
+  sits on the circle centre line. Below 34rem of container width (data-stack="narrow", or 20rem
+  with data-stack="tight" for short chains) the chain turns vertical with equal rows and the same rules on the vertical axis.
+  Inputs: --n nodes, --r circle radius, --g gap, --i segment index (per segment).
+*/
+.flow {
+  container-type: inline-size;
+  --g: 8px;
+}
+.flow-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+}
+.flow-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+}
+.flow-node-body {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.flow-seg {
+  position: absolute;
+  top: calc(var(--r) - 1px);
+  left: calc((var(--i) + 0.5) * 100% / var(--n) + var(--r) + var(--g));
+  width: calc(100% / var(--n) - 2 * (var(--r) + var(--g)));
+  height: 2px;
+  border-radius: 2px;
+  background: var(--seg-base, var(--border-strong));
+  overflow: hidden;
+}
+.flow-seg > i {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3));
+}
+.flow[data-flow="true"] .flow-seg > i {
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 12px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 12px);
+  -webkit-mask-size: 12px 100%;
+  mask-size: 12px 100%;
+  animation: flow-dash-x 0.9s linear infinite;
+}
+.flow-seg-label {
+  position: absolute;
+  top: calc(var(--r) - 24px);
+  left: calc((var(--i) + 1) * 100% / var(--n));
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+@keyframes flow-dash-x {
+  to {
+    -webkit-mask-position: 12px 0;
+    mask-position: 12px 0;
+  }
+}
+@keyframes flow-dash-y {
+  to {
+    -webkit-mask-position: 0 12px;
+    mask-position: 0 12px;
+  }
+}
+@container (max-width: 34rem) {
+  .flow[data-stack="narrow"] .flow-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(var(--n), minmax(var(--row, 64px), 1fr));
+  }
+  .flow[data-stack="narrow"] .flow-node {
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .flow[data-stack="narrow"] .flow-node-body {
+    flex-direction: row;
+    gap: 14px;
+    text-align: left;
+  }
+  .flow[data-stack="narrow"] .flow-seg {
+    left: calc(var(--r) - 1px);
+    width: 2px;
+    top: calc((var(--i) + 0.5) * 100% / var(--n) + var(--r) + var(--g));
+    height: calc(100% / var(--n) - 2 * (var(--r) + var(--g)));
+  }
+  .flow[data-stack="narrow"] .flow-seg > i {
+    background: linear-gradient(180deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3));
+  }
+  .flow[data-stack="narrow"][data-flow="true"] .flow-seg > i {
+    -webkit-mask-image: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+    mask-image: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+    -webkit-mask-size: 100% 12px;
+    mask-size: 100% 12px;
+    animation-name: flow-dash-y;
+  }
+  .flow[data-stack="narrow"] .flow-seg-label {
+    top: calc((var(--i) + 1) * 100% / var(--n));
+    left: calc(2 * var(--r) + 14px);
+    transform: translateY(-50%);
+  }
+}
+@container (max-width: 20rem) {
+  .flow[data-stack="tight"] .flow-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(var(--n), minmax(var(--row, 64px), 1fr));
+  }
+  .flow[data-stack="tight"] .flow-node {
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .flow[data-stack="tight"] .flow-node-body {
+    flex-direction: row;
+    gap: 14px;
+    text-align: left;
+  }
+  .flow[data-stack="tight"] .flow-seg {
+    left: calc(var(--r) - 1px);
+    width: 2px;
+    top: calc((var(--i) + 0.5) * 100% / var(--n) + var(--r) + var(--g));
+    height: calc(100% / var(--n) - 2 * (var(--r) + var(--g)));
+  }
+  .flow[data-stack="tight"] .flow-seg > i {
+    background: linear-gradient(180deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3));
+  }
+  .flow[data-stack="tight"][data-flow="true"] .flow-seg > i {
+    -webkit-mask-image: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+    mask-image: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+    -webkit-mask-size: 100% 12px;
+    mask-size: 100% 12px;
+    animation-name: flow-dash-y;
+  }
+  .flow[data-stack="tight"] .flow-seg-label {
+    top: calc((var(--i) + 1) * 100% / var(--n));
+    left: calc(2 * var(--r) + 14px);
+    transform: translateY(-50%);
+  }
+}
+
 @layer components {
   /* Gradient text: only on the home and pricing headlines. */
   .grad-text {
