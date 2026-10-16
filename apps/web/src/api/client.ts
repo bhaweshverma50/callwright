@@ -7,6 +7,9 @@
  * session is cleared, other tabs are told, and `onSessionExpired` sends the user to sign-in
  * with a return path (US1.3, edge case "session token expires mid-session").
  *
+ * Hosted demo: a 503 `waking_up` (the call servers are starting) is held at the wake gate and the
+ * request retried; see wakeGate.ts and WakeOverlay.
+ *
  * Lazy feature credentials (FR-020, T098): tokens for optional features (voice copilot STT key,
  * web test-call room token, analytics assistant session) are fetched by `useLazyToken(feature)`
  * hooks only when the user first opens that feature. Never request them from the shell, route
@@ -18,6 +21,7 @@ import { session } from "../app/session";
 import { authChannel } from "../app/authChannel";
 import { ApiError, networkError, toProblem } from "./errors";
 import type { paths, Session } from "./types";
+import { wakeAwareFetch } from "./wakeGate";
 
 type Expired = () => void;
 let onSessionExpired: Expired = () => {};
@@ -32,11 +36,14 @@ async function refreshOnce(): Promise<boolean> {
   if (!refresh_token) return false;
   refreshing ??= (async () => {
     try {
-      const res = await globalThis.fetch(`${env.apiBaseUrl}/auth/refresh`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ refresh_token }),
-      });
+      // Through the wake gate: a refresh while the call servers start must wait, not sign out.
+      const res = await wakeAwareFetch(() =>
+        globalThis.fetch(`${env.apiBaseUrl}/auth/refresh`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ refresh_token }),
+        }),
+      );
       if (!res.ok) return false;
       session.set((await res.json()) as Session);
       return true;
@@ -61,11 +68,16 @@ function withToken(req: Request): Request {
 
 const isAuthPath = (url: string) => /\/auth\/(sign-in|register|refresh|verify-email|password-reset)/.test(url);
 
+/** Sends a fresh copy of `template` each time, through the wake gate (wakeGate.ts). */
+function sendVia(template: Request): Promise<Response> {
+  return wakeAwareFetch(() => globalThis.fetch(withToken(template.clone())));
+}
+
 async function authFetch(input: Request): Promise<Response> {
-  const retryCopy = input.clone();
+  const template = input.clone();
   let res: Response;
   try {
-    res = await globalThis.fetch(withToken(input));
+    res = await sendVia(template);
   } catch {
     throw networkError();
   }
@@ -73,7 +85,7 @@ async function authFetch(input: Request): Promise<Response> {
 
   if (await refreshOnce()) {
     try {
-      return await globalThis.fetch(withToken(retryCopy));
+      return await sendVia(template);
     } catch {
       throw networkError();
     }

@@ -2,6 +2,7 @@ import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import { RouterProvider, type createBrowserRouter } from "react-router";
 import { Toaster, TooltipProvider } from "../components";
+import { WakeOverlay } from "./WakeOverlay";
 
 /**
  * Providers around the router: query cache, motion (follows the reduced-motion setting), tooltips
@@ -14,6 +15,7 @@ export function App({ router, queryClient }: { router: ReturnType<typeof createB
         <TooltipProvider>
           <RouterProvider router={router} />
           <Toaster />
+          <WakeOverlay />
         </TooltipProvider>
       </MotionConfig>
     </QueryClientProvider>
