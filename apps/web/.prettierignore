@@ -8,3 +8,5 @@ src/api/schema.d.ts
 pnpm-lock.yaml
 docs/screens
 *.md
+docs/brand/*.html
+src/components/logo-data.generated.ts
