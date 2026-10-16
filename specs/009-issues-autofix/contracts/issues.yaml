@@ -19,7 +19,7 @@ paths:
       tags: [issues]
       operationId: detectIssues
       parameters:
-        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired' }
       requestBody:
         required: true
         content:
@@ -37,12 +37,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Detection' }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '409':
           description: A detection is already running for this agent
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /issues/detection:
     get:
       tags: [issues]
@@ -68,8 +68,8 @@ paths:
         - { name: scope, in: query, schema: { type: string, enum: [real, real_and_simulated], default: real }, description: real hides issues whose origin is mostly simulated }
         - { name: window_days, in: query, schema: { type: integer, enum: [7, 14, 30, 90] }, description: Keep issues with last_seen_at within the last N days; omit for no window (FR-026) }
         - { name: applied_agent_version_id, in: query, schema: { type: string, pattern: '^agv_' }, description: Find the issue a version came from }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Issues sorted by affected calls, then last seen
@@ -77,7 +77,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -95,16 +95,16 @@ paths:
           description: Issue with current fix, latest validation and post-apply tracking
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Issue' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: '#/components/schemas/DetectedIssue' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /issues/{issue_id}/samples:
     get:
       tags: [issues]
       operationId: listIssueSamples
       parameters:
         - { $ref: '#/components/parameters/IssueId' }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Sample calls, most recent first
@@ -112,7 +112,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -142,11 +142,8 @@ paths:
       operationId: createIssueFix
       summary: Draft a fix with AI (billed issues.draft_fix) or store a manual one; becomes the current revision
       parameters:
-        - name: Idempotency-Key
-          in: header
-          required: false
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKey'
           description: Required when mode is ai
-          schema: { type: string, minLength: 8, maxLength: 128 }
       requestBody:
         required: true
         content:
@@ -168,17 +165,17 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/FixRevision' }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '409':
           description: Issue is applied or dismissed, or a validation is running
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
         '422':
           description: Kind not allowed for this issue, or payload does not match the current configuration (redraft_needed)
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /issues/{issue_id}/validate:
     post:
       tags: [issues]
@@ -186,7 +183,7 @@ paths:
       summary: Validate the current revision (control and treatment batches). dry_run returns the estimate only.
       parameters:
         - { $ref: '#/components/parameters/IssueId' }
-        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired' }
       requestBody:
         content:
           application/json:
@@ -202,24 +199,24 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ValidationAttempt' }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '409':
           description: Wrong status, advisory fix, or no current revision
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
         '422':
           description: Not enough calls to validate, or redraft_needed
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /issues/{issue_id}/draft-and-validate:
     post:
       tags: [issues]
       operationId: draftAndValidateIssueFix
       parameters:
         - { $ref: '#/components/parameters/IssueId' }
-        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired' }
       requestBody:
         content:
           application/json:
@@ -241,12 +238,12 @@ paths:
                 properties:
                   fix: { $ref: '#/components/schemas/FixRevision' }
                   validation: { $ref: '#/components/schemas/ValidationAttempt' }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '409':
           description: Wrong status
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /issues/{issue_id}/validations:
     get:
       tags: [issues]
@@ -276,12 +273,12 @@ paths:
           description: Cancelled; issue back to open
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Issue' }
+              schema: { $ref: '#/components/schemas/DetectedIssue' }
         '409':
           description: No validation running
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /issues/{issue_id}/apply:
     post:
       tags: [issues]
@@ -306,7 +303,7 @@ paths:
                 type: object
                 required: [issue, agent_version_id, published, tool_copies]
                 properties:
-                  issue: { $ref: '#/components/schemas/Issue' }
+                  issue: { $ref: '#/components/schemas/DetectedIssue' }
                   agent_version_id: { type: string, pattern: '^agv_' }
                   published: { type: boolean }
                   release_notes: { type: string }
@@ -324,7 +321,7 @@ paths:
             (problem type URI ends with the code)
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /issues/{issue_id}/dismiss:
     post:
       tags: [issues]
@@ -352,67 +349,19 @@ paths:
           description: Dismissed (a running validation is cancelled)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Issue' }
+              schema: { $ref: '#/components/schemas/DetectedIssue' }
         '409':
           description: Issue already applied or dismissed
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   parameters:
     IssueId: { name: issue_id, in: path, required: true, schema: { type: string, pattern: '^iss_' } }
-    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
-    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
-    IdempotencyKey:
-      name: Idempotency-Key
-      in: header
-      required: true
-      schema: { type: string, minLength: 8, maxLength: 128 }
-  responses:
-    NotFound:
-      description: Not found
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    Unprocessable:
-      description: Validation failed
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    InsufficientCredit:
-      description: Balance at or below zero
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
-    Problem:
-      x-owner: '001'
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              field: { type: string }
-              message: { type: string }
-    PageMeta:
-      x-owner: '001'
-      type: object
-      required: [total, page, page_size, total_pages]
-      properties:
-        total: { type: integer }
-        page: { type: integer }
-        page_size: { type: integer }
-        total_pages: { type: integer }
     IssueStatus: { type: string, enum: [open, validating, validated, applied, dismissed] }
     FixKind:
       type: string
@@ -457,7 +406,7 @@ components:
         recurrence_of: { type: [string, 'null'] }
         first_seen_at: { type: string, format: date-time }
         last_seen_at: { type: string, format: date-time }
-    Issue:
+    DetectedIssue:
       allOf:
         - { $ref: '#/components/schemas/IssueSummary' }
         - type: object

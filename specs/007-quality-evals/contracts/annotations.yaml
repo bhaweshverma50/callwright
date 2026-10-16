@@ -12,7 +12,7 @@ paths:
     get:
       operationId: listCallAnnotations
       parameters:
-        - { name: call_id, in: path, required: true, schema: { type: string, pattern: "^call_" } }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }
       responses:
         "200":
           description: All labels on the call, the viewer's first
@@ -29,10 +29,10 @@ paths:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/Annotation" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /calls/{call_id}/annotations/me:
     parameters:
-      - { name: call_id, in: path, required: true, schema: { type: string, pattern: "^call_" } }
+      - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }
     put:
       operationId: putMyAnnotation
       description: Create or replace the viewer's label on the call.
@@ -52,29 +52,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Annotation" }
-        "404": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
     delete:
       operationId: deleteMyAnnotation
       responses:
         "204": { description: Removed (idempotent) }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema:
-            type: object
-            required: [type, title, status]
-            properties:
-              type: { type: string }
-              title: { type: string }
-              status: { type: integer }
-              detail: { type: string }
   schemas:
     Annotation:
       type: object

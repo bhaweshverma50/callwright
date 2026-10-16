@@ -15,7 +15,7 @@ paths:
       operationId: listCalibrationRows
       parameters:
         - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/LookbackDays"
+        - $ref: "#/components/parameters/CalibrationLookbackDays"
         - name: version_scope
           in: query
           schema: { type: string, enum: [current, all], default: current }
@@ -37,7 +37,7 @@ paths:
       operationId: getCalibrationSummary
       parameters:
         - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/LookbackDays"
+        - $ref: "#/components/parameters/CalibrationLookbackDays"
       responses:
         "200":
           description: Summary
@@ -59,7 +59,7 @@ components:
       name: agent_id
       in: query
       schema: { type: string, pattern: "^agt_" }
-    LookbackDays:
+    CalibrationLookbackDays:
       name: lookback_days
       in: query
       schema: { type: integer, minimum: 1, maximum: 365, default: 90 }

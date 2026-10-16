@@ -682,6 +682,18 @@ paths:
       x-spec: 001-platform-foundation
 components:
   parameters:
+    AgentIdPath:
+      name: agent_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/AgentId'
+    CallIdPath:
+      name: call_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/CallId'
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -690,6 +702,16 @@ components:
         result.
       schema:
         type: string
+        maxLength: 255
+    IdempotencyKeyRequired:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated key (8 to 255 chars), required on POSTs that spend credit or place
+        calls. A replay within 24 h returns the original response.
+      schema:
+        type: string
+        minLength: 8
         maxLength: 255
     Page:
       name: page
@@ -719,9 +741,21 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    InsufficientCredit:
+      description: Balance at or below zero (code insufficient_credit)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     NotFound:
       description: Resource does not exist in this workspace, or the ID in the path is malformed (never
         a 5xx; FR-019)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Problem:
+      description: RFC 9457 problem; the status code and `code` say what went wrong
       content:
         application/problem+json:
           schema:
@@ -749,6 +783,9 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    AgentId:
+      type: string
+      pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
     Bundle:
       type: object
       required:
@@ -960,6 +997,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeterUsage'
+    E164:
+      type: string
+      description: Phone number in E.164 form, a plus sign and 7 to 15 digits.
+      pattern: ^\+[1-9]\d{6,14}$
+      examples:
+      - '+14155550123'
     FeatureFamily:
       type: string
       description: 'Prefix of the feature key before the first dot, with `eval` reported as `evaluations`

@@ -8,19 +8,25 @@ when its implementation lands, so the assembled contract only describes what the
 
 * rewrites every cross-file ``$ref`` (``./core.yaml#/components/...`` or
   ``../../001-platform-foundation/contracts/core.yaml#/components/...``) to a local
-  ``#/components/...`` ref, after checking that the target exists;
+  ``#/components/...`` ref, after checking that the target exists. A component referenced from a
+  fragment that is not being assembled (a later spec) is pulled in together with everything it
+  references in turn;
 * merges components by name. Duplicates that are identical once documentation-only keys
   (description, summary, example, examples) are ignored are merged; anything else fails;
 * merges paths. The same (path, method) defined twice fails; different methods on one path
   are combined;
 * tags every operation with ``x-spec: <spec directory>`` so tests can tell which feature
-  owns an operation.
+  owns an operation;
+* checks that every ``$ref`` in the assembled document resolves.
+
+Any conflict or unresolved ref exits with status 2, so CI fails on it.
 
 Usage::
 
     python scripts/assemble_contracts.py           # write contracts/openapi.yaml
     python scripts/assemble_contracts.py --check   # exit 1 when the committed file is stale
-    python scripts/assemble_contracts.py --all --dry-run   # report conflicts across all specs
+    python scripts/assemble_contracts.py --all     # check every spec; never writes the served contract
+    python scripts/assemble_contracts.py --all --output /tmp/all.yaml   # write the all-spec preview
 """
 
 from __future__ import annotations
@@ -66,6 +72,8 @@ def _resolve_pointer(doc: dict[str, Any], pointer: str, where: str) -> Any:
 class Assembler:
     def __init__(self, files: list[Path]) -> None:
         self.files = files
+        self.merged = {path.resolve() for path in files}
+        self.pulling: set[tuple[str, str, Path]] = set()
         self.cache: dict[Path, dict[str, Any]] = {}
         self.paths: dict[str, dict[str, Any]] = {}
         self.path_origin: dict[tuple[str, str], Path] = {}
@@ -102,12 +110,16 @@ class Assembler:
         if not pointer.startswith("/components/"):
             raise AssemblyError(f"{where}: only refs to components are supported")
         _resolve_pointer(self.doc(target), pointer, where)
-        if file_part:
-            # Pull the referenced component in even when its file is not a fragment we merge.
-            parts = pointer.lstrip("/").split("/")
-            if len(parts) == 3:
-                self._add_component(parts[1], parts[2], self.doc(target)[parts[0]][parts[1]][parts[2]],
-                                    target)
+        parts = pointer.lstrip("/").split("/")
+        if len(parts) == 3 and (file_part or target not in self.merged):
+            # Pull the component in when it lives in another file, and follow local refs inside
+            # a file that is not merged (a later spec) so nothing it uses is left dangling.
+            key = (parts[1], parts[2], target)
+            if key not in self.pulling:
+                self.pulling.add(key)
+                self._add_component(
+                    parts[1], parts[2], self.doc(target)[parts[0]][parts[1]][parts[2]], target
+                )
         return "#" + pointer
 
     def _add_component(self, kind: str, name: str, value: Any, source: Path) -> None:
@@ -141,9 +153,9 @@ class Assembler:
                     if key in HTTP_METHODS:
                         if key in merged:
                             first = self.path_origin[(url, key)].relative_to(ROOT)
-                            self.errors.append(
-                                f"duplicate operation {key.upper()} {url}: {first} vs {path.relative_to(ROOT)}"
-                            )
+                            second = path.relative_to(ROOT)
+                            op = f"{key.upper()} {url}"
+                            self.errors.append(f"duplicate operation {op}: {first} vs {second}")
                             continue
                         value = dict(value)
                         value["x-spec"] = spec_dir
@@ -158,7 +170,11 @@ class Assembler:
                         merged[key] = value
         if self.errors:
             raise AssemblyError("\n  ".join(["contract conflicts:", *self.errors]))
-        return self._document()
+        document = self._document()
+        dangling = sorted(_unresolved_refs(document))
+        if dangling:
+            raise AssemblyError("\n  ".join(["unresolved refs in the assembled contract:", *dangling]))
+        return document
 
     def _document(self) -> dict[str, Any]:
         components = {
@@ -177,6 +193,31 @@ class Assembler:
             "paths": {url: self.paths[url] for url in sorted(self.paths)},
             "components": components,
         }
+
+
+def _iter_refs(node: Any) -> Any:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "$ref" and isinstance(value, str):
+                yield value
+            else:
+                yield from _iter_refs(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _iter_refs(item)
+
+
+def _unresolved_refs(document: dict[str, Any]) -> set[str]:
+    missing: set[str] = set()
+    for ref in _iter_refs(document):
+        if not ref.startswith("#/"):
+            missing.add(f"{ref} (not a local ref)")
+            continue
+        try:
+            _resolve_pointer(document, ref[1:], "assembled contract")
+        except AssemblyError:
+            missing.add(ref)
+    return missing
 
 
 def _strip_docs(node: Any) -> Any:
@@ -221,16 +262,28 @@ def assemble(root: Path = ROOT, all_specs: bool = False) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail when contracts/openapi.yaml is stale")
-    parser.add_argument("--all", action="store_true", help="assemble every spec, not only features.txt")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="assemble every spec, not only features.txt (checks only, unless --output is given)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="assemble and validate without writing")
+    parser.add_argument("--output", type=Path, help="write the assembled contract here instead")
     args = parser.parse_args(argv)
     try:
         text = assemble(all_specs=args.all)
     except AssemblyError as exc:
         print(f"assemble_contracts: {exc}", file=sys.stderr)
         return 2
-    if args.dry_run:
-        print(f"assembled OK ({len(text.splitlines())} lines)")
+    scope = "every spec" if args.all else "features.txt"
+    if args.output and not args.dry_run:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(text, encoding="utf-8")
+        print(f"wrote {args.output} ({scope}, {len(text.splitlines())} lines)")
+        return 0
+    if args.dry_run or args.all:
+        # --all never overwrites contracts/openapi.yaml: that file describes what the API serves.
+        print(f"assembled OK ({scope}, {len(text.splitlines())} lines, no conflicts, all refs resolve)")
         return 0
     if args.check:
         current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""

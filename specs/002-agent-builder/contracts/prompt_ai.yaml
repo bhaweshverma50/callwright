@@ -24,7 +24,7 @@ paths:
               required: [messages]
               properties:
                 agent_id:
-                  $ref: './agents.yaml#/components/schemas/AgentId'
+                  $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'
                   description: Optional; recorded as the usage reference
                 language: {type: string, default: en-US}
                 messages:

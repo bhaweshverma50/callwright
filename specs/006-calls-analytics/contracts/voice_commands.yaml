@@ -25,12 +25,12 @@ paths:
           description: More than 30 credentials per user per minute
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "503":
           description: Transcription vendor unavailable; the client falls back to /voice-commands/transcribe
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
   /voice-commands/transcribe:
     post:
       operationId: transcribeVoiceCommand
@@ -58,7 +58,7 @@ paths:
           description: Clip too large or too long
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
   /voice-commands/interpret:
     post:
       operationId: interpretVoiceCommand
@@ -78,19 +78,11 @@ paths:
           description: Invalid request
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
     StreamCredential:
       type: object
       required: [provider, stream_url, auth_scheme, token, expires_at, encoding, language]

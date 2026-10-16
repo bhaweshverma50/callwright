@@ -16,11 +16,8 @@ paths:
       operationId: askAnalytics
       summary: Ask a question about the workspace's data (charged as feature analytics_chat)
       parameters:
-        - name: Idempotency-Key
-          in: header
-          required: true
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired'
           description: Same key returns the stored answer and is charged at most once.
-          schema: { type: string, minLength: 16, maxLength: 128 }
       requestBody:
         required: true
         content:
@@ -36,22 +33,22 @@ paths:
           description: Balance at or below zero (problem type insufficient_credit)
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "422":
           description: Invalid request
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "429":
           description: More than 20 questions per user per minute
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "503":
           description: Model provider unavailable; not charged (problem type assistant_unavailable)
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
   /analytics/catalog:
     get:
       operationId: getAnalyticsCatalog
@@ -83,14 +80,6 @@ components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
     ChatRequest:
       type: object
       required: [messages, timezone]

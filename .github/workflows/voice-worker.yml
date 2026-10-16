@@ -1,0 +1,82 @@
+name: voice-worker
+
+# 003 T006 (lint, types, unit and harness tests), T104 (harness time budget) and T105 (latency
+# benchmark gate, nightly and on every PR). Make `voice-worker` and `voice-benchmark` required
+# status checks on main so a failing gate blocks the merge.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voice-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: services/voice-worker
+
+jobs:
+  voice-worker:
+    name: voice-worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: services/voice-worker/uv.lock
+      - run: uv sync --frozen
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Types (mypy strict, see pyproject)
+        run: uv run mypy
+      - name: Unit tests
+        run: uv run pytest -q tests/unit
+      - name: Harness tests (time budget 5 minutes, T104)
+        timeout-minutes: 5
+        run: uv run pytest -q tests/harness
+
+  voice-benchmark:
+    name: voice-benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: services/voice-worker/uv.lock
+      - run: uv sync --frozen
+      - name: Turn-latency benchmark gate (p50 800 ms, p95 1500 ms, 10% regression vs baseline)
+        run: |
+          set -o pipefail
+          uv run python -m tests.harness.bench.benchmark | tee bench-report.json
+      - name: Publish p50 and p95
+        if: always() && hashFiles('services/voice-worker/bench-report.json') != ''
+        run: |
+          jq -r '
+            "### Turn-latency benchmark (fake mode)",
+            "",
+            "| metric | value |",
+            "|---|---|",
+            "| e2e p50 | \(.report.e2e_p50_ms) ms (budget 800) |",
+            "| e2e p95 | \(.report.e2e_p95_ms) ms (budget 1500) |",
+            "| e2e max | \(.report.e2e_max_ms) ms |",
+            "| calls / turns | \(.report.calls) / \(.report.turns) |",
+            "| failures | \(if (.failures | length) == 0 then "none" else (.failures | join("; ")) end) |"
+          ' bench-report.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('services/voice-worker/bench-report.json') != ''
+        with:
+          name: voice-benchmark-report
+          path: services/voice-worker/bench-report.json

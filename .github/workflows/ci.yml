@@ -5,20 +5,33 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   contracts:
+    name: contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Assembled contract is current
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: services/api/uv.lock
+      - name: Served contract (features.txt) is current
         run: uv run --directory services/api python ../../scripts/assemble_contracts.py --check
+      - name: Every spec assembles with zero conflicts and every ref resolves
+        run: uv run --directory services/api python ../../scripts/assemble_contracts.py --all
+      - name: OpenAPI validator on every fragment and the assembled contract
+        run: uvx --from openapi-spec-validator openapi-spec-validator specs/*/contracts/*.yaml contracts/openapi.yaml
 
   api:
+    name: api
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -43,7 +56,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
+          python-version: "3.12"
           enable-cache: true
+          cache-dependency-glob: services/api/uv.lock
       - run: uv sync --frozen
       - name: Lint
         run: |
@@ -53,50 +68,33 @@ jobs:
         run: uv run mypy app
       - name: Migrations apply to an empty database
         run: uv run alembic upgrade head
-      - name: Unit tests
-        run: uv run pytest -q tests/unit
-      - name: Contract tests
-        run: uv run pytest -q tests/contract
-      - name: Integration tests
-        run: uv run pytest -q tests/integration
+      - name: Tests (unit, contract, integration)
+        run: uv run pytest -q
+
+  # The voice-worker jobs (lint, types, tests, latency benchmark gate) live in voice-worker.yml.
 
   web:
+    name: web
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('apps/web/package.json') != '' }}
     defaults:
       run:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: apps/web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: API types match the contract
-        run: |
-          pnpm run --if-present gen:api
-          git diff --exit-code -- src/api/schema.d.ts
-      - run: pnpm run --if-present lint
-      - run: pnpm run --if-present typecheck
-      - run: pnpm run --if-present test
-      - name: Playwright
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run test
+      - run: pnpm run build
+      - name: Playwright journeys (mock API)
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm run --if-present e2e
-
-  voice-worker:
-    runs-on: ubuntu-latest
-    if: ${{ hashFiles('services/voice-worker/pyproject.toml') != '' }}
-    defaults:
-      run:
-        working-directory: services/voice-worker
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync --frozen
-      - run: uv run ruff check .
-      - run: uv run mypy .
-      - run: uv run pytest -q
+          pnpm run e2e

@@ -116,7 +116,7 @@ All `WITH (security_invoker = true)`; role `cw_analytics_reader` has `SELECT` on
 
 ## 3. Read models (API shapes)
 
-### TranscriptItem (discriminated by `type`)
+### CallTranscriptItem (discriminated by `type`)
 
 | type | fields |
 |---|---|
@@ -149,10 +149,12 @@ total_usd}, lines[], surcharges[]}, processing_state (pending, done)`.
 
 `{turn_index, stt_final_ms, llm_ttft_ms, tts_ttfb_ms, e2e_ms}`; any part may be null.
 
-### FlowTransition
+### FlowTransition (owned by 004)
 
-`{sequence, from_node_id, from_node_label, to_node_id, to_node_label, transition_label,
-occurred_offset_ms}`.
+`GET /v1/calls/{call_id}/flow-transitions` is served by 004's flows module under this path and
+returns `{items: FlowTransition[]}` as defined in `specs/004-flow-agents/contracts/flows.yaml`
+(`seq, from_node_id, from_label, to_node_id, to_label, edge_label, trigger, turn_index, t_ms`).
+The call drawer renders that shape; 006 does not define its own.
 
 ### CallComparison
 

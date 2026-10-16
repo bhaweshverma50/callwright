@@ -11,7 +11,7 @@ servers:
 paths:
   /agents/{agent_id}/versions:
     parameters:
-      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
     get:
       operationId: listAgentVersions
       tags: [agent_versions]
@@ -41,7 +41,7 @@ paths:
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
   /agents/{agent_id}/versions/{version_id}:
     parameters:
-      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
       - {$ref: '#/components/parameters/VersionIdPath'}
     get:
       operationId: getAgentVersion
@@ -58,7 +58,7 @@ paths:
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
   /agents/{agent_id}/versions/{version_id}/diff:
     parameters:
-      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
       - {$ref: '#/components/parameters/VersionIdPath'}
     get:
       operationId: diffAgentVersion
@@ -91,7 +91,7 @@ paths:
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
   /agents/{agent_id}/versions/{version_id}/restore:
     parameters:
-      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
       - {$ref: '#/components/parameters/VersionIdPath'}
     post:
       operationId: restoreAgentVersion
@@ -133,7 +133,7 @@ paths:
               schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /agents/{agent_id}/published-version:
     parameters:
-      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
     put:
       operationId: publishAgentVersion
       tags: [agent_versions]
@@ -220,12 +220,12 @@ components:
         - type: object
           required: [agent_id, schema_version, config, publish_blockers]
           properties:
-            agent_id: {$ref: './agents.yaml#/components/schemas/AgentId'}
+            agent_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'}
             schema_version: {type: integer}
             config: {$ref: './agents.yaml#/components/schemas/AgentConfig'}
             publish_blockers:
               type: array
-              items: {$ref: './agents.yaml#/components/schemas/Issue'}
+              items: {$ref: './agents.yaml#/components/schemas/ConfigIssue'}
     Change:
       type: object
       required: [op, path]

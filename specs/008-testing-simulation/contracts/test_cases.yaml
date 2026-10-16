@@ -56,8 +56,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TestCategory' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '409': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /test-categories/{slug}:
     delete:
       tags: [test_cases]
@@ -70,7 +70,7 @@ paths:
           description: Seed category, or category still used by test cases
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /test-cases:
     get:
       tags: [test_cases]
@@ -79,8 +79,8 @@ paths:
         - { name: agent_id, in: query, required: true, schema: { type: string, pattern: '^agt_' } }
         - { name: category, in: query, schema: { type: string } }
         - { name: last_status, in: query, schema: { type: string, enum: [passed, failed, error, not_run] } }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Page of test cases
@@ -88,7 +88,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -109,8 +109,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TestCase' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '409': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /test-cases/{test_case_id}:
     parameters:
       - { name: test_case_id, in: path, required: true, schema: { type: string, pattern: '^tc_' } }
@@ -123,7 +123,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TestCase' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
     patch:
       tags: [test_cases]
       operationId: updateTestCase
@@ -138,15 +138,15 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TestCase' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
+        '409': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
     delete:
       tags: [test_cases]
       operationId: deleteTestCase
       responses:
         '204': { description: Deleted; past results keep their copy }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /test-cases/import:
     post:
       tags: [test_cases]
@@ -193,7 +193,7 @@ paths:
                         index: { type: integer }
                         field: { type: string }
                         message: { type: string }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /test-cases/export:
     get:
       tags: [test_cases]
@@ -213,7 +213,7 @@ paths:
       operationId: generateTestCases
       summary: Draft test cases with an LLM (not saved). Billed as feature testing.generate.
       parameters:
-        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired' }
       requestBody:
         required: true
         content:
@@ -239,71 +239,16 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/TestCaseImportRow' }
                   cost_usd: { type: number }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '409':
           description: Agent has no prompt or no agent node
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
-  parameters:
-    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
-    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
-    IdempotencyKey:
-      name: Idempotency-Key
-      in: header
-      required: true
-      schema: { type: string, minLength: 8, maxLength: 128 }
-  responses:
-    NotFound:
-      description: Not found
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    Conflict:
-      description: Conflict (duplicate name or case)
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    Unprocessable:
-      description: Validation failed
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    InsufficientCredit:
-      description: Balance at or below zero
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
-    Problem:
-      x-owner: '001'
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        instance: { type: string }
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              field: { type: string }
-              message: { type: string }
-    PageMeta:
-      x-owner: '001'
-      type: object
-      required: [total, page, page_size, total_pages]
-      properties:
-        total: { type: integer }
-        page: { type: integer }
-        page_size: { type: integer }
-        total_pages: { type: integer }
     TestCategory:
       type: object
       required: [slug, name, color, is_seed]

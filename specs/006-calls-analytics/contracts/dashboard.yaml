@@ -23,7 +23,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DashboardStats" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /dashboard/quality:
     get:
       operationId: getDashboardQuality
@@ -43,7 +43,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DashboardQuality" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /dashboard/agent-health:
     get:
       operationId: getAgentHealth
@@ -85,19 +85,6 @@ components:
       in: query
       description: IANA timezone used for day boundaries.
       schema: { type: string, default: UTC, examples: [Asia/Kolkata] }
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema:
-            type: object
-            required: [type, title, status]
-            properties:
-              type: { type: string }
-              title: { type: string }
-              status: { type: integer }
-              detail: { type: string }
   schemas:
     Window:
       type: object

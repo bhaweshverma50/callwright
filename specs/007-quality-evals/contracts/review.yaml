@@ -16,7 +16,7 @@ paths:
           in: query
           schema: { type: string, enum: [random, failed, disagreement], default: disagreement }
         - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/LookbackDays"
+        - $ref: "#/components/parameters/ReviewLookbackDays"
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
       responses:
         "200":
@@ -31,13 +31,13 @@ paths:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/QueueItem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /review/queue/summary:
     get:
       operationId: getReviewQueueSummary
       parameters:
         - $ref: "#/components/parameters/AgentId"
-        - $ref: "#/components/parameters/LookbackDays"
+        - $ref: "#/components/parameters/ReviewLookbackDays"
       responses:
         "200":
           description: Counts per strategy for the same scope
@@ -58,23 +58,10 @@ components:
       name: agent_id
       in: query
       schema: { type: string, pattern: "^agt_" }
-    LookbackDays:
+    ReviewLookbackDays:
       name: lookback_days
       in: query
       schema: { type: integer, minimum: 1, maximum: 90, default: 30 }
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema:
-            type: object
-            required: [type, title, status]
-            properties:
-              type: { type: string }
-              title: { type: string }
-              status: { type: integer }
-              detail: { type: string }
   schemas:
     QueueItem:
       type: object
