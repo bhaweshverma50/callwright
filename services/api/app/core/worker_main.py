@@ -70,7 +70,8 @@ async def run(port: int) -> None:
 
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
-    worker = create_worker(WorkerSettings)  # registers SIGINT/SIGTERM handlers on this loop
+    # Registers SIGINT/SIGTERM handlers on this loop, like the arq CLI.
+    worker = create_worker(WorkerSettings)  # type: ignore[arg-type]
     server = await serve_health(worker, "0.0.0.0", port)  # noqa: S104 (container listener)
     logger.info("worker health endpoint listening on :%s", port)
     try:
