@@ -243,18 +243,20 @@ export function createMockDriver(opts: MockOptions = {}): WebCallDriver {
       let phase = 0;
 
       // Levels: a soft speech-like envelope for the side that is talking, a noise floor otherwise.
-      const levelTimer = setInterval(() => {
+      const emitLevels = () => {
         phase += 1;
         const voice = 0.45 + 0.35 * Math.abs(Math.sin(phase * 0.9)) + 0.2 * Math.abs(Math.sin(phase * 2.3));
         listener.levels({
           caller: speaking === "caller" && !muted ? Math.min(1, voice) : 0.03,
           agent: speaking === "agent" ? Math.min(1, voice) : 0.03,
         });
-      }, 100);
+      };
+      const levelTimer = setInterval(emitLevels, 100);
 
       async function speak(id: string, step: MockStep) {
         const words = step.text.split(" ");
         speaking = step.who;
+        emitLevels();
         if (step.who === "agent") listener.activity("speaking");
         for (let i = 1; i <= words.length; i++) {
           listener.turn({ id, who: step.who, text: words.slice(0, i).join(" "), final: false });
@@ -263,6 +265,7 @@ export function createMockDriver(opts: MockOptions = {}): WebCallDriver {
         }
         listener.turn({ id, who: step.who, text: step.text, final: true });
         speaking = null;
+        emitLevels();
       }
 
       async function run() {
@@ -290,6 +293,7 @@ export function createMockDriver(opts: MockOptions = {}): WebCallDriver {
       return {
         async setMuted(m) {
           muted = m;
+          emitLevels();
         },
         async hangUp() {
           ctrl.abort();

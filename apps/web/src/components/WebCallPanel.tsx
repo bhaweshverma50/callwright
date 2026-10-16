@@ -557,7 +557,11 @@ const Transcript = memo(function Transcript({ turns, reduce }: { turns: CallTurn
     el.scrollTo?.({ top: el.scrollHeight, behavior: reduce ? "auto" : "smooth" });
   }, [turns.length, last?.text, last?.latency, reduce]);
   return (
-    <ol ref={ref} aria-label="Transcript" className="flex h-full flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
+    <ol
+      ref={ref}
+      aria-label="Transcript"
+      className="flex h-full flex-col gap-3 overflow-y-auto overscroll-contain pr-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
+    >
       {turns.map((t) => (
         <motion.li
           key={t.id}
