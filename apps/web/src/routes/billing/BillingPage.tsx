@@ -82,7 +82,7 @@ export function BillingPage() {
       )}
       {watch === "cancelled" && <FormAlert tone="info">Checkout was cancelled. Nothing was charged.</FormAlert>}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Panel title="Balance" description="Derived from every transaction below.">
           <div className="flex flex-col gap-3">
             {balance.isPending ? (
