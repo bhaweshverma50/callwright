@@ -32,6 +32,10 @@ class WorkerSettings(BaseSettings):
     events_max_attempts: int = Field(5, alias="WORKER_EVENTS_MAX_ATTEMPTS")
     events_backoff_base_s: float = Field(0.5, alias="WORKER_EVENTS_BACKOFF_BASE_S")
     vendor_retry_window_s: float = Field(5.0, alias="WORKER_VENDOR_RETRY_WINDOW_S")
+    # Tracing (T106): none (default, no-op), console, or otlp (standard OTEL_EXPORTER_OTLP_*).
+    otel_exporter: Literal["none", "console", "otlp"] = Field(
+        "none", alias="CALLWRIGHT_OTEL_EXPORTER"
+    )
 
     livekit_url: str = Field("ws://localhost:7880", alias="LIVEKIT_URL")
     livekit_api_key: SecretStr = Field(SecretStr("devkey"), alias="LIVEKIT_API_KEY")

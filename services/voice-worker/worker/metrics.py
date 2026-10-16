@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
 
+from worker import telemetry
 from worker.internal_api import (
     MAX_EVENTS_PER_BATCH,
     CallClosed,
@@ -311,6 +312,7 @@ class EventRecorder:
         return self._emit("status", body)
 
     def turn(self, record: TurnRecord) -> Event:
+        telemetry.record_turn(record)
         return self._emit(
             "turn",
             {

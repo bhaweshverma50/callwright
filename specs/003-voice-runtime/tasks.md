@@ -268,7 +268,8 @@ against baseline.
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
-- [ ] T106 [P] Add OpenTelemetry spans (`call`, per-turn, claim, events post, pipeline steps) with `call_id` attribute in `services/voice-worker/worker/entry.py`, `services/voice-worker/worker/metrics.py` and `services/api/app/calls/pipeline.py`
+- [x] T106 [P] Add OpenTelemetry spans (`call`, per-turn, claim, events post, pipeline steps) with `call_id` attribute in `services/voice-worker/worker/entry.py`, `services/voice-worker/worker/metrics.py` and `services/api/app/calls/pipeline.py`
+  - Worker side done in `services/voice-worker/worker/telemetry.py` (exporter from `CALLWRIGHT_OTEL_EXPORTER`, no-op by default; tests in `tests/unit/test_telemetry.py`). The pipeline-step spans in `services/api/app/calls/pipeline.py` belong with T077 in the API wave.
 - [ ] T107 [P] RLS isolation tests for all 003 tables (cross-workspace reads and internal endpoint workspace derivation) in `services/api/tests/integration/test_rls_voice_runtime.py`
 - [ ] T108 [P] Events ingest performance check (p95 under 50 ms for 50-event batches) in `services/api/tests/integration/test_events_ingest_perf.py`
 - [ ] T109 Security review of tokens, service token handling, webhook secret masking and URL guard; record findings in the PR

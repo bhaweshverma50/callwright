@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from worker import telemetry
 from worker.call_behavior import DTMF_DIGITS
 from worker.metrics import EventRecorder
 from worker.pipeline import OverrideManager
@@ -80,6 +81,12 @@ class RuntimeCallControl:
         await self._backend.send_dtmf(digits)
 
     def report_tool(self, activity: ToolActivity) -> None:
+        telemetry.record_tool_call(
+            activity.name,
+            ref=activity.ref,
+            is_error=activity.is_error,
+            duration_ms=activity.duration_ms,
+        )
         self._recorder.tool_call(
             activity.name,
             ref=activity.ref,
