@@ -257,7 +257,21 @@ Guardrails:
 `Drawer`, `Table`, `Pagination`, `Toast`, `EmptyState`, `Skeleton`, `Badge`, `Chip`, `Kbd`,
 `MoneyText`, `Ticker`, `CostBreakdownCard` (receipt), `Panel`, `PageHeader`, `Inspector`,
 `Waveform`, `FlowChain`, `Stepper`, `LatencyChip`, `PanelRows` (`FieldRow`, `InfoRow`), `SwitchControl`, `OnAir`, `Logo`, `LeaveGuard`, `ErrorSummaryDialog`,
-`Tooltip`, `TruncatedText`, `InfoTip`, `CopyButton`, `LogoLoader` (`FullPageLoader`, `PanelLoader`).
+`Tooltip`, `TruncatedText`, `InfoTip`, `CopyButton`, `LogoLoader` (`FullPageLoader`, `PanelLoader`),
+`Segmented`, `ChoiceGroup`.
+
+Choices:
+- `Segmented` is for two to four short, exclusive options (who speaks first, a type filter, call
+  recording). The selected segment is a raised pill that slides between options.
+- `ChoiceGroup` is for options that need a description or a price (agent type, speech recognition
+  model, noise cancellation). Selection is a tinted surface, an accent outline all round and a check
+  disc; unselected cards lift on hover. Both are radio groups: one tab stop, arrow keys move.
+- `Slider` takes `marks` (Low, Medium, High) aligned with the thumb centre; the value itself sits in
+  a fixed-width mono pill above the track, formatted from the catalog control range so the label is
+  always the stored value (1,500 ms reads "1.5 s", gain 1.0 reads "100%").
+- `Chip mono={false}` for word filters (industries); mono stays for amounts.
+- `FlowChain stack="always"` keeps a chain vertical with a value on each row (the agent cost chain).
+- `toast({ action })` adds one follow-up ("Open the copy").
 
 Tooltips and truncation:
 - Every icon-only button names its action in a tooltip (`IconButton` does it for you).
@@ -295,3 +309,11 @@ Recorded after each screenshot pass: look, remove one accessory, re-shoot.
    eased pass on hover; the dashboard sequence became a real stepper.
 5. At 1024 the pricing chain had no room for subtotals between nodes; with `FlowChain` they sit
    centred on equal connectors, and the chain turns vertical on narrow containers.
+6. Agent builder (spec 002): the editor is one signature moment, the agent's own signal chain in the
+   inspector with a rate per link and a total that ticks; the link whose selection changed lights up
+   for two seconds. Removed during review: a type badge duplicated by the section title, a second
+   "Pronunciation" label inside the Pronunciation card, check marks after the type chooser bullets
+   and the stretched-link overlay on agent cards (it hid tooltips on cut-off values). Fixed: gradient
+   strokes on horizontal SVG paths need `gradientUnits="userSpaceOnUse"`, icon prefixes in inputs
+   need 36px of padding, and choice-card prices move under the description on small cards so titles
+   do not wrap against them.
