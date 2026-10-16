@@ -13,10 +13,7 @@ paths:
       operationId: getRecordingLink
       summary: Get a signed recording link valid for at most 10 minutes
       parameters:
-        - name: call_id
-          in: path
-          required: true
-          schema: { type: string, pattern: "^call_" }
+        - $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath"
         - name: disposition
           in: query
           description: inline for playback, attachment for download (filename call_<id>.<ext>).

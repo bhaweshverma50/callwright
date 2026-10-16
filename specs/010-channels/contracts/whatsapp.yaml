@@ -32,8 +32,8 @@ paths:
       operationId: listWhatsAppChannels
       tags: [whatsapp]
       parameters:
-        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
-        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Channels in this workspace (deleted excluded)
@@ -165,7 +165,7 @@ paths:
       operationId: listCallerRoutes
       tags: [whatsapp]
       parameters:
-        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
         - {name: caller, in: query, description: Prefix search on caller number, schema: {type: string}}
       responses:

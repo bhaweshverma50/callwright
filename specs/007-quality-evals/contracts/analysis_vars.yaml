@@ -10,7 +10,7 @@ security:
 paths:
   /agents/{agent_id}/analysis-variables:
     parameters:
-      - { name: agent_id, in: path, required: true, schema: { type: string, pattern: "^agt_" } }
+      - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath" }
     get:
       operationId: listAnalysisVariables
       responses:
@@ -49,7 +49,7 @@ paths:
     put:
       operationId: reorderAnalysisVariables
       parameters:
-        - { name: agent_id, in: path, required: true, schema: { type: string, pattern: "^agt_" } }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath" }
       requestBody:
         required: true
         content:
@@ -98,7 +98,7 @@ paths:
     get:
       operationId: getCallAnalysis
       parameters:
-        - { name: call_id, in: path, required: true, schema: { type: string, pattern: "^call_" } }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }
       responses:
         "200":
           description: Analysis for the call
@@ -111,8 +111,8 @@ paths:
       operationId: rerunCallAnalysis
       description: Re-run summary, sentiment and variable extraction with the agent's current variables. Charged as post_call_analysis.
       parameters:
-        - { name: call_id, in: path, required: true, schema: { type: string, pattern: "^call_" } }
-        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 128 } }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired" }
       responses:
         "202":
           description: Queued

@@ -18,12 +18,7 @@ paths:
       summary: Append runtime events for a call (idempotent per seq)
       tags: [call-events-internal]
       parameters:
-        - name: call_id
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath'
       requestBody:
         required: true
         content:

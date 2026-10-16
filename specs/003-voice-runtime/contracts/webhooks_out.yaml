@@ -47,8 +47,8 @@ paths:
         - {name: call_id, in: query, schema: {type: string}}
         - {name: event, in: query, schema: {$ref: '#/components/schemas/WebhookEventName'}}
         - {name: status, in: query, schema: {$ref: '#/components/schemas/DeliveryStatus'}}
-        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
-        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Page of deliveries, newest first

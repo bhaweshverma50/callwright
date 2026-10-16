@@ -22,11 +22,8 @@ paths:
       summary: Start an outbound call
       tags: [outbound]
       parameters:
-        - name: Idempotency-Key
-          in: header
-          required: true
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired'
           description: Same key and body within 24 h returns the original call; different body is refused.
-          schema: {type: string, minLength: 8, maxLength: 255}
       requestBody:
         required: true
         content:
@@ -116,7 +113,7 @@ paths:
       summary: List the workspace do-not-call list
       tags: [outbound-compliance]
       parameters:
-        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
         - {name: number, in: query, description: Prefix search on the E.164 number, schema: {type: string}}
       responses:
@@ -255,7 +252,7 @@ paths:
       summary: List blocked outbound requests (policy decision log)
       tags: [outbound-compliance]
       parameters:
-        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
         - {name: reason, in: query, schema: {$ref: '#/components/schemas/OutboundBlockReason'}}
         - {name: to_number, in: query, schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}}

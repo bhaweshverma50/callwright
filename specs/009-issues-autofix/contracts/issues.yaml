@@ -142,11 +142,8 @@ paths:
       operationId: createIssueFix
       summary: Draft a fix with AI (billed issues.draft_fix) or store a manual one; becomes the current revision
       parameters:
-        - name: Idempotency-Key
-          in: header
-          required: false
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKey'
           description: Required when mode is ai
-          schema: { type: string, minLength: 8, maxLength: 128 }
       requestBody:
         required: true
         content:

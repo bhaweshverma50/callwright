@@ -15,7 +15,7 @@ paths:
       operationId: listCalls
       summary: List calls with sort, filters and pagination
       parameters:
-        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page" }
         - name: page_size
           in: query
           description: The UI offers 10, 20, 50 and 100.

@@ -130,7 +130,7 @@ paths:
       operationId: trialCustomEvaluator
       summary: Try an unsaved custom definition on one call (judge trials are charged)
       parameters:
-        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 128 } }
+        - { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired" }
       requestBody:
         required: true
         content:
