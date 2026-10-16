@@ -92,14 +92,17 @@ function seed(): MockState {
     resetTokens: {},
   };
 
+  // Collect every movement first, then post in time order so seq, balance_after and dates agree.
+  const events: { at: number; run: () => void }[] = [];
   const post = (type: TransactionType, amount: string, at: number, description: string, extra: Partial<Transaction> = {}) =>
-    appendTransaction(state, ws.id, type, amount, description, at, extra);
+    events.push({ at, run: () => void appendTransaction(state, ws.id, type, amount, description, at, extra) });
 
   post("trial_grant", "5.000000", now - 41 * DAY, "Trial credit");
   post("top_up", "100.000000", now - 38 * DAY, "Top-up via card ending 4242");
 
   // A month of calls with realistic, uneven usage. Some calls run past the LLM bundle.
   const durations = [271, 94, 412, 33, 188, 156, 61, 523, 247, 12, 305, 199, 77, 390, 141, 228, 88, 466, 174, 59, 312, 205];
+  const agents = ["Front desk agent", "Billing line", "After-hours triage"];
   durations.forEach((sec, i) => {
     const at = now - (36 - i * 1.6) * DAY - (i % 5) * 3_600_000;
     const heavy = i % 4 === 0;
@@ -122,7 +125,7 @@ function seed(): MockState {
     const call_id = mockId("call");
     const breakdown: CostBreakdown = { ...quote.call!, call_id };
     const total = breakdown.total_usd;
-    post("call_charge", `-${total}`, at, `Call ${formatDuration(sec)} with Front desk agent`, {
+    post("call_charge", `-${total}`, at, `Call ${formatDuration(sec)} with ${agents[i % 3]}`, {
       call_id,
       cost_breakdown: breakdown,
     });
@@ -138,6 +141,7 @@ function seed(): MockState {
   post("adjustment", "-1.250000", now - 5 * DAY, "Dispute on top-up, card ending 4242");
   // Internal zero-amount charge: usage row only, no ledger row (FR-023).
   state.usage.push({ workspace_id: ws.id, feature_key: "post_call_analysis", at: iso(now - 4 * DAY), raw: "0.000000", billable: "0.000000" });
+  events.sort((a, b) => a.at - b.at).forEach((e) => e.run());
   return state;
 }
 
@@ -180,7 +184,7 @@ export function appendTransaction(
 
 // --- persistence -----------------------------------------------------------
 
-const STORAGE_KEY = "cw.mockdb.v1";
+const STORAGE_KEY = "cw.mockdb.v2";
 let persist = false;
 let state: MockState = seed();
 

@@ -1,6 +1,7 @@
 import { Lightning } from "@phosphor-icons/react";
 import type { CostBreakdown as CostBreakdownT, CostLine } from "../api/types";
 import { formatUsd, toMicros } from "../lib/money";
+import { modelLabel } from "../lib/catalogSeed";
 import { providerLabel } from "../lib/providers";
 import { cn } from "./cn";
 import { MoneyText } from "./Money";
@@ -77,8 +78,7 @@ export function CostBreakdownCard({ breakdown, className, title = "Cost breakdow
               <th scope="row" className="py-2 pl-4 pr-2 text-left font-normal">
                 <span className="text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
                 <span className="ml-2 text-fg-3">
-                  {providerLabel(l.provider)}
-                  {l.model ? ` ${l.model}` : ""}
+                  {l.component === "platform" ? providerLabel(l.provider) : (modelLabel(l.component, l.provider, l.model) ?? providerLabel(l.provider))}
                 </span>
               </th>
               <td className="px-2 text-right font-mono text-fg-3 tnum">{formatUsd(l.rate_per_min_usd, { places: 4 })}/m</td>
