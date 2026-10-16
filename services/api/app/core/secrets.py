@@ -163,9 +163,7 @@ async def put_secret(
     return SecretRef(name=name, masked=row.masked, updated_at=row.updated_at)
 
 
-async def get_secret(
-    session: AsyncSession, wrapper: KeyWrapper, workspace_id: str, name: str
-) -> str | None:
+async def get_secret(session: AsyncSession, wrapper: KeyWrapper, workspace_id: str, name: str) -> str | None:
     row = (
         await session.execute(
             select(WorkspaceSecret).where(

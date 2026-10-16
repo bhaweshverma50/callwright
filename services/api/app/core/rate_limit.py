@@ -29,8 +29,9 @@ class RateLimiter:
             pipe.expire(redis_key, window_s + 1)
             count, _ = await pipe.execute()
         retry_after = int((window + 1) * window_s - now) + 1
-        return RateLimitResult(allowed=int(count) <= limit, count=int(count), limit=limit,
-                               retry_after_s=retry_after)
+        return RateLimitResult(
+            allowed=int(count) <= limit, count=int(count), limit=limit, retry_after_s=retry_after
+        )
 
 
 class FailureCounter:

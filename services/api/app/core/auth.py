@@ -17,6 +17,7 @@ from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, Request
+from opentelemetry import trace
 from redis.asyncio import Redis
 from sqlalchemy import text
 
@@ -164,6 +165,7 @@ async def current_principal(
         token_expires_at=claims.expires_at,
     )
     request.state.principal = principal
+    trace.get_current_span().set_attribute("workspace_id", principal.workspace_id)
     return principal
 
 

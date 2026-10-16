@@ -16,8 +16,31 @@ from ulid import ULID
 
 PREFIXES = frozenset(
     {
-        "ws", "usr", "agt", "agv", "flw", "tool", "kb", "doc", "call", "num", "wa", "wcr", "dnc",
-        "whd", "var", "evl", "evr", "ann", "ds", "tc", "trn", "exp", "srun", "iss", "txn",
+        "ws",
+        "usr",
+        "agt",
+        "agv",
+        "flw",
+        "tool",
+        "kb",
+        "doc",
+        "call",
+        "num",
+        "wa",
+        "wcr",
+        "dnc",
+        "whd",
+        "var",
+        "evl",
+        "evr",
+        "ann",
+        "ds",
+        "tc",
+        "trn",
+        "exp",
+        "srun",
+        "iss",
+        "txn",
     }
 )
 _ULID = "[0-9A-HJKMNP-TV-Z]{26}"
@@ -55,11 +78,7 @@ def path_id(prefix: str, kind: str, name: str) -> Callable[..., str]:
         return require_id(str(kwargs[name]), prefix, kind)
 
     dependency.__signature__ = inspect.Signature(  # type: ignore[attr-defined]
-        [
-            inspect.Parameter(
-                name, inspect.Parameter.KEYWORD_ONLY, annotation=Annotated[str, Path()]
-            )
-        ]
+        [inspect.Parameter(name, inspect.Parameter.KEYWORD_ONLY, annotation=Annotated[str, Path()])]
     )
     dependency.__name__ = f"path_id_{prefix}"
     return dependency

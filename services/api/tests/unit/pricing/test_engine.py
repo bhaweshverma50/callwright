@@ -26,8 +26,14 @@ def _catalog() -> Catalog:
             Rate("nc", "sanas", "vi", "Voice isolation", Decimal("0.0000")),
             Rate("nc", "acme_nc", "pro", "Acme NC", Decimal("0.0020")),
             Rate("platform", "callwright", None, "Callwright platform fee", Decimal("0.0500")),
-            Rate("embedding", "openai", "text-embedding-3-small", "Embedding", Decimal("0.000020"),
-                 unit="k_tokens"),
+            Rate(
+                "embedding",
+                "openai",
+                "text-embedding-3-small",
+                "Embedding",
+                Decimal("0.000020"),
+                unit="k_tokens",
+            ),
         ),
     )
 

@@ -28,9 +28,7 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING)
 
 
-async def set_rls_context(
-    session: AsyncSession, *, workspace_id: str | None, user_id: str | None
-) -> None:
+async def set_rls_context(session: AsyncSession, *, workspace_id: str | None, user_id: str | None) -> None:
     """Scope the current transaction to one workspace and user (empty means none)."""
     await session.execute(
         text("select set_config('app.workspace_id', :ws, true), set_config('app.user_id', :uid, true)"),

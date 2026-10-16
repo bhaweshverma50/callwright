@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 PROBLEM_BASE = "https://callwright.dev/problems/"
@@ -191,18 +192,7 @@ async def _http_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
-    trace_id = current_trace_id()
-    logger.error(
-        "unhandled error on %s %s trace_id=%s", request.method, request.url.path, trace_id, exc_info=exc
-    )
-    problem = ProblemError(
-        500,
-        "internal_error",
-        "Something went wrong",
-        "An unexpected error occurred. Quote the reference to support.",
-        extra={"trace_id": trace_id},
-    )
-    return problem_response(problem, request)
+    return unhandled_response(request.url.path, request.method, exc)
 
 
 def install_error_handlers(app: FastAPI) -> None:
@@ -210,3 +200,86 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _validation_handler)
     app.add_exception_handler(StarletteHTTPException, _http_handler)
     app.add_exception_handler(Exception, _unhandled_handler)
+
+
+def unhandled_response(request_path: str, method: str, exc: BaseException) -> JSONResponse:
+    trace_id = current_trace_id()
+    logger.error("unhandled error on %s %s trace_id=%s", method, request_path, trace_id, exc_info=exc)
+    problem = ProblemError(
+        500,
+        "internal_error",
+        "Something went wrong",
+        "An unexpected error occurred. Quote the reference to support.",
+        extra={"trace_id": trace_id},
+    )
+    return JSONResponse(problem.body(request_path), status_code=500, media_type=PROBLEM_JSON)
+
+
+class UnhandledErrorMiddleware:
+    """Turns any exception that escapes the routes into the generic 500 problem.
+
+    It sits inside the tracing middleware, so the ``trace_id`` it reports is the request's real
+    trace id. Exceptions after the response started are re-raised (nothing safe to send).
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        started = False
+
+        async def _send(message: Any) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, _send)
+        except Exception as exc:
+            if started:
+                raise
+            response = unhandled_response(scope.get("path", ""), scope.get("method", ""), exc)
+            await response(scope, receive, send)
+
+
+class FieldErrorModel(BaseModel):
+    pointer: str
+    code: str
+    message: str
+
+
+class Problem(BaseModel):
+    """RFC 9457 problem body (contracts/core.yaml ``Problem``), for OpenAPI documentation."""
+
+    type: str
+    title: str
+    status: int
+    detail: str | None = None
+    instance: str | None = None
+    code: str | None = None
+    retry_after_s: int | None = None
+    trace_id: str | None = None
+    errors: list[FieldErrorModel] | None = None
+
+
+_DESCRIPTIONS = {
+    400: "Bad request",
+    401: "Missing, expired or revoked token",
+    402: "Not enough credit",
+    403: "Not allowed",
+    404: "Not found",
+    409: "Conflict",
+    422: "Validation failed",
+    429: "Rate limited",
+}
+
+
+def problem_responses(*statuses: int) -> dict[int | str, dict[str, Any]]:
+    """OpenAPI ``responses=`` entries for problem statuses (kept in step with the contract)."""
+    return {
+        status: {"description": _DESCRIPTIONS.get(status, "Problem"), "model": Problem} for status in statuses
+    }
