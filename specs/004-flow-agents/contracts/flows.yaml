@@ -58,6 +58,10 @@ paths:
       tags: [flows]
       operationId: saveFlow
       summary: Save the draft graph (drafts with errors are accepted)
+      description: >
+        Optionally carries changed flow-wide settings in `agent_settings`; graph, name and
+        settings are stored in one transaction or not at all (FR-046). The name also renames
+        the agent (FR-048).
       parameters:
         - name: If-Match
           in: header
@@ -84,7 +88,9 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '412':
-          description: Revision conflict (flow_revision_conflict)
+          description: Revision conflict on the flow (flow_revision_conflict) or on the agent
+            draft named by agent_settings.expected_draft_revision (agent_draft_changed); nothing
+            is stored
           content:
             application/problem+json:
               schema:
@@ -354,6 +360,11 @@ components:
         last_validation:
           $ref: '#/components/schemas/ValidationResult'
         last_published_version_id: {type: [string, 'null'], pattern: '^agv_'}
+        agent_draft_revision:
+          type: integer
+          minimum: 1
+          description: Revision of the 002 agent draft after this read or save; send it back as
+            agent_settings.expected_draft_revision
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
     SaveFlowRequest:
@@ -361,9 +372,29 @@ components:
       required: [name, graph]
       additionalProperties: false
       properties:
-        name: {type: string, minLength: 1, maxLength: 120}
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Flow and agent name (one name, FR-048)
         graph:
           $ref: '#/components/schemas/FlowGraph'
+        agent_settings:
+          $ref: '#/components/schemas/AgentSettingsChange'
+    AgentSettingsChange:
+      type: object
+      required: [expected_draft_revision, changes]
+      additionalProperties: false
+      description: Changed flow-wide settings saved atomically with the graph (data-model
+        section 9). Only changed fields are sent; others keep their stored values.
+      properties:
+        expected_draft_revision: {type: integer, minimum: 1}
+        changes:
+          type: object
+          minProperties: 1
+          description: Partial AgentConfig (002 agents.yaml AgentConfig), deep-merged into the
+            draft. start_speaker and begin_message are rejected for flow agents (the Start node
+            owns them).
     FlowGraph:
       type: object
       required: [nodes, edges, viewport]
@@ -423,8 +454,17 @@ components:
       required: [start_speaker, greeting_type]
       properties:
         start_speaker: {type: string, enum: [agent, user], default: agent}
-        greeting_type: {type: string, enum: [static, generated], default: static}
-        greeting: {type: string, maxLength: 500}
+        greeting_type:
+          type: string
+          enum: [static, generated]
+          default: static
+          description: Used when start_speaker is agent; generated requires the Start edge to
+            lead to an agent or task node (E_GREETING_SOURCE)
+        greeting:
+          type: string
+          maxLength: 500
+          description: Required for agent plus static; optional for user (played before
+            listening, empty means silence)
     Overrides:
       type: object
       properties:
@@ -507,7 +547,10 @@ components:
             type: object
             required: [name]
             properties:
-              name: {type: string, minLength: 1, maxLength: 60}
+              name:
+                type: string
+                pattern: '^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$'
+                description: Unique ignoring case within the node (E_CATEGORY_NAME)
               description: {type: string, maxLength: 300}
     SayConfig:
       type: object
@@ -566,7 +609,11 @@ components:
         target: {type: string, pattern: '^n_[a-z0-9]{8}$'}
         trigger:
           $ref: '#/components/schemas/Trigger'
-        label: {type: [string, 'null'], maxLength: 60}
+        label:
+          type: [string, 'null']
+          maxLength: 60
+          description: Required only for llm_condition edges; must contain a letter or digit.
+            The transition name is derived from it (data-model section 4).
         condition: {type: [string, 'null'], maxLength: 1000}
         function_name: {type: [string, 'null'], pattern: '^route_to_[a-z0-9_]{1,48}$'}
         category: {type: [string, 'null'], maxLength: 60}
@@ -585,7 +632,8 @@ components:
         severity: {type: string, enum: [error, warning]}
         code:
           type: string
-          examples: [E_START_COUNT, E_DANGLING_EDGE, W_UNREACHABLE]
+          examples: [E_START_COUNT, E_DANGLING_EDGE, W_UNREACHABLE, E_INVALID_FIELD,
+            E_GREETING_SOURCE, E_CATEGORY_NAME, E_TRANSITION_NAME_EMPTY]
         message: {type: string}
         node_id: {type: [string, 'null']}
         edge_id: {type: [string, 'null']}

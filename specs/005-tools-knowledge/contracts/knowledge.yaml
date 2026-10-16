@@ -143,6 +143,11 @@ paths:
               required: [file]
               properties:
                 file: {type: string, contentMediaType: application/octet-stream}
+                display_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: Optional; defaults to the file name (FR-048).
                 replace_doc_id:
                   type: string
                   pattern: '^doc_'
@@ -325,7 +330,8 @@ paths:
     put:
       tags: [knowledge]
       operationId: setAgentKnowledgeBases
-      description: Replaces the attached set on the agent draft (max 10, each attachable).
+      description: Replaces the attached set on the agent draft (max 10, each attachable). The
+        attach dialog only sends this when the selection differs from the attached set (FR-047).
       requestBody:
         required: true
         content:
@@ -468,6 +474,7 @@ components:
         id: {type: string, pattern: '^doc_'}
         kb_id: {type: string}
         file_name: {type: string}
+        display_name: {type: string, description: Defaults to file_name}
         file_type: {type: string, enum: [pdf, docx]}
         file_size: {type: integer, maximum: 20971520}
         sha256: {type: string}

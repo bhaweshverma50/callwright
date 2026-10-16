@@ -113,10 +113,12 @@ hard-coded client lists as in the reference product (drift between client and se
 ## R7. Voice browser
 
 **Decision**: One normalised endpoint, `GET /v1/voices/{provider}/voices`, backed by per-vendor
-listing adapters in `services/api/app/voices/adapters/<vendor>.py` (ElevenLabs, Cartesia, Fish
-Audio list remotely; Sarvam is a static list in the YAML). Output shape:
+listing adapters in `services/api/app/voices/adapters/<vendor>.py` (ElevenLabs and Cartesia list
+remotely; Fish Audio serves a curated allow-list kept in the YAML, because its public library is a
+community ranking unsuited to business agents; no Sarvam voices at launch). Output shape:
 `{voice_id, name, description, gender, languages[], preview_url, model_ids[]}` with cursor
-pagination, `search`, `gender`, `language`, `model` filters applied by the adapter or locally.
+pagination, `search`, `gender`, `language`, `model` filters applied by the adapter or locally (Cartesia has no
+vendor search, so search runs over the cached list).
 Results are cached in Redis per `(provider, filters, cursor)` for 1 hour; vendor failure returns
 `503` with `code: catalog_unavailable` and the editor keeps the current selection. Preview audio
 is the vendor's sample URL when one exists; otherwise no preview button (test calls cover it).
@@ -216,11 +218,14 @@ hook to copy the flow draft.
 **Decision**: Platform templates are YAML files in `services/api/app/templates/seed/*.yaml`
 (`id` slug, `name`, `category`, `description`, `icon`, `config` partial AgentConfig, `sort_order`).
 On deploy, a sync job upserts them into the global `templates` table by slug and deactivates
-removed ones. Categories (fixed list, own wording): `healthcare`, `banking`, `insurance`,
-`retail`, `telecom`, `automotive`, `real_estate`, `hospitality`, `support`. Launch set: at least
-one template per category. "Use template" is `POST /v1/agents {template_id}`; the server overlays
-the template config on the defaults, replaces unavailable components with language defaults, and
-reports replacements as warnings.
+removed ones. Categories (fixed list): `automotive`, `banking`, `ecommerce`, `healthcare`,
+`telecom`. Launch set: the seven templates in data-model.md section 6, matching the reference
+product's live set in intent and structure (captured 2026-10-16, `research/ui-walkthrough/templates/`)
+with Callwright-written prompts, plus declared variables with defaults (the reference templates
+had none). "Use template" is `POST /v1/agents {template_id}` with an `Idempotency-Key`; the
+server overlays the template config on the defaults, replaces unavailable components with
+language defaults, and reports replacements as warnings. Clicking a card only opens the preview
+(the reference created an agent on any card click, with no preview).
 
 **Rationale**: Templates change with releases, not at runtime; slugs avoid a new ID prefix
 (architecture section 4 has none for templates) and read well in version notes.
@@ -306,9 +311,37 @@ dirty tracking across about 40 fields); duplicating validation rules in a client
 `GET /v1/agents/defaults?language=`. Values are those listed in spec Assumptions. Unlike the
 reference product, templates do not silently change call-behaviour defaults (it used 0.5/0.5
 interruption/responsiveness for templates and 0.95/0.79 for blank agents); a template changes a
-default only if its YAML sets it.
+default only if its YAML sets it. Noise cancellation defaults to voice isolation (`sanas`/`vi`)
+and the editor shows it from the first render. Every default lies on its control step (volume
+1.0, responsiveness 0.8), so labels never disagree with stored values.
 
 ## R24. IDs
 
 **Decision**: `agt_` and `agv_` ULIDs (architecture section 4). Templates use slugs; uploads use
 object keys; nothing else in this feature needs an exposed ID.
+
+## R25. Live UI findings applied (2026-10-16)
+
+**Decision**: Items tagged [002] and [003] in `research/ui-walkthrough/DELTA.md` changed these
+choices (full table in `research/ui-walkthrough/DELTA-resolution-001-003.md`):
+- Catalogs are exact copies of the live offer (data-model.md section 8) with one model id across
+  providers; the reference priced `gpt-5.1-chat` but offered `gpt-5.1`, so its cost card showed
+  $0.0000. T090 fails the build on any such gap.
+- One control-range table (`controls`) feeds the editor and every override UI; the reference
+  used other steps and a 0 to 1 "stability" range on flow nodes, and showed labels that did not
+  match the stored values.
+- Inline validation reuses the server rules; the reference sent `notaurl`, a 50 ms timeout, a
+  12 s or 61 minute maximum and a negative ring time to the server.
+- Provider switch picks the language default voice instead of leaving the form invalid; every
+  STT provider has Auto; selects never render blank (the reference showed an empty noise
+  cancellation field while saving voice isolation).
+- Fish Audio is offered through a curated allow-list; its public community ranking is not suited
+  to business agents. Cartesia gets local search.
+- Create and duplicate are idempotent; duplicate needs no confirmation.
+- Version list carries `parent_version_id` and a summary; analysis variables stay out of the
+  snapshot (architecture section 5 keeps them in 007's per-agent tables).
+- Test on a never-saved form saves first; the reference showed a "coming soon" placeholder.
+
+**Rationale**: Each change removes a defect observed live or copies a behaviour that worked, at
+small cost.
+

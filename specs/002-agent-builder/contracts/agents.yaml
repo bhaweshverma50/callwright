@@ -44,7 +44,11 @@ paths:
       tags: [agents]
       security: [{bearerAuth: []}]
       summary: Create an agent from defaults, a template or a given config; records version 1
-      description: The resulting config must pass blocking validation (a blank form is saved with this call on its first save).
+      description: |
+        The resulting config must pass blocking validation (a blank form is saved with this call on its first save).
+        Repeating the request with the same Idempotency-Key returns the agent created the first time (FR-038).
+      parameters:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKey'}
       requestBody:
         required: true
         content:
@@ -242,6 +246,9 @@ paths:
       operationId: duplicateAgent
       tags: [agents]
       security: [{bearerAuth: []}]
+      description: No confirmation step (non-destructive). The same Idempotency-Key returns the first copy (FR-038).
+      parameters:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKey'}
       requestBody:
         required: false
         content:

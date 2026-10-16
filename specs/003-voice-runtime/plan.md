@@ -125,7 +125,7 @@ services/voice-worker/
 │   │   ├── registry.py  catalog.json
 │   │   ├── stt/{deepgram,assemblyai,sarvam}.py
 │   │   ├── llm/{openai,azure_openai,anthropic}.py
-│   │   ├── tts/{elevenlabs,cartesia,fishaudio,sarvam}.py
+│   │   ├── tts/{elevenlabs,cartesia,fishaudio}.py
 │   │   └── nc/{sanas,ai_coustics,none}.py
 │   ├── tools/__init__.py     # extension point: ToolProvider protocol, CallControl, NullToolProvider (005 implements)
 │   └── flow/__init__.py      # extension point: FlowRunner protocol, NullFlowRunner (004 implements)
@@ -157,7 +157,7 @@ in the existing `tools/` and `flow/` packages so 005 and 004 implement them in p
 | Point | Location | Contract | Default without the owning feature |
 |---|---|---|---|
 | `ToolProvider.tools_for(runtime, control) -> list[FunctionTool]` | `worker/tools/__init__.py` | 005 returns function tools (end_call, transfer, press_digit, http, kb_search) built from `config.tool_ids` and `config.kb_ids`; tool activity reported via `control.report_tool(...)` | `NullToolProvider`: no tools |
-| `CallControl` | `worker/tools/__init__.py` | `hang_up(reason)`, `say(text, allow_interruptions)`, `send_dtmf(digits)`, `report_tool(...)`, `report_transition(...)`, `room`, `call_id` | implemented here |
+| `CallControl` | `worker/tools/__init__.py` | `hang_up(reason)`, `say(text, allow_interruptions)`, `send_dtmf(digits)`, `report_tool(...)`, `report_transition(...)`, `apply_overrides(overrides)` (FR-046, research R22), `room`, `call_id` | implemented here |
 | `FlowRunner.build_agent(runtime, control, tools) -> Agent` | `worker/flow/__init__.py` | 004 returns the entry agent for a flow and drives handoffs | `NullFlowRunner`: refuses flow agents at claim (`flow-runtime-unavailable`) |
 | `InboundRouter.resolve(channel, sip_attrs, route_ref) -> InboundRoute` | `services/api/app/calls/service.py` | 010 registers routers for `sip_inbound` and `whatsapp` returning workspace, agent, variables, phone_number_id / whatsapp_channel_id | none registered: SIP claims refused with `error` |
 | `OutboundDialProvider.dial_spec(call) -> OutboundDial` | `services/api/app/calls/service.py` | 010 supplies trunk and numbers for `sip_outbound` claims | none: outbound claims refused |

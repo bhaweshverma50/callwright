@@ -6,8 +6,9 @@
 ## Summary
 
 Add the measurement layer of Principle IV: per-agent analysis variables with post-call summary,
-sentiment and typed extraction; a versioned evaluator catalog (seven built-ins plus phrase-check
-and custom-judge templates); per-agent evaluator settings with up to 4 headline checks; evaluator
+sentiment and typed extraction; a versioned evaluator catalog (twelve built-ins matching the
+reference catalog, including a recording-based silence check, per-turn latency, four flow-only
+checks and embedding-based anomaly detection, plus phrase-check and custom-judge templates); per-agent evaluator settings with up to 4 headline checks; evaluator
 runs that store verdict, score, rationale, evaluator version and settings snapshot, with manual
 re-runs that keep history; one label per user per call; a review queue with random, failed and
 disagreement strategies; and calibration with a 2x2 matrix, Wilson interval, plain-language
@@ -18,9 +19,11 @@ paid step is charged through `billing.charge_feature`.
 ## Technical Context
 
 **Language/Version**: Python 3.12 (API and jobs), TypeScript 5 (web)
-**Primary Dependencies**: FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, arq, `google-re2`; web:
+**Primary Dependencies**: FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, arq, `google-re2`, PyAV
+and numpy (recording analysis for `audio_silence`), pgvector (call embeddings); web:
 React, TanStack Query, React Router, Tailwind + Radix
-**Storage**: PostgreSQL 16 with RLS (seven new tables, one replaced view)
+**Storage**: PostgreSQL 16 with RLS and pgvector (nine new tables including `call_embeddings`,
+one replaced view); recordings read from object storage
 **Testing**: pytest (unit, contract with `openapi-core`, integration on Postgres with RLS), fake
 LLM client with recorded fixtures; Vitest + Testing Library + MSW (web)
 **Target Platform**: Linux containers; evergreen browsers
@@ -29,7 +32,7 @@ LLM client with recorded fixtures; Vitest + Testing Library + MSW (web)
 within 3 min for 95%; calibration and review endpoints p95 < 1 s for 10,000 labelled calls
 **Constraints**: every non-n/a result has a rationale and version; phrase patterns linear-time;
 no evaluator decides pass/fail from model text alone for threshold checks (server derives verdict)
-**Scale/Scope**: 6 API modules, 25 endpoints, 2 jobs, 2 web routes (`/review`, `/calibration`),
+**Scale/Scope**: 6 API modules, 26 endpoints, 2 jobs, 2 web routes (`/review`, `/calibration`),
 agent quality tab, quality sections in the call drawer
 
 ## Constitution Check
@@ -39,7 +42,7 @@ agent quality tab, quality sections in the call drawer
 | Principle | Gate | Status |
 |---|---|---|
 | I. Provider-agnostic | Judge and extraction calls go through the `llms` client (002); model ids come from agent config, evaluator versions or the LLM catalog. No vendor names in evaluator code. | PASS |
-| II. Latency | Off the hot path: runs after `call.ended` in the jobs worker. Anomaly detection reads stored turn latencies; it never touches the live pipeline. | PASS |
+| II. Latency | Off the hot path: runs after `call.ended` in the jobs worker. `latency_slo` reads stored turn latencies and `audio_silence` reads the stored recording; neither touches the live pipeline. | PASS |
 | III. Metering | `post_call_analysis`, `eval.<name>` and `eval.llm_judge_custom` charged via `billing.charge_feature` keyed by run or request; skipped with `insufficient_credit` when balance <= 0; free evaluators never charge. | PASS |
 | IV. Measurability | This feature is the measurement: runs keep rationale, evaluator version and settings snapshot; calibration exposes trust per evaluator and version. | PASS |
 | V. Tenancy and privacy | RLS on every table; built-in catalog rows readable via `workspace_id IS NULL` SELECT policy only; transcripts passed to judges are not logged beyond the run record; replaced analytics view uses `security_invoker`. | PASS |
@@ -81,14 +84,18 @@ services/api/app/
 │   ├── registry.py                        # built-in registry and startup sync
 │   ├── base.py                            # Evaluator protocol, EvalContext, ItemResult
 │   ├── judge.py                           # judge prompt framing, JSON output, verdict derivation
-│   ├── builtins/intent_fulfillment.py, tool_call_correctness.py, kb_relevance.py,
-│   │            factual_consistency.py, process_reward.py, anomaly_detection.py,
-│   │            flow_step_completion.py
+│   ├── audio.py                           # recording fetch, decode, frame levels (R12)
+│   ├── builtins/anomaly_detection.py, factual_consistency.py, flow_completion.py,
+│   │            intent_fulfillment.py, kb_relevance.py, audio_silence.py, node_dead_end.py,
+│   │            process_reward.py, stuck_loop_detector.py, tool_call_correctness.py,
+│   │            transition_correctness.py, latency_slo.py
 │   └── custom/phrase_check.py, llm_judge_custom.py
 ├── evals/
 │   ├── router.py, schemas.py, models.py   # agent_eval_settings, evaluator_runs, result items, run groups
 │   ├── settings.py                        # effective settings, schema validation, headline limit
 │   ├── scoring.py                         # run verdict, call eval status (pure)
+│   ├── sampling.py                        # deterministic sample selection (R14)
+│   ├── embeddings.py                      # call_embeddings write, backfill, KNN query (R13)
 │   ├── runner.py                          # fan-out with semaphore, timeout, retry, charging
 │   ├── jobs.py                            # evaluate_call(call_id, trigger, run_group_id)
 │   ├── verdict_diff.py
@@ -125,8 +132,9 @@ evaluator editor is a dialog; `routes/evaluators/` holds its components, not a n
 
 ## Phase 0 and Phase 1 outputs
 
-- [research.md](./research.md): R1 to R11 (settings placement, versioning, built-in logic, judge
-  framing, execution, charging, calibration math, queue ordering, safe patterns, port, call write).
+- [research.md](./research.md): R1 to R15 (settings placement, versioning, built-in logic, judge
+  framing, execution, charging, calibration math, queue ordering, safe patterns, port, call write,
+  recording-based silence, call embeddings, sampling, judge models and settings editing).
 - [data-model.md](./data-model.md): tables, constraints, derived rules, state transitions.
 - [contracts/](./contracts/): one OpenAPI 3.1 fragment per module.
 - [quickstart.md](./quickstart.md).
@@ -140,7 +148,12 @@ evaluator editor is a dialog; `routes/evaluators/` holds its components, not a n
   `llm.model`, prompt, `kb_ids`, `tool_ids`) for judge context; agent editor mounts the quality tab.
 - **005**: KB retrieval events per turn (chunks and scores) for `kb_relevance` and
   `factual_consistency`.
-- **004**: flow node labels and instructions for `flow_step_completion`.
+- **004**: `flow_transition` events, node types (`end`, `transfer`) and each node's outgoing
+  edges for `flow_completion`, `node_dead_end`, `stuck_loop_detector` and
+  `transition_correctness`.
+- **003 / 006**: the call's `recording_enabled` flag and recording key (read from storage by the
+  jobs worker) for `audio_silence`; per-turn `e2e_ms` events for `latency_slo`.
+- **005**: embedding adapter (`knowledge/embeddings/`) for `call_embeddings`.
 - **001**: `billing.charge_feature`, balance check, feature rates in the pricing catalog.
 - **006**: implements `CallQualityPort`; replaces `analytics.evaluator_verdicts_v`; the port's verdict-diff
   operation (backed by `evals/verdict_diff.py`) fills `verdict_diffs` in 006's compare response,
@@ -154,3 +167,5 @@ evaluator editor is a dialog; `routes/evaluators/` holds its components, not a n
 | Separate `evaluator_versions` table | Principle IV requires the exact definition behind each verdict | A version integer alone cannot show what changed; a JSON column on runs duplicates definitions per run |
 | `evaluator_run_groups` guard table | Enforces one active rerun per call across API replicas | Redis locks expire and are invisible to SQL; advisory locks do not survive the request-to-job hand-off |
 | `google-re2` dependency | Linear-time matching for user-supplied patterns (FR-012) | Python `re` permits catastrophic backtracking; timeouts via threads are unreliable |
+| PyAV and numpy in the API image | `audio_silence` must read the recording (FR-040) | Shelling out to ffmpeg per call is slower and harder to test; transcript gaps do not show audio silence |
+| `call_embeddings` table | `anomaly_detection` compares a call with its nearest neighbours (FR-042) | Recomputing embeddings for the whole window on every call multiplies embedding cost by the window size |

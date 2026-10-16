@@ -62,6 +62,11 @@ implementation.
 - [ ] T019 [P] [US1] Column definitions (all FR-002 columns, cost hover popover, inline recording player, quality cell) in apps/web/src/routes/calls/columns.tsx
 - [ ] T020 [P] [US1] Cross-page selection store (max 200, single-agent check, "Run simulation" hand-off to 008 route) in apps/web/src/routes/calls/selection.ts
 - [ ] T021 [US1] Web tests for filters, chips, selection persistence and mixed-agent block in apps/web/src/routes/calls/CallHistoryPage.test.tsx
+- [ ] T088 [P] [US1] Unit tests for phone filters (digits only, plus optional, prefix match, `%2B` round trip) and date filters (`start_date`, `end_date`, `tz`; Asia/Kolkata 2026-10-01 includes a call at 2026-09-30T20:00Z; inclusive end) in services/api/tests/unit/calls/test_list_query.py
+- [ ] T089 [US1] Implement date and timezone filters and digit-prefix phone filters in services/api/app/calls/queries.py, with the expression indexes on `from_number` and `to_number` added to the 006 migration (makes T088 pass)
+- [ ] T090 [P] [US1] Contract and integration tests for `GET /v1/calls/export` (same rows and order as the list, chosen columns, no transcript text, 422 `export_too_large` above 10,000 rows) in services/api/tests/contract/test_calls_contract.py and services/api/tests/integration/test_calls_export.py
+- [ ] T091 [US1] Implement streamed CSV export in services/api/app/calls/export.py and the endpoint in services/api/app/calls/router.py (makes T090 pass)
+- [ ] T092 [P] [US1] Call History web changes: rows per page 10/20/50/100, column visibility menu kept in browser storage (call ID, start time, status fixed), Export button, a chip for every applied filter including own label with the badge equal to the chip count and "Any" not counted, query strings built with `URLSearchParams`, dates sent as dates plus `tz`; in apps/web/src/routes/calls/CallHistoryPage.tsx, apps/web/src/routes/calls/CallFilters.tsx and apps/web/src/routes/calls/columns.tsx, with cases added to apps/web/src/routes/calls/CallHistoryPage.test.tsx
 
 **Checkpoint**: US1 independently usable.
 
@@ -122,6 +127,7 @@ implementation.
 - [ ] T049 [P] [US3] Activity and breakdown charts (calls per day, talk time, avg duration, disconnects, sentiment, channels, leaderboard, distribution) in apps/web/src/routes/dashboard/charts/
 - [ ] T050 [P] [US3] Quality grid and Agent health sections with empty states in apps/web/src/routes/dashboard/QualitySection.tsx
 - [ ] T051 [US3] Load test script for SC-002 (100k calls, p95 < 2 s) in services/api/tests/integration/test_dashboard_perf.py
+- [ ] T093 [P] [US3] Dashboard controls apply on change (debounced 300 ms; custom range once both dates are valid), active selection chips with "Clear all" to defaults, and Refresh reloading stats, quality and agent health with an "Updated" time, in apps/web/src/routes/dashboard/DashboardPage.tsx with tests in apps/web/src/routes/dashboard/DashboardPage.test.tsx
 
 ---
 
@@ -162,6 +168,7 @@ implementation.
 - [ ] T069 [P] [US5] Purge job for audit rows older than 30 days in services/api/app/analytics_chat/jobs.py
 - [ ] T070 [P] [US5] Floating Ask panel (420 px, expand to split view, New chat, suggested questions from catalog) in apps/web/src/app/assistant/AskPanel.tsx
 - [ ] T071 [P] [US5] Chart and table renderers plus "How this was computed" disclosure in apps/web/src/app/assistant/AnswerView.tsx
+- [ ] T094 [P] [US5] Ask panel error states from 402 (add funds link), 429 and 503 (retry) and declined answers (example questions), keeping the typed question, in apps/web/src/app/assistant/AskPanel.tsx with tests in apps/web/src/app/assistant/AskPanel.test.tsx
 
 ---
 
@@ -188,6 +195,8 @@ implementation.
 - [ ] T083 [US6] Register `filter_calls` on Call History and `ask_analytics` on the dashboard in apps/web/src/routes/calls/CallHistoryPage.tsx and apps/web/src/routes/dashboard/DashboardPage.tsx
 
 ---
+
+- [ ] T095 [US6] Mint the copilot STT key lazily on the first push-to-talk (never on page load) and check microphone permission before requesting it, showing the typing fallback when denied, in `apps/web/src/app/copilot/VoiceCopilot.tsx`; architecture v1.2 section 7
 
 ## Phase 9: Polish and cross-cutting
 

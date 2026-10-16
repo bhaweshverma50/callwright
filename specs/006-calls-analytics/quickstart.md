@@ -89,3 +89,21 @@ pytest services/api/tests/unit/calls services/api/tests/unit/dashboard services/
 pytest services/api/tests/contract -k "calls or recordings or dashboard or analytics_chat or voice_commands" -q
 pnpm --filter web test -- routes/calls routes/dashboard app/assistant app/copilot
 ```
+
+## 9. Live walkthrough deltas (FR-034 to FR-041)
+
+```bash
+# Plus sign survives and formatting is ignored (expect the seeded +1555... calls)
+curl -s -H "Authorization: Bearer $TOKEN_A" "localhost:8000/v1/calls?from_number=%2B1555" | jq .total
+curl -s -H "Authorization: Bearer $TOKEN_A" --get --data-urlencode "from_number=1 (555)" localhost:8000/v1/calls | jq .total
+# Calendar date in the viewer's timezone, inclusive end
+curl -s -H "Authorization: Bearer $TOKEN_A" "localhost:8000/v1/calls?start_date=2026-10-01&end_date=2026-10-01&tz=Asia/Kolkata" | jq '[.items[].started_at]'
+# CSV export of the same filtered list
+curl -s -H "Authorization: Bearer $TOKEN_A" "localhost:8000/v1/calls/export?channel=whatsapp&columns=call_id,started_at,status" | head -3
+```
+
+In the browser: rows per page offers 10, 20, 50, 100; hide Summary and reload (still hidden);
+apply status, agent and own label and confirm three chips and a badge of 3; on the dashboard pick
+"7d" and confirm every section reloads without an apply step, then press Refresh and confirm the
+"Updated" time changes; in the Ask panel, force a 503 and confirm the retry message keeps the
+question.

@@ -45,6 +45,15 @@ confirm totals, last status per case and the exported results file.
 6. **Given** an agent with no prompt (or a flow agent with no agent node), **When** the operator
    opens the Testing tab, **Then** running is disabled with a message that links to the agent
    editor.
+7. **Given** the Generate dialog, **When** the operator types 25 as the count, **Then** the count
+   becomes 20 and the action reads "Generate 20 test cases"; typing 0 gives 1 and "Generate 1 test
+   case"; choosing "All categories" drafts a mix across every category.
+8. **Given** a flow agent with an agent node, **When** its test cases run, **Then** each case
+   enters at the start node, follows transitions as in a live call, and the result shows the
+   reply and the nodes visited.
+9. **Given** the categories list, **When** the operator opens it or the case editor, **Then**
+   categories appear alphabetically by name, each with its colour chip, and a new case starts in
+   the category currently filtered (or the first listed category when no filter is set).
 
 ---
 
@@ -120,6 +129,10 @@ hand-computed values from the stored verdicts.
 5. **Given** two finished batches over the same calls (variant A and variant B), **When** the
    operator compares one against the other, **Then** the scorecard uses batch A's simulated
    calls as the baseline instead of the original calls.
+6. **Given** 120 batches across three agents, **When** the operator picks one agent in the
+   Simulations page filter, **Then** the list is fetched again for that agent only, shows its
+   total count, and pages through all of that agent's batches rather than filtering a fixed
+   first page in the browser.
 
 ---
 
@@ -150,6 +163,9 @@ turn limit.
    verdicts with no original side.
 3. **Given** a persona run that reaches the turn limit (default 20 caller turns), **When** it
    stops, **Then** the run completes with the end reason "turn limit reached".
+4. **Given** an agent with no call history, **When** the operator presses "New simulation" on the
+   Simulations page, chooses the agent and writes a persona brief, **Then** a standalone persona
+   run starts after the pre-flight step, without going through Call History.
 
 ---
 
@@ -180,6 +196,11 @@ remove one, run bulk evaluate, and start a replay batch from the dataset.
    are removed and the calls themselves are untouched.
 5. **Given** a dataset of 8 calls, **When** the operator starts a simulation from it, **Then** a
    batch is created over those 8 calls and the batch records which dataset it came from.
+6. **Given** the "New dataset" form, **When** the operator presses Create with the name empty or
+   no agent chosen, **Then** each missing field shows its own message ("Enter a name", "Choose an
+   agent") and nothing is sent.
+7. **Given** a dataset with 1,000 calls, **When** the operator opens it, **Then** items load page
+   by page with the total shown, rather than all at once.
 
 ---
 
@@ -312,9 +333,30 @@ remove one, run bulk evaluate, and start a replay batch from the dataset.
   zero, and MUST cap concurrently executing simulation runs per workspace (default 10), queueing
   the rest.
 
+**Usability details** (added from the live walkthrough)
+
+- **FR-032**: Each test category MUST have a display colour (seeds have fixed colours from the
+  design palette; custom categories pick one from the same palette) and categories MUST be listed
+  alphabetically by name everywhere; the case editor MUST preselect the category currently
+  filtered, otherwise the first listed category.
+- **FR-033**: The Generate dialog MUST keep the count within 1 to 20 (out-of-range input is
+  corrected to the nearest bound and shown), label its action with the count in singular or
+  plural form, and offer "All categories" as the default category choice.
+- **FR-034**: Test cases MUST run for both single-prompt and flow agents; a flow agent's case
+  enters at the start node and follows transitions as in a live call, and the result lists the
+  nodes visited.
+- **FR-035**: The Simulations page MUST filter batches and individual runs by agent on the
+  server (each filter change fetches again, with total counts and paging), and MUST offer a "New
+  simulation" action that starts a standalone persona run (choose agent, write brief, pre-flight)
+  alongside the existing starts from Call History, the call view and datasets.
+- **FR-036**: The "New dataset" form MUST require a name and an agent, show a message for each
+  missing field on submit without sending anything, and show server errors next to the field they
+  concern; dataset items MUST be listed with paging and a total count.
+
 ### Key Entities
 
-- **Test Category**: a named group of test cases in a workspace; five seeds plus custom ones.
+- **Test Category**: a named group of test cases in a workspace with a display colour; five seeds
+  plus custom ones.
 - **Test Case**: one caller utterance and the expected behaviour for an agent, with category and
   last status.
 - **Test Run**: one execution of a set of test cases against a target configuration with a

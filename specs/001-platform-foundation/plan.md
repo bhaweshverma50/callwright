@@ -121,10 +121,12 @@ apps/web/
     │   ├── public/   Home.tsx Pricing.tsx PricingCalculator.tsx Enterprise.tsx Privacy.tsx Terms.tsx
     │   │             Login.tsx Register.tsx VerifyEmail.tsx ForgotPassword.tsx ResetPassword.tsx
     │   ├── billing/  BillingPage.tsx TopUpCard.tsx TransactionsTable.tsx CostBreakdownPopover.tsx UsagePanel.tsx
+    │   ├── settings/ SettingsPage.tsx            # FR-017
+    │   ├── NotFound.tsx                          # FR-018 catch-all inside the shell
     │   ├── dashboard/ DashboardPlaceholder.tsx   # replaced by 006
     │   └── placeholders/ AreaPlaceholder.tsx     # areas whose spec has not shipped
     ├── components/ Button.tsx Dialog.tsx Table.tsx Toast.tsx Money.tsx EmptyState.tsx ...
-    └── api/        schema.d.ts (generated) client.ts
+    └── api/        schema.d.ts (generated) client.ts problems.ts (problem to message, FR-019)
 ```
 
 **Structure Decision**: The web application layout from research/architecture.md section 2.

@@ -113,3 +113,28 @@ python -m tests.harness.bench.bench_call_set_tools                    # no p50/p
 ```
 
 Each script writes JSON next to `baseline.json` and exits non-zero when a gate fails.
+
+## 7. Live walkthrough deltas (FR-043 to FR-048)
+
+```bash
+curl -s localhost:8000/v1/tools/presets -H "Authorization: Bearer $TOKEN" | jq '[.items[].preset_id]'
+# expect end_call_polite, transfer_to_person, press_digit_ivr, http_check_availability
+
+# Outdated extra field is rejected (422 naming transfer_option)
+curl -s -X POST localhost:8000/v1/tools -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{
+  "type":"transfer_call","name":"transfer_legacy","description":"x",
+  "config":{"routing_type":"static","number":"+14155550100","transfer_type":"warm","transfer_option":{"type":"warm_transfer"}}}'
+
+# Canned response on a non-http tool is rejected (422)
+curl -s -X POST localhost:8000/v1/tools -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"type":"end_call","name":"bye","description":"x","config":{},"mock_response":"ok"}'
+
+# Upload with a display name
+curl -s -X POST localhost:8000/v1/knowledge-bases/$KB/documents -H "Authorization: Bearer $TOKEN" \
+  -F file=@services/api/tests/fixtures/knowledge/refund_policy.pdf -F display_name="Refund policy 2026" | jq .display_name
+```
+
+Browser: the HTTP tool form refuses "notaurl" inline and offers the same methods as a flow webhook
+node; the attach dialog with no knowledge base offers create and upload, and Confirm stays
+disabled until the selection changes.

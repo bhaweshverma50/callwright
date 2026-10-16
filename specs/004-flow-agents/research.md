@@ -81,7 +81,10 @@ Each entry: Decision, Rationale, Alternatives considered. The reference product'
 
 - **Decision**: Every edge leaving an agent or task node compiles to a function named
   `route_to_<slug>`, where `<slug>` is the edge label lowercased, non-alphanumerics collapsed to
-  `_`, trimmed, max 48 characters. Users may set an explicit `function_name` override on the edge.
+  `_`, trimmed, a leading `route_to_` dropped so the prefix is never doubled, max 48 characters.
+  Users may set an explicit `function_name` override on the edge. A label that yields an empty
+  slug is an error. The live reference product passed labels through unsanitised (a label
+  "Route To Billing!" became the invalid name `route_to_billing!`); Callwright never does.
   Clashes inside one source node are validation errors (no automatic suffixes, so names stay
   predictable in transcripts). The prefix `route_to_` is reserved and rejected as a tool name by
   005.

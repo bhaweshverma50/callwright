@@ -16,7 +16,10 @@ paths:
       summary: List calls with sort, filters and pagination
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - name: page_size
+          in: query
+          description: The UI offers 10, 20, 50 and 100.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
         - name: sort
           in: query
           schema: { type: string, enum: [started_at, duration_s, cost_usd, latency_avg_ms], default: started_at }
@@ -30,10 +33,16 @@ paths:
         - { name: channel, in: query, description: Comma-separated Channel values, schema: { type: string } }
         - { name: disconnect_reason, in: query, description: Comma-separated DisconnectReason values, schema: { type: string } }
         - { name: sentiment, in: query, description: Comma-separated Sentiment values, schema: { type: string } }
-        - { name: from_number, in: query, schema: { type: string } }
-        - { name: to_number, in: query, schema: { type: string } }
-        - { name: started_after, in: query, schema: { type: string, format: date-time } }
+        - $ref: "#/components/parameters/FromNumber"
+        - $ref: "#/components/parameters/ToNumber"
+        - name: started_after
+          in: query
+          description: "Instant filter for API clients; the UI sends start_date, end_date and tz instead."
+          schema: { type: string, format: date-time }
         - { name: started_before, in: query, schema: { type: string, format: date-time } }
+        - $ref: "#/components/parameters/StartDate"
+        - $ref: "#/components/parameters/EndDate"
+        - $ref: "#/components/parameters/Tz"
         - name: label
           in: query
           description: Comma-separated values of good, bad, unannotated (viewer's own label).
@@ -53,6 +62,46 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CallPage" }
         "422": { $ref: "#/components/responses/Problem" }
+  /calls/export:
+    get:
+      operationId: exportCalls
+      summary: CSV export of the filtered and sorted call list (FR-035)
+      description: >
+        Accepts the same sort and filter parameters as listCalls (except page and page_size)
+        plus `columns`. At most 10,000 rows; transcript text is never included.
+      parameters:
+        - name: sort
+          in: query
+          schema: { type: string, enum: [started_at, duration_s, cost_usd, latency_avg_ms], default: started_at }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: agent_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: channel, in: query, schema: { type: string } }
+        - { name: disconnect_reason, in: query, schema: { type: string } }
+        - { name: sentiment, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/FromNumber"
+        - $ref: "#/components/parameters/ToNumber"
+        - $ref: "#/components/parameters/StartDate"
+        - $ref: "#/components/parameters/EndDate"
+        - $ref: "#/components/parameters/Tz"
+        - { name: label, in: query, schema: { type: string } }
+        - { name: eval_status, in: query, schema: { type: string } }
+        - { name: origin, in: query, schema: { type: string, default: "live,test" } }
+        - name: columns
+          in: query
+          description: Comma-separated column keys in display order; defaults to all list columns.
+          schema: { type: string }
+      responses:
+        "200":
+          description: CSV file named calls-<date>.csv
+          content:
+            text/csv:
+              schema: { type: string }
+        "422":
+          description: More than 10,000 matching rows (export_too_large) or invalid filters
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
   /calls/{call_id}:
     get:
       operationId: getCall
@@ -149,6 +198,34 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: "^call_[0-9A-HJKMNP-TV-Z]{26}$" }
+    FromNumber:
+      name: from_number
+      in: query
+      description: >
+        Percent-encoded by the client (a leading plus is sent as %2B). The server keeps digits
+        only (spaces, dashes, brackets and the plus are ignored) and matches numbers whose digits
+        start with them.
+      schema: { type: string, maxLength: 32 }
+    ToNumber:
+      name: to_number
+      in: query
+      description: Same encoding and matching as from_number.
+      schema: { type: string, maxLength: 32 }
+    StartDate:
+      name: start_date
+      in: query
+      description: Inclusive calendar date in tz.
+      schema: { type: string, format: date }
+    EndDate:
+      name: end_date
+      in: query
+      description: Inclusive calendar date in tz; must be on or after start_date.
+      schema: { type: string, format: date }
+    Tz:
+      name: tz
+      in: query
+      description: IANA timezone used to resolve start_date and end_date.
+      schema: { type: string, default: UTC, examples: [Asia/Kolkata] }
   responses:
     Problem:
       description: RFC 9457 problem

@@ -46,6 +46,12 @@ and confirm the goodbye line is spoken before the agent hangs up.
    it, **Then** the save is rejected because those names are reserved.
 7. **Given** two attached tools with the same name, **When** the operator saves the agent's tool
    set, **Then** the save is rejected and names the clash.
+8. **Given** the new-tool dialog, **When** the operator picks the "transfer to a person" preset,
+   **Then** the transfer form opens prefilled (name, description, warm handoff) and saving creates
+   an ordinary library tool the operator can edit; the preset itself never changes.
+9. **Given** a transfer tool request that carries an extra or outdated field next to the
+   transfer settings, **When** it is saved, **Then** it is rejected naming the unexpected field,
+   so each tool is stored in exactly one shape.
 
 ---
 
@@ -86,6 +92,9 @@ value, attach it to an agent and place a scripted call that triggers it.
 7. **Given** a test run from the editor, **When** it completes, **Then** no credit is charged and
    the result shows status code, duration, response body (truncated), mapped variables and the
    payload the agent would see.
+8. **Given** the HTTP tool form, **When** the operator types "notaurl" as the URL and leaves the
+   field, **Then** the field explains that an absolute https address is needed and Save stays
+   disabled; the method list and timeout range are the same as on a flow webhook node.
 
 ---
 
@@ -122,6 +131,9 @@ file and confirm both are rejected with clear messages.
    supported yet."
 7. **Given** a ready document, **When** the operator clicks Preview, **Then** the original file
    opens through a link that stops working after 10 minutes.
+8. **Given** the upload dialog, **When** it opens, **Then** it names the accepted types and the
+   20 MB limit, the display name is optional and defaults to the file name, and Upload stays
+   disabled until a file is chosen.
 
 ---
 
@@ -157,6 +169,11 @@ answers with the policy's figure, and the call's tool-call entry lists the passa
    window", **Then** the top passages show with source file, page, section heading and score.
 7. **Given** a flow agent, **When** knowledge bases are attached, **Then** every conversational
    node can search them unless that node turns search off (see 004-flow-agents).
+8. **Given** the attach dialog with no knowledge base yet, **When** it opens, **Then** it offers
+   to create one and upload a PDF or DOCX from the same place, and the empty-state text promises
+   only the source types that exist.
+9. **Given** the attach dialog, **When** the selection equals what is already attached, **Then**
+   Confirm is disabled; confirming a changed selection sends the full new set.
 
 ---
 
@@ -182,6 +199,9 @@ reaches the agent; remove it and confirm the pre-flight check lists the tool.
    reports success without touching telephony.
 3. **Given** an agent with two HTTP tools and one has no canned response, **When** the operator
    checks simulation readiness, **Then** that one tool is listed by name.
+4. **Given** end-call, transfer and press-digit tools, **When** the operator edits them, **Then**
+   no canned-response field is shown, they never appear as missing in the readiness check, and in
+   simulations they report the fixed outcome for their type.
 
 ---
 
@@ -221,8 +241,8 @@ reaches the agent; remove it and confirm the pre-flight check lists the tool.
 **Tool library**
 
 - **FR-001**: System MUST keep tools in a per-workspace library, each with a type (end call,
-  transfer call, press digit, HTTP request), a name, a description, type-specific settings and
-  an optional canned response for simulations.
+  transfer call, press digit, HTTP request), a name, a description, type-specific settings and,
+  for HTTP tools, an optional canned response for simulations (FR-044).
 - **FR-002**: Tool names MUST start with a lowercase letter, contain only lowercase letters,
   digits and underscores, be at most 64 characters, and not be `kb_search` or start with
   `route_to_`. Descriptions are required (1 to 1,000 characters).
@@ -333,15 +353,40 @@ reaches the agent; remove it and confirm the pre-flight check lists the tool.
 
 **Simulations**
 
-- **FR-041**: Every tool MUST carry an optional canned response; in simulated calls HTTP tools
-  MUST return it without sending a request, and transfer and press-digit tools MUST report
-  success without touching telephony.
-- **FR-042**: System MUST list, per agent, the attached tools that lack a canned response.
+- **FR-041**: HTTP tools MUST carry an optional canned response; in simulated calls HTTP tools
+  MUST return it without sending a request, and end-call, transfer and press-digit tools MUST
+  report their fixed outcome without touching telephony.
+- **FR-042**: System MUST list, per agent, the attached HTTP tools (and flow webhook nodes, 004)
+  that lack a canned response.
+
+**Live UI walkthrough additions (2026-10-16)**
+
+- **FR-043**: The new-tool dialog MUST offer platform presets that prefill the form: end call
+  with a goodbye line, transfer to a person (warm), press digit for phone menus and an HTTP
+  example with a parameter schema. Saving creates an ordinary library tool; presets are
+  read-only and are stored in the current tool shape.
+- **FR-044**: The canned-response field MUST be shown only for HTTP tools. End-call, transfer and
+  press-digit tools MUST have fixed simulated outcomes (call ends; transfer succeeds; digits are
+  accepted) and MUST NOT count as missing in the readiness check.
+- **FR-045**: Each tool type MUST have exactly one stored shape; create and update requests with
+  unknown or outdated fields MUST be rejected naming the field, never stored alongside the
+  current ones.
+- **FR-046**: The tool editor MUST check fields as they are edited (absolute https URL, E.164
+  numbers, JSON Schema syntax, required fields named in the message) and keep Save disabled
+  while any is invalid. HTTP tools and flow webhook nodes MUST offer the same methods (GET, POST,
+  PUT, PATCH, DELETE), timeout range and options.
+- **FR-047**: The knowledge attach dialog MUST offer search, the Ready and Not ready groups, and a
+  shortcut to create a knowledge base and upload a document without leaving the agent. Its
+  empty-state text MUST promise only the source types that exist (PDF and DOCX in v1). Confirm
+  MUST be disabled while the selection equals the attached set.
+- **FR-048**: The upload dialog MUST name the accepted types and the size limit, take an optional
+  display name that defaults to the file name, and keep Upload disabled until a file is chosen.
+  It MUST be reachable from the page header and from the empty state.
 
 ### Key Entities
 
 - **Tool**: a reusable action in the workspace library; name, description, type, type-specific
-  settings, optional canned response, timestamps.
+  settings, optional canned response (HTTP tools only), timestamps.
 - **HTTP Request Settings**: method, URL, headers (some secret), body template, timeout,
   response mappings, waiting line; shared with flow webhook nodes (004).
 - **Transfer Settings**: routing type, number or routing instructions, allowed numbers, cold or
@@ -392,3 +437,7 @@ reaches the agent; remove it and confirm the pre-flight check lists the tool.
   responses come from 008-testing-simulation.
 - Tool name suggestions (`end_call`, `transfer_call`, `press_digit`, `check_availability`)
   are shown as placeholders only.
+- Press-digit tools have no separate on/off switch; attaching or detaching the tool decides
+  whether the agent can press digits.
+- Post-call analysis variables are owned by 007-quality-evals, even where their editor appears
+  inside agent or flow settings.

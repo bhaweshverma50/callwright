@@ -32,10 +32,18 @@ curl -s -H "$H" localhost:8000/v1/calls/$CALL/analysis | jq '.summary, .sentimen
 
 ```bash
 curl -s -H "$H" localhost:8000/v1/agents/agt_DEMO/eval-settings | jq '[.items[] | {name, enabled, cost_class}]'
-# expect anomaly_detection enabled, judge evaluators disabled
+# single-prompt agent: 8 checks; audio_silence and latency_slo enabled; anomaly_detection and judges disabled
+curl -s -H "$H" "localhost:8000/v1/evaluators?agent_type=flow&kind=builtin" | jq '.items | length'   # 12
+curl -s -H "$H" "localhost:8000/v1/evaluators?agent_type=flow&kind=builtin" \
+  | jq '[.items[] | select(.enabled_by_default) | .name] | sort'
+# ["audio_silence","flow_completion","latency_slo","node_dead_end","stuck_loop_detector"]
+curl -s -H "$H" localhost:8000/v1/evaluators/judge-models | jq '[.items[] | select(.is_default) | .model_id]'
 EVL=$(curl -s -H "$H" "localhost:8000/v1/evaluators?kind=builtin" | jq -r '.items[] | select(.name=="intent_fulfillment") | .id')
 curl -s -X PUT -H "$H" -H "Content-Type: application/json" localhost:8000/v1/agents/agt_DEMO/eval-settings/$EVL \
-  -d '{"enabled":true,"overrides":{"pass_threshold":0.6},"is_headline":true}' | jq .effective_settings
+  -d '{"enabled":true,"overrides":{"sample_rate_pct":150},"is_headline":true}' | jq '.status, .errors'
+# expect 422 with field overrides.sample_rate_pct
+curl -s -X PUT -H "$H" -H "Content-Type: application/json" localhost:8000/v1/agents/agt_DEMO/eval-settings/$EVL \
+  -d '{"enabled":true,"overrides":{"sample_rate_pct":100},"is_headline":true}' | jq .effective_settings
 curl -s -X POST -H "$H" -H "Idempotency-Key: qs-007-rerun-000001" localhost:8000/v1/calls/$CALL/evaluations/rerun | jq .run_group_id
 curl -s -X POST -H "$H" -H "Idempotency-Key: qs-007-rerun-000002" -o /dev/null -w "%{http_code}\n" localhost:8000/v1/calls/$CALL/evaluations/rerun
 # expect 409 while the first group is active
@@ -64,7 +72,8 @@ curl -s -H "$H" localhost:8000/v1/calibration/summary | jq
 curl -s -X POST -H "$H" -H "Idempotency-Key: qs-007-trial-000001" -H "Content-Type: application/json" localhost:8000/v1/evaluators/trial \
   -d '{"evaluator_type":"phrase_check","call_id":"'$CALL'","config":{"pattern":"guarantee(d)?","mode":"forbidden","target":"agent","is_regex":true}}' | jq
 curl -s -X POST -H "$H" -H "Content-Type: application/json" localhost:8000/v1/evaluators \
-  -d '{"name":"no_guarantees","display_name":"No guarantees","evaluator_type":"phrase_check","config":{"pattern":"guaranteed","mode":"forbidden","target":"agent"}}' | jq .current_version   # 1
+  -d '{"display_name":"No guarantees","description":null,"evaluator_type":"phrase_check","config":{"pattern":"guaranteed","mode":"forbidden","target":"agent"}}' | jq '.name, .current_version'
+# "no_guarantees", 1 (name derived from display_name)
 # same POST again: expect 409
 ```
 
@@ -74,6 +83,11 @@ curl -s -X POST -H "$H" -H "Content-Type: application/json" localhost:8000/v1/ev
 curl -s -H "$H" localhost:8000/v1/review/queue/summary | jq   # expect {"random":12,"failed":7,"disagreement":4}
 curl -s -H "$H" "localhost:8000/v1/review/queue?strategy=disagreement" | jq '[.items[] | [.pass_count, .fail_count]]'
 ```
+
+In the browser, agent quality tab: flip "Turn latency" off and on (saves at once); expand
+"Long silences" and confirm the helper default reads 3,000 ms; type 150 into the intent
+fulfillment sample rate and confirm Save stays disabled; "Add custom check" shows two template
+cards and the form has "Back".
 
 In the browser: `/review`, open the first mixed card, thumbs up, press "Next call", confirm counts
 drop to 11 / 6 / 3. `/calibration` shows the matrix card and greys out evaluators under 5 pairs.

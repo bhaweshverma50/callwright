@@ -29,6 +29,11 @@ paths:
   /agents/{agent_id}/eval-settings/{evaluator_id}:
     put:
       operationId: putAgentEvalSetting
+      description: >
+        Replaces the whole setting. The quality tab sends this both when the on/off switch is
+        flipped (with the saved overrides) and on "Save settings" (with every field value).
+        Overrides are validated against the settings schema (type, min, max, options; unknown
+        keys rejected).
       parameters:
         - { name: agent_id, in: path, required: true, schema: { type: string, pattern: "^agt_" } }
         - { name: evaluator_id, in: path, required: true, schema: { type: string, pattern: "^evl_" } }
@@ -55,7 +60,11 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "422":
+          description: Field errors, for example sample_rate_pct 150 gives errors[{field "overrides.sample_rate_pct", message "Enter a whole number from 1 to 100"}]; evaluator not applicable to the agent type
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
   /calls/{call_id}/evaluations:
     get:
       operationId: getCallEvaluations
@@ -153,6 +162,14 @@ components:
         title: { type: string }
         status: { type: integer }
         detail: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
     Verdict: { type: string, enum: [pass, fail, not_applicable] }
     VerdictSide:
       type: object
@@ -165,7 +182,7 @@ components:
         evaluator_version: { type: [integer, "null"] }
     AgentEvalSetting:
       type: object
-      required: [evaluator_id, name, display_name, scope, cost_class, kind, enabled, is_overridden, is_headline, effective_settings, settings_schema, current_version]
+      required: [evaluator_id, name, display_name, scope, cost_class, output_kind, kind, enabled, enabled_by_default, is_overridden, is_headline, effective_settings, settings_schema, current_version]
       properties:
         evaluator_id: { type: string }
         name: { type: string }
@@ -174,8 +191,14 @@ components:
         kind: { type: string, enum: [builtin, custom] }
         scope: { type: string, enum: [call, turn, flow_node] }
         cost_class: { type: string, enum: [free, llm_judge] }
+        output_kind: { type: string, enum: [class, anomaly, audio_quality, process_reward] }
         enabled: { type: boolean }
+        enabled_by_default: { type: boolean }
         is_overridden: { type: boolean }
+        adjusted_fields:
+          type: array
+          items: { type: string }
+          description: Override keys clamped into a newer version's range
         is_headline: { type: boolean }
         headline_position: { type: [integer, "null"], minimum: 1, maximum: 4 }
         overrides: { type: object, additionalProperties: true }
@@ -190,6 +213,8 @@ components:
         turn_index: { type: [integer, "null"] }
         flow_node_id: { type: [string, "null"] }
         flow_node_label: { type: [string, "null"] }
+        start_ms: { type: [integer, "null"], description: audio_silence silence start offset }
+        duration_ms: { type: [integer, "null"], description: audio_silence silence length }
         verdict: { $ref: "#/components/schemas/Verdict" }
         score: { type: [number, "null"] }
         rationale: { type: string }
@@ -210,7 +235,7 @@ components:
         scope: { type: string, enum: [call, turn, flow_node] }
         trigger: { type: string, enum: [pipeline, rerun, dataset, simulation] }
         status: { type: string, enum: [pending, running, completed, skipped, error] }
-        skip_reason: { type: [string, "null"], enum: [insufficient_credit, not_applicable_agent_type, evaluator_disabled, null] }
+        skip_reason: { type: [string, "null"], enum: [insufficient_credit, not_applicable_agent_type, evaluator_disabled, not_sampled, null] }
         error: { type: [string, "null"] }
         verdict:
           oneOf:

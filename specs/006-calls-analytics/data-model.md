@@ -99,6 +99,8 @@ pass, fail and not-applicable counts, average score, calls evaluated, headline f
 - `(workspace_id, origin, started_at DESC)`
 - `(workspace_id, duration_s)`, `(workspace_id, cost_total_usd)`, `(workspace_id, latency_avg_ms)` for sort
 - `call_events (workspace_id, kind, occurred_at)` for window latency percentiles
+- Expression indexes `(workspace_id, regexp_replace(from_number, '\D', '', 'g') text_pattern_ops)`
+  and the same for `to_number`, for prefix search on digits (CallListQuery).
 
 ### Views in schema `analytics` (read by the assistant only)
 
@@ -158,6 +160,17 @@ occurred_offset_ms}`.
 left_item_ids[], right_item_ids[]}], flow_diff [{sequence, left_node_id, right_node_id, differs}],
 verdict_diffs [{evaluator_id, evaluator_name, left {verdict, score}, right {verdict, score},
 score_delta, right_rationale}]}`. `verdict_diffs` is empty until 007 is registered.
+
+### CallListQuery (request)
+
+Sort and filters from `GET /v1/calls` (also used by `/v1/calls/export`). Date filters:
+`start_date` and `end_date` are calendar dates resolved in `tz` to `[start 00:00, end + 1 day
+00:00)` in UTC by the server; `started_after` and `started_before` remain for API clients and
+are combined with AND when both forms are given. Phone filters: the server strips everything but
+digits from `from_number` and `to_number` and matches `regexp_replace(number, '\D', '', 'g') LIKE
+:digits || '%'`, backed by expression indexes on the digit form (section 2, indexes on `calls`).
+The web client builds query strings with `URLSearchParams`, so `+` arrives as `%2B`. Export
+streams CSV rows with the same query, capped at 10,000 rows (`export_too_large` above that).
 
 ### DashboardPeriod (request)
 

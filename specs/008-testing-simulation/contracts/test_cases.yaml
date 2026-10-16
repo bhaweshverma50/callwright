@@ -20,7 +20,7 @@ paths:
       summary: List seed and custom test categories of the workspace
       responses:
         '200':
-          description: Categories, seeds first
+          description: Categories ordered alphabetically by name (case-insensitive)
           content:
             application/json:
               schema:
@@ -46,6 +46,10 @@ paths:
                   type: string
                   pattern: '^[a-z][a-z0-9_]{1,39}$'
                   description: Derived from name when omitted.
+                color:
+                  type: string
+                  pattern: '^#[0-9a-f]{6}$'
+                  description: One of the palette colours; defaults to the first unused palette colour
       responses:
         '201':
           description: Created
@@ -302,10 +306,11 @@ components:
         total_pages: { type: integer }
     TestCategory:
       type: object
-      required: [slug, name, is_seed]
+      required: [slug, name, color, is_seed]
       properties:
         slug: { type: string }
         name: { type: string }
+        color: { type: string, pattern: '^#[0-9a-f]{6}$' }
         is_seed: { type: boolean }
     TestCaseCreate:
       type: object

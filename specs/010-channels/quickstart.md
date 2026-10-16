@@ -42,7 +42,19 @@ curl -s -X POST localhost:8000/v1/phone-numbers -H "Authorization: Bearer $JWT" 
 curl -s localhost:8000/v1/phone-numbers/sip-settings -H "Authorization: Bearer $JWT" | jq
 ```
 
-Expect `status: "active"` and `has_auth_password: false`. Check LiveKit objects:
+Expect `status: "active"` and `has_auth_password: false`. A body with an extra field is refused:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST localhost:8000/v1/phone-numbers -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"e164":"+14155550101","label":"X","termination_address":"trunk.example-carrier.com","user_id":"usr_x"}'   # 422
+```
+
+In the browser, pressing "Import number" on the empty form shows a message under number, label
+and termination address and sends nothing; the sidebar entry and page title both read
+"Channels".
+
+Check LiveKit objects:
 
 ```bash
 lk sip inbound list && lk sip outbound list && lk sip dispatch list   # no dispatch rule yet

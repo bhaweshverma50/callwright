@@ -92,6 +92,7 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 - [ ] T042 [P] [US1] Implement variables dialog pre-filled with defaults in `apps/web/src/routes/agents/components/TestVariablesDialog.tsx`
 - [ ] T043 [US1] Implement `WebCallPanel` (orb, live transcript, end button) and `/agents/:id/testing` page, register the route in `apps/web/src/app/router.tsx`, files `apps/web/src/routes/agents/components/WebCallPanel.tsx` and `apps/web/src/routes/agents/AgentTestingPage.tsx`
 - [ ] T044 [US1] Add the five 003 fragments to the `contracts/openapi.yaml` assembly and regenerate the TS client in `apps/web/src/api/`
+- [ ] T118 [US1] Microphone precheck (FR-047) in `apps/web/src/routes/agents/hooks/useWebCall.ts` and `WebCallPanel.tsx`: request microphone permission before `POST /v1/sessions/web-call`; on denial show how to allow it and send no request; Playwright test with permission denied in `apps/web/tests/e2e/test-call-mic.spec.ts` asserts no session request and no call row
 
 **Checkpoint**: US1 works end to end with the default stack.
 
@@ -152,10 +153,12 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 - [ ] T066 [US3] Add signed `background_audio_url` to the claim RuntimeConfig in `services/api/app/calls/service.py`
 - [ ] T067 [US3] Truncate interrupted agent turns to played text and set `interrupted` in transcript items in `services/voice-worker/worker/metrics.py`
 - [ ] T068 [P] [US3] AssemblyAI and Sarvam STT adapters in `services/voice-worker/worker/adapters/stt/assemblyai.py` and `services/voice-worker/worker/adapters/stt/sarvam.py`
-- [ ] T069 [P] [US3] Anthropic LLM adapter in `services/voice-worker/worker/adapters/llm/anthropic.py`
-- [ ] T070 [P] [US3] Cartesia and Sarvam TTS adapters in `services/voice-worker/worker/adapters/tts/cartesia.py` and `services/voice-worker/worker/adapters/tts/sarvam.py`
+- [ ] T069 [P] [US3] (Deferred: not in the launch catalog, 002 data-model section 8.2) Anthropic LLM adapter in `services/voice-worker/worker/adapters/llm/anthropic.py`, built only when a catalog entry and a pricing row are added
+- [ ] T070 [P] [US3] Cartesia TTS adapter in `services/voice-worker/worker/adapters/tts/cartesia.py` (Sarvam TTS is not in the launch catalog; research R8)
 - [ ] T071 [P] [US3] Fish Audio streaming TTS adapter with character metering in `services/voice-worker/worker/adapters/tts/fishaudio.py`
 - [ ] T072 [P] [US3] ai-coustics NC adapter in `services/voice-worker/worker/adapters/nc/ai_coustics.py`
+- [ ] T116 [US3] Auto speech recognition (FR-045): call 002's `voices.service.resolve_auto_stt` in `claim()` and put `stt_resolved_model` in RuntimeConfig (`services/api/app/calls/service.py`); the worker builds STT with the resolved id and reports it in usage meters (`services/voice-worker/worker/pipeline.py`, `metrics.py`); admission refuses a language the provider's Auto cannot cover; tests in `services/api/tests/unit/test_auto_stt.py` (Deepgram `en-US` to `nova-3`, `hi` to `nova-2`; AssemblyAI `es` to multilingual; Sarvam to `saarika:v2.5`) and a pricing check that a Deepgram Auto call in Hindi is charged at 0.0058 per minute
+- [ ] T117 [US3] Segment overrides (FR-046): `CallControl.apply_overrides()` in `services/voice-worker/worker/tools/__init__.py` (protocol) and `services/voice-worker/worker/pipeline.py` (swap LLM, TTS and STT at the next turn boundary, re-resolve Auto for a new language, clamp to RuntimeConfig `controls`, emit `segment_override` and `override_clamped` events, meter per model); harness scenario `services/voice-worker/tests/harness/scripts/segment_override.yaml` asserting the swap, clamping, per-model meters and first-turn latency after a swap within budget
 
 **Checkpoint**: All builder settings change runtime behaviour; every listed vendor runs.
 

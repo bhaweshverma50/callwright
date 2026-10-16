@@ -53,8 +53,9 @@ components:
       type: object
       required: [id, label, temperature, supports_tools, price_per_min_usd, withdrawn]
       properties:
-        id: {type: string, examples: [gpt-5.1]}
+        id: {type: string, examples: [gpt-5.1], description: Canonical id, identical under every provider that offers the model}
         label: {type: string}
+        family: {type: string, examples: [gpt-5]}
         temperature: {$ref: '#/components/schemas/TemperatureRule'}
         supports_tools: {type: boolean}
         context_window: {type: [integer, 'null']}
@@ -69,7 +70,7 @@ components:
       type: object
       required: [id, label, models]
       properties:
-        id: {type: string, examples: [azure_openai, openai, anthropic]}
+        id: {type: string, examples: [azure_openai, openai]}
         label: {type: string}
         models:
           type: array

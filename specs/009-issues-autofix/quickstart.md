@@ -27,6 +27,13 @@ curl -s "$API/issues?agent_id=$AGENT" -H "Authorization: Bearer $TOKEN" | jq '.i
 Expected: one issue with 8 affected calls, no issue for the 2-call group. Run detection again:
 `issues_created` is 0 and `issues_updated` is 1.
 
+```bash
+curl -s "$API/issues?agent_id=$AGENT&window_days=7&scope=real" -H "Authorization: Bearer $TOKEN" | jq '.total'
+```
+
+In the browser, changing Window or Source on `/issues` issues a new list request and the address
+bar keeps the filters; with no agent chosen, "Detect issues" is disabled with its hint.
+
 ## 2. Draft a fix (US2)
 
 ```bash

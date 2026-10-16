@@ -194,6 +194,20 @@ components:
         source: {$ref: '#/components/schemas/VersionSource'}
         note: {type: [string, 'null']}
         restored_from_version_number: {type: [integer, 'null']}
+        parent_version_number:
+          type: [integer, 'null']
+          description: Draft version this one was saved over; null for version 1
+        summary:
+          type: object
+          description: At-a-glance contents for the history list
+          required: [llm_model, tts_provider, tts_voice_id, tool_count, kb_count]
+          properties:
+            llm_model: {type: string, examples: [gpt-5.1]}
+            tts_provider: {type: string}
+            tts_voice_id: {type: string}
+            tool_count: {type: integer, minimum: 0}
+            kb_count: {type: integer, minimum: 0}
+            node_count: {type: [integer, 'null'], description: Flow agents only}
         created_by_email: {type: [string, 'null']}
         created_at: {type: string, format: date-time}
         content_hash: {type: string, pattern: '^[0-9a-f]{64}$'}

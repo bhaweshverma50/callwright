@@ -146,3 +146,13 @@ apps/web/src/routes/
 No constitution violations. Noted trade-off (not a violation): HTTP execution logic duplicated
 between `services/api/app/tools/http_exec.py` and `services/voice-worker/worker/tools/http.py`,
 kept in step by shared test vectors (research R5).
+
+## Live UI walkthrough deltas (2026-10-16)
+
+Findings tagged [005] in `research/ui-walkthrough/DELTA.md` are resolved in
+`research/ui-walkthrough/DELTA-resolution-004-006.md`. Design consequences: read-only tool
+presets served from code (`GET /v1/tools/presets`), `extra = "forbid"` on every tool config so
+only one shape is ever stored, canned responses limited to HTTP tools with fixed simulated
+outcomes for the other types, one shared HTTP request form for tools and 004 webhook nodes,
+`display_name` on documents, and an attach dialog that can create and upload in place
+(FR-043 to FR-048). The analysis-variable dialog finding belongs to 007-quality-evals.

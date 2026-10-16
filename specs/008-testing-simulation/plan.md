@@ -100,8 +100,9 @@ apps/web/src/routes/
 │                      ImportDialog.tsx, TestRunPanel.tsx, ResultRow.tsx
 ├── simulations/       SimulationsPage.tsx, ExperimentPage.tsx, RunComparePage.tsx,
 │                      ScorecardTable.tsx, StartSimulationDialog.tsx, PreflightDialog.tsx,
-│                      PersonaBriefEditor.tsx, VariantEditor.tsx
-└── datasets/          DatasetsPage.tsx, DatasetPage.tsx, AddToDatasetMenu.tsx
+│                      PersonaBriefEditor.tsx, VariantEditor.tsx, NewSimulationDialog.tsx
+└── datasets/          DatasetsPage.tsx, DatasetPage.tsx, AddToDatasetMenu.tsx,
+                       NewDatasetDialog.tsx
 apps/web/src/api/      regenerated client (openapi-typescript)
 ```
 

@@ -41,6 +41,14 @@ second detection.
 5. **Given** an issue whose evaluator has low agreement with human labels in calibration,
    **When** the operator opens it, **Then** a warning says the evaluator may be wrong and links
    to calibration.
+6. **Given** the Issues page with an agent chosen, **When** the operator changes the window from
+   14 to 7 days or the source from "Real calls" to "Real + simulated", **Then** the list is
+   fetched again and shows only issues seen within the chosen window and source, and the next
+   detection uses the same window and source; the URL keeps all four filters so a reload shows
+   the same list.
+7. **Given** no agent is chosen, **When** the operator looks at the filter row, **Then** "Detect
+   issues" is disabled with the hint "Choose an agent to run detection", and the status filter
+   shows readable labels (All, Open, Validating, Validated, Applied, Dismissed).
 
 ---
 
@@ -308,6 +316,16 @@ before/after figures.
 - **FR-025**: Detection and drafting MUST be billed as feature charges (`issues.detect`,
   `issues.draft_fix`) once per request even when retried; validation is billed through the
   simulation and evaluation charges of its batches.
+
+**Issues page filters** (added from the live walkthrough)
+
+- **FR-026**: The issue list MUST be filtered on the server by agent, status, window and source,
+  and every filter change MUST fetch the list again. Window (7, 14, 30 or 90 days) keeps issues
+  last seen within the window; source "Real calls" hides issues built mostly from simulated
+  calls and "Real + simulated" shows both. The same window and source MUST be used by the next
+  detection, and all filters MUST be kept in the page address.
+- **FR-027**: Detection MUST be unavailable until an agent is chosen, with a hint saying why; the
+  status filter MUST show readable labels for each status while sending the status values.
 
 ### Key Entities
 

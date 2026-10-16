@@ -52,6 +52,16 @@ has channel "phone inbound", correct from and to numbers, and the number's ident
 7. **Given** the media platform is unreachable during import, **When** the import completes,
    **Then** the number is saved with status "error" and a reason, and a "Retry setup" action
    makes it active once the platform is reachable.
+8. **Given** the empty import form, **When** the operator presses "Import number", **Then** each
+   required field (number, label, termination address) shows its own message and nothing is sent.
+9. **Given** the number `4155550100` (no plus sign), **When** the form is submitted, **Then** the
+   number field shows that the number must be in international format starting with "+" and an
+   example; **Given** `sip:user@trunk.example.com`, **Then** the termination field explains that
+   only a host name or IP address with optional port is allowed.
+10. **Given** an import request whose body names a workspace or user, **When** it arrives,
+    **Then** it is rejected as invalid; the number always belongs to the caller's workspace.
+11. **Given** the sidebar and the page, **When** the operator opens the channels page, **Then**
+    the navigation label and the page title use the same name.
 
 ---
 
@@ -176,6 +186,14 @@ confirm the agent answers and the call record has channel "whatsapp".
    user calls, **Then** the call is declined and not charged.
 8. **Given** a business phone number ID already registered, **When** another channel is created
    with it, **Then** it is refused with "This WhatsApp number is already connected".
+9. **Given** the WhatsApp form, **When** the business phone number ID is "abc", **Then** the field
+   says it must contain digits only, and nothing is sent.
+10. **Given** the WhatsApp form, **When** it opens, **Then** the API version is prefilled with the
+    platform default, the callback address is shown read-only with a copy button, and a help link
+    opens the platform's setup guide in a new tab.
+11. **Given** WhatsApp is unreachable during creation, **When** creation fails, **Then** the
+    message says the platform could not be reached and to retry, distinct from the token and
+    number-mismatch messages, and the form keeps every value except the secrets.
 
 ---
 
@@ -398,6 +416,23 @@ work without it.
 - **FR-038**: Policy decisions MUST record the time, destination, from number, agent,
   requester, reason, the matching do-not-call entry or the timezone (and its source) and local
   time used, and MUST be viewable by operators of the workspace.
+
+**Forms and naming** (added from the live walkthrough)
+
+- **FR-039**: The navigation label and the page title for numbers and WhatsApp channels MUST use
+  the same name ("Channels"); the page keeps its tabs for SIP numbers, WhatsApp channels and
+  compliance.
+- **FR-040**: The import and WhatsApp forms MUST check every field on submit against the same
+  rules the system applies (E.164 number with an example, label length, termination address host
+  or IP with optional port, business phone number ID digits only, verify token length, API
+  version format) and show a message under each failing field, including empty required fields;
+  server field errors MUST appear under the field they name. Nothing is sent while a field fails.
+- **FR-041**: Number and channel requests MUST take the workspace from the signed-in session
+  only; request bodies that name a workspace, user or any unknown field MUST be rejected.
+- **FR-042**: The WhatsApp form MUST prefill the platform default API version, show the shared
+  callback address read-only with a copy action next to the verify token field, and link to the
+  platform's setup guide. Creation failures MUST name the cause (token rejected, number mismatch,
+  number already connected, platform unreachable) and keep the non-secret values in the form.
 
 ### Key Entities
 

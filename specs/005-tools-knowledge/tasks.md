@@ -81,6 +81,9 @@ harness scenarios, confirm `agent_hangup` and `call_transfer` outcomes and `tool
 - [ ] T031 [P] [US1] Type forms `EndCallForm.tsx`, `TransferForm.tsx` (static or dynamic, allowed numbers, cold or warm, briefing, hold message, ring timeout), `PressDigitForm.tsx` in `apps/web/src/routes/agents/tools/forms/`
 - [ ] T032 [US1] Tool editor dialog with type picker, name placeholders, inline name errors and "used by N agents" notice in `apps/web/src/routes/agents/tools/ToolEditorDialog.tsx`
 - [ ] T033 [P] [US1] Component tests in `apps/web/src/routes/agents/tools/ToolsTab.test.tsx`
+- [ ] T093 [P] [US1] Extend `services/api/tests/contract/test_tools_contract.py` with `GET /v1/tools/presets`, 422 naming the field for unknown or outdated config keys (a legacy transfer block next to the current one), and 422 for `mock_response` on non-http types
+- [ ] T094 [US1] Preset constants in `services/api/app/tools/presets.py`, the presets endpoint in `services/api/app/tools/router.py`, and `extra = "forbid"` on every config model in `services/api/app/tools/schemas.py` (makes T093 pass)
+- [ ] T095 [P] [US1] Preset picker in the new-tool dialog and inline field checks (E.164, required fields named, Save disabled while invalid) in `apps/web/src/routes/agents/tools/ToolEditorDialog.tsx` and `apps/web/src/routes/agents/tools/forms/fieldRules.ts`
 
 **Checkpoint**: US1 independently testable via quickstart section 1.
 
@@ -116,6 +119,7 @@ mapping, waiting line, address guard and editor test runs.
 - [ ] T049 [P] [US2] HTTP tool form with method, URL, JSON Schema parameters editor with an example template, body template, timeout, mappings editor, waiting line in `apps/web/src/routes/agents/tools/forms/HttpToolForm.tsx`
 - [ ] T050 [P] [US2] Secret header input showing masked value and "replace" action in `apps/web/src/routes/agents/tools/forms/SecretHeaderInput.tsx`
 - [ ] T051 [US2] Test-run panel (arguments, variables, status, timing, masked request, response, mapped variables, agent payload) in `apps/web/src/routes/agents/tools/TestRunPanel.tsx`
+- [ ] T096 [P] [US2] Shared `HttpRequestFields` component (method list GET, POST, PUT, PATCH, DELETE, timeout 1 to 30 s, headers, body template, mappings, waiting-line toggle, inline absolute https URL check) in `apps/web/src/routes/agents/tools/forms/HttpRequestFields.tsx`, used by `HttpToolForm.tsx` and by 004's webhook node form
 
 **Checkpoint**: US1 and US2 work independently.
 
@@ -150,6 +154,8 @@ pgvector, status, preview URLs, replace and delete.
 - [ ] T066 [P] [US3] Knowledge list page with create dialog and empty state in `apps/web/src/routes/knowledge/KnowledgeListPage.tsx`
 - [ ] T067 [P] [US3] Upload dialog: client size and type checks with the spec messages, Web Crypto SHA-256, check-duplicate verdict handling, Replace option, progress bar, in `apps/web/src/routes/knowledge/UploadDialog.tsx`
 - [ ] T068 [US3] Knowledge base page: documents table with status polling, failure reason and retry, preview via signed URL, delete with confirm, KB delete listing agents, in `apps/web/src/routes/knowledge/KnowledgeBasePage.tsx`
+- [ ] T097 [P] [US3] Add `display_name` (default `file_name`) to `kb_documents` in `services/api/app/migrations/versions/005_tools_knowledge.py`, accept it in the upload handler in `services/api/app/knowledge/service.py`, and cover it in `services/api/tests/contract/test_knowledge_contract.py`
+- [ ] T098 [P] [US3] Upload dialog text with accepted types and 20 MB limit, optional display name, Upload disabled until a file is chosen, entry from the page header and the empty state, in `apps/web/src/routes/knowledge/UploadDialog.tsx` and `apps/web/src/routes/knowledge/KnowledgeListPage.tsx`
 
 **Checkpoint**: Documents ingest and are manageable without any agent attached.
 
@@ -180,6 +186,7 @@ pgvector, status, preview URLs, replace and delete.
 - [ ] T079 [US4] Auto-inject `kb_search` in `services/voice-worker/worker/tools/registry.py` when the snapshot has KBs, description built from KB names and descriptions, and a `kb_search_enabled` switch the 004 flow executor can pass per node
 - [ ] T080 [P] [US4] Agent knowledge picker grouped "Ready" and "Not ready" in `apps/web/src/routes/knowledge/components/AgentKnowledgePicker.tsx`, mounted in the agent edit page and flow global settings
 - [ ] T081 [P] [US4] Search preview panel (query, results with file, page, heading, score) in `apps/web/src/routes/knowledge/SearchPreviewPanel.tsx`
+- [ ] T099 [P] [US4] Attach dialog search, create-and-upload shortcut, empty-state text limited to PDF and DOCX, Confirm disabled while the selection equals the attached set, with tests, in `apps/web/src/routes/knowledge/components/AgentKnowledgePicker.tsx` and `apps/web/src/routes/knowledge/components/AgentKnowledgePicker.test.tsx`
 
 **Checkpoint**: Agents answer from attached knowledge within the latency budget.
 
@@ -203,6 +210,7 @@ pgvector, status, preview URLs, replace and delete.
 - [ ] T086 [US5] Mock-coverage endpoint in `services/api/app/tools/router.py`
 - [ ] T087 [US5] Simulation wrappers driven by `ToolContext.simulation` in `services/voice-worker/worker/tools/registry.py`
 - [ ] T088 [P] [US5] Canned response field in `apps/web/src/routes/agents/tools/ToolEditorDialog.tsx` and a "missing mock" badge in `apps/web/src/routes/agents/tools/ToolsTab.tsx`
+- [ ] T100 [US5] Canned response limited to http tools: CHECK constraint in `services/api/app/migrations/versions/005_tools_knowledge.py`, coverage listing only http tools and webhook nodes in `services/api/app/tools/service.py`, fixed simulated outcomes for end_call, transfer_call and press_digit in `services/voice-worker/worker/tools/registry.py`, field hidden for other types in `apps/web/src/routes/agents/tools/ToolEditorDialog.tsx`; tests in `services/voice-worker/tests/unit/test_tool_mocks.py`
 
 ---
 
@@ -249,5 +257,6 @@ then T063 service, T064 job, T065 router; web T066 and T067 in parallel, then T0
 
 ## Notes
 
-- Total 92 tasks: Setup 5, Foundational 10, US1 18, US2 18, US3 17, US4 13, US5 7, Polish 4.
+- Total 100 tasks: Setup 5, Foundational 10, US1 21, US2 19, US3 19, US4 14, US5 8, Polish 4.
+  T093 to T100 come from the live UI walkthrough (research/ui-walkthrough/DELTA-resolution-004-006.md).
 - Hot-path benchmarks: T021 (tool dispatch), T041 (HTTP tool), T073 (kb_search), T091 (call set).

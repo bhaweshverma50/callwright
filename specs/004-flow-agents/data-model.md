@@ -12,7 +12,7 @@ Owned module: `services/api/app/flows/`. Tables carry `workspace_id` with row-le
 | id | text PK | `flw_` + ULID |
 | workspace_id | text, not null | FK workspaces; RLS key |
 | agent_id | text, not null, unique | FK agents (`agt_`), agent `type` must be `flow` |
-| name | text, not null | 1 to 120 chars, default "Untitled flow" |
+| name | text, not null | 1 to 120 chars; set to the agent name at creation and renamed together with the agent (FR-048); never shown separately |
 | graph | jsonb, not null | Flow Graph (section 2); validated on write |
 | revision | integer, not null | starts at 1; +1 per successful save |
 | last_validation | jsonb, not null | `{errors: int, warnings: int, issues: ValidationIssue[], validated_at}` |
@@ -46,10 +46,13 @@ Edge {
   source: string           node id
   target: string           node id
   trigger: Trigger         llm_condition | category | rule | else | always | success | failure
-  label: string?           required for llm_condition; 1..60 chars
+  label: string?           required for llm_condition only (not for always, success,
+                           failure, category, rule, else); 1..60 chars; must contain a letter
+                           or digit (E_TRANSITION_NAME_EMPTY)
   condition: string?       required for llm_condition; 1..1000 chars, plain language
   function_name: string?   optional override, ^route_to_[a-z0-9_]{1,48}$
-  category: string?        required for category; must match a category name on the source
+  category: string?        required for category; must match a category name on the source;
+                           chosen from a list in the UI; renamed with the category
   rule: Rule?              required for rule
   sort_order: integer      order among edges of the same source (rules evaluated in this order)
 }
@@ -62,14 +65,14 @@ Rule { variable: string, operator: equals | not_equals | contains | matches | ex
 
 | Type | Config fields (default) | Validation |
 |---|---|---|
-| start | `start_speaker`: `agent` \| `user` (`agent`); `greeting_type`: `static` \| `generated` (`static`); `greeting`: string ("Hi, thanks for calling. How can I help?") | `greeting` required when speaker is agent and type static; max 500 chars |
+| start | `start_speaker`: `agent` \| `user` (`agent`); `greeting_type`: `static` \| `generated` (`static`); `greeting`: string ("Hi, thanks for calling. How can I help?") | `greeting` required when speaker is agent and type static; optional when speaker is user (played before listening, empty means silence; `greeting_type` ignored); max 500 chars. Agent plus `generated` requires the start edge target to be agent or task (E_GREETING_SOURCE). `start_speaker` is the only who-speaks-first setting for flow agents (FR-052) |
 | agent | `instructions` (""); `begin_message` (null); `context_strategy`: `inherit` \| `summarize` \| `reset` (`inherit`); `overrides` (Overrides, all null); `tool_ids` ([]); `kb_search_enabled` (true) | instructions max 16,000; tool ids must exist in workspace |
 | task | `instructions` (""); `fields`: TaskField[] (name and email example); `max_rounds` (5, 1..20); `context_strategy` (`inherit`); `overrides`; `tool_ids`; `kb_search_enabled` (true) | 1..30 fields; names snake_case, unique |
-| condition | `kind`: `classify` \| `rule` (`classify`); `instructions` (""); `categories`: `{name, description}`[] | classify: 2..20 categories, unique names; rule: rules live on edges |
+| condition | `kind`: `classify` \| `rule` (`classify`); `instructions` (""); `categories`: `{name, description}`[] | classify: 2..20 categories; name `^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$`, unique ignoring case (E_CATEGORY_NAME); rule: rules live on edges, `value` absent for `exists` |
 | say | `message` (""); `allow_interruptions` (true) | message required, max 1,000 |
-| extract_variable | `instructions` (""); `fields`: ExtractField[] | 1..30 fields; names snake_case, unique across flow-set variables |
-| webhook | `request`: HttpRequestSpec (005); `mock_response` (null) | URL required and valid; spec per 005 |
-| transfer | `transfer`: TransferSpec (005) | static needs E.164 number; dynamic needs routing instructions |
+| extract_variable | `instructions` (""); `fields`: ExtractField[] | 1..30 fields; names snake_case, unique across flow-set variables. The editor converts typed names ("Customer Name" to `customer_name`) before adding (FR-056) |
+| webhook | `request`: HttpRequestSpec (005); `mock_response` (null) | URL required, absolute, https (E_INVALID_FIELD); method set, timeout range and `speak_during_execution` (default true) per 005, identical to HTTP tools |
+| transfer | `transfer`: TransferSpec (005) | static needs E.164 number (E_INVALID_FIELD when malformed); dynamic needs routing instructions |
 | end | `message` ("Thanks for calling. Goodbye."); `reason` (`call_completed`, pattern `^[a-z_]{1,40}$`) | message max 500 |
 
 ```text
@@ -134,6 +137,10 @@ ValidationIssue { severity: error | warning, code: string, message: string,
 | W_END_NO_MESSAGE | warning | end node with empty message |
 | W_UNSET_VARIABLE | warning | `{{var}}` used but never set and not built-in or defaulted |
 | W_NO_BEGIN_MESSAGE | warning | conversational node entered by a transition and lacking an entry line (latency hint) |
+| E_GREETING_SOURCE | error | start is agent-first with a generated greeting and its edge target is not agent or task |
+| E_INVALID_FIELD | error | a constrained field is out of range or malformed: task `max_rounds` outside 1..20, transfer number not E.164, webhook URL not absolute https, timeout outside its range, schema, header, body template or canned response not valid JSON where JSON is required |
+| E_CATEGORY_NAME | error | classify category name fails the pattern or duplicates another ignoring case |
+| E_TRANSITION_NAME_EMPTY | error | llm_condition edge label yields an empty transition name |
 
 Issue order: errors before warnings, then by node order in `graph.nodes`, then edge order.
 
@@ -180,6 +187,14 @@ CompiledNode {
 ```
 
 Transition description text: `"Go to <target label>. Use when: <edge condition>"`.
+
+Transition name derivation (FR-044, research R7): lowercase the label, replace every run of
+characters outside `[a-z0-9]` with `_`, trim `_`, drop a leading `route_to_` so the prefix is not
+doubled, cut to 48 characters, then prefix `route_to_`. "Route To Billing!" and "Route to
+billing" both give `route_to_billing`; "!!!" gives an empty slug (E_TRANSITION_NAME_EMPTY). The
+edge panel preview uses a TypeScript copy of this one function, kept identical to the Python one
+by shared vectors in `services/api/tests/unit/flows/fixtures/transition_names.json` (same
+approach as 005's HTTP vectors).
 
 ## 5. AgentVersion config extension (002 snapshot)
 
@@ -245,6 +260,12 @@ Operation (one of)
 Node configs proposed by the assistant never contain `overrides`. Proposals are not stored; the
 chat history lives in the browser session only.
 
+Placement (FR-049): the request graph carries positions. For each added node the server sets
+`position` after applying the operations: between its source and target when it is inserted on an
+edge, otherwise one rank (`ranksep` 120 px) to the right of its first connected neighbour,
+shifted down by 40 px steps until its bounding box (assumed 240 x 96 px) overlaps no node.
+Existing nodes are never moved.
+
 ## 8. Runtime state (worker memory, per call)
 
 ```text
@@ -256,3 +277,27 @@ Node lifecycle inside the executor: `entered -> running -> (waiting_for_caller) 
 transitioned`. End and successful transfer nodes are terminal. A guard of 200 transitions per call
 ends the call with disconnect reason `error` to stop runaway loops between non-conversational
 nodes.
+
+## 9. Atomic save with flow-wide settings (FR-046, FR-048)
+
+`PUT /v1/flows/{flow_id}` accepts an optional `agent_settings` block:
+
+```text
+SaveFlowRequest {
+  name: string                         becomes the agent name too (002 rename, same transaction)
+  graph: FlowGraph
+  agent_settings?: {
+    expected_draft_revision: int       the 002 agent draft revision the editor loaded
+    changes: object                    partial AgentConfig (002); only fields the user changed
+  }
+}
+```
+
+The service opens one transaction: checks the flow `If-Match` revision, checks
+`expected_draft_revision` against 002's draft, deep-merges `changes` into the current draft
+config through `agents.service.update_draft(agent_id, patch, expected_revision)` (fields not in
+`changes` keep their stored values; `null` in `changes` clears a nullable field explicitly), then
+writes the graph and name. Any failure rolls back both. Keys outside AgentConfig, and
+`start_speaker` or `begin_message` (owned by the Start node for flow agents), are rejected with
+422. The response is the Flow plus `agent_draft_revision`. Conflicts return 412 with code
+`flow_revision_conflict` or `agent_draft_changed`.

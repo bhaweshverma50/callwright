@@ -84,16 +84,21 @@ components:
   schemas:
     TemplateCategory:
       type: string
-      enum: [healthcare, banking, insurance, retail, telecom, automotive, real_estate, hospitality, support]
+      enum: [automotive, banking, ecommerce, healthcare, telecom]
+      description: Launch categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom
     TemplateSummary:
       type: object
-      required: [id, name, category, description, icon]
+      required: [id, name, category, description, icon, direction]
       properties:
-        id: {type: string, examples: [healthcare-appointment-booking]}
+        id: {type: string, examples: [healthcare-triage-booking]}
         name: {type: string}
         category: {$ref: '#/components/schemas/TemplateCategory'}
         description: {type: string}
         icon: {type: string, examples: [stethoscope]}
+        direction:
+          type: string
+          enum: [inbound, outbound]
+          description: Informs the preview; not part of the agent config
         language: {type: string}
     TemplateDetail:
       allOf:
@@ -103,4 +108,8 @@ components:
           properties:
             config:
               type: object
-              description: Partial AgentConfig; always includes prompt, begin_message, start_speaker and language
+              description: |
+                Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+                llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
+                tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
+                fixed-temperature model, nor tts.voice_id (the language default voice applies).

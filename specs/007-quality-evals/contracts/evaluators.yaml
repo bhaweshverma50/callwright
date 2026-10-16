@@ -45,7 +45,33 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "422":
+          description: Field errors (pattern invalid, question too short, judge model not in the list)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /evaluators/judge-models:
+    get:
+      operationId: listJudgeModels
+      summary: Models allowed for every judge_model setting and for custom judges (FR-036)
+      responses:
+        "200":
+          description: Allowed judge models; exactly one has is_default true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [model_id, display_name, is_default]
+                      properties:
+                        model_id: { type: string }
+                        display_name: { type: string }
+                        is_default: { type: boolean }
   /evaluators/{evaluator_id}:
     parameters:
       - { name: evaluator_id, in: path, required: true, schema: { type: string, pattern: "^evl_" } }
@@ -155,14 +181,27 @@ components:
         title: { type: string }
         status: { type: integer }
         detail: { type: string }
+        errors:
+          type: array
+          description: Per-field validation messages (422)
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
     SettingsField:
       type: object
       required: [key, label, type]
       properties:
         key: { type: string }
         label: { type: string }
-        type: { type: string, enum: [select, number, bool, text, text_long] }
-        options: { type: array, items: { type: string } }
+        type:
+          type: string
+          enum: [select, number, int, bool, text, text_long]
+          description: int renders as a whole-number stepper; judge_model fields are always select
+        options: { type: array, items: { type: string }, description: For select; judge model fields are filled from the judge model list at read time }
+        options_source: { type: string, enum: [judge_models] }
         min: { type: number }
         max: { type: number }
         step: { type: number }
@@ -170,19 +209,20 @@ components:
         helper: { type: string }
     Evaluator:
       type: object
-      required: [id, kind, evaluator_type, name, display_name, scope, cost_class, agent_types, settings_schema, score_range, current_version, enabled_by_default]
+      required: [id, kind, evaluator_type, name, display_name, scope, cost_class, output_kind, agent_types, settings_schema, score_range, current_version, enabled_by_default]
       properties:
         id: { type: string, pattern: "^evl_" }
         kind: { type: string, enum: [builtin, custom] }
         evaluator_type:
           type: string
           description: Built-in name, or phrase_check or llm_judge_custom.
-          examples: [intent_fulfillment, tool_call_correctness, kb_relevance, factual_consistency, process_reward, anomaly_detection, flow_step_completion, phrase_check, llm_judge_custom]
+          examples: [anomaly_detection, factual_consistency, flow_completion, intent_fulfillment, kb_relevance, audio_silence, node_dead_end, process_reward, stuck_loop_detector, tool_call_correctness, transition_correctness, latency_slo, phrase_check, llm_judge_custom]
         name: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$" }
         display_name: { type: string }
         description: { type: [string, "null"] }
-        scope: { type: string, enum: [call, turn, flow_node] }
+        scope: { type: string, enum: [call, turn, flow_node], description: Built-ins use call or turn; flow_node is reserved }
         cost_class: { type: string, enum: [free, llm_judge] }
+        output_kind: { type: string, enum: [class, anomaly, audio_quality, process_reward] }
         agent_types: { type: array, items: { type: string, enum: [single_prompt, flow] } }
         settings_schema:
           type: object
@@ -225,16 +265,16 @@ components:
       properties:
         question: { type: string, minLength: 5, maxLength: 1000 }
         pass_when: { type: string, enum: ["yes", "no"] }
-        judge_model: { type: string, description: Model id from the LLM catalog; defaults to the platform judge model }
+        judge_model: { type: string, description: One of GET /evaluators/judge-models; defaults to the default judge model }
     CustomConfig:
       oneOf:
         - { $ref: "#/components/schemas/PhraseCheckConfig" }
         - { $ref: "#/components/schemas/JudgeQuestionConfig" }
     CustomEvaluatorInput:
       type: object
-      required: [name, display_name, evaluator_type, config]
+      required: [display_name, evaluator_type, config]
       properties:
-        name: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$" }
+        name: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$", description: Derived from display_name when omitted (lowercase, non-alphanumerics to underscores, leading letter enforced) }
         display_name: { type: string, minLength: 1, maxLength: 80 }
         description: { type: [string, "null"], maxLength: 500 }
         evaluator_type: { type: string, enum: [phrase_check, llm_judge_custom] }

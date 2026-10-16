@@ -44,6 +44,22 @@ selection count survives paging.
 7. **Given** calls produced by simulations, **When** the operator views history without changing
    the origin filter, **Then** those calls are hidden; switching the origin filter to include
    simulated calls shows them with a "Simulated" tag.
+8. **Given** the list, **When** the operator opens the rows-per-page control, **Then** it offers
+   10, 20 (default), 50 and 100.
+9. **Given** status, agent and own-label filters applied, **When** the list renders, **Then**
+   three chips show (one per filter, the label included), the filter badge reads 3, and an own
+   label of "Any" adds no chip and is not counted.
+10. **Given** a call from +1 555 123 4567, **When** the operator types "+1555" or "1 (555)" in the
+    From number filter, **Then** the call is found: the plus sign reaches the server intact and
+    spaces, dashes and brackets are ignored.
+11. **Given** the viewer's timezone is Asia/Kolkata and a call started at 2026-09-30 20:00 UTC,
+    **When** the operator filters the single date 2026-10-01, **Then** the call is included,
+    because dates are calendar days in the viewer's timezone and the end date is inclusive.
+12. **Given** the column menu, **When** the operator hides Summary and Analysis, **Then** those
+    columns disappear and stay hidden on the next visit in the same browser; call ID, start time
+    and status cannot be hidden.
+13. **Given** a filtered and sorted list of 120 calls, **When** the operator exports, **Then** a
+    CSV with those 120 rows in the same order and the visible columns downloads.
 
 ---
 
@@ -121,6 +137,11 @@ for "last 7 days" and for one agent.
    reads "No evaluator runs in this period. Turn on quality checks for an agent to see pass rates."
 6. **Given** the operator's browser timezone is Asia/Kolkata, **When** a call starts at 23:30 UTC,
    **Then** it is counted on the next calendar day in the daily series.
+7. **Given** the dashboard on "Last 30 days", **When** the operator picks "7d" or another agent,
+   **Then** every section reloads for the new selection without a separate apply step, and the
+   active selection shows as chips with "Clear all" returning to the defaults.
+8. **Given** a loaded dashboard, **When** the operator presses Refresh, **Then** every section
+   (KPIs, charts, quality and agent health) reloads and the "Updated" time changes.
 
 ---
 
@@ -179,6 +200,9 @@ another workspace's agent returns nothing from that workspace.
    refused with an "add funds" message and nothing is charged.
 5. **Given** the same request retried after a network error with the same request key, **When** it
    arrives twice, **Then** the workspace is charged once.
+6. **Given** a question that fails, **When** the error shows, **Then** it names the cause and the
+   next step (add funds when out of credit, retry when the service timed out or is unavailable,
+   example questions when the data cannot answer it) and the typed question stays in the input.
 
 ---
 
@@ -245,8 +269,8 @@ applied.
 
 **Call history**
 
-- **FR-001**: System MUST list the workspace's calls newest first with pagination (default 20 per
-  page, maximum 100) and report total count and total pages.
+- **FR-001**: System MUST list the workspace's calls newest first with pagination (page sizes 10,
+  20, 50 and 100; default 20) and report total count and total pages.
 - **FR-002**: System MUST show for each call: call ID, start time, agent ID, agent name at call
   time, from and to numbers, channel, disconnect reason, duration, status, cost, average turn
   latency, recording availability, summary, sentiment, analysis values, evaluation outcome and the
@@ -344,6 +368,28 @@ applied.
 - **FR-033**: Voice copilot usage MUST be recorded per workspace as feature usage (raw cost), with
   the billable amount set by the pricing catalog (zero by default).
 
+**Live UI walkthrough additions (2026-10-16)**
+
+- **FR-034**: Users MUST be able to hide and show call list columns; the choice MUST persist in the
+  browser; call ID, start time and status MUST always be shown.
+- **FR-035**: Users MUST be able to export the current filtered and sorted call list as CSV (at
+  most 10,000 rows, visible columns, no transcript text); larger results MUST be refused with the
+  limit and a hint to narrow the filters.
+- **FR-036**: Every applied call filter MUST appear as a removable chip, the filter count MUST equal
+  the number of chips, and a filter left at "Any" MUST count as not applied.
+- **FR-037**: Filter values MUST reach the server unchanged (a leading plus sign or a space never
+  altered in transit). Phone number filters MUST ignore spaces, dashes and brackets, treat the
+  leading plus as optional, and match numbers that start with the typed digits.
+- **FR-038**: Date filters MUST be calendar dates in the viewer's timezone with an inclusive end
+  date; the server MUST receive the dates and the timezone and resolve them itself.
+- **FR-039**: Dashboard period and agent changes MUST reload every section without a separate
+  apply step (a custom range applies once both dates are valid). Refresh MUST reload every
+  section and show when the data was last updated.
+- **FR-040**: The dashboard MUST show the active period and agent selection as chips with a
+  "Clear all" that restores the defaults.
+- **FR-041**: Analytics assistant errors MUST state the cause and the next step (add funds, retry,
+  or examples of answerable questions) and MUST keep the typed question for retry.
+
 ### Key Entities
 
 - **Call (read view)**: one conversation as shown to operators; identity, agent and agent version,
@@ -396,3 +442,9 @@ applied.
 - The analytics charge per question and the voice copilot rate come from the pricing catalog (001).
 - Recording retention is a workspace setting owned by 001; this feature honours it.
 - Voice commands are English only in v1.
+- The analytics assistant lives only in the floating panel (with an expanded view); there is no
+  separate assistant page.
+- Call direction and transport are one filter (channel: web, inbound phone, outbound phone,
+  WhatsApp) rather than separate type and channel filters.
+- Own-label values follow 007-quality-evals (good, bad, unannotated in v1); the filter offers
+  whatever values 007 defines.

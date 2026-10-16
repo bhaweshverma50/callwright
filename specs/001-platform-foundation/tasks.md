@@ -61,6 +61,8 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [ ] T025 Run `scripts/assemble_contracts.py` and generate `apps/web/src/api/schema.d.ts`; add the typed client with auth header and refresh-on-401 in `apps/web/src/api/client.ts`
 - [ ] T026 [P] Create the query client and router skeleton in `apps/web/src/app/queryClient.ts` and `apps/web/src/app/router.tsx` (public and protected route groups)
 - [ ] T027 [P] Create design-system primitives in `apps/web/src/components/` (`Button.tsx`, `Input.tsx`, `Dialog.tsx`, `Table.tsx`, `Toast.tsx`, `Money.tsx`, `EmptyState.tsx`) with Tailwind tokens and light/dark themes
+- [ ] T091 Id and error hygiene (FR-019) in `services/api/app/core/ids.py` and `services/api/app/core/errors.py`: typed path-id dependencies per prefix that turn malformed ids into 404 `not_found` before any query; a catch-all handler that returns a generic 500 problem with `trace_id` (OpenTelemetry trace id) and logs the exception server-side; database, driver and vendor exception text never serialised
+- [ ] T092 [P] Contract sweep in `services/api/tests/contract/test_id_hygiene.py`: for every assembled path with an `{..._id}` parameter, a malformed id and an unknown well-formed id both return 404 problem+json; injected internal faults return 500 with `trace_id` and no exception text (grows as later features add paths)
 
 **Checkpoint**: API boots, health passes contract test, ledger writer passes money tests, web app renders an empty router.
 
@@ -95,6 +97,12 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [ ] T043 [P] [US1] Build `apps/web/src/routes/dashboard/DashboardPlaceholder.tsx` (empty state, replaced by 006) and `apps/web/src/routes/placeholders/AreaPlaceholder.tsx` for areas whose spec has not shipped
 - [ ] T044 [P] [US1] Build public pages `apps/web/src/routes/public/Home.tsx`, `Enterprise.tsx` (contact link from `VITE_SALES_CONTACT_URL`), `Privacy.tsx`, `Terms.tsx` with Callwright copy (FR-016)
 - [ ] T045 [US1] Extend `services/api/tests/integration/test_rls_isolation.py` for `users` and `workspaces`
+- [ ] T093 [US1] Settings page (FR-017) in `apps/web/src/routes/settings/SettingsPage.tsx`: workspace name, recording default switch, read-only concurrency limit and email, Save with confirmation toast; add Settings and Sign out entries to `apps/web/src/app/UserMenu.tsx`; route `/settings` in `apps/web/src/app/router.tsx`
+- [ ] T094 [P] [US1] Integration test in `services/api/tests/integration/workspaces/test_settings.py`: `PATCH /v1/workspaces/current` updates `name` and `recording_default` independently, rejects empty name with 422 and leaves the row unchanged, `GET /v1/me` returns `recording_default` and `concurrency_limit`
+- [ ] T095 [P] [US1] Not-found view (FR-018) `apps/web/src/routes/NotFound.tsx` as the router catch-all inside the shell, plus `apps/web/src/api/problems.ts` `problemMessage(problem, recordKind)` that maps problem codes to plain messages (used by `Toast.tsx`, `ErrorSummaryDialog.tsx` and record pages; never renders status codes or transport text)
+- [ ] T096 [P] [US1] Navigation details (FR-005) in `apps/web/src/app/NavRail.tsx` and `apps/web/src/app/BalanceChip.tsx`: collapsed by default, tooltips while collapsed, "Quality" and "Feedback" section headers, expand state in `localStorage` (wrapped in try/catch), balance chip as a link to `/billing` with three-decimal display via `Money.tsx`
+- [ ] T097 [P] [US1] Playwright journey in `apps/web/tests/e2e/shell.spec.ts`: first page load issues no feature-token requests (only identity and balance reads, FR-020), unknown route shows the not-found view, `/agents/agt_bad` style addresses show a plain "not found" message, settings save persists after reload, balance chip opens Billing
+- [ ] T098 [US1] Lazy feature credentials (FR-020): document in `apps/web/src/api/client.ts` that feature token hooks (`useLazyToken(feature)`) fetch on first use only, and add the ESLint rule config in `apps/web/.eslintrc.cjs` that forbids token queries in `Shell.tsx` and route loaders
 
 **Checkpoint**: US1 independently demoable (quickstart section 2).
 
@@ -123,6 +131,7 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [ ] T055 [US2] Implement `services/api/app/billing/schemas.py` and routes in `services/api/app/billing/router.py` (balance, checkout-sessions with `Idempotency-Key`, transactions list and detail, `POST /v1/webhooks/stripe`)
 - [ ] T056 [US2] Implement the nightly `reconcile_balances` job and its CLI entry (`python -m app.billing.jobs reconcile --now`) in `services/api/app/billing/jobs.py` (SC-003)
 - [ ] T057 [P] [US2] Build `apps/web/src/routes/billing/BillingPage.tsx` with `TopUpCard.tsx` (presets 25/100/500/1000, custom with minimum $5) and the post-checkout polling (2 s for up to 30 s)
+- [ ] T101 [P] [US2] Top-up input rules (US2.5, US2.6, FR-008) in `apps/web/src/routes/billing/TopUpCard.tsx`: inline errors for below $5, above $10,000 and more than two decimals; the add button shows why it is disabled; preset chips only fill the amount; one "Add funds $X" button starts checkout (disabled while pending); Vitest in `TopUpCard.test.tsx` and a $10,001 case added to `services/api/tests/unit/billing/test_checkout_amounts.py` (T047)
 - [ ] T058 [P] [US2] Build `apps/web/src/routes/billing/TransactionsTable.tsx` (date, type, amount, balance after, call id, description; 20 per page; newest first)
 - [ ] T059 [US2] Switch `apps/web/src/app/BalanceChip.tsx` to the shared balance query with refetch on focus
 - [ ] T060 [US2] Extend `services/api/tests/integration/test_rls_isolation.py` for `credit_transactions` and `checkout_sessions`
@@ -156,6 +165,7 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [ ] T072 [P] [US3] Build `apps/web/src/routes/billing/CostBreakdownPopover.tsx` (header `m:ss · X.XXm · $Y/m avg`, base lines, surcharge block with multiplier) and attach it to call-charge rows in `TransactionsTable.tsx`
 - [ ] T073 [P] [US3] Build `apps/web/src/routes/public/Pricing.tsx` and `PricingCalculator.tsx` (STT, model and voice pickers from catalog; minutes slider; five-component explainer; surcharge rule and worked example)
 - [ ] T074 [US3] Extend `services/api/tests/integration/test_rls_isolation.py` for `call_costs`
+- [ ] T100 [P] [US3] Money test for the launch seed in `services/api/tests/unit/pricing/test_seed_v1.py`: version 1 contains exactly the 32 rows of data-model.md (component, provider, model, rate, bundles), one platform row at 0.0500, NC rows at 0.0000, LLM bundles 20,000 and 200, TTS bundle 750; the reference call still prices to 0.477 with seed rates (FR-022, SC-004)
 
 **Checkpoint**: Pricing is shared by quote, calculator and call charge from one engine.
 
@@ -176,8 +186,9 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 ### Implementation for User Story 4
 
 - [ ] T078 [US4] Implement `charge_feature()` in `services/api/app/billing/service.py`
+- [ ] T102 [P] [US4] Money test for zero-amount feature charges (FR-023) in `services/api/tests/unit/billing/test_charge_feature_zero.py`: amount 0 writes one `usage_events` row with `txn_id` null and no `credit_transactions` row, balance unchanged, a repeat with the same key is a no-op, the row appears in the usage report with billable 0; a positive amount still writes both rows; `charge_feature()` accepts 0 even when the balance is at or below zero (nothing is spent); negative amounts rejected
 - [ ] T079 [US4] Implement the report query in `services/api/app/usage/service.py`, schemas in `services/api/app/usage/schemas.py`, route in `services/api/app/usage/router.py`
-- [ ] T080 [P] [US4] Build `apps/web/src/routes/billing/UsagePanel.tsx` (window picker defaulting to last 30 days, rows per family with expandable details, empty state "No usage charges yet in this window" with dates)
+- [ ] T080 [P] [US4] Build `apps/web/src/routes/billing/UsagePanel.tsx` (date-range picker defaulting to last 30 days, max 366 days, end-before-start refused inline, rows per family with expandable details, empty state "No usage charges yet in this window" with dates)
 - [ ] T081 [P] [US4] Add the dev-only seeder `services/api/app/usage/seed_demo.py` used by quickstart section 6
 - [ ] T082 [US4] Extend `services/api/tests/integration/test_rls_isolation.py` for `usage_events`
 
@@ -192,6 +203,7 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [ ] T085 [P] Leave guard and aggregated error dialog primitives in `apps/web/src/components/LeaveGuard.tsx` and `apps/web/src/components/ErrorSummaryDialog.tsx` (reused by 002)
 - [ ] T086 Performance check: `GET /v1/me` and `GET /v1/billing/balance` p95 under 150 ms with 1M ledger rows, recorded in `services/api/tests/integration/test_perf_smoke.py`
 - [ ] T087 Run every step of `specs/001-platform-foundation/quickstart.md` and fix gaps
+- [ ] T099 [P] Leave-guard coverage (FR-021) in `apps/web/tests/e2e/leave-guard.spec.ts`: a never-saved form and an edited saved form both prompt on in-app navigation, reload and tab close (`beforeunload`); "Stay" keeps input, "Leave" discards; a clean form leaves without a prompt
 
 ---
 

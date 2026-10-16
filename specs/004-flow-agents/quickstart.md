@@ -94,3 +94,33 @@ Pass criteria: engine overhead per move p95 at most 150 ms; flow agent turns on 
 stack p50 at most 800 ms and p95 at most 1500 ms, and no regression greater than 5% against the
 single-prompt baseline on turns without a move. Results are written to
 `services/voice-worker/tests/harness/bench/results/` and compared in CI.
+
+## 8. Live walkthrough deltas (FR-040 to FR-058)
+
+```bash
+# Atomic save: graph plus a changed setting; a stale agent draft revision stores nothing
+curl -s -X PUT $API/flows/$FLOW -H "Authorization: Bearer $TOKEN" -H 'If-Match: "2"' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Clinic intake","graph":'"$(jq .flow.graph /tmp/flow.json)"',
+       "agent_settings":{"expected_draft_revision":1,"changes":{"call_behavior":{"ring_duration_ms":4000}}}}'
+# expect 200 with agent_draft_revision 2; GET the agent (002) and confirm max_duration_s,
+# webhook_timeout_ms and pronunciation entries are unchanged
+# repeat with expected_draft_revision 1: expect 412 agent_draft_changed and flow revision unchanged
+```
+
+Browser checks:
+
+1. Label a connection from the Agent node "Route To Billing!": the preview shows
+   `route_to_billing`. Label it "!!!": inline refusal.
+2. Select a node, press Delete: it disappears with its connections; click Undo in the notice.
+   Press Backspace inside a text field: only text is removed.
+3. Transfer node destination "12345": inline message; Save works; Publish lists
+   `E_INVALID_FIELD`. Task max rounds 25: same behaviour.
+4. Classify node with Sales and Support: two output handles; the connection panel offers a
+   category list and no condition field; adding "sales" is refused.
+5. Start node agent-first with a generated greeting pointing at a Say node: `E_GREETING_SOURCE`.
+6. Open `/agents/<agent_id>/flow?configure=call-behavior`: Call behaviour opens with ring
+   duration; switch who speaks first in Model and confirm the Start node changed.
+7. Make an unsaved edit and start a test call: the save prompt appears first.
+8. Ask the assistant to insert a node between two nodes: the new node does not overlap and the
+   other nodes stay where they were.

@@ -82,6 +82,15 @@ safely.
 - [ ] T029 [P] [US1] Implement the edge panel with trigger-aware fields and the "how the agent sees this" preview in apps/web/src/routes/flows/panels/EdgePanel.tsx
 - [ ] T030 [US1] Implement the builder page (toolbar, save, leave guard, reload-on-conflict dialog) in apps/web/src/routes/flows/FlowBuilderPage.tsx
 - [ ] T031 [US1] Register `/agents/new/flow` and `/agents/:agentId/flow` in apps/web/src/app/router.tsx and route the agent-type chooser's Flow option to `/agents/new/flow`
+- [ ] T100 [P] [US1] Vitest tests for Delete and Backspace deleting the selection (ignored while typing in a field), one undo step with an Undo notice, and toolbar controls having accessible names and tooltips in apps/web/src/routes/flows/canvas/FlowCanvas.test.tsx
+- [ ] T101 [US1] Implement the canvas toolbar (Auto-layout, Fit to screen, zoom in, zoom out, tooltips) in apps/web/src/routes/flows/canvas/CanvasToolbar.tsx and keyboard delete with the Undo notice in apps/web/src/routes/flows/canvas/FlowCanvas.tsx (makes T100 pass)
+- [ ] T102 [P] [US1] Integration test for `PUT /flows/{flow_id}` with `agent_settings`: graph and settings stored together or not at all, untouched settings unchanged, name renames the agent, 412 `agent_draft_changed`, 422 for `start_speaker` in changes, in services/api/tests/integration/flows/test_save_with_agent_settings.py
+- [ ] T103 [US1] Implement `agent_settings` handling in `save_flow` (one transaction, deep merge through 002 `agents.service.update_draft` with expected revision, agent rename, `agent_draft_revision` in responses) in services/api/app/flows/service.py and services/api/app/flows/router.py (makes T102 pass)
+- [ ] T104 [P] [US1] Field rules for node panels (ranges, E.164, absolute https URL, JSON parse errors with line) with tests in apps/web/src/routes/flows/panels/node-forms/fieldRules.ts and apps/web/src/routes/flows/panels/node-forms/fieldRules.test.ts
+- [ ] T105 [P] [US1] Classify node with one handle per category, category picker and routing explanation on its connections, category rename carrying connections, inline category name errors, in apps/web/src/routes/flows/canvas/nodes/ConditionNode.tsx and apps/web/src/routes/flows/panels/EdgePanel.tsx
+- [ ] T106 [P] [US1] Node card one-line summaries and the expanded multiline editor in apps/web/src/routes/flows/canvas/nodes/NodeSummary.tsx and apps/web/src/routes/flows/panels/node-forms/ExpandEditor.tsx
+- [ ] T107 [P] [US1] Node form details: Start user-first optional greeting and generated-greeting note, Task field list or JSON Schema toggle, rule value hidden for `exists`, Extract name conversion with placeholder list, in apps/web/src/routes/flows/panels/node-forms/
+- [ ] T108 [US1] Builder header (name bound to the agent name with inline empty check, copy agent ID, version chip opening 002 history, settings, Save, Publish), side panel switching between assistant/test tabs and selection settings, and save-before-test prompt, in apps/web/src/routes/flows/FlowBuilderPage.tsx
 
 **Checkpoint**: A flow agent can be created, edited and saved; reload restores it exactly
 
@@ -112,6 +121,8 @@ safely.
 - [ ] T043 [P] [US2] Implement debounced validation (600 ms) in apps/web/src/routes/flows/hooks/useValidate.ts
 - [ ] T044 [P] [US2] Implement the problem list with click-to-select and inline remove for dangling edges in apps/web/src/routes/flows/panels/ValidationPanel.tsx
 - [ ] T045 [P] [US2] Implement the publish dialog (release notes, warning count, error block) and compile preview view in apps/web/src/routes/flows/panels/PublishDialog.tsx and apps/web/src/routes/flows/panels/CompilePreview.tsx
+- [ ] T109 [P] [US2] Validation and naming tests: `E_GREETING_SOURCE`, `E_INVALID_FIELD` (max rounds 0 and 25, number "12345", URL "notaurl", invalid JSON), `E_CATEGORY_NAME`, `E_TRANSITION_NAME_EMPTY`, no label needed on start, say and extract edges, and names for "Route To Billing!", "Route to billing" and "!!!" from shared vectors services/api/tests/unit/flows/fixtures/transition_names.json, in services/api/tests/unit/flows/test_validation.py and services/api/tests/unit/flows/test_transitions.py
+- [ ] T110 [US2] Implement the four new codes in services/api/app/flows/validation.py, the no-double-prefix rule in services/api/app/flows/transitions.py, and the TypeScript preview copy in apps/web/src/routes/flows/panels/transitionName.ts checked against the same vectors (makes T109 pass)
 
 **Checkpoint**: Valid flows publish into versions; invalid ones are blocked with precise issues
 
@@ -183,6 +194,8 @@ settings drawer.
 - [ ] T081 [P] [US4] Implement the overrides section (each field with "use agent default", temperature and stability presets) in apps/web/src/routes/flows/panels/node-forms/OverridesSection.tsx
 - [ ] T082 [P] [US4] Implement the node tool picker over the 005 tool library in apps/web/src/routes/flows/panels/node-forms/ToolPicker.tsx
 - [ ] T083 [P] [US4] Implement the global settings drawer (`?configure=<tab>`; model, voice, call behaviour, tools, knowledge, quality checks and persona prompt, reusing 002, 005 and 007 forms) in apps/web/src/routes/flows/panels/GlobalSettingsDrawer.tsx
+- [ ] T111 [P] [US4] Global settings modal: seven deep-linked sections, save-mode label per section with unsaved markers, ring duration in Call behaviour, who speaks first bound to the Start node, Advanced including 007's analysis variables form, draft sections collected into `agent_settings` for Save, in apps/web/src/routes/flows/panels/GlobalSettingsDrawer.tsx
+- [ ] T112 [P] [US4] Tool picker empty state with a create-tool shortcut in apps/web/src/routes/flows/panels/node-forms/ToolPicker.tsx; override rules (provider change clears voice and model, fixed-temperature display, language override) in apps/web/src/routes/flows/panels/node-forms/OverridesSection.tsx
 
 **Checkpoint**: Node overrides and context strategies verified in the harness
 
@@ -208,6 +221,7 @@ settings drawer.
 - [ ] T090 [P] [US5] Implement diff styling for added, removed and updated nodes and edges in apps/web/src/routes/flows/canvas/diffOverlay.ts
 - [ ] T091 [P] [US5] Implement the assistant chat panel (session-only history, retry on timeout) in apps/web/src/routes/flows/assistant/AssistantPanel.tsx
 - [ ] T092 [US5] Implement the pending-changes bar with Approve and Decline, canvas lock while pending, and issue list in apps/web/src/routes/flows/assistant/ProposalBar.tsx (makes T087 pass)
+- [ ] T113 [US5] Place assistant-added nodes next to their neighbours without overlap and without moving existing nodes (data-model section 7) in services/api/app/flows/assistant.py, with cases in services/api/tests/unit/flows/test_assistant_ops.py
 
 **Checkpoint**: All five stories independently functional
 
@@ -224,6 +238,10 @@ settings drawer.
 - [ ] T099 Run every quickstart.md scenario and record results in specs/004-flow-agents/quickstart.md
 
 ---
+
+## Cross-spec additions (architecture v1.2)
+
+- [ ] T114 Node overrides (model, voice temperature, speed, volume, STT) validate and clamp through 002's `agents.service.validate_override()` and shared range table; node panel sliders read their ranges from the same table (no 0 to 1 control mapped onto a 0 to 2 field) in `services/api/app/flows/service.py` and `apps/web/src/routes/flows/panels/`; contract test in `services/api/tests/contract/test_flows_contract.py`
 
 ## Dependencies & Execution Order
 
@@ -284,5 +302,6 @@ real call. Task, extract, webhook and transfer handlers complete US3 once 005's 
 
 ### Notes
 
-- Task count: 99 (Setup 4, Foundational 6, US1 21, US2 14, US3 27, US4 11, US5 9, Polish 7)
+- Task count: 113 (Setup 4, Foundational 6, US1 30, US2 16, US3 27, US4 13, US5 10, Polish 7).
+  T100 to T113 come from the live UI walkthrough (research/ui-walkthrough/DELTA-resolution-004-006.md)
 - T066 edits a 003-owned file; coordinate the change with the 003 owners

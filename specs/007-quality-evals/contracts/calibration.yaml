@@ -21,7 +21,7 @@ paths:
           schema: { type: string, enum: [current, all], default: current }
       responses:
         "200":
-          description: One row per evaluator (and per flow step for flow_node evaluators) with at least one pair
+          description: One row per evaluator (and per flow node for evaluators whose items name a flow node) with at least one pair
           content:
             application/json:
               schema:

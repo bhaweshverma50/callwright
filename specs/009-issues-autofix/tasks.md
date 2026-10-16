@@ -67,6 +67,9 @@ Each test task must fail before its implementation task starts.
 - [ ] T022 [US1] Endpoints detect, detection, list, get, samples in services/api/app/issues/router.py
 - [ ] T023 [P] [US1] Issues page (agent picker, window 7/14/30/90, scope, detect with progress, status filter, list) in apps/web/src/routes/issues/IssuesPage.tsx
 - [ ] T024 [US1] Issue detail page summary and samples with links to calls and calibration warning in apps/web/src/routes/issues/IssueDetailPage.tsx
+- [ ] T059 [P] [US1] Integration test for list filters: `window_days` keeps only issues last seen in the window, `scope=real` hides mostly-simulated issues, combined with agent and status in services/api/tests/integration/test_issue_list_filters.py
+- [ ] T060 [US1] Add the `window_days` filter (index on `(workspace_id, agent_id, last_seen_at)`) to the list query in services/api/app/issues/service.py and services/api/app/issues/router.py
+- [ ] T061 [P] [US1] Issues page filter state: agent, status, window and source in the URL; every change refetches the list; window and source passed to Detect; Detect disabled with hint until an agent is chosen; readable status labels; web test asserting one list request per filter change in apps/web/src/routes/issues/IssuesPage.tsx and apps/web/src/routes/issues/IssuesPage.test.tsx
 
 **Checkpoint**: US1 delivers a usable issue list on its own.
 

@@ -201,11 +201,13 @@ words actually played when interrupted.
   "llm": [{"provider": "azure_openai", "model": "gpt-5.1", "input_tokens": 102348,
            "cached_input_tokens": 80000, "output_tokens": 745}],
   "tts": [{"provider": "elevenlabs", "model": "eleven_flash_v2_5", "characters": 2555}],
-  "nc":  [{"provider": "sanas_vi", "audio_ms": 271000}]
+  "nc":  [{"provider": "sanas", "model": "vi", "audio_ms": 271000}]
 }
 ```
 
-Arrays allow more than one model per call (a flow node may override the model, 004).
+Arrays allow more than one model per call (a flow segment may override the model, voice or
+speech recognition, 004, FR-046). `stt[].model` is always the model actually used: Auto is
+reported as the model it resolved to for the language (FR-045), so pricing uses that rate.
 Counters are cumulative and monotonically non-decreasing; the API rejects a snapshot whose
 `seq` is lower than `usage_seq`.
 
@@ -234,7 +236,9 @@ eou_delay_avg_ms, llm_ttft_avg_ms, tts_ttfb_avg_ms}` computed from `call_events`
   (AgentConfig from 002), `variables`, `limits {end_on_silence_s, max_duration_s,
   ring_duration_ms}`, `features {voicemail, dtmf, background_audio, pronunciation}`,
   `recording_enabled` (informational; egress is started by the API, never by the worker),
-  `background_audio_url`, `outbound_dial` (set by 010), `heartbeat_interval_s` (10).
+  `background_audio_url`, `outbound_dial` (set by 010), `heartbeat_interval_s` (10),
+  `stt_resolved_model` (Auto resolved by `voices.service.resolve_auto_stt` from 002 at claim),
+  `controls` (002 range table, used to clamp segment overrides).
 - **TurnRecord**: `turn_index`, `user_end_of_speech_at`, `agent_first_audio_at`, component
   metrics, `interrupted`, `played_text`.
 - **CallControl** state: `ending`, `disconnect_reason` (first writer wins), `pending_digits`.
@@ -252,3 +256,6 @@ eou_delay_avg_ms, llm_ttft_avg_ms, tts_ttfb_avg_ms}` computed from `call_events`
   `webhook_timeout_ms` 1,000..30,000, `dtmf.timeout_ms` 1,000..10,000, `dtmf.digits` 1..99,
   voicemail message max 500 chars. Out-of-range values in a version are clamped and a warning
   event is recorded (002 validates on save; this is defence in depth).
+- Segment overrides (FR-046): `tts.speed`, `tts.expressiveness`, `tts.volume`, `llm.temperature`
+  and the speech recognition language use the same `controls` ranges and steps as the agent;
+  out-of-range values are clamped and a `system` event `override_clamped` is recorded.

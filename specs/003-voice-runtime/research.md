@@ -121,9 +121,12 @@ first task that touches them; none changes the design if it turns out differentl
   `(kind, provider)` to the module; unknown pairs raise `UnsupportedVendor`. The API checks the
   same provider list (exported from the worker package as data, `adapters/catalog.json`) during
   admission so unsupported vendors are refused before a room exists.
-  Initial set: STT `deepgram`, `assemblyai`, `sarvam`; LLM `openai`, `azure_openai`,
-  `anthropic`; TTS `elevenlabs`, `cartesia`, `fishaudio`, `sarvam`; NC `sanas_vi`, `sanas_st`,
-  `ai_coustics`, `none`. Vendors with a maintained LiveKit plugin wrap it; Fish Audio and Sanas
+  Initial set (matches 002's launch catalog): STT `deepgram`, `assemblyai`, `sarvam`; LLM
+  `openai`, `azure_openai`; TTS `elevenlabs`, `cartesia`, `fishaudio`; NC `sanas` (models `vi`
+  voice isolation and `st` standard), `ai_coustics` (model `standard`), and the internal
+  passthrough `none` used when the config is `null`. Sarvam TTS is not offered at launch (no price
+  row, ElevenLabs covers the Indic languages); Anthropic stays an API-side gateway option (002)
+  and is not a call-time vendor. Vendors with a maintained LiveKit plugin wrap it; Fish Audio and Sanas
   are thin adapters over the vendor streaming APIs implementing the framework's TTS and audio
   filter interfaces. Verify at implementation: plugin availability for Fish Audio and
   ai-coustics.
@@ -281,3 +284,27 @@ first task that touches them; none changes the design if it turns out differentl
 - **Decision**: OpenTelemetry in both deployables; root span `call` with attribute `call_id`,
   child span per turn with the latency fields as attributes, and spans for claim, events posts
   and each pipeline step. Per-turn latency is also stored in `call_events` (Principle II).
+
+## R22. Auto speech recognition and segment overrides (live UI findings, 2026-10-16)
+
+- **Decision**: Auto (`stt.model = null`) is resolved once per call, at claim, by 002's
+  `voices.service.resolve_auto_stt(provider, language)` using the catalog `auto_rule`
+  (Deepgram: `nova-3` for English variants, `nova-2` otherwise; AssemblyAI:
+  `universal-streaming` for English, `universal-streaming-multilingual` for es, fr, de, it, pt;
+  Sarvam: `saarika:v2.5`). The resolved id goes into RuntimeConfig and usage meters, so 001 prices
+  the model actually used (the reference priced Deepgram Auto at the Nova-3 rate even when it ran
+  Nova-2 for other languages).
+- **Decision**: The worker exposes `CallControl.apply_overrides(overrides)` to the FlowRunner
+  (004): it swaps the LLM, the TTS stream (provider, model, voice, speed, expressiveness, volume)
+  and the STT stream (provider, model, language, re-resolving Auto) at the next turn boundary,
+  clamps values to the shared `controls` table, emits `segment_override` or `override_clamped`
+  system events, and keys usage meters by model. Swaps happen between turns, never mid-utterance.
+- **Decision**: Browser test calls request microphone permission in the test panel before
+  calling `POST /v1/sessions/web-call`; a denial never reaches the API. The same rule is offered to
+  006 for the voice copilot (the reference showed only a toast on hold-to-talk and minted its token
+  on every page load).
+- **Rationale**: Exact pricing, one range table across agent and node settings, and no billed or
+  counted calls for a browser that cannot send audio.
+- **Latency (Principle II)**: STT swaps reconnect a stream at a turn boundary; T117 adds a harness
+  scenario that asserts the first turn after a swap stays inside the p95 budget.
+

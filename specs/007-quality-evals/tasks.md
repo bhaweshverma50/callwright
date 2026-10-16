@@ -27,6 +27,8 @@ has a contract test.
 - [ ] T003 Create migration for `analysis_variables`, `call_analyses`, `evaluators`, `evaluator_versions`, `agent_eval_settings`, `evaluator_runs`, `evaluator_run_groups`, `evaluator_result_items`, `annotations`, RLS policies (built-in SELECT with `workspace_id IS NULL`), indexes, and replacement of `analytics.evaluator_verdicts_v` in services/api/app/migrations/versions/0701_quality_evals.py
 - [ ] T004 [P] Register routers for analysis_vars, evaluators, evals, annotations, review, calibration in services/api/app/main.py
 - [ ] T005 [P] Fake LLM client with fixture lookup by prompt hash for tests in services/api/tests/fakes/fake_llm.py
+- [ ] T072 [P] Add `av` (PyAV) and `numpy` to services/api/pyproject.toml and the API image system libraries in services/api/Dockerfile
+- [ ] T073 [P] Add settings `EVAL_JUDGE_MODELS` (first entry is the default judge) and `EVAL_JUDGE_PASS_CUTOFF=0.5` in services/api/app/core/config.py
 
 ---
 
@@ -39,6 +41,7 @@ has a contract test.
 - [ ] T010 [P] Unit tests for judge framing and verdict derivation in services/api/tests/unit/evaluators/test_judge.py
 - [ ] T011 Contract test harness for `specs/007-quality-evals/contracts/*.yaml` in services/api/tests/contract/conftest.py (extend 006 harness)
 - [ ] T012 [P] Seed script for quickstart fixtures in services/api/scripts/seed_007.py
+- [ ] T074 Extend migration services/api/app/migrations/versions/0701_quality_evals.py with `evaluators.output_kind`, skip reason `not_sampled`, result item `start_ms`/`duration_ms`, and table `call_embeddings` (vector sized from 005's embedding dimension, HNSW cosine index, RLS)
 
 **Checkpoint**: scoring is proven; judge plumbing exists.
 
@@ -64,6 +67,8 @@ has a contract test.
 - [ ] T021 [US1] Endpoints in services/api/app/analysis_vars/router.py and services/api/app/analysis_vars/schemas.py
 - [ ] T022 [US1] Hook `analyze_call` into the post-call pipeline step list (003 pipeline registry) in services/api/app/calls/pipeline.py
 - [ ] T023 [P] [US1] Variables editor (type picker, choices, description, reorder, extraction model note) in apps/web/src/routes/agents/quality/AnalysisVariablesEditor.tsx
+- [ ] T089 [P] [US1] Unit test: choices sent with `boolean`, `string` or `number` are rejected with a field error; `choice` needs 2 to 20 in services/api/tests/unit/analysis_vars/test_service.py
+- [ ] T090 [US1] "Add variable" form: live snake_case normalisation with the resulting name shown (`toVariableName()` in apps/web/src/routes/agents/quality/variableName.ts), choices field shown only for the fixed-set type, Save enabled only when FR-046 holds; web tests ("Customer Mood" saves as `customer_mood`, choices hidden for yes/no and number) in apps/web/src/routes/agents/quality/AddVariableDialog.tsx and apps/web/src/routes/agents/quality/AddVariableDialog.test.tsx
 - [ ] T024 [US1] Integration test: scripted harness call produces summary, sentiment and values in services/api/tests/integration/test_post_call_quality.py
 
 ---
@@ -76,7 +81,7 @@ has a contract test.
 
 - [ ] T025 [P] [US2] Contract tests for evaluators list/get and evals endpoints in services/api/tests/contract/test_evaluators_contract.py and services/api/tests/contract/test_evals_contract.py
 - [ ] T026 [P] [US2] Unit tests for effective settings (defaults, overrides validated against schema min/max/options, headline limit 4) in services/api/tests/unit/evals/test_settings.py
-- [ ] T027 [P] [US2] Unit tests for each built-in with fixtures (applicability rules, n/a cases, anomaly rules with thresholds) in services/api/tests/unit/evaluators/test_builtins.py
+- [ ] T027 [P] [US2] Unit tests for each of the 12 built-ins with fixtures (agent-type applicability, n/a cases, judge cutoff, process reward items) in services/api/tests/unit/evaluators/test_builtins.py
 - [ ] T028 [P] [US2] Unit tests for runner charging (one charge per run ID, free never charged, skip on zero balance mid-run) in services/api/tests/unit/evals/test_runner_charging.py
 - [ ] T029 [P] [US2] Integration test for rerun concurrency (second request 409, superseded runs kept, history returned) in services/api/tests/integration/test_rerun_concurrency.py
 - [ ] T030 [P] [US2] Injection suite (25 calls with spoken instructions; verdicts equal the clean variants) in services/api/tests/integration/test_judge_injection.py
@@ -84,7 +89,7 @@ has a contract test.
 ### Implementation
 
 - [ ] T031 [P] [US2] Models for evaluators and versions in services/api/app/evaluators/models.py
-- [ ] T032 [P] [US2] Built-ins in services/api/app/evaluators/builtins/intent_fulfillment.py, tool_call_correctness.py, kb_relevance.py, factual_consistency.py, process_reward.py, anomaly_detection.py, flow_step_completion.py
+- [ ] T032 [P] [US2] Built-ins (catalog in data-model.md) in services/api/app/evaluators/builtins/anomaly_detection.py, factual_consistency.py, flow_completion.py, intent_fulfillment.py, kb_relevance.py, audio_silence.py, node_dead_end.py, process_reward.py, stuck_loop_detector.py, tool_call_correctness.py, transition_correctness.py, latency_slo.py
 - [ ] T033 [US2] Registry and startup sync (upsert built-ins, new version rows when `VERSION` rises) in services/api/app/evaluators/registry.py
 - [ ] T034 [US2] Catalog list/get endpoints in services/api/app/evaluators/router.py and services/api/app/evaluators/schemas.py
 - [ ] T035 [P] [US2] Models for settings, runs, run groups, result items in services/api/app/evals/models.py
@@ -96,6 +101,20 @@ has a contract test.
 - [ ] T041 [US2] Verdict diff endpoint in services/api/app/evals/router.py
 - [ ] T042 [P] [US2] Evaluator catalog and settings form generated from `settings_schema`, headline picker, cost badges in apps/web/src/routes/agents/quality/EvaluatorCatalog.tsx
 - [ ] T043 [P] [US2] Call drawer checks section (grouped verdicts, per-turn rows, summary chips, running state polling, rerun, history) in apps/web/src/routes/calls/quality/QualityChecks.tsx
+
+### Catalog details from the live walkthrough (FR-033 to FR-043)
+
+- [ ] T075 [P] [US2] Golden catalog test: `GET /v1/evaluators?agent_type=flow` returns exactly the 12 built-ins with scope, cost class, output kind, default on/off and every settings field (type, min, max, default) equal to the data-model.md catalog table; `agent_type=single_prompt` returns the 8 non-flow ones, in services/api/tests/contract/test_builtin_catalog.py
+- [ ] T076 [P] [US2] Unit tests for `audio_silence` with synthetic dual-channel WAV fixtures (silence only on one channel is not silence, run shorter than `min_silence_ms` ignored, 3,000 ms boundary, leading and trailing silence excluded, no recording gives n/a) in services/api/tests/unit/evaluators/test_audio_silence.py
+- [ ] T077 [P] [US2] Unit tests for flow checks (`flow_completion` end and transfer, `node_dead_end` item per node, `stuck_loop_detector` 3 visits pass and 4 fail, `transition_correctness` seeded shuffle and per-source-node items) in services/api/tests/unit/evaluators/test_flow_checks.py
+- [ ] T078 [P] [US2] Unit tests for `anomaly_detection` with fixed vectors (threshold boundary, window filter, below `min_sample_size` gives insufficient data, backfill capped at `backfill_per_run`) and for `latency_slo` (item per agent turn, n/a for simulated calls) in services/api/tests/unit/evaluators/test_anomaly_latency.py
+- [ ] T079 [P] [US2] Unit tests for sampling (deterministic per call and evaluator, roughly 20 of 100 at 20%, not charged, skipped `not_sampled`, reruns and dataset and simulation triggers bypass) in services/api/tests/unit/evals/test_sampling.py
+- [ ] T080 [P] [US2] Unit tests for settings validation (int rejects 2.5, sample rate 150 rejected with field message, judge model outside the list rejected, unknown key rejected, out-of-range stored override clamped and reported in `adjusted_fields`) in services/api/tests/unit/evals/test_settings.py
+- [ ] T081 [US2] Recording reader (storage stream, PyAV decode, 20 ms frame levels per channel) in services/api/app/evaluators/audio.py
+- [ ] T082 [US2] Call embeddings (normalised call text, 005 embedding adapter, upsert, backfill, KNN query, zero-billable `embedding` usage) in services/api/app/evals/embeddings.py
+- [ ] T083 [US2] Deterministic sampling in services/api/app/evals/sampling.py and its use in services/api/app/evals/runner.py
+- [ ] T084 [US2] Judge model list endpoint, `options_source` fill, `{default}` helper rendering and field-level 422 errors in services/api/app/evaluators/router.py and services/api/app/evals/settings.py
+- [ ] T085 [P] [US2] Check cards for the quality tab: immediate save on toggle (full PUT with saved values), per-card Discard and Save settings, stepper for `int`, pick list for judge models, inline range errors that disable Save, helper text from the schema default; web tests for sample rate 150 and Discard in apps/web/src/routes/agents/quality/EvaluatorCard.tsx and apps/web/src/routes/agents/quality/EvaluatorCard.test.tsx
 
 ---
 
@@ -141,6 +160,9 @@ has a contract test.
 - [ ] T060 [US5] Custom CRUD, versioning, soft delete and trial (charged `eval.llm_judge_custom`, keyed by Idempotency-Key) in services/api/app/evaluators/service.py
 - [ ] T061 [US5] Custom and trial endpoints (declare `/evaluators/trial` before `/evaluators/{evaluator_id}`) in services/api/app/evaluators/router.py
 - [ ] T062 [P] [US5] Custom evaluator editor dialog with call picker and trial result in apps/web/src/routes/evaluators/CustomEvaluatorDialog.tsx
+- [ ] T086 [P] [US5] Unit tests for machine-name derivation from the display name (spaces and punctuation to underscores, leading digit handled, conflict reported on the derived name) and blank description stored as null in services/api/tests/unit/evaluators/test_custom_service.py
+- [ ] T087 [US5] Derive `name` from `display_name` when omitted in services/api/app/evaluators/service.py
+- [ ] T088 [P] [US5] Two-step "Add custom check" flow (template cards, form with Back, Create enabled only when name plus pattern or question are filled, judge model pick list from the judge model list) with web tests in apps/web/src/routes/evaluators/CustomCheckTemplatePicker.tsx and apps/web/src/routes/evaluators/CustomEvaluatorDialog.tsx
 
 ---
 

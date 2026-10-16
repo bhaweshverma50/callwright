@@ -156,3 +156,13 @@ outside the module table. The assistant and copilot mount into the 001 shell fro
 | `CallQualityPort` interface with a null implementation | 006 must render quality data owned by 007, and 007 depends on 006 | Writing quality columns into 003's `calls` table makes two modules write one table; moving quality sections to 007 splits one page across contracts |
 | Separate DB role `cw_analytics_reader` and `analytics` schema views | Defence in depth for the assistant (FR-024), beyond RLS | RLS alone does not stop reads of non-tenant tables or writes if the compiler has a bug |
 | API-side STT command adapters separate from voice-worker adapters | Copilot needs credential minting and batch transcription, which the worker's streaming adapters do not do | Reusing worker adapters would pull LiveKit Agents into the API image |
+
+## Live UI walkthrough deltas (2026-10-16)
+
+Findings tagged [006] in `research/ui-walkthrough/DELTA.md` are resolved in
+`research/ui-walkthrough/DELTA-resolution-004-006.md`. Design consequences: `start_date`,
+`end_date` and `tz` on the call list (server-side day resolution), digit-prefix phone filters
+with expression indexes, a streamed CSV export endpoint (`GET /v1/calls/export`, 10,000-row cap),
+client-only column visibility, dashboard filters applied on change with a full refresh, and
+specific assistant error states (FR-034 to FR-041). The billing page findings in the same
+section belong to 001-platform-foundation.

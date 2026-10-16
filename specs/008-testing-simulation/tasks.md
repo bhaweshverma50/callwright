@@ -84,6 +84,9 @@ implementation and confirm it fails.
 - [ ] T040 [P] [US1] Generate dialog with draft review and save in apps/web/src/routes/agents/testing/GenerateDialog.tsx
 - [ ] T041 [P] [US1] Import dialog with dry-run preview and template download in apps/web/src/routes/agents/testing/ImportDialog.tsx
 - [ ] T042 [US1] Run panel with polling, summary toast, result rows with judge reasoning, tool calls and manual override in apps/web/src/routes/agents/testing/TestRunPanel.tsx and apps/web/src/routes/agents/testing/ResultRow.tsx
+- [ ] T090 [US1] Category colour and ordering: extend migration services/api/app/migrations/versions/0080_testing_simulation.py with `test_categories.color` (seed palette values), `CATEGORY_PALETTE` in services/api/app/test_cases/service.py, order by `lower(name)` in list queries, and colour chips plus preselected category in apps/web/src/routes/agents/testing/TestCaseEditor.tsx
+- [ ] T091 [P] [US1] Web test for the Generate dialog (25 becomes 20, 0 becomes 1, singular and plural action label, "All categories" sends `category: null`) in apps/web/src/routes/agents/testing/GenerateDialog.test.tsx
+- [ ] T092 [P] [US1] Harness test: single-turn test case on a flow agent enters at the start node, follows a transition and reports visited nodes in services/voice-worker/tests/harness/test_textsim_single_turn_flow.py
 
 **Checkpoint**: US1 works on its own (no call history required).
 
@@ -141,6 +144,7 @@ batch-vs-batch baseline.
 - [ ] T066 [P] [US3] Simulations page with Batch and Individual tabs, agent filter and polling in apps/web/src/routes/simulations/SimulationsPage.tsx
 - [ ] T067 [US3] Batch page with progress, runs list, scorecard by evaluator and by node, baseline switcher and cancel in apps/web/src/routes/simulations/ExperimentPage.tsx and apps/web/src/routes/simulations/ScorecardTable.tsx
 - [ ] T068 [US3] "Run simulation" on Call History multi-select (one-agent check, pre-flight, start batch) in apps/web/src/routes/calls/CallsPage.tsx
+- [ ] T093 [US3] Server-side agent filter and paging on the Simulations page (agent change refetches `GET /v1/experiments?agent_id=` and `GET /v1/simulation-runs?agent_id=&standalone=`, totals in tab labels, filter kept in the URL) with a web test that asserts a request per filter change in apps/web/src/routes/simulations/SimulationsPage.tsx and apps/web/src/routes/simulations/SimulationsPage.test.tsx
 
 **Checkpoint**: batches and scorecards available to 009.
 
@@ -156,6 +160,7 @@ batch-vs-batch baseline.
 - [ ] T071 [US4] Persona extraction (JSON schema output, metered) in services/api/app/simulator/service.py
 - [ ] T072 [US4] Persona caller (brief prompt, `hang_up(reason)`, temperature 0.7, persona model from settings) to pass T069 in services/voice-worker/worker/textsim/persona_caller.py
 - [ ] T073 [US4] Persona brief editor (view extracted brief, write a standalone brief) in apps/web/src/routes/simulations/PersonaBriefEditor.tsx
+- [ ] T094 [US4] "New simulation" action on the Simulations page (agent picker, PersonaBriefEditor, pre-flight, start standalone persona run) in apps/web/src/routes/simulations/NewSimulationDialog.tsx and apps/web/src/routes/simulations/SimulationsPage.tsx
 
 ---
 
@@ -175,6 +180,7 @@ batch-vs-batch baseline.
 - [ ] T082 [P] [US5] Datasets list and create dialog in apps/web/src/routes/datasets/DatasetsPage.tsx
 - [ ] T083 [US5] Dataset page with items, unavailable markers, remove, evaluate and "Run simulation" in apps/web/src/routes/datasets/DatasetPage.tsx
 - [ ] T084 [US5] "Add to dataset" menu (pick or create inline, report skipped) mounted in the call quality view in apps/web/src/routes/datasets/AddToDatasetMenu.tsx
+- [ ] T095 [US5] "New dataset" form with required agent picker and per-field messages on submit (name, agent, server 409 shown under name), and paged dataset items with total, plus web tests, in apps/web/src/routes/datasets/NewDatasetDialog.tsx, apps/web/src/routes/datasets/DatasetPage.tsx and apps/web/src/routes/datasets/NewDatasetDialog.test.tsx
 
 ---
 
@@ -214,4 +220,4 @@ Task: "Variant editor in apps/web/src/routes/simulations/VariantEditor.tsx"
 - **Next**: US2 then US3, which unlock 009 (issue validation needs batches and scorecards).
 - **Then**: US4 (persona, also used by 009 by default) and US5 (datasets).
 
-Task counts: Setup 5, Foundational 14, US1 23, US2 17, US3 9, US4 5, US5 11, Polish 5.
+Task counts: Setup 5, Foundational 14, US1 26, US2 17, US3 10, US4 6, US5 12, Polish 5.

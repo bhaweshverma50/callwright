@@ -53,14 +53,16 @@ research/architecture.md section 2 and plan.md.
 - [ ] T014 [P] Implement webhook URL checks in `services/api/app/agents/webhook_url.py`
 - [ ] T015 [P] Implement canonical JSON + sha256 in `services/api/app/agent_versions/canonical.py`
 - [ ] T016 [P] Implement hook registries (`register_validator`, `register_snapshot_resolver`, `register_usage_checker`, `register_duplicate_hook`) in `services/api/app/agents/hooks.py`
-- [ ] T017 [P] Write `services/api/app/llms/catalog.yaml` (launch providers and models with temperature rules) and the loader plus pricing join in `services/api/app/llms/service.py`
-- [ ] T018 [P] Write `services/api/app/voices/catalog.yaml` (languages with STT/TTS defaults, STT providers and models with language coverage, TTS providers with capability flags and default models, NC options, 7 built-in ambient sounds) and the loader plus pricing join in `services/api/app/voices/service.py`
+- [ ] T017 [P] Write `services/api/app/llms/catalog.yaml` (launch providers and models with temperature rules, exactly data-model.md section 8.2) and the loader plus pricing join in `services/api/app/llms/service.py`
+- [ ] T018 [P] Write `services/api/app/voices/catalog.yaml` (languages with STT/TTS defaults, STT providers and models with language coverage and Auto rules, TTS providers with capability flags, default models, default voice per language and voice-listing mode, curated Fish Audio allow-list, NC options, 7 built-in ambient sounds, control ranges; exactly data-model.md sections 8.1 and 8.3 to 8.6) and the loader plus pricing join in `services/api/app/voices/service.py`
 - [ ] T019 Implement `validate_config(type, config, agent_id=None)` in `services/api/app/agents/service.py` using T011 to T018 until T005 to T009 pass
 - [ ] T020 Fill migration `services/api/app/migrations/versions/0005_agents.py`: `agents` and `agent_versions` tables, deferred FKs between them, type-immutability trigger, version immutability trigger, published-version-same-agent trigger, RLS policies, trigram and `jsonb_path_ops` GIN indexes
 - [ ] T021 [P] Create SQLAlchemy models in `services/api/app/agents/models.py` (Agent) and `services/api/app/agent_versions/models.py` (AgentVersion)
 - [ ] T022 Implement `create_version(agent_id, config, note, source, publish=False)` with per-agent numbering under row lock, snapshot resolvers, hash dedupe and publish-blocker capture in `services/api/app/agent_versions/service.py`
 - [ ] T023 [P] Write integration test that `UPDATE`/`DELETE` on `agent_versions` and `UPDATE agents.type` raise, in `services/api/tests/integration/agent_versions/test_immutability.py`
 - [ ] T024 [P] Add web route skeleton in `apps/web/src/app/router.tsx` for `/agents`, `/agents/new`, `/agents/templates`, `/agents/new/single`, `/agents/:id`, `/agents/:id/edit`, and the type redirect in `apps/web/src/routes/agents/agentRedirect.tsx`
+- [ ] T090 [P] Catalog consistency test (FR-039, FR-042, FR-047, FR-048) in `services/api/tests/unit/catalog/test_catalog_consistency.py`: every LLM (provider, model), STT (provider, model and Auto), TTS (provider, model) and NC option has an exact rate in 001's seed under the same id; one model id across providers; language codes and labels unique; each shipped language covered by at least one STT and one TTS option; every STT provider has Auto or a default model; every default in `defaults.py` lies inside its control range and on its step; runs in CI
+- [ ] T091 [P] Round-trip test in `services/api/tests/integration/agents/test_config_roundtrip.py`: for both `single_prompt` and `flow` types, set every AgentConfig path in data-model section 4 to a non-default valid value, save, reload, and assert each value persisted (guards against partial saves such as dropped webhook timeout, pronunciation or analysis model)
 
 **Checkpoint**: Configs validate against the catalog; versions can be recorded and are immutable.
 
@@ -87,7 +89,7 @@ research/architecture.md section 2 and plan.md.
 - [ ] T032 [US1] Implement `create_agent`, `get_agent`, `rename_agent`, `update_draft` (If-Match, validate, version via `create_version`, `draft_revision` bump) in `services/api/app/agents/service.py`
 - [ ] T033 [US1] Implement API schemas and routes `/v1/agents` (POST), `/defaults`, `/validate`, `/{agent_id}` (GET, PATCH), `/{agent_id}/draft` with ETag headers in `services/api/app/agents/schemas.py` and `services/api/app/agents/router.py`
 - [ ] T034 [P] [US1] Implement `GET /v1/llms/catalog` in `services/api/app/llms/router.py` and `services/api/app/llms/schemas.py`
-- [ ] T035 [P] [US1] Implement voice listing adapters in `services/api/app/voices/adapters/elevenlabs.py`, `cartesia.py`, `fishaudio.py`, `sarvam.py` (static from YAML) with Redis caching in `services/api/app/voices/service.py`
+- [ ] T035 [P] [US1] Implement voice listing adapters in `services/api/app/voices/adapters/elevenlabs.py` (live, server search), `cartesia.py` (live full list, local search, gender and language filters) and `fishaudio.py` (curated allow-list from YAML, local search, language filter) with Redis caching in `services/api/app/voices/service.py`; no Sarvam voice adapter at launch (data-model 8.4)
 - [ ] T036 [US1] Implement migration `services/api/app/migrations/versions/0007_ambient_audio.py`, model in `services/api/app/voices/models.py`, upload/list/delete service with S3 and usage check via `jsonb_path_ops` lookup in `services/api/app/voices/service.py`
 - [ ] T037 [US1] Implement routes `GET /v1/voices/catalog`, `GET /v1/voices/{provider}/voices`, `/v1/voices/ambient-audio` in `services/api/app/voices/router.py` and `services/api/app/voices/schemas.py`
 - [ ] T038 [P] [US1] Build `apps/web/src/routes/agents/NewAgentTypePage.tsx` (two cards, bullets, "cannot be changed later", continue to templates or flow creation)
@@ -95,8 +97,14 @@ research/architecture.md section 2 and plan.md.
 - [ ] T040 [P] [US1] Build `apps/web/src/routes/agents/editor/BasicSection.tsx`, `ModelPicker.tsx`, `TemperatureControl.tsx` (fixed lock with reason, clamp notice), `VariablesEditor.tsx` (auto-detected plus manual, defaults, reserved and unused markers)
 - [ ] T041 [P] [US1] Build `apps/web/src/routes/agents/editor/VoiceSection.tsx`, `SttPickerDialog.tsx` (Auto, single-model lock), `VoicePickerDialog.tsx` (search, gender and language filters, preview where available, retry on 503), `NoiseCancellationSelect.tsx`
 - [ ] T042 [P] [US1] Build `apps/web/src/routes/agents/editor/CallBehaviorSection.tsx` (silence 10 to 300 s slider, max duration in minutes, ring time, interruption and responsiveness with Low/Medium/High labels)
-- [ ] T043 [P] [US1] Build `apps/web/src/routes/agents/editor/AdvancedSection.tsx`, `WebhookField.tsx`, `BackgroundAudioField.tsx` (built-ins plus "Your uploads", upload, volume as percent), `PronunciationEditor.tsx`, voicemail and keypad subsections, analysis model select
+- [ ] T043 [P] [US1] Build `apps/web/src/routes/agents/editor/AdvancedSection.tsx`, `WebhookField.tsx`, `BackgroundAudioField.tsx` (built-ins plus "Your uploads", upload, volume as percent of normal where gain 1.0 is 100%), `PronunciationEditor.tsx`, voicemail and keypad subsections, analysis model select
 - [ ] T044 [US1] Extend `services/api/tests/integration/test_rls_isolation.py` for `agents`, `agent_versions`, `ambient_audio_files`
+- [ ] T092 [P] [US1] Playwright scenarios in `apps/web/tests/e2e/agents-validation.spec.ts` (US1.9 to US1.14): `notaurl`, timeout 50 ms, max duration 0.2 and 61 minutes, ring -1 ms each show an inline error on blur and Save sends no request; `bad name!` refused as a variable; caller-first disables the greeting and keeps its text; provider switch picks the language default voice with a notice; labels equal stored values
+- [ ] T093 [US1] Add `greeting_unused` warning (non-empty greeting with `start_speaker = user`) to `validate_config` in `services/api/app/agents/service.py` with unit cases in `services/api/tests/unit/agents/test_validate_config.py`; disable the greeting field with an explanation in `BasicSection.tsx`
+- [ ] T094 [P] [US1] Display formatters in `apps/web/src/routes/agents/editor/formatters.ts` (exact durations such as "1.5 s", multiplier, percent of normal gain) driven by catalog `controls`, used by every slider and number field; Vitest in `formatters.test.ts`
+- [ ] T095 [US1] Provider switch (FR-010): in `VoiceSection.tsx` set the provider's default model and `default_voice_by_language[language]`, show a notice naming the voice; server-side `validate_config` replaces a foreign voice with the same default and returns `component_replaced`
+- [ ] T096 [US1] "Test" on a never-saved agent (FR-044) in `apps/web/src/routes/agents/editor/AgentEditorPage.tsx`: run the save path (validation summary on errors), then open 003's test panel for the new agent; remove any placeholder behaviour
+- [ ] T097 [P] [US1] Editor panel slots (FR-043) in `apps/web/src/routes/agents/editor/panelSlots.ts`: a registry where 007 mounts the analysis variables and quality checks panels for both agent types; the single-prompt editor renders registered panels as tabs
 
 **Checkpoint**: A single-prompt agent can be created, edited and saved with versions recorded.
 
@@ -120,6 +128,7 @@ research/architecture.md section 2 and plan.md.
 - [ ] T049 [US2] Implement `list_agents` (trigram search, exact id short-circuit, summaries with published version), `duplicate_agent`, `delete_agent` in `services/api/app/agents/service.py`
 - [ ] T050 [US2] Add routes `GET /v1/agents`, `POST /v1/agents/{agent_id}/duplicate`, `DELETE /v1/agents/{agent_id}` in `services/api/app/agents/router.py`
 - [ ] T051 [P] [US2] Build `apps/web/src/routes/agents/AgentsListPage.tsx` and `AgentCard.tsx` (badges, model, voice, language, published version, dates, search box, type filter, empty state, duplicate, delete confirm with attachment list on 409)
+- [ ] T098 [US2] Idempotent create and duplicate (FR-038): honour `Idempotency-Key` on `POST /v1/agents` and `POST /v1/agents/{agent_id}/duplicate` with Redis key `idem:agents:{workspace_id}:{key}` (24 h) holding the created agent id in `services/api/app/agents/router.py`; integration test in `services/api/tests/integration/agents/test_idempotent_create.py` (same key twice returns the same agent, different keys create two); UI buttons disabled while pending and duplicate shows a toast linking to the copy
 
 **Checkpoint**: US1 and US2 work independently.
 
@@ -147,6 +156,8 @@ research/architecture.md section 2 and plan.md.
 - [ ] T060 [US3] Implement schemas and routes in `services/api/app/agent_versions/schemas.py` and `services/api/app/agent_versions/router.py`
 - [ ] T061 [P] [US3] Build `apps/web/src/routes/agents/versions/VersionDrawer.tsx` (newest first, published and draft badges, source, note, author), `VersionCompare.tsx` (labels, old/new, line diff via `diff`), `versionLabels.ts`
 - [ ] T062 [P] [US3] Build `apps/web/src/routes/agents/versions/PublishButton.tsx` (publish draft version, show blockers, unpublish with confirm) and wire restore confirm ("restore to draft" or "restore and publish") into `VersionDrawer.tsx`
+- [ ] T099 [US3] Version `parent_version_id` and `summary` (data-model section 2): columns in `services/api/app/migrations/versions/0005_agents.py`, computed in `create_version` in `services/api/app/agent_versions/service.py`, exposed as `parent_version_number` and `summary` in `VersionSummary`; contract test update in `services/api/tests/contract/test_agent_versions_contract.py`
+- [ ] T100 [P] [US3] In `VersionDrawer.tsx` show each version's summary (model, voice, tool and knowledge counts) and, when only one version exists, disable compare and restore with the hint "Nothing to compare yet" (US3.8)
 
 **Checkpoint**: Versions support 003 (test snapshots, published version) and 004 (create_version).
 
@@ -168,6 +179,7 @@ research/architecture.md section 2 and plan.md.
 
 - [ ] T066 [US4] Build `apps/web/src/routes/agents/editor/CostCard.tsx` (debounced 250 ms quote query keyed by selection, lines, total, bundle explainer) and `surchargeRisk.ts`
 - [ ] T067 [P] [US4] Show per-minute price in `ModelPicker.tsx`, `SttPickerDialog.tsx` and the voice model select in `VoiceSection.tsx` from catalog `price_per_min_usd`
+- [ ] T101 [P] [US4] CostCard rules from the live findings (US4.5) in `apps/web/src/routes/agents/editor/CostCard.tsx`: NC line shown whenever NC is on (including $0.0000), bundle text on LLM and TTS lines, an unpriced option is never rendered as $0.0000; cases added to `CostCard.test.tsx`
 
 **Checkpoint**: Cost visible at every priced choice.
 
@@ -188,10 +200,12 @@ research/architecture.md section 2 and plan.md.
 ### Implementation for User Story 5
 
 - [ ] T071 [US5] Implement migration `services/api/app/migrations/versions/0006_templates.py` and model in `services/api/app/templates/models.py`
-- [ ] T072 [P] [US5] Write launch templates in `services/api/app/templates/seed/` (at least one each for healthcare, banking, insurance, retail, telecom, automotive, real_estate, hospitality, support; original Callwright copy)
+- [ ] T072 [P] [US5] Write the seven launch templates in `services/api/app/templates/seed/` exactly as listed in data-model.md section 6 (categories automotive, banking, ecommerce, healthcare, telecom; intent, structure and variables per row; original Callwright prompts and greetings, no text copied from the reference)
 - [ ] T073 [US5] Implement sync job in `services/api/app/templates/jobs.py` (CLI `python -m app.templates.jobs sync`, run on deploy) and list/get/categories in `services/api/app/templates/service.py`
 - [ ] T074 [US5] Implement routes in `services/api/app/templates/router.py` and `services/api/app/templates/schemas.py`; add the template overlay path to `create_agent` in `services/api/app/agents/service.py`
-- [ ] T075 [P] [US5] Build `apps/web/src/routes/agents/TemplatesPage.tsx` ("Start from scratch" first, "All" plus category chips, search) and `TemplatePreviewDialog.tsx` (prompt, greeting, language, "Use template" opens the editor)
+- [ ] T075 [P] [US5] Build `apps/web/src/routes/agents/TemplatesPage.tsx` ("Start from scratch" first, "All" plus category chips, search) and `TemplatePreviewDialog.tsx` (opened by clicking anywhere on a card; prompt, greeting, language, variables; only "Use template" creates, sending an `Idempotency-Key` and disabling itself while pending, then opens the editor)
+- [ ] T102 [P] [US5] Template content test in `services/api/tests/unit/templates/test_launch_set.py`: exactly 7 active templates, counts per category 1/2/1/2/1, every template declares `company_name` with a default and every `{{name}}` it uses has a default, no `llm.temperature` on fixed models, canonical model ids, no `tts.voice_id`, slugs and names as in data-model section 6
+- [ ] T103 [P] [US5] Integration test in `services/api/tests/integration/templates/test_use_template_idempotent.py`: `POST /v1/agents {template_id}` with the same `Idempotency-Key` twice creates one agent whose draft has provider, model and the language default voice filled from defaults
 
 **Checkpoint**: Template path to a saved agent in under 3 minutes (SC-001).
 
@@ -236,6 +250,12 @@ research/architecture.md section 2 and plan.md.
 
 - [ ] T088 [P] Add `advanced.recording` (`inherit | on | off`, default `inherit`; versions without it read as `inherit`) to AgentConfig in `services/api/app/agents/schemas.py`, the editor's Advanced tab in `apps/web/src/routes/agents/`, and `validate_config`; resolved at call admission by 003 against 001's `recording_default`
 - [ ] T089 Accept snapshot-only `knowledge` block (kb ids plus retrieval settings resolved by 005) alongside `tools` and `flow` in version snapshots in `services/api/app/agent_versions/service.py`; contract test update in `services/api/tests/contract/test_agent_versions_contract.py`
+
+## Phase 11: Live UI findings (2026-10-16)
+
+**Purpose**: Items from `research/ui-walkthrough/DELTA.md` tagged [002] and [003] that do not fit a single story phase. Story-specific additions are inside Phases 2 to 7 (T090 to T103).
+
+- [ ] T104 [P] Serve `controls` (data-model section 8.6) in `GET /v1/voices/catalog` from `services/api/app/voices/service.py`; contract test in `services/api/tests/contract/test_voices_contract.py`; document in `services/api/app/agents/hooks.py` that 004's node override validation must call `validate_override(path, value)` from `services/api/app/agents/service.py`, which uses the same table (FR-047)
 
 ## Dependencies & Execution Order
 

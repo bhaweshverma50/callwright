@@ -30,6 +30,26 @@ its balance, the signed-in email and working navigation to every area.
    protected pages redirect to sign-in, returning to the original page after sign-in.
 4. **Given** a user who forgot their password, **When** they request a reset, **Then** they get
    an email link that lets them set a new password once, within 1 hour.
+5. **Given** a signed-in user, **When** they open the user menu, **Then** it shows their email,
+   "Settings" and "Sign out"; Settings shows the workspace name (editable), the call recording
+   default (on or off), the concurrent-call limit (read-only) and the account email, and a change
+   is saved only after the user saves, with a confirmation.
+6. **Given** any signed-in page, **When** the user opens an address that does not exist, **Then**
+   a "page not found" view appears inside the shell with a link to the dashboard (no silent
+   redirect).
+7. **Given** an address or API request that names a record by a malformed or unknown ID, **When**
+   it is opened, **Then** the API answers "not found" and the page says which kind of record was
+   not found; no status code, transport error or internal error text is ever shown.
+8. **Given** a fresh page load, **When** the user has not used an optional feature (voice
+   copilot, analytics assistant, test call), **Then** no credential or session for that feature
+   is requested.
+9. **Given** a form with unsaved input (including a create form that has never been saved),
+   **When** the user navigates away, reloads or closes the tab, **Then** they are asked to stay or
+   leave without saving.
+10. **Given** the navigation rail, **When** the app first opens, **Then** the rail is collapsed to
+    icons with a label tooltip on each, the expanded rail groups Datasets and Simulations under
+    "Quality" and Review, Calibration and Issues under "Feedback", and the user's expand or
+    collapse choice is remembered on that browser.
 
 ---
 
@@ -55,6 +75,12 @@ a page reload; confirm a $4 custom amount is rejected.
    arrive, **Then** credit is added exactly once.
 4. **Given** a completed call, **When** it is billed, **Then** a `call_charge` transaction linked
    to that call appears with its itemised cost.
+5. **Given** a custom amount of $4, $0 or $10,001, or more than two decimals, **When** the
+   operator tries to add funds, **Then** the field shows why (minimum $5, maximum $10,000, cents
+   only), the add button explains it is disabled, and no checkout starts.
+6. **Given** the preset amounts, **When** the operator clicks $100, **Then** the amount field
+   shows $100.00 and checkout starts only when they press "Add funds" (one explicit action that
+   names the amount).
 
 ---
 
@@ -101,6 +127,9 @@ in-range rows and correct totals appear.
 
 1. **Given** no usage in the window, **When** the page loads, **Then** it says "No usage charges
    yet in this window" with the window dates.
+2. **Given** the usage panel, **When** the operator picks a different start and end date (up to
+   366 days), **Then** rows and totals refresh for that window; an end before the start is refused
+   inline.
 
 ---
 
@@ -115,6 +144,12 @@ in-range rows and correct totals appear.
   editing the original row.
 - Session token expires mid-session: refreshed silently; if refresh fails, user is sent to
   sign-in and returned afterwards.
+- A settings save with an empty or over-long workspace name: the field shows the error and
+  nothing is saved.
+- A server fault while loading a record: the page shows a generic "something went wrong" message
+  with a reference the user can quote to support; database or stack details never reach the
+  browser.
+- The balance chip is clicked: it opens Billing (it is a link, not decoration).
 
 ## Requirements *(mandatory)*
 
@@ -128,13 +163,19 @@ in-range rows and correct totals appear.
 - **FR-004**: System MUST expose the current user, workspace name, email-verified flag, credit
   balance, concurrency limit and admin flag to the app.
 - **FR-005**: System MUST show a persistent shell: collapsible icon navigation to all product
-  areas, live balance chip, signed-in email, avatar and sign-out.
+  areas (collapsed by default, label tooltips while collapsed, section headers "Quality" for
+  Datasets and Simulations and "Feedback" for Review, Calibration and Issues, expand state
+  remembered per browser), a live balance chip in the top bar that links to Billing and shows the
+  balance to three decimals (charges move in $0.001 steps), the signed-in email, an initials
+  avatar, and a user menu with Settings and Sign out.
 - **FR-006**: System MUST record every credit movement as an immutable transaction of type
   `top_up`, `call_charge`, `feature_charge`, `trial_grant`, `refund` or `adjustment`, storing
   amount, balance after, optional call reference and description.
 - **FR-007**: System MUST compute the balance only from transactions.
 - **FR-008**: System MUST let users top up via hosted checkout with presets and a custom amount
-  (minimum $5), crediting only after confirmed payment, idempotently.
+  (minimum $5, maximum $10,000 per top-up, whole cents), crediting only after confirmed payment,
+  idempotently. Invalid amounts MUST be explained inline, never ignored silently; presets fill the
+  amount and checkout starts only from the explicit "Add funds" action.
 - **FR-009**: System MUST list transactions newest first with pagination (default 20 per page).
 - **FR-010**: System MUST maintain a versioned pricing catalog of per-minute rates keyed by
   component (stt, llm, tts, nc, platform), provider and optional model, with effective dates and
@@ -145,16 +186,39 @@ in-range rows and correct totals appear.
 - **FR-012**: System MUST provide a cost estimate for any agent configuration (per-minute total
   and per-component lines).
 - **FR-013**: System MUST provide a public pricing page with an interactive calculator.
-- **FR-014**: System MUST report usage per feature for a date range with raw and billable cost.
+- **FR-014**: System MUST report usage per feature for a date range with raw and billable cost;
+  the user chooses the range (default the last 30 days, at most 366 days).
 - **FR-015**: System MUST refuse new calls when the balance is at or below zero or the
   workspace is at its concurrency limit, with the reason shown to the caller of the API.
 - **FR-016**: System MUST provide public marketing pages (home, pricing, enterprise contact,
   privacy policy, terms of service).
+- **FR-017**: System MUST provide a Settings page, reached from the user menu, where the owner
+  edits the workspace name and the workspace call recording default, and sees the concurrent-call
+  limit and account email; changes apply only on save and are confirmed.
+- **FR-018**: System MUST show a "page not found" view inside the shell for any unknown signed-in
+  address, with a link to the dashboard, instead of redirecting silently.
+- **FR-019**: System MUST answer requests that name a record by a malformed or unknown ID with a
+  "not found" problem (never a server error), MUST never include database, stack or vendor error
+  text in any response, and MUST give every server-error response a reference ID that support can
+  trace; the app MUST turn problems into plain messages and never display raw status codes or
+  transport errors.
+- **FR-020**: System MUST NOT mint credentials, tokens or sessions for optional features on page
+  load; each is requested only when the user first uses that feature.
+- **FR-021**: System MUST protect every form with unsaved input, including never-saved create
+  forms, against in-app navigation, reload and tab close with a stay-or-leave prompt.
+- **FR-022**: The launch pricing catalog MUST hold a rate for every speech recognition, language
+  model, voice and noise cancellation option the agent builder offers (002), plus the platform
+  fee; a missing rate MUST fail the release check and MUST never be shown or charged as $0.
+- **FR-023**: System MUST record every feature charge in usage reporting, including zero-amount
+  charges (for example internal embeddings for anomaly detection); a zero-amount charge MUST
+  create a usage row and MUST NOT create a credit transaction; only amounts above zero move
+  credit.
 
 ### Key Entities
 
 - **User**: a person who signs in; email, verification state, admin flag.
-- **Workspace**: the tenant boundary; name, owner, concurrency limit; owns every other record.
+- **Workspace**: the tenant boundary; name, owner, concurrency limit, call recording default;
+  owns every other record.
 - **Credit Transaction**: one immutable movement of credit; type, amount, balance after,
   optional call or feature reference, description, timestamp.
 - **Pricing Catalog Entry**: component, provider, optional model, per-minute rate, bundle sizes,
@@ -183,3 +247,5 @@ in-range rows and correct totals appear.
 - Prices are in USD only; taxes and invoices are handled by the payment provider.
 - The trial credit amount and concurrency default are configurable per environment.
 - Marketing pages are static content and need no CMS.
+- Launch per-minute rates match the reference market rates captured on 2026-10-16 (data-model.md,
+  pricing seed); product can change them later by publishing a new catalog version.

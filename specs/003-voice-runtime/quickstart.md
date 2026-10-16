@@ -74,6 +74,10 @@ curl -s -X POST localhost:8000/v1/sessions/web-call \
 # then: lk room join --url ws://localhost:7880 --token <participant_token> --publish-demo
 ```
 
+Microphone blocked (US1.7, FR-047): in the browser site settings block the microphone, click
+"Test call": the panel explains how to allow it, the network panel shows no
+`POST /v1/sessions/web-call`, and no new row appears in `calls`.
+
 ## 4. User Story 2: admission and endings
 
 ```bash
@@ -96,7 +100,16 @@ Run the harness scenarios that cover it (no vendors needed):
 
 ```bash
 cd services/voice-worker
-uv run pytest tests/harness -k "interruption or responsiveness or pronunciation or background"
+uv run pytest tests/harness -k "interruption or responsiveness or pronunciation or background or segment_override"
+```
+
+Auto speech recognition (US3.7, FR-045): set an agent's language to `hi`, STT `deepgram` with
+model Auto, run a test call, then:
+
+```bash
+psql $DATABASE_URL -c "select usage->'stt' from calls order by created_at desc limit 1;"
+# [{"provider":"deepgram","model":"nova-2",...}]; the call_costs STT line uses rate 0.0058
+uv run --directory services/api pytest tests/unit/test_auto_stt.py -q
 ```
 
 ## 6. User Story 4: pipeline and recording

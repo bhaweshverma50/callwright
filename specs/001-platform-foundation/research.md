@@ -291,3 +291,26 @@ MinIO. Supabase Auth runs via `supabase start` (local stack) or a hosted dev pro
 mode with `stripe listen --forward-to localhost:8000/v1/webhooks/stripe`.
 
 **Rationale**: Managed services in production, the same APIs locally (Principle VI).
+
+## R21. Live UI findings applied (2026-10-16)
+
+**Decision**: The live walkthrough of the reference product (`research/ui-walkthrough/DELTA.md`,
+items tagged [001]) changed these choices:
+- Keep a Settings page and a user menu (the reference removed its settings page and left a bare
+  sign-out icon); Settings also carries the recording default that 003 reads.
+- Balance stays in the top bar, three decimals, and becomes a link to Billing.
+- Unknown routes show a not-found view rather than redirecting to the dashboard; no legacy route
+  aliases are carried over.
+- Feature credentials (voice copilot stream token and similar) are minted on first use; the
+  reference minted one on every page load.
+- Malformed ids return 404 before reaching the database; 5xx bodies are generic with a
+  `trace_id` (the reference leaked a raw database error in a 503 and printed transport errors in
+  the UI).
+- The leave guard covers create forms, reload and tab close (the reference guarded only the flow
+  builder and only in-app navigation).
+- The seed catalog uses the exact live rates with one canonical model id per model across
+  providers (data-model.md).
+
+**Rationale**: Each item is a gap or defect observed live; the fixes are small and close trust or
+cost leaks.
+

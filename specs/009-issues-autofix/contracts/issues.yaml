@@ -65,7 +65,8 @@ paths:
       parameters:
         - { name: agent_id, in: query, schema: { type: string, pattern: '^agt_' } }
         - { name: status, in: query, schema: { type: string, enum: [all, open, validating, validated, applied, dismissed], default: all }, description: all excludes dismissed unless status=dismissed is asked }
-        - { name: scope, in: query, schema: { type: string, enum: [real, real_and_simulated], default: real } }
+        - { name: scope, in: query, schema: { type: string, enum: [real, real_and_simulated], default: real }, description: real hides issues whose origin is mostly simulated }
+        - { name: window_days, in: query, schema: { type: integer, enum: [7, 14, 30, 90] }, description: Keep issues with last_seen_at within the last N days; omit for no window (FR-026) }
         - { name: applied_agent_version_id, in: query, schema: { type: string, pattern: '^agv_' }, description: Find the issue a version came from }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/PageSize' }

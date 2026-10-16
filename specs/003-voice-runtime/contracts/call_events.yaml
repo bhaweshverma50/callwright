@@ -232,7 +232,10 @@ components:
           type: string
         event:
           type: string
-          enum: [voicemail_detected, silence_timeout, max_duration, credit_exhausted, vendor_error]
+          enum: [voicemail_detected, silence_timeout, max_duration, credit_exhausted, vendor_error, segment_override, override_clamped]
+          description: |
+            segment_override: a flow segment switched the model, voice or speech recognition settings (detail lists the paths; FR-046).
+            override_clamped: an override value was outside the shared control range and was clamped (FR-046).
         detail:
           type: string
         at_ms:
@@ -255,10 +258,12 @@ components:
           type: array
           items:
             type: object
-            required: [provider, audio_ms]
+            required: [provider, model, audio_ms]
             properties:
               provider: {type: string}
-              model: {type: [string, 'null']}
+              model:
+                type: string
+                description: The model actually used; Auto is reported as the model it resolved to for the language (FR-045)
               audio_ms: {type: integer, minimum: 0}
         llm:
           type: array
@@ -286,7 +291,8 @@ components:
             type: object
             required: [provider, audio_ms]
             properties:
-              provider: {type: string}
+              provider: {type: string, examples: [sanas, ai_coustics]}
+              model: {type: string, examples: [vi, st, standard]}
               audio_ms: {type: integer, minimum: 0}
     ToolCallEvent:
       allOf:

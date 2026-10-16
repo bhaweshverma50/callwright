@@ -52,6 +52,26 @@ paths:
               schema: {$ref: '#/components/schemas/Tool'}
         '422': {$ref: '#/components/responses/Problem'}
 
+  /tools/presets:
+    get:
+      tags: [tools]
+      operationId: listToolPresets
+      description: |
+        Read-only platform presets that prefill the new-tool dialog (FR-043). Creating a tool
+        from a preset is an ordinary `POST /tools` with the (edited) `tool` body.
+      responses:
+        '200':
+          description: Presets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/ToolPreset'}
+
   /tools/{tool_id}:
     parameters:
       - $ref: '#/components/parameters/ToolId'
@@ -228,7 +248,7 @@ paths:
     get:
       tags: [tools]
       operationId: getAgentToolMockCoverage
-      description: Attached tools (and flow webhook nodes, via 004) with no canned response.
+      description: Attached HTTP tools (and flow webhook nodes, via 004) with no canned response; other tool types have fixed simulated outcomes and are never listed.
       responses:
         '200':
           description: Coverage
@@ -344,11 +364,16 @@ components:
     ToolCreate:
       type: object
       required: [type, name, description, config]
+      additionalProperties: false
+      description: Unknown or outdated fields are rejected with 422 naming the field (FR-045).
       properties:
         type: {$ref: '#/components/schemas/ToolType'}
         name: {$ref: '#/components/schemas/ToolName'}
         description: {type: string, minLength: 1, maxLength: 1000}
-        mock_response: {type: [string, 'null'], maxLength: 16384}
+        mock_response:
+          type: [string, 'null']
+          maxLength: 16384
+          description: Only for type http; must be null or absent for other types (FR-044).
         config:
           oneOf:
             - $ref: '#/components/schemas/EndCallConfig'
@@ -359,10 +384,14 @@ components:
 
     ToolUpdate:
       type: object
+      additionalProperties: false
       properties:
         name: {$ref: '#/components/schemas/ToolName'}
         description: {type: string, minLength: 1, maxLength: 1000}
-        mock_response: {type: [string, 'null'], maxLength: 16384}
+        mock_response:
+          type: [string, 'null']
+          maxLength: 16384
+          description: Only for http tools (FR-044).
         config:
           oneOf:
             - $ref: '#/components/schemas/EndCallConfig'
@@ -388,6 +417,17 @@ components:
         usage_count: {type: integer, description: Number of agents using the tool}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+
+    ToolPreset:
+      type: object
+      required: [preset_id, type, title, summary, tool]
+      properties:
+        preset_id: {type: string, examples: [end_call_polite, transfer_to_person, press_digit_ivr, http_check_availability]}
+        type: {$ref: '#/components/schemas/ToolType'}
+        title: {type: string}
+        summary: {type: string}
+        tool:
+          $ref: '#/components/schemas/ToolCreate'
 
     EndCallConfig:
       type: object
@@ -452,7 +492,9 @@ components:
 
     HttpRequestSpec:
       type: object
-      description: Shared with 004 webhook nodes.
+      description: Shared with 004 webhook nodes; the tool form and the node form offer the same
+        methods, timeout range and options (FR-046). The URL must be absolute https (http only
+        in development) and is checked in the editor as it is typed.
       required: [url]
       properties:
         method: {type: string, enum: [GET, POST, PUT, PATCH, DELETE], default: POST}

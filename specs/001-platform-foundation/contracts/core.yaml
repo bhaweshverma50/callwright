@@ -106,6 +106,9 @@ components:
         retry_after_s:
           type: integer
           description: Present on 429 responses.
+        trace_id:
+          type: string
+          description: Present on 5xx responses; the reference support uses to find the trace (FR-019). 5xx `title` and `detail` are generic and never carry database, stack or vendor text.
         errors:
           type: array
           description: Present on 422 responses; every failing field in one list.
@@ -122,7 +125,7 @@ components:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
     NotFound:
-      description: Resource does not exist in this workspace
+      description: Resource does not exist in this workspace, or the ID in the path is malformed (never a 5xx; FR-019)
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}

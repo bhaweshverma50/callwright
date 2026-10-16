@@ -123,7 +123,7 @@ services/voice-worker/
     └── harness/scripts/{outbound_answer,outbound_busy,outbound_no_answer,inbound_ring}.yaml
 
 apps/web/src/routes/channels/
-├── PhoneNumbersPage.tsx      # /phone-numbers, tabs "SIP numbers" and "WhatsApp channels"
+├── PhoneNumbersPage.tsx      # /phone-numbers, title "Channels" (same as the nav label), tabs "SIP numbers" and "WhatsApp channels"
 ├── components/ImportNumberDialog.tsx  NumberDetailPanel.tsx  OutboundCallDialog.tsx
 │              ComplianceTab.tsx  DncImportDialog.tsx  CallingHoursEditor.tsx
 │              DeleteNumberDialog.tsx  WhatsAppChannelDialog.tsx  WhatsAppChannelPanel.tsx

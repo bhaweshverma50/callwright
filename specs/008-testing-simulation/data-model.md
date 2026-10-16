@@ -29,10 +29,11 @@ dataset items and categories use composite or natural keys, so no new prefixes a
 | workspace_id | text | PK part |
 | slug | text | PK part; `^[a-z][a-z0-9_]{1,39}$` |
 | name | text | 1-60 chars |
+| color | text | `^#[0-9a-f]{6}$`, one of the design palette tokens (`CATEGORY_PALETTE`); seeds get fixed palette entries; custom categories default to the first palette colour not yet used |
 | is_seed | bool | seeds: `out_of_scope` "Out of scope", `bad_behaviour` "Bad behaviour", `identity` "Identity", `prompt_injection` "Prompt injection", `guardrails` "Guardrails" |
 | created_at | timestamptz | |
 
-Seeds are inserted when a workspace is created (hook on 001's workspace creation) and by the
+Lists are ordered by `lower(name)` (FR-032). Seeds are inserted when a workspace is created (hook on 001's workspace creation) and by the
 migration for existing workspaces. Seeds cannot be deleted; a custom category cannot be deleted
 while test cases use it (409).
 

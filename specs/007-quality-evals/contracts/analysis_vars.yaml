@@ -162,6 +162,10 @@ components:
     AnalysisVariableInput:
       type: object
       required: [name, type, description]
+      description: >
+        choices is required for type choice and must be null or omitted for boolean, string and
+        number (422 otherwise). Names are validated, never rewritten; the web form normalises
+        typed text to snake_case before sending.
       properties:
         name: { $ref: "#/components/schemas/VariableName" }
         type: { $ref: "#/components/schemas/VariableType" }

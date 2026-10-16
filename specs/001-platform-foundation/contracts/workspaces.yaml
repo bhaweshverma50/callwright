@@ -22,6 +22,7 @@ paths:
     patch:
       operationId: updateCurrentWorkspace
       tags: [workspaces]
+      summary: Settings page save (FR-017); only the fields sent change
       security: [{bearerAuth: []}]
       requestBody:
         required: true
@@ -33,6 +34,9 @@ paths:
               additionalProperties: false
               properties:
                 name: {type: string, minLength: 1, maxLength: 80}
+                recording_default:
+                  type: boolean
+                  description: Workspace call recording default; agents set to inherit follow it (003 admission)
       responses:
         '200':
           description: Updated workspace
@@ -58,11 +62,15 @@ components:
         is_admin: {type: boolean}
     Workspace:
       type: object
-      required: [id, name, concurrency_limit, created_at]
+      required: [id, name, concurrency_limit, recording_default, created_at]
       properties:
         id: {$ref: './core.yaml#/components/schemas/WorkspaceId'}
         name: {type: string}
-        concurrency_limit: {type: integer, minimum: 1}
+        concurrency_limit:
+          type: integer
+          minimum: 1
+          description: Read-only for users; shown on the Settings page
+        recording_default: {type: boolean, default: true}
         created_at: {type: string, format: date-time}
     Me:
       type: object

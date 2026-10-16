@@ -189,6 +189,7 @@ components:
         label: {type: string}
         description: {type: [string, 'null']}
         languages: {type: array, items: {type: string}}
+        builtin_turn_detection: {type: boolean, default: false}
         price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
         withdrawn: {type: boolean}
     SttProvider:
@@ -198,6 +199,17 @@ components:
         provider: {type: string, examples: [deepgram, sarvam, assemblyai]}
         label: {type: string}
         supports_auto: {type: boolean, description: True when model null lets the platform choose per language}
+        default_model:
+          type: [string, 'null']
+          description: Preselected model when supports_auto is false; the model field is never blank
+        auto_rule:
+          type: [object, 'null']
+          description: How Auto resolves (applied by 003 at call time)
+          properties:
+            default: {type: string}
+            by_language:
+              type: object
+              additionalProperties: {type: string}
         models: {type: array, items: {$ref: '#/components/schemas/SttModel'}}
     TtsModel:
       type: object
@@ -213,9 +225,26 @@ components:
       type: object
       required: [provider, label, default_model, capabilities, models]
       properties:
-        provider: {type: string, examples: [elevenlabs, cartesia, fishaudio, sarvam]}
+        provider: {type: string, examples: [elevenlabs, cartesia, fishaudio]}
         label: {type: string}
         default_model: {type: string}
+        default_voice_by_language:
+          type: object
+          description: Language code to default voice id; used for new agents and on provider switch (FR-010)
+          additionalProperties: {type: string}
+        voice_listing:
+          type: object
+          required: [source, server_search, gender_filter, language_filter, previews]
+          description: What the voice browser offers for this provider (FR-045); search is local when server_search is false
+          properties:
+            source:
+              type: string
+              enum: [live, curated]
+              description: curated means a platform allow-list instead of the vendor's community library
+            server_search: {type: boolean}
+            gender_filter: {type: boolean}
+            language_filter: {type: boolean}
+            previews: {type: boolean}
         capabilities:
           type: object
           required: [speed, expressiveness, volume]
@@ -236,8 +265,12 @@ components:
         price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
     VoiceCatalog:
       type: object
-      required: [languages, stt, tts, noise_cancellation, ambient_sounds]
+      required: [languages, stt, tts, noise_cancellation, ambient_sounds, controls]
       properties:
+        controls:
+          type: array
+          description: Single source of ranges, steps and labels for every tunable setting (FR-042, FR-047)
+          items: {$ref: '#/components/schemas/ControlRange'}
         languages: {type: array, items: {$ref: '#/components/schemas/Language'}}
         stt: {type: array, items: {$ref: '#/components/schemas/SttProvider'}}
         tts: {type: array, items: {$ref: '#/components/schemas/TtsProvider'}}
@@ -251,6 +284,20 @@ components:
               id: {type: string, examples: [office_ambience]}
               label: {type: string}
               preview_url: {type: [string, 'null'], format: uri}
+    ControlRange:
+      type: object
+      required: [path, label, min, max, step]
+      properties:
+        path: {type: string, examples: [/tts/speed, /call_behavior/ring_duration_ms]}
+        label: {type: string, examples: [Voice speed]}
+        min: {type: number}
+        max: {type: number}
+        step: {type: number}
+        unit: {type: [string, 'null'], examples: [s, ms, x]}
+        display:
+          type: string
+          enum: [decimal, multiplier, percent_of_normal, duration]
+          default: decimal
     Voice:
       type: object
       required: [voice_id, name, provider, languages, model_ids]

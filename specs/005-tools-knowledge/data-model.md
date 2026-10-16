@@ -15,12 +15,31 @@ policy `workspace_id = current_setting('app.workspace_id')`. IDs are prefixed UL
 | name | text | `^[a-z][a-z0-9_]{0,63}$`; not `kb_search`; not prefixed `route_to_` |
 | description | text | 1 to 1,000 chars; becomes the LLM function description |
 | config | jsonb | Type-specific, validated by `ToolConfig` discriminated union (below) |
-| mock_response | text null | Up to 16 KB; used in simulations |
+| mock_response | text null | Up to 16 KB; used in simulations. Only for `type = http`: CHECK `(type = 'http' OR mock_response IS NULL)` (FR-044) |
 | created_by | text FK users | |
 | created_at, updated_at | timestamptz | |
 
 Indexes: `(workspace_id, type)`, `(workspace_id, lower(name))` (not unique: uniqueness is per
 attached set). Delete is hard delete after detaching from drafts.
+
+Every config model uses `extra = "forbid"`: unknown or outdated keys (for example a second,
+legacy transfer block next to the current one) are rejected with 422 naming the key (FR-045).
+
+Simulated outcomes for types without a canned response (FR-044): `end_call` speaks its message
+and ends the simulated call; `transfer_call` returns `{"transferred": true}` and ends the
+simulated call with `call_transfer`; `press_digit` returns `{"sent": "<digits>"}`.
+
+### Tool presets (FR-043)
+
+Platform constants in `services/api/app/tools/presets.py`, served by `GET /v1/tools/presets`; no
+table. Each preset is `{preset_id, type, title, summary, tool: ToolCreate}` in the current shape:
+
+| preset_id | type | Prefill |
+|---|---|---|
+| `end_call_polite` | end_call | name `end_call`, description "End the call when the caller is done", goodbye line |
+| `transfer_to_person` | transfer_call | name `transfer_to_person`, static routing, warm, private briefing with a static message, number left empty |
+| `press_digit_ivr` | press_digit | name `press_digit`, description "Press keypad digits to navigate a phone menu", default delay and cooldown |
+| `http_check_availability` | http | name `check_availability`, POST, parameter schema with `date` (required) and `doctor_name`, URL left empty |
 
 ### Type-specific config (Pydantic models in `tools/schemas.py`)
 
@@ -102,6 +121,7 @@ failed). `attachable` = `ready_count > 0`.
 | workspace_id | text | RLS |
 | kb_id | text FK knowledge_bases ON DELETE CASCADE | |
 | file_name | text | Original name, max 255 |
+| display_name | text | 1 to 255 chars; defaults to `file_name` when not given in the upload (FR-048) |
 | file_type | text | `pdf` \| `docx` (from content sniffing) |
 | file_size | bigint | <= 20,971,520 |
 | sha256 | text | hex, 64 chars |

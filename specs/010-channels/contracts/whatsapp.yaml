@@ -75,8 +75,14 @@ paths:
               schema: {$ref: '#/components/schemas/Problem'}
         '422':
           description: >
-            Validation, `whatsapp-token-rejected` (detail carries WhatsApp's message), or
+            Validation (`errors` lists each failing field, for example meta_phone_number_id
+            "Digits only"), `whatsapp-token-rejected` (detail carries WhatsApp's message), or
             `whatsapp-number-mismatch` (detail names both numbers).
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ValidationProblem'}
+        '502':
+          description: '`whatsapp-unreachable`: the WhatsApp platform could not be reached; nothing is saved, retry later'
           content:
             application/problem+json:
               schema: {$ref: '#/components/schemas/Problem'}
@@ -400,6 +406,19 @@ components:
         status: {type: integer}
         detail: {type: string}
         instance: {type: string}
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field: {type: string}
+                  message: {type: string}
     ActiveCallsProblem:
       allOf:
         - $ref: '#/components/schemas/Problem'

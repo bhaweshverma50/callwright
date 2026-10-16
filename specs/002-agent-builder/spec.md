@@ -27,12 +27,14 @@ it and confirm every value persisted and version 1 exists.
 
 **Acceptance Scenarios**:
 
-1. **Given** the type chooser, **When** the operator picks single-prompt and continues, **Then**
-   they reach the template picker with "Start from scratch" first, and the chooser states that
-   the type cannot be changed later.
+1. **Given** the type chooser (single-prompt preselected), **When** the operator continues with
+   single-prompt, **Then** they reach the template picker with "Start from scratch" first, and the
+   chooser states that the type cannot be changed later.
 2. **Given** a new blank agent, **When** the form opens, **Then** every field shows the platform
    default (for example language English (US), greeting set, agent speaks first, silence timeout
-   30 s, maximum duration 10 minutes) and the defaults come from the platform catalog.
+   30 s, maximum duration 10 minutes, noise cancellation "Voice isolation") and the defaults come
+   from the platform catalog; no select or slider is ever blank or shows a value other than the
+   one that will be saved.
 3. **Given** a model whose temperature is fixed by its provider, **When** the operator selects
    it, **Then** the temperature control shows the fixed value, is locked, and explains why.
 4. **Given** a prompt containing `{{customer_name}}` and `{{order_id}}`, **When** the operator
@@ -43,10 +45,32 @@ it and confirm every value persisted and version 1 exists.
    linked to its field.
 6. **Given** a valid form, **When** the operator saves, **Then** the agent is stored, version 1
    is recorded, a confirmation appears, and the editor stays open on the saved agent.
-7. **Given** unsaved changes, **When** the operator tries to leave the page, **Then** they are
-   asked to stay or leave without saving.
+7. **Given** unsaved changes, including on a create form that has never been saved, **When** the
+   operator tries to leave the page, reload or close the tab, **Then** they are asked to stay or
+   leave without saving.
 8. **Given** a flow agent, **When** someone opens it in the single-prompt editor, **Then** they
    are told it is a flow agent and offered a link to the flow builder.
+9. **Given** a webhook URL `notaurl`, a webhook timeout of 50 ms, a maximum duration of 0.2 or 61
+   minutes, or a ring time of -1 ms, **When** the operator leaves the field, **Then** an inline
+   error states the allowed range or format, and pressing Save sends nothing and lists every such
+   error.
+10. **Given** the variables list, **When** the operator adds `bad name!` by hand, **Then** it is
+    refused inline with the naming rule; `{{order_id}}` typed in the prompt is still added
+    automatically.
+11. **Given** "caller speaks first", **When** the form shows the greeting, **Then** the greeting
+    field is disabled with a note that it is not spoken when the caller speaks first; its text is
+    kept so switching back restores it.
+12. **Given** a chosen voice, **When** the operator switches the voice provider, **Then** the voice
+    model becomes the new provider's default, the voice becomes that provider's default voice for
+    the agent's language, and a notice names the new voice.
+13. **Given** a create form that has never been saved, **When** the operator clicks "Test",
+    **Then** the form is validated and saved first (creating version 1) and the test panel opens;
+    if validation fails, the error summary shows and no call starts.
+14. **Given** default values, **When** the editor shows them, **Then** each label equals the stored
+    value (volume 1.00, responsiveness 0.80), ring time 1,500 ms reads "1.5 s", and background
+    volume 0.8 reads "80%" where 100% is normal loudness.
+15. **Given** a single-prompt agent, **When** the operator opens the editor, **Then** the same
+    post-call analysis variables and quality checks panels that flow agents have are available.
 
 ---
 
@@ -73,6 +97,8 @@ full ID, duplicate one, delete one, and confirm the list reflects each action.
    the list and search, and past calls that ran on it still show their configuration.
 4. **Given** a workspace with no agents, **When** the list opens, **Then** an empty state invites
    the operator to create their first agent.
+5. **Given** an agent, **When** the operator double-clicks "Duplicate", **Then** exactly one copy is
+   created (no confirmation is needed because nothing is lost) and a notice links to the copy.
 
 ---
 
@@ -109,6 +135,9 @@ published.
    **Then** the call is refused because the agent is not published.
 7. **Given** a version whose components are no longer offered or priced, **When** the operator
    tries to publish it, **Then** publishing is refused with the list of components to replace.
+8. **Given** an agent with a single version, **When** the operator opens history, **Then** compare
+   and restore are unavailable with a hint that there is nothing to compare yet; each listed
+   version shows its model, voice and the number of attached tools and knowledge bases.
 
 ---
 
@@ -138,14 +167,18 @@ shows "price unavailable".
    published.
 4. **Given** a system prompt of about 4,000 words, **When** the card updates, **Then** it shows a
    surcharge-risk notice that names the language model input allowance.
+5. **Given** any model, voice model or speech recognition option offered in a picker, **When** the
+   picker opens, **Then** the option shows its real per-minute price (never $0.0000 caused by a
+   missing price), and the card shows the noise cancellation line whenever it is on, even at
+   $0.0000.
 
 ---
 
 ### User Story 5 - Start from an industry template (Priority: P2)
 
-On the template picker the operator filters by industry (for example healthcare, banking,
-insurance, retail, telecom, automotive, real estate, hospitality, general support), reads each
-template's purpose, previews its prompt and greeting, and uses one. The new agent opens in the
+On the template picker the operator filters by industry (automotive, banking, e-commerce,
+healthcare, telecom), reads each template's purpose, previews its prompt and greeting, and uses
+one. The new agent opens in the
 editor pre-filled from the template, named after it, ready to adjust and save.
 
 **Why this priority**: Templates cut time to a first working agent and show good prompt practice.
@@ -162,6 +195,12 @@ the template does not set.
    **Then** the agent gets the default voice for its language and a notice says so.
 3. **Given** a template, **When** it is used, **Then** the resulting agent's version 1 notes that
    it was created from that template.
+4. **Given** the picker, **When** the operator clicks anywhere on a template card, **Then** the
+   preview opens and nothing is created until "Use template" is pressed; pressing it twice
+   creates one agent.
+5. **Given** a used template, **When** the editor opens, **Then** the variables list already holds
+   the template's variables (for example company name and customer name) with defaults, so a
+   test call works without editing.
 
 ---
 
@@ -221,6 +260,15 @@ original prompt is back.
 - A catalog component used by the published version is withdrawn: the agent list and editor show
   a warning; live calls on that version are refused until a replacement is published.
 - Template content changes after agents were created from it: existing agents are unaffected.
+- A stored temperature differs from a fixed-temperature model's value: every control that shows
+  it (editor, and any override control elsewhere) displays the fixed value, and saving stores it.
+- A speech recognition provider has no "Auto" choice: its default model is preselected; the model
+  field is never left blank.
+- A voice provider's public library is community-sourced (mixed quality and languages): the
+  browser shows only the platform's curated, business-suitable set for that provider.
+- A provider's voice API has no search: the browser searches the loaded list by name and
+  description locally.
+- Two catalog languages would share a display label: the catalog check fails the release.
 
 ## Requirements *(mandatory)*
 
@@ -262,7 +310,8 @@ original prompt is back.
   filters (gender, language where the provider supports them), see each voice's description, and
   play a preview sample before choosing wherever the provider supplies one.
 - **FR-010**: When the voice provider changes, System MUST switch the voice model to that
-  provider's default and clear a voice that does not belong to the new provider.
+  provider's default and replace a voice that does not belong to the new provider with that
+  provider's default voice for the agent's language, telling the operator which voice was chosen.
 - **FR-011**: When a speech recognition provider offers exactly one model for the language,
   System MUST select it automatically; "Auto" MUST be offered where the platform picks the best
   model for the language.
@@ -349,6 +398,44 @@ original prompt is back.
   and refused when the balance is at or below zero; requests MUST be limited to 20 per minute per
   workspace.
 
+**Live UI findings (2026-10-16)**
+
+- **FR-038**: Creating an agent (blank or from a template) and duplicating an agent MUST be safe
+  against repeated submission: one user action creates exactly one agent.
+- **FR-039**: Every model, voice model, speech recognition and noise cancellation option offered
+  in a picker MUST have a price in the pricing catalog (feature 001) under the same model
+  identifier used by the configuration, checked before release; the same model offered by two
+  providers MUST use one identifier.
+- **FR-040**: The editor MUST show each field's validation error inline as soon as the field is
+  left, using the same rules as save (FR-013) served by the platform so the editor and the server
+  never disagree; Save MUST NOT submit while known errors remain.
+- **FR-041**: When the caller speaks first, the greeting MUST be shown as not used (disabled with
+  an explanation) and kept unchanged; a non-empty unused greeting MUST produce a warning, not an
+  error.
+- **FR-042**: Every control MUST display the exact value that will be saved: defaults lie on the
+  control's step, duration helpers show exact values (1,500 ms is "1.5 s"; negative or
+  out-of-range input is an error, not a label), volumes show percent of normal loudness (gain 1.0
+  is 100%), and selects with a default never render blank.
+- **FR-043**: The single-prompt editor MUST offer the same post-call analysis variables and
+  quality check panels as flow agents (contents owned by feature 007).
+- **FR-044**: "Test" on a never-saved agent MUST validate and save it first, then open the test
+  panel (feature 003); it MUST NOT show a placeholder or start a call on unsaved data.
+- **FR-045**: The voice browser MUST offer search for every voice provider (locally over the loaded
+  list when the provider has no search), gender and language filters where voice data has them,
+  previews where the provider supplies samples, and, for providers whose library is
+  community-sourced, only a platform-curated list of business-suitable voices.
+- **FR-046**: The launch template set MUST contain seven single-prompt templates across five
+  categories (automotive, banking, e-commerce, healthcare, telecom). Each template carries name,
+  category, description, icon and a partial configuration: agent name, language, model and
+  provider, prompt, greeting, who speaks first, speech recognition provider, voice provider and
+  model, and dynamic variables with defaults; it MUST NOT set a temperature for fixed-temperature
+  models, and every value MUST pass catalog validation at release.
+- **FR-047**: The catalog MUST publish the range, step and label of every tunable voice, speech
+  recognition and model setting; any other place that lets operators override these settings
+  (for example a flow node, feature 004) MUST use the same ranges, steps and names.
+- **FR-048**: The language list MUST have unique display labels and standard language codes, with
+  "Multilingual" first and the rest in alphabetical order.
+
 ### Key Entities
 
 - **Agent**: a named voice agent in a workspace; type (single-prompt or flow, fixed), language,
@@ -401,6 +488,11 @@ original prompt is back.
   (pause 2.5 s, end key `#`, 10 digits); background audio off (volume 0.8); analysis model empty
   meaning "same as the agent's model". Templates use the same defaults unless they set a value.
 - Templates are authored by the platform team; workspaces cannot publish their own templates in v1.
+  The launch set mirrors the reference product's seven industry templates in intent and structure
+  only; prompts, greetings and names are Callwright's own (data-model.md section 6).
+- Launch catalogs (models, providers, speech recognition, voices, noise cancellation, languages)
+  are listed exactly in data-model.md section 8; they match the reference market offer captured
+  on 2026-10-16, minus its defects.
 - Voice cloning and custom voice uploads are out of scope.
 - The assistant's chat history is kept only in the open editor session, not stored.
 - Version history is kept for the life of the agent (no pruning in v1).

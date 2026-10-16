@@ -43,6 +43,26 @@ the graph, labels, node settings and viewport come back exactly as saved.
    to stay or leave without saving.
 7. **Given** the same flow open in two tabs, **When** the second tab saves after the first,
    **Then** the second save is refused with a message to reload, and no edits are silently lost.
+8. **Given** a connection leaving an Agent node, **When** the operator labels it
+   "Route To Billing!", **Then** the preview shows the transition name `route_to_billing`
+   exactly as the model will see it; a label made only of symbols ("!!!") is refused with
+   "The label needs at least one letter or digit".
+9. **Given** a selected node and focus outside any text field, **When** the operator presses
+   Delete or Backspace, **Then** the node and its connections are removed without a
+   confirmation, and a notice offers Undo, which restores both in one step.
+10. **Given** a Transfer node, **When** the operator enters "12345" as the destination and
+    leaves the field, **Then** the field explains that an international number such as
+    +14155550100 is needed; the draft still saves, and publishing is blocked until it is fixed.
+11. **Given** unsaved canvas edits and a changed flow-wide setting, **When** the operator saves
+    and the save fails, **Then** neither the graph nor the setting is stored; and on any save,
+    flow-wide settings the operator did not touch keep their stored values.
+12. **Given** a classify Condition node with categories Sales and Support, **When** it is shown
+    on the canvas, **Then** it has one output handle per category, each connection from it names
+    its category and explains that routing is decided by the node (no condition field), and
+    adding "sales" as a third category is refused as a duplicate.
+13. **Given** unsaved changes, **When** the operator starts a test call from the builder,
+    **Then** the draft is saved first (or the operator cancels), so the test runs exactly what is
+    on the canvas.
 
 ---
 
@@ -77,6 +97,13 @@ history labels it as a flow change.
    warnings remain.
 6. **Given** a published version, **When** the operator later edits the draft, **Then** live calls
    keep using the published version until the next publish.
+7. **Given** a Start node set to a model-written greeting whose connection leads to a Say node,
+   **When** the flow is validated, **Then** an error explains that the greeting must come from an
+   Agent or Task node.
+8. **Given** a Task node with max rounds 25, a Webhook with URL "notaurl" and an Agent node
+   with empty instructions while the persona prompt is set, **When** the operator publishes,
+   **Then** the first two are reported as errors on their fields and publishing is refused; the
+   Agent node is accepted.
 
 ---
 
@@ -151,6 +178,17 @@ confirm each turn used the expected model, language and tool set.
    node, **Then** that tool cannot be used there.
 5. **Given** knowledge bases attached at flow level, **When** the call is in any conversational
    node, **Then** the agent can search them, unless that node has knowledge search turned off.
+6. **Given** a link to the builder ending in `?configure=call-behavior`, **When** it is opened,
+   **Then** the flow-wide settings open directly on Call behaviour, which includes ring duration
+   with the same range as the single-prompt editor.
+7. **Given** a workspace with no tools, **When** the operator opens an Agent node, **Then** the
+   tools section is still shown, with an empty state and a shortcut to create a tool.
+8. **Given** the Start node set to "agent speaks first", **When** the operator switches who speaks
+   first in the flow-wide settings, **Then** the Start node shows the new value, because both
+   controls edit the same setting.
+9. **Given** a node voice override on one provider with a voice chosen, **When** the operator
+   switches the override to another provider, **Then** the voice and voice model are cleared and
+   must be chosen again.
 
 ---
 
@@ -183,6 +221,9 @@ the draft now matches the proposal and validates.
    feature usage line for the workspace.
 5. **Given** the assistant does not answer within 60 seconds, **When** the time passes, **Then**
    the operator sees a retry option and the canvas is unchanged.
+6. **Given** a proposal that inserts a node between two existing nodes, **When** it is shown,
+   **Then** the new node sits between its neighbours without overlapping any node, and existing
+   nodes keep their positions.
 
 ---
 
@@ -208,6 +249,16 @@ the draft now matches the proposal and validates.
 - A very large flow (over 200 nodes or 500 connections): saving is refused with the limit stated.
 - A published flow references a tool that was later deleted: the published version keeps working
   with its stored copy; the draft shows the reference as missing.
+- A connection label that already starts with "Route to" ("Route to billing") yields
+  `route_to_billing`, not a doubled prefix.
+- A classify category is renamed after its connection exists: the connection follows the
+  rename. A category is deleted: its connection is reported as an error until removed or
+  reassigned.
+- The header name is emptied: an inline message asks for a name and Save stays disabled.
+- The operator presses Backspace while typing in a node field: only text is deleted, never the
+  node.
+- A save carries a flow-wide settings change while another user saved the agent draft in the
+  meantime: the whole save is refused with a reload message, and nothing is stored.
 
 ## Requirements *(mandatory)*
 
@@ -337,6 +388,79 @@ the draft now matches the proposal and validates.
   the flow defaults.
 - **FR-039**: Each assistant request MUST be metered as a feature charge.
 
+**Builder details (live UI walkthrough, 2026-10-16)**
+
+- **FR-040**: The canvas MUST offer a toolbar with Auto-layout, Fit to screen, zoom in and zoom
+  out; every icon-only control MUST have an accessible name and a visible tooltip.
+- **FR-041**: Delete and Backspace MUST delete the selected nodes and connections when focus is
+  not in a text field. Deleting MUST NOT ask for confirmation, but MUST be one undo step and MUST
+  offer Undo in a notice.
+- **FR-042**: When the caller speaks first, the Start node MUST allow an optional short greeting
+  played before listening (empty means silence). When the agent speaks first with a model-written
+  greeting, the Start connection MUST lead to an Agent or Task node (otherwise an error), and the
+  panel MUST say that the greeting comes from that node's instructions. The Start card MUST show
+  who speaks first.
+- **FR-043**: Classify category names MUST be 1 to 60 characters of letters, digits, spaces,
+  hyphens or underscores and unique ignoring case; invalid or duplicate entries MUST be refused
+  inline with the reason. A classify node MUST show one output handle per category; a connection
+  from it MUST carry a category chosen from the node's list (not typed) and MUST explain that
+  the node decides the route instead of asking for a condition. Renaming a category MUST carry
+  its connection along.
+- **FR-044**: The connection panel MUST show the exact transition name the model will see,
+  derived from the label (lowercase, every run of other characters becomes one underscore,
+  trimmed, at most 48 characters, prefixed `route_to_` once even when the label already starts
+  with "route to"). A label that yields an empty name MUST be refused. Only connections the
+  model chooses (leaving Agent or Task nodes) need a label; connections leaving Start, Say and
+  Extract nodes MUST NOT require one.
+- **FR-045**: Node panels MUST check constrained fields while they are edited (number ranges such
+  as Task max rounds 1 to 20 and webhook timeout, international phone format for transfer
+  numbers, absolute https URLs for webhooks, JSON syntax for schemas, headers, body templates and
+  canned responses) and show the reason next to the field. The same checks MUST be publish
+  errors, so a draft with bad values saves but never publishes.
+- **FR-046**: One Save MUST store the graph and any changed flow-wide settings together: all are
+  stored or none is. A save MUST carry only the settings the user changed and MUST NOT reset
+  settings the user did not touch (for example maximum call duration, ring duration, webhook
+  timeout, pronunciation entries or analysis model).
+- **FR-047**: Starting a builder test call with unsaved changes MUST save first (or let the user
+  cancel), so the test always runs what is on the canvas.
+- **FR-048**: A flow agent MUST show one name: the flow takes the agent's name at creation, and
+  renaming in the builder header renames the agent; an empty name MUST be refused inline.
+- **FR-049**: The assistant MUST receive node positions. Nodes it adds MUST be placed next to their
+  connected neighbours without overlapping existing nodes, and existing nodes MUST keep their
+  positions.
+- **FR-050**: Flow-wide settings MUST be organised in sections Model, Voice, Call behaviour,
+  Functions, Advanced, Knowledge base and Quality checks. Each section MUST be addressable by link
+  (`?configure=model|voice|call-behavior|functions|advanced|knowledge-base|quality-checks`), and
+  the open section MUST be kept in the address. Advanced MUST include webhook, voicemail, keypad
+  input, background audio, pronunciation, the post-call analysis model and the analysis
+  variables editor (owned by 007).
+- **FR-051**: Each settings section MUST state how it saves: sections that belong to the agent
+  draft (model, voice, call behaviour, advanced) save with the builder Save and mark unsaved
+  changes; sections that edit shared records (functions, knowledge attachments, quality checks,
+  analysis variables) save immediately and confirm it.
+- **FR-052**: Flow-wide settings MUST include every agent setting that applies to flow agents,
+  with the same ranges as the single-prompt editor, including ring duration. "Who speaks first"
+  MUST have one source: changing it in flow-wide settings changes the Start node, and the reverse.
+- **FR-053**: Conversational nodes MUST always show the tool picker; when the workspace library is
+  empty it MUST show an empty state with a shortcut to create a tool.
+- **FR-054**: In node overrides, changing the voice provider MUST clear the chosen voice and voice
+  model; a model with a fixed temperature MUST show that fixed value with the control disabled;
+  the language override MUST drive the node's speech-recognition model choice.
+- **FR-055**: Task fields MUST be editable as a field list or as JSON Schema text; JSON errors MUST
+  show while typing with the line and reason, and switching views MUST keep the fields.
+- **FR-056**: In rule conditions the value input MUST be hidden for the "exists" operator. In
+  Extract nodes a typed variable name MUST be converted to lowercase with underscores and shown
+  before it is added, duplicates MUST be refused, and the node MUST list the `{{name}}`
+  placeholders it makes available to later nodes.
+- **FR-057**: Node cards MUST show a one-line summary of their key setting (who speaks first,
+  overridden model, field count, transfer type and number, start of the message), and multiline
+  fields MUST offer an expanded editor.
+- **FR-058**: The builder header MUST show the editable name, a copyable agent ID, the current
+  version with access to version history (002), flow-wide settings, Save and Publish. With
+  nothing selected the side panel MUST show the assistant and test tabs; selecting a node or
+  connection MUST replace them with its settings, and clicking the empty canvas MUST bring them
+  back.
+
 ### Node Types
 
 | Type | Default label | Key settings (defaults) |
@@ -401,3 +525,7 @@ the draft now matches the proposal and validates.
   must compile without errors to start a test call.
 - The assistant uses the platform's default model; operators cannot pick the assistant model.
 - Transfers and keypad tones are available only on phone calls.
+- Whether a flow takes live calls is decided by the published and pinned agent version (002);
+  the flow itself carries no separate active flag.
+- Right-click menus and a minimap are not provided in v1; every action is reachable from the
+  side panel, the toolbar or the keyboard.

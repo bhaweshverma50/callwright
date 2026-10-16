@@ -167,6 +167,9 @@ R12 keyed diff; R17 cost card via 001 quote with a surcharge-risk heuristic.
 | `agent_versions.service.get_published(agent_id) -> AgentVersion or None` | 003 admission, 010 routing | one indexed read |
 | `agent_versions.service.get(version_id) -> AgentVersion` | 003 claim, 006 call detail, 008 | works for deleted agents |
 | `llms.client.complete(model_ref, messages, ...)` | 006, 007, 008 (optional) | API-side model gateway |
+| `agents.service.validate_override(path, value) -> list[Issue]` | 004 flow node overrides | same `controls` ranges and steps as the agent (FR-047, T104) |
+| `apps/web/src/routes/agents/editor/panelSlots.ts` `registerEditorPanel(id, component)` | 007 analysis variables and quality checks panels | web-side slot for both agent types (FR-043, T097) |
+| `voices.service.resolve_auto_stt(provider, language) -> model` | 003 worker claim (RuntimeConfig) | applies the catalog `auto_rule` (data-model 8.3) |
 
 ### Dependencies on 001
 

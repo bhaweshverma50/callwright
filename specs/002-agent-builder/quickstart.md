@@ -27,8 +27,16 @@ curl -s localhost:8000/v1/voices/catalog "${H[@]}" | jq '.languages[0], [.tts[].
 curl -s "localhost:8000/v1/voices/elevenlabs/voices?search=calm&limit=5" "${H[@]}" | jq '.items[] | {voice_id, name, preview_url}'
 ```
 
-Expect at least one model with `temperature.fixed`, every entry with a price or `null`, and a
-`next_cursor` for paged providers.
+Expect exactly three models (`gpt-5.1`, `gpt-5.2`, `gpt-5-mini`) under both `azure_openai` and
+`openai`, all with `temperature.fixed = 1.0` and prices 0.0165, 0.0315 and 0.0015; 46 languages
+starting with `multi`; TTS providers `elevenlabs`, `cartesia`, `fishaudio`; STT providers
+`deepgram`, `assemblyai`, `sarvam`, all with `supports_auto = true`; NC options Voice isolation
+(default), Standard noise removal, Lightweight noise removal; and a `controls` array (data-model
+section 8). No offered option has a `null` price (FR-039):
+
+```bash
+uv run --directory services/api pytest tests/unit/catalog/test_catalog_consistency.py -q
+```
 
 ## 3. Create and save a single-prompt agent (US1)
 
@@ -40,6 +48,13 @@ then "Start from scratch". In the editor:
    appear in the variables list with "no default" warnings.
 3. Pick a fixed-temperature model: the temperature slider locks with an explanation.
 4. Save: toast confirms, URL becomes `/agents/agt_.../edit`, header shows version 1.
+5. Inline validation (FR-040): webhook `notaurl`, webhook timeout `50`, max duration `0.2` then
+   `61` minutes, ring `-1`: each field shows its error when you leave it and Save sends no
+   request (check the network panel).
+6. Set "caller speaks first": the greeting is disabled with a note and keeps its text.
+7. Switch the voice provider to Cartesia: the voice becomes Cartesia's default for English (US)
+   and a notice names it; noise cancellation shows "Voice isolation" from the start.
+8. On a fresh never-saved form, click Test: the form saves (version 1) and the test panel opens.
 
 API equivalent:
 
@@ -112,14 +127,19 @@ uv run --directory services/api pytest tests/integration/agents/test_cost_card_p
 ## 7. Templates (US5)
 
 ```bash
-curl -s localhost:8000/v1/templates/categories "${H[@]}" | jq '[.items[].id]'          # 9 categories
+curl -s localhost:8000/v1/templates/categories "${H[@]}" | jq '[.items[] | {id, count}]'
+# automotive 1, banking 2, ecommerce 1, healthcare 2, telecom 1 (7 templates)
 T=$(curl -s "localhost:8000/v1/templates?category=healthcare" "${H[@]}" | jq -r '.items[0].id')
-curl -s localhost:8000/v1/agents "${H[@]}" -d "{\"name\":\"From template\",\"type\":\"single_prompt\",\"template_id\":\"$T\"}" \
+curl -s localhost:8000/v1/agents "${H[@]}" -H 'Idempotency-Key: qs-tmpl-1' -d "{\"name\":\"From template\",\"type\":\"single_prompt\",\"template_id\":\"$T\"}" \
   | jq '{template_id, prompt: .draft_config.prompt[0:80], v: .draft_version.version_number, warnings}'
 ```
 
-UI: `/agents/templates` shows "Start from scratch" first, chips "All" plus categories; preview
-shows prompt and greeting; "Use template" opens the editor pre-filled.
+Repeating the create with the same `Idempotency-Key` returns the same agent (FR-038).
+
+UI: `/agents/templates` shows "Start from scratch" first, chips "All" plus five categories;
+clicking a card opens the preview (prompt, greeting, variables) and creates nothing; "Use
+template" opens the editor pre-filled with `company_name` and the other template variables
+already defaulted.
 
 ## 8. AI prompt assistant (US6)
 

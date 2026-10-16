@@ -126,17 +126,26 @@ apps/web/src/api/                 regenerated client from contracts/openapi.yaml
 
 1. **Create**: `POST /v1/flows {name, language}` creates the agent (002 service call) and the flow
    with the starter graph in one transaction (research R15).
-2. **Save**: `PUT /v1/flows/{flow_id}` with `If-Match` revision; body is the full graph plus name;
-   response returns the new revision and the validation result. Drafts with errors are saved.
+2. **Save**: `PUT /v1/flows/{flow_id}` with `If-Match` revision; body is the full graph plus name
+   and, when flow-wide settings changed, `agent_settings {expected_draft_revision, changes}`.
+   Graph, name (also the agent name) and the settings patch are written in one transaction
+   through 002 `agents.service.update_draft` (data model section 9), so a failed save stores
+   nothing and untouched settings are never reset. Response returns the new revision, the agent
+   draft revision and the validation result. Drafts with errors are saved. A test call started
+   with unsaved changes saves first (FR-047).
 3. **Validate**: `POST /v1/flows/{flow_id}/validate` accepts an unsaved graph; same code path as
    save and publish.
 4. **Compile preview**: `POST /v1/flows/{flow_id}/compile` returns `compiled` or issues, no write.
 5. **Publish**: `POST /v1/flows/{flow_id}/publish {release_notes, expected_revision}` validates,
    compiles, then calls 002 `agent_versions.service.create_version` with `config.flow` (data model
    section 5). Returns the new `agv_` id and warning count.
-6. **Global settings**: the drawer edits the agent through 002's agent endpoints (model, voice,
-   STT, call behaviour, tools via 005, knowledge bases via 005, quality checks via 007); only the
-   graph and flow name are stored by this module. The persona prompt is the agent's `prompt`.
+6. **Global settings**: a modal with sections Model, Voice, Call behaviour, Functions, Advanced,
+   Knowledge base and Quality checks, deep-linked by `?configure=<section>`. Draft sections
+   (model, voice, call behaviour including ring duration, advanced) are held in builder state
+   and sent with Save as `agent_settings`; shared-record sections (functions and knowledge via
+   005, quality checks and analysis variables via 007) call their own endpoints immediately and
+   say so. "Who speaks first" in the Model section edits the Start node config. The persona
+   prompt is the agent's `prompt`.
 7. **Runtime**: 003's `pipeline.py` checks `config.type`; for `flow` it builds
    `FlowExecutor(config.flow.compiled, session, adapters, tools_runtime, events)`. Handlers for
    webhook, transfer and end call 005's `worker/tools/http.py`, `transfer.py`, `end_call.py`.
@@ -164,3 +173,13 @@ No constitution violations. One deviation from architecture.md to note for revie
 |---|---|---|
 | AgentConfig snapshot gains a `flow` block (graph, graph_hash, compiled) instead of only `flow_id` | Spec FR-028 requires the compiled form stored with the version; a bare `flow_id` would point at a mutable draft | Referencing the mutable `flows` row breaks version immutability (Principle I) |
 | Benchmarks under `services/voice-worker/tests/harness/bench/` (path not listed in architecture section 2) | Principle II benchmark call set needs a home next to the harness it reuses | Putting benchmarks in unit tests would run them on every CI job and make them flaky |
+
+## Live UI walkthrough deltas (2026-10-16)
+
+Findings tagged [004] in `research/ui-walkthrough/DELTA.md` are resolved in
+`research/ui-walkthrough/DELTA-resolution-004-006.md`. Design consequences: atomic save with
+`agent_settings` (key point 2), transition-name derivation shared with the client through test
+vectors (data model section 4), four new validation codes (`E_GREETING_SOURCE`,
+`E_INVALID_FIELD`, `E_CATEGORY_NAME`, `E_TRANSITION_NAME_EMPTY`), category handles on classify
+nodes, server-side placement of assistant-added nodes, and the canvas toolbar and keyboard
+delete rules (FR-040 to FR-058).

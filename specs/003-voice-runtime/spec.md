@@ -48,6 +48,9 @@ in User Story 4.)
 6. **Given** a browser that receives a call token but never connects, **When** 60 seconds pass,
    **Then** the call is marked failed with a diagnostic explaining the caller never joined, and
    it stops counting against the workspace's concurrent-call limit.
+7. **Given** a browser where microphone access is blocked, **When** the operator clicks
+   "Test call", **Then** no call is created or charged and the panel explains how to allow the
+   microphone and retry.
 
 ---
 
@@ -123,6 +126,12 @@ replacement while the transcript shows the original word.
 6. **Given** an agent version created yesterday and edited today, **When** a call that ran on
    yesterday's version is inspected, **Then** it shows yesterday's version identifier and the
    vendors and models that version used.
+7. **Given** an agent in Hindi whose speech recognition model is "Auto" on a provider whose Auto
+   picks a different model per language, **When** a call runs, **Then** the model chosen for Hindi
+   is used, recorded on the call, and the call is priced at that model's rate.
+8. **Given** a flow segment that switches to another voice, speed or speech recognition language,
+   **When** the conversation reaches it, **Then** later agent turns use the new settings, usage is
+   metered per model, and a value outside the agent-level range is clamped and noted on the call.
 
 ---
 
@@ -282,6 +291,11 @@ stored baseline.
 - A call with recording off is fetched for playback or download: the response states "not
   recorded" and offers no link; this is distinct from "recording unavailable" (a failed
   recording on a call that should have been recorded).
+- The operator denies the microphone prompt after the call was requested (permission revoked
+  between check and join): the call ends as "caller never joined" within 60 seconds and is not
+  billed, because billing starts at connection.
+- An Auto speech recognition choice has no model for the call's language: the call is refused at
+  admission with a message naming the provider and language (002 already blocks saving it).
 
 ## Requirements *(mandatory)*
 
@@ -445,6 +459,20 @@ stored baseline.
   vendors on the default stack and reports p50 and p95 end-to-end turn latency against a stored
   baseline.
 
+**Live UI findings (2026-10-16)**
+
+- **FR-045**: When a call's speech recognition model is "Auto", System MUST resolve it from the
+  call's language using the platform catalog rule (feature 002), use that model for the whole call
+  or segment, report the resolved model in usage meters, and price the call by it.
+- **FR-046**: System MUST let the flow capability (feature 004) change, for subsequent turns, the
+  language model, the voice (provider, model, voice, speed, expressiveness) and speech recognition
+  (provider, model, language); override values MUST be validated against the same ranges and steps
+  as agent-level settings (002 FR-047), clamped when outside them with a note on the call, and
+  metered per model.
+- **FR-047**: Before creating a browser test call, the app MUST confirm microphone access; when it
+  is blocked, System MUST NOT create, admit or charge a call and MUST tell the operator how to
+  allow the microphone.
+
 ### Key Entities
 
 - **Call**: one conversation on any channel; agent and frozen version, channel, direction,
@@ -510,3 +538,8 @@ stored baseline.
 - The recording link inside webhook events is valid for 10 minutes; receivers fetch a fresh
   link through the calls API when needed.
 - A public, unauthenticated marketing demo call is out of scope for this feature.
+- Launch vendors match 002's catalog (data-model section 8): STT Deepgram, AssemblyAI, Sarvam;
+  LLM Azure OpenAI and OpenAI; TTS ElevenLabs, Cartesia, Fish Audio; noise cancellation Sanas
+  (voice isolation, standard) and ai-coustics. Sarvam text-to-speech is not offered at launch.
+- The voice copilot (hold-to-talk commands) belongs to feature 006; its microphone handling
+  follows the same rule as FR-047.

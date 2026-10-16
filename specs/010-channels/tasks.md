@@ -54,6 +54,7 @@ greets; the call row has channel `sip_inbound`, correct from/to and `phone_numbe
 - [ ] T013 [P] [US1] Integration test for import: active on success, `error` with compensation on platform failure, retry to active, global duplicate refused without workspace detail, `sip:` prefix stripped in `services/api/tests/integration/test_number_provisioning.py`
 - [ ] T014 [P] [US1] Integration test for inbound claim routing: admitted with from/to and `phone_number_id`, trunk-number mismatch refused, non-active number refused in `services/api/tests/integration/test_inbound_routing.py`
 - [ ] T015 [P] [US1] Worker tests for the inbound ring phase (`ringing` then `in_progress` after ring duration, caller hangup during ring gives `failed` without connect, hangup after connect gives `user_hangup`) in `services/voice-worker/tests/unit/test_telephony.py` and `services/voice-worker/tests/harness/scripts/inbound_ring.yaml`
+- [ ] T080 [P] [US1] Contract and integration test: `POST /v1/phone-numbers` with an extra `user_id` or `workspace_id` field returns 422 and the number is created in the token's workspace only in `services/api/tests/integration/test_number_body_scoping.py`
 
 ### Implementation for User Story 1
 
@@ -66,6 +67,8 @@ greets; the call row has channel `sip_inbound`, correct from/to and `phone_numbe
 - [ ] T022 [P] [US1] Implement `ImportNumberDialog` and `SipSettingsCard` (copyable origination address) in `apps/web/src/routes/channels/components/ImportNumberDialog.tsx` and `apps/web/src/routes/channels/components/SipSettingsCard.tsx`
 - [ ] T023 [US1] Implement `PhoneNumbersPage` (tabs, list, empty state) and `NumberDetailPanel` (status, retry, inbound agent select) and register `/phone-numbers` in `apps/web/src/app/router.tsx`; files `apps/web/src/routes/channels/PhoneNumbersPage.tsx`, `apps/web/src/routes/channels/components/NumberDetailPanel.tsx`
 - [ ] T024 [US1] Add `phone_numbers.yaml` to the `contracts/openapi.yaml` assembly and regenerate `apps/web/src/api/`
+- [ ] T081 [US1] Client-side validation in `ImportNumberDialog` mirroring the server rules (required fields on empty submit, E.164 with example, termination host or IP with optional port, user part or path rejected), server `errors[]` mapped to fields, plus web tests in `apps/web/src/routes/channels/components/ImportNumberDialog.tsx` and `apps/web/src/routes/channels/components/ImportNumberDialog.test.tsx`
+- [ ] T082 [US1] Use the same name ("Channels") for the sidebar entry and the page title of `/phone-numbers` in `apps/web/src/routes/channels/PhoneNumbersPage.tsx` and the shell navigation config `apps/web/src/app/navigation.ts` (shared shell file owned by 001)
 
 **Checkpoint**: Imported numbers answer inbound calls with an agent.
 
@@ -154,6 +157,7 @@ place a WhatsApp call; the call row has channel `whatsapp`.
 - [ ] T047 [P] [US4] Integration test for setup with respx: token rejected saves nothing; number mismatch names both values; success gives `setup_incomplete`; trunk failure gives `error` with compensation; retry recovers; duplicate business id refused in `services/api/tests/integration/test_whatsapp_setup.py`
 - [ ] T048 [P] [US4] Integration test for the public webhook: challenge echoed and `webhook_verified_at` set (`active`), wrong token 403, bad signature 401, unknown id 200 ignored, response under 5 s in `services/api/tests/integration/test_whatsapp_webhook.py`
 - [ ] T049 [P] [US4] Integration test for WhatsApp claim routing: default agent admitted with channel `whatsapp` and normalised caller number; no agent declined with no charge in `services/api/tests/integration/test_whatsapp_inbound.py`
+- [ ] T083 [P] [US4] Integration test with respx: WhatsApp connection error or timeout during create returns 502 `whatsapp-unreachable` and saves nothing; non-numeric `meta_phone_number_id` returns 422 with a field error in `services/api/tests/integration/test_whatsapp_setup.py`
 
 ### Implementation for User Story 4
 
@@ -163,7 +167,9 @@ place a WhatsApp call; the call row has channel `whatsapp`.
 - [ ] T053 [US4] Implement authenticated channel routes, `GET /v1/whatsapp/settings`, and public `GET/POST /v1/whatsapp/webhook` in `services/api/app/whatsapp/router.py`
 - [ ] T054 [US4] Implement `WhatsAppRouter` (caller normalisation, default agent, decline without agent) and register it with 003 in `services/api/app/whatsapp/routing.py`
 - [ ] T055 [P] [US4] Implement `useWhatsAppChannels` in `apps/web/src/routes/channels/hooks/useWhatsAppChannels.ts`
+- [ ] T084 [US4] Map connection failures in `services/api/app/whatsapp/graph_client.py` to `whatsapp-unreachable` (502) in `services/api/app/whatsapp/service.py`
 - [ ] T056 [US4] Implement `WhatsAppChannelDialog` and `WhatsAppChannelPanel` (setup checklist: credentials, calling, verified; copyable callback URL; default agent select) in `apps/web/src/routes/channels/components/WhatsAppChannelDialog.tsx` and `apps/web/src/routes/channels/components/WhatsAppChannelPanel.tsx`; add `whatsapp.yaml` to the contract assembly and regenerate `apps/web/src/api/`
+- [ ] T085 [US4] `WhatsAppChannelDialog` form rules: digits-only business phone number ID, E.164 number, verify token length, API version prefilled from `GET /v1/whatsapp/settings`, read-only callback address with copy, setup guide link, cause-specific failure messages keeping non-secret values, plus web tests in `apps/web/src/routes/channels/components/WhatsAppChannelDialog.tsx` and `apps/web/src/routes/channels/components/WhatsAppChannelDialog.test.tsx`
 
 **Checkpoint**: WhatsApp voice calls reach agents.
 

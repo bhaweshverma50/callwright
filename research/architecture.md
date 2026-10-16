@@ -1,6 +1,6 @@
 # Callwright Architecture Conventions (HLD)
 
-**Version 1.1** (2026-10-16). Shared by every spec and plan under `specs/`. Plans MUST use these
+**Version 1.2** (2026-10-16). Shared by every spec and plan under `specs/`. Plans MUST use these
 names, paths and patterns. Deviations go in the plan's Complexity Tracking table. Section 8 lists
 what changed from 1.0 after the ten specs were written.
 
@@ -27,7 +27,7 @@ what changed from 1.0 after the ten specs were written.
  | (api image)  | +-----------------------+   |   > TTS, NC adapter         |--> vendor APIs
  +------+-------+          ^                  |  role=textsim: text runner  |   (Deepgram, Sarvam,
         | post-call jobs   |                  |   for tests and simulations |    AssemblyAI, OpenAI,
-        +------------------+                  +-----------------------------+    Azure, Anthropic,
+        +------------------+                  +-----------------------------+    Azure,           
             S3-compatible storage: recordings (egress), KB documents             ElevenLabs, Cartesia,
                                                                                  Fish Audio, Sanas NC)
 ```
@@ -103,14 +103,18 @@ it defines a port with an empty default and the later feature registers the impl
 - 006 `CallQualityPort` (verdicts on call list, detail, dashboard) implemented by 007.
 - 002 hook registries for config validation and snapshot resolvers, used by 004 (`flow`),
   005 (`tools`, `knowledge`), 007 and 010.
-- 003 worker `ToolProvider` and `CallControl` (005), `FlowRunner` (004); API `InboundRouter` and
+- 003 worker `ToolProvider` and `CallControl` (005), `FlowRunner` (004), and
+  `CallControl.apply_overrides()` for per-segment model, voice and STT overrides (004); API `InboundRouter` and
   `OutboundDialProvider` (010); post-call step registry handlers `analyze` and `evaluate` (007).
+- 002 `agents.service.validate_override()` and its shared range table: every slider and every
+  flow-node override (004) is validated and clamped against one table.
+- 002 web editor panel slot `registerEditorPanel`, filled by 007 (quality checks) and others.
 - `/calls/:id/compare` (006) redirects to `/simulations/runs/:runId` (008).
 
 **Shared-file edits.** These cross-owner edits are expected and listed in the editing spec's
 tasks: 004 T066 into 003 `pipeline.py`; 005 T025 and T077 into 002 version publishing; 008 and
 009 into 006 `CallsPage.tsx` (multi-select, add to dataset) and 003 `calls/jobs.py` (simulation
-branch). 003 accepts a `use_draft` flag on test sessions for 005 and 008.
+branch); 010 T082 into 001's shell navigation. 003 accepts a `use_draft` flag on test sessions for 005 and 008.
 
 ## 4. API conventions
 
@@ -126,7 +130,8 @@ branch). 003 accepts a `use_draft` flag on test sessions for 005 and 008.
   catalog versions, templates, flow node ids `n_` and edge ids `e_`) use integers, slugs or local
   ids, not platform prefixes.
 - Lists: `?page=1&page_size=20` returns `{items, total, page, page_size, total_pages}`.
-- Idempotency: `Idempotency-Key` header on POSTs that spend credit or place calls.
+- Idempotency: `Idempotency-Key` header on POSTs that spend credit or place calls, and on agent
+  create and duplicate (double-submit protection).
 - Optimistic concurrency where documents are edited whole (flow graphs): `If-Match` revision, 412 on conflict.
 - Internal worker endpoints live under `/v1/internal/*` (calls claim, events heartbeat, kb_search,
   textsim), authenticated by a service token.
@@ -141,7 +146,8 @@ branch). 003 accepts a `use_draft` flag on test sessions for 005 and 008.
 - **AgentConfig** (JSON, versioned schema; one record, merging the reference product's separate
   LLM and agent records): llm {provider, model, temperature}, prompt, begin_message,
   start_speaker, dynamic_variables [{name, default}], stt {provider, model}, tts {provider,
-  model, voice_id, speed, expressiveness, volume}, noise_cancellation {provider, model} or null,
+  model, voice_id, speed, expressiveness, volume}, noise_cancellation {provider, model} or null (`sanas` with `vi | st`,
+  `ai_coustics` with `standard`),
   call_behavior {end_on_silence_s, max_duration_s, ring_duration_ms, interruption_sensitivity,
   responsiveness}, advanced {webhook_url, webhook_timeout_ms, voicemail_detection, dtmf,
   background_audio, analysis_model, pronunciation[], recording `inherit | on | off`},
@@ -182,7 +188,9 @@ A step table keyed by `(call_id, step)` drives the jobs, each idempotent:
 2. `pricing`: price per component, round each cost line up to $0.001, charge the ledger with key
    `call_charge:{call_id}` (blocking; 001)
 3. `analyze`: summary, sentiment, analysis variables (non-blocking; 007)
-4. `evaluate`: enabled evaluators (non-blocking; 007)
+4. `evaluate`: enabled evaluators (non-blocking; 007). Waits for, or re-queues until, the
+   recording is finalized when an enabled check reads audio (`audio_silence`); calls without a
+   recording skip audio checks
 5. `webhook`: customer `call_analyzed` (003)
 6. `complete`: mark `completed` (blocking)
 
@@ -196,11 +204,18 @@ feature charge instead. Test calls (`origin = test`) are priced and charged like
 - Recordings: dual-channel audio-only egress started by the API (the worker never holds storage
   credentials), served via 10-minute signed URLs. Skipped when `recording_enabled` is false.
 - Observability: OpenTelemetry traces across API and worker carry `call_id`.
+- pgvector serves two indexes: knowledge chunks (005) and `call_embeddings` for anomaly detection
+  (007). The API image carries PyAV and numpy so jobs can read recordings.
 - Feature charges (`flow_assistant`, `voice_copilot`, `analytics_chat`, `prompt_generation`,
   `post_call_analysis`, `eval.<name>`, `simulator.<step>`, `issues.<step>`) and the `embedding`
-  component go through `billing.charge_feature()` so usage reporting (001) sees them.
+  component go through `billing.charge_feature()` so usage reporting (001) sees them. Zero-amount charges are
+  valid and recorded (for example internal call embeddings), so usage stays complete.
 - The analytics assistant never runs model-written SQL: it emits a typed MetricQuery executed over
   RLS-respecting `analytics.*` views by a read-only role (006).
+- Server errors return a generic problem body with a `trace_id`; details stay in logs.
+- Optional-feature tokens (voice copilot STT keys) are minted on first use, never on page load.
+- Launch vendor set: STT Deepgram, Sarvam, AssemblyAI; LLM Azure OpenAI, OpenAI; TTS ElevenLabs,
+  Cartesia, Fish Audio; NC Sanas, ai-coustics. Anthropic and Sarvam TTS adapters are deferred.
 - House style for all docs: no em dashes.
 
 ## 8. Changes from 1.0
@@ -219,3 +234,14 @@ Resolved after the ten specs reported conflicts:
 - Routes: `/simulations/runs/:runId`, call detail drawer, `/settings`.
 - Ownership tasks added: 001 T088 to T090 (secrets, `recording_default`, catalog additions),
   002 T088 and T089 (recording override, `knowledge` snapshot block).
+
+## 9. Changes from 1.1 (live walkthrough merge)
+
+- Post-call `evaluate` waits for the finalized recording when audio checks are enabled.
+- Second pgvector use (`call_embeddings`); API image adds PyAV and numpy; zero-amount feature
+  charges recorded as usage without a ledger row.
+- Ports added: `CallControl.apply_overrides()`, `validate_override()` with the shared range
+  table, `registerEditorPanel`. Shared edit added: 010 T082 into 001 navigation.
+- Idempotency extended to agent create and duplicate; noise-cancellation ids fixed; launch
+  vendor set narrowed; `trace_id` and lazy feature-token rules.
+

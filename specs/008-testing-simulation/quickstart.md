@@ -22,8 +22,9 @@ warning.
 
 ```bash
 # Seed categories exist
-curl -s $API/test-categories -H "Authorization: Bearer $TOKEN" | jq '.items[].slug'
-# expect: out_of_scope bad_behaviour identity prompt_injection guardrails
+curl -s $API/test-categories -H "Authorization: Bearer $TOKEN" | jq -r '.items[] | "\(.slug) \(.color)"'
+# expect alphabetical by name, each with a palette colour:
+# bad_behaviour, guardrails, identity, out_of_scope, prompt_injection
 
 # Create one case with a blank name
 curl -s -X POST $API/test-cases -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -104,7 +105,14 @@ curl -s -X POST $API/datasets -H "Authorization: Bearer $TOKEN" -H 'Content-Type
 curl -s -X POST $API/datasets/$DS/evaluate -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: ev-$(date +%s)" | jq .
 curl -s -X POST $API/experiments -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -H "Idempotency-Key: dsexp-$(date +%s)" -d '{"agent_id":"'$AGENT'","mode":"replay","dataset_id":"'$DS'"}' | jq '.source, .dataset_id'
+curl -s -X POST $API/datasets -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"No agent"}' -o /dev/null -w '%{http_code}\n'   # 422, agent_id is required
 ```
+
+In the browser: "New dataset" with an empty form shows a message under Name and under Agent and
+sends nothing. On `/simulations`, choosing an agent in the filter issues a new request (network
+tab) and "New simulation" opens the standalone persona dialog. In the Generate dialog, typing 25
+shows 20 and "Generate 20 test cases".
 
 ## 6. Automated checks
 

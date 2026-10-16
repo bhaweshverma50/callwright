@@ -52,6 +52,10 @@ the `iss_` prefix only; revisions and attempts are integers scoped to an issue.
 | dismissed_at, dismissed_by | | |
 | created_at, updated_at | timestamptz | |
 
+List filters (FR-026): index `(workspace_id, agent_id, last_seen_at desc)`; `window_days` on the
+list keeps `last_seen_at >= now() - window_days`; `scope = real` excludes `issue_origin =
+simulated` (mostly simulated samples).
+
 ### State transitions
 
 ```

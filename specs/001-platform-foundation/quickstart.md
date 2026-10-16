@@ -38,8 +38,11 @@ Expected: all green. The money tests that must pass (SC-004, SC-005):
 
 1. Open `http://localhost:5173/register`, register `ops+1@example.com` with a 10+ character password.
 2. Open the local mail catcher (Supabase Inbucket, `http://localhost:54324`), click the link.
-3. You land on `/dashboard`: header chip shows **$5.00**, the rail lists Dashboard, Agents, Calls,
-   Datasets, Simulations, Review, Calibration, Issues, Channels, Knowledge, Billing.
+3. You land on `/dashboard`: the top-bar chip shows **$5.000** and links to `/billing`; the rail is
+   collapsed (hover shows labels) and, expanded, lists Dashboard, Agents, Calls, Quality (Datasets,
+   Simulations), Feedback (Review, Calibration, Issues), Channels, Knowledge, Billing.
+4. In the browser network panel, the first load shows only identity and balance reads: no token
+   or session requests for the voice copilot or other optional features (FR-020).
 
 API check:
 
@@ -64,6 +67,24 @@ Sign-out everywhere (US1.3): open `/billing` in two tabs, sign out in one; the o
 Password reset (US1.4): `/forgot-password`, follow the email link, set a new password; using the
 same link again shows "link expired or already used".
 
+Settings (US1.5, FR-017): open the user menu, choose Settings, rename the workspace, turn the
+recording default off, save. Reload: both values persist; `GET /v1/me` shows
+`workspace.recording_default = false`. An empty name shows a field error and saves nothing.
+
+Not found and id hygiene (US1.6, US1.7, FR-018, FR-019):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8000/v1/agents/not-an-id -H "authorization: Bearer $TOKEN"
+# 404 (problem+json, code not_found), never 5xx
+```
+
+Open `http://localhost:5173/no-such-page`: the shell shows "page not found" with a link to the
+dashboard. Open an address with an unknown record id: the page names the missing record kind
+with no status code text.
+
+Leave guard (US1.9, FR-021): type into any create form, then press reload: the browser asks to
+stay or leave.
+
 ## 3. Top up and see the transaction (US2, FR-006 to FR-009)
 
 1. On `/billing`, enter custom amount `4` and click Add: inline error "Minimum $5".
@@ -82,6 +103,10 @@ curl -s localhost:8000/v1/billing/transactions -H "authorization: Bearer $TOKEN"
 
 Abandoned checkout (US2.2): start a $100 checkout, close the Stripe page, return to `/billing`;
 balance and history are unchanged.
+
+Amount rules (US2.5, US2.6, FR-008): type 4, then 10001, then 5.555 in the custom amount: each
+shows an inline reason and no checkout starts. Click the $100 chip: the field shows 100.00 and
+nothing happens until "Add funds $100.00" is pressed. API: `amount_usd` "10000.01" returns 422.
 
 ## 4. Price the reference call (US3, FR-010 to FR-013)
 
@@ -139,6 +164,9 @@ curl -s "localhost:8000/v1/usage?from=2026-09-17&to=2026-10-16" -H "authorizatio
 
 Only in-window rows appear and the totals equal the sum of rows. With no usage, `/billing` shows
 "No usage charges yet in this window" with the window dates.
+
+Pick a custom range in the usage panel (US4.2): rows and totals refresh; an end date before the
+start is refused inline.
 
 ## 7. Isolation and reconciliation
 
