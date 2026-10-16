@@ -257,4 +257,20 @@ Guardrails:
 
 ## 11. Critique log
 
-Recorded after each screenshot pass (section 12 of the brief: look, remove one accessory, re-shoot).
+Recorded after each screenshot pass: look, remove one accessory, re-shoot.
+
+1. First pass (1440 light and dark): the sign-in panel carried a waveform card and a chain strip;
+   the chain strip was the accessory removed, so the sample call is the one visual. Phones scrolled
+   sideways on home and pricing (single-column grids sized to content); fixed with
+   `grid-cols-[minmax(0,1fr)]`. Chain links took the SVG default width and overflowed the console.
+2. Receipts in the 360px inspector wrapped component names; they now drop the rate column and
+   model names below container widths (container queries).
+3. User review: the switch thumb overflowed (root font size 14px made rem utilities 87.5 percent
+   while px sizes were not; root restored to 16px, switch fixed in px); settings cards did not
+   share an anatomy (now `PanelRows`); the collapsed rail was cramped and clipped (Tooltip's Slot
+   dropped NavLink's class function; rebuilt with centred 40x40 targets).
+4. User review: side-stripe accents removed everywhere (sidebar, rows, toasts, stepper); every
+   flow redrawn with one `FlowChain` so connectors are equal; the button sheen became one short
+   eased pass on hover; the dashboard sequence became a real stepper.
+5. At 1024 the pricing chain had no room for subtotals between nodes; with `FlowChain` they sit
+   centred on equal connectors, and the chain turns vertical on narrow containers.

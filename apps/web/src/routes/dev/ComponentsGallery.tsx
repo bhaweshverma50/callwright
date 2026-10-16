@@ -164,7 +164,7 @@ export function ComponentsGallery() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <span className="grad-action h-12 rounded-control" />
-              <span className="text-[12px] text-fg-2">Action gradient, cobalt to violet (primary buttons, logo, active markers)</span>
+              <span className="text-[12px] text-fg-2">Action gradient, cobalt to violet (primary buttons, logo, switches, the active step)</span>
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="grad-heat h-12 rounded-control" />
