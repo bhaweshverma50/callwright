@@ -23,11 +23,12 @@ Environment (`services/api/.env` and `services/voice-worker/.env`):
 LIVEKIT_URL=ws://localhost:7880
 LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=secret
-CALLWRIGHT_INTERNAL_API_URL=http://localhost:8000/v1/internal
+CALLWRIGHT_INTERNAL_API_URL=http://localhost:8100/v1/internal
 CALLWRIGHT_SERVICE_TOKEN=dev-service-token
 RECORDINGS_BUCKET=callwright-recordings
 CREDIT_GRACE_USD=0.50
 WORKER_AGENT_NAME=callwright-voice
+LIVEKIT_MODE=live                    # API only: fake records rooms and dispatches in memory
 # Vendor keys only for real-vendor runs (not needed for the offline harness)
 DEEPGRAM_API_KEY=...  AZURE_OPENAI_API_KEY=...  ELEVEN_API_KEY=...
 ```
@@ -39,14 +40,14 @@ marked `failed` and every other story still works.
 
 ```bash
 cd services/api && uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --port 8000              # API
-uv run arq app.jobs.WorkerSettings                            # jobs (pipeline, webhooks, reaper)
+uv run uvicorn app.main:app --reload --port 8100              # API
+uv run arq app.core.jobs.WorkerSettings                       # jobs (pipeline, webhooks, reaper)
 cd ../voice-worker && uv run python -m worker.entry dev       # voice worker
-cd ../../apps/web && pnpm dev                                 # SPA on http://localhost:5173
+cd ../../apps/web && pnpm dev                                 # SPA on http://localhost:5180
 ```
 
 Point the media server's webhooks at the API by starting `livekit-server` with a config file
-containing `webhook: {api_key: devkey, urls: ["http://localhost:8000/v1/livekit/webhook"]}`.
+containing `webhook: {api_key: devkey, urls: ["http://localhost:8100/v1/livekit/webhook"]}`.
 
 ## 3. User Story 1: browser test call
 
@@ -67,7 +68,7 @@ Expect `web`, `completed` (after the pipeline), `user_hangup`, one `turn` row pe
 API only:
 
 ```bash
-curl -s -X POST localhost:8000/v1/sessions/web-call \
+curl -s -X POST localhost:8100/v1/sessions/web-call \
   -H "Authorization: Bearer $JWT" -H "Idempotency-Key: $(uuidgen)" \
   -H "Content-Type: application/json" \
   -d '{"agent_id":"agt_...","version":"draft","dynamic_variables":{"customer_name":"Priya"}}'
@@ -147,14 +148,15 @@ the workspace default off. Restore the default with `recording_default = true`.
 Start a receiver that fails twice then succeeds:
 
 ```bash
-uv run python services/api/tests/integration/tools/flaky_receiver.py --fail 2 --port 9009
+uv run --directory services/api python tests/integration/tools/flaky_receiver.py --fail 2 --port 9009
 ```
 
-Set the agent's webhook URL to `http://host.docker.internal:9009/hook` (HTTP is allowed when
-`ENV=development`), place a call, then:
+Set the agent's webhook URL to `http://localhost:9009/hook` (plain HTTP and local addresses
+need `WEBHOOKS_ALLOW_HTTP=true` and `WEBHOOKS_ALLOW_PRIVATE=true`, refused in production),
+place a call, then:
 
 ```bash
-curl -s "localhost:8000/v1/webhooks/deliveries?call_id=<id>" -H "Authorization: Bearer $JWT" | jq
+curl -s "localhost:8100/v1/webhooks/deliveries?call_id=<id>" -H "Authorization: Bearer $JWT" | jq
 ```
 
 Verify a signature (receiver side):

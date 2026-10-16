@@ -24,9 +24,9 @@ research/architecture.md section 2.
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [x] T001 Create the worker package: `services/voice-worker/pyproject.toml` (Python 3.12, `livekit-agents` 1.x with `silero`, `turn-detector`, `deepgram`, `openai`, `elevenlabs` plugins, pytest, pytest-asyncio, ruff, mypy) and `services/voice-worker/worker/__init__.py`
-- [ ] T002 [P] Add `livekit-api` and `httpx` to `services/api/pyproject.toml`
+- [x] T002 [P] Add `livekit-api` and `httpx` to `services/api/pyproject.toml`
 - [ ] T003 [P] Add `livekit-client` to `apps/web/package.json`
-- [ ] T004 [P] Add settings `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CALLWRIGHT_SERVICE_TOKEN`, `CREDIT_GRACE_USD`, `RECORDINGS_BUCKET`, `WORKER_AGENT_NAME` to `services/api/app/core/config.py`
+- [x] T004 [P] Add settings `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CALLWRIGHT_SERVICE_TOKEN`, `CREDIT_GRACE_USD`, `RECORDINGS_BUCKET`, `WORKER_AGENT_NAME` to `services/api/app/core/config.py`
 - [x] T005 [P] Create worker settings (internal API URL, service token, agent name, heartbeat interval) in `services/voice-worker/worker/settings.py`
 - [x] T006 [P] Add CI workflow `.github/workflows/voice-worker.yml` running ruff, mypy, `tests/unit` and `tests/harness` for `services/voice-worker`
 
@@ -36,20 +36,23 @@ research/architecture.md section 2.
 
 **No user story work starts until this phase is complete.**
 
-- [ ] T007 Write migration `services/api/app/migrations/versions/0003_voice_runtime.py`: enums (`call_channel`, `call_direction`, `call_status`, `disconnect_reason`, `recording_status` (including `not_recorded`), `recording_setting_source`, `pipeline_status`, `call_event_type`, `pipeline_step`, `step_status`, `webhook_event`, `delivery_status`), tables `calls`, `call_events`, `call_pipeline_steps`, `webhook_signing_secrets`, `webhook_deliveries`, `idempotency_keys` (skip if 001 created it), all indexes and RLS policies from data-model.md
-- [ ] T008 [P] Create `Call` and `CallPipelineStep` ORM models, enums and the guarded `transition(call_id, expected, new, **fields)` helper in `services/api/app/calls/models.py`
-- [ ] T009 [P] Create `CallEvent` ORM model in `services/api/app/call_events/models.py`
-- [ ] T010 [P] Create `WebhookSigningSecret` and `WebhookDelivery` ORM models in `services/api/app/webhooks_out/models.py`
-- [ ] T011 [P] Implement Idempotency-Key storage and replay dependency (24 h, request hash check) in `services/api/app/core/idempotency.py` (reuse 001's if present)
-- [ ] T012 [P] Implement LiveKit server client wrapper (create/delete room, create agent dispatch, mint scoped participant token, start room-composite egress, webhook receiver) in `services/api/app/core/livekit.py`
-- [ ] T013 [P] Add `require_service()` service-token dependency to `services/api/app/core/auth.py`
+- [x] T007 Write migration `services/api/app/migrations/versions/0003_voice_runtime.py`: enums (`call_channel`, `call_direction`, `call_status`, `disconnect_reason`, `recording_status` (including `not_recorded`), `recording_setting_source`, `pipeline_status`, `call_event_type`, `pipeline_step`, `step_status`, `webhook_event`, `delivery_status`), tables `calls`, `call_events`, `call_pipeline_steps`, `webhook_signing_secrets`, `webhook_deliveries`, `idempotency_keys` (skip if 001 created it), all indexes and RLS policies from data-model.md
+  - Built as `services/api/app/migrations/versions/s003_0001_voice_runtime.py` (revision `s003_0001`, after `s001_0006`). Value sets are text columns with CHECK constraints (001 style). `calls.agent_id` and `calls.agent_version_id` have no foreign keys until 002 merges; `calls.origin` (`live`, `test`, `simulation`) and `simulation_run_id` follow architecture 1.2. Security-definer lookups `calls_workspace_for`, `calls_for_room`, `calls_for_egress`, `calls_stuck` and the purge functions serve the internal endpoints, LiveKit hooks and crons.
+- [x] T008 [P] Create `Call` and `CallPipelineStep` ORM models, enums and the guarded `transition(call_id, expected, new, **fields)` helper in `services/api/app/calls/models.py`
+- [x] T009 [P] Create `CallEvent` ORM model in `services/api/app/call_events/models.py`
+- [x] T010 [P] Create `WebhookSigningSecret` and `WebhookDelivery` ORM models in `services/api/app/webhooks_out/models.py`
+- [x] T011 [P] Implement Idempotency-Key storage and replay dependency (24 h, request hash check) in `services/api/app/core/idempotency.py` (reuse 001's if present)
+- [x] T012 [P] Implement LiveKit server client wrapper (create/delete room, create agent dispatch, mint scoped participant token, start room-composite egress, webhook receiver) in `services/api/app/core/livekit.py`
+- [x] T013 [P] Add `require_service()` service-token dependency to `services/api/app/core/auth.py`
+  - `require_service()` already existed in 001's `core/auth.py`; the token also reads `CALLWRIGHT_SERVICE_TOKEN`.
 - [x] T014 [P] Implement typed internal API client (`claim()`, `post_events()` with retry and backoff, control handling) in `services/voice-worker/worker/internal_api.py`
 - [x] T015 [P] Implement adapter registry with capability records and `UnsupportedVendor`, plus `catalog.json` listing supported `(kind, provider, models)` in `services/voice-worker/worker/adapters/registry.py` and `services/voice-worker/worker/adapters/catalog.json`
 - [x] T016 [P] Define `ToolProvider`, `CallControl` protocols and `NullToolProvider` in `services/voice-worker/worker/tools/__init__.py`
 - [x] T017 [P] Define `FlowRunner` protocol and `NullFlowRunner` in `services/voice-worker/worker/flow/__init__.py`
-- [ ] T018 Define `InboundRouter` and `OutboundDialProvider` registries and the call state-transition service in `services/api/app/calls/service.py` (depends on T008)
+- [x] T018 Define `InboundRouter` and `OutboundDialProvider` registries and the call state-transition service in `services/api/app/calls/service.py` (depends on T008)
 - [x] T019 Build the offline harness core: virtual clock `clock.py`, fake adapters and fake room transport `fakes.py`, YAML script schema `script_schema.py`, scenario runner `runner.py` in `services/voice-worker/tests/harness/`
-- [ ] T020 Register 003 jobs and crons (pipeline, recording, webhook delivery, reaper, purge) in `services/api/app/jobs.py` `WorkerSettings` (create if absent)
+- [x] T020 Register 003 jobs and crons (pipeline, recording, webhook delivery, reaper, purge) in `services/api/app/jobs.py` `WorkerSettings` (create if absent)
+  - Registered in `services/api/app/core/jobs.py` (001's arq worker; run `uv run arq app.core.jobs.WorkerSettings`). The queue port lives in `app/core/queue.py`.
 
 **Checkpoint**: schema, shared clients, extension points and harness core exist.
 
@@ -65,22 +68,23 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 
 ### Tests for User Story 1 (write first, must fail)
 
-- [ ] T021 [P] [US1] Contract test for `POST /v1/sessions/web-call` against `contracts/sessions.yaml` in `services/api/tests/contract/test_sessions_contract.py`
-- [ ] T022 [P] [US1] Contract test for `POST /v1/internal/calls/claim` against `contracts/calls.yaml` in `services/api/tests/contract/test_calls_internal_contract.py`
-- [ ] T023 [P] [US1] Contract test for `POST /v1/internal/calls/{call_id}/events` against `contracts/call_events.yaml` in `services/api/tests/contract/test_call_events_contract.py`
-- [ ] T024 [P] [US1] Unit tests for variable resolution order, built-in protection, validation limits and missing-name recording in `services/api/tests/unit/test_variables.py`
-- [ ] T025 [P] [US1] Money test: cumulative usage snapshots are monotonic, lower `seq` ignored, duplicates harmless in `services/api/tests/unit/test_usage_snapshot.py`
-- [ ] T026 [P] [US1] Money test: `billable_seconds` = ceil(connected to ended), 4.2 s bills 5 s, ringing and queue excluded, never-connected bills 0 in `services/api/tests/unit/test_billable_seconds.py`
+- [x] T021 [P] [US1] Contract test for `POST /v1/sessions/web-call` against `contracts/sessions.yaml` in `services/api/tests/contract/test_sessions_contract.py`
+- [x] T022 [P] [US1] Contract test for `POST /v1/internal/calls/claim` against `contracts/calls.yaml` in `services/api/tests/contract/test_calls_internal_contract.py`
+- [x] T023 [P] [US1] Contract test for `POST /v1/internal/calls/{call_id}/events` against `contracts/call_events.yaml` in `services/api/tests/contract/test_call_events_contract.py`
+- [x] T024 [P] [US1] Unit tests for variable resolution order, built-in protection, validation limits and missing-name recording in `services/api/tests/unit/test_variables.py`
+- [x] T025 [P] [US1] Money test: cumulative usage snapshots are monotonic, lower `seq` ignored, duplicates harmless in `services/api/tests/unit/test_usage_snapshot.py`
+- [x] T026 [P] [US1] Money test: `billable_seconds` = ceil(connected to ended), 4.2 s bills 5 s, ringing and queue excluded, never-connected bills 0 in `services/api/tests/unit/test_billable_seconds.py`
 - [x] T027 [P] [US1] Harness scenarios for agent-first greeting with variables, empty-greeting generated opening, and caller-first silence in `services/voice-worker/tests/harness/scripts/greeting.yaml` and `services/voice-worker/tests/harness/test_scenarios.py`
-- [ ] T028 [P] [US1] Integration test: web call request, claim, scripted events, caller leaves, call `ended` with `user_hangup` in `services/api/tests/integration/test_web_call_flow.py`
+- [x] T028 [P] [US1] Integration test: web call request, claim, scripted events, caller leaves, call `ended` with `user_hangup` in `services/api/tests/integration/test_web_call_flow.py`
 
 ### Implementation for User Story 1
 
-- [ ] T029 [US1] Implement `admit()` base path (resolve version via 002 `snapshot_for_test` / published / explicit id, resolve variables and built-ins, insert `queued` call, idempotency key) in `services/api/app/calls/service.py`
-- [ ] T030 [US1] Implement web-call schemas and service (admit, create room `call-{call_id}`, dispatch `callwright-voice` with `{call_id}`, mint 15-minute token) in `services/api/app/sessions/schemas.py` and `services/api/app/sessions/service.py`
-- [ ] T031 [US1] Implement `POST /v1/sessions/web-call` with Idempotency-Key in `services/api/app/sessions/router.py`
-- [ ] T032 [US1] Implement `claim()` (pre-admitted path, job-id idempotency, RuntimeConfig assembly) and `POST /v1/internal/calls/claim` in `services/api/app/calls/service.py` and `services/api/app/calls/router.py`
-- [ ] T033 [US1] Implement event ingest (insert ON CONFLICT DO NOTHING, status transitions via T018, usage snapshot by seq, `last_heartbeat_at`, `billable_seconds` on end) and router in `services/api/app/call_events/service.py`, `services/api/app/call_events/schemas.py`, `services/api/app/call_events/router.py`
+- [x] T029 [US1] Implement `admit()` base path (resolve version via 002 `snapshot_for_test` / published / explicit id, resolve variables and built-ins, insert `queued` call, idempotency key) in `services/api/app/calls/service.py`
+  - Agent versions come through `calls.ports.AgentVersionsPort` (`agent_exists`, `get_snapshot`, `snapshot_for_test`, `get_published`); the integrator registers 002's `agent_versions.service` with `ports.set_agent_versions()`. Tests use an in-memory fake.
+- [x] T030 [US1] Implement web-call schemas and service (admit, create room `call-{call_id}`, dispatch `callwright-voice` with `{call_id}`, mint 15-minute token) in `services/api/app/sessions/schemas.py` and `services/api/app/sessions/service.py`
+- [x] T031 [US1] Implement `POST /v1/sessions/web-call` with Idempotency-Key in `services/api/app/sessions/router.py`
+- [x] T032 [US1] Implement `claim()` (pre-admitted path, job-id idempotency, RuntimeConfig assembly) and `POST /v1/internal/calls/claim` in `services/api/app/calls/service.py` and `services/api/app/calls/router.py`
+- [x] T033 [US1] Implement event ingest (insert ON CONFLICT DO NOTHING, status transitions via T018, usage snapshot by seq, `last_heartbeat_at`, `billable_seconds` on end) and router in `services/api/app/call_events/service.py`, `services/api/app/call_events/schemas.py`, `services/api/app/call_events/router.py`
 - [x] T034 [P] [US1] Deepgram STT adapter in `services/voice-worker/worker/adapters/stt/deepgram.py`
 - [x] T035 [P] [US1] OpenAI and Azure OpenAI LLM adapters in `services/voice-worker/worker/adapters/llm/openai.py` and `services/voice-worker/worker/adapters/llm/azure_openai.py`
 - [x] T036 [P] [US1] ElevenLabs TTS adapter in `services/voice-worker/worker/adapters/tts/elevenlabs.py`
@@ -93,6 +97,7 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 - [ ] T042 [P] [US1] Implement variables dialog pre-filled with defaults in `apps/web/src/routes/agents/components/TestVariablesDialog.tsx`
 - [ ] T043 [US1] Implement `WebCallPanel` (orb, live transcript, end button) and `/agents/:id/testing` page, register the route in `apps/web/src/app/router.tsx`, files `apps/web/src/routes/agents/components/WebCallPanel.tsx` and `apps/web/src/routes/agents/AgentTestingPage.tsx`
 - [ ] T044 [US1] Add the five 003 fragments to the `contracts/openapi.yaml` assembly and regenerate the TS client in `apps/web/src/api/`
+  - API side done: `003-voice-runtime` added to `contracts/features.txt` and `contracts/openapi.yaml` regenerated (fragments now document 401 on every authenticated route and 503 `media-unavailable` on web calls). Remaining: regenerate the TS client in `apps/web/src/api/` (web).
 - [ ] T118 [US1] Microphone precheck (FR-047) in `apps/web/src/routes/agents/hooks/useWebCall.ts` and `WebCallPanel.tsx`: request microphone permission before `POST /v1/sessions/web-call`; on denial show how to allow it and send no request; Playwright test with permission denied in `apps/web/tests/e2e/test-call-mic.spec.ts` asserts no session request and no call row
 
 **Checkpoint**: US1 works end to end with the default stack.
@@ -109,22 +114,22 @@ ends with `max_duration_reached`.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T045 [P] [US2] Money test: refusal at balance 0 and below, refusal record with reason, email-unverified and unpriced-config refusals in `services/api/tests/unit/test_admission.py`
-- [ ] T046 [P] [US2] Money test: 50 concurrent admissions for the last slot admit exactly one in `services/api/tests/integration/test_admission_race.py`
-- [ ] T047 [P] [US2] Money test: running cost versus balance plus grace returns `end_call` with `insufficient_credit` at the right threshold in `services/api/tests/unit/test_credit_guard.py`
-- [ ] T048 [P] [US2] Unit tests for every allowed and forbidden call transition and first-writer-wins disconnect reason in `services/api/tests/unit/test_call_state_machine.py`
+- [x] T045 [P] [US2] Money test: refusal at balance 0 and below, refusal record with reason, email-unverified and unpriced-config refusals in `services/api/tests/unit/test_admission.py`
+- [x] T046 [P] [US2] Money test: 50 concurrent admissions for the last slot admit exactly one in `services/api/tests/integration/test_admission_race.py`
+- [x] T047 [P] [US2] Money test: running cost versus balance plus grace returns `end_call` with `insufficient_credit` at the right threshold in `services/api/tests/unit/test_credit_guard.py`
+- [x] T048 [P] [US2] Unit tests for every allowed and forbidden call transition and first-writer-wins disconnect reason in `services/api/tests/unit/test_call_state_machine.py`
 - [x] T049 [P] [US2] Timer unit tests (inactivity reset rules, duration, simultaneous fire) in `services/voice-worker/tests/unit/test_timers.py` and harness scripts `services/voice-worker/tests/harness/scripts/inactivity.yaml`, `services/voice-worker/tests/harness/scripts/max_duration.yaml`
-- [ ] T050 [P] [US2] Integration test for the reaper (queued past 60 s, heartbeat lost past 60 s, room deleted, slot released) in `services/api/tests/integration/test_reaper.py`
+- [x] T050 [P] [US2] Integration test for the reaper (queued past 60 s, heartbeat lost past 60 s, room deleted, slot released) in `services/api/tests/integration/test_reaper.py`
 
 ### Implementation for User Story 2
 
-- [ ] T051 [US2] Add admission checks in order (email verified, version, vendors in `catalog.json`, pricing coverage via 001, balance above zero, advisory lock and active-call count) and refusal records to `admit()` in `services/api/app/calls/service.py`
-- [ ] T052 [US2] Map refusals to problem types 402, 403, 409, 422, 429 with `call_id` in `services/api/app/sessions/router.py`
-- [ ] T053 [US2] Implement mid-call credit guard on each events post using 001's running-cost estimate and `CREDIT_GRACE_USD` in `services/api/app/call_events/service.py`
+- [x] T051 [US2] Add admission checks in order (email verified, version, vendors in `catalog.json`, pricing coverage via 001, balance above zero, advisory lock and active-call count) and refusal records to `admit()` in `services/api/app/calls/service.py`
+- [x] T052 [US2] Map refusals to problem types 402, 403, 409, 422, 429 with `call_id` in `services/api/app/sessions/router.py`
+- [x] T053 [US2] Implement mid-call credit guard on each events post using 001's running-cost estimate and `CREDIT_GRACE_USD` in `services/api/app/call_events/service.py`
 - [x] T054 [US2] Implement `InactivityTimer` and `DurationTimer` on the session clock in `services/voice-worker/worker/call_behavior.py` and wire them in `services/voice-worker/worker/entry.py`
 - [x] T055 [US2] Implement `CallControl.hang_up(reason)` (first writer wins, final status event, room delete) and handling of `control.end_call` responses in `services/voice-worker/worker/entry.py`
 - [x] T056 [US2] Handle vendor stream failures (adapter retry window 5 s, then end with `error` and `vendor_error:<kind>/<provider>` diagnostic) in `services/voice-worker/worker/pipeline.py`
-- [ ] T057 [US2] Implement `reap_stuck_calls` cron (15 s) in `services/api/app/calls/jobs.py`
+- [x] T057 [US2] Implement `reap_stuck_calls` cron (15 s) in `services/api/app/calls/jobs.py`
 - [ ] T058 [US2] Show refusal reasons and an "Add funds" link in `apps/web/src/routes/agents/components/WebCallPanel.tsx`
 
 **Checkpoint**: No call starts or runs outside its limits.
@@ -152,6 +157,7 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 - [x] T064 [US3] Implement the pronunciation streaming transform and wire it into the agent TTS node in `services/voice-worker/worker/audio.py`
 - [x] T065 [US3] Implement background audio (built-in clips, uploaded file download and cache, gain clamp, missing-file warning) in `services/voice-worker/worker/audio.py`
 - [ ] T066 [US3] Add signed `background_audio_url` to the claim RuntimeConfig in `services/api/app/calls/service.py`
+  - Claim signs uploaded ambience through the `ObjectSigner` port (`calls.ports.set_object_signer`, bucket `MEDIA_BUCKET`, 10 minutes). Remaining: no S3 signer is registered yet, so `background_audio_url` is null and the worker records `background_audio_unavailable`.
 - [x] T067 [US3] Truncate interrupted agent turns to played text and set `interrupted` in transcript items in `services/voice-worker/worker/metrics.py`
 - [x] T068 [P] [US3] AssemblyAI and Sarvam STT adapters in `services/voice-worker/worker/adapters/stt/assemblyai.py` and `services/voice-worker/worker/adapters/stt/sarvam.py`
 - [ ] T069 [P] [US3] (Deferred: not in the launch catalog, 002 data-model section 8.2) Anthropic LLM adapter in `services/voice-worker/worker/adapters/llm/anthropic.py`, built only when a catalog entry and a pricing row are added
@@ -159,6 +165,7 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 - [x] T071 [P] [US3] Fish Audio streaming TTS adapter with character metering in `services/voice-worker/worker/adapters/tts/fishaudio.py`
 - [x] T072 [P] [US3] ai-coustics NC adapter in `services/voice-worker/worker/adapters/nc/ai_coustics.py`
 - [ ] T116 [US3] Auto speech recognition (FR-045): call 002's `voices.service.resolve_auto_stt` in `claim()` and put `stt_resolved_model` in RuntimeConfig (`services/api/app/calls/service.py`); the worker builds STT with the resolved id and reports it in usage meters (`services/voice-worker/worker/pipeline.py`, `metrics.py`); admission refuses a language the provider's Auto cannot cover; tests in `services/api/tests/unit/test_auto_stt.py` (Deepgram `en-US` to `nova-3`, `hi` to `nova-2`; AssemblyAI `es` to multilingual; Sarvam to `saarika:v2.5`) and a pricing check that a Deepgram Auto call in Hindi is charged at 0.0058 per minute
+  - API side done: claim resolves Auto from the worker catalog (`calls.catalog.AdapterCatalog.resolve_auto_stt`, same rule as 002) into `stt_resolved_model`, admission refuses a language Auto cannot cover (`stt_language_unsupported:<provider>/<lang>`), pricing uses the metered model; tests in `services/api/tests/unit/test_auto_stt.py`. Remaining: swap to 002's `voices.service.resolve_auto_stt` at merge and the worker-side items.
 - [x] T117 [US3] Segment overrides (FR-046): `CallControl.apply_overrides()` in `services/voice-worker/worker/tools/__init__.py` (protocol) and `services/voice-worker/worker/pipeline.py` (swap LLM, TTS and STT at the next turn boundary, re-resolve Auto for a new language, clamp to RuntimeConfig `controls`, emit `segment_override` and `override_clamped` events, meter per model); harness scenario `services/voice-worker/tests/harness/scripts/segment_override.yaml` asserting the swap, clamping, per-model meters and first-turn latency after a swap within budget
 
 **Checkpoint**: All builder settings change runtime behaviour; every listed vendor runs.
@@ -174,24 +181,26 @@ completion, status `completed`, recording `available`.
 
 ### Tests for User Story 4 (write first, must fail)
 
-- [ ] T073 [P] [US4] Contract test for `POST /v1/livekit/webhook` against `contracts/livekit_hooks.yaml` in `services/api/tests/contract/test_livekit_hooks_contract.py`
-- [ ] T074 [P] [US4] Unit tests for the step runner (fixed order, blocking steps stop the chain, non-blocking failures recorded, unregistered handlers skipped, never-connected calls skip charge) in `services/api/tests/unit/test_pipeline_runner.py`
-- [ ] T075 [P] [US4] Money test: replaying every step twice for 100 calls creates exactly one `call_charge` per call and one `notify_analyzed` completion in `services/api/tests/integration/test_pipeline_idempotency.py`
-- [ ] T076 [P] [US4] Integration test: `egress_ended` sets recording status and key; `room_finished` closes an open call with `error` in `services/api/tests/integration/test_livekit_hooks.py`
-- [ ] T111 [P] [US4] Unit tests for recording setting resolution at admission (workspace default on/off times agent override `inherit`/`on`/`off`, missing override reads as `inherit`, `recording_setting_source`, initial `recording_status`, values unchanged when either setting changes after admission) in `services/api/tests/unit/test_recording_setting.py`
-- [ ] T112 [P] [US4] Integration test: call with recording off starts no egress, keeps `recording_status = not_recorded` even if an egress webhook arrives, still stores transcript, `turn` events, usage and `latency_stats`, is charged and `completed` with no pipeline warning, and `recording_state()` returns `not_recorded` with a null URL in `services/api/tests/integration/test_recording_disabled.py`
+- [x] T073 [P] [US4] Contract test for `POST /v1/livekit/webhook` against `contracts/livekit_hooks.yaml` in `services/api/tests/contract/test_livekit_hooks_contract.py`
+- [x] T074 [P] [US4] Unit tests for the step runner (fixed order, blocking steps stop the chain, non-blocking failures recorded, unregistered handlers skipped, never-connected calls skip charge) in `services/api/tests/unit/test_pipeline_runner.py`
+- [x] T075 [P] [US4] Money test: replaying every step twice for 100 calls creates exactly one `call_charge` per call and one `notify_analyzed` completion in `services/api/tests/integration/test_pipeline_idempotency.py`
+- [x] T076 [P] [US4] Integration test: `egress_ended` sets recording status and key; `room_finished` closes an open call with `error` in `services/api/tests/integration/test_livekit_hooks.py`
+- [x] T111 [P] [US4] Unit tests for recording setting resolution at admission (workspace default on/off times agent override `inherit`/`on`/`off`, missing override reads as `inherit`, `recording_setting_source`, initial `recording_status`, values unchanged when either setting changes after admission) in `services/api/tests/unit/test_recording_setting.py`
+- [x] T112 [P] [US4] Integration test: call with recording off starts no egress, keeps `recording_status = not_recorded` even if an egress webhook arrives, still stores transcript, `turn` events, usage and `latency_stats`, is charged and `completed` with no pipeline warning, and `recording_state()` returns `not_recorded` with a null URL in `services/api/tests/integration/test_recording_disabled.py`
 
 ### Implementation for User Story 4
 
-- [ ] T077 [US4] Implement the step table runner and handler registration for 007 (`register_step_handler("analyze" | "evaluate", fn)`) in `services/api/app/calls/pipeline.py`
-- [ ] T078 [US4] Implement `finalize_transcript` (ordered items from `call_events`, `latency_stats` p50/p95/avg) in `services/api/app/calls/pipeline.py`
-- [ ] T079 [US4] Implement `price_and_charge` calling 001 pricing and ledger with idempotency key `call_charge:{call_id}` in `services/api/app/calls/pipeline.py`
-- [ ] T080 [US4] Implement `complete` (to `completed` or `voicemail`), `run_pipeline` job, and enqueue on `ended` in `services/api/app/calls/jobs.py` and `services/api/app/call_events/service.py`
-- [ ] T081 [US4] Implement `start_recording` job at claim (audio-only, dual-channel agent mixing, MP4/AAC, SSE-KMS key `recordings/{workspace_id}/{call_id}.mp4`) in `services/api/app/calls/jobs.py`
-- [ ] T082 [US4] Implement LiveKit webhook verification and handlers (`egress_started`, `egress_ended`, `room_finished`) in `services/api/app/livekit_hooks/router.py` and `services/api/app/livekit_hooks/service.py`
-- [ ] T083 [US4] Add the `replay <call_id>` command and blocked-pipeline alert (structured log, OTel event, counter) in `services/api/app/calls/jobs.py`
-- [ ] T113 [US4] Resolve the effective recording setting in `admit()` from the frozen version's `advanced.recording` (002) and `workspaces.recording_default` (001), write `recording_enabled`, `recording_setting_source` and initial `recording_status` (`none` or `not_recorded`), and add `recording_enabled` to the claim RuntimeConfig in `services/api/app/calls/service.py`
-- [ ] T114 [US4] Skip egress in `start_recording` when `recording_enabled` is false, ignore egress webhooks for such calls, and implement `recording_state(call) -> CallRecordingState` for 006's recording URL endpoints in `services/api/app/calls/jobs.py`, `services/api/app/livekit_hooks/service.py` and `services/api/app/calls/service.py`
+- [x] T077 [US4] Implement the step table runner and handler registration for 007 (`register_step_handler("analyze" | "evaluate", fn)`) in `services/api/app/calls/pipeline.py`
+- [x] T078 [US4] Implement `finalize_transcript` (ordered items from `call_events`, `latency_stats` p50/p95/avg) in `services/api/app/calls/pipeline.py`
+- [x] T079 [US4] Implement `price_and_charge` calling 001 pricing and ledger with idempotency key `call_charge:{call_id}` in `services/api/app/calls/pipeline.py`
+- [x] T080 [US4] Implement `complete` (to `completed` or `voicemail`), `run_pipeline` job, and enqueue on `ended` in `services/api/app/calls/jobs.py` and `services/api/app/call_events/service.py`
+- [x] T081 [US4] Implement `start_recording` job at claim (audio-only, dual-channel agent mixing, MP4/AAC, SSE-KMS key `recordings/{workspace_id}/{call_id}.mp4`) in `services/api/app/calls/jobs.py`
+  - Egress is room-composite, audio only, `DUAL_CHANNEL_AGENT`, MP4/AAC. SSE-KMS comes from the bucket's default encryption (the egress S3 upload has no KMS field).
+- [x] T082 [US4] Implement LiveKit webhook verification and handlers (`egress_started`, `egress_ended`, `room_finished`) in `services/api/app/livekit_hooks/router.py` and `services/api/app/livekit_hooks/service.py`
+- [x] T083 [US4] Add the `replay <call_id>` command and blocked-pipeline alert (structured log, OTel event, counter) in `services/api/app/calls/jobs.py`
+  - Blocked pipelines log an `alert=pipeline_blocked` error and add an OTel span event; a metrics counter waits for a metrics exporter.
+- [x] T113 [US4] Resolve the effective recording setting in `admit()` from the frozen version's `advanced.recording` (002) and `workspaces.recording_default` (001), write `recording_enabled`, `recording_setting_source` and initial `recording_status` (`none` or `not_recorded`), and add `recording_enabled` to the claim RuntimeConfig in `services/api/app/calls/service.py`
+- [x] T114 [US4] Skip egress in `start_recording` when `recording_enabled` is false, ignore egress webhooks for such calls, and implement `recording_state(call) -> CallRecordingState` for 006's recording URL endpoints in `services/api/app/calls/jobs.py`, `services/api/app/livekit_hooks/service.py` and `services/api/app/calls/service.py`
 
 **Checkpoint**: Calls are billed once and fully processed.
 
@@ -207,20 +216,20 @@ event; SSRF guard.
 
 ### Tests for User Story 5 (write first, must fail)
 
-- [ ] T084 [P] [US5] Contract test for `/v1/webhooks/*` and the `webhooks` payload schemas against `contracts/webhooks_out.yaml` in `services/api/tests/contract/test_webhooks_out_contract.py`
-- [ ] T085 [P] [US5] Unit tests for signing (fixed test vector, dual signature during rotation, 300 s tolerance) in `services/api/tests/unit/test_signing.py`
-- [ ] T086 [P] [US5] Unit tests for the URL guard (RFC 1918, loopback, link-local, CGNAT, metadata IP, IPv6 equivalents, DNS rebinding, no redirects, HTTPS rule) in `services/api/tests/unit/test_url_guard.py`
-- [ ] T087 [P] [US5] Integration test for retry schedule, non-retryable 400 and 410, timeout handling and manual redeliver in `services/api/tests/integration/test_webhook_retries.py` using `services/api/tests/integration/tools/flaky_receiver.py`
+- [x] T084 [P] [US5] Contract test for `/v1/webhooks/*` and the `webhooks` payload schemas against `contracts/webhooks_out.yaml` in `services/api/tests/contract/test_webhooks_out_contract.py`
+- [x] T085 [P] [US5] Unit tests for signing (fixed test vector, dual signature during rotation, 300 s tolerance) in `services/api/tests/unit/test_signing.py`
+- [x] T086 [P] [US5] Unit tests for the URL guard (RFC 1918, loopback, link-local, CGNAT, metadata IP, IPv6 equivalents, DNS rebinding, no redirects, HTTPS rule) in `services/api/tests/unit/test_url_guard.py`
+- [x] T087 [P] [US5] Integration test for retry schedule, non-retryable 400 and 410, timeout handling and manual redeliver in `services/api/tests/integration/test_webhook_retries.py` using `services/api/tests/integration/tools/flaky_receiver.py`
 
 ### Implementation for User Story 5
 
-- [ ] T088 [P] [US5] Implement `sign()` and `verify()` in `services/api/app/webhooks_out/signing.py`
-- [ ] T089 [P] [US5] Implement the SSRF guard and pinned-IP HTTP transport in `services/api/app/core/url_guard.py`
-- [ ] T090 [US5] Implement secret lifecycle (lazy create, rotate with 24 h overlap, masking), envelope builder and idempotent enqueue per (call, event) in `services/api/app/webhooks_out/service.py` and `services/api/app/webhooks_out/schemas.py`
-- [ ] T091 [US5] Implement the delivery job (timeout from version, attempts log, retry schedule with jitter) and 30-day purge cron in `services/api/app/webhooks_out/jobs.py`
-- [ ] T092 [US5] Implement signing-secret, deliveries, redeliver and test endpoints in `services/api/app/webhooks_out/router.py`
-- [ ] T093 [US5] Enqueue `call_started` and `call_ended` on transitions in `services/api/app/call_events/service.py` and implement the `notify_analyzed` step in `services/api/app/calls/pipeline.py`
-- [ ] T115 [US5] Add `recording_enabled` and `recording_status` to the `WebhookCall` payload builder, with `recording_url` always null for `not_recorded` calls, in `services/api/app/webhooks_out/service.py` (covered by T084)
+- [x] T088 [P] [US5] Implement `sign()` and `verify()` in `services/api/app/webhooks_out/signing.py`
+- [x] T089 [P] [US5] Implement the SSRF guard and pinned-IP HTTP transport in `services/api/app/core/url_guard.py`
+- [x] T090 [US5] Implement secret lifecycle (lazy create, rotate with 24 h overlap, masking), envelope builder and idempotent enqueue per (call, event) in `services/api/app/webhooks_out/service.py` and `services/api/app/webhooks_out/schemas.py`
+- [x] T091 [US5] Implement the delivery job (timeout from version, attempts log, retry schedule with jitter) and 30-day purge cron in `services/api/app/webhooks_out/jobs.py`
+- [x] T092 [US5] Implement signing-secret, deliveries, redeliver and test endpoints in `services/api/app/webhooks_out/router.py`
+- [x] T093 [US5] Enqueue `call_started` and `call_ended` on transitions in `services/api/app/call_events/service.py` and implement the `notify_analyzed` step in `services/api/app/calls/pipeline.py`
+- [x] T115 [US5] Add `recording_enabled` and `recording_status` to the `WebhookCall` payload builder, with `recording_url` always null for `not_recorded` calls, in `services/api/app/webhooks_out/service.py` (covered by T084)
 
 **Checkpoint**: Integrations receive verifiable events.
 
@@ -271,11 +280,13 @@ against baseline.
 ## Phase 10: Polish & Cross-Cutting Concerns
 
 - [x] T106 [P] Add OpenTelemetry spans (`call`, per-turn, claim, events post, pipeline steps) with `call_id` attribute in `services/voice-worker/worker/entry.py`, `services/voice-worker/worker/metrics.py` and `services/api/app/calls/pipeline.py`
-  - Worker side done in `services/voice-worker/worker/telemetry.py` (exporter from `CALLWRIGHT_OTEL_EXPORTER`, no-op by default; tests in `tests/unit/test_telemetry.py`). The pipeline-step spans in `services/api/app/calls/pipeline.py` belong with T077 in the API wave.
-- [ ] T107 [P] RLS isolation tests for all 003 tables (cross-workspace reads and internal endpoint workspace derivation) in `services/api/tests/integration/test_rls_voice_runtime.py`
-- [ ] T108 [P] Events ingest performance check (p95 under 50 ms for 50-event batches) in `services/api/tests/integration/test_events_ingest_perf.py`
-- [ ] T109 Security review of tokens, service token handling, webhook secret masking and URL guard; record findings in the PR
+  - Worker side done in `services/voice-worker/worker/telemetry.py` (exporter from `CALLWRIGHT_OTEL_EXPORTER`, no-op by default; tests in `tests/unit/test_telemetry.py`). API side: `services/api/app/calls/pipeline.py` opens a `pipeline.<step>` span with `call_id` per step; claim and events posts are covered by the FastAPI instrumentation.
+- [x] T107 [P] RLS isolation tests for all 003 tables (cross-workspace reads and internal endpoint workspace derivation) in `services/api/tests/integration/test_rls_voice_runtime.py`
+- [x] T108 [P] Events ingest performance check (p95 under 50 ms for 50-event batches) in `services/api/tests/integration/test_events_ingest_perf.py`
+- [x] T109 Security review of tokens, service token handling, webhook secret masking and URL guard; record findings in the PR
+  - Reviewed: service token compared in constant time; join tokens scoped to one room, microphone and data only, 15 minutes; internal endpoints take the workspace from the call row; webhook secrets encrypted and shown in full only on rotate; URL guard pins the checked IP, refuses redirects and private ranges at send time; LiveKit webhooks verified by JWT and body hash. Follow-ups: rate-limit `POST /v1/webhooks/test`; production needs a KMS-backed `KeyWrapper`.
 - [ ] T110 Run every section of `specs/003-voice-runtime/quickstart.md` and fix drift
+  - API sections (run, sessions curl, admission, replay, recording off, webhooks) checked and the commands corrected (port 8100, `app.core.jobs.WorkerSettings`). Remaining: browser and voice-worker sections with a real media server.
 
 ---
 
