@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "description": "Vendors the voice worker can run. The API reads this file at admission to refuse unsupported vendors before a room exists (003 research R8). Model ids match 002 data-model section 8 and research/live/config-providers.json.",
+  "entries": [
+    {
+      "kind": "stt",
+      "provider": "deepgram",
+      "models": ["nova-3", "nova-2", "flux-general-en"],
+      "supports_auto": true,
+      "auto_rule": {"default": "nova-2", "by_language": {"en": "nova-3"}},
+      "builtin_turn_detection": ["flux-general-en"],
+      "streaming": true,
+      "meter": "audio_ms"
+    },
+    {
+      "kind": "stt",
+      "provider": "assemblyai",
+      "models": ["universal-streaming", "universal-streaming-multilingual"],
+      "supports_auto": true,
+      "auto_rule": {
+        "default": null,
+        "by_language": {
+          "en": "universal-streaming",
+          "es": "universal-streaming-multilingual",
+          "fr": "universal-streaming-multilingual",
+          "de": "universal-streaming-multilingual",
+          "it": "universal-streaming-multilingual",
+          "pt": "universal-streaming-multilingual"
+        }
+      },
+      "builtin_turn_detection": ["universal-streaming", "universal-streaming-multilingual"],
+      "streaming": true,
+      "meter": "audio_ms"
+    },
+    {
+      "kind": "stt",
+      "provider": "sarvam",
+      "models": ["saarika:v2.5", "saaras:v3"],
+      "supports_auto": true,
+      "auto_rule": {"default": "saarika:v2.5", "by_language": {}},
+      "builtin_turn_detection": [],
+      "streaming": true,
+      "meter": "audio_ms"
+    },
+    {
+      "kind": "llm",
+      "provider": "azure_openai",
+      "aliases": ["azure"],
+      "models": ["gpt-5.1", "gpt-5.2", "gpt-5-mini"],
+      "streaming": true,
+      "meter": "tokens"
+    },
+    {
+      "kind": "llm",
+      "provider": "openai",
+      "models": ["gpt-5.1", "gpt-5.2", "gpt-5-mini"],
+      "streaming": true,
+      "meter": "tokens"
+    },
+    {
+      "kind": "tts",
+      "provider": "elevenlabs",
+      "models": [
+        "eleven_flash_v2_5",
+        "eleven_flash_v2",
+        "eleven_turbo_v2_5",
+        "eleven_turbo_v2",
+        "eleven_multilingual_v2"
+      ],
+      "default_model": "eleven_flash_v2_5",
+      "capabilities": {"speed": true, "expressiveness": true, "volume": true},
+      "streaming": true,
+      "meter": "characters"
+    },
+    {
+      "kind": "tts",
+      "provider": "cartesia",
+      "models": ["sonic-2", "sonic-2-2025-03-07", "sonic-3", "sonic-turbo"],
+      "default_model": "sonic-2",
+      "capabilities": {"speed": true, "expressiveness": true, "volume": true},
+      "streaming": true,
+      "meter": "characters"
+    },
+    {
+      "kind": "tts",
+      "provider": "fishaudio",
+      "models": ["s2.1-pro", "s2-pro", "s1"],
+      "default_model": "s2.1-pro",
+      "capabilities": {"speed": true, "expressiveness": true, "volume": true},
+      "streaming": true,
+      "meter": "characters"
+    },
+    {
+      "kind": "nc",
+      "provider": "sanas",
+      "models": ["vi", "st"],
+      "streaming": true,
+      "meter": "audio_ms"
+    },
+    {
+      "kind": "nc",
+      "provider": "ai_coustics",
+      "models": ["standard"],
+      "streaming": true,
+      "meter": "audio_ms"
+    },
+    {
+      "kind": "nc",
+      "provider": "none",
+      "models": ["none"],
+      "streaming": true,
+      "meter": "none",
+      "internal": true
+    }
+  ]
+}
