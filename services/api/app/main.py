@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
 from app.agent_versions.router import router as agent_versions_router
+from app.agent_versions.runtime_port import register as register_agent_versions
 from app.agents.router import router as agents_router
 from app.auth.idp import build_idp
 from app.auth.router import router as auth_router
@@ -108,6 +109,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.verifier = TokenVerifier(settings)
         app.state.idp = build_idp(settings, db)
         app.state.stripe = build_gateway(settings)
+        # 002 supplies the agent versions 003 admits and claims calls with.
+        register_agent_versions()
         # Voice runtime (003): media server, worker catalog, job queue, outbound webhook client.
         app.state.livekit = build_livekit(settings)
         app.state.adapter_catalog = load_catalog(settings.adapter_catalog_path)
