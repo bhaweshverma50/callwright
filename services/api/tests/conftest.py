@@ -27,6 +27,8 @@ from app.core.config import Settings
 from app.core.db import Database
 from app.main import create_app
 
+pytest_plugins = ("tests.runtime_support",)
+
 API_DIR = Path(__file__).resolve().parents[1]
 PG = os.environ.get("TEST_PG", "localhost:55432")
 TEST_DB = os.environ.get("TEST_DB_NAME", "callwright_test")
@@ -50,6 +52,8 @@ def make_settings(**overrides: Any) -> Settings:
         "auth_email_rate_limit_per_hour": 100_000,
         "log_level": "WARNING",
         "db_pool_size": 5,
+        "livekit_mode": "fake",
+        "livekit_api_secret": "test-livekit-secret-0123456789abcdef",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]

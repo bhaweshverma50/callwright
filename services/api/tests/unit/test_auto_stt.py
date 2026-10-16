@@ -1,0 +1,61 @@
+"""Auto speech recognition (003 T116, FR-045): resolved per language from the worker catalog,
+sent to the worker, and priced at the resolved model's rate."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+
+import pytest
+
+from app.calls import components as comp
+from app.calls.catalog import AdapterCatalog
+from app.pricing import engine
+from app.pricing import service as pricing
+from tests.runtime_support import Runtime, agent_config
+
+
+@pytest.mark.parametrize(
+    ("provider", "language", "model"),
+    [
+        ("deepgram", "en-US", "nova-3"),
+        ("deepgram", "en-GB", "nova-3"),
+        ("deepgram", "hi", "nova-2"),
+        ("assemblyai", "en-US", "universal-streaming"),
+        ("assemblyai", "es", "universal-streaming-multilingual"),
+        ("assemblyai", "ja", None),
+        ("sarvam", "hi", "saarika:v2.5"),
+        ("acme", "en", None),
+    ],
+)
+def test_resolution(runtime: Runtime, provider: str, language: str, model: str | None) -> None:
+    catalog: AdapterCatalog = runtime.catalog
+    assert catalog.resolve_auto_stt(provider, language) == model
+
+
+def test_explicit_model_is_kept(runtime: Runtime) -> None:
+    resolved = comp.resolve(
+        agent_config(stt={"provider": "deepgram", "model": "flux-general-en"}), runtime.catalog
+    )
+    assert resolved.stt.model == "flux-general-en" and not resolved.stt_auto
+
+
+async def test_deepgram_auto_in_hindi_is_priced_as_nova_2(runtime: Runtime) -> None:
+    resolved = comp.resolve(agent_config(language="hi"), runtime.catalog)
+    assert resolved.stt_auto and resolved.stt.model == "nova-2"
+    async with runtime.db.transaction() as session:
+        quote = await pricing.quote(
+            session,
+            resolved.pricing(),
+            engine.Usage(duration_ms=60_000),
+            at=datetime.now(UTC) - timedelta(seconds=1),
+        )
+    stt_line = next(line for line in quote.lines if line.component == "stt")
+    assert stt_line.model == "nova-2" and stt_line.rate_per_min_usd == Decimal("0.0058")
+
+
+def test_metered_model_wins_for_pricing(runtime: Runtime) -> None:
+    resolved = comp.resolve(agent_config(), runtime.catalog)
+    usage = {"stt": [{"provider": "deepgram", "model": "nova-2", "audio_ms": 1000}]}
+    assert resolved.pricing(usage).stt.model == "nova-2"
+    assert resolved.pricing().stt.model == "nova-3"

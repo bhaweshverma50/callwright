@@ -20,6 +20,8 @@ paths:
       summary: Show the masked signing secret
       tags: [webhooks]
       responses:
+        '401':
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '200':
           description: Masked secret (created on first read if missing)
           content:
@@ -32,6 +34,8 @@ paths:
       summary: Rotate the signing secret; the previous one keeps signing for 24 hours
       tags: [webhooks]
       responses:
+        '401':
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '200':
           description: New secret, shown in full exactly once
           content:
@@ -50,6 +54,8 @@ paths:
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
+        '401':
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '200':
           description: Page of deliveries, newest first
           content:
@@ -74,6 +80,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DeliveryId'
       responses:
+        '401':
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '200':
           description: Delivery
           content:
@@ -96,6 +104,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DeliveryId'
       responses:
+        '401':
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '202':
           description: New delivery queued
           content:
@@ -120,6 +130,8 @@ paths:
                 url: {type: string, format: uri, maxLength: 2048}
                 timeout_ms: {type: integer, minimum: 1000, maximum: 30000, default: 3000}
       responses:
+        '401':
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '200':
           description: Result of the single attempt (no retries for tests)
           content:

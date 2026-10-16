@@ -28,6 +28,7 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.66b1",
     "opentelemetry-instrumentation-httpx>=0.66b1",
     "opentelemetry-instrumentation-redis>=0.66b1",
+    "livekit-api>=1.2.2",
 ]
 
 [dependency-groups]
@@ -53,7 +54,7 @@ select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "RUF"]
 ignore = ["S101", "B008", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S311", "S603", "S608"]
+"tests/**" = ["S105", "S106", "S107", "S311", "S603", "S608"]
 "app/dev/**" = ["S105"]
 
 [tool.mypy]

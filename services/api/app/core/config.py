@@ -13,13 +13,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_JWT_SECRET = "dev-only-jwt-secret-change-me-0123456789abcdef"  # noqa: S105
 DEV_WEBHOOK_SECRET = "whsec_dev_fake_stripe_webhook_secret"  # noqa: S105
 DEV_MASTER_KEY = "ZGV2LW9ubHktbWFzdGVyLWtleS0zMi1ieXRlcy0hISE="  # 32 bytes, dev only
 DEV_SERVICE_TOKEN = "dev-service-token"  # noqa: S105
+DEV_LIVEKIT_KEY = "devkey"
+DEV_LIVEKIT_SECRET = "secret"  # noqa: S105
 
 
 _API_DIR = Path(__file__).resolve().parents[2]
@@ -77,7 +79,35 @@ class Settings(BaseSettings):
 
     # Secrets store master key (base64, 32 bytes). Production wraps data keys with a KMS.
     secrets_master_key: SecretStr = SecretStr(DEV_MASTER_KEY)
-    service_token: SecretStr = SecretStr(DEV_SERVICE_TOKEN)
+    # Bearer token for /v1/internal/* (voice worker). The worker reads CALLWRIGHT_SERVICE_TOKEN.
+    service_token: SecretStr = Field(
+        SecretStr(DEV_SERVICE_TOKEN),
+        validation_alias=AliasChoices("service_token", "callwright_service_token"),
+    )
+
+    # Voice runtime (003). LIVEKIT_MODE=fake records rooms, dispatches and egress in memory and
+    # needs no media server; live talks to LIVEKIT_URL (``livekit-server --dev``: devkey/secret).
+    livekit_mode: Literal["live", "fake"] = "live"
+    livekit_url: str = "ws://localhost:7880"
+    livekit_public_url: str | None = None
+    livekit_api_key: SecretStr = SecretStr(DEV_LIVEKIT_KEY)
+    livekit_api_secret: SecretStr = SecretStr(DEV_LIVEKIT_SECRET)
+    worker_agent_name: str = "callwright-voice"
+    # The worker's adapter catalog (003 research R8), read at admission to refuse unsupported
+    # vendors before a room exists.
+    adapter_catalog_path: Path = _API_DIR.parent / "voice-worker" / "worker" / "adapters" / "catalog.json"
+    # Recordings (research R13): room-composite egress uploads to this bucket with SSE-KMS.
+    recordings_bucket: str = "callwright-recordings"
+    recordings_s3_endpoint: str | None = None
+    recordings_s3_region: str = "us-east-1"
+    recordings_s3_access_key: SecretStr | None = None
+    recordings_s3_secret_key: SecretStr | None = None
+    recordings_kms_key_id: str | None = None
+    # Uploaded media (background ambience files, 002) served to the worker by signed URL.
+    media_bucket: str = "callwright-media"
+    # Outbound customer webhooks (FR-040): plain http only when allowed (development).
+    webhooks_allow_http: bool = False
+    webhooks_allow_private: bool = False
 
     # Throttling (R6) and rate limits (R15)
     login_fail_limit: int = 5
@@ -99,6 +129,8 @@ class Settings(BaseSettings):
             "stripe_secret_key",
             "stripe_webhook_secret",
             "service_token",
+            "livekit_api_secret",
+            "recordings_s3_secret_key",
         ):
             value = getattr(self, name)
             if isinstance(value, SecretStr) and value.get_secret_value().startswith("enc:"):
@@ -112,6 +144,7 @@ class Settings(BaseSettings):
                     ("stripe_webhook_secret", DEV_WEBHOOK_SECRET),
                     ("secrets_master_key", DEV_MASTER_KEY),
                     ("service_token", DEV_SERVICE_TOKEN),
+                    ("livekit_api_secret", DEV_LIVEKIT_SECRET),
                 )
                 if getattr(self, n).get_secret_value() == default
             ]
@@ -119,6 +152,10 @@ class Settings(BaseSettings):
                 raise ValueError(f"production settings use dev defaults: {', '.join(insecure)}")
             if self.auth_provider == "local" or self.stripe_mode == "fake":
                 raise ValueError("production requires AUTH_PROVIDER=supabase and STRIPE_MODE=live")
+            if self.livekit_mode == "fake" or self.webhooks_allow_http or self.webhooks_allow_private:
+                raise ValueError(
+                    "production requires LIVEKIT_MODE=live and refuses WEBHOOKS_ALLOW_HTTP/PRIVATE"
+                )
         if self.auth_provider == "supabase" and not self.supabase_url:
             raise ValueError("AUTH_PROVIDER=supabase requires SUPABASE_URL")
         if self.stripe_mode == "live" and not self.stripe_secret_key:
@@ -128,6 +165,11 @@ class Settings(BaseSettings):
     @property
     def dev_tools_enabled(self) -> bool:
         return self.env != "prod"
+
+    @property
+    def livekit_client_url(self) -> str:
+        """WebSocket URL handed to browsers (defaults to the server URL)."""
+        return self.livekit_public_url or self.livekit_url
 
 
 @lru_cache(maxsize=1)
