@@ -27,6 +27,22 @@
   a:focus-visible .logo-handoff.logo-anim .lg-b {
     animation: logo-handoff-b 720ms var(--ease-out-soft);
   }
+  /* In the same beat the wordmark's cut C closes into one letter: the turn has been handed over. */
+  .logo-handoff.logo-anim:hover .wc-u,
+  a:hover .logo-handoff.logo-anim .wc-u,
+  a:focus-visible .logo-handoff.logo-anim .wc-u {
+    animation: logo-handoff-wc-u 720ms var(--ease-out-soft);
+  }
+  .logo-handoff.logo-anim:hover .wc-l,
+  a:hover .logo-handoff.logo-anim .wc-l,
+  a:focus-visible .logo-handoff.logo-anim .wc-l {
+    animation: logo-handoff-wc-l 720ms var(--ease-out-soft);
+  }
+  .logo-handoff.logo-anim:hover .wc-full,
+  a:hover .logo-handoff.logo-anim .wc-full,
+  a:focus-visible .logo-handoff.logo-anim .wc-full {
+    animation: logo-handoff-wc-full 720ms var(--ease-out-soft);
+  }
 }
 @keyframes logo-handoff-a {
   0%,
@@ -107,4 +123,37 @@
   }
 }
 /* /concept */
+/* Wordmark C: halves offset by half the step (1.142 units) slide onto the glyph, the full C fills the waist. */
+@keyframes logo-handoff-wc-u {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30%,
+  60% {
+    transform: translate(1.142px, 0);
+  }
+}
+@keyframes logo-handoff-wc-l {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30%,
+  60% {
+    transform: translate(-1.142px, 0);
+  }
+}
+@keyframes logo-handoff-wc-full {
+  0%,
+  22%,
+  72%,
+  100% {
+    opacity: 0;
+  }
+  34%,
+  58% {
+    opacity: 1;
+  }
+}
 /* brand:logo:end */

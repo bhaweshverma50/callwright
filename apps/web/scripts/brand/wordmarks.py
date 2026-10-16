@@ -28,9 +28,12 @@ def stepped_c(uid: str, step_em: float = 0.085, gap_em: float = 0.05):
             f'<clipPath id="{uid}u"><rect x="{f(x - 10)}" y="{f(mid - cap)}" width="{f(adv + 20)}" height="{f(cap - gap / 2)}"/></clipPath>',
             f'<clipPath id="{uid}l"><rect x="{f(x - 10)}" y="{f(mid + gap / 2)}" width="{f(adv + 20)}" height="{f(cap)}"/></clipPath>',
         ]
+        # On hover the symbol splits while this C closes: the halves slide back over the glyph's
+        # own position (wc-u, wc-l) and the uncut glyph (wc-full) fades in to fill the waist.
         svg = (
-            f'<path d="{d}" fill="INK" clip-path="url(#{uid}u)" transform="translate({f(-step / 2)} 0)"/>'
-            f'<g transform="translate({f(step / 2)} 0)"><path d="{d}" fill="INK" clip-path="url(#{uid}l)"/></g>'
+            f'<g class="wc-u"><path d="{d}" fill="INK" clip-path="url(#{uid}u)" transform="translate({f(-step / 2)} 0)"/></g>'
+            f'<g class="wc-l"><g transform="translate({f(step / 2)} 0)"><path d="{d}" fill="INK" clip-path="url(#{uid}l)"/></g></g>'
+            f'<path class="wc-full" d="{d}" fill="INK" opacity="0"/>'
         )
         return svg, adv + step / 2, defs
 
