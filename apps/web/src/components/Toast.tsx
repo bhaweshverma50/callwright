@@ -57,12 +57,6 @@ const icons: Record<ToastTone, ReactNode> = {
   error: <CircleAlert className="size-4 text-danger-text" aria-hidden />,
 };
 
-const bars: Record<ToastTone, string> = {
-  success: "bg-success",
-  info: "grad-action",
-  error: "bg-danger",
-};
-
 /** Mount once near the root. Toasts stack bottom right, slide in and are announced politely. */
 export function Toaster() {
   const list = useToasts();
@@ -80,7 +74,6 @@ export function Toaster() {
             "data-[state=open]:animate-[toast-in_240ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[toast-in_160ms_ease-in_reverse] data-[swipe=end]:translate-x-full",
           )}
         >
-          <span aria-hidden className={cn("absolute inset-y-0 left-0 w-[3px]", bars[t.tone ?? "info"])} />
           <span className="mt-0.5">{icons[t.tone ?? "info"]}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <RT.Title className="text-[13.5px] font-medium text-fg">{t.title}</RT.Title>

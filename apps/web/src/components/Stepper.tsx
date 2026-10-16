@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 
@@ -32,8 +32,9 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
             key={s.title}
             aria-current={s.status === "active" ? "step" : undefined}
             className={cn(
-              "relative flex gap-4 rounded-panel p-4 transition-colors",
-              s.status === "active" && "bg-accent-soft/55 ring-1 ring-inset ring-accent/20",
+              "relative flex gap-4 rounded-panel p-4 transition-[background-color,box-shadow] duration-200",
+              // Active row: a subtle full-row lift. No borders or side stripes.
+              s.status === "active" && "bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
             )}
           >
             {!last && (
@@ -52,10 +53,11 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
               className={cn(
                 "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full font-mono text-[14px] font-medium tnum",
                 s.status === "done" && "bg-success-soft text-success-text ring-4 ring-surface",
-                s.status === "active" && "grad-action text-white shadow-[0_0_0_4px_var(--accent-soft)]",
+                s.status === "active" && "grad-action text-white",
                 s.status === "pending" && "border border-line-strong bg-surface text-fg-2 ring-4 ring-surface",
               )}
             >
+              {s.status === "active" && <Halo />}
               {s.status === "done" ? <Check className="size-4" strokeWidth={2.5} aria-label="Done" /> : i + 1}
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-3 pt-[9px] @[30rem]:flex-row @[30rem]:items-start @[30rem]:justify-between @[30rem]:gap-6">
@@ -68,7 +70,9 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
                   )}
                   <span className="min-w-0 break-words">{s.title}</span>
                 </h3>
-                <p className="max-w-[56ch] text-[13.5px] leading-relaxed text-fg-2">{s.description}</p>
+                <p className={cn("max-w-[56ch] text-[13.5px] leading-relaxed", s.status === "pending" ? "text-fg-3" : "text-fg-2")}>
+                  {s.description}
+                </p>
               </div>
               {s.status === "active" && s.action && <div className="shrink-0 @[30rem]:-mt-[3px]">{s.action}</div>}
             </div>
@@ -76,5 +80,19 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
         );
       })}
     </ol>
+  );
+}
+
+/** Soft halo around the active step's disc; a static ring under reduced motion. */
+function Halo() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      aria-hidden
+      className="pointer-events-none absolute -inset-1 rounded-full ring-4 ring-violet/25"
+      initial={false}
+      animate={reduce ? { opacity: 1, scale: 1 } : { opacity: [0.9, 0], scale: [1, 1.35] }}
+      transition={reduce ? { duration: 0 } : { duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+    />
   );
 }

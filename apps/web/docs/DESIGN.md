@@ -69,7 +69,7 @@ Allowed, from the palette only:
 
 | Name | Value | Where |
 |---|---|---|
-| `--grad-action` | cobalt `#3346E8` to violet `#7A3CFF`, 120deg | Primary buttons, the logo tile, the active nav marker, a few hero headlines as gradient text |
+| `--grad-action` | cobalt `#3346E8` to violet `#7A3CFF`, 120deg | Primary buttons, the logo tile, switches, the active step disc, a few hero headlines as gradient text |
 | `--grad-heat` | `#7A3CFF`, `#E0457B`, `#FFB347` | Waveforms, gauge arcs, chain links, highlight borders (focused or active panels) |
 | `--glow-hero` | radial cobalt and violet at 12 to 18 percent alpha | Behind the home hero, the pricing chain, the billing gauge and the auth visual |
 
@@ -117,8 +117,9 @@ one accent-coloured word inside a headline, monospace for ordinary labels.
 
 - Sidebar: 248px labelled and grouped (Build: Agents, Knowledge, Channels; Observe: Dashboard,
   Calls; Quality: Datasets, Simulations; Feedback loop: Review, Calibration, Issues), then Billing
-  and Settings at the foot. Collapses to a 64px icon rail with tooltips; the choice is remembered
-  per browser (`cw.rail.expanded`, default expanded). The `Main` navigation landmark holds the 11
+  and Settings at the foot. Collapses to a 72px icon rail of centred 40x40 targets with label
+  tooltips; the active item is a contained tinted square in the accent colour in both states. The
+  choice is remembered per browser (`cw.rail.expanded`, default expanded). The `Main` navigation landmark holds the 11
   product areas; Settings sits in a separate `Workspace` landmark. Shortcut `[` toggles it.
 - Below 1024px the sidebar becomes an off-canvas drawer opened from the top bar.
 - Page header: title, one-line purpose, the page's primary action on the right. Left aligned.
@@ -142,6 +143,29 @@ console on the right. Sections are separated by space and hairlines, not by stac
 | Floating | 12px | `--shadow-pop` | Menus, popovers, toasts, drawers |
 
 Not every block is a card: page sections sit directly on the paper and use hairlines.
+
+### Units and rows
+
+- The root font size is the browser default (16px); interface text is 14px on `body`. Fixed-size
+  controls (switch, chain nodes, stepper discs) are sized in px so their geometry never depends
+  on the root size.
+- Cards share one anatomy: header with icon, title and one-line description; rows with 20px side
+  padding, 16px vertical padding and hairlines between them; icon and label on the left, the value
+  or control on the right (`FieldRow`, `InfoRow`). Long values truncate with a tooltip.
+- Grids that collapse to one column use `grid-cols-[minmax(0,1fr)]` so content never forces a
+  phone to scroll sideways.
+
+### Don't
+
+- No side-stripe accents: no coloured left (or right) border, inset box-shadow bar or pseudo
+  element bar to mark an active, selected or important item. Not on sidebar items, stepper rows,
+  callouts, alerts, toasts, cards, table rows or tabs.
+- Show state by other means per context: active navigation is a contained tinted square with the
+  icon and label in the accent colour; the active step is a gradient disc with a soft halo and a
+  subtle full-row lift; selected rows get a full-row tint; callouts and alerts use an icon, a
+  tinted background and, if needed, a full hairline border.
+- No all-caps tracked eyebrows, middle-dot meta strings, arrow glyphs after button text, emojis,
+  or one accent-coloured word in a headline.
 
 ## 6. Signature moments (one per surface)
 

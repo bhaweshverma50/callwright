@@ -36,7 +36,7 @@ export interface TableProps<T> {
 
 /**
  * Dense data table: sentence-case headers on a recessed band, single hairlines, numeric columns
- * right aligned in Geist Mono, a cobalt marker on the selected row.
+ * right aligned in Geist Mono, a full-row tint on the selected row.
  */
 export function Table<T>({
   columns,
@@ -96,7 +96,7 @@ export function Table<T>({
                   onMouseEnter={onRowPreview ? () => onRowPreview(r) : undefined}
                   className={cn(
                     "relative border-b border-line transition-colors duration-150 last:border-0 hover:bg-accent-soft/35",
-                    selected && "bg-accent-soft/55 shadow-[inset_3px_0_0_var(--accent)]",
+                    selected && "bg-accent-soft/60",
                   )}
                 >
                   {columns.map((c) => (

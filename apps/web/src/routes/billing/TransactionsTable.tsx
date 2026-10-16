@@ -234,7 +234,7 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
   );
   const cls = cn(
     "relative flex w-full items-center gap-3.5 rounded-control px-2 py-2.5 transition-colors duration-150",
-    selected ? "bg-accent-soft/60 shadow-[inset_3px_0_0_var(--accent)]" : "hover:bg-surface-2",
+    selected ? "bg-accent-soft/60" : "hover:bg-surface-2",
   );
   if (t.cost_breakdown && onSelect) {
     return (

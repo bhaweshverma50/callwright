@@ -11,8 +11,8 @@ export const RAIL_COLLAPSED = 72;
 /**
  * Labelled, grouped sidebar (FR-005, docs/DESIGN.md section 5): Build, Observe, Quality and
  * Feedback loop, then Billing, Settings and the collapse toggle at the foot. Collapsed, it is a
- * 72px rail of centred 40x40 targets with label tooltips; the active item is a tinted square with
- * an indicator bar on the rail edge. The choice is remembered per browser by Shell. In the mobile
+ * 72px rail of centred 40x40 targets with label tooltips; the active item is a contained tinted
+ * square in the accent colour, expanded or collapsed. The choice is remembered per browser by Shell. In the mobile
  * drawer it is always expanded and `onNavigate` closes the drawer.
  */
 export function Sidebar({
@@ -132,12 +132,6 @@ function SideLink({
   const active = Boolean(useMatch({ path: item.to, end: false }));
   return (
     <>
-      {active && (
-        <span
-          aria-hidden
-          className={cn("grad-action pointer-events-none absolute inset-y-1.5 w-[3px] rounded-r-full", expanded ? "-left-3" : "left-0")}
-        />
-      )}
       <Tooltip content={group ? `${group}: ${item.label}` : item.label} side="right" enabled={!expanded}>
         <NavLink
           to={item.to}
@@ -146,11 +140,8 @@ function SideLink({
           className={cn(
             "group relative flex items-center rounded-control text-[13.5px] transition-[background-color,color,box-shadow] duration-150",
             expanded ? cn("w-full gap-3 px-2.5", inDrawer ? "h-11" : "h-9") : "mx-auto size-10 justify-center",
-            active
-              ? expanded
-                ? "bg-surface font-medium text-fg shadow-1 ring-1 ring-line"
-                : "bg-accent-soft text-accent-text"
-              : "text-fg-2 hover:bg-surface-3/80 hover:text-fg",
+            // Active: a contained tinted square, icon and label in the accent colour. No side bars.
+            active ? "bg-accent-soft font-medium text-accent-text" : "text-fg-2 hover:bg-surface-3/80 hover:text-fg",
             focusRing,
           )}
         >
