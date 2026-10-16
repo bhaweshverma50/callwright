@@ -13,10 +13,11 @@ Steps run in a fixed order, one ``call_pipeline_steps`` row per ``(call_id, step
 
 Calls with ``origin = simulation`` skip ``price_and_charge`` and ``notify_analyzed`` (the run is
 billed as a feature charge by 008). Each step locks its row with ``FOR UPDATE SKIP LOCKED`` and
-commits its effects and its ``done`` mark in one transaction, so a step runs once even when two
-runners race or a run is replayed. A failing blocking step stops the chain and is retried with
-backoff; after ``MAX_BLOCKING_ATTEMPTS`` the pipeline is ``blocked`` and an alert is logged. A
-failing non-blocking step is recorded as a warning and the chain continues.
+commits its effects and its ``done`` mark in one transaction (under the call row lock), so a step
+runs once even when two runners race or a run is replayed. A failing blocking step stops the
+chain and is retried with backoff; after ``MAX_BLOCKING_ATTEMPTS`` the pipeline is ``blocked``
+and an alert is logged. A failing non-blocking step is recorded as a warning and the chain
+continues.
 """
 
 from __future__ import annotations
@@ -311,6 +312,8 @@ async def _run_step(
     result: PipelineRun,
 ) -> Literal["continue", "stop"]:
     async with db.transaction(workspace_id=workspace_id) as session:
+        # Lock order everywhere is call row, then step row (``_start`` takes them the same way).
+        call = (await session.execute(select(Call).where(Call.id == call_id).with_for_update())).scalar_one()
         step = (
             await session.execute(
                 select(CallPipelineStep)
@@ -324,7 +327,6 @@ async def _run_step(
         if step.status in ("done", "skipped") or (step.status == "failed" and not spec.blocking):
             result.steps[spec.name] = step.status
             return "continue"
-        call = (await session.execute(select(Call).where(Call.id == call_id).with_for_update())).scalar_one()
         from app.call_events.service import version_config
 
         config = await version_config(session, call.agent_version_id)

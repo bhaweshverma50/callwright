@@ -359,6 +359,88 @@ async def start_web_call(
     )
 
 
+@dataclass
+class CallSetup:
+    workspace_id: str
+    call_id: str
+    agent: FakeAgent
+    events: Events
+
+
+async def post_events(runtime: Runtime, call_id: str, events: list[dict[str, Any]]) -> Any:
+    from app.call_events.schemas import EventBatch
+    from app.call_events.service import ingest
+    from app.calls.effects import dispatch
+
+    settings = runtime.app.state.settings
+    out = await ingest(
+        runtime.db,
+        call_id,
+        EventBatch.model_validate({"events": events}),
+        catalog=runtime.catalog,
+        grace_usd=settings.credit_grace_usd,
+    )
+    await dispatch(runtime.queue, out.deferred)
+    return out.result
+
+
+async def admitted_call(
+    runtime: Runtime,
+    workspace_id: str | None = None,
+    *,
+    config: Mapping[str, Any] | None = None,
+    origin: str = "test",
+    room: bool = True,
+) -> CallSetup:
+    from sqlalchemy import update
+
+    from app.calls import service as calls
+    from app.calls.models import Call
+
+    ws = workspace_id or (await runtime.workspace())[1]
+    agent = runtime.versions.add_agent(ws, config)
+    admission = await calls.admit(
+        runtime.db,
+        calls.AdmissionRequest(ws, agent.agent_id, "web", "inbound", version="draft", origin=origin),
+        catalog=runtime.catalog,
+    )
+    assert admission.admitted, admission.refusal
+    if room:
+        async with runtime.db.transaction(workspace_id=ws) as session:
+            await session.execute(
+                update(Call).where(Call.id == admission.call.id).values(room_name=f"call-{admission.call.id}")
+            )
+    started = datetime.now(UTC) - timedelta(minutes=5)
+    return CallSetup(ws, admission.call.id, agent, Events(started))
+
+
+async def ended_call(
+    runtime: Runtime,
+    workspace_id: str | None = None,
+    *,
+    config: Mapping[str, Any] | None = None,
+    seconds: float = 30.0,
+    turns: int = 3,
+    origin: str = "test",
+    reason: str = "user_hangup",
+) -> CallSetup:
+    """An admitted call that connected, exchanged ``turns`` replies and ended ``seconds`` later."""
+    setup = await admitted_call(runtime, workspace_id, config=config, origin=origin)
+    ev = setup.events
+    batch = [ev.status("in_progress"), ev.turn(0, e2e_ms=900), ev.message("agent", "Hi there")]
+    for i in range(1, turns + 1):
+        batch += [
+            ev.message("user", f"question {i}"),
+            ev.turn(i, e2e_ms=600 + 50 * i),
+            ev.message("agent", f"a{i}"),
+        ]
+    batch.append(ev.usage())
+    ev.advance(seconds)
+    batch.append(ev.status("ended", disconnect_reason=reason))
+    await post_events(runtime, setup.call_id, batch)
+    return setup
+
+
 def dispatch_metadata(runtime: Runtime, call_id: str) -> dict[str, Any]:
     """The metadata the API dispatched the worker with for ``call_id`` (fake media server)."""
     for _room, _agent, metadata in reversed(runtime.livekit.dispatches):

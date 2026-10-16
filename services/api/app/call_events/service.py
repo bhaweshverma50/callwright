@@ -136,7 +136,7 @@ class IngestResult:
 
 
 def _row(call: Call, event: Any) -> dict[str, Any]:
-    data = event.model_dump(mode="json")
+    data = event.model_dump(mode="json", exclude_unset=True)
     row: dict[str, Any] = {
         "workspace_id": call.workspace_id,
         "call_id": call.id,
