@@ -81,6 +81,62 @@ def test_latency_tracker_measures_e2e_directly() -> None:
     assert t.begin_turn().turn_index == 2
 
 
+def test_turn_commit_before_thinking_keeps_components_and_anchor() -> None:
+    """Live order (found by the live benchmark): VAD end of speech, then the framework commits
+    the turn (EOU metrics, backdated last speaking time), then the agent starts thinking."""
+    tracker = LatencyTracker()
+    bridge = MetricsBridge(tracker, UsageMeters(), lambda kind: ("p", "m"))
+    tracker.connected(100.0)
+    greeting = tracker.begin_turn(greeting=True)
+    tracker.agent_audio_started(100.5)
+    assert greeting.e2e_ms == 500
+    # Caller stopped at 110.0; VAD reports it 0.55 s later; commit at 110.62 after a 20 ms hook.
+    tracker.user_speech_ended(110.55)
+    bridge.on_metrics(
+        EOUMetrics(
+            timestamp=110.64,
+            end_of_utterance_delay=0.62,
+            transcription_delay=0.16,
+            on_user_turn_completed_delay=0.02,
+        )
+    )
+    assert greeting.stt_final_ms is None  # never written to the finished greeting
+    turn = tracker.begin_turn()
+    tracker.agent_audio_started(111.0)
+    assert (turn.stt_final_ms, turn.eou_delay_ms) == (160, 620)
+    assert turn.e2e_ms == 1000  # from 110.0, not from the VAD event at 110.55
+
+    # Commit after thinking started (other order): applied to the open turn directly.
+    tracker.user_speech_ended(120.5)
+    second = tracker.begin_turn()
+    bridge.on_metrics(
+        EOUMetrics(
+            timestamp=120.6,
+            end_of_utterance_delay=0.6,
+            transcription_delay=0.2,
+            on_user_turn_completed_delay=0.0,
+        )
+    )
+    tracker.agent_audio_started(120.9)
+    assert (second.stt_final_ms, second.eou_delay_ms, second.e2e_ms) == (200, 600, 900)
+
+    # Keypad turns have no EOU metrics: the flush time stays the anchor.
+    tracker.user_speech_ended(130.0)
+    keypad = tracker.begin_turn()
+    tracker.agent_audio_started(130.7)
+    assert keypad.e2e_ms == 700 and keypad.stt_final_ms is None
+
+    # A trailing LLM generation of a finished reply is not moved to the next turn...
+    tracker.component("llm_ttft", 0.9)
+    # ...but a preemptive generation after the caller started speaking is.
+    tracker.user_speech_started()
+    tracker.component("llm_ttft", 0.31)
+    tracker.component("llm_ttft", 0.5)  # a preemptive retry: the first one counts
+    tracker.user_speech_ended(140.0)
+    preemptive = tracker.begin_turn()
+    assert preemptive.llm_ttft_ms == 310
+
+
 def test_metrics_bridge_maps_framework_metrics() -> None:
     tracker = LatencyTracker()
     meters = UsageMeters()

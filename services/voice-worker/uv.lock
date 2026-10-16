@@ -179,6 +179,10 @@ dependencies = [
     { name = "httpx" },
     { name = "livekit-agents", extra = ["assemblyai", "cartesia", "deepgram", "elevenlabs", "fishaudio", "openai", "sarvam", "silero", "turn-detector"] },
     { name = "livekit-plugins-ai-coustics" },
+    { name = "numpy" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
@@ -186,6 +190,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "aiohttp" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -199,6 +204,10 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "livekit-agents", extras = ["deepgram", "openai", "elevenlabs", "cartesia", "silero", "turn-detector", "assemblyai", "sarvam", "fishaudio"], specifier = "~=1.8.8" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.3.4" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "opentelemetry-api", specifier = ">=1.30" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.30" },
+    { name = "opentelemetry-sdk", specifier = ">=1.30" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-settings", specifier = ">=2.3" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -206,6 +215,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "aiohttp", specifier = ">=3.9" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "pytest", specifier = ">=8.2" },
     { name = "pytest-asyncio", specifier = ">=0.23" },

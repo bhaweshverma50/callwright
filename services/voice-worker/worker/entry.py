@@ -24,8 +24,10 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
+from worker import telemetry
 from worker.adapters.registry import AdapterRegistry, Kind, UnsupportedLanguage, UnsupportedVendor
 from worker.call_behavior import (
     VOICEMAIL_INSTRUCTION,
@@ -148,6 +150,7 @@ class LiveCall:
         self.dtmf: DtmfCollector | None = None
         self.voicemail: VoicemailHandler | None = None
         self.background: Any = None
+        self.session_span: Any = None
         self._agent_state = "initializing"
         self._ended = asyncio.Event()
         self._swap_pending = False
@@ -170,8 +173,26 @@ class LiveCall:
     def _update_time_meters(self) -> None:
         if self.plan is None or self.connected_at is None:
             return
-        elapsed_ms = (time.monotonic() - self.connected_at) * 1000.0
-        self.meters.set_nc(self.plan.nc.provider, self.plan.nc.model or "", elapsed_ms)
+        nc = self.components.nc if self.components is not None else None
+        if nc is not None and hasattr(nc, "processed_ms"):
+            # Adapters that report processed audio (Sanas) meter only audio they transformed;
+            # a pass-through engine meters nothing, so an unapplied NC is never billed.
+            audio_ms = float(nc.processed_ms) if getattr(nc, "applied", True) else 0.0
+        else:
+            audio_ms = (time.monotonic() - self.connected_at) * 1000.0
+        if audio_ms > 0:
+            self.meters.set_nc(self.plan.nc.provider, self.plan.nc.model or "", audio_ms)
+
+    def _warn_nc_passthrough(self, plan: SessionPlan) -> None:
+        nc = self.components.nc if self.components is not None else None
+        if nc is not None and getattr(nc, "applied", True) is False:
+            reason = getattr(nc, "passthrough_reason", None) or "engine_unavailable"
+            self.recorder.warning(
+                "nc_passthrough",
+                component="nc",
+                provider=plan.nc.provider,
+                detail=f"{reason}: caller audio is not noise-cancelled and not metered",
+            )
 
     def _on_tts_text(self, text: str) -> None:
         provider, model = self._models("tts")
@@ -222,6 +243,11 @@ class LiveCall:
         if self.session is not None:
             with contextlib.suppress(Exception):
                 await self.session.aclose()
+        if self.session_span is not None:
+            self.session_span.set_attribute("call.disconnect_reason", reason)
+            if diagnostic:
+                self.session_span.set_attribute("call.diagnostic", diagnostic)
+            self.session_span.end()
         await self._close_room()
 
     async def _on_control_end(self, reason: str) -> None:
@@ -281,6 +307,7 @@ class LiveCall:
 
     def _on_user_state(self, ev: Any) -> None:
         if ev.new_state == "speaking":
+            self.tracker.user_speech_started()
             if self.inactivity:
                 self.inactivity.activity()
                 self.inactivity.busy_begin("caller")
@@ -493,13 +520,12 @@ class LiveCall:
             return None
 
     async def _connected(self, plan: SessionPlan) -> None:
-        from livekit.agents import room_io
-
         assert self.components is not None and self.control is not None
         self.connected_at = time.monotonic()
         self.recorder.connected()
         self.tracker.connected(time.time())
         self.recorder.status("in_progress")
+        self._warn_nc_passthrough(plan)
 
         behavior = plan.behavior
         self.inactivity = InactivityTimer(
@@ -513,6 +539,26 @@ class LiveCall:
         if self.voicemail is not None:
             self.voicemail.answered()
 
+        self.session_span = telemetry.start_span(
+            "session",
+            {
+                "call.channel": self.runtime.channel,
+                "call.direction": self.runtime.direction,
+                "vendor.stt": f"{plan.stt.provider}/{plan.stt.model}",
+                "vendor.llm": f"{plan.llm.provider}/{plan.llm.model}",
+                "vendor.tts": f"{plan.tts.provider}/{plan.tts.model}",
+                "vendor.nc": f"{plan.nc.provider}/{plan.nc.model}",
+                "turn_detection": plan.turn_detection,
+            },
+        )
+        # Session tasks inherit this context, so turn and tool spans nest under ``session``.
+        with telemetry.use_span(self.session_span):
+            await self._start_session(plan)
+
+    async def _start_session(self, plan: SessionPlan) -> None:
+        from livekit.agents import room_io
+
+        assert self.components is not None and self.inactivity and self.duration
         await self.session.start(
             agent=self.agent,
             room=self.ctx.room,
@@ -602,44 +648,62 @@ async def claim_job(ctx: Any, api: InternalApiClient) -> tuple[str, RuntimeConfi
     return response.call_id, response.runtime if response.admitted else None, response.refusal
 
 
-async def job_entry(ctx: Any) -> None:
+async def job_entry(ctx: Any, registry: AdapterRegistry | None = None) -> None:
     settings = get_settings()
     api = make_api_client(settings)
-    try:
-        await ctx.connect()
-        call_id, runtime, refusal = await claim_job(ctx, api)
-        if runtime is None:
-            # Refused (inbound admission) calls hang up without speaking (R2).
-            log.info("call %s refused: %s", call_id, refusal)
-            with contextlib.suppress(Exception):
-                await ctx.delete_room()
-            ctx.shutdown(reason="refused")
-            return
-        await LiveCall(ctx, api, settings, call_id, runtime).run_safely()
-    finally:
-        await api.aclose()
+    attrs = {"livekit.job_id": ctx.job.id, "livekit.room": ctx.room.name}
+    with telemetry.call_scope(None), telemetry.span("call", attrs) as call_span:
+        try:
+            await ctx.connect()
+            call_id, runtime, refusal = await claim_job(ctx, api)
+            telemetry.set_call_id(call_id, call_span)
+            call_span.set_attribute("call.admitted", runtime is not None)
+            if runtime is None:
+                # Refused (inbound admission) calls hang up without speaking (R2).
+                log.info("call %s refused: %s", call_id, refusal)
+                with contextlib.suppress(Exception):
+                    await ctx.delete_room()
+                ctx.shutdown(reason="refused")
+                return
+            call = LiveCall(ctx, api, settings, call_id, runtime, registry)
+            await call.run_safely()
+            if call.control is not None and call.control.disconnect_reason:
+                call_span.set_attribute("call.disconnect_reason", call.control.disconnect_reason)
+        finally:
+            await api.aclose()
+    telemetry.flush()
 
 
 def prewarm(proc: Any) -> None:
     """Load Silero VAD once per process (R1); the turn-detector model loads with its plugin."""
     from livekit.plugins import silero
 
+    if not telemetry.enabled():
+        telemetry.configure_tracing(get_settings().otel_exporter)
     proc.userdata["vad"] = silero.VAD.load()
 
 
-def create_server(settings: WorkerSettings) -> Any:
+def create_server(
+    settings: WorkerSettings,
+    *,
+    entrypoint: Callable[[Any], Awaitable[None]] = job_entry,
+    **server_options: Any,
+) -> Any:
+    """The LiveKit agent server. ``entrypoint`` and ``server_options`` exist for the live
+    benchmark, which runs the same server with fake vendors and an ephemeral health port."""
     # Importing the plugin registers the turn-detector model for download and inference.
     import livekit.plugins.turn_detector.multilingual  # noqa: F401
     from livekit.agents import AgentServer
 
+    options: dict[str, Any] = {"port": settings.health_port, **server_options}
     server = AgentServer(
         setup_fnc=prewarm,
         ws_url=settings.livekit_url,
         api_key=settings.livekit_api_key.get_secret_value(),
         api_secret=settings.livekit_api_secret.get_secret_value(),
-        port=settings.health_port,
+        **options,
     )
-    server.rtc_session(job_entry, agent_name=settings.agent_name)
+    server.rtc_session(entrypoint, agent_name=settings.agent_name)
     return server
 
 

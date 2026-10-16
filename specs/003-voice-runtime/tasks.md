@@ -85,6 +85,7 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 - [x] T035 [P] [US1] OpenAI and Azure OpenAI LLM adapters in `services/voice-worker/worker/adapters/llm/openai.py` and `services/voice-worker/worker/adapters/llm/azure_openai.py`
 - [x] T036 [P] [US1] ElevenLabs TTS adapter in `services/voice-worker/worker/adapters/tts/elevenlabs.py`
 - [ ] T037 [P] [US1] Sanas and passthrough NC adapters in `services/voice-worker/worker/adapters/nc/sanas.py` and `services/voice-worker/worker/adapters/nc/none.py`
+  - Open: the adapter, its `SanasEngine` contract, the `SANAS_*` settings and a fake engine (`tests/unit/test_nc_sanas.py`) are done, and `none.py` is done. FR-020 is not met for Sanas until the vendor SDK is wired: without it the filter passes audio through unchanged, meters nothing and records an `nc_passthrough` warning. Remaining: an engine module that calls `register_engine()` with the Sanas SDK (key, endpoint, model rate), then a live check that `usage.nc` matches processed audio.
 - [x] T038 [US1] Implement session assembly from RuntimeConfig (VAD, STT, LLM, TTS, NC via registry; prompt and greeting variable rendering; tools from `ToolProvider`; flow agents via `FlowRunner`) in `services/voice-worker/worker/pipeline.py`
 - [x] T039 [US1] Implement per-turn latency (direct `e2e_ms`, component metrics, greeting latency), usage meters, transcript items and event batching with 10 s heartbeat in `services/voice-worker/worker/metrics.py`
 - [x] T040 [US1] Implement job entry: prewarm models, claim, web channel handling (60 s caller join timeout, `in_progress` on join, `user_hangup` on leave), start speaker, final status post, shutdown in `services/voice-worker/worker/entry.py`
@@ -257,7 +258,8 @@ against baseline.
 
 - [x] T100 [P] [US7] Add a CLI to run one script against an exported agent version JSON (`python -m tests.harness.runner --config ... --script ...`) in `services/voice-worker/tests/harness/runner.py`
 - [x] T101 [P] [US7] Document the script format and fakes in `services/voice-worker/tests/harness/README.md`
-- [ ] T102 [US7] Implement the benchmark synthetic caller (WAV playback, agent audio onset detection, per-turn e2e) and the 20 x 6 call set in `services/voice-worker/tests/harness/benchmark.py`, `services/voice-worker/tests/harness/benchmarks/callset.yaml` and `services/voice-worker/tests/harness/benchmarks/fixtures/`
+- [x] T102 [US7] Implement the benchmark synthetic caller (WAV playback, agent audio onset detection, per-turn e2e) and the 20 x 6 call set in `services/voice-worker/tests/harness/benchmark.py`, `services/voice-worker/tests/harness/benchmarks/callset.yaml` and `services/voice-worker/tests/harness/benchmarks/fixtures/`
+  - Built as `tests/harness/bench/` (`benchmark.py --mode live`, `live.py`, `live_fakes.py`, `synth.py`, `callset.yaml`, `fixtures/turn_<n>.wav`, `baseline_live.json`): real WebRTC rooms on `livekit-server --dev`, the production agent server and job entry, caller-side `e2e_ms`. Vendors are fakes with the call set's delay profiles (no keys); a real-vendor run needs the default-stack keys and intelligible fixtures (see `tests/harness/README.md`). First live baseline fails the budget (p50 953 ms, p95 2,734 ms): Silero end of speech bounds end of turn at about 600 ms, and a digit-string turn waits the full 2.4 s semantic max delay. Input for the R4 calibration and for T105.
 - [x] T103 [US7] Implement baseline comparison (p50 at most 800 ms, p95 at most 1,500 ms, no more than 10% regression) and baseline refresh command writing `services/voice-worker/tests/harness/benchmarks/baseline.json`
 - [x] T104 [US7] Add a CI time budget assertion (harness job fails above 5 minutes) to `.github/workflows/voice-worker.yml`
 - [x] T105 [US7] Latency budget gate (Principle II): add `.github/workflows/voice-benchmark.yml` (done as the `voice-benchmark` job in `.github/workflows/voice-worker.yml`, on every PR and nightly) running T102 nightly and on PRs touching `services/voice-worker/worker/**`, publishing p50/p95 and blocking merge on failure; commit the first baseline from the default stack
@@ -268,7 +270,8 @@ against baseline.
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
-- [ ] T106 [P] Add OpenTelemetry spans (`call`, per-turn, claim, events post, pipeline steps) with `call_id` attribute in `services/voice-worker/worker/entry.py`, `services/voice-worker/worker/metrics.py` and `services/api/app/calls/pipeline.py`
+- [x] T106 [P] Add OpenTelemetry spans (`call`, per-turn, claim, events post, pipeline steps) with `call_id` attribute in `services/voice-worker/worker/entry.py`, `services/voice-worker/worker/metrics.py` and `services/api/app/calls/pipeline.py`
+  - Worker side done in `services/voice-worker/worker/telemetry.py` (exporter from `CALLWRIGHT_OTEL_EXPORTER`, no-op by default; tests in `tests/unit/test_telemetry.py`). The pipeline-step spans in `services/api/app/calls/pipeline.py` belong with T077 in the API wave.
 - [ ] T107 [P] RLS isolation tests for all 003 tables (cross-workspace reads and internal endpoint workspace derivation) in `services/api/tests/integration/test_rls_voice_runtime.py`
 - [ ] T108 [P] Events ingest performance check (p95 under 50 ms for 50-event batches) in `services/api/tests/integration/test_events_ingest_perf.py`
 - [ ] T109 Security review of tokens, service token handling, webhook secret masking and URL guard; record findings in the PR

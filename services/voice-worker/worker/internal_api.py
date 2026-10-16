@@ -23,6 +23,8 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
+from worker import telemetry
+
 Channel = Literal["web", "sip_inbound", "sip_outbound", "whatsapp"]
 DisconnectReason = Literal[
     "user_hangup",
@@ -199,9 +201,11 @@ class InternalApiClient:
         delay = min(self._backoff_max, self._backoff_base * (2 ** (attempt - 1)))
         return float(delay * random.uniform(0.9, 1.1))
 
-    async def _post(self, path: str, body: dict[str, Any]) -> httpx.Response:
+    async def _post(self, path: str, body: dict[str, Any], span: Any = None) -> httpx.Response:
         last_error: str = ""
         for attempt in range(1, self._max_attempts + 1):
+            if span is not None:
+                span.set_attribute("internal_api.attempts", attempt)
             try:
                 response = await self._http.post(
                     f"{self._base}{path}", json=body, headers=self._headers
@@ -209,6 +213,8 @@ class InternalApiClient:
             except httpx.TransportError as exc:
                 last_error = f"{type(exc).__name__}: {exc}"
             else:
+                if span is not None:
+                    span.set_attribute("http.response.status_code", response.status_code)
                 if response.status_code not in RETRYABLE_STATUS:
                     return response
                 last_error = f"HTTP {response.status_code}"
@@ -217,22 +223,44 @@ class InternalApiClient:
         raise InternalApiError(None, f"gave up after {self._max_attempts} attempts: {last_error}")
 
     async def claim(self, request: ClaimRequest) -> ClaimResponse:
-        response = await self._post("/calls/claim", request.model_dump(exclude_none=True))
-        if response.status_code in (404, 409):
-            raise ClaimRejected(response.status_code, _problem_detail(response))
-        if response.status_code != 200:
-            raise InternalApiError(response.status_code, _problem_detail(response))
-        return ClaimResponse.model_validate(response.json())
+        attrs = {
+            "http.request.method": "POST",
+            "url.path": "/v1/internal/calls/claim",
+            "livekit.job_id": request.job_id,
+            "livekit.room": request.room_name,
+        }
+        with telemetry.span("internal_api.claim", attrs) as span:
+            response = await self._post("/calls/claim", request.model_dump(exclude_none=True), span)
+            if response.status_code in (404, 409):
+                raise ClaimRejected(response.status_code, _problem_detail(response))
+            if response.status_code != 200:
+                raise InternalApiError(response.status_code, _problem_detail(response))
+            result = ClaimResponse.model_validate(response.json())
+            span.set_attribute("claim.admitted", result.admitted)
+            span.set_attribute("call_id", result.call_id)
+            return result
 
     async def post_events(self, call_id: str, events: Sequence[dict[str, Any]]) -> EventBatchResult:
         if len(events) > MAX_EVENTS_PER_BATCH:
             raise ValueError(f"at most {MAX_EVENTS_PER_BATCH} events per batch")
-        response = await self._post(f"/calls/{call_id}/events", {"events": list(events)})
-        if response.status_code == 409:
-            raise CallClosed(409, _problem_detail(response))
-        if response.status_code != 200:
-            raise InternalApiError(response.status_code, _problem_detail(response))
-        return EventBatchResult.model_validate(response.json())
+        seqs = [e["seq"] for e in events if isinstance(e.get("seq"), int)]
+        attrs = {
+            "http.request.method": "POST",
+            "url.path": "/v1/internal/calls/{call_id}/events",
+            "call_id": call_id,
+            "events.count": len(events),
+            "events.first_seq": min(seqs) if seqs else None,
+            "events.last_seq": max(seqs) if seqs else None,
+        }
+        with telemetry.span("internal_api.events", attrs) as span:
+            response = await self._post(f"/calls/{call_id}/events", {"events": list(events)}, span)
+            if response.status_code == 409:
+                raise CallClosed(409, _problem_detail(response))
+            if response.status_code != 200:
+                raise InternalApiError(response.status_code, _problem_detail(response))
+            result = EventBatchResult.model_validate(response.json())
+            span.set_attribute("control.action", result.control.action)
+            return result
 
 
 def _problem_detail(response: httpx.Response) -> str:

@@ -318,3 +318,37 @@ def scripted_llm(reply: str) -> Any:
             )
 
     return ScriptedLLM()
+
+
+# --------------------------------------------------------------------------------------------
+# Fake Sanas engine (T037): a measurable transform behind the real adapter's engine contract
+
+
+class FakeSanasEngine:
+    """Frame noise gate standing in for the Sanas SDK.
+
+    Frames whose RMS is below ``gate_rms`` are attenuated by ``attenuation_db``; louder (speech)
+    frames pass unchanged. Deterministic, so tests can assert that the noise floor drops while
+    speech is kept.
+    """
+
+    applied = True
+
+    def __init__(self, mode: str, *, gate_rms: float = 600.0, attenuation_db: float = 30.0):
+        self.mode = mode
+        self.gate_rms = gate_rms
+        self.gain = 10 ** (-attenuation_db / 20.0)
+        self.calls = 0
+        self.closed = False
+
+    def process(self, samples: Any, sample_rate: int, num_channels: int) -> Any:
+        import numpy as np
+
+        self.calls += 1
+        rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2))) if samples.size else 0.0
+        if rms >= self.gate_rms:
+            return samples
+        return (samples.astype(np.float64) * self.gain).astype(np.int16)
+
+    def close(self) -> None:
+        self.closed = True
