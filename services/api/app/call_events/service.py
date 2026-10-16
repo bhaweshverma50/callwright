@@ -146,10 +146,11 @@ def _row(call: Call, event: Any) -> dict[str, Any]:
         "offset_ms": event.offset_ms,
         "payload": {k: v for k, v in data.items() if k not in _BASE_FIELDS},
     }
-    if event.type == "turn":
-        for column in _TURN_COLUMNS:
-            row[column] = data.get(column)
-        row["interrupted"] = data.get("interrupted")
+    # Every row carries every column: a multi-row INSERT takes its column list from the first row.
+    turn = event.type == "turn"
+    for column in _TURN_COLUMNS:
+        row[column] = data.get(column) if turn else None
+    row["interrupted"] = data.get("interrupted") if turn else None
     return row
 
 

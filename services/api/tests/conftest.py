@@ -53,6 +53,7 @@ def make_settings(**overrides: Any) -> Settings:
         "log_level": "WARNING",
         "db_pool_size": 5,
         "livekit_mode": "fake",
+        "livekit_api_secret": "test-livekit-secret-0123456789abcdef",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]

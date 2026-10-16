@@ -464,7 +464,7 @@ async def _claim_existing(
             raise ProblemError(
                 409, "call_already_claimed", "Already claimed", "Another job claimed this call."
             )
-        if call.status == "failed" and call.claimed_at is None and call.worker_job_id is None:
+        if call.status == "failed" and call.room_name is None and call.worker_job_id is None:
             # Refused at admission (inbound path): the worker hangs up without speaking.
             outcome.body = _refused_body(call.id, call.disconnect_reason or "error", call.diagnostic or "")
             return outcome

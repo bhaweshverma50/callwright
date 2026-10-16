@@ -351,6 +351,22 @@ def idem() -> dict[str, str]:
     return {"Idempotency-Key": f"test-{uuid.uuid4().hex}"}
 
 
+async def start_web_call(
+    client: httpx.AsyncClient, headers: Mapping[str, str], agent_id: str, **body: Any
+) -> httpx.Response:
+    return await client.post(
+        "/v1/sessions/web-call", json={"agent_id": agent_id, **body}, headers={**headers, **idem()}
+    )
+
+
+def dispatch_metadata(runtime: Runtime, call_id: str) -> dict[str, Any]:
+    """The metadata the API dispatched the worker with for ``call_id`` (fake media server)."""
+    for _room, _agent, metadata in reversed(runtime.livekit.dispatches):
+        if metadata.get("call_id") == call_id:
+            return dict(metadata)
+    raise AssertionError(f"no dispatch for {call_id}")
+
+
 @pytest_asyncio.fixture
 async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     previous_port = ports.registry.agent_versions
