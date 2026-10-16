@@ -227,3 +227,15 @@ def apply_gain(samples: Any, volume: float) -> Any:
         return samples
     scaled = samples.astype(np.float32) * float(volume)
     return np.clip(scaled, -32768, 32767).astype(np.int16)
+
+
+def scale_frame(frame: Any, volume: float) -> Any:
+    """Apply :func:`apply_gain` to one ``rtc.AudioFrame`` (TTS output volume, 0..2)."""
+    import numpy as np
+    from livekit import rtc
+
+    samples = np.frombuffer(bytes(frame.data), dtype=np.int16)
+    scaled = apply_gain(samples, volume)
+    return rtc.AudioFrame(
+        scaled.tobytes(), frame.sample_rate, frame.num_channels, frame.samples_per_channel
+    )

@@ -76,16 +76,22 @@ class UsageMeters:
         key = (provider, model)
         self.nc[key] = self.nc.get(key, 0) + max(0, round(audio_ms))
 
+    def set_nc(self, provider: str, model: str, audio_ms: float) -> None:
+        """Noise cancellation processes all caller audio: the meter is the connected time.
+
+        Never lowers a counter, so snapshots stay monotonic (R7).
+        """
+        if provider == "none":
+            return
+        key = (provider, model)
+        self.nc[key] = max(self.nc.get(key, 0), max(0, round(audio_ms)))
+
     def snapshot(self) -> dict[str, list[dict[str, Any]]]:
         """Contract ``UsageSnapshot``."""
         return {
-            "stt": [
-                {"provider": p, "model": m, "audio_ms": v} for (p, m), v in self.stt.items()
-            ],
+            "stt": [{"provider": p, "model": m, "audio_ms": v} for (p, m), v in self.stt.items()],
             "llm": [{"provider": p, "model": m, **dict(v)} for (p, m), v in self.llm.items()],
-            "tts": [
-                {"provider": p, "model": m, "characters": v} for (p, m), v in self.tts.items()
-            ],
+            "tts": [{"provider": p, "model": m, "characters": v} for (p, m), v in self.tts.items()],
             "nc": [{"provider": p, "model": m, "audio_ms": v} for (p, m), v in self.nc.items()],
         }
 
@@ -176,6 +182,53 @@ def played_words(text: str, fraction: float) -> str:
         return text
     count = max(0, int(len(words) * max(0.0, fraction)))
     return " ".join(words[:count])
+
+
+# --------------------------------------------------------------------------------------------
+# Framework metrics to turn components and meters
+
+
+class CurrentModels(Protocol):
+    def __call__(self, kind: Literal["stt", "llm", "tts"]) -> tuple[str, str | None]: ...
+
+
+class MetricsBridge:
+    """Maps livekit-agents ``metrics_collected`` payloads onto the tracker and meters (R6, R7).
+
+    ``EOUMetrics`` gives ``stt_final_ms`` (``transcription_delay``) and ``eou_delay_ms``
+    (``end_of_utterance_delay``); ``LLMMetrics`` gives ``llm_ttft_ms`` and token meters;
+    ``TTSMetrics`` gives ``tts_ttfb_ms``; ``STTMetrics`` gives streamed audio. TTS characters
+    are metered in the agent's TTS node after pronunciation replacement, not from metrics.
+    ``models`` returns the current (provider, model) per kind so meters follow overrides.
+    """
+
+    def __init__(self, tracker: LatencyTracker, meters: UsageMeters, models: CurrentModels):
+        self._tracker = tracker
+        self._meters = meters
+        self._models = models
+
+    def on_metrics(self, metrics: Any) -> None:
+        kind = getattr(metrics, "type", None)
+        if kind == "eou_metrics":
+            self._tracker.component("stt_final", metrics.transcription_delay)
+            self._tracker.component("eou_delay", metrics.end_of_utterance_delay)
+        elif kind == "llm_metrics":
+            if metrics.ttft is not None and metrics.ttft >= 0 and not metrics.cancelled:
+                self._tracker.component("llm_ttft", metrics.ttft)
+            provider, model = self._models("llm")
+            self._meters.add_llm(
+                provider,
+                model or "",
+                input_tokens=metrics.prompt_tokens,
+                cached_input_tokens=metrics.prompt_cached_tokens,
+                output_tokens=metrics.completion_tokens,
+            )
+        elif kind == "tts_metrics":
+            if metrics.ttfb is not None and metrics.ttfb >= 0:
+                self._tracker.component("tts_ttfb", metrics.ttfb)
+        elif kind == "stt_metrics":
+            provider, model = self._models("stt")
+            self._meters.add_stt(provider, model or "", metrics.audio_duration * 1000.0)
 
 
 # --------------------------------------------------------------------------------------------
@@ -406,12 +459,14 @@ class EventPoster:
         *,
         on_end_call: EndCallHandler,
         interval_s: float = 10.0,
+        before_flush: Callable[[], None] | None = None,
     ) -> None:
         self.call_id = call_id
         self._recorder = recorder
         self._sink = sink
         self._on_end_call = on_end_call
         self._interval = interval_s
+        self._before_flush = before_flush
         self._task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
         self.closed = False
@@ -423,6 +478,8 @@ class EventPoster:
         if self.closed:
             return None
         async with self._lock:
+            if self._before_flush is not None:
+                self._before_flush()
             if with_usage:
                 self._recorder.usage()
             result: EventBatchResult | None = None
