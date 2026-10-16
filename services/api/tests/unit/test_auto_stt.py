@@ -59,3 +59,19 @@ def test_metered_model_wins_for_pricing(runtime: Runtime) -> None:
     usage = {"stt": [{"provider": "deepgram", "model": "nova-2", "audio_ms": 1000}]}
     assert resolved.pricing(usage).stt.model == "nova-2"
     assert resolved.pricing().stt.model == "nova-3"
+
+
+def test_auto_follows_the_agent_builder_rule(runtime: Runtime) -> None:
+    """Auto resolves with 002's speech catalog (``voices.service.resolve_auto_stt``): Nova-3 for
+    Arabic, where the worker catalog's own rule would pick Nova-2."""
+    assert runtime.catalog.resolve_auto_stt("deepgram", "ar") == "nova-2"
+    resolved = comp.resolve(agent_config(language="ar"), runtime.catalog)
+    assert resolved.stt_auto and resolved.stt.model == "nova-3"
+
+
+def test_auto_model_must_cover_the_language(runtime: Runtime) -> None:
+    # 002's rule falls back to the English model for Japanese, which does not list "ja".
+    config = agent_config(language="ja", stt={"provider": "assemblyai", "model": None})
+    resolved = comp.resolve(config, runtime.catalog)
+    assert resolved.stt_auto and resolved.stt.model is None
+    assert comp.unsupported(resolved, runtime.catalog) == "stt_language_unsupported:assemblyai/ja"

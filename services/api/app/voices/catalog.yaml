@@ -1,0 +1,273 @@
+# Speech capability catalog (data-model.md sections 8.1 and 8.3 to 8.6, research R6, R7).
+# Prices are joined from the 001 pricing catalog at request time. Providers and models are data:
+# a new vendor is one entry here, one pricing row and one runtime adapter (Principle I).
+
+# 8.1 Languages: "Multilingual" first, then alphabetical by label. stt_default and tts_default
+# are expanded by the service from the defaults block below.
+languages:
+  - {code: multi, label: Multilingual}
+  - {code: ar, label: Arabic}
+  - {code: bn, label: Bengali}
+  - {code: zh, label: Chinese}
+  - {code: zh-CN, label: Chinese (Simplified)}
+  - {code: zh-TW, label: Chinese (Traditional)}
+  - {code: da, label: Danish}
+  - {code: nl, label: Dutch}
+  - {code: en, label: English}
+  - {code: en-AU, label: English (Australia)}
+  - {code: en-IN, label: English (India)}
+  - {code: en-NZ, label: English (New Zealand)}
+  - {code: en-GB, label: English (UK)}
+  - {code: en-US, label: English (US)}
+  - {code: fr, label: French}
+  - {code: fr-CA, label: French (Canada)}
+  - {code: de, label: German}
+  - {code: gu, label: Gujarati}
+  - {code: he, label: Hebrew}
+  - {code: hi, label: Hindi}
+  - {code: hi-Latn, label: Hindi (Latin script)}
+  - {code: id, label: Indonesian}
+  - {code: it, label: Italian}
+  - {code: ja, label: Japanese}
+  - {code: kn, label: Kannada}
+  - {code: ko, label: Korean}
+  - {code: ms, label: Malay}
+  - {code: ml, label: Malayalam}
+  - {code: mr, label: Marathi}
+  - {code: "no", label: Norwegian}
+  - {code: or, label: Odia}
+  - {code: pl, label: Polish}
+  - {code: pt, label: Portuguese}
+  - {code: pt-BR, label: Portuguese (Brazil)}
+  - {code: pa, label: Punjabi}
+  - {code: ru, label: Russian}
+  - {code: es, label: Spanish}
+  - {code: es-419, label: Spanish (Latin America)}
+  - {code: sv, label: Swedish}
+  - {code: taq, label: Tamasheq}
+  - {code: ta, label: Tamil}
+  - {code: te, label: Telugu}
+  - {code: th, label: Thai}
+  - {code: tr, label: Turkish}
+  - {code: uk, label: Ukrainian}
+  - {code: ur, label: Urdu}
+
+defaults:
+  stt: {provider: deepgram, model: null}
+  # Indic languages default to Sarvam Auto (data-model 8.1).
+  stt_by_language:
+    bn: {provider: sarvam, model: null}
+    gu: {provider: sarvam, model: null}
+    hi: {provider: sarvam, model: null}
+    hi-Latn: {provider: sarvam, model: null}
+    kn: {provider: sarvam, model: null}
+    ml: {provider: sarvam, model: null}
+    mr: {provider: sarvam, model: null}
+    or: {provider: sarvam, model: null}
+    pa: {provider: sarvam, model: null}
+    ta: {provider: sarvam, model: null}
+    te: {provider: sarvam, model: null}
+  tts_provider: elevenlabs
+
+# 8.3 Speech recognition. A model's `languages` is its coverage; Auto (model null) covers the
+# union of the provider's models and resolves through `auto_rule` at call time (003). Rule
+# keys match a language code exactly first, then its base (the part before "-").
+stt:
+  - provider: deepgram
+    label: Deepgram
+    supports_auto: true
+    default_model: null
+    auto_label: Auto
+    auto_description: Picks Nova-3 for English, Nova-2 otherwise
+    auto_rule:
+      default: nova-2
+      by_language: {en: nova-3, multi: nova-3, ar: nova-3, he: nova-3, ur: nova-3, taq: nova-3}
+    models:
+      - id: nova-3
+        label: Nova-3
+        description: Most accurate for English
+        languages: [multi, en, en-US, en-GB, en-AU, en-IN, en-NZ, ar, he, ur, taq]
+        builtin_turn_detection: false
+      - id: nova-2
+        label: Nova-2
+        description: Broad language coverage (36 languages)
+        languages: [en, en-US, en-GB, en-AU, en-IN, en-NZ, zh, zh-CN, zh-TW, da, nl, fr, fr-CA, de, hi,
+                    id, it, ja, ko, ms, "no", pl, pt, pt-BR, ru, es, es-419, sv, th, tr, uk]
+        builtin_turn_detection: false
+      - id: flux-general-en
+        label: Flux
+        description: Conversational English, lowest latency
+        languages: [en, en-US, en-GB, en-AU, en-IN, en-NZ]
+        builtin_turn_detection: true
+  - provider: assemblyai
+    label: AssemblyAI
+    supports_auto: true
+    default_model: null
+    auto_label: Auto
+    auto_description: English model for English, multilingual model for es, fr, de, it, pt
+    auto_rule:
+      default: universal-streaming
+      by_language:
+        es: universal-streaming-multilingual
+        fr: universal-streaming-multilingual
+        de: universal-streaming-multilingual
+        it: universal-streaming-multilingual
+        pt: universal-streaming-multilingual
+    models:
+      - id: universal-streaming
+        label: Universal Streaming
+        description: English-focused
+        languages: [en, en-US, en-GB, en-AU, en-IN, en-NZ]
+        builtin_turn_detection: true
+      - id: universal-streaming-multilingual
+        label: Universal Streaming Multilingual
+        description: Spanish, French, German, Italian, Portuguese
+        languages: [es, es-419, fr, fr-CA, de, it, pt, pt-BR]
+        builtin_turn_detection: true
+  - provider: sarvam
+    label: Sarvam AI
+    supports_auto: true
+    default_model: null
+    auto_label: Auto
+    auto_description: Uses Saarika v2.5
+    auto_rule:
+      default: saarika:v2.5
+      by_language: {}
+    models:
+      - id: saarika:v2.5
+        label: Saarika v2.5
+        description: Transcribes in the spoken language
+        languages: [hi, hi-Latn, bn, gu, kn, ml, mr, or, pa, ta, te, en-IN]
+        builtin_turn_detection: false
+      - id: saaras:v3
+        label: Saaras v3
+        description: Newest Sarvam model
+        languages: [hi, hi-Latn, bn, gu, kn, ml, mr, or, pa, ta, te, en-IN]
+        builtin_turn_detection: false
+
+# 8.4 Text-to-speech. `default_voice` applies to every language without an entry in
+# `default_voice_by_language` (keys match exactly, then by base language). `voice_id_pattern`
+# lets validation tell a voice of another provider without a vendor call.
+tts:
+  - provider: elevenlabs
+    label: ElevenLabs
+    default_model: eleven_flash_v2_5
+    capabilities: {speed: true, expressiveness: true, volume: true}
+    voice_listing: {source: live, server_search: true, gender_filter: true, language_filter: true, previews: true}
+    voice_id_pattern: '^[A-Za-z0-9]{20}$'
+    default_voice: EXAVITQu4vr4xnSDxMaL
+    default_voice_by_language: {}
+    models:
+      - {id: eleven_flash_v2_5, label: Flash v2.5, description: Fast and natural; 32 languages}
+      - {id: eleven_flash_v2, label: Flash v2, description: Fast; English only}
+      - {id: eleven_turbo_v2_5, label: Turbo v2.5, description: Low latency; 32 languages}
+      - {id: eleven_turbo_v2, label: Turbo v2, description: Low latency; English only}
+      - {id: eleven_multilingual_v2, label: Multilingual v2, description: Highest quality; 29 languages}
+  - provider: cartesia
+    label: Cartesia
+    default_model: sonic-2
+    capabilities: {speed: true, expressiveness: true, volume: true}
+    voice_listing: {source: live, server_search: false, gender_filter: true, language_filter: true, previews: false}
+    voice_id_pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    default_voice: db6b0ed5-d5d3-463d-ae85-518a07d3c2b4
+    default_voice_by_language:
+      ar: fc923f89-1de5-4ddf-b93c-6da2ba63428a
+      bn: 48b9e1de-e2fa-4914-8b32-31c437813548
+      da: eb929394-68e7-4e08-bd2f-e7055728a5e1
+      de: ac197a78-cec7-4c50-93e5-93bdc1910b11
+      es: b4b8e2af-6139-466e-a93a-30c20d2e1fc5
+      fr: 045b0ec6-3bed-4bc8-b797-b90a7bb5b445
+      gu: 4590a461-bc68-4a50-8d14-ac04f5923d22
+      he: ff857c8e-e7f9-4afd-af42-dce9f3c5ab02
+      hi: a631bc8b-ea1c-49bb-8dab-7a118afd11b8
+      id: f3b7c445-d015-40f7-a665-9595e0bc0c90
+      it: 79693aee-1207-4771-a01e-20c393c89e6f
+      ja: 579dc63a-1c19-4512-866a-1295dff18f0f
+      kn: 4c00ff98-199c-4967-99ae-7b69125edcff
+      ko: 7706804e-ea85-443a-968a-b9bf363bdde8
+      ml: b426013c-002b-4e89-8874-8cd20b68373a
+      mr: 5c32dce6-936a-4892-b131-bafe474afe5f
+      ms: 83604597-55fa-4ccc-8357-730b313f353f
+      nl: 96355f3d-0179-4c9a-a8d8-11ef0779a9b8
+      "no": 4f7b1820-6263-4615-87a7-b105768d8f64
+      or: 0046dfd7-171b-4442-9eb7-0712fa712a7a
+      pa: cf7254bf-2649-41d2-a8b8-23348e824408
+      pl: 43e52207-96fc-4e01-aaf8-cae317e43fdb
+      pt: 9904416a-0831-44ea-b8ee-5f145e8f9bbf
+      ru: 9ed9f7e7-3ef6-4773-9dd3-ffcb479ca1f0
+      sv: ebe0038b-1790-40bd-98cd-924313e58d3b
+      ta: 96e6974d-57a9-4325-89c8-43f065f8bd95
+      te: 292708e4-1200-4214-a3b7-f522a88c7284
+      th: 4ff0f045-c140-4aa3-9210-529083f86fca
+      tr: fa7bfcdc-603c-4bf1-a600-a371400d2f8c
+      uk: 05ffab9c-d380-4909-8375-cd12f59238c3
+      ur: 862e933f-b21c-457b-8df8-8e35c6923ef8
+      zh: 0f5ac064-30c7-4cf6-8748-d275f682a0d5
+    models:
+      - {id: sonic-2, label: Sonic 2, description: Default Cartesia model}
+      - {id: sonic-2-2025-03-07, label: Sonic 2 (2025-03-07), description: Supports speed and emotion controls}
+      - {id: sonic-3, label: Sonic 3, description: Newest Cartesia model}
+      - {id: sonic-turbo, label: Sonic Turbo, description: Lowest latency}
+  - provider: fishaudio
+    label: Fish Audio
+    default_model: s2.1-pro
+    capabilities: {speed: true, expressiveness: true, volume: true}
+    # The vendor's public library is a community ranking; only this curated, business-suitable
+    # allow-list is offered (FR-045). Names and descriptions are Callwright's own wording.
+    voice_listing: {source: curated, server_search: false, gender_filter: true, language_filter: true, previews: false}
+    voice_id_pattern: '^[0-9a-f]{32}$'
+    default_voice: 933563129e564b19a115bedd57b7406a
+    default_voice_by_language:
+      ja: 5161d41404314212af1254556477c17d
+    curated_voices:
+      - {voice_id: 933563129e564b19a115bedd57b7406a, name: Sarah, gender: female, languages: [en],
+         description: Engaged and friendly; suits support and reception lines}
+      - {voice_id: b545c585f631496c914815291da4e893, name: Bright Professional, gender: female, languages: [en],
+         description: Clear, upbeat delivery for sales and onboarding calls}
+      - {voice_id: bf322df2096a46f18c579d0baa36f41d, name: Adrian, gender: male, languages: [en],
+         description: Steady and reliable; good for updates and reminders}
+      - {voice_id: 536d3a5e000945adb7038665781a4aca, name: Ethan, gender: male, languages: [en],
+         description: Curious, clear explainer for product and how-to questions}
+      - {voice_id: 802e3bc2b27e49c2995d23ef70e6ac89, name: Energetic American, gender: male, languages: [en],
+         description: Youthful, professional American accent for outbound campaigns}
+      - {voice_id: c5f56a6cc2ec4fa8920cb4c5889a3fb7, name: Measured Narrator, gender: male, languages: [en],
+         description: Precise, measured pacing for detailed instructions}
+      - {voice_id: 5161d41404314212af1254556477c17d, name: Polite Japanese, gender: female, languages: [ja],
+         description: Gentle, polite Japanese delivery for customer service}
+    models:
+      - {id: s2.1-pro, label: S2.1 Pro, description: Newest Fish Audio model}
+      - {id: s2-pro, label: S2 Pro, description: Multi-speaker support}
+      - {id: s1, label: S1, description: Standard model}
+
+# 8.5 Noise cancellation (null in the config means off).
+noise_cancellation:
+  - {provider: sanas, model: vi, label: Voice isolation, default: true,
+     description: Removes background noise and other voices; best for noisy callers}
+  - {provider: sanas, model: st, label: Standard noise removal, default: false,
+     description: Removes noise and keeps every voice; best when several people speak}
+  - {provider: ai_coustics, model: standard, label: Lightweight noise removal, default: false,
+     description: Light processing with the lowest overhead}
+
+ambient_sounds:
+  - {id: office_ambience, label: Office}
+  - {id: city_ambience, label: City street}
+  - {id: forest_ambience, label: Forest}
+  - {id: crowded_room, label: Crowded room}
+  - {id: hold_music, label: Hold music}
+  - {id: keyboard_typing, label: Keyboard typing}
+  - {id: keyboard_typing2, label: Keyboard typing (soft)}
+
+# 8.6 Control ranges: the only source of ranges and steps for the editor and every override UI
+# (004 flow nodes). Temperature ranges stay per model in llms/catalog.yaml.
+controls:
+  - {path: /tts/speed, label: Voice speed, min: 0.5, max: 2.0, step: 0.1, unit: x, display: multiplier}
+  - {path: /tts/expressiveness, label: Expressiveness, min: 0, max: 2, step: 0.1, unit: null, display: decimal}
+  - {path: /tts/volume, label: Volume, min: 0, max: 2, step: 0.05, unit: null, display: percent_of_normal}
+  - {path: /call_behavior/end_on_silence_s, label: End call after silence, min: 10, max: 300, step: 10, unit: s, display: duration}
+  - {path: /call_behavior/max_duration_s, label: Maximum call duration, min: 30, max: 3600, step: 30, unit: s, display: duration}
+  - {path: /call_behavior/ring_duration_ms, label: Ring time, min: 0, max: 30000, step: 500, unit: ms, display: duration}
+  - {path: /call_behavior/interruption_sensitivity, label: Interruption sensitivity, min: 0, max: 1, step: 0.05, unit: null, display: decimal}
+  - {path: /call_behavior/responsiveness, label: Responsiveness, min: 0, max: 1, step: 0.05, unit: null, display: decimal}
+  - {path: /advanced/webhook_timeout_ms, label: Webhook timeout, min: 1000, max: 30000, step: 500, unit: ms, display: duration}
+  - {path: /advanced/dtmf/timeout_ms, label: Keypad pause, min: 1000, max: 10000, step: 500, unit: ms, display: duration}
+  - {path: /advanced/background_audio/volume, label: Background volume, min: 0, max: 3, step: 0.05, unit: null, display: percent_of_normal}

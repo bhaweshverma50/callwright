@@ -1,6 +1,11 @@
 """Voice runtime (003) test support: a fake 002 agent-versions port, an inline job queue, event
 builders shaped like the worker's, and the ``runtime`` fixture that installs them.
 
+``calls.agent_id``, ``calls.agent_version_id`` and ``call_costs.call_id`` are foreign keys since
+the wave 2 integration (``s003_0002``), so the fake writes a matching ``agents`` and
+``agent_versions`` row for every agent and version it hands out (``materialize``), and
+``insert_call`` gives 001 tests a real call row to charge.
+
 Loaded as a pytest plugin from ``tests/conftest.py``. Nothing here needs a media server: the app
 runs with ``LIVEKIT_MODE=fake``.
 """
@@ -8,6 +13,8 @@ runs with ``LIVEKIT_MODE=fake``.
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import uuid
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
@@ -77,13 +84,76 @@ class FakeAgent:
     published: AgentSnapshot | None
 
 
+def materialize_version(snapshot: AgentSnapshot) -> None:
+    """Write ``snapshot`` (and its agent on first use) as owner, so foreign keys from ``calls``
+    resolve. The agent's draft pointer stays on its first version; the fake keeps the rest."""
+    config = json.dumps(dict(snapshot.config), sort_keys=True, default=str)
+    digest = hashlib.sha256(config.encode()).hexdigest()
+    summary = json.dumps({"llm_model": "", "tts_provider": "", "tts_voice_id": "", "tool_count": 0})
+    with psycopg.connect(_owner_dsn()) as conn:
+        conn.execute(
+            """
+            insert into agent_versions (id, workspace_id, agent_id, version_number, schema_version,
+                                        config, content_hash, source, summary)
+            select %s, %s, %s, coalesce(max(version_number), 0) + 1, 1, %s::jsonb, %s, 'save', %s::jsonb
+              from agent_versions where agent_id = %s
+            """,
+            (
+                snapshot.version_id,
+                snapshot.workspace_id,
+                snapshot.agent_id,
+                config,
+                digest,
+                summary,
+                snapshot.agent_id,
+            ),
+        )
+        conn.execute(
+            """
+            insert into agents (id, workspace_id, name, type, language, draft_config, draft_version_id)
+            values (%s, %s, %s, %s, %s, %s::jsonb, %s)
+            on conflict (id) do nothing
+            """,
+            (
+                snapshot.agent_id,
+                snapshot.workspace_id,
+                f"Test agent {snapshot.agent_id[-6:]}",
+                snapshot.agent_type,
+                str(snapshot.config.get("language") or "en-US"),
+                config,
+                snapshot.version_id,
+            ),
+        )
+
+
+def insert_call(workspace_id: str, *, status: str = "completed") -> str:
+    """A real ``calls`` row (with its agent and version) for tests that need a call id, such as
+    001's ``charge_call`` tests now that ``call_costs.call_id`` references ``calls``."""
+    snapshot = AgentSnapshot(new_id("agv"), new_id("agt"), workspace_id, "single_prompt", agent_config())
+    materialize_version(snapshot)
+    call_id = new_id("call")
+    owner_sql(
+        """
+        insert into calls (id, workspace_id, agent_id, agent_version_id, channel, direction, status)
+        values (%s, %s, %s, %s, 'web', 'inbound', %s)
+        """,
+        (call_id, workspace_id, snapshot.agent_id, snapshot.version_id, status),
+    )
+    return call_id
+
+
 @dataclass
 class FakeAgentVersions:
-    """In-memory stand-in for 002's ``agent_versions.service`` (RLS emulated by workspace)."""
+    """In-memory stand-in for 002's ``agent_versions.service`` (RLS emulated by workspace).
+
+    With ``materialize`` (the ``runtime`` fixture) every version is also written to the database so
+    the call foreign keys hold; the port answers stay in memory.
+    """
 
     agents: dict[str, FakeAgent] = field(default_factory=dict)
     versions: dict[str, AgentSnapshot] = field(default_factory=dict)
     snapshot_calls: int = 0
+    materialize: bool = False
 
     def add_agent(
         self,
@@ -116,6 +186,8 @@ class FakeAgentVersions:
             new_id("agv"), agent_id, workspace_id, agent_type, copy.deepcopy(dict(config))
         )
         self.versions[snapshot.version_id] = snapshot
+        if self.materialize:
+            materialize_version(snapshot)
         return snapshot
 
     async def _visible(self, session: AsyncSession, agent_id: str) -> FakeAgent | None:
@@ -453,7 +525,7 @@ def dispatch_metadata(runtime: Runtime, call_id: str) -> dict[str, Any]:
 async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     previous_port = ports.registry.agent_versions
     previous_jobs = getattr(app.state, "jobs", None)
-    versions = FakeAgentVersions()
+    versions = FakeAgentVersions(materialize=True)
     queue = RecordingQueue()
     ports.set_agent_versions(versions)
     app.state.jobs = queue

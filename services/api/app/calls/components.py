@@ -2,7 +2,12 @@
 
 Defaults mirror the worker: STT Deepgram, LLM Azure OpenAI ``gpt-5.1``, TTS ElevenLabs with the
 provider's default model, noise cancellation Sanas ``vi`` when the key is absent and off when it
-is ``null``. ``stt.model = null`` is Auto, resolved per language from the adapter catalog.
+is ``null``. ``stt.model = null`` is Auto, resolved per language by 002's speech catalog
+(``voices.service.resolve_auto_stt``, the rule the agent builder shows). A resolved model that
+does not list the call's language counts as no model (the call is refused with
+``stt_language_unsupported``, FR-045); providers that catalog does not list fall back to the
+worker's adapter catalog. ``unsupported`` then checks the result against the worker catalog, so a
+model the worker cannot run is still refused at admission.
 """
 
 from __future__ import annotations
@@ -13,6 +18,8 @@ from typing import Any
 
 from app.calls.catalog import AdapterCatalog
 from app.pricing import engine
+from app.voices import service as voices
+from app.voices.catalog import load_catalog as load_speech_catalog
 
 DEFAULT_LANGUAGE = "en-US"
 DEFAULT_LLM = ("azure_openai", "gpt-5.1")
@@ -69,6 +76,15 @@ def _first(usage: Mapping[str, Any] | None, kind: str) -> Mapping[str, Any] | No
     return None
 
 
+def auto_stt_model(provider: str, language: str, catalog: AdapterCatalog) -> str | None:
+    """The model speech recognition Auto runs for ``language``, or None when none covers it."""
+    speech = load_speech_catalog().stt_provider(provider)
+    if speech is None:
+        return catalog.resolve_auto_stt(provider, language)
+    model = voices.resolve_auto_stt(provider, language)
+    return model if model is not None and speech.covers(model, language) else None
+
+
 def resolve(config: Mapping[str, Any], catalog: AdapterCatalog) -> ResolvedComponents:
     language = str(config.get("language") or DEFAULT_LANGUAGE)
     stt_raw = _section(config, "stt")
@@ -76,7 +92,7 @@ def resolve(config: Mapping[str, Any], catalog: AdapterCatalog) -> ResolvedCompo
     stt_model = stt_raw.get("model") or None
     stt_auto = stt_model is None
     if stt_auto:
-        stt_model = catalog.resolve_auto_stt(stt_provider, language)
+        stt_model = auto_stt_model(stt_provider, language, catalog)
     llm_raw = _section(config, "llm")
     llm_provider = catalog.canonical_provider("llm", str(llm_raw.get("provider") or DEFAULT_LLM[0]))
     llm_model = str(llm_raw.get("model") or DEFAULT_LLM[1])

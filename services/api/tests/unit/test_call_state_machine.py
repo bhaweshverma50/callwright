@@ -8,8 +8,8 @@ import pytest
 from fastapi import FastAPI
 
 from app.calls.models import CALL_STATUSES, Call, can_transition, sources_for, transition
-from app.core.ids import new_id
 from tests.conftest import make_workspace
+from tests.runtime_support import insert_call
 
 ALLOWED = {
     (None, "queued"),
@@ -50,20 +50,7 @@ def test_sources_for() -> None:
 
 async def _call(app: FastAPI, status: str) -> tuple[str, str]:
     _, ws = await make_workspace(app)
-    call_id = new_id("call")
-    async with app.state.db.transaction(workspace_id=ws) as session:
-        session.add(
-            Call(
-                id=call_id,
-                workspace_id=ws,
-                agent_id=new_id("agt"),
-                channel="web",
-                direction="inbound",
-                status=status,
-                recording_enabled=True,
-                recording_status="none",
-            )
-        )
+    call_id = insert_call(ws, status=status)
     return ws, call_id
 
 

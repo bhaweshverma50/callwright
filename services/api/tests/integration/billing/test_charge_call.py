@@ -9,6 +9,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.billing import service
 from app.billing.models import CallCost, CreditTransaction
@@ -16,6 +17,7 @@ from app.core.ids import new_id
 from app.pricing import engine
 from app.usage.models import UsageEvent
 from tests.conftest import Account
+from tests.runtime_support import insert_call
 
 REFERENCE = engine.Components(
     stt=engine.Selection("deepgram", "nova-3"),
@@ -50,7 +52,7 @@ async def _charge(app: FastAPI, usage: service.CallUsage) -> CallCost:
 
 
 async def test_reference_call_charge(client: httpx.AsyncClient, app: FastAPI, account: Account) -> None:
-    call_id = new_id("call")
+    call_id = insert_call(account.workspace_id)
     cost = await _charge(app, _usage(account.workspace_id, call_id))
     assert cost.total_usd == Decimal("0.477")
     assert cost.catalog_version == 1
@@ -91,7 +93,7 @@ async def test_reference_call_charge(client: httpx.AsyncClient, app: FastAPI, ac
 
 
 async def test_second_charge_is_a_no_op(app: FastAPI, account: Account) -> None:
-    call_id = new_id("call")
+    call_id = insert_call(account.workspace_id)
     first = await _charge(app, _usage(account.workspace_id, call_id))
     second = await _charge(app, _usage(account.workspace_id, call_id))
     assert second.txn_id == first.txn_id
@@ -113,7 +115,7 @@ async def test_second_charge_is_a_no_op(app: FastAPI, account: Account) -> None:
 
 async def test_call_charge_may_take_the_balance_below_zero(app: FastAPI, account: Account) -> None:
     for _ in range(12):
-        await _charge(app, _usage(account.workspace_id, new_id("call")))
+        await _charge(app, _usage(account.workspace_id, insert_call(account.workspace_id)))
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
         assert await service.get_balance(session, account.workspace_id) == Decimal("5") - 12 * Decimal(
             "0.477"
@@ -121,7 +123,7 @@ async def test_call_charge_may_take_the_balance_below_zero(app: FastAPI, account
 
 
 async def test_zero_second_call_writes_usage_but_no_ledger_row(app: FastAPI, account: Account) -> None:
-    call_id = new_id("call")
+    call_id = insert_call(account.workspace_id)
     cost = await _charge(app, _usage(account.workspace_id, call_id, duration_ms=0))
     assert cost.total_usd == 0 and cost.txn_id is None
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
@@ -132,16 +134,23 @@ async def test_zero_second_call_writes_usage_but_no_ledger_row(app: FastAPI, acc
 async def test_unpriced_component_refuses_the_charge(app: FastAPI, account: Account) -> None:
     components = engine.Components(REFERENCE.stt, REFERENCE.llm, engine.Selection("not_a_vendor"))
     with pytest.raises(service.PricingUnavailable) as info:
-        await _charge(app, _usage(account.workspace_id, new_id("call"), components=components))
+        await _charge(
+            app, _usage(account.workspace_id, insert_call(account.workspace_id), components=components)
+        )
     assert info.value.components == ("tts",)
 
 
 async def test_older_call_keeps_its_catalog_version(
     app: FastAPI, account: Account, future_catalog: int
 ) -> None:
-    old = await _charge(app, _usage(account.workspace_id, new_id("call")))
+    old = await _charge(app, _usage(account.workspace_id, insert_call(account.workspace_id)))
     later = await _charge(
-        app, _usage(account.workspace_id, new_id("call"), started_at=datetime(2099, 1, 2, tzinfo=UTC))
+        app,
+        _usage(
+            account.workspace_id,
+            insert_call(account.workspace_id),
+            started_at=datetime(2099, 1, 2, tzinfo=UTC),
+        ),
     )
     assert old.catalog_version == 1 and old.lines[0]["rate_per_min_usd"] == "0.008500"
     assert later.catalog_version == future_catalog
@@ -150,3 +159,9 @@ async def test_older_call_keeps_its_catalog_version(
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
         reread = await session.get(CallCost, old.call_id)
     assert reread is not None and reread.catalog_version == 1
+
+
+async def test_charge_needs_a_real_call(app: FastAPI, account: Account) -> None:
+    """``call_costs.call_id`` references ``calls`` since the wave 2 integration (s003_0002)."""
+    with pytest.raises(IntegrityError):
+        await _charge(app, _usage(account.workspace_id, new_id("call")))

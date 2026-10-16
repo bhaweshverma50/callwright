@@ -1,0 +1,1432 @@
+{
+ "voices": [
+  {
+   "voice_id": "fc923f89-1de5-4ddf-b93c-6da2ba63428a",
+   "provider": "cartesia",
+   "name": "Nour - Engaging Speaker",
+   "description": "Smooth, expressive voice for engaging customer interactions",
+   "gender": "female",
+   "languages": [
+    "ar"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "731ace69-ee17-41bc-8c6f-665c9f1db95c",
+   "provider": "cartesia",
+   "name": "Fatima - Graceful Guide",
+   "description": "Polite, steady Arabic female for customer service.",
+   "gender": "female",
+   "languages": [
+    "ar"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "40f9b5d1-bc79-43a6-b5cc-1c692b3b40d2",
+   "provider": "cartesia",
+   "name": "Zain - Dynamic Presenter",
+   "description": "Engaging Arabic male that captures attention for customer experience.",
+   "gender": "male",
+   "languages": [
+    "ar"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b068aef8-2c18-4a1d-bafb-e8f6d2239d60",
+   "provider": "cartesia",
+   "name": "Khaled - Keen Problem-Solver",
+   "description": "Composed, fluent delivery for clear guidance, thoughtful assistance, and professional support conversations.",
+   "gender": "male",
+   "languages": [
+    "ar"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "fcbecbcc-0cef-4615-8b5a-712fe1b39dd0",
+   "provider": "cartesia",
+   "name": "Ivana - Instruction Provider",
+   "description": "Clear and authoritative adult female voice for giving instructions and professional communication",
+   "gender": "female",
+   "languages": [
+    "bg"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "d132064c-b931-4a80-bf0d-02a331ec4572",
+   "provider": "cartesia",
+   "name": "Georgi - Conversationalist",
+   "description": "Friendly adult male with a casual tone for everyday conversations and relatable dialogue",
+   "gender": "male",
+   "languages": [
+    "bg"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "48b9e1de-e2fa-4914-8b32-31c437813548",
+   "provider": "cartesia",
+   "name": "Ananya - Paced Helper",
+   "description": "Clear steady tone with a paced delivery. Perfect for a smooth customer service experience.",
+   "gender": "female",
+   "languages": [
+    "bn"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "82db1f84-5b96-4364-b04a-4c7ff80e2f8a",
+   "provider": "cartesia",
+   "name": "Jan - Capable Coordinator",
+   "description": "Clear, professional Czech male for trustworthy customer communication.",
+   "gender": "male",
+   "languages": [
+    "cs"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "0b6d3ccb-f421-4e49-80f7-4bfa39f6eb8e",
+   "provider": "cartesia",
+   "name": "Marek - Steady Specialist",
+   "description": "Resonant Czech male with a calm presence for expert support.",
+   "gender": "male",
+   "languages": [
+    "cs"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "f8685385-96f6-4c12-8520-49e4914bcbfe",
+   "provider": "cartesia",
+   "name": "Tereza - Decisive Agent",
+   "description": "Professional adult female for highly structured customer communication.",
+   "gender": "female",
+   "languages": [
+    "cs"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "bdc4a3ce-2e22-4398-8cd6-76b7160d2298",
+   "provider": "cartesia",
+   "name": "Jana - Crisp Conversationalist",
+   "description": "Clear and crisp female voice with a casual yet commanding tone for customer support and guidance",
+   "gender": "female",
+   "languages": [
+    "cs"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "eb929394-68e7-4e08-bd2f-e7055728a5e1",
+   "provider": "cartesia",
+   "name": "Mette - Polished Facilitator",
+   "description": "Bright, professional Danish female for welcoming customer service.",
+   "gender": "female",
+   "languages": [
+    "da"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "4ad22058-7cb6-402c-a115-196cbfc25dce",
+   "provider": "cartesia",
+   "name": "Moritz - Modern Communicator",
+   "description": "Crisp, approachable German male ideal for digital assistants.",
+   "gender": "male",
+   "languages": [
+    "de"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "cd7b67f4-22a4-49a0-a197-3fa16f7e64d4",
+   "provider": "cartesia",
+   "name": "Alexander - Reliable Advisor",
+   "description": "Steady and assured delivery for clear instructions and dependable support conversations.",
+   "gender": "male",
+   "languages": [
+    "de"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "f6f315e4-4fb3-4440-92ea-2edb01f9bf1b",
+   "provider": "cartesia",
+   "name": "Hermann - Businessman",
+   "description": "Warm, confident, and approachable voice, perfect for customer support and business conversations",
+   "gender": "male",
+   "languages": [
+    "de"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "ac197a78-cec7-4c50-93e5-93bdc1910b11",
+   "provider": "cartesia",
+   "name": "Jennifer",
+   "description": "Approachable adult female great for conversational support",
+   "gender": "female",
+   "languages": [
+    "de"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "50849023-76e9-46c7-af52-9ec39888a165",
+   "provider": "cartesia",
+   "name": "Despina - Motherly Woman",
+   "description": "Warm yet authoritative middle-aged female voice, with a motherly tone for guidance, reassurance, and clear instruction",
+   "gender": "female",
+   "languages": [
+    "el"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b45eba5b-2215-4da7-9c7c-121c95ed7b81",
+   "provider": "cartesia",
+   "name": "Nikos - Radio Storyteller",
+   "description": "Nostalgic, middle-aged male voice with an old-radio tone for historical reenactments, vintage ads, or period storytelling",
+   "gender": "male",
+   "languages": [
+    "el"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4",
+   "provider": "cartesia",
+   "name": "Skylar - Friendly Guide",
+   "description": "Approachable American female ideal for customer care and support.",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "47c38ca4-5f35-497b-b1a3-415245fb35e1",
+   "provider": "cartesia",
+   "name": "Daniel - Modern Assistant",
+   "description": "Clear, crisp male voice for digital assistants and system interactions",
+   "gender": "male",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "30894953-bcce-41fe-892c-15ce19c843ff",
+   "provider": "cartesia",
+   "name": "Parker - Supportive Pal",
+   "description": "Casual, supportive warmth for friendly conversational flows and approachable check-ins.",
+   "gender": "male",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+   "provider": "cartesia",
+   "name": "Jacqueline - Reassuring Agent",
+   "description": "Confident, young adult female for empathic customer support",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "2a12b36c-7f9b-4c3a-9f7a-72731b15323a",
+   "provider": "cartesia",
+   "name": "Ella - Caring Scout",
+   "description": "Approachable presence for bright, lightweight and everyday customer conversations.",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "12e85709-099c-480a-ba3e-875c41a9611a",
+   "provider": "cartesia",
+   "name": "Arlo - Service Specialist",
+   "description": "Arlo's friendly, mid-toned Australian voice is excellent for customer support, offering clear and helpful assistance with ease.",
+   "gender": "male",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "c46cf1f6-49a1-4d67-9a57-ff859a4046d3",
+   "provider": "cartesia",
+   "name": "Cora - Service Specialist",
+   "description": "Cora offers a helpful and articulate tone, perfectly suited for customer support and service-oriented communication.",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "f786b574-daa5-4673-aa0c-cbe3e8534c02",
+   "provider": "cartesia",
+   "name": "Katie - Friendly Fixer",
+   "description": "Enunciating young adult female for conversational support use cases",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "6c756032-11c3-4be8-a120-74f9673fb700",
+   "provider": "cartesia",
+   "name": "Harlow - Warm Support",
+   "description": "Offers a friendly yet professional presence, perfect for efficient problem-solving and customer support conversations.",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "a5136bf9-224c-4d76-b823-52bd5efcffcc",
+   "provider": "cartesia",
+   "name": "Jameson - Easygoing Support",
+   "description": "Friendly, laid-back male voice for customer support and onboarding",
+   "gender": "male",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "391f4c0a-f1a8-4c21-9aa2-7a07f0a4b0dc",
+   "provider": "cartesia",
+   "name": "Bronte - Trusted Guide",
+   "description": "Bright and trustworthy Australian voice provides approachable guidance, making her excellent for customer support and helpful directions.",
+   "gender": "female",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "86e30c1d-714b-4074-a1f2-1cb6b552fb49",
+   "provider": "cartesia",
+   "name": "Carson - Curious Conversationalist",
+   "description": "Friendly young adult male for customer support conversations",
+   "gender": "male",
+   "languages": [
+    "en"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b4b8e2af-6139-466e-a93a-30c20d2e1fc5",
+   "provider": "cartesia",
+   "name": "Fernanda - Friendly Guide",
+   "description": "Approachable, Mexican female ideal for customer care and support.",
+   "gender": "female",
+   "languages": [
+    "es"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "9b67072c-d46c-465d-87dc-f7a1c6db2bf3",
+   "provider": "cartesia",
+   "name": "Ramon - Calm Coordinator",
+   "description": "With a measured pace and clear articulation, Ramon brings a professional calm coordinator voice to corporate and service contexts.",
+   "gender": "male",
+   "languages": [
+    "es"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b0689631-eee7-4a6c-bb86-195f1d267c2e",
+   "provider": "cartesia",
+   "name": "Emilio - Friendly Optimist",
+   "description": "Upbeat voice with a friendly tone for positive customer service interactions",
+   "gender": "male",
+   "languages": [
+    "es"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "4b5112be-c461-44a2-a66b-0dd7f98db4a0",
+   "provider": "cartesia",
+   "name": "Cesar - Friendly Server",
+   "description": "With steady clarity and warmth, Cesar fits service specialist use cases that need confident delivery.",
+   "gender": "male",
+   "languages": [
+    "es"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "2835e382-643b-4ac6-8f6c-74df549a7ad0",
+   "provider": "cartesia",
+   "name": "Milla - Modern Communicator",
+   "description": "Crisp, natural Finnish female for customer assistance.",
+   "gender": "female",
+   "languages": [
+    "fi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "c6ccfe32-6bee-484a-a8a2-7a51bee93f99",
+   "provider": "cartesia",
+   "name": "Étienne - Precise Specialist",
+   "description": "This voice offers a precise and reassuring presence, ideal for customer support and detailed instructions.",
+   "gender": "male",
+   "languages": [
+    "fr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "f5e6c270-2aa9-463f-b48b-579a39284ce2",
+   "provider": "cartesia",
+   "name": "Félix - Helpful Professional",
+   "description": "An approachable and steady tone makes this voice ideal for customer service and delivering practical, reassuring guidance.",
+   "gender": "male",
+   "languages": [
+    "fr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "045b0ec6-3bed-4bc8-b797-b90a7bb5b445",
+   "provider": "cartesia",
+   "name": "Lise - Service Concierge",
+   "description": "Delivering information with a polished, inviting tone, this voice is ideal for seamless client engagement and premium service.",
+   "gender": "female",
+   "languages": [
+    "fr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "5def377d-908b-4540-8bd7-3c968fcae351",
+   "provider": "cartesia",
+   "name": "Benoît - Methodical Moderator",
+   "description": "Clear, methodical French male for professional customer assistance.",
+   "gender": "male",
+   "languages": [
+    "fr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "4590a461-bc68-4a50-8d14-ac04f5923d22",
+   "provider": "cartesia",
+   "name": "Isha - Learner",
+   "description": "Youthful female voice with a clear and approachable tone for narration, educational content, and voiceover",
+   "gender": "female",
+   "languages": [
+    "gu"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "91925fe5-42ee-4ebe-96c1-c84b12a85a32",
+   "provider": "cartesia",
+   "name": "Amit - Sports Student",
+   "description": "Friendly young adult male voice for casual conversations and natural everyday dialogue",
+   "gender": "male",
+   "languages": [
+    "gu"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "ff857c8e-e7f9-4afd-af42-dce9f3c5ab02",
+   "provider": "cartesia",
+   "name": "Yarden - Trusted Advisor",
+   "description": "Composed Hebrew female for reliable customer assistance.",
+   "gender": "female",
+   "languages": [
+    "he"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "2821fd0c-35c7-4adf-9c42-32e394bf85cb",
+   "provider": "cartesia",
+   "name": "Adi - Efficient Expert",
+   "description": "Articulate, professional Hebrew female for customer assistance.",
+   "gender": "female",
+   "languages": [
+    "he"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "32a91a5d-05d2-4c1e-bd5a-ff5fd0c413f2",
+   "provider": "cartesia",
+   "name": "Tehila - Calm Specialist",
+   "description": "Calm, precise sound for careful guidance, sensitive support, and focused professional assistance.",
+   "gender": "female",
+   "languages": [
+    "he"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "33124162-0d74-48af-ab1c-c1c01bac0247",
+   "provider": "cartesia",
+   "name": "Ido - Calm Communicator",
+   "description": "Ido's mid-pitched voice offers a reassuring and composed delivery, perfect for customer support and detailed narration.",
+   "gender": "male",
+   "languages": [
+    "he"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "cb9c954d-bcaa-43ed-82bf-aeb5e88a3cb5",
+   "provider": "cartesia",
+   "name": "Kabir - Service Integrator",
+   "description": "Offering a composed and structured delivery, this voice seamlessly connects information, perfect for detailed service updates and coordination.",
+   "gender": "male",
+   "languages": [
+    "hi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "a631bc8b-ea1c-49bb-8dab-7a118afd11b8",
+   "provider": "cartesia",
+   "name": "Riva - Service Coordinator",
+   "description": "Delivers with a composed and structured approach, ideal for seamless information flow in customer service and updates.",
+   "gender": "female",
+   "languages": [
+    "hi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "47f3bbb1-e98f-4e0c-92c5-5f0325e1e206",
+   "provider": "cartesia",
+   "name": "Neha - Virtual Assistant",
+   "description": "Clear, composed female voice for virtual assistants and system prompts",
+   "gender": "female",
+   "languages": [
+    "hi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "6303e5fb-a0a7-48f9-bb1a-dd42c216dc5d",
+   "provider": "cartesia",
+   "name": "Sagar - Helpful Friend",
+   "description": "Energetic adult male for engaging customer support and conversations",
+   "gender": "male",
+   "languages": [
+    "hi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "a1a16724-b1f3-4b27-9e47-8a175115e93c",
+   "provider": "cartesia",
+   "name": "Ivan - Bar Companion",
+   "description": "Relaxed adult male voice for easygoing conversations",
+   "gender": "male",
+   "languages": [
+    "hr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "2a2624ad-bd06-4563-81fd-0519742e25d2",
+   "provider": "cartesia",
+   "name": "Petra - Strict Lecturer",
+   "description": "Firm and strict adult female voice for storytelling, guidance, and instructional use cases",
+   "gender": "female",
+   "languages": [
+    "hr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "e97c3b37-1aa5-46af-afb7-9545086aaa92",
+   "provider": "cartesia",
+   "name": "Eszter - Customer Companion",
+   "description": "Clear and cheerful adult female voice for customer support and friendly interactions",
+   "gender": "female",
+   "languages": [
+    "hu"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "36e0c00b-1bfd-4ad7-a0e8-928d4cadca00",
+   "provider": "cartesia",
+   "name": "Gabor - Reassuring Voice",
+   "description": "Firm and well-paced adult male voice for customer support, guidance, and professional communication",
+   "gender": "male",
+   "languages": [
+    "hu"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "f3b7c445-d015-40f7-a665-9595e0bc0c90",
+   "provider": "cartesia",
+   "name": "Intan - Service Representative",
+   "description": "A composed and reassuring voice provides seamless support, perfectly suited for customer service applications and automated system prompts.",
+   "gender": "female",
+   "languages": [
+    "id"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "8f703c45-8cb6-4e0c-8015-5e8a9e260a8a",
+   "provider": "cartesia",
+   "name": "Anisa - Customer Care",
+   "description": "This voice offers a calm and clear delivery, ideal for customer service interactions and guiding users through processes.",
+   "gender": "female",
+   "languages": [
+    "id"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "e78f5fbd-2445-42a2-bddc-2dee624330eb",
+   "provider": "cartesia",
+   "name": "Ratna - Empathetic Responder",
+   "description": "A genuinely supportive and empathetic voice, designed for engaging customer interactions, health messages, and comforting narratives.",
+   "gender": "female",
+   "languages": [
+    "id"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "79693aee-1207-4771-a01e-20c393c89e6f",
+   "provider": "cartesia",
+   "name": "Marco - Friendly Conversationalist",
+   "description": "Friendly and professional male for conversational support",
+   "gender": "male",
+   "languages": [
+    "it"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "029c3c7a-b6d9-44f0-814b-200d849830ff",
+   "provider": "cartesia",
+   "name": "Giancarlo - Support Leader",
+   "description": "Deep male for conversational support",
+   "gender": "male",
+   "languages": [
+    "it"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "579dc63a-1c19-4512-866a-1295dff18f0f",
+   "provider": "cartesia",
+   "name": "Sakura - Precise Host",
+   "description": "This voice offers precise and reassuring information with a composed, articulate delivery, ideal for customer interactions.",
+   "gender": "female",
+   "languages": [
+    "ja"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "861213b7-f057-45c8-9527-0f4c144f1a03",
+   "provider": "cartesia",
+   "name": "Haruka - Gracious Guide",
+   "description": "Clear, polite Japanese female for welcoming customer assistance.",
+   "gender": "female",
+   "languages": [
+    "ja"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "33658a29-5982-44c5-9114-0b2c31e100b4",
+   "provider": "cartesia",
+   "name": "Kyo - Service Lead",
+   "description": "A professional and reassuring voice, offering clear resolutions and trusted assistance in service interactions.",
+   "gender": "male",
+   "languages": [
+    "ja"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "882079ce-8513-4a0e-8c0c-c7b8995b12f4",
+   "provider": "cartesia",
+   "name": "Aoi - Order Coordinator",
+   "description": "Manages inquiries with a poised and clear voice, offering helpful support for transactional interactions.",
+   "gender": "female",
+   "languages": [
+    "ja"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "dbebd077-80cb-4bcf-b43b-4552f96341bb",
+   "provider": "cartesia",
+   "name": "Levan - Support Guide",
+   "description": "Casual and approachable adult male voice for customer support and everyday conversations",
+   "gender": "male",
+   "languages": [
+    "ka"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "0bfbea6c-2f8f-4f86-b411-aa2316561e36",
+   "provider": "cartesia",
+   "name": "Tamara - Support Specialist",
+   "description": "Professional and clear adult female voice for customer service, guidance, and supportive interactions",
+   "gender": "female",
+   "languages": [
+    "ka"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "4c00ff98-199c-4967-99ae-7b69125edcff",
+   "provider": "cartesia",
+   "name": "Disha - Friendly Anchor",
+   "description": "Offers a friendly and efficient tone, ideal for guiding users through digital platforms and interactive experiences.",
+   "gender": "female",
+   "languages": [
+    "kn"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "7c6219d2-e8d2-462c-89d8-7ecba7c75d65",
+   "provider": "cartesia",
+   "name": "Divya - Joyful Narrator",
+   "description": "Lively and cheerful adult female voice for product advertisements, upbeat promotions, and happy storytelling",
+   "gender": "female",
+   "languages": [
+    "kn"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "6baae46d-1226-45b5-a976-c7f9b797aae2",
+   "provider": "cartesia",
+   "name": "Prakash - Instructor",
+   "description": "Firm and articulate middle-aged male voice for lectures, presentations, and instructional content",
+   "gender": "male",
+   "languages": [
+    "kn"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "7706804e-ea85-443a-968a-b9bf363bdde8",
+   "provider": "cartesia",
+   "name": "Minji - Modern Communicator",
+   "description": "Crisp, natural Korean female built for platforms and digital assistants.",
+   "gender": "female",
+   "languages": [
+    "ko"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "15628352-2ede-4f1b-89e6-ceda0c983fbc",
+   "provider": "cartesia",
+   "name": "Jiwoo - Service Specialist",
+   "description": "Professional and polite adult female voice for customer service, support, and clear communication",
+   "gender": "female",
+   "languages": [
+    "ko"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "cac92886-4b7c-4bc1-a524-e0f79c0381be",
+   "provider": "cartesia",
+   "name": "Yuna - Kind Unnie",
+   "description": "Cheerful voice with a bright yet gentle tone, perfect for empathetic and friendly customer support",
+   "gender": "female",
+   "languages": [
+    "ko"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "374b80da-e622-4dfc-90f6-1eeb13d331c9",
+   "provider": "cartesia",
+   "name": "Vijay - Comfort Voice",
+   "description": "Friendly and easygoing male voice for casual conversations and everyday support",
+   "gender": "male",
+   "languages": [
+    "ml"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b426013c-002b-4e89-8874-8cd20b68373a",
+   "provider": "cartesia",
+   "name": "Latha - Friendly Host",
+   "description": "Bright and clear adult female voice for customer support, greetings, and welcoming guests",
+   "gender": "female",
+   "languages": [
+    "ml"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "5c32dce6-936a-4892-b131-bafe474afe5f",
+   "provider": "cartesia",
+   "name": "Anika - Enthusiastic Seller",
+   "description": "Energetic and approachable adult female voice for sales conversations, casual chat, and customer support",
+   "gender": "female",
+   "languages": [
+    "mr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "8281db18-6ac5-47bb-91a8-ce23a1f1d951",
+   "provider": "cartesia",
+   "name": "Faiz - Family Guide",
+   "description": "Warm and fatherly adult male voice for casual conversations and comforting dialogue",
+   "gender": "male",
+   "languages": [
+    "ms"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "83604597-55fa-4ccc-8357-730b313f353f",
+   "provider": "cartesia",
+   "name": "Aisyah - Chat Partner",
+   "description": "Friendly and upbeat adult female voice for casual conversations and engaging everyday dialogue",
+   "gender": "female",
+   "languages": [
+    "ms"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "96355f3d-0179-4c9a-a8d8-11ef0779a9b8",
+   "provider": "cartesia",
+   "name": "Noa - Reassuring Responder",
+   "description": "Soft, clear Dutch female for empathetic customer communication.",
+   "gender": "female",
+   "languages": [
+    "nl"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "60e94cf5-8069-459f-a91e-3ff852a51107",
+   "provider": "cartesia",
+   "name": "Isa - Empathetic Ear",
+   "description": "Warm, expressive Dutch female for supportive customer interactions",
+   "gender": "female",
+   "languages": [
+    "nl"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "ac317dac-1b8f-434f-b198-a490e2a4914d",
+   "provider": "cartesia",
+   "name": "Anneke - Trusted Guide",
+   "description": "Soft-spoken adult female voice with a warm and caring tone for supportive conversations and gentle guidance",
+   "gender": "female",
+   "languages": [
+    "nl"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "4f7b1820-6263-4615-87a7-b105768d8f64",
+   "provider": "cartesia",
+   "name": "Kari - Crisp Coordinator",
+   "description": "Polished Norwegian voice for efficient transactional assistance.",
+   "gender": "female",
+   "languages": [
+    "no"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "d6dca1b6-cdd8-4e9c-823c-e03979261740",
+   "provider": "cartesia",
+   "name": "Lars - Casual Conversationalist",
+   "description": "Approachable adult male voice with a relaxed tone for casual conversations and everyday interactions",
+   "gender": "male",
+   "languages": [
+    "no"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "998c6d1b-0bd0-4d27-bce7-ed030e3c9e6c",
+   "provider": "cartesia",
+   "name": "Sarthak - Trustworthy Communicator",
+   "description": "Provides a confident and consistent vocal presence, ensuring clarity and build trust in any communication.",
+   "gender": "male",
+   "languages": [
+    "or"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "0046dfd7-171b-4442-9eb7-0712fa712a7a",
+   "provider": "cartesia",
+   "name": "Smruti - Precise Anchor",
+   "description": "Her precise and articulate tone ensures accuracy, making this voice excellent for delivering complex information and detailed explanations.",
+   "gender": "female",
+   "languages": [
+    "or"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "cc71692b-f326-499b-8f8f-90a415b4d3fb",
+   "provider": "cartesia",
+   "name": "Akash - Structured Presenter",
+   "description": "A composed and articulate tone ideal for delivering organized content, such as educational modules or detailed business briefings.",
+   "gender": "male",
+   "languages": [
+    "or"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "37eb1575-353e-44f4-855d-894b4f003642",
+   "provider": "cartesia",
+   "name": "Alok - Clear Navigator",
+   "description": "Delivers information with precise clarity and a reassuring presence, ideal for guiding listeners through complex details.",
+   "gender": "male",
+   "languages": [
+    "or"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "cf7254bf-2649-41d2-a8b8-23348e824408",
+   "provider": "cartesia",
+   "name": "Veer - Steadfast Planner",
+   "description": "Provides dependable advice with a steady, confident delivery, suitable for strategic planning and project support.",
+   "gender": "male",
+   "languages": [
+    "pa"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "8bacd442-a107-4ec1-b6f1-2fcb3f6f4d56",
+   "provider": "cartesia",
+   "name": "Gurpreet - Companion",
+   "description": "Soft and caring adult male voice for empathetic conversations, support, and reassuring dialogue",
+   "gender": "male",
+   "languages": [
+    "pa"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "43e52207-96fc-4e01-aaf8-cae317e43fdb",
+   "provider": "cartesia",
+   "name": "Kacper - Diligent Detailer",
+   "description": "Methodical Polish male for precise and efficient support.",
+   "gender": "male",
+   "languages": [
+    "pl"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "9904416a-0831-44ea-b8ee-5f145e8f9bbf",
+   "provider": "cartesia",
+   "name": "Alice - Informative Speaker",
+   "description": "Delivers information with measured clarity and a helpful tone, well-suited for service-oriented applications.",
+   "gender": "female",
+   "languages": [
+    "pt"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "616c64d7-f541-436b-9b8d-e79cfbe19ef9",
+   "provider": "cartesia",
+   "name": "Felipe - Warm Assistant",
+   "description": "A supportive voice, perfect for guiding users through processes with clarity and ease.",
+   "gender": "male",
+   "languages": [
+    "pt"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "81452d3b-a5f6-4ef4-afff-542182fac725",
+   "provider": "cartesia",
+   "name": "Fabiana - Clear Desk",
+   "description": "Provides precise and efficient support, ideal for navigating services and tech solutions as a clear desk.",
+   "gender": "female",
+   "languages": [
+    "pt"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "a5b0fceb-cc32-4eef-8929-421f55d32e16",
+   "provider": "cartesia",
+   "name": "Lorena - Operational Guide",
+   "description": "Offers calm and articulate assistance, well-suited for navigating customer service interactions and explaining procedures.",
+   "gender": "female",
+   "languages": [
+    "pt"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "34acfaee-c556-41ee-a5f6-c687fb20357c",
+   "provider": "cartesia",
+   "name": "Andrada - Steady Speaker",
+   "description": "Clear and monotone adult female voice for instructions formal announcements, and straightforward communication",
+   "gender": "female",
+   "languages": [
+    "ro"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "3f64ef99-d87b-4b51-b217-df7351f7886a",
+   "provider": "cartesia",
+   "name": "Andrei - Conversationalist Guy",
+   "description": "Casual yet firm middle-aged male voice for everyday conversations, guidance, and professional dialogue",
+   "gender": "male",
+   "languages": [
+    "ro"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "9ed9f7e7-3ef6-4773-9dd3-ffcb479ca1f0",
+   "provider": "cartesia",
+   "name": "Olga - Confident Saleswoman",
+   "description": "Upbeat and confident adult female voice for presentations and engaging customer interactions",
+   "gender": "female",
+   "languages": [
+    "ru"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "abf68668-6549-462c-8426-1fa7b466b91d",
+   "provider": "cartesia",
+   "name": "Katarina - Friendly Sales",
+   "description": "Warm and approachable adult female voice for customer service, support, and friendly communication",
+   "gender": "female",
+   "languages": [
+    "sk"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "ebe0038b-1790-40bd-98cd-924313e58d3b",
+   "provider": "cartesia",
+   "name": "Vidar - Supportive Voice",
+   "description": "A warm and understanding presence, perfect for empathetic customer service and supportive interactions.",
+   "gender": "male",
+   "languages": [
+    "sv"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "573ad84b-f4bf-49cb-908d-d4a939aef147",
+   "provider": "cartesia",
+   "name": "Filip - Precise Lead",
+   "description": "This voice delivers precise details with an approachable and service-oriented demeanor for clear instructions.",
+   "gender": "male",
+   "languages": [
+    "sv"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "6384afc4-3731-4260-91dc-62e52bc793c3",
+   "provider": "cartesia",
+   "name": "Olle - Poised Helper",
+   "description": "This voice provides a poised and polite experience, ensuring every interaction feels supported and well-handled.",
+   "gender": "male",
+   "languages": [
+    "sv"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "19f28c21-ae34-499f-b64a-f7b09cd9b516",
+   "provider": "cartesia",
+   "name": "Karthik - Customer Assistant",
+   "description": "A clear, helpful voice with a calm demeanor, ideal for customer support and informational announcements.",
+   "gender": "male",
+   "languages": [
+    "ta"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "96e6974d-57a9-4325-89c8-43f065f8bd95",
+   "provider": "cartesia",
+   "name": "Akshara - Resourceful Assistant",
+   "description": "A voice that navigates support interactions with bright intelligence and a helpful, organized tone.",
+   "gender": "female",
+   "languages": [
+    "ta"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "292708e4-1200-4214-a3b7-f522a88c7284",
+   "provider": "cartesia",
+   "name": "Divya - Client Support",
+   "description": "Provides a reassuring and attentive presence, making customers feel heard and supported with genuine care.",
+   "gender": "female",
+   "languages": [
+    "te"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "ebecd063-10f4-422e-a8ff-556ce5c4d4e4",
+   "provider": "cartesia",
+   "name": "Pavan - Bright Voice",
+   "description": "Voice with energetic clarity and upbeat tone, ideal for customer support and engaging communication",
+   "gender": "male",
+   "languages": [
+    "te"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "4ff0f045-c140-4aa3-9210-529083f86fca",
+   "provider": "cartesia",
+   "name": "Supannee - Support Concierge",
+   "description": "Offers a composed and considerate presence, ideal for providing attentive support and detailed responses.",
+   "gender": "female",
+   "languages": [
+    "th"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "273193f7-dbff-438e-b8af-fcc499200b1c",
+   "provider": "cartesia",
+   "name": "Narin - Warm Concierge",
+   "description": "Warm and welcoming delivery for concierge-style assistance, travel support, and friendly service interactions.",
+   "gender": "female",
+   "languages": [
+    "th"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "8810fbfa-b317-4503-9974-9774d08b5897",
+   "provider": "cartesia",
+   "name": "Kanya - Gentle Helper",
+   "description": "Gentle and hospitable voice good for support and helpful conversational guidance.",
+   "gender": "female",
+   "languages": [
+    "th"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "c4cbcb7d-d9fa-4eac-b547-46831718ef58",
+   "provider": "cartesia",
+   "name": "Angelo - Calm Narrator",
+   "description": "Gentle young adult male voice with a calm and approachable tone for casual conversations, support, and narrations",
+   "gender": "male",
+   "languages": [
+    "tl"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "9261664a-c3d0-4200-9038-5466bcf3a09c",
+   "provider": "cartesia",
+   "name": "Luz - Casual Speaker",
+   "description": "Natural and conversational adult female voice for everyday dialogue, friendly interactions, and support",
+   "gender": "female",
+   "languages": [
+    "tl"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "fa7bfcdc-603c-4bf1-a600-a371400d2f8c",
+   "provider": "cartesia",
+   "name": "Leyla - Story Companion",
+   "description": "Expressive female for conversational support",
+   "gender": "female",
+   "languages": [
+    "tr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "0f95596c-09c4-4418-99fe-5c107e0713c0",
+   "provider": "cartesia",
+   "name": "Azra - Service Specialist",
+   "description": "Firm and clear adult voice with a professional tone for instructions, customer service, and formal communication",
+   "gender": "female",
+   "languages": [
+    "tr"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "05ffab9c-d380-4909-8375-cd12f59238c3",
+   "provider": "cartesia",
+   "name": "Oleh - Professional Guy",
+   "description": "Approachable adult male voice with a professional tone for casual conversations and everyday interactions",
+   "gender": "male",
+   "languages": [
+    "uk"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "10c66789-dbc8-4759-ae3f-161c717bee10",
+   "provider": "cartesia",
+   "name": "Imran - Steady Support",
+   "description": "A clear and steady voice offering reliable support and guidance for everyday tasks.",
+   "gender": "male",
+   "languages": [
+    "ur"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "862e933f-b21c-457b-8df8-8e35c6923ef8",
+   "provider": "cartesia",
+   "name": "Nida - Thoughtful Listener",
+   "description": "Conveys genuine understanding and helpful guidance, creating a supportive environment for any interaction.",
+   "gender": "female",
+   "languages": [
+    "ur"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b913ef45-3fbb-4fd0-9564-7746cc7119ea",
+   "provider": "cartesia",
+   "name": "Saqib - Systematic Partner",
+   "description": "A voice offering steady, methodical assistance, ideal for fostering trust in complex support scenarios.",
+   "gender": "male",
+   "languages": [
+    "ur"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "8e8f222d-c817-4cc5-822b-8bf76ca7e98d",
+   "provider": "cartesia",
+   "name": "Lien - Gentle Coordinator",
+   "description": "Gentle, clear delivery for attentive guidance, careful explanations, and friendly support conversations.",
+   "gender": "female",
+   "languages": [
+    "vi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "b8cd71e3-bc14-4538-a530-d6314731c036",
+   "provider": "cartesia",
+   "name": "Xia - Calm Companion",
+   "description": "Soft-spoken adult female voice for calm conversations and customer support",
+   "gender": "female",
+   "languages": [
+    "vi"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "0f5ac064-30c7-4cf6-8748-d275f682a0d5",
+   "provider": "cartesia",
+   "name": "Yu-Hsin - Service Facilitator",
+   "description": "This voice offers a calm and precise delivery, ideal for customer support and detailed informational services.",
+   "gender": "female",
+   "languages": [
+    "zh"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "453c418c-125e-4e5a-b048-03fec55d0963",
+   "provider": "cartesia",
+   "name": "Feng - Taiwanese Query Specialist",
+   "description": "Offers precise and reassuring communication, excellent for handling service queries and providing updates.",
+   "gender": "male",
+   "languages": [
+    "zh"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "7a5d4663-88ae-47b7-808e-8f9b9ee4127b",
+   "provider": "cartesia",
+   "name": "Hua - Sunny Support",
+   "description": "Upbeat, happy young adult woman for engaging conversations and conversational support",
+   "gender": "female",
+   "languages": [
+    "zh"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  },
+  {
+   "voice_id": "653b9445-ae0c-4312-a3ce-375504cff31e",
+   "provider": "cartesia",
+   "name": "Liu - Plain Talker",
+   "description": "Casual, neutral adult man for conversational support use cases",
+   "gender": "male",
+   "languages": [
+    "zh"
+   ],
+   "preview_url": null,
+   "model_ids": []
+  }
+ ]
+}

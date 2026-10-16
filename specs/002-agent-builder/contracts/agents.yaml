@@ -472,6 +472,11 @@ components:
               type: array
               maxItems: 200
               items: {$ref: '#/components/schemas/PronunciationEntry'}
+            recording:
+              type: string
+              enum: [inherit, 'on', 'off']
+              default: inherit
+              description: Call recording override (T088); `inherit` uses the workspace recording_default. Versions written without it read as inherit
         tool_ids:
           type: array
           maxItems: 25
@@ -488,6 +493,11 @@ components:
           type: [object, 'null']
         tools:
           description: Snapshot-only resolved tool definitions written by 005; never accepted on save
+          type: array
+          readOnly: true
+          items: {type: object}
+        knowledge:
+          description: Snapshot-only knowledge base references and retrieval settings written by 005 (T089); never accepted on save
           type: array
           readOnly: true
           items: {type: object}
