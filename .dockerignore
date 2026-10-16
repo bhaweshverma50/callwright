@@ -1,0 +1,24 @@
+# Build context is the repo root (services/api/Dockerfile reads the voice worker's adapter
+# catalog). Keep the context small: no web app, docs, local envs or caches.
+**/.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.DS_Store
+**/.env
+**/.env.*
+.claude
+.github
+.impeccable
+.specify
+apps
+contracts
+research
+specs
+deploy
+services/api/tests
+services/voice-worker/tests
