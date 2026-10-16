@@ -2,6 +2,7 @@ import * as RT from "@radix-ui/react-toast";
 import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { cn, focusRing } from "./cn";
+import { Tooltip } from "./Tooltip";
 
 export type ToastTone = "success" | "info" | "error";
 
@@ -79,9 +80,11 @@ export function Toaster() {
             <RT.Title className="text-[13.5px] font-medium text-fg">{t.title}</RT.Title>
             {t.description && <RT.Description className="text-[12.5px] leading-relaxed text-fg-2">{t.description}</RT.Description>}
           </div>
-          <RT.Close aria-label="Dismiss" className={cn("cursor-pointer rounded-inline p-1 text-fg-3 hover:bg-surface-3 hover:text-fg", focusRing)}>
-            <X className="size-3.5" aria-hidden />
-          </RT.Close>
+          <Tooltip content="Dismiss">
+            <RT.Close aria-label="Dismiss" className={cn("cursor-pointer rounded-inline p-1 text-fg-3 hover:bg-surface-3 hover:text-fg", focusRing)}>
+              <X className="size-3.5" aria-hidden />
+            </RT.Close>
+          </Tooltip>
         </RT.Root>
       ))}
       <RT.Viewport className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 outline-none" />

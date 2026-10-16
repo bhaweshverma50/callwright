@@ -1,8 +1,8 @@
 import { LayoutDashboard, LogIn, Menu, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useSignedIn } from "../../app/auth";
-import { Button, Drawer, IconButton, Logo, PageTransition, cn, focusRing } from "../../components";
+import { Button, Drawer, IconButton, Logo, PageTransition, PanelLoader, cn, focusRing } from "../../components";
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   cn("link-underline rounded-inline px-1 py-1 text-[14px] transition-colors", isActive ? "text-fg" : "text-fg-2 hover:text-fg", focusRing);
@@ -75,7 +75,9 @@ export function PublicLayout() {
       </Drawer>
       <main id="main" className="flex-1">
         <PageTransition key={pathname}>
-          <Outlet />
+          <Suspense fallback={<PanelLoader className="min-h-[70vh]" />}>
+            <Outlet />
+          </Suspense>
         </PageTransition>
       </main>
       <footer className="border-t border-line">

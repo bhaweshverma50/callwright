@@ -1,7 +1,7 @@
 import { BrainCircuit, Captions, CircleCheck, Ear, Mic, RotateCcw, Volume2 } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { FlowChain, LatencyChip, OnAir, Waveform, cn, focusRing, type FlowNode } from "../../components";
+import { FlowChain, LatencyChip, OnAir, Tooltip, Waveform, cn, focusRing, type FlowNode } from "../../components";
 import { formatUsd } from "../../lib/money";
 import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "../../lib/sampleCall";
 import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
@@ -91,21 +91,23 @@ export function LiveCall({ className }: { className?: string }) {
                 <dd className="w-[62px] text-right font-mono text-console-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
               </div>
             </dl>
-            <button
-              type="button"
-              onClick={() => {
-                setT(0);
-                setRun((r) => r + 1);
-              }}
-              disabled={!ended || Boolean(reduce)}
-              aria-label="Replay the call"
-              className={cn(
-                "grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-console-line text-console-fg-2 transition-[opacity,color,border-color] hover:border-[#8b97ff] hover:text-console-fg disabled:pointer-events-none disabled:opacity-0",
-                focusRing,
-              )}
-            >
-              <RotateCcw className="size-4" aria-hidden />
-            </button>
+            <Tooltip content="Replay the call" side="bottom" enabled={ended && !reduce}>
+              <button
+                type="button"
+                onClick={() => {
+                  setT(0);
+                  setRun((r) => r + 1);
+                }}
+                disabled={!ended || Boolean(reduce)}
+                aria-label="Replay the call"
+                className={cn(
+                  "grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-console-line text-console-fg-2 transition-[opacity,color,border-color] hover:border-[#8b97ff] hover:text-console-fg disabled:pointer-events-none disabled:opacity-0",
+                  focusRing,
+                )}
+              >
+                <RotateCcw className="size-4" aria-hidden />
+              </button>
+            </Tooltip>
           </div>
         </header>
 

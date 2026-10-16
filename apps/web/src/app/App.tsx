@@ -5,13 +5,13 @@ import { Toaster, TooltipProvider } from "../components";
 
 /**
  * Providers around the router: query cache, motion (follows the reduced-motion setting), tooltips
- * with a short delay, toasts.
+ * with one shared delay (components/Tooltip.tsx), toasts.
  */
 export function App({ router, queryClient }: { router: ReturnType<typeof createBrowserRouter>; queryClient: QueryClient }) {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <TooltipProvider delayDuration={250} skipDelayDuration={150}>
+        <TooltipProvider>
           <RouterProvider router={router} />
           <Toaster />
         </TooltipProvider>

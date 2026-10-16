@@ -3,7 +3,22 @@ import { Check, ChevronDown, CircleAlert, Clock, Ear, Mic, Plus, SlidersHorizont
 import { useMemo, useState, type ReactNode } from "react";
 import { useCatalog, useQuote } from "../../api/queries";
 import type { Catalog, PricingComponent, QuoteLine, QuoteRequest } from "../../api/types";
-import { COMPONENT_ICONS, COMPONENT_LABELS, Field, FlowChain, Input, Skeleton, Slider, Ticker, cn, focusRing, type FlowNode } from "../../components";
+import {
+  COMPONENT_ICONS,
+  COMPONENT_LABELS,
+  Field,
+  FlowChain,
+  InfoTip,
+  Input,
+  Skeleton,
+  Slider,
+  Ticker,
+  Tooltip,
+  TruncatedText,
+  cn,
+  focusRing,
+  type FlowNode,
+} from "../../components";
 import { formatUsd, toMicros } from "../../lib/money";
 import { providerLabel } from "../../lib/providers";
 import { useDebounced } from "../../lib/useDebounced";
@@ -53,6 +68,13 @@ const DEFAULTS: Sel = {
 };
 
 const NODE_TITLES: Record<keyof Sel, string> = { nc: "Noise cancellation", stt: "Speech to text", llm: "Model", tts: "Voice" };
+/** What each link does and how it is billed, shown when a chain node is hovered or focused. */
+const NODE_HINTS: Record<keyof Sel, string> = {
+  nc: "Cleans background noise out of the caller's audio before speech to text hears it. Optional; billed per minute of call when on.",
+  stt: "Turns the caller's speech into text as they talk. Billed per minute of call.",
+  llm: "Reads the conversation and decides what the agent says or does next. Billed per minute; each minute includes 20,000 input and 200 output tokens.",
+  tts: "Speaks the model's reply in the agent's voice. Billed per minute; each minute includes 750 characters.",
+};
 /** The order a voice travels: the caller's mic, optional noise cancellation, then the chain. */
 const CHAIN: (keyof Sel)[] = ["nc", "stt", "llm", "tts"];
 
@@ -132,7 +154,9 @@ export function PricingCalculator() {
       detail: (
         <>
           {groups ? (
-            <span className="block max-w-full truncate text-[13px] font-medium text-fg">{off ? "Off" : current?.label}</span>
+            <TruncatedText focusable={false} tooltip={false} className="max-w-full text-[13px] font-medium text-fg">
+              {off ? "Off" : current?.label}
+            </TruncatedText>
           ) : (
             <Skeleton className="mx-auto mt-1 h-3.5 w-16" />
           )}
@@ -338,16 +362,28 @@ function ChainChoice({
   const setOpen = onOpenChange;
   return (
     <RP.Root open={open} onOpenChange={onOpenChange}>
-      <RP.Trigger
-        aria-label={`${title}: ${off ? "Off" : (current?.label ?? "loading")}. Change`}
-        disabled={!groups}
-        className={cn(
-          "flow-node-body relative isolate w-full cursor-pointer rounded-panel before:absolute before:-inset-x-1 before:-inset-y-1.5 before:-z-10 before:rounded-panel before:transition-colors before:duration-150 hover:before:bg-accent-soft/50 data-[state=open]:before:bg-accent-soft/60",
-          focusRing,
-        )}
+      <Tooltip
+        enabled={!open}
+        content={
+          <span className="flex flex-col gap-0.5">
+            <span>
+              {title}: {off ? "off" : (current?.label ?? "")}
+            </span>
+            <span className="tooltip-muted font-normal">{NODE_HINTS[component]}</span>
+          </span>
+        }
       >
-        {children}
-      </RP.Trigger>
+        <RP.Trigger
+          aria-label={`${title}: ${off ? "Off" : (current?.label ?? "loading")}. Change`}
+          disabled={!groups}
+          className={cn(
+            "flow-node-body relative isolate w-full cursor-pointer rounded-panel before:absolute before:-inset-x-1 before:-inset-y-1.5 before:-z-10 before:rounded-panel before:transition-colors before:duration-150 hover:before:bg-accent-soft/50 data-[state=open]:before:bg-accent-soft/60",
+            focusRing,
+          )}
+        >
+          {children}
+        </RP.Trigger>
+      </Tooltip>
       <RP.Portal>
         <RP.Content
           side="bottom"
@@ -379,7 +415,9 @@ function ChainChoice({
                       )}
                     >
                       <Check className={cn("size-3.5 shrink-0 text-accent-text", !checked && "invisible")} strokeWidth={2.5} aria-hidden />
-                      <span className="flex-1 truncate">{o.label}</span>
+                      <TruncatedText focusable={false} side="left" className="flex-1">
+                        {o.label}
+                      </TruncatedText>
                       {o.value !== NONE && <span className="font-mono text-[11.5px] text-fg-3 tnum">{formatUsd(o.rate, { places: 4 })}/m</span>}
                     </button>
                   );
@@ -426,10 +464,10 @@ function Receipt({
             return (
               <tr key={l.component} className="border-b border-dashed border-line-strong last:border-0">
                 <th scope="row" className="py-2.5 text-left font-normal">
-                  <span className="flex items-center gap-2">
-                    <Icon className="size-3.5 text-fg-3" aria-hidden />
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Icon className="size-3.5 shrink-0 text-fg-3" aria-hidden />
                     <span className="text-fg">{COMPONENT_LABELS[l.component]}</span>
-                    <span className="hidden truncate text-fg-3 sm:inline">{l.label ?? providerLabel(l.provider)}</span>
+                    <TruncatedText className="hidden text-fg-3 sm:block">{l.label ?? providerLabel(l.provider)}</TruncatedText>
                   </span>
                 </th>
                 <td className="py-2.5 text-right font-mono text-fg tnum">
@@ -454,6 +492,10 @@ function Receipt({
           <p className="flex items-center gap-1.5 font-semibold text-warning-text">
             <Zap className="size-3.5" aria-hidden />
             Bundle surcharge applies
+            <InfoTip label="What a bundle surcharge is" className="text-warning-text">
+              Every minute of call includes 20,000 input and 200 output tokens for the model and 750 characters for the voice. Usage past that bills
+              the component at a multiple of the call length: the multiplier is the usage divided by the bundle.
+            </InfoTip>
           </p>
           <ul className="mt-1 flex flex-col gap-0.5 text-fg-2">
             {surcharged.map((l) => (
@@ -473,7 +515,13 @@ function Receipt({
 
       <dl className="mt-5 grid grid-cols-2 gap-5 border-t border-line-strong pt-5">
         <div className="flex flex-col gap-1.5">
-          <dt className="text-[13px] text-fg-2">Per minute</dt>
+          <dt className="flex items-center gap-1.5 text-[13px] text-fg-2">
+            Per minute
+            <InfoTip label="What the per-minute price includes">
+              Every link in the chain plus the platform fee, with any bundle surcharge from the usage profile. Calls are billed per second, so a 90
+              second call costs one and a half times this.
+            </InfoTip>
+          </dt>
           <dd>
             {perMinute === null ? (
               <Skeleton className="h-8 w-28" />

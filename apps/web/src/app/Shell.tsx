@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
-import { Drawer, PageTransition, cn } from "../components";
+import { Drawer, PageTransition, PanelLoader, cn } from "../components";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -80,7 +81,9 @@ export function Shell() {
         <TopBar onOpenNav={() => setMobileOpen(true)} />
         <main id="main" tabIndex={-1} className="flex-1 px-4 pb-16 pt-6 outline-none sm:px-6 lg:px-10 lg:pt-8">
           <PageTransition key={pathname} className="mx-auto w-full max-w-[1320px]">
-            <Outlet />
+            <Suspense fallback={<PanelLoader label="Loading page" />}>
+              <Outlet />
+            </Suspense>
           </PageTransition>
         </main>
       </div>

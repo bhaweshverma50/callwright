@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { InfoTip, TruncatedText } from "./TruncatedText";
 
 /**
  * Work surface (12px radius, 1px line, light shadow) for a group of related content. Use it only
@@ -63,6 +64,7 @@ export function FieldRow({
   description,
   descriptionId,
   inline = false,
+  hint,
   children,
 }: {
   icon?: ReactNode;
@@ -72,17 +74,25 @@ export function FieldRow({
   descriptionId?: string;
   /** Small controls (switches) stay on the right at every width. */
   inline?: boolean;
+  /** Extra detail behind an info tip after the label; the description stays the visible essentials. */
+  hint?: ReactNode;
   children: ReactNode;
 }) {
+  const labelEl = (
+    <span className="flex items-center gap-1.5">
+      <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
+        {label}
+      </label>
+      {hint && <InfoTip label={`About ${typeof label === "string" ? label.toLowerCase() : "this setting"}`}>{hint}</InfoTip>}
+    </span>
+  );
   if (inline) {
     return (
       <div className="flex items-start justify-between gap-6 px-5 py-4">
         <div className={rowLabel}>
           {icon && <span className={rowIcon}>{icon}</span>}
           <div className="flex min-w-0 flex-col gap-0.5">
-            <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
-              {label}
-            </label>
+            {labelEl}
             {description && (
               <p id={descriptionId} className="text-[12.5px] leading-relaxed text-fg-3">
                 {description}
@@ -99,9 +109,7 @@ export function FieldRow({
       <div className={rowLabel}>
         {icon && <span className={rowIcon}>{icon}</span>}
         <div className="flex min-w-0 flex-col gap-0.5">
-          <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
-            {label}
-          </label>
+          {labelEl}
           {description && (
             <p id={descriptionId} className="text-[12.5px] leading-relaxed text-fg-3">
               {description}
@@ -116,16 +124,35 @@ export function FieldRow({
   );
 }
 
-/** A read-only fact row (inside `<PanelRows as="dl">`): label left, value right on one line. Long values truncate with a tooltip. */
-export function InfoRow({ icon, label, children, title }: { icon?: ReactNode; label: ReactNode; children: ReactNode; title?: string }) {
+/**
+ * A read-only fact row (inside `<PanelRows as="dl">`): label left, value right on one line. Long
+ * values end in an ellipsis and show in full in a tooltip; `title` gives the tooltip text when the
+ * value is not plain text. `hint` adds an info tip after the label for terms that need explaining.
+ */
+export function InfoRow({
+  icon,
+  label,
+  children,
+  title,
+  hint,
+}: {
+  icon?: ReactNode;
+  label: ReactNode;
+  children: ReactNode;
+  title?: string;
+  hint?: ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4">
       <dt className={cn(rowLabel, "items-center")}>
         {icon && <span className={cn(rowIcon, "mt-0")}>{icon}</span>}
-        <span className="whitespace-nowrap text-[13.5px] font-medium text-fg">{label}</span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-[13.5px] font-medium text-fg">
+          {label}
+          {hint && <InfoTip label={`About ${typeof label === "string" ? label.toLowerCase() : "this value"}`}>{hint}</InfoTip>}
+        </span>
       </dt>
-      <dd title={title} className="min-w-0 truncate text-right text-[13.5px] text-fg-2">
-        {children}
+      <dd className="flex min-w-0 justify-end text-right text-[13.5px] text-fg-2">
+        <TruncatedText title={title}>{children}</TruncatedText>
       </dd>
     </div>
   );

@@ -138,7 +138,7 @@ export function DashboardPlaceholder() {
         inspector={
           <Panel title="Workspace" description="What this workspace runs with today." icon={<Gauge />} bodyClassName="p-0">
             <PanelRows as="dl">
-              <InfoRow icon={<Wallet />} label="Balance">
+              <InfoRow icon={<Wallet />} label="Balance" hint="Prepaid credit for calls and features. New calls stop at $0.000.">
                 {isPending || !me ? (
                   <Skeleton className="ml-auto h-4 w-20" />
                 ) : (
@@ -147,14 +147,18 @@ export function DashboardPlaceholder() {
                   </Link>
                 )}
               </InfoRow>
-              <InfoRow icon={<Gauge />} label="Calls at once">
+              <InfoRow
+                icon={<Gauge />}
+                label="Calls at once"
+                hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
+              >
                 {isPending ? (
                   <Skeleton className="ml-auto h-4 w-8" />
                 ) : (
                   <span className="font-mono text-fg tnum">{me?.workspace.concurrency_limit}</span>
                 )}
               </InfoRow>
-              <InfoRow icon={<Disc />} label="Call recording">
+              <InfoRow icon={<Disc />} label="Call recording" hint="The default for agents set to follow the workspace. Each agent can override it.">
                 {me ? (
                   <Badge tone={me.workspace.recording_default ? "accent" : "neutral"}>
                     {me.workspace.recording_default ? "On by default" : "Off by default"}

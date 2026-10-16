@@ -23,6 +23,11 @@
   --press-duration: 90ms;
   --press-scale: 0.975;
   --skeleton-duration: 1.3s;
+  /* State changes (a node becoming active: its disc fill and halo) and the halo pulse loop. */
+  --state-duration: 360ms;
+  --halo-pulse-duration: 1.8s;
+  --halo: rgb(122 60 255 / 0.5);
+  --halo-soft: rgb(122 60 255 / 0.14);
   --bg: #f4f5fa;
   --surface: #ffffff;
   --surface-2: #eceef6;
@@ -63,6 +68,9 @@
   --overlay: rgb(14 16 48 / 0.42);
   --glow-a: rgb(51 70 232 / 0.16);
   --glow-b: rgb(122 60 255 / 0.12);
+  --tooltip-bg: #171a3d;
+  --tooltip-fg: #eef0fb;
+  --tooltip-edge: transparent;
 }
 
 :root[data-theme="dark"] {
@@ -101,6 +109,12 @@
   --overlay: rgb(5 6 20 / 0.66);
   --glow-a: rgb(75 92 240 / 0.24);
   --glow-b: rgb(122 60 255 / 0.2);
+  /* Lifted above every dark surface so the tip reads as floating, not as a hole in the page. */
+  --halo: rgb(164 123 255 / 0.6);
+  --halo-soft: rgb(164 123 255 / 0.2);
+  --tooltip-bg: #2b3172;
+  --tooltip-fg: #eef0fb;
+  --tooltip-edge: rgb(255 255 255 / 0.08);
 }
 
 @theme inline {
@@ -159,7 +173,7 @@
   --animate-fade-in: fade-in 160ms ease-out;
   --animate-pop-in: pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
   --animate-shimmer: shimmer var(--skeleton-duration) ease-in-out infinite;
-  --animate-on-air: on-air 1.6s ease-out infinite;
+  --animate-on-air: halo-pulse 1.6s infinite;
   --animate-flow: flow 1.2s linear infinite;
 }
 
@@ -211,6 +225,24 @@
     opacity: 1;
   }
 }
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--tip-dx), var(--tip-dy)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes tip-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
 @keyframes shimmer {
   from {
     background-position: 150% 0;
@@ -219,13 +251,24 @@
     background-position: -50% 0;
   }
 }
-@keyframes on-air {
+/*
+  Pulse for every halo (active chain node, active step, on-air dot). It starts inside the node at
+  0.85 of its size and invisible, so it grows out of the node's own edge instead of appearing at
+  full size. Transform eases out over the whole loop (only 0% and 100% set it); opacity rises
+  quickly, then fades as the ring spreads. --halo-to and --halo-peak tune its reach and strength.
+*/
+@keyframes halo-pulse {
   0% {
-    transform: scale(1);
-    opacity: 0.7;
+    transform: scale(0.85);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  18% {
+    opacity: var(--halo-peak, 0.9);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
   }
   100% {
-    transform: scale(2.6);
+    transform: scale(var(--halo-to, 1.6));
     opacity: 0;
   }
 }
@@ -274,6 +317,157 @@
   }
   50% {
     transform: scaleY(0.45);
+  }
+}
+
+/*
+  LogoLoader (components/LogoLoader.tsx): one 2.4 s loop, a swing out and a swing back about the
+  mark's centre. Out: the ink half (a) leads half a turn clockwise from 1% to 39%, the gradient
+  half (b) follows 6% behind and arrives at 45%; both rest, locked with places traded, until
+  51%. Back: b leads counter-clockwise home from 51% to 89%, a follows and arrives at
+  95%; both rest until the loop restarts at 1%. The leader always moves into the opening of the
+  C, so the halves never cross. Only keyframes that start a move carry an easing, so every move is
+  one smooth ease in and out and the loop has no seam. While a half travels it parts 1.4 units from
+  the waist and its comet for that direction fades up; the glow breathes up at each lock.
+*/
+@keyframes ll-orbit-a {
+  0%,
+  1% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  39%,
+  57% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  95%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes ll-orbit-b {
+  0%,
+  7% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  45%,
+  51% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  89%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes ll-split-a {
+  0%,
+  1%,
+  39%,
+  57%,
+  95%,
+  100% {
+    transform: translate(0, 0);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  20%,
+  76% {
+    transform: translate(-1.3px, -0.6px);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-split-b {
+  0%,
+  7%,
+  45%,
+  51%,
+  89%,
+  100% {
+    transform: translate(0, 0);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  26%,
+  70% {
+    transform: translate(1.3px, 0.6px);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-aCw {
+  0%,
+  1%,
+  39%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  20% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-aCcw {
+  0%,
+  57%,
+  95%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  76% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-bCw {
+  0%,
+  7%,
+  45%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  26% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-bCcw {
+  0%,
+  51%,
+  89%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  70% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-glow {
+  0%,
+  48%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  23%,
+  73% {
+    opacity: 0.35;
+    transform: scale(0.9);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
   }
 }
 
@@ -566,6 +760,145 @@
     animation: sheen var(--sheen-duration) var(--ease-out-soft) 1;
   }
 
+  /*
+    Tooltip (components/Tooltip.tsx): one ink card with an arrow in both themes. It fades in while
+    settling 3px toward its trigger from the side it opens on, and fades out faster than it came.
+  */
+  .tooltip {
+    --tip-dx: 0px;
+    --tip-dy: 3px;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-fg);
+    box-shadow:
+      inset 0 0 0 1px var(--tooltip-edge),
+      var(--shadow-pop);
+    transform-origin: var(--radix-tooltip-content-transform-origin);
+    will-change: transform, opacity;
+  }
+  .tooltip[data-side="bottom"] {
+    --tip-dy: -3px;
+  }
+  .tooltip[data-side="left"] {
+    --tip-dx: 3px;
+    --tip-dy: 0px;
+  }
+  .tooltip[data-side="right"] {
+    --tip-dx: -3px;
+    --tip-dy: 0px;
+  }
+  .tooltip[data-state="delayed-open"] {
+    animation: tip-in 160ms var(--ease-out-soft);
+  }
+  .tooltip[data-state="instant-open"] {
+    animation: tip-in 90ms var(--ease-out-soft);
+  }
+  .tooltip[data-state="closed"] {
+    animation: tip-out 90ms ease-in forwards;
+  }
+  .tooltip-arrow {
+    fill: var(--tooltip-bg);
+  }
+  /* Secondary line inside a tip (a description under its title). */
+  .tooltip-muted {
+    color: color-mix(in srgb, var(--tooltip-fg) 78%, transparent);
+  }
+
+  /*
+    Active disc (FlowChain, Stepper): the gradient fill and the halo come in together over
+    --state-duration from 0.85 of the disc's size, and leave the same way. The halo is a steady
+    soft ring plus a pulse that loops out from under the fill; reduced motion keeps only the ring.
+  */
+  .disc-fill {
+    position: absolute;
+    inset: -1px;
+    border-radius: 9999px;
+    opacity: 0;
+    transform: scale(0.85);
+    transition:
+      opacity var(--state-duration) var(--ease-out-soft),
+      transform var(--state-duration) var(--ease-out-soft);
+    pointer-events: none;
+  }
+  .disc-fill[data-on="true"] {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .halo,
+  .halo > i {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+  .halo > .halo-ring {
+    box-shadow: 0 0 0 4px var(--halo-soft);
+  }
+  .halo > .halo-pulse {
+    border: 2px solid var(--halo);
+    opacity: 0;
+    animation: halo-pulse var(--halo-pulse-duration) infinite;
+  }
+
+  /* LogoLoader: keyframes and timing are documented above the ll-orbit keyframes. */
+  .ll {
+    --ll-duration: 2.4s;
+    animation: fade-in 260ms ease-out 140ms both;
+  }
+  .ll-a,
+  .ll-b,
+  .ll-a-split,
+  .ll-b-split {
+    transform-box: view-box;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  .ll-a {
+    animation: ll-orbit-a var(--ll-duration) infinite;
+  }
+  .ll-b {
+    animation: ll-orbit-b var(--ll-duration) infinite;
+  }
+  .ll-a-split {
+    animation: ll-split-a var(--ll-duration) infinite;
+  }
+  .ll-b-split {
+    animation: ll-split-b var(--ll-duration) infinite;
+  }
+  .ll-trail {
+    opacity: 0;
+  }
+  .ll-trail-aCw {
+    animation: ll-trail-aCw var(--ll-duration) infinite;
+  }
+  .ll-trail-aCcw {
+    animation: ll-trail-aCcw var(--ll-duration) infinite;
+  }
+  .ll-trail-bCw {
+    animation: ll-trail-bCw var(--ll-duration) infinite;
+  }
+  .ll-trail-bCcw {
+    animation: ll-trail-bCcw var(--ll-duration) infinite;
+  }
+  .ll-glow {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ll-glow var(--ll-duration) infinite;
+  }
+  /* Still state (reduced motion, or `still`): the mark at rest, breathing slowly in opacity. */
+  .ll-still .ll-a,
+  .ll-still .ll-b,
+  .ll-still .ll-a-split,
+  .ll-still .ll-b-split,
+  .ll-still .ll-glow {
+    animation: none;
+  }
+  .ll-still .ll-trail {
+    display: none;
+  }
+  .ll-still .ll-mark {
+    animation: ll-breathe var(--ll-duration) ease-in-out infinite;
+  }
+
   .ripple {
     position: absolute;
     border-radius: 9999px;
@@ -633,6 +966,17 @@
   }
   .lift:hover {
     transform: none;
+  }
+  .halo > .halo-pulse,
+  .on-air-pulse,
+  .ll .ll-trail {
+    display: none;
+  }
+  /* The loader keeps one calm signal: the mark at rest (its orbits end on the mark), breathing. */
+  .ll .ll-mark {
+    animation: ll-breathe 2.4s ease-in-out infinite !important;
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

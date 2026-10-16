@@ -135,7 +135,8 @@ function SettingsForm({ me }: { me: Me }) {
                 label="Record calls by default"
                 htmlFor={`${nameId}-rec`}
                 descriptionId={`${nameId}-rec-d`}
-                description="Agents set to follow the workspace record their calls. Each agent can override this."
+                description="Agents set to follow the workspace record their calls."
+                hint="Each agent can override this default. A change applies to calls that start after you save."
               >
                 <SwitchControl id={`${nameId}-rec`} checked={recording} onCheckedChange={setRecording} describedBy={`${nameId}-rec-d`} />
               </FieldRow>
@@ -182,7 +183,11 @@ function SettingsForm({ me }: { me: Me }) {
       inspector={
         <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
           <PanelRows as="dl">
-            <InfoRow icon={<Gauge />} label="Concurrent calls">
+            <InfoRow
+              icon={<Gauge />}
+              label="Concurrent calls"
+              hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
+            >
               <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
             </InfoRow>
             <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>

@@ -11,6 +11,7 @@ import {
   MenuSeparator,
   MenuTrigger,
   Skeleton,
+  TruncatedText,
   cn,
   focusRing,
 } from "../components";
@@ -43,12 +44,22 @@ export function UserMenu() {
         <span className="grad-action grid size-8 place-items-center rounded-full text-[11.5px] font-semibold text-white">
           {email ? initialsOf(email) : ""}
         </span>
-        <span className="hidden max-w-[200px] truncate text-[13px] text-fg-2 lg:inline">{email ?? <Skeleton className="h-3 w-28" />}</span>
+        {email ? (
+          <TruncatedText focusable={false} side="bottom" className="hidden max-w-[200px] text-[13px] text-fg-2 lg:block">
+            {email}
+          </TruncatedText>
+        ) : (
+          <Skeleton className="hidden h-3 w-28 lg:block" />
+        )}
       </MenuTrigger>
       <MenuContent>
         <MenuLabel>
-          <span className="block truncate text-[13px] font-medium text-fg">{email}</span>
-          <span className="block truncate text-[12px] text-fg-3">{me?.workspace.name}</span>
+          <TruncatedText focusable={false} side="left" className="text-[13px] font-medium text-fg">
+            {email}
+          </TruncatedText>
+          <TruncatedText focusable={false} side="left" className="text-[12px] text-fg-3">
+            {me?.workspace.name}
+          </TruncatedText>
         </MenuLabel>
         <MenuSeparator />
         <MenuItem onSelect={() => navigate("/settings")}>

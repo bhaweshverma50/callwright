@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconButton } from "./Button";
 import { cn } from "./cn";
+import { TruncatedText } from "./TruncatedText";
 
 export interface DrawerProps {
   open: boolean;
@@ -39,9 +40,15 @@ export function Drawer({ open, onOpenChange, title, meta, actions, children, foo
         >
           <header className="flex items-start gap-3 border-b border-line px-5 py-4">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <RD.Title className="truncate font-display text-[16px] font-medium tracking-[-0.01em] text-fg">{title}</RD.Title>
+              <RD.Title className="min-w-0 font-display text-[16px] font-medium tracking-[-0.01em] text-fg">
+                <TruncatedText side="bottom">{title}</TruncatedText>
+              </RD.Title>
               {meta ? (
-                <RD.Description className="truncate text-[12.5px] text-fg-3">{meta}</RD.Description>
+                <RD.Description asChild>
+                  <div className="min-w-0 text-[12.5px] text-fg-3">
+                    <TruncatedText side="bottom">{meta}</TruncatedText>
+                  </div>
+                </RD.Description>
               ) : (
                 <RD.Description className="sr-only">Details</RD.Description>
               )}

@@ -2,6 +2,7 @@ import { Slot, Slottable } from "@radix-ui/react-slot";
 import { forwardRef, type AnimationEvent, type ButtonHTMLAttributes, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { cn, focusRing } from "./cn";
 import { useRipple } from "./motion";
+import { Tooltip } from "./Tooltip";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "link";
 type Size = "sm" | "md" | "lg";
@@ -128,10 +129,19 @@ function PendingDots() {
   );
 }
 
-export function IconButton({ label, className, children, ...rest }: ButtonProps & { label: string }) {
+/** Icon-only button: `label` is both its accessible name and the tooltip that names the action. */
+export function IconButton({
+  label,
+  className,
+  children,
+  tooltipSide = "top",
+  ...rest
+}: ButtonProps & { label: string; tooltipSide?: "top" | "right" | "bottom" | "left" }) {
   return (
-    <Button variant="ghost" aria-label={label} className={cn("size-9 px-0", className)} {...rest}>
-      {children}
-    </Button>
+    <Tooltip content={label} side={tooltipSide}>
+      <Button variant="ghost" aria-label={label} className={cn("size-9 px-0", className)} {...rest}>
+        {children}
+      </Button>
+    </Tooltip>
   );
 }

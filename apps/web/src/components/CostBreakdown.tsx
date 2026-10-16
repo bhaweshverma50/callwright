@@ -5,6 +5,7 @@ import { modelLabel } from "../lib/catalogSeed";
 import { providerLabel } from "../lib/providers";
 import { cn } from "./cn";
 import { MoneyText } from "./Money";
+import { InfoTip, TruncatedText } from "./TruncatedText";
 
 export const COMPONENT_LABELS: Record<string, string> = {
   stt: "Speech to text",
@@ -66,24 +67,30 @@ export function CostBreakdownCard({
     <section aria-label={title} className={cn("@container overflow-hidden rounded-panel border border-line bg-surface", className)}>
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 pb-3 pt-4">
         <h3 className="text-[13.5px] font-semibold text-fg">{title}</h3>
-        <dl className="flex gap-3 text-[12px] text-fg-3">
-          <div className="flex gap-1">
-            <dt className="sr-only">Duration</dt>
-            <dd className="font-mono tnum">{mss(breakdown.billed_seconds)}</dd>
-          </div>
-          <div className="flex gap-1">
-            <dt className="sr-only">Billed minutes</dt>
-            <dd>
-              <span className="font-mono tnum">{Number(breakdown.duration_minutes).toFixed(2)}</span> min
-            </dd>
-          </div>
-          <div className="flex gap-1">
-            <dt className="sr-only">Average per minute</dt>
-            <dd>
-              <span className="font-mono tnum">{avgPerMinute(breakdown)}</span> a minute
-            </dd>
-          </div>
-        </dl>
+        <div className="flex items-center gap-3">
+          <dl className="flex gap-3 text-[12px] text-fg-3">
+            <div className="flex gap-1">
+              <dt className="sr-only">Duration</dt>
+              <dd className="font-mono tnum">{mss(breakdown.billed_seconds)}</dd>
+            </div>
+            <div className="flex gap-1">
+              <dt className="sr-only">Billed minutes</dt>
+              <dd>
+                <span className="font-mono tnum">{Number(breakdown.duration_minutes).toFixed(2)}</span> min
+              </dd>
+            </div>
+            <div className="flex gap-1">
+              <dt className="sr-only">Average per minute</dt>
+              <dd>
+                <span className="font-mono tnum">{avgPerMinute(breakdown)}</span> a minute
+              </dd>
+            </div>
+          </dl>
+          <InfoTip label="How the call was measured">
+            Calls are billed per second, rounded up to the whole second. Billed minutes are those seconds divided by 60, and the rate a minute is the
+            total divided by them.
+          </InfoTip>
+        </div>
       </header>
 
       <table className="w-full border-t border-dashed border-line-strong text-[12.5px]">
@@ -105,14 +112,14 @@ export function CostBreakdownCard({
             return (
               <tr key={l.component} className="border-b border-line/70 last:border-0">
                 <th scope="row" className="py-2.5 pl-5 pr-2 text-left font-normal">
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
                     <Icon className={cn("size-3.5 shrink-0", surcharge ? "text-warning-text" : "text-fg-3")} aria-hidden />
                     <span className="whitespace-nowrap text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
-                    <span className="hidden truncate text-fg-3 @[30rem]:inline">
+                    <TruncatedText className="hidden text-fg-3 @[30rem]:block">
                       {l.component === "platform"
                         ? providerLabel(l.provider)
                         : (modelLabel(l.component, l.provider, l.model) ?? providerLabel(l.provider))}
-                    </span>
+                    </TruncatedText>
                   </span>
                 </th>
                 <td className="hidden px-2 text-right font-mono text-fg-3 tnum @[24rem]:table-cell">
@@ -135,6 +142,10 @@ export function CostBreakdownCard({
           <p className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-warning-text">
             <Zap className="size-3.5" aria-hidden />
             Bundle surcharge
+            <InfoTip label="What a bundle surcharge is" className="text-warning-text">
+              Every minute of call includes a bundle: 20,000 input and 200 output tokens for the model, 750 characters for the voice. A call that uses
+              more bills that component for more minutes than it lasted. The multiplier is those billed minutes divided by the call length.
+            </InfoTip>
           </p>
           <ul className="flex flex-col gap-2">
             {surcharged.map((l) => {
@@ -165,8 +176,11 @@ export function CostBreakdownCard({
           onConsole ? "bg-surface" : "bg-surface-2/60",
         )}
       >
-        <span className="text-[13px] text-fg-2">
+        <span className="flex items-center gap-1.5 text-[13px] text-fg-2">
           Total <span className="text-[12px] text-fg-3">on catalog version {breakdown.catalog_version}</span>
+          <InfoTip label="About the catalog version">
+            The price list in force when the call started. Each line is rounded up to $0.001, and later price changes never alter this receipt.
+          </InfoTip>
         </span>
         <MoneyText value={breakdown.total_usd} places={3} className="text-[17px] font-semibold text-fg" />
       </footer>

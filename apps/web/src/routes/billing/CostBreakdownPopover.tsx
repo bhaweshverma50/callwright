@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { motion } from "motion/react";
 import type { Transaction } from "../../api/types";
-import { CostBreakdownCard, Drawer, IconButton, MoneyText } from "../../components";
+import { CopyButton, CostBreakdownCard, Drawer, IconButton, MoneyText, TruncatedText } from "../../components";
 
 const when = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -54,10 +54,18 @@ function Body({ txn }: { txn: Transaction }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <p className="min-w-0 truncate text-[13.5px] text-fg">{txn.description}</p>
+        <TruncatedText as="p" className="text-[13.5px] text-fg">
+          {txn.description}
+        </TruncatedText>
         <MoneyText value={txn.amount_usd} places={3} signed className="text-[13.5px] font-medium text-fg" />
       </div>
-      {txn.call_id && <p className="-mt-3 truncate px-1 font-mono text-[11.5px] text-fg-3">{txn.call_id}</p>}
+      {txn.call_id && (
+        <div className="-mb-1 -mt-4 flex min-w-0 items-center gap-1 pl-1">
+          <span className="sr-only">Call id</span>
+          <TruncatedText className="font-mono text-[11.5px] text-fg-3">{txn.call_id}</TruncatedText>
+          <CopyButton value={txn.call_id} label="Copy call id" />
+        </div>
+      )}
       <CostBreakdownCard breakdown={txn.cost_breakdown!} title="Receipt" />
     </div>
   );

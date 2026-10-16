@@ -1,7 +1,7 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { motion } from "motion/react";
 import { NavLink, useMatch } from "react-router";
-import { Kbd, Logo, Tooltip, cn, focusRing } from "../components";
+import { Kbd, Logo, Tooltip, TruncatedText, cn, focusRing } from "../components";
 import { BILLING_ITEM, NAV, SETTINGS_ITEM, type NavItem } from "./nav";
 
 /** Rail widths (docs/DESIGN.md section 5). Shell animates between them. */
@@ -107,8 +107,10 @@ export function Sidebar({
 
 function FadeLabel({ children }: { children: string }) {
   return (
-    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18, delay: 0.06 }} className="truncate">
-      {children}
+    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18, delay: 0.06 }} className="min-w-0 flex-1 text-left">
+      <TruncatedText focusable={false} side="right">
+        {children}
+      </TruncatedText>
     </motion.span>
   );
 }
