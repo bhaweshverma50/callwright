@@ -97,9 +97,15 @@ export function Home() {
               <div key={c} className="flex flex-col gap-2 bg-surface px-5 py-5">
                 <dt className="text-[12.5px] text-fg-3">{COMPONENT_LABELS[c]}</dt>
                 <dd className="font-mono text-[20px] font-medium text-fg tnum">
-                  {c === "platform" ? "" : c === "nc" ? "" : "from "}
-                  {fromRate(c)}
-                  <span className="text-[12px] text-fg-3">/min</span>
+                  {c === "nc" ? (
+                    "Included"
+                  ) : (
+                    <>
+                      {c === "platform" ? "" : "from "}
+                      {fromRate(c)}
+                      <span className="text-[12px] text-fg-3">/min</span>
+                    </>
+                  )}
                 </dd>
               </div>
             ))}
