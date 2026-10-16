@@ -12,7 +12,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create an account and send a verification email */
+        /**
+         * Create an account and send a verification email
+         * @description On a demo deployment with AUTH_AUTO_VERIFY_EMAIL=true the account is verified at once and the response is 200 with session tokens (the workspace and trial credit exist). When the email already belongs to an account the password does not open, the answer is the usual 202. That difference tells a caller the email is taken, one reason auto-verify is for demos only (it is refused in production unless explicitly allowed).
+         */
         post: operations["register"];
         delete?: never;
         options?: never;
@@ -3017,6 +3020,10 @@ export interface components {
             token_type: "bearer";
             /** @description Seconds until the access token expires */
             expires_in: number;
+        };
+        RegisteredSession: components["schemas"]["Session"] & {
+            /** @enum {string} */
+            status: "signed_in";
         };
         /** @enum {string} */
         TransactionType: "top_up" | "call_charge" | "feature_charge" | "trial_grant" | "refund" | "adjustment";
@@ -6650,6 +6657,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Account verified and signed in (AUTH_AUTO_VERIFY_EMAIL only) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisteredSession"];
+                };
+            };
             /** @description Verification email sent (also returned when the email already exists, to avoid enumeration) */
             202: {
                 headers: {

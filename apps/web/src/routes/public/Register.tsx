@@ -2,9 +2,10 @@ import { EnvelopeSimple } from "@phosphor-icons/react";
 import { MailCheck, RefreshCw, UserPlus } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { fieldErrors, problemMessage } from "../../api/problems";
+import { isRegisteredSession, startSession } from "../../app/auth";
 import { Button, Field, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
@@ -13,14 +14,24 @@ import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-/** Register (T041, US1.1): strength meter, 10-character minimum, then "check your email". */
+/**
+ * Register (T041, US1.1): strength meter, 10-character minimum, then "check your email". When the
+ * API verifies accounts at once (AUTH_AUTO_VERIFY_EMAIL on a demo) the response carries session
+ * tokens and the user goes straight to the dashboard.
+ */
 export function Register() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
 
   const register = useMutation({
     mutationFn: () => unwrap(api.POST("/auth/register", { body: { email: email.trim(), password } })),
+    onSuccess: (result) => {
+      if (!isRegisteredSession(result)) return;
+      startSession(result);
+      navigate("/dashboard", { replace: true });
+    },
   });
   const resend = useMutation({
     mutationFn: () => unwrap(api.POST("/auth/verify-email/resend", { body: { email: email.trim() } })),
@@ -37,7 +48,7 @@ export function Register() {
     register.mutate();
   };
 
-  if (register.isSuccess) {
+  if (register.isSuccess && !isRegisteredSession(register.data)) {
     const addr = email.trim().toLowerCase();
     return (
       <AuthLayout
