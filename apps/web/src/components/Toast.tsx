@@ -1,5 +1,5 @@
 import * as RT from "@radix-ui/react-toast";
-import { CheckCircle, Info, WarningCircle, X } from "@phosphor-icons/react";
+import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { cn, focusRing } from "./cn";
 
@@ -37,7 +37,7 @@ function close(id: number) {
   window.setTimeout(() => {
     items = items.filter((t) => t.id !== id);
     emit();
-  }, 200);
+  }, 220);
 }
 
 function useToasts() {
@@ -52,12 +52,18 @@ function useToasts() {
 }
 
 const icons: Record<ToastTone, ReactNode> = {
-  success: <CheckCircle weight="fill" className="size-4 text-success-text" aria-hidden />,
-  info: <Info weight="fill" className="size-4 text-accent-text" aria-hidden />,
-  error: <WarningCircle weight="fill" className="size-4 text-danger-text" aria-hidden />,
+  success: <CircleCheck className="size-4 text-success-text" aria-hidden />,
+  info: <Info className="size-4 text-accent-text" aria-hidden />,
+  error: <CircleAlert className="size-4 text-danger-text" aria-hidden />,
 };
 
-/** Mount once near the root. Toasts stack bottom right and are announced politely. */
+const bars: Record<ToastTone, string> = {
+  success: "bg-success",
+  info: "grad-action",
+  error: "bg-danger",
+};
+
+/** Mount once near the root. Toasts stack bottom right, slide in and are announced politely. */
 export function Toaster() {
   const list = useToasts();
   return (
@@ -70,16 +76,17 @@ export function Toaster() {
           type={t.tone === "error" ? "foreground" : "background"}
           onOpenChange={(o) => !o && close(t.id)}
           className={cn(
-            "flex w-[360px] max-w-[calc(100vw-32px)] items-start gap-2.5 rounded-panel border border-line bg-surface px-3.5 py-3 shadow-pop",
-            "data-[state=open]:animate-slide-in-right data-[state=closed]:animate-fade-in data-[swipe=end]:translate-x-full",
+            "relative flex w-[360px] max-w-[calc(100vw-32px)] items-start gap-3 overflow-hidden rounded-panel border border-line bg-surface py-3 pl-4 pr-3 shadow-pop",
+            "data-[state=open]:animate-[toast-in_240ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[toast-in_160ms_ease-in_reverse] data-[swipe=end]:translate-x-full",
           )}
         >
+          <span aria-hidden className={cn("absolute inset-y-0 left-0 w-[3px]", bars[t.tone ?? "info"])} />
           <span className="mt-0.5">{icons[t.tone ?? "info"]}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <RT.Title className="text-[13px] font-medium text-fg">{t.title}</RT.Title>
+            <RT.Title className="text-[13.5px] font-medium text-fg">{t.title}</RT.Title>
             {t.description && <RT.Description className="text-[12.5px] leading-relaxed text-fg-2">{t.description}</RT.Description>}
           </div>
-          <RT.Close aria-label="Dismiss" className={cn("rounded-[4px] p-0.5 text-fg-3 hover:text-fg", focusRing)}>
+          <RT.Close aria-label="Dismiss" className={cn("cursor-pointer rounded-inline p-1 text-fg-3 hover:bg-surface-3 hover:text-fg", focusRing)}>
             <X className="size-3.5" aria-hidden />
           </RT.Close>
         </RT.Root>

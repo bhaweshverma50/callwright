@@ -1,5 +1,5 @@
 import * as RD from "@radix-ui/react-dialog";
-import { X } from "@phosphor-icons/react";
+import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button, IconButton } from "./Button";
 import { cn } from "./cn";
@@ -9,6 +9,7 @@ export interface DialogProps {
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
+  icon?: ReactNode;
   children?: ReactNode;
   /** Buttons row, right aligned. */
   footer?: ReactNode;
@@ -17,31 +18,35 @@ export interface DialogProps {
   role?: "dialog" | "alertdialog";
 }
 
-const widths = { sm: "max-w-[400px]", md: "max-w-[520px]", lg: "max-w-[720px]" };
+const widths = { sm: "max-w-[420px]", md: "max-w-[540px]", lg: "max-w-[740px]" };
 
 /** Centered modal. Focus is trapped inside and returns to the trigger on close. */
-export function Dialog({ open, onOpenChange, title, description, children, footer, size = "md", role = "dialog" }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, description, icon, children, footer, size = "md", role = "dialog" }: DialogProps) {
   return (
     <RD.Root open={open} onOpenChange={onOpenChange}>
       <RD.Portal>
-        <RD.Overlay className="fixed inset-0 z-40 bg-overlay animate-fade-in" />
+        <RD.Overlay className="fixed inset-0 z-40 bg-overlay backdrop-blur-[2px] data-[state=open]:animate-fade-in data-[state=closed]:animate-[fade-in_140ms_ease-in_reverse]" />
         <RD.Content
           role={role}
           onPointerDownOutside={role === "alertdialog" ? (e) => e.preventDefault() : undefined}
           className={cn(
-            "fixed left-1/2 top-[12vh] z-50 w-[calc(100vw-32px)] -translate-x-1/2",
-            "rounded-panel border border-line bg-surface shadow-pop animate-pop-in focus:outline-none",
+            "fixed left-1/2 top-[14vh] z-50 w-[calc(100vw-32px)] -translate-x-1/2",
+            "rounded-panel border border-line bg-surface shadow-pop focus:outline-none",
+            "data-[state=open]:animate-pop-in data-[state=closed]:animate-[pop-in_140ms_ease-in_reverse]",
             widths[size],
           )}
         >
-          <div className="flex items-start justify-between gap-4 px-5 pb-1 pt-4">
-            <div className="flex flex-col gap-1">
-              <RD.Title className="font-display text-[17px] font-semibold tracking-[-0.01em] text-fg">{title}</RD.Title>
-              {description ? (
-                <RD.Description className="text-[13px] leading-relaxed text-fg-2">{description}</RD.Description>
-              ) : (
-                <RD.Description className="sr-only">{typeof title === "string" ? title : "Dialog"}</RD.Description>
-              )}
+          <div className="flex items-start justify-between gap-4 px-5 pb-1 pt-5">
+            <div className="flex items-start gap-3">
+              {icon && <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-[18px]">{icon}</span>}
+              <div className="flex flex-col gap-1">
+                <RD.Title className="font-display text-[17px] font-medium tracking-[-0.01em] text-fg">{title}</RD.Title>
+                {description ? (
+                  <RD.Description className="text-[13.5px] leading-relaxed text-fg-2">{description}</RD.Description>
+                ) : (
+                  <RD.Description className="sr-only">{typeof title === "string" ? title : "Dialog"}</RD.Description>
+                )}
+              </div>
             </div>
             {role === "dialog" && (
               <RD.Close asChild>
@@ -51,8 +56,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
               </RD.Close>
             )}
           </div>
-          {children && <div className="px-5 py-3 text-[13px] text-fg-2">{children}</div>}
-          {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
+          {children && <div className="px-5 py-3 text-[13.5px] text-fg-2">{children}</div>}
+          {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">{footer}</div>}
         </RD.Content>
       </RD.Portal>
     </RD.Root>
@@ -64,6 +69,7 @@ export interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
+  icon?: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
   tone?: "default" | "danger";
@@ -72,23 +78,14 @@ export interface ConfirmDialogProps {
 }
 
 /** Two-choice alert dialog. The safe choice (cancel) gets initial focus. */
-export function ConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  confirmLabel,
-  cancelLabel = "Cancel",
-  tone = "default",
-  pending,
-  onConfirm,
-}: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onOpenChange, title, description, icon, confirmLabel, cancelLabel = "Cancel", tone = "default", pending, onConfirm }: ConfirmDialogProps) {
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
       title={title}
       description={description}
+      icon={icon}
       size="sm"
       role="alertdialog"
       footer={

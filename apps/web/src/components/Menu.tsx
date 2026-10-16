@@ -11,7 +11,7 @@ export function MenuContent({ children, align = "end", className }: { children: 
       <DM.Content
         align={align}
         sideOffset={6}
-        className={cn("z-50 min-w-[220px] rounded-panel border border-line bg-surface p-1 shadow-pop animate-pop-in", className)}
+        className={cn("z-50 min-w-[232px] rounded-panel border border-line bg-surface p-1.5 shadow-pop data-[state=open]:animate-pop-in data-[state=closed]:animate-[pop-in_120ms_ease-in_reverse]", className)}
       >
         {children}
       </DM.Content>
@@ -20,7 +20,7 @@ export function MenuContent({ children, align = "end", className }: { children: 
 }
 
 const itemClass =
-  "flex h-8 cursor-default select-none items-center gap-2.5 rounded-[5px] px-2 text-[13px] text-fg outline-none data-[highlighted]:bg-surface-3 [&_svg]:size-4 [&_svg]:text-fg-2";
+  "flex h-9 cursor-pointer select-none items-center gap-2.5 rounded-[6px] px-2 text-[13px] text-fg outline-none transition-colors data-[highlighted]:bg-accent-soft/60 [&_svg]:size-4 [&_svg]:text-fg-2";
 
 export function MenuItem({ children, onSelect, danger }: { children: ReactNode; onSelect?: () => void; danger?: boolean }) {
   return (

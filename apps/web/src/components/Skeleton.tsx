@@ -1,8 +1,8 @@
 import { cn } from "./cn";
 
-/** Placeholder block shaped like the content it stands in for. Hidden from assistive tech. */
+/** Shimmer placeholder shaped like the content it stands in for. Hidden from assistive tech. */
 export function Skeleton({ className }: { className?: string }) {
-  return <span aria-hidden className={cn("block rounded-[4px] bg-surface-3 animate-shimmer", className)} />;
+  return <span aria-hidden className={cn("skeleton block rounded-inline", className)} />;
 }
 
 /** Announces a loading region once, for screen readers, while skeletons render visually. */

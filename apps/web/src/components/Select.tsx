@@ -1,5 +1,5 @@
 import * as RS from "@radix-ui/react-select";
-import { CaretDown, Check } from "@phosphor-icons/react";
+import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { controlBase } from "./Field";
@@ -58,7 +58,7 @@ export function Select({
         className={cn(
           controlBase,
           "inline-flex items-center justify-between gap-2 px-2.5 text-left data-[placeholder]:text-fg-3",
-          size === "sm" ? "h-7" : "h-8",
+          size === "sm" ? "h-8" : "h-9",
           className,
         )}
       >
@@ -66,7 +66,7 @@ export function Select({
           <RS.Value placeholder={placeholder} />
         </span>
         <RS.Icon>
-          <CaretDown className="size-3.5 text-fg-3" aria-hidden />
+          <ChevronDown className="size-4 text-fg-3" aria-hidden />
         </RS.Icon>
       </RS.Trigger>
       <RS.Portal>
@@ -75,14 +75,14 @@ export function Select({
           sideOffset={4}
           className={cn(
             "z-50 max-h-[min(360px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden",
-            "rounded-panel border border-line bg-surface shadow-pop animate-pop-in",
+            "rounded-panel border border-line bg-surface shadow-pop animate-pop-in data-[state=closed]:animate-fade-in",
           )}
         >
           <RS.Viewport className="p-1">
             {allGroups.map((g, gi) => (
               <RS.Group key={g.label || gi}>
                 {g.label && (
-                  <RS.Label className="px-2 pb-1 pt-2 font-mono text-[10.5px] uppercase tracking-[0.08em] text-fg-3">
+                  <RS.Label className="px-2 pb-1 pt-2 text-[12px] font-medium text-fg-3">
                     {g.label}
                   </RS.Label>
                 )}
@@ -92,12 +92,12 @@ export function Select({
                     value={o.value}
                     disabled={o.disabled}
                     className={cn(
-                      "relative flex h-8 cursor-default select-none items-center gap-3 rounded-[5px] pl-7 pr-2 text-[13px] text-fg outline-none",
-                      "data-[highlighted]:bg-surface-3 data-[disabled]:text-fg-3",
+                      "relative flex h-9 cursor-pointer select-none items-center gap-3 rounded-[6px] pl-7 pr-2 text-[13px] text-fg outline-none",
+                      "data-[highlighted]:bg-accent-soft/60 data-[disabled]:text-fg-3",
                     )}
                   >
                     <RS.ItemIndicator className="absolute left-2 inline-flex">
-                      <Check weight="bold" className="size-3.5 text-accent-text" aria-hidden />
+                      <Check strokeWidth={2.5} className="size-3.5 text-accent-text" aria-hidden />
                     </RS.ItemIndicator>
                     <RS.ItemText>{o.label}</RS.ItemText>
                     {o.meta != null && <span className="ml-auto font-mono text-[11.5px] text-fg-3 tnum">{o.meta}</span>}

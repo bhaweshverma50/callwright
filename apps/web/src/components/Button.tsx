@@ -1,24 +1,28 @@
-import { Slot } from "@radix-ui/react-slot";
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { Slot, Slottable } from "@radix-ui/react-slot";
+import { forwardRef, type ButtonHTMLAttributes, type PointerEvent, type ReactNode } from "react";
 import { cn, focusRing } from "./cn";
+import { useRipple } from "./motion";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "link";
 type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
-  primary:
-    "bg-accent text-accent-fg hover:bg-accent-hover shadow-[inset_0_1px_0_rgb(255_255_255/0.12)] disabled:bg-surface-3 disabled:text-fg-3 disabled:shadow-none",
+  primary: cn(
+    "grad-action sheen text-white shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_6px_16px_-8px_rgb(51_70_232/0.7)]",
+    "hover:shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_10px_22px_-8px_rgb(91_60_244/0.75)] hover:brightness-[1.06]",
+    "disabled:bg-none disabled:bg-surface-3 disabled:text-fg-3 disabled:shadow-none disabled:brightness-100",
+  ),
   secondary:
-    "bg-surface text-fg border border-line-strong hover:bg-surface-2 hover:border-fg-3 disabled:text-fg-3 disabled:border-line disabled:bg-surface",
+    "bg-surface text-fg border border-line-strong hover:border-accent/60 hover:bg-accent-soft/40 disabled:text-fg-3 disabled:border-line disabled:bg-surface",
   ghost: "text-fg-2 hover:text-fg hover:bg-surface-3 disabled:text-fg-3 disabled:bg-transparent",
   danger: "bg-danger-solid text-white hover:brightness-110 disabled:bg-surface-3 disabled:text-fg-3",
-  link: "text-accent-text underline-offset-4 hover:underline px-0 h-auto",
+  link: "link-underline text-accent-text px-0 h-auto rounded-inline",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-7 px-2.5 text-[12.5px] gap-1.5",
-  md: "h-8 px-3 text-[13px] gap-2",
-  lg: "h-10 px-4 text-sm gap-2",
+  sm: "h-8 px-3 text-[12.5px] gap-1.5 [&_svg]:size-3.5",
+  md: "h-9 px-3.5 text-[13px] gap-2 [&_svg]:size-4",
+  lg: "h-11 px-5 text-[14px] gap-2 [&_svg]:size-[18px]",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -31,18 +35,23 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean;
 }
 
+/**
+ * Buttons. Primary is the one cobalt to violet action per view, with a sheen on hover and a
+ * ripple on press. Labels name the action; no arrow glyph after the text.
+ */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "secondary", size = "md", pending = false, icon, asChild, className, children, disabled, ...rest },
+  { variant = "secondary", size = "md", pending = false, icon, asChild, className, children, disabled, onPointerDown, ...rest },
   ref,
 ) {
   const Comp = asChild ? Slot : "button";
+  const { onPointerDown: ripple, ripples } = useRipple();
   return (
     <Comp
       ref={ref}
       className={cn(
-        "inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-control font-medium",
-        "transition-[background-color,border-color,color,transform] duration-150 active:translate-y-px",
-        "disabled:cursor-not-allowed disabled:active:translate-y-0",
+        "relative inline-flex shrink-0 cursor-pointer select-none items-center justify-center overflow-hidden whitespace-nowrap rounded-control font-medium",
+        "transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 active:scale-[0.985]",
+        "disabled:cursor-not-allowed disabled:active:scale-100",
         focusRing,
         variants[variant],
         variant !== "link" && sizes[size],
@@ -50,17 +59,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       )}
       disabled={asChild ? undefined : disabled || pending}
       aria-busy={pending || undefined}
+      onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
+        if (variant !== "link") ripple(e);
+        onPointerDown?.(e);
+      }}
       {...(asChild ? {} : { type: rest.type ?? "button" })}
       {...rest}
     >
-      {asChild ? (
-        children
-      ) : (
-        <>
-          {pending ? <PendingDots /> : icon}
-          {children}
-        </>
-      )}
+      {pending ? <PendingDots /> : icon}
+      <Slottable>{children}</Slottable>
+      {ripples}
     </Comp>
   );
 });
@@ -69,24 +77,15 @@ function PendingDots() {
   return (
     <span aria-hidden className="inline-flex items-center gap-0.5">
       {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="size-1 rounded-full bg-current animate-shimmer"
-          style={{ animationDelay: `${i * 160}ms` }}
-        />
+        <span key={i} className="size-1 rounded-full bg-current opacity-80 animate-[bar-breathe_900ms_ease-in-out_infinite]" style={{ animationDelay: `${i * 140}ms` }} />
       ))}
     </span>
   );
 }
 
-export function IconButton({
-  label,
-  className,
-  children,
-  ...rest
-}: ButtonProps & { label: string }) {
+export function IconButton({ label, className, children, ...rest }: ButtonProps & { label: string }) {
   return (
-    <Button variant="ghost" aria-label={label} title={label} className={cn("size-8 px-0", className)} {...rest}>
+    <Button variant="ghost" aria-label={label} className={cn("size-9 px-0", className)} {...rest}>
       {children}
     </Button>
   );

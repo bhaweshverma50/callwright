@@ -1,22 +1,23 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn, focusRing } from "./cn";
+import { useRipple } from "./motion";
 
-export type Tone = "neutral" | "accent" | "amber" | "danger" | "success";
+export type Tone = "neutral" | "accent" | "warning" | "danger" | "success";
 
 const tones: Record<Tone, string> = {
   neutral: "bg-surface-3 text-fg-2",
   accent: "bg-accent-soft text-accent-text",
-  amber: "bg-amber-soft text-amber-text",
+  warning: "bg-warning-soft text-warning-text",
   danger: "bg-danger-soft text-danger-text",
   success: "bg-success-soft text-success-text",
 };
 
-/** Read-only status label. Mono, small, fully rounded. */
+/** Read-only status label: sentence case, small, fully rounded, an icon when it helps. */
 export function Badge({ tone = "neutral", icon, children, className }: { tone?: Tone; icon?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-full px-2 font-mono text-[11px] font-medium leading-none",
+        "inline-flex h-[22px] items-center gap-1 whitespace-nowrap rounded-full px-2 text-[12px] font-medium leading-none [&_svg]:size-3",
         tones[tone],
         className,
       )}
@@ -32,16 +33,21 @@ export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /** Toggleable choice (preset amounts, filters). Uses aria-pressed so state is announced. */
-export function Chip({ selected, className, children, ...rest }: ChipProps) {
+export function Chip({ selected, className, children, onPointerDown, ...rest }: ChipProps) {
+  const { onPointerDown: ripple, ripples } = useRipple();
   return (
     <button
       type="button"
       aria-pressed={selected}
+      onPointerDown={(e) => {
+        ripple(e);
+        onPointerDown?.(e);
+      }}
       className={cn(
-        "inline-flex h-7 items-center gap-1.5 rounded-full border px-3 font-mono text-[12px] tnum transition-colors",
+        "relative inline-flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full border px-3.5 font-mono text-[12.5px] tnum transition-colors duration-150",
         selected
           ? "border-accent bg-accent-soft text-accent-text"
-          : "border-line-strong bg-surface text-fg-2 hover:border-fg-3 hover:text-fg",
+          : "border-line-strong bg-surface text-fg-2 hover:border-accent/50 hover:text-fg",
         "disabled:cursor-not-allowed disabled:opacity-50",
         focusRing,
         className,
@@ -49,6 +55,7 @@ export function Chip({ selected, className, children, ...rest }: ChipProps) {
       {...rest}
     >
       {children}
+      {ripples}
     </button>
   );
 }
@@ -56,7 +63,7 @@ export function Chip({ selected, className, children, ...rest }: ChipProps) {
 /** Keyboard key hint, for shortcuts in menus and tooltips. */
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border border-line-strong bg-surface-2 px-1 font-mono text-[10.5px] text-fg-2">
+    <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-inline border border-line-strong bg-surface-2 px-1 font-mono text-[10.5px] text-fg-2">
       {children}
     </kbd>
   );

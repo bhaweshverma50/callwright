@@ -1,5 +1,5 @@
 import * as RD from "@radix-ui/react-dialog";
-import { X } from "@phosphor-icons/react";
+import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconButton } from "./Button";
 import { cn } from "./cn";
@@ -8,40 +8,39 @@ export interface DrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
-  /** Small mono line under the title (record id, timestamp). */
+  /** Small line under the title (record id, timestamp). */
   meta?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   width?: "md" | "lg" | "xl";
+  side?: "right" | "left";
 }
 
 const widths = { md: "w-[440px]", lg: "w-[600px]", xl: "w-[820px]" };
 
 /**
- * Right-side panel for record detail (for example the call drawer at `/calls?call=<id>` in 006).
- * Same focus trapping as Dialog; Escape closes it.
+ * Side panel for record detail (the inspector on narrow screens, the call drawer in 006) and the
+ * mobile navigation. Same focus trapping as Dialog; Escape closes it.
  */
-export function Drawer({ open, onOpenChange, title, meta, actions, children, footer, width = "lg" }: DrawerProps) {
+export function Drawer({ open, onOpenChange, title, meta, actions, children, footer, width = "lg", side = "right" }: DrawerProps) {
   return (
     <RD.Root open={open} onOpenChange={onOpenChange}>
       <RD.Portal>
-        <RD.Overlay className="fixed inset-0 z-40 bg-overlay animate-fade-in" />
+        <RD.Overlay className="fixed inset-0 z-40 bg-overlay backdrop-blur-[2px] data-[state=open]:animate-fade-in data-[state=closed]:animate-[fade-in_160ms_ease-in_reverse]" />
         <RD.Content
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex max-w-[calc(100vw-24px)] flex-col border-l border-line bg-surface shadow-pop",
-            "animate-slide-in-right focus:outline-none",
+            "fixed inset-y-0 z-50 flex max-w-[calc(100vw-24px)] flex-col bg-surface shadow-pop focus:outline-none",
+            side === "right"
+              ? "right-0 border-l border-line data-[state=open]:animate-[drawer-in-right_240ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[drawer-in-right_180ms_ease-in_reverse]"
+              : "left-0 border-r border-line data-[state=open]:animate-[drawer-in-left_240ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[drawer-in-left_180ms_ease-in_reverse]",
             widths[width],
           )}
         >
-          <header className="flex items-start gap-3 border-b border-line px-5 py-3.5">
+          <header className="flex items-start gap-3 border-b border-line px-5 py-4">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <RD.Title className="truncate font-display text-[16px] font-semibold tracking-[-0.01em] text-fg">{title}</RD.Title>
-              {meta ? (
-                <RD.Description className="truncate font-mono text-[11.5px] text-fg-3">{meta}</RD.Description>
-              ) : (
-                <RD.Description className="sr-only">Details</RD.Description>
-              )}
+              <RD.Title className="truncate font-display text-[16px] font-medium tracking-[-0.01em] text-fg">{title}</RD.Title>
+              {meta ? <RD.Description className="truncate text-[12.5px] text-fg-3">{meta}</RD.Description> : <RD.Description className="sr-only">Details</RD.Description>}
             </div>
             {actions}
             <RD.Close asChild>
