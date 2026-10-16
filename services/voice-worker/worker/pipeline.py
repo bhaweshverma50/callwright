@@ -383,9 +383,11 @@ def make_agent_class() -> type[Any]:
             *,
             tools: Sequence[Any] = (),
             on_tts_text: TtsTextHook | None = None,
+            extra_instructions: str = "",
             **kwargs: Any,
         ) -> None:
-            super().__init__(instructions=plan.instructions or " ", tools=list(tools), **kwargs)
+            instructions = "\n\n".join(p for p in (plan.instructions, extra_instructions) if p)
+            super().__init__(instructions=instructions or " ", tools=list(tools), **kwargs)
             self.plan = plan
             self._on_tts_text = on_tts_text
 
@@ -414,14 +416,41 @@ def build_agent(
     tool_provider: ToolProvider | None = None,
     flow_runner: FlowRunner | None = None,
     on_tts_text: TtsTextHook | None = None,
+    extra_tools: Sequence[Any] = (),
+    extra_instructions: str = "",
     **agent_kwargs: Any,
 ) -> Any:
-    """The entry agent: tools from 005's provider, flows from 004's runner (FR-024)."""
+    """The entry agent: tools from 005's provider, flows from 004's runner (FR-024).
+
+    ``extra_tools`` and ``extra_instructions`` carry worker-internal tools such as voicemail
+    detection (R10); they are added to single-prompt agents and passed to flows as tools.
+    """
     tools = list((tool_provider or get_tool_provider()).tools_for(runtime, control))
+    tools += list(extra_tools)
     if plan.agent_type == "flow":
         return (flow_runner or get_flow_runner()).build_agent(runtime, control, tools)
     agent_cls = make_agent_class()
-    return agent_cls(plan, tools=tools, on_tts_text=on_tts_text, **agent_kwargs)
+    return agent_cls(
+        plan,
+        tools=tools,
+        on_tts_text=on_tts_text,
+        extra_instructions=extra_instructions,
+        **agent_kwargs,
+    )
+
+
+def voicemail_tool(report: Callable[[], bool]) -> Any:
+    """Internal LLM tool for outbound voicemail detection (R10): calls ``report``."""
+    from livekit.agents import function_tool
+
+    from worker.call_behavior import VOICEMAIL_INSTRUCTION, VOICEMAIL_TOOL_NAME
+
+    async def report_answering_machine() -> str:
+        return "answering machine noted" if report() else "ignored: outside the detection window"
+
+    return function_tool(
+        report_answering_machine, name=VOICEMAIL_TOOL_NAME, description=VOICEMAIL_INSTRUCTION
+    )
 
 
 # --------------------------------------------------------------------------------------------

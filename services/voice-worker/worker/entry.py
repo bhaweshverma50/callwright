@@ -26,8 +26,10 @@ import sys
 import time
 from typing import Any
 
-from worker.adapters.registry import AdapterRegistry, Kind, UnsupportedVendor
+from worker.adapters.registry import AdapterRegistry, Kind, UnsupportedLanguage, UnsupportedVendor
 from worker.call_behavior import (
+    VOICEMAIL_INSTRUCTION,
+    VOICEMAIL_TOOL_NAME,
     AsyncioClock,
     DtmfCollector,
     DurationTimer,
@@ -61,9 +63,11 @@ from worker.pipeline import (
     build_session,
     plan_session,
     vendor_error_diagnostic,
+    voicemail_tool,
 )
 from worker.settings import WorkerSettings, get_settings
 from worker.telephony import TelephonyUnavailable, dtmf_code, sip_attributes
+from worker.tools import ToolActivity
 
 log = logging.getLogger("callwright.worker")
 
@@ -148,6 +152,8 @@ class LiveCall:
         self._ended = asyncio.Event()
         self._swap_pending = False
         self._tasks: set[asyncio.Task[Any]] = set()
+        self._extra_tools: list[Any] = []
+        self._extra_instructions = ""
 
     # helpers ---------------------------------------------------------------
 
@@ -251,6 +257,8 @@ class LiveCall:
             self.runtime,
             self.control,
             on_tts_text=self._on_tts_text,
+            extra_tools=self._extra_tools,
+            extra_instructions=self._extra_instructions,
             stt=self.components.stt,
             llm=self.components.llm,
             tts=self.components.tts,
@@ -376,6 +384,9 @@ class LiveCall:
         except UnsupportedVendor as exc:
             await self._fail(exc.diagnostic)
             return
+        except UnsupportedLanguage as exc:
+            await self._fail(f"unsupported_language:stt/{exc.provider}/{exc.language}")
+            return
         self.plan = plan
         for clamp in plan.behavior.notes:
             self.recorder.warning(
@@ -397,11 +408,32 @@ class LiveCall:
             room=self.ctx.room,
             on_overrides_staged=self._request_swap,
         )
+        behavior = plan.behavior
+        extra_tools: list[Any] = []
+        extra_instructions = ""
+        if runtime.direction == "outbound" and behavior.voicemail.enabled:
+            self.voicemail = VoicemailHandler(
+                self.clock,
+                behavior.voicemail,
+                hang_up=lambda: self._hang_up_soon("voicemail_reached"),
+                speak_message=self._leave_voicemail,
+            )
+            extra_tools.append(voicemail_tool(self._report_machine))
+            extra_instructions = VOICEMAIL_INSTRUCTION
+        self._extra_tools = extra_tools
+        self._extra_instructions = extra_instructions
         try:
             self.components = build_components(
                 plan, self.registry, self.settings.vendor_credentials()
             )
-            self.agent = build_agent(plan, runtime, self.control, on_tts_text=self._on_tts_text)
+            self.agent = build_agent(
+                plan,
+                runtime,
+                self.control,
+                on_tts_text=self._on_tts_text,
+                extra_tools=extra_tools,
+                extra_instructions=extra_instructions,
+            )
         except FlowRuntimeUnavailable as exc:
             await self._fail(exc.diagnostic)
             return
@@ -427,6 +459,17 @@ class LiveCall:
         self.caller_identity = participant.identity
         await self._connected(plan)
         await self._ended.wait()
+
+    async def run_safely(self) -> None:
+        """``run`` with a last-resort handler: a crash still ends the call with a diagnostic."""
+        try:
+            await self.run()
+        except Exception:
+            log.exception("call %s crashed", self.call_id)
+            if self.connected_at is None:
+                await self._fail("worker_exception")
+            elif self.control is not None:
+                await self.control.hang_up("error", diagnostic="worker_exception")
 
     async def _await_caller(self) -> Any:
         runtime = self.runtime
@@ -467,13 +510,7 @@ class LiveCall:
         )
         if behavior.dtmf.enabled:
             self.dtmf = DtmfCollector(self.clock, behavior.dtmf, self._on_dtmf_flush)
-        if self.runtime.direction == "outbound" and behavior.voicemail.enabled:
-            self.voicemail = VoicemailHandler(
-                self.clock,
-                behavior.voicemail,
-                hang_up=lambda: self._hang_up_soon("voicemail_reached"),
-                speak_message=self._leave_voicemail,
-            )
+        if self.voicemail is not None:
             self.voicemail.answered()
 
         await self.session.start(
@@ -495,6 +532,14 @@ class LiveCall:
                 self.session.say(plan.greeting)
             else:
                 self.session.generate_reply(instructions=GENERATED_GREETING_INSTRUCTION)
+
+    def _report_machine(self) -> bool:
+        if self.voicemail is None:
+            return False
+        detected = self.voicemail.report_machine()
+        if detected and self.control is not None:
+            self.control.report_tool(ToolActivity(VOICEMAIL_TOOL_NAME, output="detected"))
+        return detected
 
     def _leave_voicemail(self, message: str) -> None:
         async def run() -> None:
@@ -570,7 +615,7 @@ async def job_entry(ctx: Any) -> None:
                 await ctx.delete_room()
             ctx.shutdown(reason="refused")
             return
-        await LiveCall(ctx, api, settings, call_id, runtime).run()
+        await LiveCall(ctx, api, settings, call_id, runtime).run_safely()
     finally:
         await api.aclose()
 

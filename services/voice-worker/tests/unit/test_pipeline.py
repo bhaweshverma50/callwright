@@ -222,3 +222,29 @@ async def test_vendor_error_diagnostic(no_llm_prewarm: None) -> None:
     assert vendor_error_diagnostic(components.llm, plan) == "vendor_error:llm/azure_openai"
     assert vendor_error_diagnostic(components.tts, plan) == "vendor_error:tts/elevenlabs"
     assert vendor_error_diagnostic(object(), plan) == "vendor_error:runtime/unknown"
+
+
+async def test_voicemail_tool_is_added_with_its_instruction() -> None:
+    from worker.call_behavior import VOICEMAIL_INSTRUCTION, VOICEMAIL_TOOL_NAME
+    from worker.pipeline import voicemail_tool
+
+    reports: list[bool] = []
+
+    def report() -> bool:
+        reports.append(True)
+        return True
+
+    runtime = make_runtime(channel="sip_outbound")
+    plan = plan_session(runtime, AdapterRegistry())
+    tool = voicemail_tool(report)
+    agent = build_agent(
+        plan,
+        runtime,
+        control=None,  # type: ignore[arg-type]
+        extra_tools=[tool],
+        extra_instructions=VOICEMAIL_INSTRUCTION,
+    )
+    assert [t.info.name for t in agent.tools] == [VOICEMAIL_TOOL_NAME]
+    assert agent.instructions.endswith(VOICEMAIL_INSTRUCTION)
+    assert await tool() == "answering machine noted"
+    assert reports == [True]
