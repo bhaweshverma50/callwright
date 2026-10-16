@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage } from "../../api/problems";
+import { KeyRound, Send } from "lucide-react";
 import { Button, Field, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
 import { FormAlert } from "./FormAlert";
@@ -30,12 +31,12 @@ export function ResetPassword() {
         title="This link has expired"
         subtitle="Reset links work once, for 60 minutes. Ask for a new one and use it soon after it arrives."
         footer={
-          <Link to="/login" className="font-medium text-accent-text underline-offset-4 hover:underline">
+          <Link to="/login" className="link-underline font-medium text-accent-text">
             Back to sign in
           </Link>
         }
       >
-        <Button asChild variant="primary" size="lg" className="w-full">
+        <Button asChild variant="primary" size="lg" className="w-full" icon={<Send aria-hidden />}>
           <Link to="/forgot-password">Send a new link</Link>
         </Button>
       </AuthLayout>
@@ -67,7 +68,7 @@ export function ResetPassword() {
             <Input id={id} type="password" autoComplete="new-password" inputSize="lg" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-describedby={describedBy} aria-invalid={invalid} />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={reset.isPending}>
+        <Button type="submit" variant="primary" size="lg" pending={reset.isPending} icon={<KeyRound aria-hidden />}>
           Save new password
         </Button>
       </form>

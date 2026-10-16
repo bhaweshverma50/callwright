@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 
 function LegalPage({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
   return (
-    <article className="mx-auto max-w-[720px] px-4 pb-24 pt-14 sm:px-6">
-      <h1 className="font-display text-[34px] font-semibold tracking-[-0.025em] text-fg">{title}</h1>
-      <p className="mt-2 font-mono text-[12px] text-fg-3">Last updated {updated}</p>
-      <div className="mt-10 flex flex-col gap-8 text-[14.5px] leading-[1.7] text-fg-2 [&_h2]:mb-2 [&_h2]:font-display [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:text-fg [&_li]:ml-5 [&_li]:list-disc">
+    <article className="mx-auto max-w-[720px] px-4 pb-24 pt-12 sm:px-6 lg:pt-16">
+      <h1 className="font-display text-[30px] font-semibold tracking-[-0.03em] text-fg sm:text-[38px]">{title}</h1>
+      <p className="mt-3 text-[13px] text-fg-3">Last updated {updated}</p>
+      <div className="mt-10 flex flex-col gap-9 border-t border-line pt-10 text-[15.5px] leading-[1.75] text-fg-2 [&_h2]:mb-2.5 [&_h2]:font-display [&_h2]:text-[17px] [&_h2]:font-medium [&_h2]:tracking-[-0.01em] [&_h2]:text-fg [&_li]:ml-5 [&_li]:list-disc [&_li]:marker:text-accent [&_ul]:flex [&_ul]:flex-col [&_ul]:gap-1.5">
         {children}
       </div>
     </article>

@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { problemMessage } from "../../api/problems";
+import { Send } from "lucide-react";
 import { Button, Field, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
@@ -21,7 +22,7 @@ export function ForgotPassword() {
   };
 
   const back = (
-    <Link to="/login" className="font-medium text-accent-text underline-offset-4 hover:underline">
+    <Link to="/login" className="link-underline font-medium text-accent-text">
       Back to sign in
     </Link>
   );
@@ -31,9 +32,9 @@ export function ForgotPassword() {
     return (
       <AuthLayout title="Check your email" subtitle={<>If an account exists for <span className="font-medium text-fg">{addr}</span>, it has a reset link. The link works once, for 60 minutes.</>} footer={back}>
         {env.mocks && (
-          <p className="rounded-control border border-dashed border-line-strong px-3 py-2 text-[12px] text-fg-3">
+          <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
             Demo data is on, so no email is sent.{" "}
-            <Link className="text-accent-text underline-offset-4 hover:underline" to={`/reset-password?token_hash=${encodeURIComponent(`reset-${addr}`)}`}>
+            <Link className="link-underline text-accent-text" to={`/reset-password?token_hash=${encodeURIComponent(`reset-${addr}`)}`}>
               Open the reset link
             </Link>
           </p>
@@ -60,7 +61,7 @@ export function ForgotPassword() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={request.isPending} disabled={!email.trim()}>
+        <Button type="submit" variant="primary" size="lg" pending={request.isPending} disabled={!email.trim()} icon={<Send aria-hidden />}>
           Send reset link
         </Button>
       </form>

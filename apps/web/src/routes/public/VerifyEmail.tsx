@@ -6,6 +6,7 @@ import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import type { Session } from "../../api/types";
 import { startSession } from "../../app/auth";
+import { Send } from "lucide-react";
 import { Button, Field, Input, Skeleton } from "../../components";
 import { AuthLayout } from "./AuthLayout";
 import { FormAlert } from "./FormAlert";
@@ -65,7 +66,7 @@ export function VerifyEmail() {
       title={expired ? "This link has expired" : "We could not verify that link"}
       subtitle={expired ? "Verification links work once and expire. Ask for a new one below." : problemMessage(state.error)}
       footer={
-        <Link to="/login" className="font-medium text-accent-text underline-offset-4 hover:underline">
+        <Link to="/login" className="link-underline font-medium text-accent-text">
           Back to sign in
         </Link>
       }
@@ -94,7 +95,7 @@ function ResendForm() {
           <Input id={id} type="email" autoComplete="email" inputSize="lg" value={email} onChange={(e) => setEmail(e.target.value)} aria-describedby={describedBy} />
         )}
       </Field>
-      <Button type="submit" variant="primary" size="lg" pending={resend.isPending} disabled={!email.trim()}>
+      <Button type="submit" variant="primary" size="lg" pending={resend.isPending} disabled={!email.trim()} icon={<Send aria-hidden />}>
         Send a new link
       </Button>
     </form>

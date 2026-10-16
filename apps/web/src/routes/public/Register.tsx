@@ -1,4 +1,5 @@
 import { EnvelopeSimple } from "@phosphor-icons/react";
+import { MailCheck, RefreshCw, UserPlus } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
@@ -41,12 +42,12 @@ export function Register() {
     return (
       <AuthLayout title="Check your email" subtitle={<>We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with $5.00 of trial credit.</>}>
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 rounded-panel border border-line bg-surface px-4 py-3 text-[13px] text-fg-2">
-            <EnvelopeSimple className="size-5 text-accent-text" aria-hidden />
+          <div className="flex items-center gap-3 rounded-panel border border-line bg-surface px-4 py-3.5 text-[13.5px] text-fg-2 shadow-1">
+            <EnvelopeSimple weight="duotone" className="size-7 shrink-0 text-accent-text" aria-hidden />
             The link works once. If it does not arrive in a few minutes, check spam or send it again.
           </div>
           <div className="flex items-center gap-3">
-            <Button pending={resend.isPending} disabled={resend.isSuccess} onClick={() => resend.mutate()}>
+            <Button pending={resend.isPending} disabled={resend.isSuccess} onClick={() => resend.mutate()} icon={resend.isSuccess ? <MailCheck aria-hidden /> : <RefreshCw aria-hidden />}>
               {resend.isSuccess ? "Link sent again" : "Send it again"}
             </Button>
             <Button variant="ghost" onClick={() => register.reset()}>
@@ -54,9 +55,9 @@ export function Register() {
             </Button>
           </div>
           {env.mocks && (
-            <p className="rounded-control border border-dashed border-line-strong px-3 py-2 text-[12px] text-fg-3">
+            <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
-              <Link className="text-accent-text underline-offset-4 hover:underline" to={`/verify-email?token_hash=${encodeURIComponent(`verify-${addr}`)}`}>
+              <Link className="link-underline text-accent-text" to={`/verify-email?token_hash=${encodeURIComponent(`verify-${addr}`)}`}>
                 Open the verification link
               </Link>
             </p>
@@ -75,7 +76,7 @@ export function Register() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-accent-text underline-offset-4 hover:underline">
+          <Link to="/login" className="link-underline font-medium text-accent-text">
             Sign in
           </Link>
         </>
@@ -114,16 +115,16 @@ export function Register() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={register.isPending} className="mt-1 w-full">
+        <Button type="submit" variant="primary" size="lg" pending={register.isPending} className="mt-1 w-full" icon={<UserPlus aria-hidden />}>
           Create account
         </Button>
         <p className="text-[12px] leading-relaxed text-fg-3">
           By creating an account you accept the{" "}
-          <Link to="/terms" className="underline underline-offset-2 hover:text-fg">
+          <Link to="/terms" className="text-fg-2 underline underline-offset-2 hover:text-fg">
             terms
           </Link>{" "}
           and the{" "}
-          <Link to="/privacy" className="underline underline-offset-2 hover:text-fg">
+          <Link to="/privacy" className="text-fg-2 underline underline-offset-2 hover:text-fg">
             privacy policy
           </Link>
           .
