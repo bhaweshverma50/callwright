@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+# The root .gitignore excludes .env.*; these two carry no secrets and are committed.
+!.env.example
+!.env.mock
