@@ -12,6 +12,8 @@ export interface ToastInput {
   tone?: ToastTone;
   /** Milliseconds; errors stay longer by default. */
   duration?: number;
+  /** One follow-up action ("Open copy", "Undo"). The label also names it for screen readers. */
+  action?: { label: string; onClick: () => void };
 }
 
 interface ToastItem extends ToastInput {
@@ -67,7 +69,7 @@ export function Toaster() {
         <RT.Root
           key={t.id}
           open={t.open}
-          duration={t.duration ?? (t.tone === "error" ? 8000 : 4000)}
+          duration={t.duration ?? (t.tone === "error" ? 8000 : t.action ? 7000 : 4000)}
           type={t.tone === "error" ? "foreground" : "background"}
           onOpenChange={(o) => !o && close(t.id)}
           className={cn(
@@ -79,6 +81,15 @@ export function Toaster() {
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <RT.Title className="text-[13.5px] font-medium text-fg">{t.title}</RT.Title>
             {t.description && <RT.Description className="text-[12.5px] leading-relaxed text-fg-2">{t.description}</RT.Description>}
+            {t.action && (
+              <RT.Action
+                altText={t.action.label}
+                onClick={t.action.onClick}
+                className={cn("link-underline mt-1 w-fit cursor-pointer rounded-inline text-[12.5px] font-medium text-accent-text", focusRing)}
+              >
+                {t.action.label}
+              </RT.Action>
+            )}
           </div>
           <Tooltip content="Dismiss">
             <RT.Close aria-label="Dismiss" className={cn("cursor-pointer rounded-inline p-1 text-fg-3 hover:bg-surface-3 hover:text-fg", focusRing)}>

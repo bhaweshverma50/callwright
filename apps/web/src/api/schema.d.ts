@@ -3492,6 +3492,12 @@ export interface components {
                 /** @description null means use the agent's llm */
                 analysis_model?: components["schemas"]["ModelRef"] | null;
                 pronunciation: components["schemas"]["PronunciationEntry"][];
+                /**
+                 * @description Call recording override (T088); `inherit` uses the workspace recording_default. Versions written without it read as inherit
+                 * @default inherit
+                 * @enum {string}
+                 */
+                recording: "inherit" | "on" | "off";
             };
             tool_ids?: string[];
             kb_ids?: string[];
@@ -3501,6 +3507,8 @@ export interface components {
             evals?: Record<string, never> | null;
             /** @description Snapshot-only resolved tool definitions written by 005; never accepted on save */
             readonly tools?: Record<string, never>[];
+            /** @description Snapshot-only knowledge base references and retrieval settings written by 005 (T089); never accepted on save */
+            readonly knowledge?: Record<string, never>[];
         };
         TemperatureRule: {
             min: number;
@@ -3618,6 +3626,15 @@ export interface components {
             label: string;
             /** @description True when model null lets the platform choose per language */
             supports_auto: boolean;
+            /** @description The Auto choice (config `stt.model = null`) as the picker shows it; null when supports_auto is false */
+            auto?: {
+                /** @example Auto */
+                label: string;
+                description?: string | null;
+                /** @description Union of the provider's model coverage */
+                languages: string[];
+                price_per_min_usd: components["schemas"]["PricePerMin"];
+            } | null;
             /** @description Preselected model when supports_auto is false; the model field is never blank */
             default_model?: string | null;
             /** @description How Auto resolves (applied by 003 at call time) */
@@ -8231,7 +8248,16 @@ export interface operations {
                     "application/json": components["schemas"]["WebCallSession"];
                 };
             };
-            400: components["responses"]["Problem"];
+            /** @description Missing or malformed `Idempotency-Key` header (`idempotency-key-required`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["Problem"];
             /** @description Insufficient credit (`type` ends with `/insufficient-credit`) */
             402: {
                 headers: {
@@ -8278,6 +8304,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["CallRefusedProblem"];
                 };
             };
+            /** @description The media server could not create the room or dispatch the worker (`media-unavailable`). The call is recorded as `failed` and not charged. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CallRefusedProblem"];
+                };
+            };
         };
     };
     getWebhookSigningSecret: {
@@ -8298,6 +8333,7 @@ export interface operations {
                     "application/json": components["schemas"]["SigningSecretMasked"];
                 };
             };
+            401: components["responses"]["Problem"];
         };
     };
     rotateWebhookSigningSecret: {
@@ -8318,6 +8354,7 @@ export interface operations {
                     "application/json": components["schemas"]["SigningSecretRevealed"];
                 };
             };
+            401: components["responses"]["Problem"];
         };
     };
     listWebhookDeliveries: {
@@ -8350,6 +8387,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Problem"];
         };
     };
     getWebhookDelivery: {
@@ -8375,6 +8413,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
         };
     };
@@ -8398,6 +8437,7 @@ export interface operations {
                     "application/json": components["schemas"]["WebhookDelivery"];
                 };
             };
+            401: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
         };
     };
@@ -8428,6 +8468,7 @@ export interface operations {
                     "application/json": components["schemas"]["DeliveryAttempt"];
                 };
             };
+            401: components["responses"]["Problem"];
             /** @description URL rejected (`url-not-allowed`), for example a private address */
             422: {
                 headers: {

@@ -23,9 +23,9 @@ export interface FlowChainProps {
   onConsole?: boolean;
   /**
    * "narrow" turns the chain vertical below 34rem of container width, "tight" below 20rem (short
-   * chains), "never" keeps it in a row.
+   * chains), "never" keeps it in a row, "always" keeps it vertical (rows with a value on the right).
    */
-  stack?: "narrow" | "tight" | "never";
+  stack?: "narrow" | "tight" | "never" | "always";
   /** Hide node labels visually (still read by screen readers), for tight spaces. */
   hideLabels?: boolean;
   /** Text centred on each connector (length nodes - 1), for example a running subtotal. */

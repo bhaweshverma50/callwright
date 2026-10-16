@@ -82,7 +82,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ p
           {prefix}
         </span>
       )}
-      <input ref={ref} className={cn(controlBase, h, prefix ? "pl-7" : "px-3", suffix ? "pr-10" : "pr-3")} {...rest} />
+      <input
+        ref={ref}
+        className={cn(controlBase, h, prefix ? (typeof prefix === "string" ? "pl-7" : "pl-9") : "px-3", suffix ? "pr-10" : "pr-3")}
+        {...rest}
+      />
       {suffix && <span className="absolute right-2.5 flex items-center text-fg-3">{suffix}</span>}
     </div>
   );

@@ -19,16 +19,27 @@ export function ErrorSummaryDialog({
   onOpenChange,
   title = "Fix these before saving",
   items,
+  onJump,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
   items: ErrorSummaryItem[];
+  /** Runs before focus moves, so a form can reveal the field first (switch tab, expand a section). */
+  onJump?: (item: ErrorSummaryItem) => void;
 }) {
-  const jump = (id?: string) => {
+  const jump = (it: ErrorSummaryItem) => {
     onOpenChange(false);
-    if (!id) return;
-    window.setTimeout(() => document.getElementById(id)?.focus(), 50);
+    onJump?.(it);
+    if (!it.targetId) return;
+    window.setTimeout(
+      () => {
+        const el = document.getElementById(it.targetId!);
+        el?.scrollIntoView({ block: "center", behavior: "smooth" });
+        el?.focus({ preventScroll: true });
+      },
+      onJump ? 160 : 50,
+    );
   };
   return (
     <Dialog
@@ -43,7 +54,7 @@ export function ErrorSummaryDialog({
           <li key={i}>
             <button
               type="button"
-              onClick={() => jump(it.targetId)}
+              onClick={() => jump(it)}
               className="flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring"
             >
               <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-danger-text" aria-hidden />

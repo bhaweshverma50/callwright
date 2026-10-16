@@ -1,7 +1,8 @@
 export { Button, IconButton, type ButtonProps } from "./Button";
 export { Field, Input, Textarea, controlBase } from "./Field";
 export { Select, type SelectOption, type SelectGroup } from "./Select";
-export { Slider } from "./Slider";
+export { Slider, type SliderMark } from "./Slider";
+export { Segmented, ChoiceGroup, type SegmentOption, type ChoiceOption } from "./Choice";
 export { Switch, SwitchControl } from "./Switch";
 export { Tabs, TabPanel } from "./Tabs";
 export { Dialog, ConfirmDialog } from "./Dialog";

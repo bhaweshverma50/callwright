@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./helpers";
 
-// Every FlowChain (pricing chain, home live call, placeholder loop, gallery variants) has equal
+// Every FlowChain (pricing chain, home live call, placeholder loop, agent cost chain, gallery variants) has equal
 // connectors: same length within 1px, same gap to the circles on both sides, on the circle
 // centre line. Checked at 1440, 1024 and 390 wide.
 
@@ -76,11 +76,20 @@ for (const width of [1440, 1024, 390]) {
     });
 
     test("the placeholder loop", async ({ page }) => {
-      await signIn(page, "/agents");
+      await signIn(page, "/calls");
       await page.waitForLoadState("networkidle");
       const found = await flows(page);
       expect(found.length).toBe(1);
-      check(found[0]!, `/agents at ${width}`);
+      check(found[0]!, `/calls at ${width}`);
+    });
+
+    test("the agent editor's cost chain", async ({ page }) => {
+      await signIn(page, "/agents/new/single");
+      await expect(page.getByText("Total a minute")).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      const found = await flows(page);
+      expect(found.length).toBe(1);
+      check(found[0]!, `/agents/new/single at ${width}`);
     });
   });
 }
