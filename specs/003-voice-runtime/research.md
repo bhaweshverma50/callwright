@@ -56,32 +56,113 @@ first task that touches them; none changes the design if it turns out differentl
 
 ## R4. Interruption sensitivity and responsiveness mapping
 
-- **Decision**: Pure functions in `worker/pipeline.py`, unit-tested, mapping the two 0..1 values
-  to `AgentSession` turn parameters. Initial calibration (tuned later with the benchmark set; the
-  table is the only place to change):
+- **Decision**: Pure functions in `worker/call_behavior.py` (the only place to change the
+  calibration), unit-tested, mapping the two 0..1 values to `AgentSession` turn handling
+  (`turn_handling_options` in `worker/pipeline.py`). Calibrated v2 (2026-10-16) against the
+  live WebRTC benchmark (T102) and the pause scenarios below:
 
   | Input | Parameter | Formula | At default |
   |---|---|---|---|
-  | interruption_sensitivity `s` | `allow_interruptions` | `s > 0` | true (s = 0.95) |
-  | | `min_interruption_duration` (s) | `0.2 + (1 - s) * 0.6` | 0.23 s |
-  | | `min_interruption_words` | `0 if s >= 0.7 else (1 if s >= 0.3 else 2)` | 0 |
-  | responsiveness `r` | `min_endpointing_delay` (s) | `0.2 + (1 - r) * 1.0` | 0.41 s |
-  | | `max_endpointing_delay` (s) | `1.5 + (1 - r) * 4.5` | 2.45 s |
+  | interruption_sensitivity `s` | `interruption.enabled` | `s > 0` | true (s = 0.9) |
+  | | `interruption.min_duration` (s) | `0.2 + (1 - s) * 0.6` | 0.26 s |
+  | | `interruption.min_words` | `0 if s >= 0.7 else (1 if s >= 0.3 else 2)` | 0 |
+  | | `interruption.false_interruption_timeout` (s) | fixed `1.0` | 1.0 s |
+  | | `interruption.resume_false_interruption` | fixed `true` | true |
+  | responsiveness `r` | `endpointing.min_delay` (s) | `0.3 + (1 - r) * 0.5` | 0.40 s |
+  | | `endpointing.max_delay` (s) | `0.9 + (1 - r) * 1.6` | 1.22 s |
+  | | `endpointing.mode` | fixed `"fixed"` | |
+  | fixed | Silero VAD `min_silence_duration` (s) | `0.3` | 0.3 s |
+  | fixed | `preemptive_generation` | `{enabled: true, preemptive_tts: true}` | |
+  | fixed | caller audio `frame_size_ms` | `20` | 20 ms |
+  | fixed | digit-string rule | trailing digit string is unfinished | |
 
-  When the STT model supplies its own turn detection (R5), only `min_endpointing_delay` applies.
-- **Rationale**: Monotonic, simple to explain in the builder ("higher is faster"), and the
-  midpoints (s = 0.5, r = 0.5) land on the framework defaults (0.5 s interruption, about 0.7 s
-  endpointing), so behaviour is familiar.
+  When the STT model supplies its own turn detection (R5), only `min_delay` applies.
+
+- **How a turn ends** (livekit-agents 1.8.8, `audio_recognition.py`): Silero reports end of
+  speech after `min_silence_duration` of silence; the semantic model then scores the transcript,
+  and the turn commits `min_delay` after the last speech if the model reads the caller as done,
+  or `max_delay` after it if the probability is under the model's per-language unlikely
+  threshold. Speech that resumes inside the wait cancels it. So a finished turn waits
+  `max(vad_silence, min_delay)` and `max_delay` is the longest mid-sentence pause the agent sits
+  through. Preemptive generation starts the LLM (and, with `preemptive_tts`, the TTS) on each
+  final transcript, so when the wait is shorter than STT final + LLM first token + TTS first
+  byte the reply is ready at commit time.
+
+- **Rationale, from the measurements**:
+  - v1 (`0.2 + (1 - r) * 1.0`, `1.5 + (1 - r) * 4.5`, VAD default 0.55 s) measured p50 953 ms
+    and p95 2,734 ms at the caller. End of turn sat at about 610 ms because the VAD window, not
+    `min_delay`, was the floor (the offline model assumed 0.4 s), and the digit turn ("four four
+    one nine") always waited the 2.45 s max delay, which set p95.
+  - VAD silence 0.3 s makes `min_delay` the real knob again. It stays above the 0.25 s the
+    framework requires for the audio turn detector, and the lowest `min_delay` equals it, so no
+    responsiveness value is a dead zone. 0.40 s at the default sits between the framework's
+    0.3 s (audio detector) and 0.5 s (text detector) defaults. With it, five of six turns in the
+    call set are bound by the vendor chain, not by endpointing (end of turn 400 ms, reply ready
+    at about 520 to 620 ms in the worker).
+  - `max_delay` is a correctness parameter, not a speed one: it must outlast the pauses callers
+    make inside a sentence and between digit groups (0.6 to 1.0 s in the scenarios below) and
+    still keep an unfinished-looking turn under the 1,500 ms p95 at the caller, which adds about
+    180 ms of WebRTC transport. 1.22 s does both (digit turns measure 1.39 to 1.41 s at the
+    caller). The range runs from 0.9 s (r = 1, still above a 700 ms digit-group pause) to 2.5 s
+    (r = 0, the framework ceiling). `max_delay - min_delay >= 0.5 s` everywhere.
+  - Preemptive TTS takes the TTS first byte off every turn that waits `max_delay` (the reply is
+    synthesized during the wait). Cost: a preemptive attempt that the caller's next words
+    supersede has its characters synthesized and metered (R7) without being played; at most
+    `max_retries` (3) attempts per turn.
+  - Digit strings: the multilingual model held "the account number is four four one nine" but
+    scored "my account number is four four one" as finished, so with only the mapping the agent
+    took the turn in the 700 ms pause before the next group in 8 of 8 live calls.
+    `worker/turn_detection.py` wraps the model: a transcript ending in a run of two or more
+    number words or a multi-digit numeral (and not a question) is unfinished and waits
+    `max_delay`; everything else is the model's decision.
+  - False interruptions: a barge-in with no transcript resumes the agent after 1.0 s instead of
+    the framework's 2.0 s. Streaming STT finals land within about 0.5 s of end of speech, so a
+    real short interruption still produces a transcript first, and a cough stops the agent for
+    half as long.
+  - 20 ms input frames (framework default 50 ms) cut the average framing delay before VAD and
+    STT hear the end of speech by about 15 ms.
+  - Endpointing stays `fixed`: the dynamic mode only lengthens `min_delay` after the caller has
+    already paused through it, and makes the builder value harder to explain.
+  - Turn detector: the multilingual model for every language (R5). It strips punctuation before
+    scoring, so a streaming STT full stop on a fragment does not read as finished; the English
+    model scores raw text.
+
+- **Evidence** (`tests/harness/bench`, local `livekit-server --dev`, fake vendors on the call
+  set's profiles, 20 x 6 calls, 4 concurrent):
+
+  | | p50 caller | p95 caller | end of turn (median) | worker p50 |
+  |---|---|---|---|---|
+  | v1 | 953 ms | 2,734 ms | 608 ms | 765 ms |
+  | v2 | 770 ms | 1,402 ms | 400 ms | 597 ms |
+
+  Pause scenarios (`callset_pauses.yaml`, 8 x 6 calls: pauses of 0.6 to 1.0 s after "I would
+  like to", "the new address is", "I was born on", "can you also tell me" and between digit
+  groups): 0 cut-offs, p95 1,427 ms. Offline (`digit_groups.yaml`, `mid_sentence_pause.yaml`,
+  `test_scenarios.py`) the same holds and the boundary is pinned: a 1.4 s mid-sentence pause and
+  a pause after a sentence that sounds finished ("I paid. | The rest comes Friday.") end the
+  turn, and the rest of the sentence barges in on the reply.
+
+- **Floor**: with the call set's vendor medians (STT final 160 ms, LLM first token 320 ms, TTS
+  first byte 130 ms) and about 180 ms of transport between the caller and the worker, a finished
+  turn cannot reach the caller much before 700 ms; the measured p50 of 770 ms is that floor plus
+  log-normal spread, and run-to-run variation is about 30 ms, so p50 has little margin against
+  800 ms. Further p50 gains have to come from the vendors (STT finals, LLM first token,
+  streaming TTS) or a lower `min_delay`, which would cut callers off sooner. p95 is set by
+  `max_delay` plus transport.
+
 - **Alternatives**: Exposing raw framework parameters in the builder (rejected: couples config
   schema to one framework, Principle I). Step tables with three levels (rejected: the builder
-  sliders are continuous).
+  sliders are continuous). Lowering the model's unlikely threshold (rejected: it is tuned per
+  language for accuracy and would cut more unfinished sentences). Dynamic endpointing
+  (rejected, above). A shorter `max_delay` for more p95 margin (rejected: the digit-group and
+  hesitation pauses need it).
 
 ## R5. Turn detection
 
 - **Decision**: `turn_detection="stt"` when the selected STT model declares built-in end of turn
   (registry capability flag; today Deepgram `flux-general-en` and AssemblyAI
-  `universal-streaming*`). Otherwise the LiveKit multilingual turn-detector model with Silero VAD.
-  Language `multi` uses the multilingual model.
+  `universal-streaming*`). Otherwise the LiveKit multilingual turn-detector model with Silero VAD
+  for every language, including `multi`, wrapped by the digit-string rule (R4).
 - **Rationale**: Built-in STT turn signals are lower latency and avoid running a second model;
   the semantic model cuts false end-of-turn on pauses compared with VAD alone.
 - **Alternatives**: VAD-only endpointing (rejected: more false interruptions mid-sentence).
