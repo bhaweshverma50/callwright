@@ -1,62 +1,91 @@
 import {
   BookOpenText,
   Crosshair,
-  CreditCard,
   Database,
   Flask,
   ListChecks,
-  PhoneCall,
+  PhoneCall as PhoneCallDuo,
   PhoneList,
   Robot,
   SquaresFour,
+  Wallet as WalletDuo,
   WarningDiamond,
-  type Icon,
+  type Icon as DuoIcon,
 } from "@phosphor-icons/react";
+import {
+  Bot,
+  BookOpen,
+  Crosshair as CrosshairIcon,
+  Database as DatabaseIcon,
+  FlaskConical,
+  LayoutDashboard,
+  ListChecks as ListChecksIcon,
+  PhoneCall,
+  PhoneForwarded,
+  Settings,
+  TriangleAlert,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface NavItem {
   to: string;
   label: string;
-  icon: Icon;
+  /** Lucide icon for navigation and buttons. */
+  icon: LucideIcon;
+  /** Phosphor duotone glyph for empty states and placeholders. */
+  duo: DuoIcon;
   /** Spec that ships the real page; until then the route shows a placeholder. */
   spec: string;
-  /** One line for the placeholder empty state: what this area will hold. */
+  /** One line for the page header: what this area is for. */
   blurb: string;
 }
 
 export interface NavGroup {
-  /** Section header in the expanded rail; null for the ungrouped top block. */
-  label: string | null;
+  label: string;
+  /** One line on the group's place in the loop (placeholders show it). */
+  role: string;
   items: NavItem[];
 }
 
 /**
- * Every product area (FR-005, US1.10): 11 items. "Quality" groups Datasets and Simulations,
- * "Feedback" groups Review, Calibration and Issues. Billing sits at the bottom of the rail.
+ * Every product area (FR-005): 11 items in four groups that follow the life of an agent, from
+ * building it to closing the feedback loop. Billing sits at the foot of the sidebar; Settings
+ * sits under it in its own landmark.
  */
 export const NAV: NavGroup[] = [
   {
     label: "Build",
+    role: "Make the agent and give it what it needs to answer.",
     items: [
-      { to: "/dashboard", label: "Dashboard", icon: SquaresFour, spec: "006", blurb: "Call volume, cost, latency and quality for the period you pick." },
-      { to: "/agents", label: "Agents", icon: Robot, spec: "002", blurb: "Prompt and flow agents, their versions, voices and models." },
-      { to: "/calls", label: "Calls", icon: PhoneCall, spec: "006", blurb: "Every call with transcript, recording, per-turn latency and itemised cost." },
-      { to: "/phone-numbers", label: "Channels", icon: PhoneList, spec: "010", blurb: "SIP numbers, outbound dialing and WhatsApp voice channels attached to agents." },
-      { to: "/knowledge-base", label: "Knowledge", icon: BookOpenText, spec: "005", blurb: "Documents and sites your agents can search during a call." },
+      { to: "/agents", label: "Agents", icon: Bot, duo: Robot, spec: "002", blurb: "Prompt and flow agents with their versions, voices and models." },
+      { to: "/knowledge-base", label: "Knowledge", icon: BookOpen, duo: BookOpenText, spec: "005", blurb: "Documents and sites your agents can search during a call." },
+      { to: "/phone-numbers", label: "Channels", icon: PhoneForwarded, duo: PhoneList, spec: "010", blurb: "Phone numbers, outbound dialling and WhatsApp voice for your agents." },
+    ],
+  },
+  {
+    label: "Observe",
+    role: "Watch real calls: volume, cost, latency and outcomes.",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, duo: SquaresFour, spec: "006", blurb: "Calls, cost and quality for this workspace." },
+      { to: "/calls", label: "Calls", icon: PhoneCall, duo: PhoneCallDuo, spec: "006", blurb: "Every call with its transcript, recording, per-turn latency and itemised cost." },
     ],
   },
   {
     label: "Quality",
+    role: "Test changes against saved and simulated calls before callers hear them.",
     items: [
-      { to: "/datasets", label: "Datasets", icon: Database, spec: "008", blurb: "Saved sets of calls to replay against a new prompt or model." },
-      { to: "/simulations", label: "Simulations", icon: Flask, spec: "008", blurb: "Replay real callers or simulated personas against an agent variant." },
+      { to: "/datasets", label: "Datasets", icon: DatabaseIcon, duo: Database, spec: "008", blurb: "Saved sets of calls to replay against a new prompt or model." },
+      { to: "/simulations", label: "Simulations", icon: FlaskConical, duo: Flask, spec: "008", blurb: "Replay real callers or simulated personas against an agent version." },
     ],
   },
   {
-    label: "Feedback",
+    label: "Feedback loop",
+    role: "Check the scores, then turn repeated failures into tested fixes.",
     items: [
-      { to: "/review", label: "Review", icon: ListChecks, spec: "007", blurb: "A queue of calls to label, so evaluators can be checked against people." },
-      { to: "/calibration", label: "Calibration", icon: Crosshair, spec: "007", blurb: "How far each evaluator agrees with human labels, and where it drifts." },
-      { to: "/issues", label: "Issues", icon: WarningDiamond, spec: "009", blurb: "Recurring failures grouped into issues, each with a drafted and validated fix." },
+      { to: "/review", label: "Review", icon: ListChecksIcon, duo: ListChecks, spec: "007", blurb: "A queue of calls to label, so automatic scores can be checked by people." },
+      { to: "/calibration", label: "Calibration", icon: CrosshairIcon, duo: Crosshair, spec: "007", blurb: "How often each evaluator agrees with human labels, and where it drifts." },
+      { to: "/issues", label: "Issues", icon: TriangleAlert, duo: WarningDiamond, spec: "009", blurb: "Repeated failures grouped into issues, each with a drafted and tested fix." },
     ],
   },
 ];
@@ -64,9 +93,16 @@ export const NAV: NavGroup[] = [
 export const BILLING_ITEM: NavItem = {
   to: "/billing",
   label: "Billing",
-  icon: CreditCard,
+  icon: Wallet,
+  duo: WalletDuo,
   spec: "001",
-  blurb: "Balance, top-ups, transactions and usage.",
+  blurb: "Prepaid credit for calls and features, billed per second.",
 };
 
+export const SETTINGS_ITEM = { to: "/settings", label: "Settings", icon: Settings };
+
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV.flatMap((g) => g.items), BILLING_ITEM];
+
+export function groupOf(to: string): NavGroup | undefined {
+  return NAV.find((g) => g.items.some((i) => i.to === to));
+}

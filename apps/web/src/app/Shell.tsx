@@ -1,19 +1,17 @@
-import { Buildings } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
-import { Outlet } from "react-router";
-import { useMe } from "../api/queries";
-import { Skeleton } from "../components";
-import { BalanceChip } from "./BalanceChip";
-import { NavRail } from "./NavRail";
-import { UserMenu } from "./UserMenu";
+import { Outlet, useLocation } from "react-router";
+import { Drawer, PageTransition, cn } from "../components";
+import { Sidebar } from "./Sidebar";
+import { TopBar } from "./TopBar";
 
 const RAIL_KEY = "cw.rail.expanded";
 
+/** Expanded unless this browser chose the icon rail before. */
 function readExpanded(): boolean {
   try {
-    return localStorage.getItem(RAIL_KEY) === "1";
+    return localStorage.getItem(RAIL_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -23,12 +21,15 @@ function isTyping(target: EventTarget | null) {
 }
 
 /**
- * App shell (T042): navigation rail, top bar with workspace, balance and user menu, and the
- * routed page. Only identity and balance are read here; feature credentials are never
- * requested from the shell (FR-020, enforced by ESLint).
+ * App shell (T042): the grouped sidebar, the top bar with workspace, balance and user menu, and
+ * the routed page with a short route transition. Only identity and balance are read here;
+ * feature credentials are never requested from the shell (FR-020, enforced by ESLint).
  */
 export function Shell() {
   const [expanded, setExpanded] = useState(readExpanded);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { pathname } = useLocation();
+
   const toggle = useCallback(() => {
     setExpanded((v) => {
       const next = !v;
@@ -60,31 +61,27 @@ export function Shell() {
       >
         Skip to content
       </a>
-      <NavRail expanded={expanded} onToggle={toggle} />
+      <div
+        className={cn(
+          "sticky top-0 hidden h-dvh shrink-0 transition-[width] duration-200 ease-out lg:block",
+          expanded ? "w-[248px]" : "w-[68px]",
+        )}
+      >
+        <Sidebar expanded={expanded} onToggle={toggle} />
+      </div>
+      <Drawer open={mobileOpen} onOpenChange={setMobileOpen} title="Callwright" side="left" width="md">
+        <div className="-mx-5 -my-4 h-full">
+          <Sidebar expanded inDrawer onNavigate={() => setMobileOpen(false)} />
+        </div>
+      </Drawer>
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
-        <main id="main" tabIndex={-1} className="flex-1 px-6 pb-16 pt-7 outline-none lg:px-10">
-          <div className="mx-auto w-full max-w-[1240px]">
+        <TopBar onOpenNav={() => setMobileOpen(true)} />
+        <main id="main" tabIndex={-1} className="flex-1 px-4 pb-16 pt-6 outline-none sm:px-6 lg:px-10 lg:pt-8">
+          <PageTransition key={pathname} className="mx-auto w-full max-w-[1320px]">
             <Outlet />
-          </div>
+          </PageTransition>
         </main>
       </div>
     </div>
-  );
-}
-
-function TopBar() {
-  const { data: me, isPending } = useMe();
-  return (
-    <header className="sticky top-0 z-30 flex h-12 items-center justify-between gap-4 border-b border-line bg-bg/85 px-6 backdrop-blur-sm lg:px-10">
-      <div className="flex min-w-0 items-center gap-2 text-[13px] text-fg-2">
-        <Buildings className="size-4 shrink-0 text-fg-3" aria-hidden />
-        {isPending ? <Skeleton className="h-3 w-36" /> : <span className="truncate font-medium text-fg">{me?.workspace.name}</span>}
-      </div>
-      <div className="flex items-center gap-3">
-        <BalanceChip />
-        <UserMenu />
-      </div>
-    </header>
   );
 }

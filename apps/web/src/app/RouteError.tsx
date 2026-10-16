@@ -1,4 +1,5 @@
-import { ArrowClockwise, WarningOctagon } from "@phosphor-icons/react";
+import { WarningOctagon } from "@phosphor-icons/react";
+import { LayoutDashboard, RotateCw } from "lucide-react";
 import { Link, isRouteErrorResponse, useRouteError } from "react-router";
 import { problemMessage, traceIdOf } from "../api/problems";
 import { Button, EmptyState } from "../components";
@@ -16,14 +17,14 @@ export function RouteError({ inShell = false }: { inShell?: boolean }) {
 
   const body = (
     <EmptyState
-      icon={<WarningOctagon />}
+      icon={<WarningOctagon weight="duotone" />}
       title={notFound ? "Page not found" : "Something went wrong"}
       actions={
         <>
-          <Button variant="primary" icon={<ArrowClockwise aria-hidden />} onClick={() => window.location.reload()}>
+          <Button variant="primary" icon={<RotateCw aria-hidden />} onClick={() => window.location.reload()}>
             Reload page
           </Button>
-          <Button asChild variant="secondary">
+          <Button asChild variant="secondary" icon={<LayoutDashboard aria-hidden />}>
             <Link to="/dashboard">Go to dashboard</Link>
           </Button>
         </>
@@ -33,7 +34,7 @@ export function RouteError({ inShell = false }: { inShell?: boolean }) {
       {traceId && (
         <p className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-fg-3">Reference for support</span>
-          <code className="select-all rounded-[4px] border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[12px] text-fg">{traceId}</code>
+          <code className="select-all rounded-inline border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[12px] text-fg">{traceId}</code>
         </p>
       )}
     </EmptyState>

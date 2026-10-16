@@ -1,4 +1,4 @@
-import { Desktop, GearSix, Moon, SignOut, Sun } from "@phosphor-icons/react";
+import { LogOut, Monitor, Moon, Settings, Sun } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useMe } from "../api/queries";
 import {
@@ -35,12 +35,12 @@ export function UserMenu() {
     <Menu>
       <MenuTrigger
         aria-label={email ? `Account menu for ${email}` : "Account menu"}
-        className={cn("flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 hover:bg-surface-3", focusRing)}
+        className={cn("flex cursor-pointer items-center gap-2 rounded-full py-0.5 pl-0.5 pr-0.5 transition-colors hover:bg-surface-3 lg:pr-2.5", focusRing)}
       >
-        <span className="grid size-7 place-items-center rounded-full bg-accent-soft font-mono text-[11px] font-semibold text-accent-text">
+        <span className="grad-action grid size-8 place-items-center rounded-full text-[11.5px] font-semibold text-white">
           {email ? initialsOf(email) : ""}
         </span>
-        <span className="hidden max-w-[200px] truncate text-[12.5px] text-fg-2 lg:inline">
+        <span className="hidden max-w-[200px] truncate text-[13px] text-fg-2 lg:inline">
           {email ?? <Skeleton className="h-3 w-28" />}
         </span>
       </MenuTrigger>
@@ -51,14 +51,14 @@ export function UserMenu() {
         </MenuLabel>
         <MenuSeparator />
         <MenuItem onSelect={() => navigate("/settings")}>
-          <GearSix aria-hidden />
+          <Settings aria-hidden />
           Settings
         </MenuItem>
         <MenuSeparator />
-        <p className="px-2 pb-1 pt-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-fg-3">Theme</p>
+        <p className="px-2 pb-1 pt-1.5 text-[12px] font-medium text-fg-3">Theme</p>
         <MenuRadioGroup value={theme} onValueChange={(v) => setThemePref(v as ThemePref)}>
           <MenuRadioItem value="system">
-            <Desktop aria-hidden /> System
+            <Monitor aria-hidden /> System
           </MenuRadioItem>
           <MenuRadioItem value="light">
             <Sun aria-hidden /> Light
@@ -74,7 +74,7 @@ export function UserMenu() {
             navigate("/login", { replace: true });
           }}
         >
-          <SignOut aria-hidden />
+          <LogOut aria-hidden />
           Sign out
         </MenuItem>
       </MenuContent>
