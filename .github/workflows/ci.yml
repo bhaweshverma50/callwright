@@ -71,30 +71,7 @@ jobs:
       - name: Tests (unit, contract, integration)
         run: uv run pytest -q
 
-  voice-worker:
-    name: voice-worker
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/voice-worker
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.12"
-          enable-cache: true
-          cache-dependency-glob: services/voice-worker/uv.lock
-      - run: uv sync --frozen
-      - name: Lint
-        run: |
-          uv run ruff check .
-          uv run ruff format --check .
-      - name: Types (mypy strict, see pyproject)
-        run: uv run mypy
-      - name: Tests
-        run: uv run pytest -q
-      - name: Turn-latency benchmark gate (p50, p95 and regression against baseline)
-        run: uv run python -m tests.harness.bench.benchmark
+  # The voice-worker jobs (lint, types, tests, latency benchmark gate) live in voice-worker.yml.
 
   web:
     name: web
@@ -117,3 +94,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run test
       - run: pnpm run build
+      - name: Playwright journeys (mock API)
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm run e2e

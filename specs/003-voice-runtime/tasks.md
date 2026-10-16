@@ -28,7 +28,7 @@ research/architecture.md section 2.
 - [ ] T003 [P] Add `livekit-client` to `apps/web/package.json`
 - [ ] T004 [P] Add settings `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CALLWRIGHT_SERVICE_TOKEN`, `CREDIT_GRACE_USD`, `RECORDINGS_BUCKET`, `WORKER_AGENT_NAME` to `services/api/app/core/config.py`
 - [x] T005 [P] Create worker settings (internal API URL, service token, agent name, heartbeat interval) in `services/voice-worker/worker/settings.py`
-- [ ] T006 [P] Add CI workflow `.github/workflows/voice-worker.yml` running ruff, mypy, `tests/unit` and `tests/harness` for `services/voice-worker`
+- [x] T006 [P] Add CI workflow `.github/workflows/voice-worker.yml` running ruff, mypy, `tests/unit` and `tests/harness` for `services/voice-worker`
 
 ---
 
@@ -259,8 +259,8 @@ against baseline.
 - [x] T101 [P] [US7] Document the script format and fakes in `services/voice-worker/tests/harness/README.md`
 - [ ] T102 [US7] Implement the benchmark synthetic caller (WAV playback, agent audio onset detection, per-turn e2e) and the 20 x 6 call set in `services/voice-worker/tests/harness/benchmark.py`, `services/voice-worker/tests/harness/benchmarks/callset.yaml` and `services/voice-worker/tests/harness/benchmarks/fixtures/`
 - [x] T103 [US7] Implement baseline comparison (p50 at most 800 ms, p95 at most 1,500 ms, no more than 10% regression) and baseline refresh command writing `services/voice-worker/tests/harness/benchmarks/baseline.json`
-- [ ] T104 [US7] Add a CI time budget assertion (harness job fails above 5 minutes) to `.github/workflows/voice-worker.yml`
-- [ ] T105 [US7] Latency budget gate (Principle II): add `.github/workflows/voice-benchmark.yml` running T102 nightly and on PRs touching `services/voice-worker/worker/**`, publishing p50/p95 and blocking merge on failure; commit the first baseline from the default stack
+- [x] T104 [US7] Add a CI time budget assertion (harness job fails above 5 minutes) to `.github/workflows/voice-worker.yml`
+- [x] T105 [US7] Latency budget gate (Principle II): add `.github/workflows/voice-benchmark.yml` (done as the `voice-benchmark` job in `.github/workflows/voice-worker.yml`, on every PR and nightly) running T102 nightly and on PRs touching `services/voice-worker/worker/**`, publishing p50/p95 and blocking merge on failure; commit the first baseline from the default stack
 
 **Checkpoint**: Hot-path regressions are caught before merge.
 
