@@ -15,3 +15,11 @@ turns:
   - "Can I pay part of it today?"
   - "Please send me the payment link."
   - "Thank you, that is everything."
+# Live mode (--mode live): real WebRTC rooms, fake vendors with the profile above, caller-side
+# e2e. Fixtures are tests/harness/bench/fixtures/turn_<n>.wav (python -m tests.harness.bench.synth).
+live:
+  calls: 20
+  concurrency: 4
+  fakes:
+    reply: "Sure, I can help with that."
+    ms_per_char: 45

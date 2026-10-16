@@ -16,6 +16,56 @@ uv run python -m tests.harness.bench.benchmark --update-baseline
 
 `--config` takes an exported agent version (`{"config": {...}}`) or a bare AgentConfig.
 
+## Live benchmark (`--mode live`)
+
+Fake mode prices a turn with the timing model below. Live mode measures it: real WebRTC rooms
+on a LiveKit server, the production agent server and job entry (claim, `LiveCall`, Silero VAD,
+the semantic turn detector, `AgentSession`, room I/O, the NC adapter), and a scripted caller
+per call that publishes `bench/fixtures/turn_<n>.wav` as its microphone and timestamps the
+first agent audio it receives. Only STT, LLM and TTS are fakes (`bench/live_fakes.py`), with
+delays sampled from the call set's profiles; a local fake internal API answers the claim and
+checks every events post against the contract.
+
+```bash
+docker run --rm -d --name lk-bench -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0          # key devkey, secret secret
+uv run python -m tests.harness.bench.benchmark --mode live            # 20 x 6, 4 at a time
+uv run python -m tests.harness.bench.benchmark --mode live --calls 2 --details /tmp/turns.json
+uv run python -m tests.harness.bench.benchmark --mode live --update-baseline
+docker stop lk-bench
+```
+
+`e2e_ms` is caller-side: last fixture sample out of the caller's audio source to the first
+received agent frame above the onset threshold. The report also has the worker's own stored
+`e2e_ms` and components for the same turns (`worker_minus_caller_median_ms` is how much the
+stored latency under-reports what the caller hears: uplink, output buffering and downlink).
+The baseline is `bench/baseline_live.json`. Fixtures are synthesized speech-like audio (no TTS,
+no recordings): `python -m tests.harness.bench.synth` regenerates them from `callset.yaml`.
+
+First baseline (2026-10-16, 20 x 6 calls, 4 concurrent, local `livekit-server` 1.13 in Docker
+on macOS, fake vendors on the call set's profiles): caller `e2e_ms` p50 953 ms, p95 2,734 ms;
+the worker stored p50 765 ms (183 ms under the caller); component medians end of turn 608 ms,
+LLM first token 309 ms, TTS first audio 136 ms; no missed turns, no contract violations; about
+3 minutes. The run fails the 800/1,500 ms budgets, for two reasons the timing model below does
+not capture:
+
+- The end-of-turn decision waits for Silero's end of speech (`min_silence_duration` 0.55 s by
+  default) before the semantic model runs, so it is about 600 ms, not
+  `max(stt_final, min_endpointing_delay)` = 400 ms.
+- Turn 2 ("The account number is four four one nine.") always waits the full
+  `max_endpointing_delay` (2.4 s at responsiveness 0.8): the semantic model reads a digit string
+  as unfinished. That is the p95.
+
+Both are turn-taking calibration questions (research R4), so the gate is reported, not tuned
+here.
+
+Real vendors are not part of live mode yet (no keys here). A real-vendor run needs
+`DEEPGRAM_API_KEY`, `AZURE_OPENAI_API_KEY` with `AZURE_OPENAI_ENDPOINT` and
+`AZURE_OPENAI_API_VERSION`, and `ELEVEN_API_KEY`, plus a switch in `bench/live.py` that dispatches
+to the production `job_entry` without the fake registry; the fake STT's scripted transcripts then
+give way to the real transcription of the fixtures, which are not intelligible speech, so a real
+run also needs recorded or TTS-made fixtures.
+
 ## Script format
 
 ```yaml

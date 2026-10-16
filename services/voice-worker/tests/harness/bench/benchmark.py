@@ -5,11 +5,16 @@ from the call set's profiles and reports p50 and p95 ``e2e_ms`` plus component m
 fails when p50 > 800 ms, p95 > 1,500 ms, or either regresses more than 10% against the
 baseline. ``--update-baseline`` rewrites the baseline from this run.
 
-Live mode (real vendors against ``livekit-server --dev`` with WAV fixtures) is not part of this
-wave; ``--mode live`` exits with status 2.
+Live mode (``--mode live``, :mod:`tests.harness.bench.live`) runs the same call set over real
+WebRTC rooms on a LiveKit server (``livekit-server --dev``): a scripted caller publishes the WAV
+fixtures, the production agent server and job entry handle the call with fake STT, LLM and TTS
+adapters, and ``e2e_ms`` is measured at the caller. It gates on the same budgets against
+``baseline_live.json`` and also fails on missed turns or event contract violations. Real
+vendors need keys and are not wired yet (see the live module).
 
     python -m tests.harness.bench.benchmark
     python -m tests.harness.bench.benchmark --update-baseline
+    python -m tests.harness.bench.benchmark --mode live [--calls 4 --concurrency 2]
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import yaml
 
@@ -112,7 +117,15 @@ async def run_benchmark(callset_path: Path = DEFAULT_CALLSET) -> BenchReport:
     )
 
 
-def gate(report: BenchReport, baseline: Mapping[str, Any] | None) -> list[str]:
+class LatencyReport(Protocol):
+    @property
+    def e2e_p50_ms(self) -> float: ...
+
+    @property
+    def e2e_p95_ms(self) -> float: ...
+
+
+def gate(report: LatencyReport, baseline: Mapping[str, Any] | None) -> list[str]:
     """Budget and regression checks. Returns the failures (empty means pass)."""
     failures: list[str] = []
     if report.e2e_p50_ms > P50_BUDGET_MS:
@@ -137,15 +150,49 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--callset", type=Path, default=DEFAULT_CALLSET)
     parser.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
     parser.add_argument("--update-baseline", action="store_true")
+    parser.add_argument("--url", default="ws://localhost:7880", help="live: LiveKit server")
+    parser.add_argument("--api-key", default="devkey", help="live: LiveKit API key")
+    parser.add_argument("--api-secret", default="secret", help="live: LiveKit API secret")
+    parser.add_argument("--calls", type=int, help="live: number of calls (default: call set)")
+    parser.add_argument("--concurrency", type=int, help="live: calls in parallel")
+    parser.add_argument("--details", type=Path, help="live: write per-turn numbers (JSON)")
     args = parser.parse_args(argv)
     if args.mode == "live":
-        print("live benchmark (real vendors, livekit-server --dev) is not implemented yet")
-        return 2
+        return run_live_mode(args)
     report = asyncio.run(run_benchmark(args.callset))
     if args.update_baseline:
         args.baseline.write_text(json.dumps(report.to_json(), indent=2) + "\n")
     baseline = json.loads(args.baseline.read_text()) if args.baseline.exists() else None
     failures = gate(report, baseline)
+    print(json.dumps({"report": report.to_json(), "failures": failures}, indent=2))
+    return 1 if failures else 0
+
+
+def run_live_mode(args: argparse.Namespace) -> int:
+    import logging
+
+    from tests.harness.bench.live import DEFAULT_LIVE_BASELINE, LiveOptions, run_live
+
+    logging.basicConfig(level=logging.WARNING)
+    baseline_path = DEFAULT_LIVE_BASELINE if args.baseline == DEFAULT_BASELINE else args.baseline
+    options = LiveOptions(
+        url=args.url,
+        api_key=args.api_key,
+        api_secret=args.api_secret,
+        calls=args.calls,
+        concurrency=args.concurrency,
+    )
+    report = asyncio.run(run_live(args.callset, options))
+    if args.details:
+        args.details.write_text(json.dumps(report.details, indent=2) + "\n")
+    if args.update_baseline:
+        baseline_path.write_text(json.dumps(report.to_json(), indent=2) + "\n")
+    baseline = json.loads(baseline_path.read_text()) if baseline_path.exists() else None
+    failures = gate(report, baseline)
+    if report.missed_turns:
+        failures.append(f"{report.missed_turns} caller turns got no agent audio")
+    if report.contract_violations:
+        failures.append(f"{report.contract_violations} event contract violations")
     print(json.dumps({"report": report.to_json(), "failures": failures}, indent=2))
     return 1 if failures else 0
 
