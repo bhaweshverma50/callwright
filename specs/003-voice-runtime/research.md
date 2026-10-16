@@ -185,7 +185,9 @@ first task that touches them; none changes the design if it turns out differentl
   the recordings bucket at `recordings/{workspace_id}/{call_id}.mp4` with SSE-KMS. It starts when
   the call is claimed (before the greeting), from an arq job so the claim response is not
   delayed. `egress_ended` from the LiveKit webhook sets `recording_status` to `available` or
-  `failed`. Playback URLs are signed for 10 minutes by 006.
+  `failed`. Playback URLs are signed for 10 minutes by 006. When the call's
+  `recording_enabled` (resolved at admission, spec FR-043) is false, the job is a no-op, no
+  egress exists, and `recording_status` is `not_recorded`.
 - **Rationale**: Keeps storage credentials out of the worker; dual channel lets evaluators and
   reviewers separate speakers; AAC plays in every target browser.
 - **Alternatives**: Track egress per participant (rejected: two files to align). OGG/Opus

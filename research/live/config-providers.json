@@ -1,0 +1,214 @@
+{
+ "llm": [
+  {
+   "id": "gpt-5.1",
+   "label": "GPT-5.1",
+   "providers": [
+    "azure",
+    "openai"
+   ],
+   "family": "gpt-5",
+   "fixed_temperature": true
+  },
+  {
+   "id": "gpt-5.2",
+   "label": "GPT-5.2",
+   "providers": [
+    "azure",
+    "openai"
+   ],
+   "family": "gpt-5",
+   "fixed_temperature": true
+  },
+  {
+   "id": "gpt-5-mini",
+   "label": "GPT-5 Mini",
+   "providers": [
+    "azure",
+    "openai"
+   ],
+   "family": "gpt-5",
+   "fixed_temperature": true
+  }
+ ],
+ "llm_providers": [
+  {
+   "id": "azure",
+   "label": "Azure OpenAI"
+  },
+  {
+   "id": "openai",
+   "label": "OpenAI"
+  }
+ ],
+ "tts": [
+  {
+   "id": "elevenlabs",
+   "label": "ElevenLabs",
+   "default_model_id": "eleven_flash_v2_5",
+   "models": [
+    {
+     "id": "eleven_turbo_v2_5",
+     "label": "Turbo v2.5 (Fastest)",
+     "description": ""
+    },
+    {
+     "id": "eleven_turbo_v2",
+     "label": "Turbo v2",
+     "description": ""
+    },
+    {
+     "id": "eleven_flash_v2_5",
+     "label": "Flash v2.5",
+     "description": ""
+    },
+    {
+     "id": "eleven_flash_v2",
+     "label": "Flash v2",
+     "description": ""
+    },
+    {
+     "id": "eleven_multilingual_v2",
+     "label": "Multilingual v2 (Best Quality)",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "id": "cartesia",
+   "label": "Cartesia",
+   "default_model_id": "sonic-2",
+   "models": [
+    {
+     "id": "sonic-2",
+     "label": "Sonic 2 (Default)",
+     "description": ""
+    },
+    {
+     "id": "sonic-2-2025-03-07",
+     "label": "Sonic 2 (Speed/Emotion)",
+     "description": ""
+    },
+    {
+     "id": "sonic-3",
+     "label": "Sonic 3 (Latest)",
+     "description": ""
+    },
+    {
+     "id": "sonic-turbo",
+     "label": "Sonic Turbo (Fastest)",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "id": "fishaudio",
+   "label": "Fish Audio",
+   "default_model_id": "s2.1-pro",
+   "models": [
+    {
+     "id": "s2.1-pro",
+     "label": "S2.1 Pro (Latest)",
+     "description": ""
+    },
+    {
+     "id": "s2-pro",
+     "label": "S2 Pro (Multi-Speaker)",
+     "description": ""
+    },
+    {
+     "id": "s1",
+     "label": "S1 (Standard)",
+     "description": ""
+    }
+   ]
+  }
+ ],
+ "stt": [
+  {
+   "id": "deepgram",
+   "label": "Deepgram",
+   "models": [
+    {
+     "id": "",
+     "label": "Auto (recommended)",
+     "description": "nova-3 for English, nova-2 for others"
+    },
+    {
+     "id": "nova-3",
+     "label": "Nova-3",
+     "description": "Best English accuracy"
+    },
+    {
+     "id": "nova-2",
+     "label": "Nova-2",
+     "description": "Multilingual (36 languages)"
+    },
+    {
+     "id": "flux-general-en",
+     "label": "Flux",
+     "description": "Conversational, ultra-low latency, built-in turn detection"
+    }
+   ]
+  },
+  {
+   "id": "sarvam",
+   "label": "Sarvam AI",
+   "models": [
+    {
+     "id": "saarika:v2.5",
+     "label": "Saarika v2.5",
+     "description": "Transcribes in original language"
+    },
+    {
+     "id": "saaras:v3",
+     "label": "Saaras v3",
+     "description": "Latest Sarvam STT model"
+    }
+   ]
+  },
+  {
+   "id": "assemblyai",
+   "label": "AssemblyAI",
+   "models": [
+    {
+     "id": "",
+     "label": "Auto (recommended)",
+     "description": "Streaming or multilingual based on language"
+    },
+    {
+     "id": "universal-streaming",
+     "label": "Universal Streaming",
+     "description": "English-focused"
+    },
+    {
+     "id": "universal-streaming-multilingual",
+     "label": "Universal Streaming Multilingual",
+     "description": "Multilingual (es, fr, de, it, pt)"
+    }
+   ]
+  }
+ ],
+ "noise_cancellation": [
+  {
+   "id": "sanas_vi",
+   "label": "Sanas Voice Isolation",
+   "description": "Default. Removes noise + background voices. Best for noisy callers."
+  },
+  {
+   "id": "sanas_st",
+   "label": "Sanas Standard",
+   "description": "Removes noise, preserves all voices. Best for multi-speaker."
+  },
+  {
+   "id": "ai_coustics",
+   "label": "AI Coustics",
+   "description": "Lightweight noise cancellation"
+  },
+  {
+   "id": "none",
+   "label": "Off",
+   "description": "No noise cancellation"
+  }
+ ]
+}

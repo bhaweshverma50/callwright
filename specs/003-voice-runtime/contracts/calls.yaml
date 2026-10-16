@@ -5,7 +5,9 @@ info:
   description: >
     Fragment owned by 003-voice-runtime. Internal endpoint the voice worker calls when it
     starts a job. Authenticated with the service token, never with a user JWT. The read side of
-    the calls module (list, detail, recording URLs) is defined by 006-calls-analytics.
+    the calls module (list, detail, recording URLs) is defined by 006-calls-analytics; its
+    recording URL endpoints return the `CallRecordingState` schema defined here, which reports
+    `not_recorded` (with no URL) for calls whose effective recording setting was off.
 servers:
   - url: https://api.callwright.example/v1
 security:
@@ -181,6 +183,40 @@ components:
         heartbeat_interval_s:
           type: integer
           default: 10
+        recording_enabled:
+          type: boolean
+          description: >
+            Effective recording setting resolved at admission from the agent version's
+            `advanced.recording` override (002) and the workspace's `recording_default` (001).
+            Informational for the worker: the API starts egress only when true; the worker never
+            records.
+    CallRecordingState:
+      type: object
+      description: >
+        Recording state of one call, returned by 006's recording URL endpoints through
+        `calls.service.recording_state()`. When `recording_status` is `not_recorded` the call was
+        deliberately not recorded (recording off for the workspace or agent) and `recording_url`
+        is null; this is distinct from `failed` ("recording unavailable").
+      required: [call_id, recording_enabled, recording_setting_source, recording_status, recording_url]
+      properties:
+        call_id:
+          type: string
+          pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+        recording_enabled:
+          type: boolean
+        recording_setting_source:
+          type: string
+          enum: [workspace, agent]
+        recording_status:
+          type: string
+          enum: [none, recording, available, failed, not_recorded]
+        recording_url:
+          type: [string, 'null']
+          format: uri
+          description: Signed, valid 10 minutes; null unless `recording_status` is `available`.
+        expires_at:
+          type: [string, 'null']
+          format: date-time
     OutboundDial:
       type: object
       required: [sip_trunk_id, to_number, from_number, ring_timeout_s]

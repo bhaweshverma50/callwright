@@ -325,10 +325,21 @@ components:
         latency:
           type: [object, 'null']
           additionalProperties: {type: [integer, 'null']}
+        recording_enabled:
+          type: boolean
+          description: Effective recording setting resolved at admission (workspace default and agent override).
+        recording_status:
+          type: string
+          enum: [none, recording, available, failed, not_recorded]
+          description: >
+            `not_recorded` when recording was off for this call (no audio exists);
+            `failed` when a recording was expected but is unavailable.
         recording_url:
           type: [string, 'null']
           format: uri
-          description: Signed, valid 10 minutes. Fetch a fresh one from the calls API after that.
+          description: >
+            Signed, valid 10 minutes. Fetch a fresh one from the calls API after that. Always null
+            when `recording_status` is `not_recorded`.
         processing_warnings:
           type: array
           items: {type: string}

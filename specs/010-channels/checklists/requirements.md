@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,10 +31,10 @@
 
 ## Notes
 
-- One marker remains (FR-034): whether calling-hour windows and a do-not-call list are required
-  for outbound calls in v1. The plan treats them as out of scope and leaves a hook in the
-  outbound validation step (research.md R9) so they can be added without an API change. Resolve
-  with `/speckit-clarify` before US2 ships to production customers in regulated markets.
+- FR-034 was resolved in the 2026-10-16 clarification session: the do-not-call list and
+  per-weekday calling-hour windows (recipient local time, default 09:00 to 21:00) are both in v1,
+  block before dialling with reasons `dnc_listed` and `outside_calling_hours`, are logged as
+  policy decisions and never billed (FR-034 to FR-038; research.md R9).
 - "SIP", "E.164" and "WhatsApp" are domain terms the operator uses with their carrier and Meta,
   not implementation choices. The media platform and its trunk objects are named only in
   plan.md.

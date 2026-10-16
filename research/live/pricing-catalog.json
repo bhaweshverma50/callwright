@@ -1,0 +1,357 @@
+{
+ "stt": [
+  {
+   "component": "stt",
+   "provider": "assemblyai",
+   "model": null,
+   "price_per_min": 0.003,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "assemblyai",
+   "model": "universal-streaming",
+   "price_per_min": 0.003,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "assemblyai",
+   "model": "universal-streaming-multilingual",
+   "price_per_min": 0.003,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "deepgram",
+   "model": null,
+   "price_per_min": 0.0085,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "deepgram",
+   "model": "flux-general-en",
+   "price_per_min": 0.0085,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "deepgram",
+   "model": "nova-2",
+   "price_per_min": 0.0058,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "deepgram",
+   "model": "nova-3",
+   "price_per_min": 0.0085,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "sarvam",
+   "model": null,
+   "price_per_min": 0.006,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "sarvam",
+   "model": "saaras:v3",
+   "price_per_min": 0.006,
+   "bundles": []
+  },
+  {
+   "component": "stt",
+   "provider": "sarvam",
+   "model": "saarika:v2.5",
+   "price_per_min": 0.006,
+   "bundles": []
+  }
+ ],
+ "llm": [
+  {
+   "component": "llm",
+   "provider": "azure",
+   "model": "gpt-5-mini",
+   "price_per_min": 0.0015,
+   "bundles": [
+    {
+     "unit": "input_tokens",
+     "per_min": 20000
+    },
+    {
+     "unit": "output_tokens",
+     "per_min": 200
+    }
+   ]
+  },
+  {
+   "component": "llm",
+   "provider": "azure",
+   "model": "gpt-5.1-chat",
+   "price_per_min": 0.0165,
+   "bundles": [
+    {
+     "unit": "input_tokens",
+     "per_min": 20000
+    },
+    {
+     "unit": "output_tokens",
+     "per_min": 200
+    }
+   ]
+  },
+  {
+   "component": "llm",
+   "provider": "azure",
+   "model": "gpt-5.2-chat",
+   "price_per_min": 0.0315,
+   "bundles": [
+    {
+     "unit": "input_tokens",
+     "per_min": 20000
+    },
+    {
+     "unit": "output_tokens",
+     "per_min": 200
+    }
+   ]
+  },
+  {
+   "component": "llm",
+   "provider": "openai",
+   "model": "gpt-5-mini",
+   "price_per_min": 0.0015,
+   "bundles": [
+    {
+     "unit": "input_tokens",
+     "per_min": 20000
+    },
+    {
+     "unit": "output_tokens",
+     "per_min": 200
+    }
+   ]
+  },
+  {
+   "component": "llm",
+   "provider": "openai",
+   "model": "gpt-5.1",
+   "price_per_min": 0.0165,
+   "bundles": [
+    {
+     "unit": "input_tokens",
+     "per_min": 20000
+    },
+    {
+     "unit": "output_tokens",
+     "per_min": 200
+    }
+   ]
+  },
+  {
+   "component": "llm",
+   "provider": "openai",
+   "model": "gpt-5.2",
+   "price_per_min": 0.0315,
+   "bundles": [
+    {
+     "unit": "input_tokens",
+     "per_min": 20000
+    },
+    {
+     "unit": "output_tokens",
+     "per_min": 200
+    }
+   ]
+  }
+ ],
+ "tts": [
+  {
+   "component": "tts",
+   "provider": "cartesia",
+   "model": "sonic-2",
+   "price_per_min": 0.0275,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "cartesia",
+   "model": "sonic-2-2025-03-07",
+   "price_per_min": 0.0275,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "cartesia",
+   "model": "sonic-3",
+   "price_per_min": 0.0275,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "cartesia",
+   "model": "sonic-turbo",
+   "price_per_min": 0.0275,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "elevenlabs",
+   "model": "eleven_flash_v2",
+   "price_per_min": 0.045,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "elevenlabs",
+   "model": "eleven_flash_v2_5",
+   "price_per_min": 0.045,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "elevenlabs",
+   "model": "eleven_multilingual_v2",
+   "price_per_min": 0.09,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "elevenlabs",
+   "model": "eleven_turbo_v2",
+   "price_per_min": 0.045,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "elevenlabs",
+   "model": "eleven_turbo_v2_5",
+   "price_per_min": 0.045,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "fishaudio",
+   "model": "s1",
+   "price_per_min": 0.015,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "fishaudio",
+   "model": "s2-pro",
+   "price_per_min": 0.015,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  },
+  {
+   "component": "tts",
+   "provider": "fishaudio",
+   "model": "s2.1-pro",
+   "price_per_min": 0.015,
+   "bundles": [
+    {
+     "unit": "tts_chars",
+     "per_min": 750
+    }
+   ]
+  }
+ ],
+ "nc": [
+  {
+   "component": "nc",
+   "provider": "ai_coustics",
+   "model": null,
+   "price_per_min": 0,
+   "bundles": []
+  },
+  {
+   "component": "nc",
+   "provider": "none",
+   "model": null,
+   "price_per_min": 0,
+   "bundles": []
+  },
+  {
+   "component": "nc",
+   "provider": "sanas_st",
+   "model": null,
+   "price_per_min": 0,
+   "bundles": []
+  },
+  {
+   "component": "nc",
+   "provider": "sanas_vi",
+   "model": null,
+   "price_per_min": 0,
+   "bundles": []
+  }
+ ],
+ "platform": [
+  {
+   "component": "platform",
+   "provider": "calldash",
+   "model": null,
+   "price_per_min": 0.05,
+   "bundles": []
+  }
+ ]
+}

@@ -36,7 +36,7 @@ research/architecture.md section 2.
 
 **No user story work starts until this phase is complete.**
 
-- [ ] T007 Write migration `services/api/app/migrations/versions/0003_voice_runtime.py`: enums (`call_channel`, `call_direction`, `call_status`, `disconnect_reason`, `recording_status`, `pipeline_status`, `call_event_type`, `pipeline_step`, `step_status`, `webhook_event`, `delivery_status`), tables `calls`, `call_events`, `call_pipeline_steps`, `webhook_signing_secrets`, `webhook_deliveries`, `idempotency_keys` (skip if 001 created it), all indexes and RLS policies from data-model.md
+- [ ] T007 Write migration `services/api/app/migrations/versions/0003_voice_runtime.py`: enums (`call_channel`, `call_direction`, `call_status`, `disconnect_reason`, `recording_status` (including `not_recorded`), `recording_setting_source`, `pipeline_status`, `call_event_type`, `pipeline_step`, `step_status`, `webhook_event`, `delivery_status`), tables `calls`, `call_events`, `call_pipeline_steps`, `webhook_signing_secrets`, `webhook_deliveries`, `idempotency_keys` (skip if 001 created it), all indexes and RLS policies from data-model.md
 - [ ] T008 [P] Create `Call` and `CallPipelineStep` ORM models, enums and the guarded `transition(call_id, expected, new, **fields)` helper in `services/api/app/calls/models.py`
 - [ ] T009 [P] Create `CallEvent` ORM model in `services/api/app/call_events/models.py`
 - [ ] T010 [P] Create `WebhookSigningSecret` and `WebhookDelivery` ORM models in `services/api/app/webhooks_out/models.py`
@@ -163,7 +163,7 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 
 ## Phase 6: User Story 4 - Every finished call is recorded, priced and processed in order (Priority: P2)
 
-**Goal**: Ordered, idempotent post-call pipeline and dual-channel recording.
+**Goal**: Ordered, idempotent post-call pipeline and dual-channel recording (skipped, with transcripts and metrics kept, when the call's recording setting is off).
 
 **Independent Test**: Replay every step twice for an ended call: one charge, one notify step
 completion, status `completed`, recording `available`.
@@ -174,6 +174,8 @@ completion, status `completed`, recording `available`.
 - [ ] T074 [P] [US4] Unit tests for the step runner (fixed order, blocking steps stop the chain, non-blocking failures recorded, unregistered handlers skipped, never-connected calls skip charge) in `services/api/tests/unit/test_pipeline_runner.py`
 - [ ] T075 [P] [US4] Money test: replaying every step twice for 100 calls creates exactly one `call_charge` per call and one `notify_analyzed` completion in `services/api/tests/integration/test_pipeline_idempotency.py`
 - [ ] T076 [P] [US4] Integration test: `egress_ended` sets recording status and key; `room_finished` closes an open call with `error` in `services/api/tests/integration/test_livekit_hooks.py`
+- [ ] T111 [P] [US4] Unit tests for recording setting resolution at admission (workspace default on/off times agent override `inherit`/`on`/`off`, missing override reads as `inherit`, `recording_setting_source`, initial `recording_status`, values unchanged when either setting changes after admission) in `services/api/tests/unit/test_recording_setting.py`
+- [ ] T112 [P] [US4] Integration test: call with recording off starts no egress, keeps `recording_status = not_recorded` even if an egress webhook arrives, still stores transcript, `turn` events, usage and `latency_stats`, is charged and `completed` with no pipeline warning, and `recording_state()` returns `not_recorded` with a null URL in `services/api/tests/integration/test_recording_disabled.py`
 
 ### Implementation for User Story 4
 
@@ -184,6 +186,8 @@ completion, status `completed`, recording `available`.
 - [ ] T081 [US4] Implement `start_recording` job at claim (audio-only, dual-channel agent mixing, MP4/AAC, SSE-KMS key `recordings/{workspace_id}/{call_id}.mp4`) in `services/api/app/calls/jobs.py`
 - [ ] T082 [US4] Implement LiveKit webhook verification and handlers (`egress_started`, `egress_ended`, `room_finished`) in `services/api/app/livekit_hooks/router.py` and `services/api/app/livekit_hooks/service.py`
 - [ ] T083 [US4] Add the `replay <call_id>` command and blocked-pipeline alert (structured log, OTel event, counter) in `services/api/app/calls/jobs.py`
+- [ ] T113 [US4] Resolve the effective recording setting in `admit()` from the frozen version's `advanced.recording` (002) and `workspaces.recording_default` (001), write `recording_enabled`, `recording_setting_source` and initial `recording_status` (`none` or `not_recorded`), and add `recording_enabled` to the claim RuntimeConfig in `services/api/app/calls/service.py`
+- [ ] T114 [US4] Skip egress in `start_recording` when `recording_enabled` is false, ignore egress webhooks for such calls, and implement `recording_state(call) -> CallRecordingState` for 006's recording URL endpoints in `services/api/app/calls/jobs.py`, `services/api/app/livekit_hooks/service.py` and `services/api/app/calls/service.py`
 
 **Checkpoint**: Calls are billed once and fully processed.
 
@@ -212,6 +216,7 @@ event; SSRF guard.
 - [ ] T091 [US5] Implement the delivery job (timeout from version, attempts log, retry schedule with jitter) and 30-day purge cron in `services/api/app/webhooks_out/jobs.py`
 - [ ] T092 [US5] Implement signing-secret, deliveries, redeliver and test endpoints in `services/api/app/webhooks_out/router.py`
 - [ ] T093 [US5] Enqueue `call_started` and `call_ended` on transitions in `services/api/app/call_events/service.py` and implement the `notify_analyzed` step in `services/api/app/calls/pipeline.py`
+- [ ] T115 [US5] Add `recording_enabled` and `recording_status` to the `WebhookCall` payload builder, with `recording_url` always null for `not_recorded` calls, in `services/api/app/webhooks_out/service.py` (covered by T084)
 
 **Checkpoint**: Integrations receive verifiable events.
 
@@ -287,9 +292,13 @@ against baseline.
 ### Cross-feature dependencies
 
 - 001: balance, ledger charge with idempotency key, pricing estimate and running cost,
-  concurrency limit, email-verified flag, `secrets` table, `core` package.
+  concurrency limit, email-verified flag, `secrets` table, `core` package, and the workspace
+  recording default `workspaces.recording_default` (boolean, default true, editable in 001's
+  workspace settings) read by T113.
 - 002: `AgentConfig` schema, `agent_versions.service.snapshot_for_test()`, published version
-  lookup.
+  lookup, and the agent recording override `AgentConfig.advanced.recording` (`inherit`, `on`,
+  `off`, default `inherit`) read by T113.
+- 006: its recording URL endpoints use `recording_state()` (T114) and show "not recorded".
 - Provides to 004, 005, 007, 010: the extension points listed in plan.md.
 - Spec FR-017 (inbound ring duration) and SIP dialling are delivered by 010 in
   `services/voice-worker/worker/telephony.py` (010 T020, T033), since only phone and WhatsApp

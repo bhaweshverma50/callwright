@@ -1,0 +1,136 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 3m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+AI Flow Assistant
+Describe the flow you want to create or modify. For example: "Create a customer support agent that handles billing and tech issues"
+​
+
+CONFIGURE
+
+·
+
+Advanced
+
+CONVERSATION
+
+Model
+Voice
+Call Behavior
+Functions
+Advanced
+
+CONTEXT
+
+Knowledge Base
+
+EVALUATION
+
+Quality Checks
+
+WEBHOOK CONFIGURATION
+
+Webhook URL (Optional)
+
+​
+Receive real-time call events and updates via webhook
+
+Webhook Timeout
+
+ms
+​
+Maximum time to wait for webhook response (milliseconds)
+
+VOICEMAIL CONFIGURATION
+
+Enable Voicemail Detection
+
+Detect when a call goes to voicemail
+
+Disabled
+
+USER KEYPAD INPUT DETECTION
+
+Enable the AI to listen for keypad input during a call
+
+The AI will respond when any of the following conditions are met
+
+Disabled
+
+BACKGROUND AUDIO
+
+Enable Background Audio
+
+Play ambient sounds during calls
+
+Disabled
+
+POST-CALL ANALYSIS
+
+Analysis Model (Optional)
+
+​
+​
+AI model to use for analyzing call transcripts and extracting variables
+Add Variable
+
+No analysis variables defined yet
+
+Add variables to extract structured data from call transcripts
+
+PRONUNCIATION DICTIONARY
+
+Define how specific words should be pronounced. Words are replaced before TTS.
+Add Entry

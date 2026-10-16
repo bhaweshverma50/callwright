@@ -73,10 +73,13 @@ greets; the call row has channel `sip_inbound`, correct from/to and `phone_numbe
 
 ## Phase 4: User Story 2 - Place outbound calls from a number (Priority: P1)
 
-**Goal**: Outbound API and dialog with idempotency, policies, dialling and outcome mapping.
+**Goal**: Outbound API and dialog with idempotency, policies (including the do-not-call list and
+calling hours, spec FR-034 to FR-038), dialling and outcome mapping.
 
 **Independent Test**: Outbound call to a test destination is answered by the agent; replay with
-the same key places no second call.
+the same key places no second call; a do-not-call destination is blocked with `dnc_listed` and
+a request outside the recipient's calling hours with `outside_calling_hours`, neither creating
+a call or charge.
 
 ### Tests for User Story 2 (write first, must fail)
 
@@ -85,6 +88,10 @@ the same key places no second call.
 - [ ] T027 [P] [US2] Money test: 100 replays with one key place one call and one `call_charge`; same key with a different body returns 422; missing key returns 400 in `services/api/tests/integration/test_outbound_idempotency.py`
 - [ ] T028 [P] [US2] Money test: busy, no-answer, ring-timeout and failed outcomes have zero billable seconds, no charge, and enqueue `call_ended` in `services/api/tests/integration/test_outbound_outcomes_no_charge.py`
 - [ ] T029 [P] [US2] Worker tests for dialling and SIP status mapping (486, 600, 408, 480, 487, 403, 404, 503, auth failure, ring timeout) in `services/voice-worker/tests/unit/test_telephony.py` and harness scripts `outbound_answer.yaml`, `outbound_busy.yaml`, `outbound_no_answer.yaml` in `services/voice-worker/tests/harness/scripts/`
+- [ ] T070 [P] [US2] Contract test for `/v1/dnc-entries`, `/v1/dnc-entries/{dnc_id}`, `/v1/dnc-entries/import`, `/v1/outbound-calling-hours`, `/v1/outbound-policy-decisions` and the `PolicyBlockedProblem` 422 body of `POST /v1/outbound-calls` against `contracts/outbound.yaml` in `services/api/tests/contract/test_outbound_compliance_contract.py`
+- [ ] T071 [P] [US2] Unit tests for calling-hour evaluation (default 09:00 to 21:00, per-weekday windows, `null` day, `24:00` end, start not before end rejected, DST day, recipient local weekday, override precedence, invalid override, multi-zone all-zones rule, unknown zone blocks, `next_allowed_at`) in `services/api/tests/unit/test_calling_hours.py`
+- [ ] T072 [P] [US2] Unit tests for do-not-call normalisation and CSV import (E.164 and national formats with `default_region`, duplicates in file and already listed, invalid rows with row numbers, missing `number` header, row and size limits) in `services/api/tests/unit/test_dnc_import.py`
+- [ ] T073 [P] [US2] Money test: `dnc_listed` and `outside_calling_hours` requests return 422 with the reason, create no `calls` row, no LiveKit dispatch and no `call_charge`, write one `outbound_policy_decisions` row, and are not stored against the Idempotency-Key (a retry after removing the entry dials once); DNC wins when both apply in `services/api/tests/integration/test_outbound_compliance_no_charge.py`
 
 ### Implementation for User Story 2
 
@@ -94,8 +101,15 @@ the same key places no second call.
 - [ ] T033 [US2] Implement `dial()` (post `ringing`, create SIP participant, wait for answer, post `in_progress` or mapped status with `sip_<code>` diagnostic) in `services/voice-worker/worker/telephony.py`
 - [ ] T034 [P] [US2] Implement `OutboundCallDialog` (destination, variables pre-filled from agent defaults, result message) in `apps/web/src/routes/channels/components/OutboundCallDialog.tsx`
 - [ ] T035 [US2] Add outbound agent select and "Make outbound call" to `apps/web/src/routes/channels/components/NumberDetailPanel.tsx`; add `outbound.yaml` to the contract assembly and regenerate `apps/web/src/api/`
+- [ ] T074 [US2] Extend migration `services/api/app/migrations/versions/0010_channels.py` with enums `dnc_source`, `outbound_block_reason`, `timezone_source` and tables `dnc_entries`, `outbound_calling_hours`, `outbound_policy_decisions` (RLS, constraints, indexes from data-model.md sections 7 to 9), and create the ORM models in `services/api/app/outbound/models.py`
+- [ ] T075 [US2] Implement do-not-call list, search, add (409 on duplicate), remove and CSV import (`phonenumbers` normalisation, `ON CONFLICT DO NOTHING`, invalid-row report, 1,000,000-entry cap) in `services/api/app/outbound/dnc.py` and routes `GET/POST /v1/dnc-entries`, `DELETE /v1/dnc-entries/{dnc_id}`, `POST /v1/dnc-entries/import` in `services/api/app/outbound/router.py`
+- [ ] T076 [US2] Implement calling-hour settings (lazy default row, `GET/PUT /v1/outbound-calling-hours`) and the evaluator (recipient zone from override or `phonenumbers.timezone`, `zoneinfo` conversion, multi-zone rule, `next_allowed_at`) in `services/api/app/outbound/calling_hours.py` and `services/api/app/outbound/router.py`
+- [ ] T068 [US2] Register the `dnc_listed` and `outside_calling_hours` policies in `OUTBOUND_POLICIES` after `agent_published`, return `PolicyBlockedProblem` (422, type `outbound-policy`), write the `outbound_policy_decisions` row in its own transaction, skip Idempotency-Key storage for blocks, accept `recipient_timezone` and return `recipient_timezones` and `timezone_source` on success in `services/api/app/outbound/service.py`, `services/api/app/outbound/schemas.py` and `services/api/app/outbound/router.py` (moved here from Polish; uses T075, T076)
+- [ ] T077 [US2] Implement `GET /v1/outbound-policy-decisions` (filters `reason`, `to_number`, `since`; newest first) in `services/api/app/outbound/service.py` and `services/api/app/outbound/router.py`
+- [ ] T078 [P] [US2] Implement `useOutboundCompliance` and a "Compliance" tab on `/phone-numbers` with the do-not-call list (search, add, remove), `DncImportDialog` (CSV upload, default region, result counts and invalid rows), `CallingHoursEditor` (per-weekday start, end or no calls) and recent blocked attempts, in `apps/web/src/routes/channels/hooks/useOutboundCompliance.ts`, `apps/web/src/routes/channels/components/ComplianceTab.tsx`, `apps/web/src/routes/channels/components/DncImportDialog.tsx`, `apps/web/src/routes/channels/components/CallingHoursEditor.tsx` and `apps/web/src/routes/channels/PhoneNumbersPage.tsx`
+- [ ] T079 [US2] Add an optional recipient timezone field and specific block messages (`dnc_listed`, `outside_calling_hours` with local time and next allowed time) to `apps/web/src/routes/channels/components/OutboundCallDialog.tsx` (after T034)
 
-**Checkpoint**: Outbound calling works from API and UI with no double dialling.
+**Checkpoint**: Outbound calling works from API and UI with no double dialling, and do-not-call and calling-hour blocks are enforced before dialling.
 
 ---
 
@@ -183,10 +197,9 @@ place a WhatsApp call; the call row has channel `whatsapp`.
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T065 [P] RLS isolation tests for all 010 tables and a check that routing and lookup functions return no secret columns in `services/api/tests/integration/test_rls_channels.py`
+- [ ] T065 [P] RLS isolation tests for all 010 tables (including `dnc_entries`, `outbound_calling_hours`, `outbound_policy_decisions`) and a check that routing and lookup functions return no secret columns in `services/api/tests/integration/test_rls_channels.py`
 - [ ] T066 [P] Add OpenTelemetry spans for provisioning, routing, inbound webhook and dialling (`call_id`, `phone_number_id`, `whatsapp_channel_id`) in `services/api/app/phone_numbers/provisioning.py`, `services/api/app/phone_numbers/routing.py` and `services/voice-worker/worker/telephony.py`
 - [ ] T067 [P] Add an optional SIPp end-to-end scenario (inbound answer, outbound busy) in `services/api/tests/e2e/sipp/` used by quickstart section 6
-- [ ] T068 After `/speckit-clarify` resolves FR-034, add calling-hour and do-not-call policies to `OUTBOUND_POLICIES` in `services/api/app/outbound/service.py` with tests in `services/api/tests/unit/test_outbound_policies.py` (skip if out of scope)
 - [ ] T069 Run every section of `specs/010-channels/quickstart.md` and fix drift
 
 ---
@@ -218,6 +231,10 @@ Task: "T026 Outbound policies unit tests in services/api/tests/unit/test_outboun
 Task: "T027 Idempotency money test in services/api/tests/integration/test_outbound_idempotency.py"
 Task: "T028 Outcome no-charge money test in services/api/tests/integration/test_outbound_outcomes_no_charge.py"
 Task: "T029 Telephony mapping tests in services/voice-worker/tests/unit/test_telephony.py"
+Task: "T070 Compliance contract test in services/api/tests/contract/test_outbound_compliance_contract.py"
+Task: "T071 Calling-hour unit tests in services/api/tests/unit/test_calling_hours.py"
+Task: "T072 DNC import unit tests in services/api/tests/unit/test_dnc_import.py"
+Task: "T073 Compliance no-charge money test in services/api/tests/integration/test_outbound_compliance_no_charge.py"
 ```
 
 ## Implementation Strategy

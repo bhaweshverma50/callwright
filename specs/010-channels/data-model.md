@@ -135,12 +135,84 @@ secrets. App secrets are then read inside a workspace-scoped transaction.
 
 **OutboundCallRequest**: `to_number` (E.164), `from_number` (E.164 of an active number in the
 workspace), `agent_id?`, `dynamic_variables?` (003 rules), `metadata?` (max 4 KB),
-`ring_timeout_s?` (10 to 60, default 30). Header `Idempotency-Key` required.
+`ring_timeout_s?` (10 to 60, default 30), `recipient_timezone?` (IANA name; overrides the zone
+derived from `to_number`). Header `Idempotency-Key` required.
 
 **InboundWebhookReply**: `action` (`answer` default, `decline`), `agent_id?`,
 `dynamic_variables?`, `metadata?`; max 16 KB.
 
-## 7. Validation rules (from spec)
+## 7. `dnc_entries` (module `outbound`, spec FR-035)
+
+| Column | Type | Null | Notes |
+|---|---|---|---|
+| id | text PK | no | `dnc_` ULID (new prefix, see plan Complexity Tracking) |
+| workspace_id | text FK workspaces | no | RLS |
+| e164 | text | no | normalised with `phonenumbers` (`default_region` used for national formats) |
+| note | text | yes | max 200 chars |
+| source | enum `dnc_source` | no | `manual`, `csv_import` |
+| import_batch_id | text | yes | groups rows from one CSV import (opaque ULID, not an API resource) |
+| created_by_user_id | text FK users | yes | |
+| created_at | timestamptz | no | |
+
+**Constraints and indexes**: `UNIQUE (workspace_id, e164)` (one entry per number; used by the
+policy lookup); `(workspace_id, created_at DESC)`; `text_pattern_ops` index on `e164` for
+prefix search. At most 1,000,000 rows per workspace (checked in service). Removal is a hard
+delete; past blocks stay explained by `outbound_policy_decisions.dnc_e164`.
+
+CSV import: UTF-8, header row required with a `number` column and optional `note` column; max
+100,000 data rows and 10 MB; rows are normalised, de-duplicated within the file and against
+existing entries (`INSERT ... ON CONFLICT DO NOTHING`), and invalid rows are reported (first
+1,000 returned) without failing the import.
+
+## 8. `outbound_calling_hours` (module `outbound`, spec FR-036)
+
+| Column | Type | Null | Notes |
+|---|---|---|---|
+| workspace_id | text PK FK workspaces | no | RLS; row created lazily with defaults on first read or write |
+| windows | jsonb | no | keys `mon`..`sun`; each value `{"start": "HH:MM", "end": "HH:MM"}` or `null` (no calls that day); default every day `{"start": "09:00", "end": "21:00"}` |
+| updated_by_user_id | text FK users | yes | |
+| updated_at | timestamptz | no | |
+
+Rules: `start` in `00:00`..`23:59`, `end` in `00:01`..`24:00`, `start < end` (no window crosses
+midnight), minute resolution. Evaluated in the recipient's local time on the recipient's local
+weekday.
+
+### Recipient timezone resolution (spec FR-037)
+
+1. `recipient_timezone` in the request (must be a valid IANA name, else 422 validation error).
+2. Otherwise `phonenumbers.timezone.time_zones_for_number(to_number)`; the unknown marker
+   (`Etc/Unknown`) counts as no zone.
+3. Several candidate zones: allowed only if the local time is inside the window in every zone;
+   `next_allowed_at` is the earliest instant at which that holds.
+4. No zone: blocked with `outside_calling_hours`, `timezone_source = unknown`.
+
+## 9. `outbound_policy_decisions` (module `outbound`, spec FR-038)
+
+Only blocks are logged (allowed requests are evidenced by the call row).
+
+| Column | Type | Null | Notes |
+|---|---|---|---|
+| id | bigint identity PK | no | internal; listed by cursor, no public prefix |
+| workspace_id | text | no | RLS |
+| decided_at | timestamptz | no | |
+| reason | enum `outbound_block_reason` | no | `dnc_listed`, `outside_calling_hours` |
+| to_number | text | no | E.164 |
+| from_number | text | no | E.164 |
+| phone_number_id | text | yes | `num_` |
+| agent_id | text | yes | |
+| requested_by | text | no | `usr_` id or API key id |
+| idempotency_key | text | yes | |
+| dnc_entry_id | text | yes | `dnc_`; no FK (entry may be removed later) |
+| dnc_e164 | text | yes | number of the matching entry, kept after removal |
+| recipient_timezones | text[] | yes | zone(s) evaluated |
+| timezone_source | enum `timezone_source` | yes | `override`, `number_region`, `unknown` |
+| recipient_local_time | timestamp (no tz) | yes | local wall clock in the first evaluated zone |
+| next_allowed_at | timestamptz | yes | calling hours only |
+
+**Indexes**: `(workspace_id, decided_at DESC)`; `(workspace_id, to_number)`. Rows are never
+charged and never create a `calls` row; no purge in v1.
+
+## 10. Validation rules (from spec)
 
 - E.164 for every number field; WhatsApp caller ids normalised by prefixing "+".
 - Termination address per research R14; `sip:` / `sips:` stripped.
@@ -149,3 +221,8 @@ workspace), `agent_id?`, `dynamic_variables?` (003 rules), `metadata?` (max 4 KB
 - `inbound_allowed_cidrs` valid IPv4 or IPv6 CIDR, max 20.
 - Attached agents: same workspace, `published_version_id IS NOT NULL` at attach time.
 - Outbound: `to_number != from_number`; from number `active`; rate limit 10/s burst 20.
+- Outbound policy order (`OUTBOUND_POLICIES`): `same_number`, `number_active`,
+  `agent_published`, `dnc_listed`, `outside_calling_hours`; the first failing policy wins.
+- Do-not-call numbers: E.164 after normalisation; `default_region` ISO 3166-1 alpha-2;
+  note max 200 chars.
+- Calling-hour windows: as in section 8; all seven weekday keys required on update.

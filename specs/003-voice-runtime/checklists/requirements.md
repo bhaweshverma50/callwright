@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,10 +31,10 @@
 
 ## Notes
 
-- One marker remains (Assumptions): whether recording can be turned off per workspace or agent.
-  The plan proceeds with "always on" and keeps a `recording_enabled` flag on the call so an
-  opt-out can be added without a data change. Resolve with `/speckit-clarify` before tasks for
-  US4 start.
+- The recording marker was resolved in the 2026-10-16 clarification session: workspace default
+  (on) plus per-agent override (`inherit`, `on`, `off`), resolved at admission into
+  `calls.recording_enabled` (FR-043, FR-044). The workspace default and agent override fields
+  are owned by 001 and 002; 003 only reads them.
 - Vendor, transport and storage names are deliberately absent. HTTP response classes (2xx, 408,
   429, 5xx) appear in FR-038 because they are part of the customer-facing webhook contract, not
   an implementation choice.

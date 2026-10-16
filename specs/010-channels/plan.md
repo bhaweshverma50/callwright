@@ -10,7 +10,11 @@ numbers get a LiveKit SIP inbound trunk, an outbound trunk, and a dispatch rule 
 while an inbound agent is attached. Inbound calls (phone and WhatsApp) are routed at claim time by
 010's `InboundRouter` implementations and admitted by 003's shared admission. Outbound calls are
 admitted by the API and dialled by the worker through the trunk (`worker/telephony.py`), with
-SIP outcomes mapped to `busy`, `no_answer` or `failed`. WhatsApp Business voice uses the Cloud
+SIP outcomes mapped to `busy`, `no_answer` or `failed`. Before admission, two compliance
+policies in the existing `OUTBOUND_POLICIES` hook block dialling when the destination is on the
+workspace do-not-call list (`dnc_listed`) or outside the workspace's per-weekday calling-hour
+window in the recipient's local time (`outside_calling_hours`); blocks return problem+json,
+create no call and no charge, and are written to a policy decision log (spec FR-034 to FR-038). WhatsApp Business voice uses the Cloud
 API Calling feature in SIP mode so WhatsApp calls enter LiveKit like phone calls; Callwright
 checks credentials, enables calling, verifies the callback and checks notification signatures.
 Edits never touch established calls; deletion with active calls drains first.
@@ -22,14 +26,18 @@ Edits never touch established calls; deletion with active calls drains first.
 (SIP trunks, dispatch rules, `CreateSIPParticipant`), `phonenumbers`, respx (tests);
 worker: `livekit-agents` 1.x (from 003); web: TanStack Query, Radix dialogs.
 **Storage**: PostgreSQL 16 with RLS (`phone_numbers`, `whatsapp_channels`,
-`whatsapp_caller_routes`, FKs and two columns on 003's `calls`); Redis for the outbound rate
-limit; secrets in 001's `secrets` table.
+`whatsapp_caller_routes`, `dnc_entries`, `outbound_calling_hours`,
+`outbound_policy_decisions`, FKs and two columns on 003's `calls`); Redis for the outbound rate
+limit; secrets in 001's `secrets` table. Timezones from `phonenumbers.timezone` and the
+standard library `zoneinfo` (IANA database).
 **Testing**: pytest contract tests per fragment; integration tests with a fake LiveKit client
 and respx for the WhatsApp Graph API; worker telephony tests in the 003 offline harness with a
 fake SIP participant; optional SIPp end-to-end in quickstart.
 **Target Platform**: Linux containers; LiveKit Cloud SIP (or self-hosted `livekit-sip`).
 **Project Type**: Web service + realtime worker + SPA.
 **Performance Goals**: outbound request acknowledged in under 1 s (p95) and ringing in under 2 s;
+do-not-call and calling-hour checks under 50 ms p95 (one indexed lookup plus in-memory
+timezone math); 100,000-row do-not-call CSV import under 60 s;
 inbound first agent audio within ring duration + 2 s (p95); WhatsApp webhook acknowledged in under
 5 s; import completes (routing active) in under 30 s.
 **Constraints**: Never drop an established call on edit or delete; secrets never returned or
@@ -45,11 +53,11 @@ logged; inbound routing must work before a workspace is known while RLS stays en
 |---|---|---|---|
 | Vendor behind adapter | I | No STT/LLM/TTS/NC code here; the speech pipeline stays 003's adapters. Telephony runs on the constitution's LiveKit SIP; carriers are bring-your-own and configured as data (address, transport, credentials), never hard-coded. WhatsApp is the channel itself, isolated in `whatsapp/graph_client.py`. | Pass |
 | Latency impact stated | II | Not on the per-turn hot path. Inbound adds routing lookup (two indexed reads) and an optional inbound webhook (max 3 s) that overlap the ring duration (research R5, R13), so greeting latency is unchanged when the webhook is faster than the ring time. Outbound dialling happens before `in_progress`. `worker/telephony.py` changes run under 003's benchmark gate (003 T105). | Pass |
-| Metering impact stated | III | No new meters. Calls are billed by 003/001 from `connected_at`, so ringing, busy, no-answer, declined and failed calls cost nothing; carrier and Meta charges are the operator's (spec Assumptions). Outbound idempotency prevents double charges (money test T027). | Pass |
+| Metering impact stated | III | No new meters. Calls are billed by 003/001 from `connected_at`, so ringing, busy, no-answer, declined and failed calls cost nothing; compliance blocks run before 003 admission, so they create no call row and can never be charged (money test T073); carrier and Meta charges are the operator's (spec Assumptions). Outbound idempotency prevents double charges (money test T027). | Pass |
 | Measurability path | IV | Phone and WhatsApp calls produce the same call records, transcripts, latency and pipeline as web calls, so 006/007/008 work unchanged; routing decisions are recorded in `calls.route_detail`. | Pass |
-| Tenancy and privacy | V | RLS on all new tables; the only cross-tenant reads are narrow `SECURITY DEFINER` routing functions that return no secrets (research R4); carrier passwords, WhatsApp tokens, verify tokens, app secrets and Meta SIP credentials stored via `secrets`, masked in responses and redacted in logs (test T038); WhatsApp notifications verified with the app secret; inbound webhook signed and URL-guarded. | Pass |
+| Tenancy and privacy | V | RLS on all new tables; the only cross-tenant reads are narrow `SECURITY DEFINER` routing functions that return no secrets (research R4); carrier passwords, WhatsApp tokens, verify tokens, app secrets and Meta SIP credentials stored via `secrets`, masked in responses and redacted in logs (test T038); WhatsApp notifications verified with the app secret; inbound webhook signed and URL-guarded. Do-not-call entries and policy decisions are workspace-scoped (RLS) personal data, never shared across workspaces, and covered by the RLS test T065. | Pass |
 | Complexity justified | VI | No new deployables or queues; one cron for drain cleanup; per-number SIP objects justified below. | Pass |
-| Contract and money tests | VII | Contract tests first for all three fragments (T011, T025, T045); money tests first: outbound idempotency places one call and one charge (T027), declined inbound and no-agent calls create no charge (T012, T062), busy/no-answer/failed outcomes not charged (T028). Worker telephony covered in the offline harness (T015, T029). | Pass |
+| Contract and money tests | VII | Contract tests first for all three fragments (T011, T025, T045); money tests first: outbound idempotency places one call and one charge (T027), declined inbound and no-agent calls create no charge (T012, T062), busy/no-answer/failed outcomes not charged (T028), compliance blocks create no call and no charge (T073); compliance contract test T070. Worker telephony covered in the offline harness (T015, T029). | Pass |
 
 ## Project Structure
 
@@ -86,6 +94,9 @@ services/api/app/
 │   └── jobs.py               # drain cleanup cron (numbers and WhatsApp channels)
 ├── outbound/
 │   ├── schemas.py  service.py  router.py   # policies, admission call, OutboundDialProvider
+│   ├── models.py             # NEW: DncEntry, OutboundCallingHours, OutboundPolicyDecision
+│   ├── dnc.py                # NEW: do-not-call CRUD, search, CSV import with E.164 normalisation
+│   └── calling_hours.py      # NEW: weekly windows, recipient timezone resolution, evaluator
 ├── whatsapp/
 │   ├── models.py  schemas.py  service.py  router.py   # channels, caller routes, public webhook
 │   ├── graph_client.py       # WhatsApp Cloud API calls (check number, calling settings, SIP credentials)
@@ -96,12 +107,12 @@ services/api/app/
 services/api/tests/
 ├── contract/   test_phone_numbers_contract.py  test_outbound_contract.py  test_whatsapp_contract.py
 ├── unit/       test_validation.py  test_outbound_policies.py  test_whatsapp_signatures.py
-│               test_inbound_webhook_reply.py
+│               test_inbound_webhook_reply.py  test_calling_hours.py  test_dnc_import.py
 ├── integration/ test_number_provisioning.py  test_inbound_routing.py  test_inbound_declines_no_charge.py
 │                test_outbound_idempotency.py  test_outbound_outcomes_no_charge.py  test_number_drain.py
 │                test_number_edit.py  test_whatsapp_setup.py  test_whatsapp_webhook.py
 │                test_whatsapp_inbound.py  test_caller_routes.py  test_inbound_webhook.py
-│                test_rls_channels.py  test_secret_redaction.py
+│                test_rls_channels.py  test_secret_redaction.py  test_outbound_compliance_no_charge.py
 ├── fakes/livekit_fake.py
 └── e2e/sipp/
 
@@ -114,9 +125,10 @@ services/voice-worker/
 apps/web/src/routes/channels/
 ├── PhoneNumbersPage.tsx      # /phone-numbers, tabs "SIP numbers" and "WhatsApp channels"
 ├── components/ImportNumberDialog.tsx  NumberDetailPanel.tsx  OutboundCallDialog.tsx
+│              ComplianceTab.tsx  DncImportDialog.tsx  CallingHoursEditor.tsx
 │              DeleteNumberDialog.tsx  WhatsAppChannelDialog.tsx  WhatsAppChannelPanel.tsx
 │              CallerRoutesTable.tsx  SipSettingsCard.tsx
-└── hooks/usePhoneNumbers.ts  useWhatsAppChannels.ts
+└── hooks/usePhoneNumbers.ts  useWhatsAppChannels.ts  useOutboundCompliance.ts
 ```
 
 **Structure Decision**: Modules match the 010 row of research/architecture.md section 3
@@ -134,7 +146,10 @@ creates room `call-in-*` and dispatches `callwright-voice` with
 admits and returns RuntimeConfig; worker (`telephony.inbound_ring_phase`) posts `ringing`, waits
 ring duration, posts `in_progress`, starts the session.
 
-**Outbound**: `POST /v1/outbound-calls`, rate limit, policies, 003 `admit(channel=sip_outbound)`,
+**Outbound**: `POST /v1/outbound-calls`, rate limit, policies (`same_number`, `number_active`,
+`agent_published`, then `dnc_listed`, then `outside_calling_hours`; a block returns 422
+problem+json with `reason`, writes `outbound_policy_decisions`, and is not stored against the
+idempotency key), 003 `admit(channel=sip_outbound)`,
 create room `call-{call_id}`, dispatch with `{call_id}`, return 202. Worker claims; claim
 includes `outbound_dial` from 010's provider; `telephony.dial()` posts `ringing`, creates the
 SIP participant, waits for answer, posts `in_progress` or the mapped failure status.
@@ -152,4 +167,6 @@ start the same claim path; `WhatsAppRouter.resolve()` applies caller route, then
 | `SECURITY DEFINER` routing functions | Inbound routing must find the workspace from a number before RLS context exists | Bypassing RLS for the whole claim exposes every table |
 | One LiveKit inbound trunk, outbound trunk and dispatch rule per number | Edits, detaches and deletes are isolated; detaching declines calls at the SIP edge with no cost | A shared trunk list races on concurrent edits and couples numbers |
 | New ID prefix `wcr_` for caller routes | Routes are addressable resources in the API | Using the caller number as key leaks PII into URLs and logs |
+| New ID prefix `dnc_` for do-not-call entries | Entries are addressable resources (`DELETE /v1/dnc-entries/{dnc_id}`) and are referenced from policy decisions | Using the number as key puts PII in URLs and logs |
+| Three new tables in the `outbound` module (`dnc_entries`, `outbound_calling_hours`, `outbound_policy_decisions`) | FR-034 to FR-038 require stored lists, per-workspace windows and an auditable block log | Keeping windows in 001's workspace settings couples 001 to an outbound-only concern; logging blocks only to application logs is not operator-visible |
 | Columns and FKs added to 003's `calls` table (`ring_timeout_s`, `route_detail`, FKs) | Outbound ring timeout and routing outcome belong on the call | A side table for two fields adds a join to every call read |

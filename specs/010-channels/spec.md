@@ -5,6 +5,12 @@
 **Status**: Draft
 **Input**: User description: "Bring-your-own SIP trunk number import (number, label, termination address, optional credentials); inbound and outbound agent attachment per number; inbound routing and outbound trunks on the media platform; an outbound call API (destination, from number, agent, dynamic variables, idempotency); WhatsApp Business voice channels (credentials, webhook verification, attach agent, caller routes mapping caller numbers to agents); number edit and delete that never drops an active call."
 
+## Clarifications
+
+### Session 2026-10-16
+
+- Q: Are calling-hour windows (recipient local time) and a workspace do-not-call list required in v1, or is compliance the operator's responsibility? → A: Both are required in v1. Outbound calls are blocked before dialling when the destination is on the workspace do-not-call list (add, list, remove and bulk CSV import; numbers normalised to E.164) or when the recipient's local time is outside the workspace's calling-hour window (timezone derived from the number's country or region, with an explicit per-call override; default 09:00 to 21:00, configurable per workspace and per weekday). Blocked attempts return an error with a specific reason (`dnc_listed`, `outside_calling_hours`), are logged as policy decisions, and are never billed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Import a number and let an agent answer it (Priority: P1)
@@ -62,7 +68,10 @@ core use case and the main driver of call volume.
 
 **Independent Test**: Request an outbound call to a test destination that answers; confirm the
 agent speaks after answer and the call record has channel "phone outbound". Repeat the same
-request with the same idempotency key and confirm no second call is placed.
+request with the same idempotency key and confirm no second call is placed. Add the destination
+to the do-not-call list and confirm the next request is blocked with `dnc_listed`; remove it,
+set today's calling-hour window to exclude the recipient's current local time, and confirm the
+request is blocked with `outside_calling_hours`; in both cases no call is placed or charged.
 
 **Acceptance Scenarios**:
 
@@ -82,6 +91,23 @@ request with the same idempotency key and confirm no second call is placed.
 7. **Given** a workspace at its concurrency limit or without credit, **When** an outbound call
    is requested, **Then** it is refused with the same reasons as any other call.
 8. **Given** the destination equals the from number, **When** requested, **Then** it is refused.
+9. **Given** `+14155550199` on the workspace do-not-call list, **When** an outbound call to
+   `(415) 555-0199` with region US is requested, **Then** it is blocked before dialling with
+   reason `dnc_listed`, no call record or charge is created, and a policy decision is logged.
+10. **Given** the default calling-hour window (09:00 to 21:00) and a destination whose local time
+    is 21:30, **When** an outbound call is requested, **Then** it is blocked with reason
+    `outside_calling_hours`, the error shows the recipient timezone used, the local time and the
+    next allowed time, and nothing is billed.
+11. **Given** a destination whose number maps to Pacific time and a request with an explicit
+    recipient timezone of `America/New_York`, **When** the call is requested, **Then** the window
+    is evaluated in New York time.
+12. **Given** a CSV file with 1,000 numbers in mixed formats, some duplicated and some invalid,
+    **When** the operator imports it to the do-not-call list, **Then** valid numbers are stored
+    once in E.164, and the result reports imported, duplicate and invalid counts with the row
+    numbers of invalid entries.
+13. **Given** Sunday's calling-hour window set to "no calls", **When** an outbound call is
+    requested while it is Sunday at the recipient, **Then** it is blocked with
+    `outside_calling_hours`.
 
 ---
 
@@ -222,6 +248,22 @@ work without it.
 - The same E.164 number is connected both as a phone number and as a WhatsApp channel: both work
   and calls are attributed to the right channel.
 - An inbound webhook reply is larger than 16 KB or not valid JSON: it is ignored as a failure.
+- A destination is both on the do-not-call list and outside calling hours: the reason reported
+  is `dnc_listed` (the do-not-call check runs first).
+- A destination is added to the do-not-call list while a call to it is ringing or in progress:
+  that call continues; the list is checked only before dialling.
+- A destination number spans several time zones (for example a country with more than one zone)
+  and no override is given: the call is allowed only if the recipient's local time is inside
+  the window in every candidate zone.
+- No time zone can be derived from the destination number and no override is given: the call is
+  blocked with `outside_calling_hours` and a message asking for an explicit recipient timezone.
+- The override names an unknown timezone: the request is rejected as invalid input (not a
+  policy block).
+- A daylight-saving change happens on the call day: the window uses the recipient's local wall
+  clock time on that day.
+- A blocked request is retried later with the same idempotency key: the block is not stored
+  against the key, so the retry is evaluated afresh and dials if it is now allowed.
+- Inbound calls are not affected by the do-not-call list or calling hours.
 
 ## Requirements *(mandatory)*
 
@@ -276,8 +318,8 @@ work without it.
   different body MUST be refused.
 - **FR-017**: System MUST refuse outbound requests when: the destination equals the from number,
   the from number is not active, there is no agent, the agent has no published version, the
-  workspace exceeds 10 outbound requests per second, or standard admission fails (credit,
-  concurrency, unsupported configuration).
+  workspace exceeds 10 outbound requests per second, a compliance policy blocks it (FR-034), or
+  standard admission fails (credit, concurrency, unsupported configuration).
 - **FR-018**: System MUST record the outcome of every placed outbound call: answered (then the
   normal lifecycle), busy, no answer (including ring timeout) or failed (with the carrier's
   response code); busy, no-answer and failed calls MUST NOT be charged and MUST trigger
@@ -332,9 +374,30 @@ work without it.
 
 **Compliance**
 
-- **FR-034**: Outbound calling MUST [NEEDS CLARIFICATION: Are calling-hour windows (recipient
-  local time) and a workspace do-not-call list required in v1, or is compliance the operator's
-  responsibility through their own systems?]
+- **FR-034**: Before dialling any outbound call (API or UI), System MUST block the request when
+  the destination is on the workspace's do-not-call list (reason `dnc_listed`) or when the
+  recipient's local time is outside the workspace's calling-hour window for the recipient's
+  local weekday (reason `outside_calling_hours`). The do-not-call check runs first. A blocked
+  request MUST return an error with the specific reason (and, for calling hours, the timezone
+  used, the recipient's local time and the next allowed time), MUST NOT create a call, dial, or
+  charge, and MUST be logged as a policy decision.
+- **FR-035**: Users MUST be able to list (with search by number), add, remove and bulk import
+  (CSV) do-not-call entries per workspace. Every number MUST be normalised to E.164 (numbers
+  without a country code use a region chosen at entry or import time), each number appears at
+  most once per workspace, and an entry MAY carry a note (max 200 characters). A CSV import
+  (max 100,000 rows, 10 MB) MUST store valid numbers, skip duplicates and report imported,
+  duplicate and invalid counts with the row numbers of invalid entries.
+- **FR-036**: Each workspace MUST have a calling-hour window per weekday (start and end in
+  recipient local time, or "no calls" for that day), defaulting to 09:00 to 21:00 every day,
+  editable by operators. Windows do not cross midnight; an end of 24:00 means end of day.
+- **FR-037**: The recipient's timezone MUST be derived from the destination number's country or
+  region; an outbound request MAY pass an explicit recipient timezone (IANA name) that overrides
+  it. When the number maps to several zones and no override is given, the window MUST hold in
+  every candidate zone; when no zone can be derived and no override is given, the request MUST
+  be blocked with `outside_calling_hours`.
+- **FR-038**: Policy decisions MUST record the time, destination, from number, agent,
+  requester, reason, the matching do-not-call entry or the timezone (and its source) and local
+  time used, and MUST be viewable by operators of the workspace.
 
 ### Key Entities
 
@@ -346,8 +409,14 @@ work without it.
   verification and setup timestamps.
 - **Caller Route**: within a WhatsApp channel, a caller number mapped to an agent.
 - **Outbound Call Request**: the request that created an outbound call; destination, from
-  number, agent, variables, metadata, ring timeout and idempotency key. The resulting call is a
-  normal Call (003).
+  number, agent, variables, metadata, ring timeout, optional recipient timezone and idempotency
+  key. The resulting call is a normal Call (003).
+- **Do-Not-Call Entry**: a destination number (E.164) the workspace must never call, with an
+  optional note, how it was added (manual, CSV import) and who added it.
+- **Calling-Hour Window**: per workspace and weekday, the start and end of allowed calling time
+  in the recipient's local time, or no calls that day.
+- **Policy Decision**: a logged outbound block with its reason and the evidence used (entry,
+  timezone, local time).
 
 ## Success Criteria *(mandatory)*
 
@@ -368,6 +437,12 @@ work without it.
   token, app secret or verify token in full.
 - **SC-008**: 100% of forged or unsigned WhatsApp notifications are rejected; verification
   succeeds on the first attempt when the operator uses the values Callwright shows.
+- **SC-009**: In tests, 100% of outbound requests to do-not-call numbers or outside the
+  recipient's calling hours are blocked before dialling with the correct reason, a logged
+  policy decision and zero charge, including numbers entered in national format.
+- **SC-010**: The do-not-call and calling-hour checks add no more than 50 ms to the outbound
+  acknowledgement at p95, so SC-003 still holds; a 100,000-row CSV import completes within
+  60 seconds.
 
 ## Assumptions
 
@@ -381,7 +456,10 @@ work without it.
 - Ring duration comes from the agent's configuration (002) and applies to inbound phone and
   WhatsApp calls; outbound calls use the per-request ring timeout instead.
 - Outbound campaigns, batch dialling and scheduling are out of scope; clients loop over the
-  outbound call API.
+  outbound call API. Blocked requests are not queued for later; the client retries.
+- The do-not-call list and calling hours are per workspace and apply only to outbound calls.
+  They are Callwright's own checks; operators remain responsible for any national registry
+  scrubbing and consent rules beyond them.
 - The outbound request rate limit (10 per second per workspace) and the inbound webhook timeout
   (3 seconds) are platform settings that can change per environment.
 - Each number belongs to one workspace; moving a number between workspaces means deleting and

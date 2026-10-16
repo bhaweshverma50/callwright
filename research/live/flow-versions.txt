@@ -1,0 +1,69 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 1m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+
+Test your agent
+
+Click the microphone to start a test call
+
+Version history
+1 version · newest first
+
+v1
+
+current
+1m ago · 76f3823ccb…
+agent created

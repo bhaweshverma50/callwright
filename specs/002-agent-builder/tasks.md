@@ -234,7 +234,7 @@ research/architecture.md section 2 and plan.md.
 
 **Purpose**: AgentConfig fields other features rely on. Added during cross-spec reconciliation on 2026-10-16.
 
-- [ ] T088 [P] Add `recording` (`inherit | on | off`, default `inherit`) to AgentConfig in `services/api/app/agents/schemas.py`, the editor's Advanced tab in `apps/web/src/routes/agents/`, and `validate_config`; resolved at call admission by 003 against 001's `recording_default`
+- [ ] T088 [P] Add `advanced.recording` (`inherit | on | off`, default `inherit`; versions without it read as `inherit`) to AgentConfig in `services/api/app/agents/schemas.py`, the editor's Advanced tab in `apps/web/src/routes/agents/`, and `validate_config`; resolved at call admission by 003 against 001's `recording_default`
 - [ ] T089 Accept snapshot-only `knowledge` block (kb ids plus retrieval settings resolved by 005) alongside `tools` and `flow` in version snapshots in `services/api/app/agent_versions/service.py`; contract test update in `services/api/tests/contract/test_agent_versions_contract.py`
 
 ## Dependencies & Execution Order

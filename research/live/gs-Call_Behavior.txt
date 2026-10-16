@@ -1,0 +1,117 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 2m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+AI Flow Assistant
+Describe the flow you want to create or modify. For example: "Create a customer support agent that handles billing and tech issues"
+​
+
+CONFIGURE
+
+·
+
+Call Behavior
+
+CONVERSATION
+
+Model
+Voice
+Call Behavior
+Functions
+Advanced
+
+CONTEXT
+
+Knowledge Base
+
+EVALUATION
+
+Quality Checks
+
+End Call on Silence
+
+30s
+
+10s
+1m
+2m
+3m
+4m
+5m
+Automatically end the call after this duration of silence (10 seconds - 5 minutes)
+
+Maximum Call Duration (Optional)
+
+minutes
+​
+Leave empty for no limit. Minimum: 0.5 minutes (30 seconds)
+
+Interruption Sensitivity
+
+0.95
+
+Low
+Medium
+High
+How easily the agent can be interrupted. Higher = more interruptible (0-1)
+
+Responsiveness
+
+0.79
+
+Slow
+Medium
+Fast
+How quickly the agent responds to user input. Higher = faster responses (0-1)

@@ -1,0 +1,89 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 3m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+AI Flow Assistant
+Describe the flow you want to create or modify. For example: "Create a customer support agent that handles billing and tech issues"
+​
+
+CONFIGURE
+
+·
+
+Knowledge Base
+
+CONVERSATION
+
+Model
+Voice
+Call Behavior
+Functions
+Advanced
+
+CONTEXT
+
+Knowledge Base
+
+EVALUATION
+
+Quality Checks
+
+Documents attached here are searchable by every agent node during the call. Useful for FAQs, product specs, policies, and reference content.
+
+No knowledge sources attached
+
+Upload PDFs, Markdown files, or paste a URL to give this agent reference material to draw from during calls.
+
++ Attach source

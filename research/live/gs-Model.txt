@@ -1,0 +1,99 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 2m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+AI Flow Assistant
+Describe the flow you want to create or modify. For example: "Create a customer support agent that handles billing and tech issues"
+​
+
+CONFIGURE
+
+·
+
+Model
+
+CONVERSATION
+
+Model
+Voice
+Call Behavior
+Functions
+Advanced
+
+CONTEXT
+
+Knowledge Base
+
+EVALUATION
+
+Quality Checks
+
+Sets the default model and provider for every Agent node in this flow. Individual nodes can override these values from the node panel on the canvas.
+
+Model
+
+GPT-5.1
+​
+
+Provider
+
+Azure OpenAI
+​
+Azure is the default; OpenAI is a fallback when the same model isn't deployed on Azure.
+
+Who speaks first
+
+Agent speaks first
+​

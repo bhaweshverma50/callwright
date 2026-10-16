@@ -111,6 +111,24 @@ psql $DATABASE_URL -c "select count(*) from credit_transactions where call_id='<
 Recording: `recording_status = available` and the object
 `recordings/<workspace_id>/<call_id>.mp4` exists in MinIO with two audio channels.
 
+Recording off (spec FR-043, FR-044). The workspace default is 001's
+`workspaces.recording_default`; the agent override is 002's `advanced.recording`
+(`inherit`, `on`, `off`). Turn the workspace default off and place a call on an agent that
+inherits it:
+
+```bash
+psql $DATABASE_URL -c "update workspaces set recording_default = false where id = '<workspace_id>';"
+# place a browser test call (section 3), end it, then:
+psql $DATABASE_URL -c "select recording_enabled, recording_setting_source, recording_status, egress_id from calls where id = '<id>';"
+# expect: f | workspace | not_recorded | (null)
+psql $DATABASE_URL -c "select count(*) from call_events where call_id = '<id>' and type = 'turn';"   # expect > 0
+```
+
+No object exists under `recordings/<workspace_id>/<call_id>.mp4`, the call is `completed` with
+no pipeline warning, and the `call_analyzed` delivery shows `recording_status: not_recorded`
+and `recording_url: null`. Setting the agent's override to `on` records the next call even with
+the workspace default off. Restore the default with `recording_default = true`.
+
 ## 7. User Story 5: webhooks
 
 Start a receiver that fails twice then succeeds:

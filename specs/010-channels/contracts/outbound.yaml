@@ -5,7 +5,12 @@ info:
   description: >
     Fragment owned by 010-channels. Places an outbound phone call from an imported number with an
     agent. Admission (credit, concurrency, configuration) is the shared 003 admission; the call
-    then follows the standard lifecycle and webhooks.
+    then follows the standard lifecycle and webhooks. Before admission, compliance policies
+    block dialling when the destination is on the workspace do-not-call list (`dnc_listed`) or
+    outside the workspace's calling-hour window in the recipient's local time
+    (`outside_calling_hours`); blocked requests create no call, are never billed and are logged
+    as policy decisions. Also defines do-not-call list management, calling-hour settings and the
+    policy decision log.
 servers:
   - url: https://api.callwright.example/v1
 security:
@@ -64,11 +69,37 @@ paths:
               schema: {$ref: '#/components/schemas/Problem'}
         '422':
           description: >
-            Validation (`invalid-number`, `same-number`, variables), `idempotency-key-reused`,
-            `unsupported-vendor`, `pricing-unavailable`, `outbound-policy`.
+            Validation (`invalid-number`, `same-number`, `invalid-timezone`, variables),
+            `idempotency-key-reused`, `unsupported-vendor`, `pricing-unavailable`, or a compliance
+            block (`outbound-policy` with `reason` `dnc_listed` or `outside_calling_hours`,
+            schema `PolicyBlockedProblem`). A compliance block creates no call record, is not
+            billed, is logged as a policy decision and is not stored against the Idempotency-Key.
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/CallRefusedProblem'
+                  - $ref: '#/components/schemas/PolicyBlockedProblem'
+              examples:
+                dnc:
+                  value:
+                    type: https://docs.callwright.example/problems/outbound-policy
+                    title: Destination is on the do-not-call list
+                    status: 422
+                    reason: dnc_listed
+                    to_number: '+14155550199'
+                    dnc_entry_id: dnc_01JB2Z3Y4X5W6V7T8S9R0Q1P2N
+                hours:
+                  value:
+                    type: https://docs.callwright.example/problems/outbound-policy
+                    title: Outside calling hours for the recipient
+                    status: 422
+                    reason: outside_calling_hours
+                    to_number: '+14155550199'
+                    recipient_timezones: [America/Los_Angeles]
+                    timezone_source: number_region
+                    recipient_local_time: '2026-10-16T21:30:00'
+                    next_allowed_at: '2026-10-17T16:00:00Z'
         '429':
           description: >
             `rate-limited` (more than 10 requests per second; `Retry-After` header) or
@@ -79,6 +110,172 @@ paths:
           content:
             application/problem+json:
               schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+  /dnc-entries:
+    get:
+      operationId: listDncEntries
+      summary: List the workspace do-not-call list
+      tags: [outbound-compliance]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: number, in: query, description: Prefix search on the E.164 number, schema: {type: string}}
+      responses:
+        '200':
+          description: Entries, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/DncEntry'}
+                  total: {type: integer}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total_pages: {type: integer}
+    post:
+      operationId: createDncEntry
+      summary: Add one number to the do-not-call list
+      tags: [outbound-compliance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DncEntryCreate'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DncEntry'}
+        '409':
+          description: '`dnc-entry-exists` (the existing entry id is in `detail`) or `dnc-limit-reached`'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: '`invalid-number` (cannot be normalised to E.164)'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /dnc-entries/{dnc_id}:
+    parameters:
+      - name: dnc_id
+        in: path
+        required: true
+        schema: {type: string, pattern: '^dnc_[0-9A-HJKMNP-TV-Z]{26}$'}
+    delete:
+      operationId: deleteDncEntry
+      summary: Remove a number from the do-not-call list
+      tags: [outbound-compliance]
+      responses:
+        '204':
+          description: Removed; the number can be called again from now on
+        '404':
+          description: Unknown entry
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /dnc-entries/import:
+    post:
+      operationId: importDncEntries
+      summary: Bulk import do-not-call numbers from CSV
+      description: >
+        UTF-8 CSV with a header row containing `number` and optionally `note`. Max 100,000 data
+        rows and 10 MB. Valid numbers are normalised to E.164 and stored once; duplicates (in the
+        file or already listed) are skipped; invalid rows are reported and do not fail the import.
+      tags: [outbound-compliance]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: text/csv
+                default_region:
+                  type: string
+                  pattern: '^[A-Z]{2}$'
+                  description: ISO 3166-1 alpha-2 region for numbers without a country code.
+      responses:
+        '200':
+          description: Import finished
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DncImportResult'}
+        '413':
+          description: '`file-too-large` (over 10 MB or 100,000 rows)'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: '`invalid-csv` (not UTF-8, or no `number` header)'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /outbound-calling-hours:
+    get:
+      operationId: getCallingHours
+      summary: Get the workspace calling-hour windows
+      tags: [outbound-compliance]
+      responses:
+        '200':
+          description: Current windows (defaults 09:00 to 21:00 every day until changed)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CallingHours'}
+    put:
+      operationId: putCallingHours
+      summary: Replace the workspace calling-hour windows
+      tags: [outbound-compliance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CallingHoursUpdate'}
+      responses:
+        '200':
+          description: Saved; applies to requests made after this response
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CallingHours'}
+        '422':
+          description: '`invalid-window` (bad time format, start not before end, or a missing weekday)'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /outbound-policy-decisions:
+    get:
+      operationId: listOutboundPolicyDecisions
+      summary: List blocked outbound requests (policy decision log)
+      tags: [outbound-compliance]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: reason, in: query, schema: {$ref: '#/components/schemas/OutboundBlockReason'}}
+        - {name: to_number, in: query, schema: {$ref: '#/components/schemas/E164'}}
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+      responses:
+        '200':
+          description: Decisions, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/PolicyDecision'}
+                  total: {type: integer}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total_pages: {type: integer}
 components:
   securitySchemes:
     bearerAuth:
@@ -120,6 +317,13 @@ components:
           minimum: 10
           maximum: 60
           default: 30
+        recipient_timezone:
+          type: string
+          maxLength: 64
+          description: >
+            IANA timezone name (for example `America/New_York`) used for the calling-hour check
+            instead of the zone derived from `to_number`. Unknown names are rejected with
+            `invalid-timezone`.
     OutboundCallAccepted:
       type: object
       required: [call_id, status, to_number, from_number, agent_id, agent_version_id, phone_number_id]
@@ -137,6 +341,13 @@ components:
         idempotent_replay:
           type: boolean
           description: True when this response replays an earlier request with the same key.
+        recipient_timezones:
+          type: array
+          items: {type: string}
+          description: Zone(s) the calling-hour check used.
+        timezone_source:
+          type: string
+          enum: [override, number_region]
     Problem:
       type: object
       required: [type, title, status]
@@ -158,3 +369,139 @@ components:
               type: string
               enum: [insufficient_credit, concurrency_limit, error]
             diagnostic: {type: string}
+    OutboundBlockReason:
+      type: string
+      enum: [dnc_listed, outside_calling_hours]
+    PolicyBlockedProblem:
+      description: >
+        Compliance block (type `outbound-policy`). No call record exists, nothing is billed, and a
+        policy decision is logged.
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [reason, to_number]
+          properties:
+            reason: {$ref: '#/components/schemas/OutboundBlockReason'}
+            to_number: {$ref: '#/components/schemas/E164'}
+            dnc_entry_id:
+              type: string
+              pattern: '^dnc_[0-9A-HJKMNP-TV-Z]{26}$'
+              description: '`dnc_listed` only.'
+            recipient_timezones:
+              type: array
+              items: {type: string}
+              description: '`outside_calling_hours` only; empty when no zone could be derived.'
+            timezone_source:
+              type: string
+              enum: [override, number_region, unknown]
+            recipient_local_time:
+              type: [string, 'null']
+              description: Local wall-clock time (ISO 8601 without offset) in the first evaluated zone.
+            next_allowed_at:
+              type: [string, 'null']
+              format: date-time
+              description: Earliest UTC instant the request would pass; null when the zone is unknown.
+    DncEntryCreate:
+      type: object
+      additionalProperties: false
+      required: [number]
+      properties:
+        number:
+          type: string
+          maxLength: 32
+          description: E.164, or a national format with `default_region`; normalised to E.164.
+        default_region:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        note:
+          type: string
+          maxLength: 200
+    DncEntry:
+      type: object
+      required: [id, number, source, created_at]
+      properties:
+        id: {type: string, pattern: '^dnc_[0-9A-HJKMNP-TV-Z]{26}$'}
+        number: {$ref: '#/components/schemas/E164'}
+        note: {type: [string, 'null']}
+        source: {type: string, enum: [manual, csv_import]}
+        created_by_user_id: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+    DncImportResult:
+      type: object
+      required: [rows, imported, duplicates, invalid_count, invalid]
+      properties:
+        rows: {type: integer, description: Data rows read}
+        imported: {type: integer}
+        duplicates: {type: integer, description: Already listed or repeated in the file}
+        invalid_count: {type: integer}
+        invalid:
+          type: array
+          maxItems: 1000
+          description: First 1,000 invalid rows.
+          items:
+            type: object
+            required: [row, value, error]
+            properties:
+              row: {type: integer, description: 1-based data row number (header excluded)}
+              value: {type: string}
+              error: {type: string}
+    DayWindow:
+      description: Allowed calling time in recipient local time; null means no calls that day.
+      oneOf:
+        - type: 'null'
+        - type: object
+          additionalProperties: false
+          required: [start, end]
+          properties:
+            start: {type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$'}
+            end: {type: string, pattern: '^(([01]\d|2[0-3]):[0-5]\d|24:00)$'}
+    WeeklyWindows:
+      type: object
+      additionalProperties: false
+      required: [mon, tue, wed, thu, fri, sat, sun]
+      properties:
+        mon: {$ref: '#/components/schemas/DayWindow'}
+        tue: {$ref: '#/components/schemas/DayWindow'}
+        wed: {$ref: '#/components/schemas/DayWindow'}
+        thu: {$ref: '#/components/schemas/DayWindow'}
+        fri: {$ref: '#/components/schemas/DayWindow'}
+        sat: {$ref: '#/components/schemas/DayWindow'}
+        sun: {$ref: '#/components/schemas/DayWindow'}
+    CallingHoursUpdate:
+      type: object
+      additionalProperties: false
+      required: [windows]
+      properties:
+        windows: {$ref: '#/components/schemas/WeeklyWindows'}
+    CallingHours:
+      type: object
+      required: [windows, is_default, updated_at]
+      properties:
+        windows: {$ref: '#/components/schemas/WeeklyWindows'}
+        is_default:
+          type: boolean
+          description: True while the workspace still uses 09:00 to 21:00 every day.
+        updated_by_user_id: {type: [string, 'null']}
+        updated_at: {type: [string, 'null'], format: date-time}
+    PolicyDecision:
+      type: object
+      required: [id, decided_at, reason, to_number, from_number, requested_by]
+      properties:
+        id: {type: integer}
+        decided_at: {type: string, format: date-time}
+        reason: {$ref: '#/components/schemas/OutboundBlockReason'}
+        to_number: {$ref: '#/components/schemas/E164'}
+        from_number: {$ref: '#/components/schemas/E164'}
+        phone_number_id: {type: [string, 'null']}
+        agent_id: {type: [string, 'null']}
+        requested_by: {type: string, description: User id or API key id}
+        dnc_entry_id: {type: [string, 'null']}
+        dnc_number: {type: [string, 'null']}
+        recipient_timezones:
+          type: array
+          items: {type: string}
+        timezone_source:
+          type: [string, 'null']
+          enum: [override, number_region, unknown, null]
+        recipient_local_time: {type: [string, 'null']}
+        next_allowed_at: {type: [string, 'null'], format: date-time}

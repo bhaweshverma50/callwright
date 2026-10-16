@@ -77,6 +77,38 @@ curl -s -X POST localhost:8000/v1/outbound-calls -H "Authorization: Bearer $JWT"
 # run the same command again: same call_id, "idempotent_replay": true
 ```
 
+Compliance (spec FR-034 to FR-038). Add the destination to the do-not-call list and retry with a
+new key; the request is blocked with `dnc_listed` and no call is created:
+
+```bash
+curl -s -X POST localhost:8000/v1/dnc-entries -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" -d '{"number":"(415) 555-0199","default_region":"US"}' | jq
+# -> {"id":"dnc_...","number":"+14155550199","source":"manual",...}
+curl -s -X POST localhost:8000/v1/outbound-calls -H "Authorization: Bearer $JWT" \
+  -H "Idempotency-Key: demo-0002" -H "Content-Type: application/json" \
+  -d '{"to_number":"+14155550199","from_number":"+14155550100"}' | jq
+# -> 422, "reason":"dnc_listed"
+curl -s -F file=@dnc.csv -F default_region=US localhost:8000/v1/dnc-entries/import \
+  -H "Authorization: Bearer $JWT" | jq      # imported, duplicates, invalid rows
+```
+
+Remove the entry (`DELETE /v1/dnc-entries/<dnc_id>`), then make today's window exclude the
+recipient's local time and retry:
+
+```bash
+curl -s -X PUT localhost:8000/v1/outbound-calling-hours -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"windows":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":null,"sat":null,"sun":null}}' | jq
+# retry the outbound call: 422, "reason":"outside_calling_hours", with recipient_timezones,
+# recipient_local_time and next_allowed_at; passing "recipient_timezone":"America/New_York"
+# evaluates in that zone instead
+curl -s "localhost:8000/v1/outbound-policy-decisions" -H "Authorization: Bearer $JWT" | jq
+psql $DATABASE_URL -c "select count(*) from calls where to_number = '+14155550199' and created_at > now() - interval '5 minutes';"
+# expect only the call from the first command; blocked attempts create no call and no charge
+```
+
+Restore the defaults by sending 09:00 to 21:00 for every day.
+
 Busy and no-answer outcomes without a carrier:
 
 ```bash

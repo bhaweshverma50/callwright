@@ -144,7 +144,7 @@ branch). 003 accepts a `use_draft` flag on test sessions for 005 and 008.
   model, voice_id, speed, expressiveness, volume}, noise_cancellation {provider, model} or null,
   call_behavior {end_on_silence_s, max_duration_s, ring_duration_ms, interruption_sensitivity,
   responsiveness}, advanced {webhook_url, webhook_timeout_ms, voicemail_detection, dtmf,
-  background_audio, analysis_model, pronunciation[]}, recording `inherit | on | off`,
+  background_audio, analysis_model, pronunciation[], recording `inherit | on | off`},
   tool_ids[], kb_ids[]. Snapshot-only blocks added by resolvers at version time: `tools` (full
   definitions, secrets as masked refs), `knowledge`, `flow` (graph, position-free hash, compiled
   form). Evaluator settings and analysis variables are per-agent tables (007), not in the config,
@@ -152,7 +152,7 @@ branch). 003 accepts a `use_draft` flag on test sessions for 005 and 008.
 - **Call** (`call_`): agent_id, agent_version_id, `origin` `live | test | simulation`,
   simulation_run_id, channel `web | sip_inbound | sip_outbound | whatsapp`, from/to, status,
   timestamps, disconnect_reason, `diagnostic`, `recording_enabled` (resolved at admission from
-  agent `recording` and workspace `recording_default`), recording key, transcript items (messages
+  agent `advanced.recording` and workspace `recording_default`), recording key, transcript items (messages
   and function calls), summary, sentiment, latency stats. Cost lives in 001's `call_costs` table
   keyed by `call_id`. Simulated calls stay out of call history and dashboard totals by default.
 - **CallEvent**: per-turn timing (stt_final_ms, llm_ttft_ms, tts_ttfb_ms, e2e_ms), tool calls,

@@ -117,13 +117,26 @@ fallback that keeps the design intact.
 - **Rationale**: FR-012 requires no dropped calls; removing routing first and resources later is
   the simplest order that guarantees it.
 
-## R9. Outbound compliance hook (open clarification)
+## R9. Outbound compliance policies (resolved 2026-10-16, spec FR-034 to FR-038)
 
 - **Decision**: Outbound validation runs an ordered list of policy checks
-  (`outbound/service.py: OUTBOUND_POLICIES`). v1 ships `same_number`, `number_active`,
-  `agent_published` and `rate_limit`. Calling-hour windows and a do-not-call list, if the spec
-  clarification requires them, become two more policies with no API change (refusal type
-  `outbound-policy`).
+  (`outbound/service.py: OUTBOUND_POLICIES`) after the rate limit and before 003 admission:
+  `same_number`, `number_active`, `agent_published`, `dnc_listed`, `outside_calling_hours`.
+  `dnc_listed` is one lookup on `UNIQUE (workspace_id, e164)` in `dnc_entries`.
+  `outside_calling_hours` resolves the recipient zone (request `recipient_timezone`, else
+  `phonenumbers.timezone.time_zones_for_number`), converts now to local time with `zoneinfo`,
+  and checks the workspace window for that local weekday; for multi-zone numbers every zone
+  must pass, and an unknown zone blocks. A block returns 422 problem type `outbound-policy`
+  with `reason`, inserts one `outbound_policy_decisions` row in its own transaction, never calls
+  `admit()` (so no call row and no charge), and bypasses Idempotency-Key storage so a later retry
+  is re-evaluated.
+- **Rationale**: Reuses the existing hook with no change to the success response; checking
+  before admission guarantees blocks are never billed and never consume a concurrency slot.
+  The all-zones rule is the conservative reading for numbers that cannot be placed in one zone.
+- **Alternatives**: Queue blocked calls until the window opens (rejected: scheduling is out of
+  scope; clients retry). Pick the first candidate zone (rejected: can call a recipient at night
+  in another zone of the same country). Store windows in 001 workspace settings (rejected:
+  outbound-only concern owned by 010).
 
 ## R10. WhatsApp voice calling transport
 

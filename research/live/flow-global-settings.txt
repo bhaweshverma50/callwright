@@ -1,0 +1,262 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 1m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+AI Flow Assistant
+Describe the flow you want to create or modify. For example: "Create a customer support agent that handles billing and tech issues"
+​
+
+CONFIGURE
+
+·
+
+Voice
+
+CONVERSATION
+
+Model
+Voice
+Call Behavior
+Functions
+Advanced
+
+CONTEXT
+
+Knowledge Base
+
+EVALUATION
+
+Quality Checks
+
+SPEECH-TO-TEXT (STT)
+
+STT Provider
+
+Deepgram
+​
+The speech recognition service provider
+
+STT Model
+
+​
+​
+Leave as "Auto" to let the backend pick the best model based on language
+
+Noise Cancellation
+
+Sanas Voice Isolation (Default)
+​
+Removes noise + background voices (best for noisy callers)
+
+Voice Provider *
+
+ElevenLabs
+​
+The text-to-speech service provider
+
+Voice Model *
+
+Flash v2.5
+$0.0450/min
+​
+The specific model version for voice synthesis
+​
+​
+
+Voice *
+
+Dr. Jason
+
+Calm, confident voice. Great for all conversation purposes.
+
+Arabella
+
+A young, mature female narrator with a mysterious and emotive tone, perfect for fantasy, romance, urban fantasy, and wellness.
+
+Saavi – Natural Hindi Customer Care Agent
+
+A friendly, empathetic voice designed for seamless, natural customer service in Hindi. Whether it's addressing inquiries, offering assistance, or resolving issues, her voice creates a comfortable and positive experience. Perfect for IVR systems, chatbots, and virtual assistants, Saavi offers reliable, friendly customer support in Hindi for platforms like mobile apps, websites, and customer service platforms.
+
+David Ashby
+
+A young American male with a slightly monotone voice. Calming for some people.
+
+Anika - Hindi Customer Care Agent
+
+Hindi version of one of ElevenLabs’ most-used customer care voices. Anika’s English version is already the go-to for customer care, product support bots, and enterprise helpdesks—and now her Hindi tone brings the same clarity, warmth, and professionalism to regional audiences. Designed for telecoms, banks, e-commerce, healthcare, and any high-volume support system, she delivers service scripts with precision and calm authority.
+
+Alok K - Customer Care: Human-like, Professional & Empathetic
+
+A balanced & articulate voice designed for trust-building and smooth issue resolution. Alok brings a professional yet warm tone that is ideal for formal support conversations. Perfectly suited for customer care flows, onboarding journeys, escalation handling, and product explanations. Best used on Customer engagement platforms, fintech, and e-commerce support automation.
+
+Liz- Customer Service Assistant
+
+A warm, reassuring customer service assistant with over a decade of experience helping people feel heard, supported, and confident in every interaction. Known for a calm, friendly tone, thoughtful listening, and clear guidance, they create comfortable, trustworthy conversations while efficiently resolving billing, account, and service needs with care and professionalism.
+
+Henna
+
+Elegant, Calm Conversational Indian Accent for AI Call Centre.
+
+Bella - Professional, Bright, Warm
+
+This voice is warm, bright, and professional, characterized by a Standard American accent and a polished, narrative quality. It features a medium-high pitch with crisp diction and a deliberate, rhythmic pace that makes it highly intelligible and engaging for long-form listening.
+
+Roger - Laid-Back, Casual, Resonant
+
+Easy going and perfect for casual conversations.
+
+Sarah - Mature, Reassuring, Confident
+
+Young adult woman with a confident and warm, mature quality and a reassuring, professional tone.
+
+Laura - Enthusiast, Quirky Attitude
+
+This young adult female voice delivers sunny enthusiasm with a quirky attitude.
+
+Charlie - Deep, Confident, Energetic
+
+A young Australian male with a confident and energetic voice.
+
+George - Warm, Captivating Storyteller
+
+Warm resonance that instantly captivates listeners.
+
+Callum - Husky Trickster
+
+Deceptively gravelly, yet unsettling edge.
+
+River - Relaxed, Neutral, Informative
+
+A relaxed, neutral voice ready for narrations or conversational projects.
+
+Harry - Fierce Warrior
+
+An animated warrior ready to charge forward.
+
+Liam - Energetic, Social Media Creator
+
+A young adult with energy and warmth - suitable for reels and shorts.
+
+Alice - Clear, Engaging Educator
+
+Clear and engaging, friendly woman with a British accent suitable for e-learning.
+
+Matilda - Knowledgable, Professional
+
+A professional woman with a pleasing alto pitch. Suitable for many use cases.
+
+Will - Relaxed Optimist
+
+Conversational and laid back.
+
+Jessica - Playful, Bright, Warm
+
+Young and popular, this playful American female voice is perfect for trendy content.
+
+Eric - Smooth, Trustworthy
+
+A smooth tenor pitch from a man in his 40s - perfect for agentic use cases.
+
+Chris - Charming, Down-to-Earth
+
+Natural and real, this down-to-earth voice is great across many use-cases.
+
+Brian - Deep, Resonant and Comforting
+
+Middle-aged man with a resonant and comforting tone. Great for narrations and advertisements.
+
+Daniel - Steady Broadcaster
+
+A strong voice perfect for delivering a professional broadcast or news story.
+
+Lily - Velvety Actress
+
+Velvety British female voice delivers news and narrations with warmth and clarity.
+
+Adam - Dominant, Firm
+
+A bright tenor pitch that immediately cuts through. The delivery is brash and openly confident, speaking with unwavering certainty and a slightly aggressive self-assurance.
+
+Bill - Wise, Mature, Balanced
+
+Friendly and comforting voice ready to narrate your stories.
+The specific voice your agent will use
+
+Voice Temperature
+
+0.90
+
+0
+1
+2
+Controls voice expressiveness. Higher values = more variation (0-2)
+
+Voice Speed
+
+1.00x
+
+0.5x
+1x
+2x
+Speaking rate of the voice. 1.0 is normal speed (0.5-2x)
+
+Volume
+
+0.94
+
+0
+1
+2
+Audio output volume. 1.0 is default volume (0-2)

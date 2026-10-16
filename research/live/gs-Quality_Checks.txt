@@ -1,0 +1,167 @@
+$5.000
+
+
+B
+BV
+
+FLOW
+
+ID
+
+GkFGZHpQ0GXgXoix9VRKc
+
+v1 · 3m ago
+Global Settings
+Save
+
+NODES
+
+Start
+
+Entry point
+
+Agent
+
+AI agent with prompt
+
+Task
+
+Collect structured data
+
+Condition
+
+Branch based on intent
+
+Say
+
+Speak a message
+
+Extract
+
+Extract data from call
+
+API Call
+
+Make an HTTP request
+
+Transfer
+
+Transfer call to number
+
+End
+
+End conversation
+
+AI
+Test
+AI Flow Assistant
+Describe the flow you want to create or modify. For example: "Create a customer support agent that handles billing and tech issues"
+​
+
+CONFIGURE
+
+·
+
+Quality Checks
+
+CONVERSATION
+
+Model
+Voice
+Call Behavior
+Functions
+Advanced
+
+CONTEXT
+
+Knowledge Base
+
+EVALUATION
+
+Quality Checks
+
+Anomaly detection
+
+per-call
+Free
+
+Flags calls that don't resemble recent normal calls for this agent. Catches failure modes you didn't write a check for — no labels required.
+
+Factual consistency
+
+per-call
+LLM judge
+
+LLM judge: did the agent's responses stay grounded in the KB chunks the search returned, or did it hallucinate? Reads tool call trace events for search_knowledge_base invocations.
+
+Flow completion
+
+per-call
+Free
+
+Did the flow reach a terminal node (end or transfer) — or did the call drop out mid-flow? Free, flow-only.
+
+Intent fulfillment
+
+per-call
+LLM judge
+
+LLM judge: given the agent's instructions, did this call achieve the goal?
+
+KB retrieval relevance
+
+per-call
+LLM judge
+
+LLM judge: did the knowledge-base search return chunks that addressed the user's query? Reads tool call trace events for search_knowledge_base invocations.
+
+Long silences
+
+per-call
+Free
+
+Listens to the recording (not the transcript) for unusually long silences — dead air, TTS stalls, mid-word hangups. Catches things text-only evaluators physically can't see.
+
+Per-node dead-ends
+
+per-call
+Free
+
+For each node visited in the call, did the conversation transition out of it (good) or end there mid-flow (bad)? Free, flow-only. Lets the Issues page surface which specific nodes are dead-ending most often.
+
+Per-turn progress
+
+per-turn
+LLM judge
+
+Scores each turn as +1 progress / 0 neutral / -1 regression toward the agent's stated goal. Surfaces calls that "succeeded" but spent turns going backwards.
+
+Stuck loops
+
+per-call
+Free
+
+Did the conversation keep returning to the same flow node instead of progressing? Flags 'agent is stuck in a loop at node X' patterns. Free, flow-only.
+
+Tool call correctness
+
+per-call
+LLM judge
+
+LLM judge: were the agent's tool/function invocations the right choices given the conversation? Unlocked by tool-call tracing.
+
+Transition correctness
+
+per-call
+LLM judge
+
+LLM judge: was each flow transition the right edge to take? Per-source-node attribution lets the Issues page surface which nodes have mis-firing transitions. Uses map-reduce per-transition judging with shuffled alternatives to fight position bias.
+
+Turn latency
+
+per-turn
+Free
+
+Flags turns where total latency exceeds the SLO threshold. Free heuristic, runs on every call.
+
+Add custom check

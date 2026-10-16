@@ -46,7 +46,9 @@ components:
         Subset of the LiveKit webhook payload the API reads. Handled events:
         `room_finished` (end any open call for the room with reason `error` if the worker did not
         report an end), `participant_left` (logged; the worker reports hangups),
-        `egress_started`, `egress_ended` (set recording status and key).
+        `egress_started`, `egress_ended` (set recording status and key; ignored for calls with
+        `recording_enabled = false`, whose status stays `not_recorded`, since no egress is
+        started for them).
       properties:
         event:
           type: string
