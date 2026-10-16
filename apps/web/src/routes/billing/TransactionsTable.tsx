@@ -5,7 +5,8 @@ import { useState } from "react";
 import { problemMessage } from "../../api/problems";
 import { useTransactions } from "../../api/queries";
 import type { Transaction, TransactionType } from "../../api/types";
-import { EmptyState, MoneyText, Pagination, Select, Skeleton, cn, focusRing, type Tone } from "../../components";
+import { EmptyState, MoneyText, Pagination, Select, Skeleton, TruncatedText, cn, focusRing, type Tone } from "../../components";
+import { FAMILY_LABELS } from "./UsagePanel";
 import { formatUsd, toMicros } from "../../lib/money";
 
 export const PAGE_SIZE = 20;
@@ -152,12 +153,27 @@ export function TransactionsTable({
           aria-label="Credit transactions, newest first"
           className={cn("px-3 pb-2 pt-1 transition-opacity sm:px-5", q.isPlaceholderData && "opacity-60")}
         >
+          <div className="flex items-center justify-end px-2 pt-3 text-[11.5px] font-medium text-fg-3">
+            <span className={FIGURES}>
+              <span>Amount</span>
+              <span>Balance after</span>
+              <span aria-hidden />
+            </span>
+          </div>
           {groups.map((g) => (
-            <div key={g.key} className="pt-4">
-              <div className="flex items-baseline justify-between px-2 pb-2">
+            <div key={g.key} className="pt-3">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-2 pb-2">
                 <h3 className="text-[13px] font-semibold text-fg">{dayLabel(g.date)}</h3>
-                <span className="text-[12px] text-fg-3">
-                  Net <MoneyText value={g.net} places={3} signed className="text-fg-2" />
+                <span className={cn(FIGURES, "text-[12px] text-fg-3")}>
+                  <span>
+                    <span className="sr-only">Net for the day </span>
+                    <MoneyText value={g.net} places={3} signed toned className="font-medium" />
+                  </span>
+                  <span>
+                    <span className="sr-only">Balance at the end of the day </span>
+                    <MoneyText value={g.items[0]?.balance_after_usd ?? "0"} places={3} />
+                  </span>
+                  <span aria-hidden />
                 </span>
               </div>
               <ul className="relative">
@@ -197,6 +213,9 @@ export function TransactionsTable({
   );
 }
 
+/** Amount, balance after and the open-detail slot: the same widths on every row so figures align. */
+const FIGURES = "grid shrink-0 grid-cols-[minmax(76px,auto)_minmax(76px,auto)_16px] items-center gap-x-5 text-right";
+
 function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: boolean; onSelect?: (t: Transaction) => void }) {
   const Icon = TYPE_ICONS[t.type];
   const tone = TYPE_TONES[t.type];
@@ -207,29 +226,35 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
         <Icon className="size-3.5" aria-hidden />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
-        <span className="truncate text-[13.5px] text-fg">{t.description}</span>
+        <TruncatedText className="text-[13.5px] text-fg" title={t.description}>
+          {rowTitle(t)}
+        </TruncatedText>
         <span className="flex min-w-0 items-center gap-2.5 text-[12px] text-fg-3">
           <time dateTime={t.created_at} className="font-mono tnum">
             {timeFmt.format(new Date(t.created_at))}
           </time>
           <span>{TYPE_LABELS[t.type]}</span>
-          {ref && (
-            <span className="hidden truncate font-mono sm:inline" title={ref}>
-              {ref}
-            </span>
-          )}
+          {ref && <TruncatedText className="hidden font-mono sm:block">{ref}</TruncatedText>}
         </span>
       </span>
-      <span className="flex shrink-0 flex-col items-end gap-0.5">
-        <MoneyText value={t.amount_usd} places={3} signed toned className="text-[13.5px] font-medium" />
-        <span className="text-[11.5px] text-fg-3">
+      <span className={FIGURES}>
+        <MoneyText
+          value={t.amount_usd}
+          places={3}
+          signed={!isZero(t.amount_usd)}
+          toned
+          className={cn("text-[13.5px]", isZero(t.amount_usd) ? "text-fg-3" : "font-medium")}
+        />
+        <span className="text-[12.5px] text-fg-2">
           <span className="sr-only">Balance after </span>
           <MoneyText value={t.balance_after_usd} places={3} />
         </span>
+        {t.cost_breakdown ? (
+          <ChevronRight className={cn("size-4 text-fg-3 transition-transform", selected && "translate-x-0.5 text-accent-text")} aria-hidden />
+        ) : (
+          <span aria-hidden />
+        )}
       </span>
-      {t.cost_breakdown && (
-        <ChevronRight className={cn("size-4 shrink-0 text-fg-3 transition-transform", selected && "translate-x-0.5 text-accent-text")} aria-hidden />
-      )}
     </>
   );
   const cls = cn(
@@ -250,4 +275,35 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
     );
   }
   return <div className={cls}>{body}</div>;
+}
+
+/** Zero at the precision shown (3 places): fractions of a tenth of a cent read as no charge. */
+function isZero(v: string | null | undefined): boolean {
+  return v != null && Math.abs(Number(v)) < 0.0005;
+}
+
+const FEATURE_PREFIXES: [string, string][] = [
+  ["eval.", "Evaluation"],
+  ["simulator.", "Simulation"],
+  ["issues.", "Issue detection"],
+];
+
+function humanize(key: string): string {
+  const s = key.replace(/[._]+/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** What the row is, in words people use; the raw description and ids stay in the meta line. */
+export function rowTitle(t: Transaction): string {
+  if (t.type === "call_charge") {
+    const m = /\((\d+):(\d{2})\)/.exec(t.description ?? "");
+    return m ? `Call, ${Number(m[1])} min ${Number(m[2])} s` : "Call";
+  }
+  if (t.type === "feature_charge" && t.feature_key) {
+    const k = t.feature_key;
+    const hit = FEATURE_PREFIXES.find(([p]) => k.startsWith(p));
+    if (hit) return `${hit[1]}: ${humanize(k.slice(hit[0].length)).toLowerCase()}`;
+    return FAMILY_LABELS[k as keyof typeof FAMILY_LABELS] ?? humanize(k);
+  }
+  return t.description ?? TYPE_LABELS[t.type];
 }
