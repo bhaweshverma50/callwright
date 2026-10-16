@@ -226,16 +226,21 @@ Library: `motion` (`motion/react`). Helpers in `src/components/motion.tsx`.
 | Waveform | Hero console, auth panel, gauge, 404 flatline | SVG bars scaled with transforms |
 | Chain flow | Pricing links, hero chain | dash offset and particles along SVG paths |
 | Gauge arc | Billing | path length from 0 to value, 900ms |
-| On-air pulse | Live indicators | 1.6s ring pulse |
+| On-air pulse | Live indicators | 1.6s pulse (`halo-pulse`): grows out of the dot from 0.85 of its size and invisible, never pops in |
+| Active node and step | FlowChain node, Stepper disc | The gradient fill and the halo scale in from 0.85 and fade in together over `--state-duration` (360ms, `--ease-out-soft`), and leave the same way. The halo is a steady soft ring plus a pulse (`--halo-pulse-duration` 1.8s) that grows out of the disc's own edge. Reduced motion: the steady ring only |
+| Tooltips | Every tooltip and info tip | Opens after 300ms; adjacent tips open at once within 400ms (Provider skip delay); fades in while settling 3px toward its trigger (160ms), fades out in 90ms. Keyboard focus opens it, a click does not |
 | Logo mark | The two halves of the Handoff C, on hover or focus of the logo or its link | One pass: the halves slide apart and step back together, 720ms, `--ease-out-soft`; never idle; none under reduced motion |
 | Hover | Cards lift 2px with a cobalt glow; links get an animated underline; table rows highlight | 150 to 200ms |
 | Sheen | One diagonal pass of a narrow (28 percent wide, 0.32 alpha) highlight across a primary button on hover or keyboard focus; never restarted mid-pass; never an idle loop except the single hero CTA (one pass every 7 s) | `--sheen-duration` 560ms, `--ease-out-soft` cubic-bezier(0.22, 1, 0.36, 1) |
 | Press | Scale to `--press-scale` (0.975) for `--press-duration` (90ms) plus a ripple from the pointer on buttons and chips | 90ms, ripple 450ms |
 | Focus | Animated heat-ramp border on focused feature panels; the 2px cobalt focus ring stays on every control | |
-| Loading | Shimmer skeletons for every loading state; they unmount the moment content arrives | `--skeleton-duration` 1.3s, ease-in-out |
+| Loading | Shimmer skeletons for content-shaped loading; they unmount the moment content arrives | `--skeleton-duration` 1.3s, ease-in-out |
+| Loading mark | `LogoLoader` for app boot, the session check (`FullPageLoader`) and route loading (`PanelLoader`): the two halves of the C swing half a turn out and back, the leader alternating, locking into the mark at each end, with soft comets and a glow at each lock. Fades in after 140ms so fast loads never flash it. Frames in `docs/screens/loader/` | 2.4s seamless loop; reduced motion: the still mark breathing in opacity |
 
 Motion tokens live on `:root` in `src/index.css`: `--ease-out-soft`, `--sheen-duration`,
-`--sheen-idle-cycle`, `--press-duration`, `--press-scale`, `--skeleton-duration`.
+`--sheen-idle-cycle`, `--press-duration`, `--press-scale`, `--skeleton-duration`, `--state-duration`,
+`--halo-pulse-duration` (colours `--halo`, `--halo-soft`). `EASE_OUT_SOFT` and `STATE_DURATION` in
+`motion.tsx` mirror them for motion components.
 
 Guardrails:
 - Animate only `transform` and `opacity` (plus SVG `stroke-dashoffset`), no layout properties.
@@ -251,14 +256,24 @@ Guardrails:
 `Field`, `Input`, `Textarea`, `Select`, `Slider`, `Switch`, `Tabs`, `Dialog`, `ConfirmDialog`,
 `Drawer`, `Table`, `Pagination`, `Toast`, `EmptyState`, `Skeleton`, `Badge`, `Chip`, `Kbd`,
 `MoneyText`, `Ticker`, `CostBreakdownCard` (receipt), `Panel`, `PageHeader`, `Inspector`,
-`Waveform`, `FlowChain`, `Stepper`, `LatencyChip`, `PanelRows` (`FieldRow`, `InfoRow`), `SwitchControl`, `OnAir`, `Logo`, `LeaveGuard`, `ErrorSummaryDialog`.
+`Waveform`, `FlowChain`, `Stepper`, `LatencyChip`, `PanelRows` (`FieldRow`, `InfoRow`), `SwitchControl`, `OnAir`, `Logo`, `LeaveGuard`, `ErrorSummaryDialog`,
+`Tooltip`, `TruncatedText`, `InfoTip`, `CopyButton`, `LogoLoader` (`FullPageLoader`, `PanelLoader`).
+
+Tooltips and truncation:
+- Every icon-only button names its action in a tooltip (`IconButton` does it for you).
+- Text that can outgrow its space is a `TruncatedText`: one line, an ellipsis, and the full text in
+  a tooltip only while it is cut. Inside a link or button pass `focusable={false}`.
+- `InfoTip` explains a term or a figure (how talk time is computed, what a bundle surcharge is).
+  The tip adds detail; anything the reader must know stays visible next to it. `InfoRow` and
+  `FieldRow` take a `hint` for this.
 
 ## 10. Accessibility checklist
 
 - AA contrast in both themes; colour is never the only signal (icons and words accompany tone).
 - Skip link to main content; landmarks `Main` and `Workspace` navigation; one `h1` per page.
 - Touch targets at least 40px on phones; navigation rows 36px desktop, 44px in the mobile drawer.
-- Every icon-only control has an accessible name; tooltips are never the only place text lives.
+- Every icon-only control has an accessible name, which its tooltip repeats; tooltips are never the
+  only place required text lives.
 - Live regions for balance changes, calculator totals and toasts.
 
 ## 11. Critique log
