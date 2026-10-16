@@ -30,10 +30,12 @@ export function Badge({ tone = "neutral", icon, children, className }: { tone?: 
 
 export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   selected?: boolean;
+  /** Figures (amounts) use mono; word labels (filters, categories) pass `mono={false}`. */
+  mono?: boolean;
 }
 
 /** Toggleable choice (preset amounts, filters). Uses aria-pressed so state is announced. */
-export function Chip({ selected, className, children, onPointerDown, ...rest }: ChipProps) {
+export function Chip({ selected, mono = true, className, children, onPointerDown, ...rest }: ChipProps) {
   const { onPointerDown: ripple, ripples } = useRipple();
   return (
     <button
@@ -44,7 +46,8 @@ export function Chip({ selected, className, children, onPointerDown, ...rest }: 
         onPointerDown?.(e);
       }}
       className={cn(
-        "relative inline-flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full border px-3.5 font-mono text-[12.5px] tnum transition-colors duration-150",
+        "relative inline-flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full border px-3.5 text-[12.5px] transition-colors duration-150 [&_svg]:size-3.5",
+        mono ? "font-mono tnum" : "font-medium",
         selected ? "border-accent bg-accent-soft text-accent-text" : "border-line-strong bg-surface text-fg-2 hover:border-accent/50 hover:text-fg",
         "disabled:cursor-not-allowed disabled:opacity-50",
         focusRing,

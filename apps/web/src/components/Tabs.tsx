@@ -9,6 +9,8 @@ export interface TabItem {
   icon?: ReactNode;
   /** Small count after the label, in mono. */
   count?: number;
+  /** Count of problems in this tab, shown as a small danger pill (validation). */
+  alerts?: number;
   disabled?: boolean;
 }
 
@@ -26,14 +28,14 @@ export function Tabs({ value, onValueChange, items, children, className, ...aria
   const layoutId = useId();
   return (
     <RT.Root value={value} onValueChange={onValueChange} className={className}>
-      <RT.List aria-label={aria["aria-label"]} className="flex gap-6 border-b border-line">
+      <RT.List aria-label={aria["aria-label"]} className="flex gap-6 overflow-x-auto border-b border-line [scrollbar-width:none]">
         {items.map((t) => (
           <RT.Trigger
             key={t.value}
             value={t.value}
             disabled={t.disabled}
             className={cn(
-              "relative -mb-px flex h-10 cursor-pointer items-center gap-2 text-[13.5px] text-fg-2 transition-colors [&_svg]:size-4",
+              "relative -mb-px flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[13.5px] text-fg-2 transition-colors [&_svg]:size-4",
               "hover:text-fg data-[state=active]:font-medium data-[state=active]:text-fg",
               "disabled:cursor-not-allowed disabled:text-fg-3",
               focusRing,
@@ -42,6 +44,12 @@ export function Tabs({ value, onValueChange, items, children, className, ...aria
             {t.icon}
             {t.label}
             {t.count != null && <span className="font-mono text-[11.5px] text-fg-3 tnum">{t.count}</span>}
+            {t.alerts ? (
+              <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger-soft px-1 font-mono text-[11px] font-medium text-danger-text tnum">
+                <span className="sr-only">, problems: </span>
+                {t.alerts}
+              </span>
+            ) : null}
             {value === t.value && (
               <motion.span
                 layoutId={layoutId}

@@ -639,6 +639,36 @@
     transform: translateY(-50%);
   }
 }
+/* Always vertical (inspector cards whose rows carry a value on the right, such as the cost chain). */
+.flow[data-stack="always"] .flow-grid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(var(--n), minmax(var(--row, 64px), 1fr));
+}
+.flow[data-stack="always"] .flow-node {
+  justify-content: flex-start;
+  align-items: center;
+}
+.flow[data-stack="always"] .flow-node-body {
+  flex-direction: row;
+  gap: 14px;
+  text-align: left;
+}
+.flow[data-stack="always"] .flow-seg {
+  left: calc(var(--r) - 1px);
+  width: 2px;
+  top: calc((var(--i) + 0.5) * 100% / var(--n) + var(--r) + var(--g));
+  height: calc(100% / var(--n) - 2 * (var(--r) + var(--g)));
+}
+.flow[data-stack="always"] .flow-seg > i {
+  background: linear-gradient(180deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3));
+}
+.flow[data-stack="always"][data-flow="true"] .flow-seg > i {
+  -webkit-mask-image: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+  mask-image: repeating-linear-gradient(180deg, #000 0 6px, transparent 6px 12px);
+  -webkit-mask-size: 100% 12px;
+  mask-size: 100% 12px;
+  animation-name: flow-dash-y;
+}
 @container (max-width: 20rem) {
   .flow[data-stack="tight"] .flow-grid {
     grid-template-columns: minmax(0, 1fr);
