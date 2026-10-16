@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "apps/web/src/index.css"
+        ],
+        "createdAt": "2026-10-16T09:02:15.331Z",
+        "reason": "User explicitly requested gradient text on the home and pricing hero headlines only (.grad-text utility)"
+      }
+    ]
+  }
+}
