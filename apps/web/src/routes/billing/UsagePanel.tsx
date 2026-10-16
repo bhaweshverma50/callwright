@@ -19,7 +19,7 @@ import { Fragment, useState } from "react";
 import { problemMessage } from "../../api/problems";
 import { useUsage } from "../../api/queries";
 import type { FeatureFamily } from "../../api/types";
-import { EmptyState, Field, Input, MoneyText, Skeleton, cn, focusRing } from "../../components";
+import { EmptyState, Field, InfoTip, Input, MoneyText, Skeleton, TruncatedText, cn, focusRing } from "../../components";
 
 export const MAX_WINDOW_DAYS = 366;
 
@@ -37,6 +37,22 @@ export const FAMILY_LABELS: Record<FeatureFamily, string> = {
   issues: "Issue detection and fixes",
   knowledge_ingestion: "Knowledge ingestion",
   embedding: "Embeddings",
+};
+
+/** What each family covers, for the info tip beside its row. */
+export const FAMILY_HINTS: Record<FeatureFamily, string> = {
+  calls: "Per-minute charges for calls: speech to text, model, voice, noise cancellation and the platform fee.",
+  evaluations: "Evaluators grading calls, each with its reasons.",
+  simulations: "Simulated callers and replayed calls run against an agent version.",
+  testing: "Test runs that check an agent before it takes real calls.",
+  analytics_chat: "Questions about your calls, asked in plain language.",
+  prompt_generation: "Agent prompts drafted from a description.",
+  post_call_analysis: "Fields and summaries pulled from a call after it ends.",
+  flow_assistant: "The assistant that proposes edits to a conversation flow.",
+  voice_copilot: "Spoken commands that move around the app, such as asking for yesterday's failed calls.",
+  issues: "Grouping repeated failures into issues and drafting prompt fixes for them.",
+  knowledge_ingestion: "Reading documents into an agent's knowledge base.",
+  embedding: "Turning text into vectors so agents can search your documents.",
 };
 
 export const FAMILY_ICONS: Record<FeatureFamily, LucideIcon> = {
@@ -132,6 +148,9 @@ export function UsagePanel() {
               />
             )}
           </Field>
+          <InfoTip label="About the date window" side="left" className="mt-[3px]">
+            Both dates count, and days run midnight to midnight UTC. Pick up to {MAX_WINDOW_DAYS} days; the window opens on the last 30.
+          </InfoTip>
         </fieldset>
       </div>
 
@@ -155,8 +174,8 @@ export function UsagePanel() {
             Usage from {pretty(q.data.window.from)} to {pretty(q.data.window.to)}
           </caption>
           <thead>
-            <tr className="border-b border-line bg-surface-2/70 text-[12px] text-fg-3">
-              <th scope="col" className="h-9 pl-5 text-left font-medium">
+            <tr className="whitespace-nowrap border-b border-line bg-surface-2/70 text-[12px] text-fg-3">
+              <th scope="col" className="h-9 w-full max-w-0 pl-5 text-left font-medium">
                 Feature
               </th>
               <th scope="col" className="px-3 text-right font-medium">
@@ -176,20 +195,30 @@ export function UsagePanel() {
               return (
                 <Fragment key={r.feature}>
                   <tr className="border-b border-line transition-colors hover:bg-accent-soft/35">
-                    <th scope="row" className="h-11 pl-3 text-left font-normal">
-                      <button
-                        type="button"
-                        aria-expanded={expanded}
-                        onClick={() => toggle(r.feature)}
-                        className={cn(
-                          "inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-fg hover:bg-surface-2",
-                          focusRing,
+                    <th scope="row" className="h-11 max-w-0 pl-3 text-left font-normal">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <button
+                          type="button"
+                          aria-expanded={expanded}
+                          onClick={() => toggle(r.feature)}
+                          className={cn(
+                            "inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-fg hover:bg-surface-2",
+                            focusRing,
+                          )}
+                        >
+                          <ChevronRight
+                            className={cn("size-3.5 shrink-0 text-fg-3 transition-transform duration-200", expanded && "rotate-90")}
+                            aria-hidden
+                          />
+                          <span className="shrink-0">
+                            <FamilyIcon family={r.feature} />
+                          </span>
+                          <TruncatedText focusable={false}>{FAMILY_LABELS[r.feature] ?? r.feature}</TruncatedText>
+                        </button>
+                        {FAMILY_HINTS[r.feature] && (
+                          <InfoTip label={`About ${(FAMILY_LABELS[r.feature] ?? r.feature).toLowerCase()}`}>{FAMILY_HINTS[r.feature]}</InfoTip>
                         )}
-                      >
-                        <ChevronRight className={cn("size-3.5 text-fg-3 transition-transform duration-200", expanded && "rotate-90")} aria-hidden />
-                        <FamilyIcon family={r.feature} />
-                        {FAMILY_LABELS[r.feature] ?? r.feature}
-                      </button>
+                      </span>
                     </th>
                     <td className="px-3 text-right font-mono text-[12.5px] text-fg-2 tnum">{r.event_count.toLocaleString()}</td>
                     <td className="px-3 text-right text-[12.5px] text-fg-2">
@@ -202,8 +231,8 @@ export function UsagePanel() {
                   {expanded &&
                     r.details.map((d) => (
                       <tr key={d.feature_key} className="border-b border-line bg-surface-2/60 text-[12px]">
-                        <th scope="row" className="h-9 pl-12 text-left font-mono font-normal text-fg-2">
-                          {d.feature_key}
+                        <th scope="row" className="h-9 max-w-0 pl-12 text-left font-mono font-normal text-fg-2">
+                          <TruncatedText>{d.feature_key}</TruncatedText>
                         </th>
                         <td className="px-3 text-right font-mono text-fg-3 tnum">{d.event_count.toLocaleString()}</td>
                         <td className="px-3 text-right text-fg-3">

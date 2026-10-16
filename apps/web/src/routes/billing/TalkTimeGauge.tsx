@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useId } from "react";
 import { useQuote, useRecentTransactions } from "../../api/queries";
 import type { Transaction } from "../../api/types";
-import { MoneyText, Skeleton, Ticker, cn } from "../../components";
+import { InfoTip, MoneyText, Skeleton, Ticker, cn } from "../../components";
 import { formatUsd, toMicros } from "../../lib/money";
 import { DEFAULT_STACK, DEFAULT_STACK_LABELS, talkMinutes } from "../../lib/stack";
 
@@ -77,15 +77,28 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
             ) : (
               <Skeleton className="my-1 h-9 w-24" />
             )}
-            <span id="talk-time" className="mt-1 text-[13px] font-medium text-fg-2">
-              minutes of calls
+            <span className="mt-1 flex items-center gap-1.5">
+              <span id="talk-time" className="text-[13px] font-medium text-fg-2">
+                minutes of calls
+              </span>
+              <InfoTip label="How talk time is worked out">
+                Your balance divided by the per-minute price of your current stack ({DEFAULT_STACK_LABELS.stt}, {DEFAULT_STACK_LABELS.llm},{" "}
+                {DEFAULT_STACK_LABELS.tts} and the platform fee), in whole minutes. Calls that run past their token or character bundle cost more per
+                minute, so they use it faster.
+              </InfoTip>
             </span>
           </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
           <div>
-            <p className="text-[13px] text-fg-3">Balance</p>
+            <p className="flex items-center gap-1.5 text-[13px] text-fg-3">
+              Balance
+              <InfoTip label="About the balance">
+                Prepaid credit, shown to a tenth of a cent because calls are billed per second. New calls stop at $0.000; a call already in progress
+                can finish within a small grace amount.
+              </InfoTip>
+            </p>
             {loading || balance === null ? (
               <Skeleton className="mt-1.5 h-9 w-40" />
             ) : (
@@ -117,9 +130,12 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
                 <Skeleton className="mt-1 h-3.5 w-64" />
               ) : facts.runOut ? (
                 <span>
-                  At your last {SPEND_WINDOW_DAYS} days of spend,{" "}
-                  <span className="font-mono text-fg tnum">{formatUsd(facts.perDayMicros, { places: 2 })}</span> a day, it lasts until about{" "}
-                  <span className="font-medium text-fg">{dateFmt.format(facts.runOut)}</span>.
+                  Lasts until about <span className="font-medium text-fg">{dateFmt.format(facts.runOut)}</span> at your recent{" "}
+                  <span className="font-mono text-fg tnum">{formatUsd(facts.perDayMicros, { places: 2 })}</span> a day{" "}
+                  <InfoTip label="How the run-out date is projected">
+                    Recent spend is your call and feature charges over the last {SPEND_WINDOW_DAYS} days, averaged per day. The date is when this
+                    balance reaches zero at that pace; top-ups and busier days move it.
+                  </InfoTip>
                 </span>
               ) : (
                 <span>No calls in the last {SPEND_WINDOW_DAYS} days, so there is no run-out date yet.</span>
@@ -128,7 +144,12 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
             {low && (
               <li className="flex items-start gap-2.5 text-warning-text">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>{balance! <= 0n ? "New calls are refused until you add funds." : "Balance is low. Add funds to keep calls running."}</span>
+                <span>
+                  {balance! <= 0n ? "New calls are refused until you add funds." : "Balance is low. Add funds to keep calls running."}{" "}
+                  <InfoTip label="When calls stop" className="text-warning-text hover:text-warning-text">
+                    New calls stop when the balance reaches $0.000. This warning starts below $1.000, so there is time to add funds first.
+                  </InfoTip>
+                </span>
               </li>
             )}
           </ul>
