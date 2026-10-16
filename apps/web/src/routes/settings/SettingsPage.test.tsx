@@ -10,7 +10,7 @@ describe("SettingsPage (T093, FR-017)", () => {
     const user = userEvent.setup();
     renderApp("/settings");
     const name = await screen.findByLabelText("Workspace name");
-    expect(screen.getByText("5 at once")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "DD" && el.textContent === "5 at once")).toBeInTheDocument();
     expect(screen.getByText("ops@halcyon-dental.com", { selector: "dd" })).toBeInTheDocument();
 
     await user.clear(name);
