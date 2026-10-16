@@ -28,7 +28,9 @@ ENV_FILES = (_API_DIR.parent.parent / ".env", _API_DIR / ".env")
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore", env_ignore_empty=True
+    )
 
     env: Literal["dev", "test", "prod"] = "dev"
     version: str = "0.1.0+dev"
