@@ -83,7 +83,7 @@ async def test_other_workspace_cannot_read(
     async with app.state.db.transaction(workspace_id=a.workspace_id, user_id=a.user_id) as session:
         own = (
             await session.execute(
-                text(f"select count(*) from {table} where {column} = :ws"),  # noqa: S608
+                text(f"select count(*) from {table} where {column} = :ws"),
                 {"ws": a.workspace_id},
             )
         ).scalar_one()
@@ -91,7 +91,7 @@ async def test_other_workspace_cannot_read(
     async with app.state.db.transaction(workspace_id=b.workspace_id, user_id=b.user_id) as session:
         leaked = (
             await session.execute(
-                text(f"select count(*) from {table} where {column} = :ws"),  # noqa: S608
+                text(f"select count(*) from {table} where {column} = :ws"),
                 {"ws": a.workspace_id},
             )
         ).scalar_one()
@@ -108,7 +108,7 @@ async def test_users_visible_only_to_themselves(app: FastAPI, populated: tuple[A
 async def test_no_context_reads_nothing(app: FastAPI, populated: tuple[Account, Account]) -> None:
     async with app.state.db.transaction() as session:
         for table in [*TENANT_TABLES, "users"]:
-            count = (await session.execute(text(f"select count(*) from {table}"))).scalar_one()  # noqa: S608
+            count = (await session.execute(text(f"select count(*) from {table}"))).scalar_one()
             assert count == 0, table
 
 
