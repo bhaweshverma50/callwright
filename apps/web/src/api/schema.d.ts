@@ -3215,8 +3215,13 @@ export interface components {
             /** @description Sum of line cost_usd values */
             total_usd: components["schemas"]["MoneyUsd"];
         };
-        /** @enum {string} */
-        FeatureFamily: "calls" | "evaluations" | "simulations" | "analytics_chat" | "prompt_generation" | "post_call_analysis";
+        /**
+         * @description Prefix of the feature key before the first dot, with `eval` reported as `evaluations` and
+         *     `simulator` as `simulations`. The registry in services/api/app/pricing/features.py is the
+         *     source of truth; every family it accepts is listed here (T090).
+         * @enum {string}
+         */
+        FeatureFamily: "calls" | "evaluations" | "simulations" | "testing" | "analytics_chat" | "prompt_generation" | "post_call_analysis" | "flow_assistant" | "voice_copilot" | "issues" | "knowledge_ingestion" | "embedding";
         UsageDetail: {
             /** @example eval.intent_fulfillment */
             feature_key: string;

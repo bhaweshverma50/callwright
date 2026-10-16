@@ -97,14 +97,27 @@ function bootstrapWorkspace(user: MockUser) {
   appendTransaction(db(), ws.id, "trial_grant", "5.000000", "Trial credit");
 }
 
-const FAMILY: [RegExp, FeatureFamily][] = [
-  [/^calls$/, "calls"],
-  [/^eval\./, "evaluations"],
-  [/^simulator\./, "simulations"],
-  [/^analytics_chat$/, "analytics_chat"],
-  [/^prompt_generation$/, "prompt_generation"],
-  [/^post_call_analysis$/, "post_call_analysis"],
+const FAMILIES: FeatureFamily[] = [
+  "calls",
+  "evaluations",
+  "simulations",
+  "testing",
+  "analytics_chat",
+  "prompt_generation",
+  "post_call_analysis",
+  "flow_assistant",
+  "voice_copilot",
+  "issues",
+  "knowledge_ingestion",
+  "embedding",
 ];
+
+/** usage.yaml FeatureFamily: the key prefix before the first dot; eval and simulator are renamed. */
+function familyOf(featureKey: string): FeatureFamily | undefined {
+  const prefix = featureKey.split(".")[0] ?? "";
+  const name = prefix === "eval" ? "evaluations" : prefix === "simulator" ? "simulations" : prefix;
+  return FAMILIES.find((f) => f === name);
+}
 
 const today = () => new Date().toISOString().slice(0, 10);
 function addDays(date: string, days: number) {
@@ -349,7 +362,7 @@ export const handlers = [
     let totalRaw = 0n;
     let totalBill = 0n;
     for (const ev of inWindow) {
-      const family = FAMILY.find(([re]) => re.test(ev.feature_key))?.[1];
+      const family = familyOf(ev.feature_key);
       if (!family) continue;
       const row = rows.get(family) ?? { feature: family, event_count: 0, raw_cost_usd: "0.000000", billable_cost_usd: "0.000000", details: [] };
       const raw = toMicros(ev.raw) ?? 0n;
