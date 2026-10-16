@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const out = resolve(here, "../docs/screens");
+const out = process.env.SCREENS_OUT ? resolve(process.env.SCREENS_OUT) : resolve(here, "../docs/screens");
 mkdirSync(out, { recursive: true });
 const BASE = process.env.SCREENS_BASE ?? "http://localhost:5180";
 const ONLY = process.env.SCREENS_ONLY?.split(",").filter(Boolean);
@@ -106,6 +106,7 @@ async function signIn(page) {
 
 const SIZES = {
   desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
+  tablet: { viewport: { width: 1024, height: 800 }, deviceScaleFactor: 1 },
   mobile: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 };
 
@@ -137,7 +138,7 @@ try {
         await page.waitForTimeout(500);
         if (s.before) await s.before(page);
         await page.waitForTimeout(300);
-        const file = join(out, `${s.name}-${theme}${size === "mobile" ? "-mobile" : ""}.png`);
+        const file = join(out, `${s.name}-${theme}${size === "desktop" ? "" : `-${size}`}.png`);
         await page.screenshot({ path: file, fullPage: Boolean(s.full) });
         if (s.after) await s.after(page);
         console.log(file);

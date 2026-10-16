@@ -132,7 +132,7 @@ export function PricingCalculator() {
             <SlidersHorizontal className="size-4" aria-hidden />
             Click a link in the chain to change it.
           </p>
-          <ol aria-label="Signal chain" className="flex flex-col items-stretch gap-0 lg:flex-row lg:items-start">
+          <ol aria-label="Signal chain" className="flex flex-col items-stretch gap-0 xl:flex-row xl:items-start">
             <EndNode icon={<Mic aria-hidden />} title="Caller speaks" />
             {CHAIN.map((c) => (
               <li key={c} className="contents">
@@ -271,9 +271,9 @@ export function PricingCalculator() {
 
 function EndNode({ icon, title }: { icon: ReactNode; title: string }) {
   return (
-    <li className="flex items-center gap-3 lg:w-[88px] lg:shrink-0 lg:flex-col lg:gap-2 lg:pt-2">
+    <li className="flex items-center gap-3 xl:w-[88px] xl:shrink-0 xl:flex-col xl:gap-2 xl:pt-2">
       <span className="grid size-11 place-items-center rounded-full border border-line-strong bg-surface-2 text-fg-2 [&_svg]:size-5">{icon}</span>
-      <span className="text-[12.5px] text-fg-2 lg:text-center">{title}</span>
+      <span className="text-[12.5px] text-fg-2 xl:text-center">{title}</span>
     </li>
   );
 }
@@ -285,10 +285,10 @@ function Wire({ subtotal, pulse, first, loading }: { subtotal: bigint; pulse: nu
   return (
     <div
       aria-hidden
-      className="relative flex h-8 items-center pl-[21px] lg:h-auto lg:min-w-6 lg:flex-1 lg:flex-col lg:items-stretch lg:pl-0 lg:pt-[29px]"
+      className="relative flex h-8 items-center pl-[21px] xl:h-auto xl:min-w-6 xl:flex-1 xl:flex-col xl:items-stretch xl:pl-0 xl:pt-[29px]"
     >
-      <span className="grad-heat absolute bottom-0 left-[21px] top-0 w-0.5 opacity-70 lg:hidden" />
-      <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="hidden h-1.5 w-full lg:block">
+      <span className="grad-heat absolute bottom-0 left-[21px] top-0 w-0.5 opacity-70 xl:hidden" />
+      <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="hidden h-1.5 w-full xl:block">
         <defs>
           <linearGradient id={`w-${id}`} x1="0" x2="100" y1="0" y2="0" gradientUnits="userSpaceOnUse">
             <stop offset="0" stopColor="var(--heat-1)" />
@@ -321,7 +321,7 @@ function Wire({ subtotal, pulse, first, loading }: { subtotal: bigint; pulse: nu
         )}
       </svg>
       {!first && (
-        <span className="relative ml-6 min-h-4 font-mono text-[11.5px] text-fg-3 tnum lg:ml-0 lg:mt-2 lg:text-center">
+        <span className="relative ml-6 min-h-4 font-mono text-[11.5px] text-fg-3 tnum xl:ml-0 xl:mt-2 xl:text-center">
           {loading || subtotal === 0n ? "" : <Ticker value={Number(subtotal)} format={usd4} />}
         </span>
       )}
@@ -353,7 +353,7 @@ function ChainChoice({
         aria-label={`${title}: ${current?.label ?? "loading"}. Change`}
         disabled={!groups}
         className={cn(
-          "live-border group flex w-full cursor-pointer items-center gap-3 rounded-panel border bg-surface px-3.5 py-3 text-left transition-[border-color,box-shadow,transform] duration-150 lg:w-[150px] lg:shrink-0 lg:flex-col lg:items-start lg:gap-2",
+          "live-border group flex w-full cursor-pointer items-center gap-3 rounded-panel border bg-surface px-3.5 py-3 text-left transition-[border-color,box-shadow,transform] duration-150 xl:w-[150px] xl:shrink-0 xl:flex-col xl:items-start xl:gap-2",
           off ? "border-dashed border-line-strong" : "border-line-strong shadow-1 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-glow",
           focusRing,
         )}
@@ -384,7 +384,7 @@ function ChainChoice({
                   : ""}
           </span>
         </span>
-        <ChevronDown className="size-4 shrink-0 text-fg-3 transition-transform group-data-[state=open]:rotate-180 lg:hidden" aria-hidden />
+        <ChevronDown className="size-4 shrink-0 text-fg-3 transition-transform group-data-[state=open]:rotate-180 xl:hidden" aria-hidden />
       </RP.Trigger>
       <RP.Portal>
         <RP.Content

@@ -184,7 +184,7 @@ export function ChainStrip({
               <span
                 className={cn(
                   "whitespace-nowrap text-[11.5px]",
-                  compact && "sr-only sm:not-sr-only",
+                  compact && "sr-only sm:not-sr-only sm:whitespace-nowrap",
                   onConsole ? (on ? "text-console-fg" : "text-console-fg-2") : on ? "text-fg" : "text-fg-3",
                 )}
               >
