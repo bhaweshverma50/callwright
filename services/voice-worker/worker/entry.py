@@ -172,8 +172,26 @@ class LiveCall:
     def _update_time_meters(self) -> None:
         if self.plan is None or self.connected_at is None:
             return
-        elapsed_ms = (time.monotonic() - self.connected_at) * 1000.0
-        self.meters.set_nc(self.plan.nc.provider, self.plan.nc.model or "", elapsed_ms)
+        nc = self.components.nc if self.components is not None else None
+        if nc is not None and hasattr(nc, "processed_ms"):
+            # Adapters that report processed audio (Sanas) meter only audio they transformed;
+            # a pass-through engine meters nothing, so an unapplied NC is never billed.
+            audio_ms = float(nc.processed_ms) if getattr(nc, "applied", True) else 0.0
+        else:
+            audio_ms = (time.monotonic() - self.connected_at) * 1000.0
+        if audio_ms > 0:
+            self.meters.set_nc(self.plan.nc.provider, self.plan.nc.model or "", audio_ms)
+
+    def _warn_nc_passthrough(self, plan: SessionPlan) -> None:
+        nc = self.components.nc if self.components is not None else None
+        if nc is not None and getattr(nc, "applied", True) is False:
+            reason = getattr(nc, "passthrough_reason", None) or "engine_unavailable"
+            self.recorder.warning(
+                "nc_passthrough",
+                component="nc",
+                provider=plan.nc.provider,
+                detail=f"{reason}: caller audio is not noise-cancelled and not metered",
+            )
 
     def _on_tts_text(self, text: str) -> None:
         provider, model = self._models("tts")
@@ -505,6 +523,7 @@ class LiveCall:
         self.recorder.connected()
         self.tracker.connected(time.time())
         self.recorder.status("in_progress")
+        self._warn_nc_passthrough(plan)
 
         behavior = plan.behavior
         self.inactivity = InactivityTimer(

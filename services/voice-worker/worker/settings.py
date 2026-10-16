@@ -52,6 +52,10 @@ class WorkerSettings(BaseSettings):
     cartesia_api_key: SecretStr = Field(SecretStr(""), alias="CARTESIA_API_KEY")
     fishaudio_api_key: SecretStr = Field(SecretStr(""), alias="FISHAUDIO_API_KEY")
     sanas_api_key: SecretStr = Field(SecretStr(""), alias="SANAS_API_KEY")
+    # Sanas NC contract (worker/adapters/nc/sanas.py); unused until the vendor SDK is wired.
+    sanas_endpoint: str = Field("", alias="SANAS_ENDPOINT")
+    sanas_sample_rate: int = Field(16000, alias="SANAS_SAMPLE_RATE")
+    sanas_max_latency_ms: float = Field(20.0, alias="SANAS_MAX_LATENCY_MS")
     ai_coustics_api_key: SecretStr = Field(SecretStr(""), alias="AI_COUSTICS_API_KEY")
 
     def vendor_credentials(self) -> dict[str, dict[str, str]]:
@@ -69,7 +73,12 @@ class WorkerSettings(BaseSettings):
             "elevenlabs": {"api_key": self.eleven_api_key.get_secret_value()},
             "cartesia": {"api_key": self.cartesia_api_key.get_secret_value()},
             "fishaudio": {"api_key": self.fishaudio_api_key.get_secret_value()},
-            "sanas": {"api_key": self.sanas_api_key.get_secret_value()},
+            "sanas": {
+                "api_key": self.sanas_api_key.get_secret_value(),
+                "endpoint": self.sanas_endpoint,
+                "sample_rate": str(self.sanas_sample_rate),
+                "max_latency_ms": str(self.sanas_max_latency_ms),
+            },
             "ai_coustics": {"api_key": self.ai_coustics_api_key.get_secret_value()},
             "none": {},
         }
