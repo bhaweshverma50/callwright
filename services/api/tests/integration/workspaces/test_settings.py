@@ -27,7 +27,13 @@ async def test_name_and_recording_default_update_independently(
 
 async def test_empty_name_rejected_and_nothing_saved(client: httpx.AsyncClient, account: Account) -> None:
     before = (await client.get("/v1/me", headers=account.headers)).json()["workspace"]
-    for body in ({"name": ""}, {"name": "   "}, {"name": "x" * 81}, {"name": "ok", "concurrency_limit": 50}, {}):
+    for body in (
+        {"name": ""},
+        {"name": "   "},
+        {"name": "x" * 81},
+        {"name": "ok", "concurrency_limit": 50},
+        {},
+    ):
         response = await client.patch("/v1/workspaces/current", json=body, headers=account.headers)
         assert response.status_code == 422, body
         assert response.json()["errors"]

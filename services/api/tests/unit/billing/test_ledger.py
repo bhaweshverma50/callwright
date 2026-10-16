@@ -28,7 +28,9 @@ async def _post(db: Database, ws: str, type: service.TxnType, amount: str, **kw:
 async def _rows(db: Database, ws: str) -> list[CreditTransaction]:
     async with db.transaction(workspace_id=ws) as session:
         rows = await session.execute(
-            select(CreditTransaction).where(CreditTransaction.workspace_id == ws).order_by(CreditTransaction.seq)
+            select(CreditTransaction)
+            .where(CreditTransaction.workspace_id == ws)
+            .order_by(CreditTransaction.seq)
         )
         return list(rows.scalars())
 

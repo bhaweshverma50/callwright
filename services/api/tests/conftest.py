@@ -188,3 +188,39 @@ async def make_workspace(app: FastAPI, *, trial: bool = True) -> tuple[str, str]
 async def make_admin(account: Account) -> None:
     with psycopg.connect(_sync_dsn(TEST_DB), autocommit=True) as conn:
         conn.execute("update users set is_admin = true where id = %s", (account.user_id,))
+
+
+FUTURE_V2_FROM = "2099-01-01T00:00:00+00:00"
+
+
+@pytest_asyncio.fixture(scope="session")
+async def future_catalog(app: FastAPI) -> int:
+    """Publish a catalog version effective in 2099 with the STT rates doubled (version pinning
+    tests). Far in the future so every other test keeps pricing with version 1."""
+    from datetime import datetime
+
+    from app.pricing import service
+
+    async with app.state.db.transaction() as session:
+        v1 = await service.catalog_version(session, 1)
+    entries = [
+        service.EntryInput(
+            r.component,
+            r.provider,
+            r.model,
+            r.label,
+            r.rate_per_min_usd * (2 if r.component == "stt" else 1),
+            r.bundles,
+        )
+        for r in v1.call_rates()
+    ]
+    async with app.state.db.admin_transaction() as admin:
+        catalog = await service.publish_version(
+            admin,
+            effective_from=datetime.fromisoformat(FUTURE_V2_FROM),
+            entries=entries,
+            notes="test: STT doubled",
+            published_by=None,
+        )
+    assert catalog.version >= 2
+    return catalog.version

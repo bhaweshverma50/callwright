@@ -21,7 +21,7 @@ from tests.conftest import make_workspace
 )
 async def test_update_and_delete_refused_for_app_role(app: FastAPI, db: Database, statement: str) -> None:
     _, ws = await make_workspace(app)
-    with pytest.raises(DBAPIError, match="permission denied|append-only"):
+    with pytest.raises(DBAPIError, match=r"permission denied|append-only"):
         async with db.transaction(workspace_id=ws) as session:
             await session.execute(text(statement), {"ws": ws})
 

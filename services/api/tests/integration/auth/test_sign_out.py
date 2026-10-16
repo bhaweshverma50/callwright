@@ -42,7 +42,8 @@ async def test_garbage_and_expired_tokens_are_401(client: httpx.AsyncClient, app
     response = await client.get("/v1/me", headers={"Authorization": f"Bearer {expired}"})
     assert response.status_code == 401 and response.json()["code"] == "token_expired"
     forged = jwt.encode(
-        {"sub": "x", "aud": "authenticated", "exp": int(time.time()) + 60}, "wrong-secret-0123456789abcdef0123",
+        {"sub": "x", "aud": "authenticated", "exp": int(time.time()) + 60},
+        "wrong-secret-0123456789abcdef0123",
         algorithm="HS256",
     )
     response = await client.get("/v1/me", headers={"Authorization": f"Bearer {forged}"})
