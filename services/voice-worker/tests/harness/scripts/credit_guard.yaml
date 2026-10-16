@@ -1,0 +1,13 @@
+name: credit_guard
+description: An events response with control.end_call ends the call with its reason (FR-025).
+config:
+  call_behavior: {end_on_silence_s: 120}
+api:
+  end_call_on_post: 2
+  end_call_reason: insufficient_credit
+steps:
+  - say: "Tell me about your products."
+  - silence_s: 25
+  - expect_end_reason: insufficient_credit
+  - expect_event: {type: transcript_item, event: credit_exhausted}
+  - expect_event: {type: status, status: ended, disconnect_reason: insufficient_credit}

@@ -1,0 +1,18 @@
+name: dtmf
+description: Keypad digits ending with the termination key become one caller turn (FR-021).
+config:
+  advanced:
+    dtmf: {enabled: true, timeout_ms: 2500, termination_key: "#", digits: 10}
+fakes:
+  rules:
+    - match: "1234"
+      reply: "Thanks, account 1234 found."
+steps:
+  - dtmf: "1234#"
+  - expect_event: {type: dtmf, digits: "1234", direction: received, flush_reason: termination_key}
+  - expect_user_says: "1234"
+  - expect_event: {type: transcript_item, role: user, source: keypad}
+  - wait_idle: true
+  - expect_agent_says: "account 1234 found"
+  - dtmf: "99"
+  - expect_event: {type: dtmf, digits: "99", flush_reason: timeout}

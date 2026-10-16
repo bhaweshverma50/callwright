@@ -1,0 +1,11 @@
+name: greeting_generated
+description: Agent first with an empty begin message, so the LLM writes the opening line.
+config:
+  begin_message: ""
+fakes:
+  greeting_reply: "Hello from the generated opening."
+steps:
+  - wait_idle: true
+  - expect_agent_says: "generated opening"
+  - expect_event: {type: turn, turn_index: 0}
+  - expect_meter: {kind: llm, provider: azure_openai, model: gpt-5.1}

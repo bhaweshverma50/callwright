@@ -23,11 +23,11 @@ research/architecture.md section 2.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create the worker package: `services/voice-worker/pyproject.toml` (Python 3.12, `livekit-agents` 1.x with `silero`, `turn-detector`, `deepgram`, `openai`, `elevenlabs` plugins, pytest, pytest-asyncio, ruff, mypy) and `services/voice-worker/worker/__init__.py`
+- [x] T001 Create the worker package: `services/voice-worker/pyproject.toml` (Python 3.12, `livekit-agents` 1.x with `silero`, `turn-detector`, `deepgram`, `openai`, `elevenlabs` plugins, pytest, pytest-asyncio, ruff, mypy) and `services/voice-worker/worker/__init__.py`
 - [ ] T002 [P] Add `livekit-api` and `httpx` to `services/api/pyproject.toml`
 - [ ] T003 [P] Add `livekit-client` to `apps/web/package.json`
 - [ ] T004 [P] Add settings `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CALLWRIGHT_SERVICE_TOKEN`, `CREDIT_GRACE_USD`, `RECORDINGS_BUCKET`, `WORKER_AGENT_NAME` to `services/api/app/core/config.py`
-- [ ] T005 [P] Create worker settings (internal API URL, service token, agent name, heartbeat interval) in `services/voice-worker/worker/settings.py`
+- [x] T005 [P] Create worker settings (internal API URL, service token, agent name, heartbeat interval) in `services/voice-worker/worker/settings.py`
 - [ ] T006 [P] Add CI workflow `.github/workflows/voice-worker.yml` running ruff, mypy, `tests/unit` and `tests/harness` for `services/voice-worker`
 
 ---
@@ -43,12 +43,12 @@ research/architecture.md section 2.
 - [ ] T011 [P] Implement Idempotency-Key storage and replay dependency (24 h, request hash check) in `services/api/app/core/idempotency.py` (reuse 001's if present)
 - [ ] T012 [P] Implement LiveKit server client wrapper (create/delete room, create agent dispatch, mint scoped participant token, start room-composite egress, webhook receiver) in `services/api/app/core/livekit.py`
 - [ ] T013 [P] Add `require_service()` service-token dependency to `services/api/app/core/auth.py`
-- [ ] T014 [P] Implement typed internal API client (`claim()`, `post_events()` with retry and backoff, control handling) in `services/voice-worker/worker/internal_api.py`
-- [ ] T015 [P] Implement adapter registry with capability records and `UnsupportedVendor`, plus `catalog.json` listing supported `(kind, provider, models)` in `services/voice-worker/worker/adapters/registry.py` and `services/voice-worker/worker/adapters/catalog.json`
-- [ ] T016 [P] Define `ToolProvider`, `CallControl` protocols and `NullToolProvider` in `services/voice-worker/worker/tools/__init__.py`
-- [ ] T017 [P] Define `FlowRunner` protocol and `NullFlowRunner` in `services/voice-worker/worker/flow/__init__.py`
+- [x] T014 [P] Implement typed internal API client (`claim()`, `post_events()` with retry and backoff, control handling) in `services/voice-worker/worker/internal_api.py`
+- [x] T015 [P] Implement adapter registry with capability records and `UnsupportedVendor`, plus `catalog.json` listing supported `(kind, provider, models)` in `services/voice-worker/worker/adapters/registry.py` and `services/voice-worker/worker/adapters/catalog.json`
+- [x] T016 [P] Define `ToolProvider`, `CallControl` protocols and `NullToolProvider` in `services/voice-worker/worker/tools/__init__.py`
+- [x] T017 [P] Define `FlowRunner` protocol and `NullFlowRunner` in `services/voice-worker/worker/flow/__init__.py`
 - [ ] T018 Define `InboundRouter` and `OutboundDialProvider` registries and the call state-transition service in `services/api/app/calls/service.py` (depends on T008)
-- [ ] T019 Build the offline harness core: virtual clock `clock.py`, fake adapters and fake room transport `fakes.py`, YAML script schema `script_schema.py`, scenario runner `runner.py` in `services/voice-worker/tests/harness/`
+- [x] T019 Build the offline harness core: virtual clock `clock.py`, fake adapters and fake room transport `fakes.py`, YAML script schema `script_schema.py`, scenario runner `runner.py` in `services/voice-worker/tests/harness/`
 - [ ] T020 Register 003 jobs and crons (pipeline, recording, webhook delivery, reaper, purge) in `services/api/app/jobs.py` `WorkerSettings` (create if absent)
 
 **Checkpoint**: schema, shared clients, extension points and harness core exist.
@@ -71,7 +71,7 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 - [ ] T024 [P] [US1] Unit tests for variable resolution order, built-in protection, validation limits and missing-name recording in `services/api/tests/unit/test_variables.py`
 - [ ] T025 [P] [US1] Money test: cumulative usage snapshots are monotonic, lower `seq` ignored, duplicates harmless in `services/api/tests/unit/test_usage_snapshot.py`
 - [ ] T026 [P] [US1] Money test: `billable_seconds` = ceil(connected to ended), 4.2 s bills 5 s, ringing and queue excluded, never-connected bills 0 in `services/api/tests/unit/test_billable_seconds.py`
-- [ ] T027 [P] [US1] Harness scenarios for agent-first greeting with variables, empty-greeting generated opening, and caller-first silence in `services/voice-worker/tests/harness/scripts/greeting.yaml` and `services/voice-worker/tests/harness/test_scenarios.py`
+- [x] T027 [P] [US1] Harness scenarios for agent-first greeting with variables, empty-greeting generated opening, and caller-first silence in `services/voice-worker/tests/harness/scripts/greeting.yaml` and `services/voice-worker/tests/harness/test_scenarios.py`
 - [ ] T028 [P] [US1] Integration test: web call request, claim, scripted events, caller leaves, call `ended` with `user_hangup` in `services/api/tests/integration/test_web_call_flow.py`
 
 ### Implementation for User Story 1
@@ -81,13 +81,13 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 - [ ] T031 [US1] Implement `POST /v1/sessions/web-call` with Idempotency-Key in `services/api/app/sessions/router.py`
 - [ ] T032 [US1] Implement `claim()` (pre-admitted path, job-id idempotency, RuntimeConfig assembly) and `POST /v1/internal/calls/claim` in `services/api/app/calls/service.py` and `services/api/app/calls/router.py`
 - [ ] T033 [US1] Implement event ingest (insert ON CONFLICT DO NOTHING, status transitions via T018, usage snapshot by seq, `last_heartbeat_at`, `billable_seconds` on end) and router in `services/api/app/call_events/service.py`, `services/api/app/call_events/schemas.py`, `services/api/app/call_events/router.py`
-- [ ] T034 [P] [US1] Deepgram STT adapter in `services/voice-worker/worker/adapters/stt/deepgram.py`
-- [ ] T035 [P] [US1] OpenAI and Azure OpenAI LLM adapters in `services/voice-worker/worker/adapters/llm/openai.py` and `services/voice-worker/worker/adapters/llm/azure_openai.py`
-- [ ] T036 [P] [US1] ElevenLabs TTS adapter in `services/voice-worker/worker/adapters/tts/elevenlabs.py`
+- [x] T034 [P] [US1] Deepgram STT adapter in `services/voice-worker/worker/adapters/stt/deepgram.py`
+- [x] T035 [P] [US1] OpenAI and Azure OpenAI LLM adapters in `services/voice-worker/worker/adapters/llm/openai.py` and `services/voice-worker/worker/adapters/llm/azure_openai.py`
+- [x] T036 [P] [US1] ElevenLabs TTS adapter in `services/voice-worker/worker/adapters/tts/elevenlabs.py`
 - [ ] T037 [P] [US1] Sanas and passthrough NC adapters in `services/voice-worker/worker/adapters/nc/sanas.py` and `services/voice-worker/worker/adapters/nc/none.py`
-- [ ] T038 [US1] Implement session assembly from RuntimeConfig (VAD, STT, LLM, TTS, NC via registry; prompt and greeting variable rendering; tools from `ToolProvider`; flow agents via `FlowRunner`) in `services/voice-worker/worker/pipeline.py`
-- [ ] T039 [US1] Implement per-turn latency (direct `e2e_ms`, component metrics, greeting latency), usage meters, transcript items and event batching with 10 s heartbeat in `services/voice-worker/worker/metrics.py`
-- [ ] T040 [US1] Implement job entry: prewarm models, claim, web channel handling (60 s caller join timeout, `in_progress` on join, `user_hangup` on leave), start speaker, final status post, shutdown in `services/voice-worker/worker/entry.py`
+- [x] T038 [US1] Implement session assembly from RuntimeConfig (VAD, STT, LLM, TTS, NC via registry; prompt and greeting variable rendering; tools from `ToolProvider`; flow agents via `FlowRunner`) in `services/voice-worker/worker/pipeline.py`
+- [x] T039 [US1] Implement per-turn latency (direct `e2e_ms`, component metrics, greeting latency), usage meters, transcript items and event batching with 10 s heartbeat in `services/voice-worker/worker/metrics.py`
+- [x] T040 [US1] Implement job entry: prewarm models, claim, web channel handling (60 s caller join timeout, `in_progress` on join, `user_hangup` on leave), start speaker, final status post, shutdown in `services/voice-worker/worker/entry.py`
 - [ ] T041 [P] [US1] Implement `useWebCall` (request session, connect, agent state from `lk.agent.state`, transcript from `lk.transcription`, end) in `apps/web/src/routes/agents/hooks/useWebCall.ts` with tests in `apps/web/src/routes/agents/hooks/useWebCall.test.ts`
 - [ ] T042 [P] [US1] Implement variables dialog pre-filled with defaults in `apps/web/src/routes/agents/components/TestVariablesDialog.tsx`
 - [ ] T043 [US1] Implement `WebCallPanel` (orb, live transcript, end button) and `/agents/:id/testing` page, register the route in `apps/web/src/app/router.tsx`, files `apps/web/src/routes/agents/components/WebCallPanel.tsx` and `apps/web/src/routes/agents/AgentTestingPage.tsx`
@@ -112,7 +112,7 @@ ends with `max_duration_reached`.
 - [ ] T046 [P] [US2] Money test: 50 concurrent admissions for the last slot admit exactly one in `services/api/tests/integration/test_admission_race.py`
 - [ ] T047 [P] [US2] Money test: running cost versus balance plus grace returns `end_call` with `insufficient_credit` at the right threshold in `services/api/tests/unit/test_credit_guard.py`
 - [ ] T048 [P] [US2] Unit tests for every allowed and forbidden call transition and first-writer-wins disconnect reason in `services/api/tests/unit/test_call_state_machine.py`
-- [ ] T049 [P] [US2] Timer unit tests (inactivity reset rules, duration, simultaneous fire) in `services/voice-worker/tests/unit/test_timers.py` and harness scripts `services/voice-worker/tests/harness/scripts/inactivity.yaml`, `services/voice-worker/tests/harness/scripts/max_duration.yaml`
+- [x] T049 [P] [US2] Timer unit tests (inactivity reset rules, duration, simultaneous fire) in `services/voice-worker/tests/unit/test_timers.py` and harness scripts `services/voice-worker/tests/harness/scripts/inactivity.yaml`, `services/voice-worker/tests/harness/scripts/max_duration.yaml`
 - [ ] T050 [P] [US2] Integration test for the reaper (queued past 60 s, heartbeat lost past 60 s, room deleted, slot released) in `services/api/tests/integration/test_reaper.py`
 
 ### Implementation for User Story 2
@@ -120,9 +120,9 @@ ends with `max_duration_reached`.
 - [ ] T051 [US2] Add admission checks in order (email verified, version, vendors in `catalog.json`, pricing coverage via 001, balance above zero, advisory lock and active-call count) and refusal records to `admit()` in `services/api/app/calls/service.py`
 - [ ] T052 [US2] Map refusals to problem types 402, 403, 409, 422, 429 with `call_id` in `services/api/app/sessions/router.py`
 - [ ] T053 [US2] Implement mid-call credit guard on each events post using 001's running-cost estimate and `CREDIT_GRACE_USD` in `services/api/app/call_events/service.py`
-- [ ] T054 [US2] Implement `InactivityTimer` and `DurationTimer` on the session clock in `services/voice-worker/worker/call_behavior.py` and wire them in `services/voice-worker/worker/entry.py`
-- [ ] T055 [US2] Implement `CallControl.hang_up(reason)` (first writer wins, final status event, room delete) and handling of `control.end_call` responses in `services/voice-worker/worker/entry.py`
-- [ ] T056 [US2] Handle vendor stream failures (adapter retry window 5 s, then end with `error` and `vendor_error:<kind>/<provider>` diagnostic) in `services/voice-worker/worker/pipeline.py`
+- [x] T054 [US2] Implement `InactivityTimer` and `DurationTimer` on the session clock in `services/voice-worker/worker/call_behavior.py` and wire them in `services/voice-worker/worker/entry.py`
+- [x] T055 [US2] Implement `CallControl.hang_up(reason)` (first writer wins, final status event, room delete) and handling of `control.end_call` responses in `services/voice-worker/worker/entry.py`
+- [x] T056 [US2] Handle vendor stream failures (adapter retry window 5 s, then end with `error` and `vendor_error:<kind>/<provider>` diagnostic) in `services/voice-worker/worker/pipeline.py`
 - [ ] T057 [US2] Implement `reap_stuck_calls` cron (15 s) in `services/api/app/calls/jobs.py`
 - [ ] T058 [US2] Show refusal reasons and an "Add funds" link in `apps/web/src/routes/agents/components/WebCallPanel.tsx`
 
@@ -140,25 +140,25 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T059 [P] [US3] Unit tests for interruption and responsiveness mapping (formulas, monotonicity, s = 0 disables) and turn detection selection in `services/voice-worker/tests/unit/test_turn_mapping.py`
-- [ ] T060 [P] [US3] Unit tests for the streaming pronunciation transform (whole word, case-insensitive, chunk boundaries, "MySQL" untouched) in `services/voice-worker/tests/unit/test_pronunciation.py`
-- [ ] T061 [P] [US3] Unit tests: every `catalog.json` entry builds through the registry with fake credentials; unknown provider raises in `services/voice-worker/tests/unit/test_registry.py`
-- [ ] T062 [P] [US3] Harness scenarios `interruption.yaml`, `responsiveness.yaml`, `pronunciation.yaml`, `background_audio.yaml` in `services/voice-worker/tests/harness/scripts/`
+- [x] T059 [P] [US3] Unit tests for interruption and responsiveness mapping (formulas, monotonicity, s = 0 disables) and turn detection selection in `services/voice-worker/tests/unit/test_turn_mapping.py`
+- [x] T060 [P] [US3] Unit tests for the streaming pronunciation transform (whole word, case-insensitive, chunk boundaries, "MySQL" untouched) in `services/voice-worker/tests/unit/test_pronunciation.py`
+- [x] T061 [P] [US3] Unit tests: every `catalog.json` entry builds through the registry with fake credentials; unknown provider raises in `services/voice-worker/tests/unit/test_registry.py`
+- [x] T062 [P] [US3] Harness scenarios `interruption.yaml`, `responsiveness.yaml`, `pronunciation.yaml`, `background_audio.yaml` in `services/voice-worker/tests/harness/scripts/`
 
 ### Implementation for User Story 3
 
-- [ ] T063 [US3] Implement turn-taking mapping functions and turn detection selection (STT built-in versus semantic model, `multi` language) in `services/voice-worker/worker/pipeline.py`
-- [ ] T064 [US3] Implement the pronunciation streaming transform and wire it into the agent TTS node in `services/voice-worker/worker/audio.py`
-- [ ] T065 [US3] Implement background audio (built-in clips, uploaded file download and cache, gain clamp, missing-file warning) in `services/voice-worker/worker/audio.py`
+- [x] T063 [US3] Implement turn-taking mapping functions and turn detection selection (STT built-in versus semantic model, `multi` language) in `services/voice-worker/worker/pipeline.py`
+- [x] T064 [US3] Implement the pronunciation streaming transform and wire it into the agent TTS node in `services/voice-worker/worker/audio.py`
+- [x] T065 [US3] Implement background audio (built-in clips, uploaded file download and cache, gain clamp, missing-file warning) in `services/voice-worker/worker/audio.py`
 - [ ] T066 [US3] Add signed `background_audio_url` to the claim RuntimeConfig in `services/api/app/calls/service.py`
-- [ ] T067 [US3] Truncate interrupted agent turns to played text and set `interrupted` in transcript items in `services/voice-worker/worker/metrics.py`
-- [ ] T068 [P] [US3] AssemblyAI and Sarvam STT adapters in `services/voice-worker/worker/adapters/stt/assemblyai.py` and `services/voice-worker/worker/adapters/stt/sarvam.py`
+- [x] T067 [US3] Truncate interrupted agent turns to played text and set `interrupted` in transcript items in `services/voice-worker/worker/metrics.py`
+- [x] T068 [P] [US3] AssemblyAI and Sarvam STT adapters in `services/voice-worker/worker/adapters/stt/assemblyai.py` and `services/voice-worker/worker/adapters/stt/sarvam.py`
 - [ ] T069 [P] [US3] (Deferred: not in the launch catalog, 002 data-model section 8.2) Anthropic LLM adapter in `services/voice-worker/worker/adapters/llm/anthropic.py`, built only when a catalog entry and a pricing row are added
-- [ ] T070 [P] [US3] Cartesia TTS adapter in `services/voice-worker/worker/adapters/tts/cartesia.py` (Sarvam TTS is not in the launch catalog; research R8)
-- [ ] T071 [P] [US3] Fish Audio streaming TTS adapter with character metering in `services/voice-worker/worker/adapters/tts/fishaudio.py`
-- [ ] T072 [P] [US3] ai-coustics NC adapter in `services/voice-worker/worker/adapters/nc/ai_coustics.py`
+- [x] T070 [P] [US3] Cartesia TTS adapter in `services/voice-worker/worker/adapters/tts/cartesia.py` (Sarvam TTS is not in the launch catalog; research R8)
+- [x] T071 [P] [US3] Fish Audio streaming TTS adapter with character metering in `services/voice-worker/worker/adapters/tts/fishaudio.py`
+- [x] T072 [P] [US3] ai-coustics NC adapter in `services/voice-worker/worker/adapters/nc/ai_coustics.py`
 - [ ] T116 [US3] Auto speech recognition (FR-045): call 002's `voices.service.resolve_auto_stt` in `claim()` and put `stt_resolved_model` in RuntimeConfig (`services/api/app/calls/service.py`); the worker builds STT with the resolved id and reports it in usage meters (`services/voice-worker/worker/pipeline.py`, `metrics.py`); admission refuses a language the provider's Auto cannot cover; tests in `services/api/tests/unit/test_auto_stt.py` (Deepgram `en-US` to `nova-3`, `hi` to `nova-2`; AssemblyAI `es` to multilingual; Sarvam to `saarika:v2.5`) and a pricing check that a Deepgram Auto call in Hindi is charged at 0.0058 per minute
-- [ ] T117 [US3] Segment overrides (FR-046): `CallControl.apply_overrides()` in `services/voice-worker/worker/tools/__init__.py` (protocol) and `services/voice-worker/worker/pipeline.py` (swap LLM, TTS and STT at the next turn boundary, re-resolve Auto for a new language, clamp to RuntimeConfig `controls`, emit `segment_override` and `override_clamped` events, meter per model); harness scenario `services/voice-worker/tests/harness/scripts/segment_override.yaml` asserting the swap, clamping, per-model meters and first-turn latency after a swap within budget
+- [x] T117 [US3] Segment overrides (FR-046): `CallControl.apply_overrides()` in `services/voice-worker/worker/tools/__init__.py` (protocol) and `services/voice-worker/worker/pipeline.py` (swap LLM, TTS and STT at the next turn boundary, re-resolve Auto for a new language, clamp to RuntimeConfig `controls`, emit `segment_override` and `override_clamped` events, meter per model); harness scenario `services/voice-worker/tests/harness/scripts/segment_override.yaml` asserting the swap, clamping, per-model meters and first-turn latency after a swap within budget
 
 **Checkpoint**: All builder settings change runtime behaviour; every listed vendor runs.
 
@@ -234,14 +234,14 @@ event; SSRF guard.
 
 ### Tests for User Story 6 (write first, must fail)
 
-- [ ] T094 [P] [US6] Unit tests for the DTMF collector (termination key, digit limit, pause timeout, digits during agent speech) in `services/voice-worker/tests/unit/test_dtmf_collector.py`
-- [ ] T095 [P] [US6] Harness scenarios `voicemail_hangup.yaml`, `voicemail_leave_message.yaml`, `dtmf.yaml` in `services/voice-worker/tests/harness/scripts/`
+- [x] T094 [P] [US6] Unit tests for the DTMF collector (termination key, digit limit, pause timeout, digits during agent speech) in `services/voice-worker/tests/unit/test_dtmf_collector.py`
+- [x] T095 [P] [US6] Harness scenarios `voicemail_hangup.yaml`, `voicemail_leave_message.yaml`, `dtmf.yaml` in `services/voice-worker/tests/harness/scripts/`
 
 ### Implementation for User Story 6
 
-- [ ] T096 [US6] Implement `DtmfCollector` and wire `sip_dtmf_received` to a single keypad caller turn plus `dtmf` events in `services/voice-worker/worker/call_behavior.py`
-- [ ] T097 [US6] Implement `CallControl.send_dtmf()` for 005's press-digit tool in `services/voice-worker/worker/entry.py`
-- [ ] T098 [US6] Implement voicemail detection for outbound calls (internal tool for the first 30 s, hang-up and leave-message actions, post-greeting silence wait) in `services/voice-worker/worker/call_behavior.py`
+- [x] T096 [US6] Implement `DtmfCollector` and wire `sip_dtmf_received` to a single keypad caller turn plus `dtmf` events in `services/voice-worker/worker/call_behavior.py`
+- [x] T097 [US6] Implement `CallControl.send_dtmf()` for 005's press-digit tool in `services/voice-worker/worker/entry.py`
+- [x] T098 [US6] Implement voicemail detection for outbound calls (internal tool for the first 30 s, hang-up and leave-message actions, post-greeting silence wait) in `services/voice-worker/worker/call_behavior.py`
 - [ ] T099 [P] [US6] Add a keypad to the test panel that publishes DTMF in `apps/web/src/routes/agents/components/Keypad.tsx`
 
 **Checkpoint**: Outbound-ready behaviours verified offline.
@@ -255,10 +255,10 @@ event; SSRF guard.
 **Independent Test**: Harness suite passes offline under 5 minutes; benchmark reports p50/p95
 against baseline.
 
-- [ ] T100 [P] [US7] Add a CLI to run one script against an exported agent version JSON (`python -m tests.harness.runner --config ... --script ...`) in `services/voice-worker/tests/harness/runner.py`
-- [ ] T101 [P] [US7] Document the script format and fakes in `services/voice-worker/tests/harness/README.md`
+- [x] T100 [P] [US7] Add a CLI to run one script against an exported agent version JSON (`python -m tests.harness.runner --config ... --script ...`) in `services/voice-worker/tests/harness/runner.py`
+- [x] T101 [P] [US7] Document the script format and fakes in `services/voice-worker/tests/harness/README.md`
 - [ ] T102 [US7] Implement the benchmark synthetic caller (WAV playback, agent audio onset detection, per-turn e2e) and the 20 x 6 call set in `services/voice-worker/tests/harness/benchmark.py`, `services/voice-worker/tests/harness/benchmarks/callset.yaml` and `services/voice-worker/tests/harness/benchmarks/fixtures/`
-- [ ] T103 [US7] Implement baseline comparison (p50 at most 800 ms, p95 at most 1,500 ms, no more than 10% regression) and baseline refresh command writing `services/voice-worker/tests/harness/benchmarks/baseline.json`
+- [x] T103 [US7] Implement baseline comparison (p50 at most 800 ms, p95 at most 1,500 ms, no more than 10% regression) and baseline refresh command writing `services/voice-worker/tests/harness/benchmarks/baseline.json`
 - [ ] T104 [US7] Add a CI time budget assertion (harness job fails above 5 minutes) to `.github/workflows/voice-worker.yml`
 - [ ] T105 [US7] Latency budget gate (Principle II): add `.github/workflows/voice-benchmark.yml` running T102 nightly and on PRs touching `services/voice-worker/worker/**`, publishing p50/p95 and blocking merge on failure; commit the first baseline from the default stack
 

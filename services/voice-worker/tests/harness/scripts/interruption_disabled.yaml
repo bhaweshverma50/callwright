@@ -1,0 +1,15 @@
+name: interruption_disabled
+description: Sensitivity 0 disables interruptions; the reply plays to the end (R4).
+config:
+  call_behavior: {interruption_sensitivity: 0}
+fakes:
+  rules:
+    - match: "plans"
+      reply: "We have four plans: basic, plus, premium and family, and each one comes with different data, calls and roaming allowances that I can walk you through."
+steps:
+  - say: "What plans do you have?"
+  - say: "Just the cheapest one please."
+    interrupt_after_ms: 1200
+  - wait_idle: true
+  - expect_event: {type: turn, turn_index: 1, interrupted: false}
+  - expect_no_event: {type: turn, interrupted: true}

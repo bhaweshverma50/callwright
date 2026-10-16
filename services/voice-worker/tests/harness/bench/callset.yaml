@@ -1,0 +1,17 @@
+# Benchmark call set (T102 shape: 20 calls x 6 turns) on the default stack.
+# Fake mode samples vendor delays from these log-normal profiles (milliseconds), seeded, so the
+# run is deterministic; it measures the worker's turn pipeline and endpointing configuration.
+calls: 20
+seed: 20261016
+config_overrides: {}
+profile:
+  stt_final_ms: {median: 160, p95: 280}
+  llm_ttft_ms: {median: 320, p95: 700}
+  tts_ttfb_ms: {median: 130, p95: 240}
+turns:
+  - "Hi, I want to check on my loan payment."
+  - "The account number is four four one nine."
+  - "When is the next instalment due?"
+  - "Can I pay part of it today?"
+  - "Please send me the payment link."
+  - "Thank you, that is everything."

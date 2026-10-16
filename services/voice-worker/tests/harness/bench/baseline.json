@@ -1,0 +1,11 @@
+{
+  "calls": 20,
+  "turns": 120,
+  "e2e_p50_ms": 629.0,
+  "e2e_p95_ms": 1063.0,
+  "e2e_max_ms": 1633.0,
+  "stt_final_median_ms": 156.5,
+  "eou_delay_median_ms": 400.0,
+  "llm_ttft_median_ms": 302.0,
+  "tts_ttfb_median_ms": 136.0
+}

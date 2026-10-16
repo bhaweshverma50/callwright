@@ -1,0 +1,11 @@
+name: background_audio
+description: Built-in ambience plays with gain clamped to 2.0 (R12).
+config:
+  advanced:
+    background_audio:
+      enabled: true
+      source: {kind: builtin, id: office_ambience}
+      volume: 2.5
+steps:
+  - expect_background: {kind: builtin, ref: office_ambience, gain: 2.0}
+  - expect_no_event: {type: warning, code: background_audio_unavailable}

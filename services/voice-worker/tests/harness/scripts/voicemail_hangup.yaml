@@ -1,0 +1,14 @@
+name: voicemail_hangup
+description: Outbound call reaches a voicemail greeting; detection hangs up at once (FR-020).
+runtime:
+  channel: sip_outbound
+config:
+  start_speaker: user
+  advanced:
+    voicemail_detection: {enabled: true, action: hang_up, message: null}
+steps:
+  - machine_greeting: "You have reached the voicemail of Sam. Please leave a message after the tone."
+  - expect_tool: report_answering_machine
+  - expect_end_reason: voicemail_reached
+  - expect_event: {type: transcript_item, event: voicemail_detected}
+  - expect_turns: 0

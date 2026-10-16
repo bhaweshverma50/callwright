@@ -1,0 +1,17 @@
+name: voicemail_leave_message
+description: Detection waits for silence after the beep, leaves the message, then hangs up (FR-020).
+runtime:
+  channel: sip_outbound
+config:
+  start_speaker: user
+  advanced:
+    voicemail_detection:
+      enabled: true
+      action: leave_message
+      message: "Hi, this is Acme Bank calling about your appointment. Please call us back."
+steps:
+  - machine_greeting: "You have reached the voicemail of Sam. Please leave a message after the tone."
+  - silence_s: 15
+  - expect_agent_speaks: "calling about your appointment"
+  - expect_agent_says: "this is Acme Bank calling about your appointment"
+  - expect_end_reason: voicemail_reached
