@@ -330,6 +330,32 @@
   one smooth ease in and out and the loop has no seam. While a half travels it parts 1.4 units from
   the waist and its comet for that direction fades up; the glow breathes up at each lock.
 */
+@keyframes ll-spin {
+  0% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  50% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ll-tail {
+  0%,
+  50%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  25%,
+  75% {
+    opacity: 0.75;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
 @keyframes ll-orbit-a {
   0%,
   1% {
@@ -448,14 +474,14 @@
 }
 @keyframes ll-glow {
   0%,
-  48%,
+  50%,
   100% {
     opacity: 0.9;
     transform: scale(1);
     animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
   }
-  23%,
-  73% {
+  25%,
+  75% {
     opacity: 0.35;
     transform: scale(0.9);
     animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
@@ -842,7 +868,15 @@
   /* LogoLoader: keyframes and timing are documented above the ll-orbit keyframes. */
   .ll {
     --ll-duration: 2.4s;
+    /* --ll-phase (set by LogoLoader from one global clock) keeps every loader instance on the same
+       beat, so a loader that replaces another continues the motion instead of restarting it. */
+    --ll-phase: 0s;
+    --ll-lag: 0.17s;
     animation: fade-in 260ms ease-out 140ms both;
+  }
+  /* Replacing a loader that was just on screen: no second fade. */
+  .ll.ll-continue {
+    animation: none;
   }
   .ll-a,
   .ll-b,
@@ -852,37 +886,42 @@
     transform-origin: 0 0;
     will-change: transform;
   }
+  /* Both halves turn clockwise without ever reversing (360 equals 0, so the loop has no seam),
+     easing into a rest at every half turn. The gradient half runs --ll-lag behind the ink half:
+     they part while moving fast and close back into the C at each rest, the turn handed over. */
   .ll-a {
-    animation: ll-orbit-a var(--ll-duration) infinite;
+    animation: ll-spin var(--ll-duration) infinite;
+    animation-delay: var(--ll-phase);
   }
   .ll-b {
-    animation: ll-orbit-b var(--ll-duration) infinite;
+    animation: ll-spin var(--ll-duration) infinite;
+    animation-delay: calc(var(--ll-phase) + var(--ll-lag));
   }
-  .ll-a-split {
-    animation: ll-split-a var(--ll-duration) infinite;
-  }
+  .ll-a-split,
   .ll-b-split {
-    animation: ll-split-b var(--ll-duration) infinite;
+    animation: none;
   }
   .ll-trail {
     opacity: 0;
   }
+  /* One comet per half, brightest at full speed and gone at each rest. */
   .ll-trail-aCw {
-    animation: ll-trail-aCw var(--ll-duration) infinite;
-  }
-  .ll-trail-aCcw {
-    animation: ll-trail-aCcw var(--ll-duration) infinite;
+    animation: ll-tail var(--ll-duration) infinite;
+    animation-delay: var(--ll-phase);
   }
   .ll-trail-bCw {
-    animation: ll-trail-bCw var(--ll-duration) infinite;
+    animation: ll-tail var(--ll-duration) infinite;
+    animation-delay: calc(var(--ll-phase) + var(--ll-lag));
   }
+  .ll-trail-aCcw,
   .ll-trail-bCcw {
-    animation: ll-trail-bCcw var(--ll-duration) infinite;
+    display: none;
   }
   .ll-glow {
     transform-box: fill-box;
     transform-origin: center;
     animation: ll-glow var(--ll-duration) infinite;
+    animation-delay: var(--ll-phase);
   }
   /* Still state (reduced motion, or `still`): the mark at rest, breathing slowly in opacity. */
   .ll-still .ll-a,

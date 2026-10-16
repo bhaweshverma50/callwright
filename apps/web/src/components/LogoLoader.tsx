@@ -1,4 +1,4 @@
-import { useId, type CSSProperties } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import { cn } from "./cn";
 import { SYMBOL } from "./logo-data.generated";
 
@@ -75,6 +75,17 @@ export type LogoLoaderSize = keyof typeof SIZES;
  * previews). Use it for boot, route and full-page loading; content-shaped loading keeps shimmer
  * skeletons. It fades in after a short delay so fast loads never flash it.
  */
+/** Loop length in ms; must match --ll-duration in index.css. */
+const LOOP_MS = 2400;
+/** When the last loader left the screen; a loader mounting soon after continues without a fade. */
+let lastHiddenAt = -Infinity;
+
+/** Negative delay that places this instance on the shared beat, so swaps never restart the loop. */
+function currentPhase(): string {
+  const now = typeof performance === "undefined" ? 0 : performance.now();
+  return `${-(now % LOOP_MS)}ms`;
+}
+
 export function LogoLoader({
   size = "md",
   label,
@@ -94,6 +105,11 @@ export function LogoLoader({
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const px = SIZES[size];
+  // Fixed at mount: the phase keeps this instance on the global beat, and `continues` skips the
+  // fade-in when another loader was visible a moment ago.
+  const [phase] = useState(currentPhase);
+  const [continues] = useState(() => typeof performance !== "undefined" && performance.now() - lastHiddenAt < 600);
+  useEffect(() => () => void (lastHiddenAt = performance.now()), []);
   const trail = (key: keyof typeof TRAILS, colour: string) => {
     const t = TRAILS[key];
     return (
@@ -119,8 +135,14 @@ export function LogoLoader({
     <div
       role="status"
       aria-live="polite"
-      className={cn("ll inline-flex flex-col items-center gap-3", onConsole && "logo-on-dark", still && "ll-still", className)}
-      style={{ "--ll-size": `${px}px` } as CSSProperties}
+      className={cn(
+        "ll inline-flex flex-col items-center gap-3",
+        onConsole && "logo-on-dark",
+        still && "ll-still",
+        continues && "ll-continue",
+        className,
+      )}
+      style={{ "--ll-size": `${px}px`, "--ll-phase": phase } as CSSProperties}
       data-size={size}
     >
       <svg viewBox="-26 -26 52 52" width={px} height={px} aria-hidden className="ll-mark overflow-visible">
