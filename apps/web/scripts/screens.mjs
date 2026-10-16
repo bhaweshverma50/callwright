@@ -21,6 +21,14 @@ const VIEWPORTS = (process.env.SCREENS_VIEWPORTS ?? "desktop,mobile").split(",")
 
 const DEMO = { email: "ops@halcyon-dental.com", password: "correct-horse-9" };
 
+async function openAgent(p, name = "Front desk agent", tab) {
+  await p.getByRole("link", { name }).first().click();
+  await p.waitForURL("**/edit");
+  await p.waitForLoadState("networkidle");
+  if (tab) await p.getByRole("tab", { name: tab }).click();
+  await p.waitForTimeout(700);
+}
+
 /** name, path, needs sign-in, full page, optional action before the shot (gets page and isMobile) */
 const PAGES = [
   // The hero call plays for 16 s; shoot it mid-call.
@@ -91,7 +99,139 @@ const PAGES = [
   },
   { name: "billing-usage", path: "/billing?tab=usage", auth: true, full: true },
   { name: "settings", path: "/settings", auth: true },
-  { name: "placeholder-agents", path: "/agents", auth: true, full: true },
+  { name: "agents", path: "/agents", auth: true, full: true, before: async (p) => p.waitForTimeout(600) },
+  {
+    name: "agents-search-empty",
+    path: "/agents",
+    auth: true,
+    before: async (p) => {
+      await p.getByLabel("Search agents by name or agent ID").fill("zzz");
+      await p.waitForTimeout(700);
+    },
+  },
+  {
+    name: "agents-empty",
+    path: "/agents",
+    auth: true,
+    before: async (p) => {
+      // Empty the demo workspace for one shot, then put it back.
+      await p.evaluate(() => {
+        const raw = localStorage.getItem("cw.mockdb.v2");
+        window.__mockBackup = raw;
+        const db = JSON.parse(raw);
+        db.agentsStore.agents.forEach((a) => (a.deleted_at = new Date().toISOString()));
+        localStorage.setItem("cw.mockdb.v2", JSON.stringify(db));
+      });
+      const backup = await p.evaluate(() => window.__mockBackup);
+      await p.reload();
+      await p.waitForLoadState("networkidle");
+      await p.evaluate((b) => localStorage.setItem("cw.mockdb.v2", b), backup);
+      await p.waitForTimeout(500);
+    },
+    after: async (p) => {
+      await p.reload();
+      await p.waitForLoadState("networkidle");
+    },
+  },
+  { name: "agents-new", path: "/agents/new", auth: true, full: true, before: async (p) => p.waitForTimeout(400) },
+  { name: "agents-templates", path: "/agents/templates", auth: true, full: true, before: async (p) => p.waitForTimeout(500) },
+  {
+    name: "agents-template-preview",
+    path: "/agents/templates",
+    auth: true,
+    before: async (p) => {
+      await p.getByRole("button", { name: /Symptom triage and booking/ }).click();
+      await p.waitForTimeout(700);
+    },
+  },
+  { name: "agent-create", tall: true, path: "/agents/new/single", auth: true, full: true, before: async (p) => p.waitForTimeout(900) },
+  {
+    name: "agent-create-errors",
+    path: "/agents/new/single",
+    auth: true,
+    before: async (p) => {
+      await p.waitForTimeout(600);
+      await p.getByRole("button", { name: "Create agent" }).click();
+      await p.waitForTimeout(800);
+    },
+  },
+  { name: "agent-editor", tall: true, path: "/agents", auth: true, full: true, before: async (p) => openAgent(p) },
+  {
+    name: "agent-editor-voice",
+    tall: true,
+    path: "/agents",
+    auth: true,
+    full: true,
+    before: async (p) => openAgent(p, "Front desk agent", "Voice and speech"),
+  },
+  {
+    name: "agent-editor-behaviour",
+    tall: true,
+    path: "/agents",
+    auth: true,
+    full: true,
+    before: async (p) => openAgent(p, "Front desk agent", "Call behaviour"),
+  },
+  {
+    name: "agent-editor-advanced",
+    tall: true,
+    path: "/agents",
+    auth: true,
+    full: true,
+    before: async (p) => {
+      await openAgent(p, "Front desk agent", "Advanced");
+      for (const name of ["Detect voicemail", "Listen for keypad input", "Background audio"]) await p.getByRole("switch", { name }).click();
+      await p.getByRole("radio", { name: "Leave a message" }).click();
+      await p.waitForTimeout(500);
+    },
+  },
+  {
+    name: "agent-voice-picker",
+    path: "/agents",
+    auth: true,
+    before: async (p) => {
+      await openAgent(p, "Front desk agent", "Voice and speech");
+      await p.getByRole("button", { name: "Change voice" }).click();
+      await p.waitForTimeout(800);
+    },
+  },
+  {
+    name: "agent-history",
+    path: "/agents",
+    auth: true,
+    before: async (p) => {
+      await openAgent(p);
+      await p.getByRole("button", { name: "History" }).click();
+      await p.waitForTimeout(900);
+    },
+  },
+  {
+    name: "agent-compare",
+    path: "/agents",
+    auth: true,
+    before: async (p) => {
+      await openAgent(p);
+      await p.getByRole("button", { name: "History" }).click();
+      await p.waitForTimeout(600);
+      await p.getByRole("button", { name: "Compare" }).last().click();
+      await p
+        .getByRole("menuitem", { name: /With version|With the live/ })
+        .first()
+        .click();
+      await p.waitForTimeout(900);
+    },
+  },
+  {
+    name: "agent-assistant",
+    path: "/agents",
+    auth: true,
+    before: async (p) => {
+      await openAgent(p);
+      await p.getByRole("button", { name: "Write with AI" }).click();
+      await p.getByRole("button", { name: "Make the tone warmer" }).click();
+      await p.waitForTimeout(2200);
+    },
+  },
   { name: "not-found", path: "/no-such-page", auth: true },
   { name: "components", path: "/dev/components", full: true },
 ];
@@ -138,8 +278,13 @@ try {
         await page.waitForTimeout(500);
         if (s.before) await s.before(page);
         await page.waitForTimeout(300);
+        if (s.full) await page.evaluate(() => window.scrollTo(0, 0));
         const file = join(out, `${s.name}-${theme}${size === "desktop" ? "" : `-${size}`}.png`);
+        // Pages with a sticky bottom bar are shot in a viewport as tall as the page, so the bar sits at the end.
+        const vp = page.viewportSize();
+        if (s.tall) await page.setViewportSize({ width: vp.width, height: await page.evaluate(() => document.documentElement.scrollHeight) });
         await page.screenshot({ path: file, fullPage: Boolean(s.full) });
+        if (s.tall) await page.setViewportSize(vp);
         if (s.after) await s.after(page);
         console.log(file);
       }

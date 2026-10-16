@@ -2,7 +2,7 @@
  * Mock API for spec 002 (agents, agent versions, templates, LLM and voice catalogs, ambient audio,
  * prompt assistant), built from specs/002-agent-builder/contracts/*.yaml. Status codes and problem
  * codes follow the contracts. Behaviour switches for manual testing:
- * - GET /voices/fishaudio/voices?search=offline returns 503 catalog_unavailable (retry path)
+ * - GET /voices/elevenlabs/voices?search=offline returns 503 catalog_unavailable (retry path)
  * - deleting an agent whose name contains "Billing" returns 409 agent_in_use with a phone number
  */
 import { delay, http, HttpResponse, type JsonBodyType } from "msw";
@@ -147,7 +147,7 @@ export const agentHandlers = [
     if (!meta) return problem(404, "not_found", "Provider not in the catalog");
     const q = new URL(request.url).searchParams;
     const search = (q.get("search") ?? "").trim().toLowerCase();
-    if (provider === "fishaudio" && search === "offline") return problem(503, "catalog_unavailable", "Voice listing temporarily unavailable");
+    if (provider === "elevenlabs" && search === "offline") return problem(503, "catalog_unavailable", "Voice listing temporarily unavailable");
     const gender = q.get("gender");
     const language = q.get("language");
     const limit = Math.min(100, Math.max(1, Number(q.get("limit") ?? 50)));

@@ -32,6 +32,8 @@ import {
   PanelRows,
   Skeleton,
   Slider,
+  Segmented,
+  ChoiceGroup,
   Stepper,
   Switch,
   SwitchControl,
@@ -129,6 +131,9 @@ export function ComponentsGallery() {
   const [items, setItems] = useState([1, 2, 3]);
   const [chainActive, setChainActive] = useState(2);
   const [gauge, setGauge] = useState(0.62);
+  const [speaker, setSpeaker] = useState("agent");
+  const [nc, setNc] = useState("vi");
+  const [sens, setSens] = useState(0.9);
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -255,6 +260,54 @@ export function ComponentsGallery() {
               <Slider aria-label="Tokens" tone="heat" value={slider} min={0} max={80_000} step={1_000} onValueChange={setSlider} />
             </div>
             <Switch checked={sw} onCheckedChange={setSw} label="Record calls by default" description="Agents can override this." />
+          </div>
+        </Section>
+
+        <Section
+          title="Choices"
+          note="Segmented for short exclusive options, choice cards when each option needs a description; selection is a tint and an outline, never a side stripe."
+        >
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="flex flex-col gap-4">
+              <Segmented
+                aria-label="Who speaks first"
+                value={speaker}
+                onValueChange={setSpeaker}
+                options={[
+                  { value: "agent", label: "Agent" },
+                  { value: "user", label: "Caller" },
+                ]}
+              />
+              <div className="flex flex-col gap-2">
+                <span className="text-[13px] text-fg-2">
+                  Interruption sensitivity <span className="font-mono text-fg tnum">{sens.toFixed(2)}</span>
+                </span>
+                <Slider
+                  aria-label="Interruption sensitivity"
+                  value={sens}
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  onValueChange={setSens}
+                  marks={[
+                    { value: 0, label: "Low" },
+                    { value: 0.5, label: "Medium" },
+                    { value: 1, label: "High" },
+                  ]}
+                />
+              </div>
+            </div>
+            <ChoiceGroup
+              aria-label="Noise cancellation"
+              size="sm"
+              columns={1}
+              value={nc}
+              onValueChange={setNc}
+              options={[
+                { value: "vi", title: "Voice isolation", description: "Removes background noise and other voices.", meta: "$0.0000/min" },
+                { value: "off", title: "Off", description: "The caller's audio goes to speech recognition untouched." },
+              ]}
+            />
           </div>
         </Section>
 

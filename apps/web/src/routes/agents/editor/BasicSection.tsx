@@ -46,7 +46,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
       const nextDefault = tts?.default_voice_by_language?.[code];
       if (nextDefault && c.tts.voice_id === prevDefault && nextDefault !== prevDefault) {
         c.tts.voice_id = nextDefault;
-        notes.push(`the voice to ${tts?.label}'s default for ${lang.label}`);
+        notes.push(`the voice to the ${tts?.label} default for ${lang.label}`);
       }
     });
     setLangNotice(notes.length ? `Switched ${notes.join(" and ")}.` : null);
