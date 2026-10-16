@@ -17,6 +17,7 @@ from app.auth.schemas import (
 )
 from app.auth.service import AuthService
 from app.core.auth import CurrentClaims, bearer_token
+from app.core.client_ip import client_ip
 from app.core.errors import problem_responses
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,10 +26,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _service(request: Request) -> AuthService:
     state = request.app.state
     return AuthService(state.settings, state.db, state.redis, state.idp)
-
-
-def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
 
 
 def _session(session: IdpSession) -> Session:

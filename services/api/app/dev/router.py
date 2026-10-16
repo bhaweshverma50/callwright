@@ -1,8 +1,12 @@
-"""Development-only routes, mounted when ENV is not prod and never part of the contract.
+"""Development-only routes, never part of the contract.
 
-* ``GET /v1/dev/mail``: the local IdP's outbox (verification and reset links), newest first.
-* ``GET /v1/dev/fake-checkout/{id}``: a stand-in for the hosted checkout page in
-  ``STRIPE_MODE=fake``. "Pay" signs a ``checkout.session.completed`` event with the webhook
+* ``GET /v1/dev/mail`` (``router``): the local IdP's outbox (verification and reset links),
+  newest first. Mounted when ``Settings.dev_routes_enabled`` (ENV dev/test or
+  ``ENABLE_DEV_ROUTES=true``).
+* ``GET /v1/dev/fake-checkout/{id}`` (``checkout_router``): a stand-in for the hosted checkout
+  page in ``STRIPE_MODE=fake``, mounted when ``Settings.fake_checkout_enabled`` (follows the dev
+  routes unless ``ENABLE_FAKE_CHECKOUT`` says otherwise), so a hosted demo can take fake
+  payments without exposing the mailbox. "Pay" signs a ``checkout.session.completed`` event with the webhook
   secret and runs it through the same verification and handler as real webhooks; "Cancel"
   returns to the cancel URL without writing anything.
 """
@@ -23,6 +27,7 @@ from app.billing.models import CheckoutSession
 from app.core.errors import not_found
 
 router = APIRouter(prefix="/dev", tags=["dev"], include_in_schema=False)
+checkout_router = APIRouter(prefix="/dev", tags=["dev"], include_in_schema=False)
 
 
 @router.get("/mail")
@@ -57,7 +62,7 @@ async def _checkout(request: Request, session_id: str) -> CheckoutSession:
     return row
 
 
-@router.get("/fake-checkout/{session_id}", response_class=HTMLResponse)
+@checkout_router.get("/fake-checkout/{session_id}", response_class=HTMLResponse)
 async def fake_checkout_page(session_id: str, request: Request) -> HTMLResponse:
     row = await _checkout(request, session_id)
     sid = html.escape(session_id)
@@ -71,7 +76,7 @@ async def fake_checkout_page(session_id: str, request: Request) -> HTMLResponse:
 </body></html>""")
 
 
-@router.post("/fake-checkout/{session_id}/pay")
+@checkout_router.post("/fake-checkout/{session_id}/pay")
 async def fake_checkout_pay(session_id: str, request: Request) -> RedirectResponse:
     row = await _checkout(request, session_id)
     cents = int(row.amount_usd * 100)
@@ -100,7 +105,7 @@ async def fake_checkout_pay(session_id: str, request: Request) -> RedirectRespon
     return RedirectResponse(f"{base}/billing?checkout=success", status_code=303)
 
 
-@router.post("/fake-checkout/{session_id}/cancel")
+@checkout_router.post("/fake-checkout/{session_id}/cancel")
 async def fake_checkout_cancel(session_id: str, request: Request) -> RedirectResponse:
     await _checkout(request, session_id)
     base = request.app.state.settings.web_base_url.rstrip("/")

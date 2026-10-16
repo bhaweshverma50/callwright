@@ -36,6 +36,7 @@ from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
+from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
 from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
@@ -93,6 +94,23 @@ def _instrument_db(db: Database) -> None:
     SQLAlchemyInstrumentor().instrument(
         engines=[db.engine.sync_engine, db.admin_engine.sync_engine], skip_dep_check=True
     )
+
+
+def _log_hosting_flags(settings: Settings) -> None:
+    if settings.auth_auto_verify_email:
+        logger.warning(
+            "AUTH_AUTO_VERIFY_EMAIL is on: registration confirms accounts without an email check "
+            "(ENV=%s). Use it only for a demo.",
+            settings.env,
+        )
+    dev_routes = settings.dev_routes_enabled or settings.fake_checkout_enabled
+    if settings.env not in ("dev", "test") and dev_routes:
+        logger.warning(
+            "development routes are mounted (ENV=%s): dev mail and storage previews %s, fake checkout %s",
+            settings.env,
+            "on" if settings.dev_routes_enabled else "off",
+            "on" if settings.fake_checkout_enabled else "off",
+        )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -167,9 +185,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         prompt_ai_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
-    if settings.dev_tools_enabled:
+    if settings.dev_routes_enabled:
         app.include_router(dev_router, prefix=API_PREFIX)
         app.include_router(dev_storage_router, prefix=API_PREFIX)
+    if settings.fake_checkout_enabled:
+        app.include_router(fake_checkout_router, prefix=API_PREFIX)
+    _log_hosting_flags(settings)
     _setup_tracing(app, settings)
     return app
 
