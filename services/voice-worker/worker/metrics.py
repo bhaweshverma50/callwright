@@ -49,6 +49,11 @@ class UsageMeters:
         key = (provider, model)
         self.stt[key] = self.stt.get(key, 0) + max(0, round(audio_ms))
 
+    def set_stt(self, provider: str, model: str, audio_ms: float) -> None:
+        """Set a streamed-audio counter (never lowered, so snapshots stay monotonic)."""
+        key = (provider, model)
+        self.stt[key] = max(self.stt.get(key, 0), max(0, round(audio_ms)))
+
     def add_llm(
         self,
         provider: str,

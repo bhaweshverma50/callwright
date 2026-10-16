@@ -1,0 +1,13 @@
+name: interruption
+description: The caller talks over a long reply; the agent stops and the transcript keeps only the played words (FR-012).
+fakes:
+  rules:
+    - match: "plans"
+      reply: "We have four plans: basic, plus, premium and family, and each one comes with different data, calls and roaming allowances that I can walk you through."
+steps:
+  - say: "What plans do you have?"
+  - say: "Just the cheapest one please."
+    interrupt_after_ms: 1200
+  - expect_event: {type: turn, turn_index: 1, interrupted: true}
+  - expect_event: {type: transcript_item, role: agent, interrupted: true}
+  - expect_agent_says: "Sure, I can help"

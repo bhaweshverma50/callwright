@@ -1,0 +1,11 @@
+name: greeting_caller_first
+description: Caller speaks first; the agent stays silent until the caller talks.
+config:
+  start_speaker: user
+steps:
+  - silence_s: 5
+  - expect_turns: 0
+  - say: "Hello, is anyone there?"
+  - expect_turns: 1
+  - expect_event: {type: turn, turn_index: 1}
+  - expect_no_event: {type: turn, turn_index: 0}

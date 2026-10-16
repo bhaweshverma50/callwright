@@ -1,0 +1,13 @@
+name: max_duration
+description: The call is cut at max_duration_s even while the agent is talking (FR-016).
+config:
+  call_behavior: {max_duration_s: 30, end_on_silence_s: 300}
+fakes:
+  default_reply: "Let me read you the full list of our branches and opening hours, one by one, so you have all of it."
+steps:
+  - say: "Tell me everything about your branches."
+  - say: "Go on."
+  - say: "And then?"
+  - silence_s: 30
+  - expect_end_reason: max_duration_reached
+  - expect_event: {type: transcript_item, event: max_duration}

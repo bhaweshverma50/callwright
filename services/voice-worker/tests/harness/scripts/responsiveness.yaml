@@ -1,0 +1,6 @@
+name: responsiveness
+description: Reply wait follows responsiveness; the test runs this at 0.2 and 0.9 (R4).
+steps:
+  - say: "I would like to book a table for two tonight."
+  - expect_within_ms: 1500
+  - say: "Around eight if possible."

@@ -1,0 +1,20 @@
+name: segment_override
+description: A flow segment swaps voice and speech recognition at the next turn boundary, clamped to the shared ranges (FR-046).
+config:
+  advanced:
+    pronunciation: [{word: "Acme", replacement: "Ack-me"}]
+steps:
+  - say: "Hello, I need help in Hindi."
+  - override:
+      tts: {provider: cartesia, model: sonic-3, speed: 3.0, volume: 1.3}
+      stt: {language: hi}
+  - expect_event: {type: transcript_item, event: override_clamped}
+  - say: "Namaste, mujhe madad chahiye."
+  - expect_event: {type: transcript_item, event: segment_override}
+  - expect_within_ms: 1500
+  - wait_idle: true
+  - expect_meter: {kind: tts, provider: elevenlabs, model: eleven_flash_v2_5}
+  - expect_meter: {kind: tts, provider: cartesia, model: sonic-3}
+  - expect_meter: {kind: stt, provider: deepgram, model: nova-3}
+  - say: "Theek hai."
+  - expect_meter: {kind: stt, provider: deepgram, model: nova-2}

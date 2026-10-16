@@ -1,0 +1,17 @@
+name: pronunciation
+description: Pronunciation changes what is spoken, never the transcript (FR-018).
+config:
+  advanced:
+    pronunciation:
+      - {word: "SQL", replacement: "sequel"}
+      - {word: "Acme", replacement: "Ack-me"}
+fakes:
+  rules:
+    - match: "database"
+      reply: "Acme runs SQL, and MySQL for reports."
+steps:
+  - say: "Which database do you use?"
+  - wait_idle: true
+  - expect_agent_says: "Acme runs SQL, and MySQL for reports."
+  - expect_agent_speaks: "Ack-me runs sequel, and MySQL for reports."
+  - expect_meter: {kind: tts, provider: elevenlabs, min: 40}

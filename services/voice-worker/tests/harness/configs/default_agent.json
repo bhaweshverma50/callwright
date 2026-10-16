@@ -1,0 +1,50 @@
+{
+  "id": "agv_01HARNESSDEFAULT000000000",
+  "agent_id": "agt_01HARNESSDEFAULT000000000",
+  "version_number": 1,
+  "schema_version": 1,
+  "config": {
+    "schema_version": 1,
+    "type": "single_prompt",
+    "language": "en-US",
+    "llm": {"provider": "azure_openai", "model": "gpt-5.1", "temperature": 1.0},
+    "prompt": "You are the receptionist at {{company_name}}. Help {{customer_name}} briefly.",
+    "begin_message": "Hi {{customer_name}}, thanks for calling {{company_name}}. How can I help?",
+    "start_speaker": "agent",
+    "dynamic_variables": [
+      {"name": "company_name", "default": "Acme Bank"},
+      {"name": "customer_name", "default": "there"}
+    ],
+    "stt": {"provider": "deepgram", "model": null},
+    "tts": {
+      "provider": "elevenlabs",
+      "model": "eleven_flash_v2_5",
+      "voice_id": "voice_harness",
+      "speed": 1.0,
+      "expressiveness": 0.9,
+      "volume": 1.0
+    },
+    "noise_cancellation": {"provider": "sanas", "model": "vi"},
+    "call_behavior": {
+      "end_on_silence_s": 30,
+      "max_duration_s": 600,
+      "ring_duration_ms": 5000,
+      "interruption_sensitivity": 0.9,
+      "responsiveness": 0.8
+    },
+    "advanced": {
+      "webhook_url": null,
+      "webhook_timeout_ms": 3000,
+      "voicemail_detection": {"enabled": false, "action": "hang_up", "message": null},
+      "dtmf": {"enabled": false, "timeout_ms": 2500, "termination_key": "#", "digits": 10},
+      "background_audio": {"enabled": false, "source": null, "volume": 0.8},
+      "analysis_model": null,
+      "pronunciation": [],
+      "recording": "inherit"
+    },
+    "tool_ids": [],
+    "kb_ids": [],
+    "flow": null,
+    "evals": null
+  }
+}

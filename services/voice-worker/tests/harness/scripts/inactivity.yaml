@@ -1,0 +1,14 @@
+name: inactivity
+description: Neither party speaks for end_on_silence_s, so the call ends with inactivity (FR-015).
+config:
+  call_behavior: {end_on_silence_s: 10}
+steps:
+  - wait_idle: true
+  - silence_s: 9
+  - expect_end_reason: none
+  - say: "Still here."
+  - silence_s: 8
+  - expect_end_reason: none
+  - silence_s: 10
+  - expect_end_reason: inactivity
+  - expect_event: {type: transcript_item, event: silence_timeout}

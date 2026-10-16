@@ -1,0 +1,23 @@
+name: tools_and_flow
+description: Tool activity and flow transitions reported through CallControl reach events and transcript (005, 004 hooks).
+fakes:
+  rules:
+    - match: "order"
+      reply: "Your order ships tomorrow."
+      tool: lookup_order
+      tool_arguments: {order_id: "A-17"}
+      tool_output: '{"status": "packed"}'
+      tool_ms: 400
+      transition: n_order_status
+    - match: "bye"
+      reply: "Goodbye!"
+      end_call: true
+steps:
+  - say: "Where is my order A-17?"
+  - expect_tool: lookup_order
+  - expect_transition: n_order_status
+  - expect_event: {type: transcript_item, item_type: tool_result, name: lookup_order}
+  - expect_within_ms: 1500
+  - say: "Great, bye."
+  - silence_s: 5
+  - expect_end_reason: agent_hangup

@@ -1,0 +1,17 @@
+name: greeting
+description: Agent speaks first with a greeting that uses dynamic variables (US1, FR-005).
+runtime:
+  variables: {customer_name: Priya, company_name: Northwind Bank}
+steps:
+  - wait_idle: true
+  - expect_agent_says: "Hi Priya, thanks for calling Northwind Bank"
+  - expect_event: {type: turn, turn_index: 0}
+  - say: "I want to check my balance."
+  - expect_agent_says: "Sure, I can help"
+  - expect_within_ms: 1500
+  - say: "Thanks, that is all."
+  - hangup: true
+  - expect_end_reason: user_hangup
+  - expect_turns: 3
+  - expect_event: {type: status, status: in_progress}
+  - expect_event: {type: status, status: ended, disconnect_reason: user_hangup}

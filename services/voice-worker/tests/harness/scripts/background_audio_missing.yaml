@@ -1,0 +1,12 @@
+name: background_audio_missing
+description: An uploaded ambience without a signed URL warns and the call continues (R12).
+config:
+  advanced:
+    background_audio:
+      enabled: true
+      source: {kind: upload, key: workspaces/ws_1/ambient/cafe.mp3}
+      volume: 0.8
+steps:
+  - expect_event: {type: warning, code: background_audio_unavailable}
+  - say: "Hello?"
+  - expect_agent_says: "Sure, I can help"
