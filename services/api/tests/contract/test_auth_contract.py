@@ -16,6 +16,17 @@ async def test_register_202_and_422(client: httpx.AsyncClient) -> None:
     assert bad.status_code == 422 and len(bad.json()["errors"]) == 2
 
 
+async def test_register_200_with_auto_verify(client: httpx.AsyncClient, app: FastAPI) -> None:
+    settings = app.state.settings
+    app.state.settings = settings.model_copy(update={"auth_auto_verify_email": True})
+    try:
+        body = {"email": unique_email(), "password": PASSWORD}
+        ok = check(await client.post("/v1/auth/register", json=body))
+    finally:
+        app.state.settings = settings
+    assert ok.status_code == 200 and ok.json()["status"] == "signed_in"
+
+
 async def test_register_429(app: FastAPI) -> None:
     settings = app.state.settings
     original = settings.auth_email_rate_limit_per_hour

@@ -37,11 +37,24 @@ def _session(session: IdpSession) -> Session:
 
 
 @router.post(
-    "/register", status_code=202, response_model=RegisterResponse, responses=problem_responses(422, 429)
+    "/register",
+    status_code=202,
+    response_model=RegisterResponse,
+    response_model_exclude_none=True,
+    responses={200: {"description": "Signed in (AUTH_AUTO_VERIFY_EMAIL)"}, **problem_responses(422, 429)},
 )
-async def register(body: RegisterRequest, request: Request) -> RegisterResponse:
-    await _service(request).register(body.email, body.password, client_ip(request))
-    return RegisterResponse()
+async def register(body: RegisterRequest, request: Request, response: Response) -> RegisterResponse:
+    session = await _service(request).register(body.email, body.password, client_ip(request))
+    if session is None:
+        return RegisterResponse()
+    response.status_code = 200
+    return RegisterResponse(
+        status="signed_in",
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        token_type="bearer",  # noqa: S106
+        expires_in=session.expires_in,
+    )
 
 
 @router.post("/verify-email", response_model=Session, responses=problem_responses(400))
