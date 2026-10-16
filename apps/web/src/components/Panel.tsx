@@ -43,6 +43,94 @@ export function Panel({
   );
 }
 
+/**
+ * Rows inside a Panel (bodyClassName="p-0"): one anatomy for settings, facts and forms. Every row
+ * has the same 20px side padding and 16px vertical rhythm, a hairline between rows, an icon and
+ * label on the left and the value or control on the right.
+ */
+export function PanelRows({ children, as: As = "div", className }: { children: ReactNode; as?: "div" | "dl"; className?: string }) {
+  return <As className={cn("@container divide-y divide-line", className)}>{children}</As>;
+}
+
+const rowLabel = "flex min-w-0 items-start gap-3";
+const rowIcon = "mt-[1px] shrink-0 text-fg-3 [&_svg]:size-4";
+
+/** A form row: label and one-line help on the left, the control on the right (stacked when narrow). */
+export function FieldRow({
+  icon,
+  label,
+  htmlFor,
+  description,
+  descriptionId,
+  inline = false,
+  children,
+}: {
+  icon?: ReactNode;
+  label: ReactNode;
+  htmlFor: string;
+  description?: ReactNode;
+  descriptionId?: string;
+  /** Small controls (switches) stay on the right at every width. */
+  inline?: boolean;
+  children: ReactNode;
+}) {
+  if (inline) {
+    return (
+      <div className="flex items-start justify-between gap-6 px-5 py-4">
+        <div className={rowLabel}>
+          {icon && <span className={rowIcon}>{icon}</span>}
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
+              {label}
+            </label>
+            {description && (
+              <p id={descriptionId} className="text-[12.5px] leading-relaxed text-fg-3">
+                {description}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0">{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3 px-5 py-4 @[34rem]:flex-row @[34rem]:items-start @[34rem]:justify-between @[34rem]:gap-8">
+      <div className={rowLabel}>
+        {icon && <span className={rowIcon}>{icon}</span>}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
+            {label}
+          </label>
+          {description && (
+            <p id={descriptionId} className="text-[12.5px] leading-relaxed text-fg-3">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="flex min-w-0 flex-col items-stretch gap-1.5 pl-7 @[34rem]:w-[min(340px,52%)] @[34rem]:shrink-0 @[34rem]:items-end @[34rem]:pl-0">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** A read-only fact row (inside `<PanelRows as="dl">`): label left, value right on one line. Long values truncate with a tooltip. */
+export function InfoRow({ icon, label, children, title }: { icon?: ReactNode; label: ReactNode; children: ReactNode; title?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-5 py-4">
+      <dt className={cn(rowLabel, "items-center")}>
+        {icon && <span className={cn(rowIcon, "mt-0")}>{icon}</span>}
+        <span className="whitespace-nowrap text-[13.5px] font-medium text-fg">{label}</span>
+      </dt>
+      <dd title={title} className="min-w-0 truncate text-right text-[13.5px] text-fg-2">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
 /** Page header: Unbounded title, one line on what the page is for, the primary action on the right. */
 export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
   return (

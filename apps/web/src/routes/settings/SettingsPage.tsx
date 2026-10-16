@@ -1,13 +1,27 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { api, unwrap } from "../../api/client";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { qk, useMe } from "../../api/queries";
 import type { Me, Workspace } from "../../api/types";
 import { GearSix } from "@phosphor-icons/react";
-import { Building2, Disc, Gauge, Mail, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { Building2, CircleAlert, Disc, Gauge, Mail, PenLine, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Button, EmptyState, Field, Input, LeaveGuard, PageHeader, Panel, Skeleton, Switch, WorkLayout, toast } from "../../components";
+import {
+  Button,
+  EmptyState,
+  FieldRow,
+  InfoRow,
+  Input,
+  LeaveGuard,
+  PageHeader,
+  Panel,
+  PanelRows,
+  Skeleton,
+  SwitchControl,
+  WorkLayout,
+  toast,
+} from "../../components";
 
 const NAME_MAX = 80;
 
@@ -76,106 +90,105 @@ function SettingsForm({ me }: { me: Me }) {
     save.mutate(body);
   };
 
+  const nameId = useId();
+  const nameErr = serverErr.name ?? localErr;
   return (
     <WorkLayout
       main={
-        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+        <form onSubmit={onSubmit} noValidate>
           <LeaveGuard when={dirty && !save.isPending} />
           <Panel
             title="Workspace"
-            description="Shown in the top bar and the account menu."
+            description="Your workspace name and the defaults new calls start with."
             icon={<Building2 />}
             className={dirty ? "live-border" : undefined}
+            bodyClassName="p-0"
           >
-            <div className="flex flex-col gap-5">
-              <Field
-                label="Workspace name"
-                error={serverErr.name ?? localErr}
-                aside={
-                  <span className="font-mono text-[11px] text-fg-3 tnum">
+            <PanelRows>
+              <FieldRow icon={<PenLine />} label="Workspace name" htmlFor={nameId} description="Shown in the top bar and the account menu.">
+                <Input
+                  id={nameId}
+                  className="w-full"
+                  value={name}
+                  maxLength={NAME_MAX + 20}
+                  onChange={(e) => setName(e.target.value)}
+                  aria-describedby={`${nameId}-msg`}
+                  aria-invalid={Boolean(nameErr)}
+                />
+                <div id={`${nameId}-msg`} className="flex w-full items-start justify-between gap-3 text-[12.5px]">
+                  {nameErr ? (
+                    <p role="alert" className="flex items-start gap-1.5 text-danger-text">
+                      <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+                      {nameErr}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="shrink-0 font-mono text-fg-3 tnum">
                     {name.length}/{NAME_MAX}
                   </span>
-                }
-              >
-                {({ id, describedBy, invalid }) => (
-                  <Input
-                    id={id}
-                    value={name}
-                    maxLength={NAME_MAX + 20}
-                    onChange={(e) => setName(e.target.value)}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalid}
-                  />
-                )}
-              </Field>
-              <Switch
+                </div>
+              </FieldRow>
+              <FieldRow
+                inline
                 icon={<Disc />}
-                checked={recording}
-                onCheckedChange={setRecording}
                 label="Record calls by default"
+                htmlFor={`${nameId}-rec`}
+                descriptionId={`${nameId}-rec-d`}
                 description="Agents set to follow the workspace record their calls. Each agent can override this."
-              />
+              >
+                <SwitchControl id={`${nameId}-rec`} checked={recording} onCheckedChange={setRecording} describedBy={`${nameId}-rec-d`} />
+              </FieldRow>
+            </PanelRows>
+            <div className="flex flex-wrap items-center gap-3 border-t border-line bg-surface-2/50 px-5 py-3.5">
+              <Button type="submit" variant="primary" pending={save.isPending} disabled={!dirty} icon={<Save aria-hidden />}>
+                Save changes
+              </Button>
+              <Button
+                variant="ghost"
+                icon={<RotateCcw aria-hidden />}
+                disabled={!dirty || save.isPending}
+                onClick={() => {
+                  setName(saved.name);
+                  setRecording(saved.recording);
+                  setSubmitted(false);
+                  save.reset();
+                }}
+              >
+                Discard
+              </Button>
+              <AnimatePresence>
+                {dirty && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="ml-auto text-[13px] text-warning-text"
+                  >
+                    Unsaved changes
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
           </Panel>
 
           {save.error && !serverErr.name && (
-            <p role="alert" className="text-[13px] text-danger-text">
+            <p role="alert" className="mt-4 text-[13px] text-danger-text">
               {problemMessage(save.error, "workspace")}
             </p>
           )}
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" variant="primary" pending={save.isPending} disabled={!dirty} icon={<Save aria-hidden />}>
-              Save changes
-            </Button>
-            <Button
-              variant="ghost"
-              icon={<RotateCcw aria-hidden />}
-              disabled={!dirty || save.isPending}
-              onClick={() => {
-                setName(saved.name);
-                setRecording(saved.recording);
-                setSubmitted(false);
-                save.reset();
-              }}
-            >
-              Discard
-            </Button>
-            <AnimatePresence>
-              {dirty && (
-                <motion.span
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="text-[13px] text-warning-text"
-                >
-                  Unsaved changes
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </div>
         </form>
       }
       inspector={
         <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
-          <dl className="divide-y divide-line">
-            <div className="flex items-center justify-between gap-4 px-5 py-3.5">
-              <dt className="flex items-center gap-2.5 text-[13px] text-fg-2">
-                <Gauge className="size-4 text-fg-3" aria-hidden />
-                Concurrent calls
-              </dt>
-              <dd className="text-[14px] text-fg">
-                <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1.5 px-5 py-3.5">
-              <dt className="flex items-center gap-2.5 text-[13px] text-fg-2">
-                <Mail className="size-4 text-fg-3" aria-hidden />
-                Account email
-              </dt>
-              <dd className="truncate text-[14px] text-fg">{me.user.email}</dd>
-            </div>
-          </dl>
+          <PanelRows as="dl">
+            <InfoRow icon={<Gauge />} label="Concurrent calls">
+              <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
+            </InfoRow>
+            <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>
+              {me.user.email}
+            </InfoRow>
+          </PanelRows>
         </Panel>
       }
     />
