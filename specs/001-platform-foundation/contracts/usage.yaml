@@ -37,7 +37,12 @@ components:
   schemas:
     FeatureFamily:
       type: string
-      enum: [calls, evaluations, simulations, analytics_chat, prompt_generation, post_call_analysis]
+      description: |
+        Prefix of the feature key before the first dot, with `eval` reported as `evaluations` and
+        `simulator` as `simulations`. The registry in services/api/app/pricing/features.py is the
+        source of truth; every family it accepts is listed here (T090).
+      enum: [calls, evaluations, simulations, testing, analytics_chat, prompt_generation, post_call_analysis,
+             flow_assistant, voice_copilot, issues, knowledge_ingestion, embedding]
     UsageDetail:
       type: object
       required: [feature_key, event_count, raw_cost_usd, billable_cost_usd]
