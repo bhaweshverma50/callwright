@@ -11,6 +11,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
@@ -19,15 +20,23 @@ from app.auth.idp import build_idp
 from app.auth.router import router as auth_router
 from app.billing.router import router as billing_router
 from app.billing.stripe_gateway import build_gateway
+from app.call_events.router import router as call_events_router
+from app.calls.catalog import load_catalog
+from app.calls.router import router as calls_router
 from app.core.auth import TokenVerifier
 from app.core.config import Settings, get_settings
 from app.core.db import Database
 from app.core.errors import UnhandledErrorMiddleware, install_error_handlers
 from app.core.health import router as health_router
+from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
+from app.core.queue import ArqJobQueue
 from app.dev.router import router as dev_router
+from app.livekit_hooks.router import router as livekit_hooks_router
 from app.pricing.router import router as pricing_router
+from app.sessions.router import router as sessions_router
 from app.usage.router import router as usage_router
+from app.webhooks_out.router import router as webhooks_out_router
 from app.workspaces.router import router as workspaces_router
 
 logger = logging.getLogger(__name__)
@@ -90,9 +99,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.verifier = TokenVerifier(settings)
         app.state.idp = build_idp(settings, db)
         app.state.stripe = build_gateway(settings)
+        # Voice runtime (003): media server, worker catalog, job queue, outbound webhook client.
+        app.state.livekit = build_livekit(settings)
+        app.state.adapter_catalog = load_catalog(settings.adapter_catalog_path)
+        jobs = ArqJobQueue()
+        app.state.jobs = jobs
+        app.state.webhook_http = httpx.AsyncClient(follow_redirects=False)
         try:
             yield
         finally:
+            await app.state.webhook_http.aclose()
+            await jobs.aclose()
+            await app.state.livekit.aclose()
             await redis.aclose()
             await db.dispose()
 
@@ -122,6 +140,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         billing_router,
         pricing_router,
         usage_router,
+        sessions_router,
+        calls_router,
+        call_events_router,
+        webhooks_out_router,
+        livekit_hooks_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_tools_enabled:

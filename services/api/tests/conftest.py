@@ -50,6 +50,7 @@ def make_settings(**overrides: Any) -> Settings:
         "auth_email_rate_limit_per_hour": 100_000,
         "log_level": "WARNING",
         "db_pool_size": 5,
+        "livekit_mode": "fake",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]

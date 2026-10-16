@@ -10,8 +10,12 @@ tags:
 - name: admin
 - name: auth
 - name: billing
+- name: call-events-internal
+- name: calls-internal
 - name: core
+- name: livekit-hooks
 - name: pricing
+- name: sessions
 - name: usage
 - name: webhooks
 - name: workspaces
@@ -496,6 +500,110 @@ paths:
                     examples:
                     - 2026.10.16+abc1234
       x-spec: 001-platform-foundation
+  /internal/calls/claim:
+    post:
+      operationId: claimCall
+      summary: Claim a dispatched job and receive the frozen runtime configuration
+      description: 'For API-created calls (web, outbound) the dispatch metadata carries `call_id`; the
+        API marks the call claimed and returns its configuration. For SIP-created calls (inbound phone,
+        WhatsApp) the API routes the call with the channel''s inbound router (010), runs admission, creates
+        the call and returns the configuration, or `admitted: false` with the reason. Idempotent per `job_id`:
+        a repeated claim returns the same body.
+
+        '
+      tags:
+      - calls-internal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      responses:
+        '200':
+          description: Claim result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '404':
+          description: Unknown `call_id` in metadata
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Call already claimed by a different job, or already terminal
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 003-voice-runtime
+  /internal/calls/{call_id}/events:
+    post:
+      operationId: postCallEvents
+      summary: Append runtime events for a call (idempotent per seq)
+      tags:
+      - call-events-internal
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventBatch'
+      responses:
+        '200':
+          description: Batch accepted; duplicates by `seq` are ignored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventBatchResult'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Call is in a terminal or processing state; worker should stop posting.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 003-voice-runtime
+  /livekit/webhook:
+    post:
+      operationId: receiveLivekitWebhook
+      summary: Media server events (room, participant, egress)
+      tags:
+      - livekit-hooks
+      security: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: JWT signed with the LiveKit API secret; carries a `sha256` body hash claim.
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/webhook+json:
+            schema:
+              $ref: '#/components/schemas/LivekitWebhookEvent'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LivekitWebhookEvent'
+      responses:
+        '200':
+          description: Accepted (also returned for ignored event types)
+        '401':
+          description: Signature or body hash invalid
+      x-spec: 003-voice-runtime
   /me:
     get:
       operationId: getMe
@@ -573,6 +681,97 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
       x-spec: 001-platform-foundation
+  /sessions/web-call:
+    post:
+      operationId: createWebCall
+      summary: Start a browser test call for an agent
+      description: 'Runs admission (email verified, version resolvable and priced, balance above zero,
+        under concurrency limit), creates the call in `queued`, creates the room, dispatches the voice
+        worker and returns a join credential. Refused requests still create a call record with status
+        `failed` and the reason, and the problem body carries its `call_id`.
+
+        '
+      tags:
+      - sessions
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebCallRequest'
+            examples:
+              draft:
+                value:
+                  agent_id: agt_01JABCDEF0123456789ABCDEFG
+                  version: draft
+                  dynamic_variables:
+                    customer_name: Priya
+      responses:
+        '201':
+          description: Call admitted and room ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebCallSession'
+        '400':
+          description: Missing or malformed `Idempotency-Key` header (`idempotency-key-required`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '402':
+          description: Insufficient credit (`type` ends with `/insufficient-credit`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '403':
+          description: Email not verified (`type` ends with `/email-unverified`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: '`agent-not-published` (version=published with none pinned) or `idempotency-key-in-use`
+            (same key, request still running).
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Invalid variables, unsupported vendor (`unsupported-vendor`), unpriced configuration
+            (`pricing-unavailable`), flow agent without flow runtime (`flow-runtime-unavailable`), or
+            idempotency key reused with a different body.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '429':
+          description: Concurrency limit reached (`type` ends with `/concurrency-limit`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '503':
+          description: 'The media server could not create the room or dispatch the worker (`media-unavailable`).
+            The call is recorded as `failed` and not charged.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+      x-spec: 003-voice-runtime
   /usage:
     get:
       operationId: getUsage
@@ -606,6 +805,134 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
       x-spec: 001-platform-foundation
+  /webhooks/deliveries:
+    get:
+      operationId: listWebhookDeliveries
+      summary: List deliveries from the last 30 days
+      tags:
+      - webhooks
+      parameters:
+      - name: call_id
+        in: query
+        schema:
+          type: string
+      - name: event
+        in: query
+        schema:
+          $ref: '#/components/schemas/WebhookEventName'
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/DeliveryStatus'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '401':
+          $ref: '#/components/responses/Problem'
+        '200':
+          description: Page of deliveries, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookDelivery'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+                  total_pages:
+                    type: integer
+      x-spec: 003-voice-runtime
+  /webhooks/deliveries/{delivery_id}:
+    get:
+      operationId: getWebhookDelivery
+      summary: Delivery detail with attempts and body
+      tags:
+      - webhooks
+      parameters:
+      - $ref: '#/components/parameters/DeliveryId'
+      responses:
+        '401':
+          $ref: '#/components/responses/Problem'
+        '200':
+          description: Delivery
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/WebhookDelivery'
+                - type: object
+                  properties:
+                    body:
+                      type: string
+                      description: Exact JSON body that was signed and sent.
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 003-voice-runtime
+  /webhooks/deliveries/{delivery_id}/redeliver:
+    post:
+      operationId: redeliverWebhook
+      summary: Send the same body again as a new delivery (fresh signature and timestamp)
+      tags:
+      - webhooks
+      parameters:
+      - $ref: '#/components/parameters/DeliveryId'
+      responses:
+        '401':
+          $ref: '#/components/responses/Problem'
+        '202':
+          description: New delivery queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDelivery'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 003-voice-runtime
+  /webhooks/signing-secret:
+    get:
+      operationId: getWebhookSigningSecret
+      summary: Show the masked signing secret
+      tags:
+      - webhooks
+      responses:
+        '401':
+          $ref: '#/components/responses/Problem'
+        '200':
+          description: Masked secret (created on first read if missing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningSecretMasked'
+      x-spec: 003-voice-runtime
+  /webhooks/signing-secret/rotate:
+    post:
+      operationId: rotateWebhookSigningSecret
+      summary: Rotate the signing secret; the previous one keeps signing for 24 hours
+      tags:
+      - webhooks
+      responses:
+        '401':
+          $ref: '#/components/responses/Problem'
+        '200':
+          description: New secret, shown in full exactly once
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningSecretRevealed'
+      x-spec: 003-voice-runtime
   /webhooks/stripe:
     post:
       operationId: stripeWebhook
@@ -643,6 +970,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 001-platform-foundation
+  /webhooks/test:
+    post:
+      operationId: sendWebhookTest
+      summary: Send a signed `ping` event to a URL and wait for the result
+      tags:
+      - webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                timeout_ms:
+                  type: integer
+                  minimum: 1000
+                  maximum: 30000
+                  default: 3000
+      responses:
+        '401':
+          $ref: '#/components/responses/Problem'
+        '200':
+          description: Result of the single attempt (no retries for tests)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryAttempt'
+        '422':
+          description: URL rejected (`url-not-allowed`), for example a private address
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 003-voice-runtime
   /workspaces/current:
     patch:
       operationId: updateCurrentWorkspace
@@ -694,6 +1061,25 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/CallId'
+    DeliveryHeader:
+      name: Callwright-Delivery
+      in: header
+      required: true
+      schema:
+        type: string
+    DeliveryId:
+      name: delivery_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^whd_[0-9A-HJKMNP-TV-Z]{26}$
+    EventHeader:
+      name: Callwright-Event
+      in: header
+      required: true
+      schema:
+        $ref: '#/components/schemas/WebhookEventName'
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -728,6 +1114,14 @@ components:
         minimum: 1
         maximum: 100
         default: 20
+    SignatureHeader:
+      name: Callwright-Signature
+      in: header
+      required: true
+      schema:
+        type: string
+        examples:
+        - t=1760600000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
   responses:
     Conflict:
       description: State conflict
@@ -807,9 +1201,91 @@ components:
       - llm_input_tokens
       - llm_output_tokens
       - tts_chars
+    CallEvent:
+      oneOf:
+      - $ref: '#/components/schemas/StatusEvent'
+      - $ref: '#/components/schemas/TurnEvent'
+      - $ref: '#/components/schemas/TranscriptItemEvent'
+      - $ref: '#/components/schemas/UsageEvent'
+      - $ref: '#/components/schemas/ToolCallEvent'
+      - $ref: '#/components/schemas/FlowTransitionEvent'
+      - $ref: '#/components/schemas/DtmfEvent'
+      - $ref: '#/components/schemas/WarningEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          status: '#/components/schemas/StatusEvent'
+          turn: '#/components/schemas/TurnEvent'
+          transcript_item: '#/components/schemas/TranscriptItemEvent'
+          usage: '#/components/schemas/UsageEvent'
+          tool_call: '#/components/schemas/ToolCallEvent'
+          flow_transition: '#/components/schemas/FlowTransitionEvent'
+          dtmf: '#/components/schemas/DtmfEvent'
+          warning: '#/components/schemas/WarningEvent'
+          error: '#/components/schemas/WarningEvent'
     CallId:
       type: string
       pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+    CallRecordingState:
+      type: object
+      description: 'Recording state of one call, returned by 006''s recording URL endpoints through `calls.service.recording_state()`.
+        When `recording_status` is `not_recorded` the call was deliberately not recorded (recording off
+        for the workspace or agent) and `recording_url` is null; this is distinct from `failed` ("recording
+        unavailable").
+
+        '
+      required:
+      - call_id
+      - recording_enabled
+      - recording_setting_source
+      - recording_status
+      - recording_url
+      properties:
+        call_id:
+          type: string
+          pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+        recording_enabled:
+          type: boolean
+        recording_setting_source:
+          type: string
+          enum:
+          - workspace
+          - agent
+        recording_status:
+          type: string
+          enum:
+          - none
+          - recording
+          - available
+          - failed
+          - not_recorded
+        recording_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          description: Signed, valid 10 minutes; null unless `recording_status` is `available`.
+        expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    CallRefusedProblem:
+      allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        properties:
+          call_id:
+            type: string
+            description: The `failed` call record created for the refused attempt.
+          disconnect_reason:
+            type: string
+            enum:
+            - insufficient_credit
+            - concurrency_limit
+            - error
+          diagnostic:
+            type: string
     CallUsageMeters:
       type: object
       required:
@@ -904,6 +1380,55 @@ components:
         created_at:
           type: string
           format: date-time
+    ClaimRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - job_id
+      - room_name
+      - worker_id
+      - dispatch_metadata
+      properties:
+        job_id:
+          type: string
+        room_name:
+          type: string
+        worker_id:
+          type: string
+        dispatch_metadata:
+          type: object
+          description: 'Opaque JSON from the dispatch. Either `{call_id}` or `{channel: sip_inbound|whatsapp,
+            route_ref}`.
+
+            '
+          additionalProperties: true
+        sip:
+          $ref: '#/components/schemas/SipAttributes'
+    ClaimResponse:
+      type: object
+      required:
+      - admitted
+      - call_id
+      properties:
+        admitted:
+          type: boolean
+        call_id:
+          type: string
+          pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+        refusal:
+          type: object
+          description: Present when `admitted` is false. The worker hangs up without speaking.
+          properties:
+            disconnect_reason:
+              type: string
+              enum:
+              - insufficient_credit
+              - concurrency_limit
+              - error
+            diagnostic:
+              type: string
+        runtime:
+          $ref: '#/components/schemas/RuntimeConfig'
     Component:
       type: string
       enum:
@@ -997,12 +1522,141 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeterUsage'
+    DeliveryAttempt:
+      type: object
+      required:
+      - n
+      - at
+      properties:
+        n:
+          type: integer
+          minimum: 1
+          maximum: 6
+        at:
+          type: string
+          format: date-time
+        status_code:
+          type:
+          - integer
+          - 'null'
+        duration_ms:
+          type:
+          - integer
+          - 'null'
+        error:
+          type:
+          - string
+          - 'null'
+          description: '`timeout`, `connection_error`, `url_not_allowed`, or a short message.'
+        response_excerpt:
+          type:
+          - string
+          - 'null'
+          maxLength: 1024
+    DeliveryStatus:
+      type: string
+      enum:
+      - pending
+      - delivering
+      - succeeded
+      - failed
+      - blocked
+    DtmfEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - digits
+        - direction
+        properties:
+          type:
+            const: dtmf
+          digits:
+            type: string
+            pattern: ^[0-9*#]{1,99}$
+          direction:
+            type: string
+            enum:
+            - received
+            - sent
+          flush_reason:
+            type: string
+            enum:
+            - termination_key
+            - digit_limit
+            - timeout
+    DynamicVariables:
+      type: object
+      maxProperties: 50
+      propertyNames:
+        pattern: ^[A-Za-z_][A-Za-z0-9_]{0,63}$
+      additionalProperties:
+        type: string
+        maxLength: 2000
     E164:
       type: string
       description: Phone number in E.164 form, a plus sign and 7 to 15 digits.
       pattern: ^\+[1-9]\d{6,14}$
       examples:
       - '+14155550123'
+    EventBase:
+      type: object
+      required:
+      - seq
+      - type
+      - occurred_at
+      properties:
+        seq:
+          type: integer
+          minimum: 1
+        type:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        offset_ms:
+          type:
+          - integer
+          - 'null'
+          description: Milliseconds since connection; null before connection.
+    EventBatch:
+      type: object
+      required:
+      - events
+      properties:
+        events:
+          type: array
+          minItems: 0
+          maxItems: 200
+          description: Empty batch is a pure heartbeat.
+          items:
+            $ref: '#/components/schemas/CallEvent'
+    EventBatchResult:
+      type: object
+      required:
+      - accepted
+      - duplicates
+      - control
+      properties:
+        accepted:
+          type: integer
+        duplicates:
+          type: integer
+        control:
+          type: object
+          required:
+          - action
+          properties:
+            action:
+              type: string
+              enum:
+              - none
+              - end_call
+            disconnect_reason:
+              type: string
+              enum:
+              - insufficient_credit
+              - error
     FeatureFamily:
       type: string
       description: 'Prefix of the feature key before the first dot, with `eval` reported as `evaluations`
@@ -1045,6 +1699,104 @@ components:
           - not_in_catalog
         message:
           type: string
+    FlowTransitionEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - to_node_id
+        description: Emitted through the 004 flow hook.
+        properties:
+          type:
+            const: flow_transition
+          from_node_id:
+            type:
+            - string
+            - 'null'
+          to_node_id:
+            type: string
+          label:
+            type: string
+    LivekitWebhookEvent:
+      type: object
+      required:
+      - event
+      - id
+      - createdAt
+      description: 'Subset of the LiveKit webhook payload the API reads. Handled events: `room_finished`
+        (end any open call for the room with reason `error` if the worker did not report an end), `participant_left`
+        (logged; the worker reports hangups), `egress_started`, `egress_ended` (set recording status and
+        key; ignored for calls with `recording_enabled = false`, whose status stays `not_recorded`, since
+        no egress is started for them).
+
+        '
+      properties:
+        event:
+          type: string
+          examples:
+          - room_finished
+          - participant_left
+          - egress_started
+          - egress_ended
+        id:
+          type: string
+        createdAt:
+          type:
+          - integer
+          - string
+        room:
+          type: object
+          properties:
+            name:
+              type: string
+            sid:
+              type: string
+            metadata:
+              type: string
+        participant:
+          type: object
+          properties:
+            identity:
+              type: string
+            kind:
+              type: string
+            attributes:
+              type: object
+              additionalProperties:
+                type: string
+        egressInfo:
+          type: object
+          properties:
+            egressId:
+              type: string
+            roomName:
+              type: string
+            status:
+              type: string
+              examples:
+              - EGRESS_COMPLETE
+              - EGRESS_FAILED
+              - EGRESS_ABORTED
+              - EGRESS_LIMIT_REACHED
+            error:
+              type: string
+            fileResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  location:
+                    type: string
+                  duration:
+                    type:
+                    - integer
+                    - string
+                  size:
+                    type:
+                    - integer
+                    - string
     Me:
       type: object
       required:
@@ -1082,6 +1834,24 @@ components:
       examples:
       - '30.000000'
       - '-0.477000'
+    OutboundDial:
+      type: object
+      required:
+      - sip_trunk_id
+      - to_number
+      - from_number
+      - ring_timeout_s
+      properties:
+        sip_trunk_id:
+          type: string
+        to_number:
+          type: string
+        from_number:
+          type: string
+        ring_timeout_s:
+          type: integer
+          minimum: 10
+          maximum: 60
     PageMeta:
       type: object
       required:
@@ -1222,6 +1992,177 @@ components:
           type: string
           format: date-time
           description: Price with the catalog version in effect at this instant (default now)
+    RuntimeConfig:
+      type: object
+      required:
+      - channel
+      - direction
+      - agent_id
+      - agent_version_id
+      - config
+      - variables
+      - limits
+      - heartbeat_interval_s
+      properties:
+        channel:
+          type: string
+          enum:
+          - web
+          - sip_inbound
+          - sip_outbound
+          - whatsapp
+        direction:
+          type: string
+          enum:
+          - inbound
+          - outbound
+        from_number:
+          type:
+          - string
+          - 'null'
+        to_number:
+          type:
+          - string
+          - 'null'
+        agent_id:
+          type: string
+        agent_version_id:
+          type: string
+        agent_type:
+          type: string
+          enum:
+          - single_prompt
+          - flow
+        config:
+          type: object
+          description: Frozen AgentConfig from the agent version (schema owned by 002-agent-builder).
+          additionalProperties: true
+        variables:
+          type: object
+          description: Resolved dynamic variables including built-ins.
+          additionalProperties:
+            type: string
+        limits:
+          type: object
+          required:
+          - end_on_silence_s
+          - max_duration_s
+          - ring_duration_ms
+          properties:
+            end_on_silence_s:
+              type: integer
+              minimum: 10
+              maximum: 300
+            max_duration_s:
+              type: integer
+              minimum: 30
+              maximum: 3600
+            ring_duration_ms:
+              type: integer
+              minimum: 0
+              maximum: 30000
+        background_audio_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          description: Signed URL (10 minutes) for an uploaded ambience file, else null.
+        caller_join_timeout_s:
+          type: integer
+          default: 60
+          description: Web calls only; fail the call if the browser has not joined by then.
+        outbound_dial:
+          description: Set by 010-channels for `sip_outbound` calls; the worker dials this.
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/OutboundDial'
+        heartbeat_interval_s:
+          type: integer
+          default: 10
+        recording_enabled:
+          type: boolean
+          description: 'Effective recording setting resolved at admission from the agent version''s `advanced.recording`
+            override (002) and the workspace''s `recording_default` (001). Informational for the worker:
+            the API starts egress only when true; the worker never records.
+
+            '
+    RuntimeTranscriptItem:
+      type: object
+      required:
+      - type
+      properties:
+        type:
+          type: string
+          enum:
+          - message
+          - tool_call
+          - tool_result
+          - flow_transition
+          - system
+        role:
+          type: string
+          enum:
+          - user
+          - agent
+        text:
+          type: string
+        started_ms:
+          type: integer
+        ended_ms:
+          type: integer
+        turn_index:
+          type: integer
+        interrupted:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        source:
+          type: string
+          enum:
+          - voice
+          - keypad
+        ref:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: object
+          additionalProperties: true
+        output:
+          type: string
+          maxLength: 8192
+        is_error:
+          type: boolean
+        duration_ms:
+          type: integer
+        from_node_id:
+          type: string
+        to_node_id:
+          type: string
+        label:
+          type: string
+        event:
+          type: string
+          enum:
+          - voicemail_detected
+          - silence_timeout
+          - max_duration
+          - credit_exhausted
+          - vendor_error
+          - segment_override
+          - override_clamped
+          description: 'segment_override: a flow segment switched the model, voice or speech recognition
+            settings (detail lists the paths; FR-046).
+
+            override_clamped: an override value was outside the shared control range and was clamped (FR-046).
+
+            '
+        detail:
+          type: string
+        at_ms:
+          type: integer
     Session:
       type: object
       required:
@@ -1241,6 +2182,112 @@ components:
         expires_in:
           type: integer
           description: Seconds until the access token expires
+    SigningSecretMasked:
+      type: object
+      required:
+      - secret_last4
+      - created_at
+      properties:
+        secret_last4:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        rotated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        previous_expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    SigningSecretRevealed:
+      allOf:
+      - $ref: '#/components/schemas/SigningSecretMasked'
+      - type: object
+        required:
+        - secret
+        properties:
+          secret:
+            type: string
+            pattern: ^whsec_[A-Za-z0-9_-]{43}$
+    SipAttributes:
+      type: object
+      description: Attributes of the SIP participant when the room was created by a SIP call.
+      properties:
+        call_id:
+          type: string
+          description: Carrier call identifier.
+        trunk_id:
+          type: string
+        trunk_phone_number:
+          type: string
+          description: The called number (our number), E.164.
+        caller_number:
+          type: string
+          description: The calling number, E.164 when available.
+        participant_identity:
+          type: string
+    StatusEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - status
+        properties:
+          type:
+            const: status
+          status:
+            type: string
+            enum:
+            - ringing
+            - in_progress
+            - ended
+            - no_answer
+            - busy
+            - failed
+          disconnect_reason:
+            type: string
+            enum:
+            - user_hangup
+            - agent_hangup
+            - call_transfer
+            - voicemail_reached
+            - inactivity
+            - max_duration_reached
+            - error
+            - concurrency_limit
+            - insufficient_credit
+          diagnostic:
+            type: string
+          sip_status_code:
+            type: integer
+    ToolCallEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - name
+        description: Emitted through the 005 tool hook; mirrored as transcript items.
+        properties:
+          type:
+            const: tool_call
+          ref:
+            type: string
+          name:
+            type: string
+          arguments:
+            type: object
+            additionalProperties: true
+          output:
+            type: string
+            maxLength: 8192
+          is_error:
+            type: boolean
+          duration_ms:
+            type: integer
     Transaction:
       type: object
       required:
@@ -1293,6 +2340,56 @@ components:
       - trial_grant
       - refund
       - adjustment
+    TranscriptItemEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - item
+        properties:
+          type:
+            const: transcript_item
+          item:
+            $ref: '#/components/schemas/RuntimeTranscriptItem'
+    TurnEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - turn_index
+        properties:
+          type:
+            const: turn
+          turn_index:
+            type: integer
+            minimum: 0
+            description: 0 is the opening line; e2e_ms then holds greeting latency.
+          stt_final_ms:
+            type:
+            - integer
+            - 'null'
+          eou_delay_ms:
+            type:
+            - integer
+            - 'null'
+          llm_ttft_ms:
+            type:
+            - integer
+            - 'null'
+          tts_ttfb_ms:
+            type:
+            - integer
+            - 'null'
+          e2e_ms:
+            type:
+            - integer
+            - 'null'
+          tool_ms:
+            type:
+            - integer
+            - 'null'
+          interrupted:
+            type: boolean
     UsageDetail:
       type: object
       required:
@@ -1311,6 +2408,17 @@ components:
           $ref: '#/components/schemas/MoneyUsd'
         billable_cost_usd:
           $ref: '#/components/schemas/MoneyUsd'
+    UsageEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - usage
+        properties:
+          type:
+            const: usage
+          usage:
+            $ref: '#/components/schemas/UsageSnapshot'
     UsageReport:
       type: object
       required:
@@ -1360,6 +2468,90 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UsageDetail'
+    UsageSnapshot:
+      type: object
+      description: Cumulative counters since call start. Lower `seq` than stored is ignored.
+      properties:
+        stt:
+          type: array
+          items:
+            type: object
+            required:
+            - provider
+            - model
+            - audio_ms
+            properties:
+              provider:
+                type: string
+              model:
+                type: string
+                description: The model actually used; Auto is reported as the model it resolved to for
+                  the language (FR-045)
+              audio_ms:
+                type: integer
+                minimum: 0
+        llm:
+          type: array
+          items:
+            type: object
+            required:
+            - provider
+            - model
+            - input_tokens
+            - output_tokens
+            properties:
+              provider:
+                type: string
+              model:
+                type: string
+              input_tokens:
+                type: integer
+                minimum: 0
+              cached_input_tokens:
+                type: integer
+                minimum: 0
+              output_tokens:
+                type: integer
+                minimum: 0
+        tts:
+          type: array
+          items:
+            type: object
+            required:
+            - provider
+            - characters
+            properties:
+              provider:
+                type: string
+              model:
+                type:
+                - string
+                - 'null'
+              characters:
+                type: integer
+                minimum: 0
+        nc:
+          type: array
+          items:
+            type: object
+            required:
+            - provider
+            - audio_ms
+            properties:
+              provider:
+                type: string
+                examples:
+                - sanas
+                - ai_coustics
+              model:
+                type: string
+                examples:
+                - vi
+                - st
+                - standard
+              audio_ms:
+                type: integer
+                minimum: 0
     User:
       type: object
       required:
@@ -1380,6 +2572,325 @@ components:
     UserId:
       type: string
       pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+    WarningEvent:
+      allOf:
+      - $ref: '#/components/schemas/EventBase'
+      - type: object
+        required:
+        - code
+        properties:
+          type:
+            enum:
+            - warning
+            - error
+          code:
+            type: string
+            examples:
+            - background_audio_unavailable
+            - config_value_clamped
+            - vendor_retry
+            - vendor_error
+          component:
+            type: string
+            enum:
+            - stt
+            - llm
+            - tts
+            - nc
+            - vad
+            - runtime
+            - recording
+          provider:
+            type: string
+          detail:
+            type: string
+            maxLength: 2000
+    WebCallRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - agent_id
+      properties:
+        agent_id:
+          type: string
+          pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+        version:
+          description: '`draft` (default), `published`, or a specific `agv_` id of this agent.'
+          type: string
+          default: draft
+          pattern: ^(draft|published|agv_[0-9A-HJKMNP-TV-Z]{26})$
+        dynamic_variables:
+          $ref: '#/components/schemas/DynamicVariables'
+        metadata:
+          type: object
+          description: Passthrough echoed in webhooks; max 4 KB serialized, max 20 keys.
+          maxProperties: 20
+          additionalProperties: true
+    WebCallSession:
+      type: object
+      required:
+      - call_id
+      - agent_version_id
+      - room_name
+      - server_url
+      - participant_token
+      - expires_at
+      - status
+      properties:
+        call_id:
+          type: string
+          pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+        agent_version_id:
+          type: string
+          pattern: ^agv_[0-9A-HJKMNP-TV-Z]{26}$
+        room_name:
+          type: string
+        server_url:
+          type: string
+          format: uri
+          description: WebSocket URL of the realtime media server.
+        participant_token:
+          type: string
+          description: Join credential for this room only; publish microphone and data, subscribe.
+        expires_at:
+          type: string
+          format: date-time
+          description: Join deadline (15 minutes after issue).
+        status:
+          type: string
+          const: queued
+        missing_variables:
+          type: array
+          items:
+            type: string
+        ignored_overrides:
+          type: array
+          items:
+            type: string
+    WebhookCall:
+      type: object
+      required:
+      - call_id
+      - agent_id
+      - agent_version_id
+      - channel
+      - direction
+      - status
+      - created_at
+      properties:
+        call_id:
+          type: string
+        agent_id:
+          type: string
+        agent_version_id:
+          type: string
+        channel:
+          type: string
+          enum:
+          - web
+          - sip_inbound
+          - sip_outbound
+          - whatsapp
+        direction:
+          type: string
+          enum:
+          - inbound
+          - outbound
+        from_number:
+          type:
+          - string
+          - 'null'
+        to_number:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - queued
+          - ringing
+          - in_progress
+          - ended
+          - processing
+          - completed
+          - failed
+          - no_answer
+          - busy
+          - voicemail
+        disconnect_reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - user_hangup
+          - agent_hangup
+          - call_transfer
+          - voicemail_reached
+          - inactivity
+          - max_duration_reached
+          - error
+          - concurrency_limit
+          - insufficient_credit
+          - null
+        created_at:
+          type: string
+          format: date-time
+        connected_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        ended_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        billable_seconds:
+          type:
+          - integer
+          - 'null'
+        dynamic_variables:
+          type: object
+          additionalProperties:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        transcript:
+          description: call_analyzed only
+          type:
+          - object
+          - 'null'
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+        summary:
+          type:
+          - string
+          - 'null'
+        sentiment:
+          type:
+          - string
+          - 'null'
+        analysis:
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+        cost:
+          description: call_analyzed only; breakdown as defined by 001 pricing
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+        latency:
+          type:
+          - object
+          - 'null'
+          additionalProperties:
+            type:
+            - integer
+            - 'null'
+        recording_enabled:
+          type: boolean
+          description: Effective recording setting resolved at admission (workspace default and agent
+            override).
+        recording_status:
+          type: string
+          enum:
+          - none
+          - recording
+          - available
+          - failed
+          - not_recorded
+          description: '`not_recorded` when recording was off for this call (no audio exists); `failed`
+            when a recording was expected but is unavailable.
+
+            '
+        recording_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          description: 'Signed, valid 10 minutes. Fetch a fresh one from the calls API after that. Always
+            null when `recording_status` is `not_recorded`.
+
+            '
+        processing_warnings:
+          type: array
+          items:
+            type: string
+    WebhookDelivery:
+      type: object
+      required:
+      - id
+      - event
+      - url
+      - status
+      - attempts
+      - created_at
+      properties:
+        id:
+          type: string
+        call_id:
+          type:
+          - string
+          - 'null'
+        event:
+          $ref: '#/components/schemas/WebhookEventName'
+        url:
+          type: string
+        status:
+          $ref: '#/components/schemas/DeliveryStatus'
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliveryAttempt'
+        next_attempt_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        redelivery_of:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    WebhookEnvelope:
+      type: object
+      required:
+      - event
+      - event_id
+      - occurred_at
+      - call
+      properties:
+        event:
+          $ref: '#/components/schemas/WebhookEventName'
+        event_id:
+          type: string
+          description: Stable across retries and redeliveries of the same event; use it to de-duplicate.
+        occurred_at:
+          type: string
+          format: date-time
+        call:
+          $ref: '#/components/schemas/WebhookCall'
+    WebhookEventName:
+      type: string
+      enum:
+      - call_started
+      - call_ended
+      - call_analyzed
+      - ping
     Workspace:
       type: object
       required:

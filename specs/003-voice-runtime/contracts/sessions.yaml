@@ -43,6 +43,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebCallSession'
         '400':
+          description: Missing or malformed `Idempotency-Key` header (`idempotency-key-required`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
+        '401':
           $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '402':
           description: Insufficient credit (`type` ends with `/insufficient-credit`)
@@ -77,6 +83,14 @@ paths:
                 $ref: '#/components/schemas/CallRefusedProblem'
         '429':
           description: Concurrency limit reached (`type` ends with `/concurrency-limit`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '503':
+          description: >
+            The media server could not create the room or dispatch the worker
+            (`media-unavailable`). The call is recorded as `failed` and not charged.
           content:
             application/problem+json:
               schema:
