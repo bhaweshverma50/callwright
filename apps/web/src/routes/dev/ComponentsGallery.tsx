@@ -45,6 +45,8 @@ import {
   type FlowNode,
   type Column,
 } from "../../components";
+import { WebCallPanel } from "../../components/WebCallPanel";
+import type { MockOptions } from "../../components/webCall";
 import { formatUsd } from "../../lib/money";
 import { referenceBreakdown } from "../public/reference";
 
@@ -92,6 +94,16 @@ const COLS: Column<Row>[] = [
   { key: "cost", header: "Cost", numeric: true, cell: (r) => <MoneyText value={r.cost} places={3} /> },
 ];
 
+/** Scenarios for the simulated test call (module level so the options keep their identity). */
+const CALL_SCENARIOS: Record<string, { label: string; options: MockOptions }> = {
+  ok: { label: "Call connects", options: {} },
+  "mic-denied": { label: "Microphone blocked", options: { microphone: "denied" } },
+  "mic-missing": { label: "No microphone", options: { microphone: "unavailable" } },
+  credit: { label: "Not enough credit", options: { refuseWith: 402 } },
+  limit: { label: "Concurrency limit", options: { refuseWith: 429 } },
+  connect: { label: "Room does not answer", options: { failConnect: true } },
+};
+
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
     <section className="border-t border-line py-10">
@@ -129,6 +141,7 @@ export function ComponentsGallery() {
   const [items, setItems] = useState([1, 2, 3]);
   const [chainActive, setChainActive] = useState(2);
   const [gauge, setGauge] = useState(0.62);
+  const [callScenario, setCallScenario] = useState("ok");
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -308,6 +321,31 @@ export function ComponentsGallery() {
                 </div>
               </div>
             </Demo>
+          </div>
+        </Section>
+
+        <Section
+          title="Test call panel"
+          note="WebCallPanel checks the microphone first, then requests the session, then joins the room, so a blocked microphone never creates a call. Here it plays a simulated call on timers; pick a scenario to see refusals and errors."
+        >
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
+            <WebCallPanel
+              key={callScenario}
+              agentId="agt_01JABCDEF0123456789ABCDEFG"
+              mode="mock"
+              mockOptions={CALL_SCENARIOS[callScenario]?.options}
+            />
+            <Field label="Scenario" hint="Restarts the panel with the chosen outcome." className="max-w-[280px]">
+              {({ id, describedBy }) => (
+                <Select
+                  id={id}
+                  describedBy={describedBy}
+                  value={callScenario}
+                  onValueChange={setCallScenario}
+                  options={Object.entries(CALL_SCENARIOS).map(([value, s]) => ({ value, label: s.label }))}
+                />
+              )}
+            </Field>
           </div>
         </Section>
 
