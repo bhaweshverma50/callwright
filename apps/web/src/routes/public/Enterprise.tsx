@@ -12,7 +12,7 @@ const OFFERS = [
 /** Enterprise contact (T044, FR-016). The contact link comes from VITE_SALES_CONTACT_URL. */
 export function Enterprise() {
   return (
-    <div className="mx-auto grid max-w-[1200px] gap-14 px-4 pb-24 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:pt-16">
+    <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] gap-14 px-4 pb-24 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:pt-16">
       <div>
         <h1 className="max-w-[16ch] font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[42px]">Running voice at scale?</h1>
         <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-fg-2">

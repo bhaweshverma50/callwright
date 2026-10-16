@@ -63,7 +63,7 @@ export function CostBreakdownCard({
 }) {
   const surcharged = breakdown.lines.filter(hasSurcharge);
   return (
-    <section aria-label={title} className={cn("overflow-hidden rounded-panel border border-line bg-surface", className)}>
+    <section aria-label={title} className={cn("@container overflow-hidden rounded-panel border border-line bg-surface", className)}>
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 pb-3 pt-4">
         <h3 className="text-[13.5px] font-semibold text-fg">{title}</h3>
         <dl className="flex gap-3 text-[12px] text-fg-3">
@@ -91,7 +91,7 @@ export function CostBreakdownCard({
         <thead className="sr-only">
           <tr>
             <th scope="col">Component</th>
-            <th scope="col">Rate per minute</th>
+            <th scope="col" className="hidden @[24rem]:table-cell">Rate per minute</th>
             <th scope="col">Billed minutes</th>
             <th scope="col">Cost</th>
           </tr>
@@ -105,13 +105,13 @@ export function CostBreakdownCard({
                 <th scope="row" className="py-2.5 pl-5 pr-2 text-left font-normal">
                   <span className="flex items-center gap-2">
                     <Icon className={cn("size-3.5 shrink-0", surcharge ? "text-warning-text" : "text-fg-3")} aria-hidden />
-                    <span className="text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
-                    <span className="hidden truncate text-fg-3 sm:inline">
+                    <span className="whitespace-nowrap text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
+                    <span className="hidden truncate text-fg-3 @[30rem]:inline">
                       {l.component === "platform" ? providerLabel(l.provider) : (modelLabel(l.component, l.provider, l.model) ?? providerLabel(l.provider))}
                     </span>
                   </span>
                 </th>
-                <td className="px-2 text-right font-mono text-fg-3 tnum">{formatUsd(l.rate_per_min_usd, { places: 4 })}/m</td>
+                <td className="hidden px-2 text-right font-mono text-fg-3 tnum @[24rem]:table-cell">{formatUsd(l.rate_per_min_usd, { places: 4 })}/m</td>
                 <td className={cn("px-2 text-right font-mono tnum", surcharge ? "font-medium text-warning-text" : "text-fg-3")}>{Number(l.billed_minutes).toFixed(2)}m</td>
                 <td className="py-2.5 pl-2 pr-5 text-right">
                   <MoneyText value={l.cost_usd} places={3} className="text-fg" />

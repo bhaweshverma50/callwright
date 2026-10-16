@@ -23,7 +23,7 @@ export function Sidebar({
 }) {
   const markerId = inDrawer ? "nav-marker-drawer" : "nav-marker";
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", !inDrawer && "border-r border-line bg-sidebar")}>
+    <div className="flex h-full min-h-0 flex-col">
       {!inDrawer && (
         <div className={cn("flex h-[60px] shrink-0 items-center", expanded ? "px-4" : "justify-center")}>
           <NavLink to="/dashboard" className={cn("rounded-[9px]", focusRing)} aria-label="Callwright dashboard">

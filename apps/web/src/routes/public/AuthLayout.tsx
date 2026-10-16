@@ -1,18 +1,9 @@
-import { BrainCircuit, Captions, Ear, Mic, Volume2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { ChainStrip, LatencyChip, Logo, Reveal, RevealItem, Waveform, cn, focusRing, type ChainNode } from "../../components";
+import { LatencyChip, Logo, Reveal, RevealItem, Waveform, cn, focusRing } from "../../components";
 import { formatUsd } from "../../lib/money";
 import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "../../lib/sampleCall";
 import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
-
-const NODES: ChainNode[] = [
-  { key: "caller", label: "Caller", icon: <Mic aria-hidden /> },
-  { key: "stt", label: "Speech to text", icon: <Captions aria-hidden /> },
-  { key: "llm", label: "Model", icon: <BrainCircuit aria-hidden /> },
-  { key: "tts", label: "Voice", icon: <Volume2 aria-hidden /> },
-  { key: "hears", label: "Caller hears", icon: <Ear aria-hidden /> },
-];
 
 const TURNS = SAMPLE_CALL.slice(0, 3);
 const COST = formatUsd((SEED_PER_MINUTE_MICROS * BigInt(SAMPLE_CALL_SECONDS)) / 60n, { places: 4 });
@@ -24,7 +15,7 @@ const COST = formatUsd((SEED_PER_MINUTE_MICROS * BigInt(SAMPLE_CALL_SECONDS)) / 
  */
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle?: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="grid min-h-dvh bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       <div className="flex flex-col px-5 py-6 sm:px-12">
         <Link to="/" className={cn("self-start rounded-[9px]", focusRing)} aria-label="Callwright home">
           <Logo />
@@ -85,7 +76,6 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
               <span className="font-mono text-[14px] text-console-fg tnum">{COST}</span>
             </div>
           </div>
-          <ChainStrip nodes={NODES} onConsole compact className="mt-8" />
         </div>
       </aside>
     </div>

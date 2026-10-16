@@ -40,7 +40,7 @@ export function Home() {
   return (
     <>
       <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pb-20 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:pb-28 lg:pt-20">
+        <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-14 px-4 pb-20 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:pb-28 lg:pt-20">
           <Reveal>
             <RevealItem>
               <h1 className="grad-text max-w-[15ch] font-display text-[34px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[46px] lg:text-[54px]">
@@ -62,9 +62,11 @@ export function Home() {
               </Button>
             </RevealItem>
             <RevealItem>
-              <p className="mt-6 flex items-center gap-2 text-[13.5px] text-fg-3">
-                <Clock className="size-4" aria-hidden />
-                New workspaces start with $5.00, about <span className="font-mono text-fg-2 tnum">{TRIAL_MINUTES}</span> minutes of calls.
+              <p className="mt-6 flex items-start gap-2 text-[13.5px] text-fg-3">
+                <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span>
+                  New workspaces start with $5.00, about <span className="font-mono text-fg-2 tnum">{TRIAL_MINUTES}</span> minutes of calls.
+                </span>
               </p>
             </RevealItem>
           </Reveal>
@@ -109,8 +111,8 @@ export function Home() {
               );
             })}
           </ol>
-          <p className="mt-6 flex items-center gap-2 text-[13.5px] text-fg-3">
-            <NcIcon className="size-4" aria-hidden />
+          <p className="mt-6 flex items-start gap-2 text-[13.5px] text-fg-3">
+            <NcIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
             Optional noise cancellation from {providersFor("nc").join(" or ")} cleans the line before speech to text hears it.
           </p>
         </div>

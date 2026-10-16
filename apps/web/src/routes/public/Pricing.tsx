@@ -25,9 +25,11 @@ export function Pricing() {
         Build the chain your agent uses. The price per minute is the sum of its links plus the platform fee, and the same engine prices
         your real calls.
       </p>
-      <p className="mt-3 flex items-center gap-2 text-[13.5px] text-fg-3">
-        <Clock className="size-4" aria-hidden />
-        $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes on the default chain.
+      <p className="mt-3 flex items-start gap-2 text-[13.5px] text-fg-3">
+        <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <span>
+          $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes on the default chain.
+        </span>
       </p>
 
       <div className="mt-12">
@@ -54,7 +56,7 @@ export function Pricing() {
         </dl>
       </section>
 
-      <section aria-labelledby="rule" className="mt-24 grid items-start gap-12 border-t border-line pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section aria-labelledby="rule" className="mt-24 grid grid-cols-[minmax(0,1fr)] items-start gap-12 border-t border-line pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div>
           <h2 id="rule" className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
             When a call uses more than its bundle

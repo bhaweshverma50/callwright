@@ -67,7 +67,7 @@ export function Label({ children, className }: { children: ReactNode; className?
  */
 export function WorkLayout({ main, inspector, className }: { main: ReactNode; inspector: ReactNode; className?: string }) {
   return (
-    <div className={cn("grid items-start gap-6", inspector ? "xl:grid-cols-[minmax(0,1fr)_360px]" : undefined, className)}>
+    <div className={cn("grid grid-cols-[minmax(0,1fr)] items-start gap-6", inspector ? "xl:grid-cols-[minmax(0,1fr)_360px]" : undefined, className)}>
       <div className="min-w-0">{main}</div>
       {inspector ? (
         <aside aria-label="Inspector" className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-[84px]">

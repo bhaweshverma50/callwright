@@ -63,11 +63,13 @@ export function Shell() {
       </a>
       <div
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 transition-[width] duration-200 ease-out lg:block",
+          "hidden shrink-0 border-r border-line bg-sidebar transition-[width] duration-200 ease-out lg:block",
           expanded ? "w-[248px]" : "w-[68px]",
         )}
       >
-        <Sidebar expanded={expanded} onToggle={toggle} />
+        <div className="sticky top-0 h-dvh">
+          <Sidebar expanded={expanded} onToggle={toggle} />
+        </div>
       </div>
       <Drawer open={mobileOpen} onOpenChange={setMobileOpen} title="Callwright" side="left" width="md">
         <div className="-mx-5 -my-4 h-full">

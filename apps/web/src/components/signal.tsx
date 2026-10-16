@@ -181,7 +181,7 @@ export function ChainStrip({
               >
                 {n.icon}
               </motion.span>
-              <span className={cn("whitespace-nowrap text-[11.5px]", onConsole ? (on ? "text-console-fg" : "text-console-fg-2") : on ? "text-fg" : "text-fg-3")}>
+              <span className={cn("whitespace-nowrap text-[11.5px]", compact && "sr-only sm:not-sr-only", onConsole ? (on ? "text-console-fg" : "text-console-fg-2") : on ? "text-fg" : "text-fg-3")}>
                 {n.label}
               </span>
             </div>
@@ -197,7 +197,7 @@ export function ChainStrip({
 export function ChainLink({ flow, onConsole, className }: { flow?: boolean; onConsole?: boolean; className?: string }) {
   const id = useId().replace(/:/g, "");
   return (
-    <svg viewBox="0 0 100 4" preserveAspectRatio="none" className={cn("h-1 min-w-4", className)} aria-hidden>
+    <svg viewBox="0 0 100 4" preserveAspectRatio="none" className={cn("h-1 w-0 min-w-4", className)} aria-hidden>
       <defs>
         <linearGradient id={`l-${id}`} x1="0" x2="100" y1="0" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="var(--heat-1)" />

@@ -75,7 +75,7 @@ export function DashboardPlaceholder() {
                 <motion.div
                   className="grad-action h-full rounded-full"
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.max(4, (done / steps.length) * 100)}%` }}
+                  animate={{ width: `${(done / steps.length) * 100}%` }}
                   transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 />
               </div>

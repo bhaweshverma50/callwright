@@ -1,5 +1,5 @@
 import * as RP from "@radix-ui/react-popover";
-import { Check, ChevronDown, CircleAlert, Ear, Mic, Plus, SlidersHorizontal, Zap } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, Clock, Ear, Mic, Plus, SlidersHorizontal, Zap } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { useCatalog, useQuote } from "../../api/queries";
@@ -195,6 +195,25 @@ export function PricingCalculator() {
               </div>
             </details>
 
+            {perMinute !== null && perMinute > 0n && (
+              <section aria-labelledby="buys">
+                <h3 id="buys" className="flex items-center gap-2 text-[13.5px] font-medium text-fg">
+                  <Clock className="size-4 text-fg-3" aria-hidden />
+                  What a top-up buys on this chain
+                </h3>
+                <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[25, 100, 500, 1000].map((d) => (
+                    <div key={d} className="rounded-control border border-line bg-surface-2/60 px-3.5 py-3">
+                      <dt className="font-mono text-[12.5px] text-fg-3 tnum">{formatUsd(String(d), { places: 0 })}</dt>
+                      <dd className="mt-1 text-[13px] text-fg-2">
+                        <Ticker value={Number((BigInt(d) * 1_000_000n) / perMinute)} format={(n) => Math.round(n).toLocaleString()} className="font-mono text-[16px] font-medium text-fg" /> min
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+
             {unpriced.length > 0 && (
               <p className="flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2 text-[13px] text-warning-text">
                 <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -250,8 +269,8 @@ function Wire({ subtotal, pulse, first, loading }: { subtotal: bigint; pulse: nu
         )}
       </svg>
       {!first && (
-        <span className="relative ml-6 font-mono text-[11.5px] text-fg-3 tnum lg:ml-0 lg:mt-2 lg:text-center">
-          {loading ? "" : <Ticker value={Number(subtotal)} format={usd4} />}
+        <span className="relative ml-6 min-h-4 font-mono text-[11.5px] text-fg-3 tnum lg:ml-0 lg:mt-2 lg:text-center">
+          {loading || subtotal === 0n ? "" : <Ticker value={Number(subtotal)} format={usd4} />}
         </span>
       )}
     </div>
