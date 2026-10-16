@@ -271,7 +271,9 @@
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-sans);
-    font-size: 14px;
+    /* The root stays at the browser default (16px) so rem-based spacing matches the px sizes it
+       sits next to (a 40px track holds an 18px thumb); interface text is set to 14px on body. */
+    font-size: 100%;
     font-feature-settings: "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -280,6 +282,8 @@
   body {
     min-height: 100dvh;
     background: var(--bg);
+    font-size: 14px;
+    line-height: 1.5;
   }
   ::selection {
     background: var(--accent-soft);
