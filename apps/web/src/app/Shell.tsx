@@ -64,7 +64,7 @@ export function Shell() {
       <div
         className={cn(
           "hidden shrink-0 border-r border-line bg-sidebar transition-[width] duration-200 ease-out lg:block",
-          expanded ? "w-[248px]" : "w-[68px]",
+          expanded ? "w-[248px]" : "w-[72px]",
         )}
       >
         <div className="sticky top-0 h-dvh">
