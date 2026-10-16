@@ -63,6 +63,9 @@
   --overlay: rgb(14 16 48 / 0.42);
   --glow-a: rgb(51 70 232 / 0.16);
   --glow-b: rgb(122 60 255 / 0.12);
+  --tooltip-bg: #171a3d;
+  --tooltip-fg: #eef0fb;
+  --tooltip-edge: transparent;
 }
 
 :root[data-theme="dark"] {
@@ -101,6 +104,10 @@
   --overlay: rgb(5 6 20 / 0.66);
   --glow-a: rgb(75 92 240 / 0.24);
   --glow-b: rgb(122 60 255 / 0.2);
+  /* Lifted above every dark surface so the tip reads as floating, not as a hole in the page. */
+  --tooltip-bg: #2b3172;
+  --tooltip-fg: #eef0fb;
+  --tooltip-edge: rgb(255 255 255 / 0.08);
 }
 
 @theme inline {
@@ -209,6 +216,24 @@
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--tip-dx), var(--tip-dy)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes tip-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 @keyframes shimmer {
@@ -564,6 +589,49 @@
   }
   .sheen-idle[data-sheen]::after {
     animation: sheen var(--sheen-duration) var(--ease-out-soft) 1;
+  }
+
+  /*
+    Tooltip (components/Tooltip.tsx): one ink card with an arrow in both themes. It fades in while
+    settling 3px toward its trigger from the side it opens on, and fades out faster than it came.
+  */
+  .tooltip {
+    --tip-dx: 0px;
+    --tip-dy: 3px;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-fg);
+    box-shadow:
+      inset 0 0 0 1px var(--tooltip-edge),
+      var(--shadow-pop);
+    transform-origin: var(--radix-tooltip-content-transform-origin);
+    will-change: transform, opacity;
+  }
+  .tooltip[data-side="bottom"] {
+    --tip-dy: -3px;
+  }
+  .tooltip[data-side="left"] {
+    --tip-dx: 3px;
+    --tip-dy: 0px;
+  }
+  .tooltip[data-side="right"] {
+    --tip-dx: -3px;
+    --tip-dy: 0px;
+  }
+  .tooltip[data-state="delayed-open"] {
+    animation: tip-in 160ms var(--ease-out-soft);
+  }
+  .tooltip[data-state="instant-open"] {
+    animation: tip-in 90ms var(--ease-out-soft);
+  }
+  .tooltip[data-state="closed"] {
+    animation: tip-out 90ms ease-in forwards;
+  }
+  .tooltip-arrow {
+    fill: var(--tooltip-bg);
+  }
+  /* Secondary line inside a tip (a description under its title). */
+  .tooltip-muted {
+    color: color-mix(in srgb, var(--tooltip-fg) 78%, transparent);
   }
 
   .ripple {

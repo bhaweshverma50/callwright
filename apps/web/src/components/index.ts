@@ -15,6 +15,7 @@ export { MoneyText } from "./Money";
 export { CostBreakdownCard, COMPONENT_LABELS, COMPONENT_ICONS } from "./CostBreakdown";
 export { Tooltip, TooltipProvider } from "./Tooltip";
 export { InfoTip, TruncatedText } from "./TruncatedText";
+export { CopyButton } from "./CopyButton";
 export { Menu, MenuTrigger, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuRadioGroup, MenuRadioItem } from "./Menu";
 export { Panel, PageHeader, Label, WorkLayout, PanelRows, FieldRow, InfoRow } from "./Panel";
 export { LeaveGuard } from "./LeaveGuard";
