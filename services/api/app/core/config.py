@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
 
     redis_url: str = "redis://localhost:56379/0"
+    # Fail fast when Redis is away (the realtime VM is stopped): the API then answers 503
+    # waking_up instead of hanging on a TCP connect to a powered-off address.
+    redis_connect_timeout_s: float = Field(2.0, gt=0, le=30)
+    redis_socket_timeout_s: float = Field(5.0, gt=0, le=60)
+    # The VM that hosts Redis, LiveKit and the workers (deploy/vm). When all three are set, a
+    # Redis outage starts it through the Compute Engine API (app/core/vm_waker.py).
+    wake_vm_project: str | None = None
+    wake_vm_zone: str | None = None
+    wake_vm_name: str | None = None
 
     # Public URLs
     api_base_url: str = "http://localhost:8100"

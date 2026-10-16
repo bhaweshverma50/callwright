@@ -15,13 +15,13 @@ from arq.cron import CronJob
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
-from app.core.queue import ArqJobQueue, JobQueue
+from app.core.queue import ArqJobQueue, JobQueue, redis_settings_for
 
 __all__ = ["ArqJobQueue", "JobQueue", "WorkerSettings", "enqueue"]
 
 
 def redis_settings() -> RedisSettings:
-    return RedisSettings.from_dsn(get_settings().redis_url)
+    return redis_settings_for(get_settings().redis_url)
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -93,3 +93,4 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = redis_settings()
+    poll_delay = get_settings().arq_poll_delay_s
