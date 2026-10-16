@@ -1,0 +1,89 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, llms module
+  version: 1.0.0
+  description: |
+    Language model catalog: capability data from llms/catalog.yaml joined with 001 pricing
+    (research R6, R8). Withdrawn models are omitted unless include_withdrawn=true.
+servers:
+  - url: /v1
+paths:
+  /llms/catalog:
+    get:
+      operationId: getLlmCatalog
+      tags: [llms]
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: include_withdrawn
+          in: query
+          description: Include withdrawn models (used to label existing selections)
+          schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Providers and models
+          headers:
+            Cache-Control:
+              schema: {type: string, examples: ['private, max-age=300']}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LlmCatalog'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    TemperatureRule:
+      oneOf:
+        - type: object
+          required: [min, max, step, default]
+          properties:
+            min: {type: number}
+            max: {type: number}
+            step: {type: number}
+            default: {type: number}
+        - type: object
+          required: [fixed, reason]
+          properties:
+            fixed: {type: number, examples: [1.0]}
+            reason: {type: string, examples: ['This model only supports temperature 1.0']}
+    LlmModel:
+      type: object
+      required: [id, label, temperature, supports_tools, price_per_min_usd, withdrawn]
+      properties:
+        id: {type: string, examples: [gpt-5.1]}
+        label: {type: string}
+        temperature: {$ref: '#/components/schemas/TemperatureRule'}
+        supports_tools: {type: boolean}
+        context_window: {type: [integer, 'null']}
+        input_tokens_bundle_per_min: {type: [integer, 'null'], description: From pricing; used by the surcharge-risk notice}
+        price_per_min_usd:
+          oneOf:
+            - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/MoneyUsd'}
+            - {type: 'null'}
+          description: null means price unavailable
+        withdrawn: {type: boolean}
+    LlmProvider:
+      type: object
+      required: [id, label, models]
+      properties:
+        id: {type: string, examples: [azure_openai, openai, anthropic]}
+        label: {type: string}
+        models:
+          type: array
+          items: {$ref: '#/components/schemas/LlmModel'}
+    LlmCatalog:
+      type: object
+      required: [default, providers]
+      properties:
+        default:
+          type: object
+          required: [provider, model]
+          properties:
+            provider: {type: string}
+            model: {type: string}
+        providers:
+          type: array
+          items: {$ref: '#/components/schemas/LlmProvider'}

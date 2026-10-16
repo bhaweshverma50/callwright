@@ -1,0 +1,509 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, knowledge module (005-tools-knowledge)
+  version: 0.1.0
+  description: |
+    Fragment merged into contracts/openapi.yaml. Owned by services/api/app/knowledge.
+    Shared components Problem and Page follow 001 conventions and are repeated here so the
+    fragment validates on its own.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: knowledge
+  - name: internal
+
+paths:
+  /knowledge-bases:
+    get:
+      tags: [knowledge]
+      operationId: listKnowledgeBases
+      parameters:
+        - {name: search, in: query, schema: {type: string, maxLength: 120}}
+        - {name: attachable, in: query, description: Only KBs with at least one ready document, schema: {type: boolean}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Page of knowledge bases
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/KnowledgeBase'}}
+    post:
+      tags: [knowledge]
+      operationId: createKnowledgeBase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/KnowledgeBaseWrite'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/KnowledgeBase'}
+        '409': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /knowledge-bases/{kb_id}:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+    get:
+      tags: [knowledge]
+      operationId: getKnowledgeBase
+      responses:
+        '200':
+          description: Knowledge base with derived counts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/KnowledgeBase'}
+        '404': {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [knowledge]
+      operationId: updateKnowledgeBase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/KnowledgeBaseWrite'}
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/KnowledgeBase'}
+    delete:
+      tags: [knowledge]
+      operationId: deleteKnowledgeBase
+      description: |
+        Detaches the KB from every agent draft, then deletes its documents, chunks and stored
+        files. Published versions that reference it get no results from it afterwards.
+      parameters:
+        - name: confirm
+          in: query
+          description: Must be true when the KB is attached to any agent draft.
+          schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, detached_agent_ids]
+                properties:
+                  deleted: {type: boolean}
+                  detached_agent_ids: {type: array, items: {type: string, pattern: '^agt_'}}
+        '409':
+          description: Attached and confirm is false (problem type `knowledge_base_in_use`, lists agents)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /knowledge-bases/{kb_id}/documents:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+    get:
+      tags: [knowledge]
+      operationId: listDocuments
+      parameters:
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/DocumentStatus'}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Page of documents, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/Document'}}
+    post:
+      tags: [knowledge]
+      operationId: uploadDocument
+      description: |
+        Multipart upload, PDF or DOCX by content, at most 20,971,520 bytes. Returns 202 with the
+        document in status `uploaded`; ingestion runs in the background.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, contentMediaType: application/octet-stream}
+                replace_doc_id:
+                  type: string
+                  pattern: '^doc_'
+                  description: Replace this document once the new one is ready.
+                acknowledge_duplicate:
+                  type: boolean
+                  default: false
+                  description: Proceed although the same content exists in another KB.
+      responses:
+        '202':
+          description: Accepted for ingestion
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Document'}
+        '409':
+          description: Same content already in this KB (`duplicate_document`) or unacknowledged cross-KB duplicate (`duplicate_elsewhere`)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '413':
+          description: File larger than 20 MB (`file_too_large`)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '415':
+          description: Not a PDF or DOCX (`unsupported_file_type`)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: Workspace storage or per-KB document quota exceeded (`quota_exceeded`)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /knowledge-bases/{kb_id}/documents/check-duplicate:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+    post:
+      tags: [knowledge]
+      operationId: checkDuplicateDocument
+      description: Called by the browser with a locally computed SHA-256 before uploading.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file_name, sha256, file_size]
+              properties:
+                file_name: {type: string, maxLength: 255}
+                sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+                file_size: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Duplicate assessment
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verdict, matches]
+                properties:
+                  verdict:
+                    type: string
+                    enum: [ok, blocked_same_kb, warn_other_kb, warn_same_name]
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      required: [kb_id, kb_name, doc_id, file_name, reason]
+                      properties:
+                        kb_id: {type: string}
+                        kb_name: {type: string}
+                        doc_id: {type: string}
+                        file_name: {type: string}
+                        reason: {type: string, enum: [same_content, same_name]}
+
+  /knowledge-bases/{kb_id}/documents/{doc_id}:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+      - $ref: '#/components/parameters/DocId'
+    get:
+      tags: [knowledge]
+      operationId: getDocument
+      responses:
+        '200':
+          description: Document
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Document'}
+        '404': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [knowledge]
+      operationId: deleteDocument
+      description: Removes chunks (search stops returning them at once), the stored file and the row.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/Problem'}
+
+  /knowledge-bases/{kb_id}/documents/{doc_id}/reprocess:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+      - $ref: '#/components/parameters/DocId'
+    post:
+      tags: [knowledge]
+      operationId: reprocessDocument
+      description: Allowed only for `failed` documents; resets to `uploaded` and enqueues ingestion.
+      responses:
+        '202':
+          description: Re-queued
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Document'}
+        '409': {$ref: '#/components/responses/Problem'}
+
+  /knowledge-bases/{kb_id}/documents/{doc_id}/url:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+      - $ref: '#/components/parameters/DocId'
+    get:
+      tags: [knowledge]
+      operationId: getDocumentUrl
+      responses:
+        '200':
+          description: Signed URL valid for 10 minutes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expires_at]
+                properties:
+                  url: {type: string, format: uri}
+                  expires_at: {type: string, format: date-time}
+
+  /knowledge-bases/{kb_id}/search:
+    parameters:
+      - $ref: '#/components/parameters/KbId'
+    post:
+      tags: [knowledge]
+      operationId: previewSearch
+      description: Same retrieval as during calls, for the KB page preview. Not billed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: {type: string, minLength: 1, maxLength: 1000}
+                top_k: {type: integer, minimum: 1, maximum: 8, default: 4}
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SearchResponse'}
+        '429': {$ref: '#/components/responses/Problem'}
+
+  /agents/{agent_id}/knowledge-bases:
+    parameters:
+      - name: agent_id
+        in: path
+        required: true
+        schema: {type: string, pattern: '^agt_'}
+    get:
+      tags: [knowledge]
+      operationId: getAgentKnowledgeBases
+      responses:
+        '200':
+          description: KBs attached to the agent draft
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent_id, knowledge_bases]
+                properties:
+                  agent_id: {type: string}
+                  knowledge_bases: {type: array, items: {$ref: '#/components/schemas/KnowledgeBase'}}
+    put:
+      tags: [knowledge]
+      operationId: setAgentKnowledgeBases
+      description: Replaces the attached set on the agent draft (max 10, each attachable).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kb_ids]
+              properties:
+                kb_ids:
+                  type: array
+                  maxItems: 10
+                  uniqueItems: true
+                  items: {type: string, pattern: '^kb_'}
+      responses:
+        '200':
+          description: Updated set
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent_id, knowledge_bases]
+                properties:
+                  agent_id: {type: string}
+                  knowledge_bases: {type: array, items: {$ref: '#/components/schemas/KnowledgeBase'}}
+        '422':
+          description: Unknown id, KB not attachable (`knowledge_base_not_ready`) or too many
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /internal/knowledge/search:
+    post:
+      tags: [internal]
+      operationId: internalKnowledgeSearch
+      security:
+        - serviceToken: []
+      description: |
+        Used by the voice worker's kb_search tool. Workspace derived from call_id; kb_ids must
+        belong to the call's AgentVersion. Target p95 under 250 ms server time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [call_id, query, kb_ids]
+              properties:
+                call_id: {type: string, pattern: '^call_'}
+                query: {type: string, minLength: 1, maxLength: 1000}
+                kb_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: {type: string, pattern: '^kb_'}
+                top_k: {type: integer, minimum: 1, maximum: 8, default: 4}
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SearchResponse'}
+        '403': {$ref: '#/components/responses/Problem'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    serviceToken: {type: http, scheme: bearer, description: Internal worker service token}
+
+  parameters:
+    KbId:
+      name: kb_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^kb_[0-9A-HJKMNP-TV-Z]{26}$'}
+    DocId:
+      name: doc_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^doc_[0-9A-HJKMNP-TV-Z]{26}$'}
+
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+    Page:
+      type: object
+      required: [items, total, page, page_size, total_pages]
+      properties:
+        items: {type: array}
+        total: {type: integer}
+        page: {type: integer}
+        page_size: {type: integer}
+        total_pages: {type: integer}
+
+    KnowledgeBaseWrite:
+      type: object
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        description: {type: string, maxLength: 500}
+
+    KnowledgeBase:
+      type: object
+      required: [id, name, description, status, attachable, document_count, ready_count, processing_count, failed_count, total_bytes, agent_count, created_at, updated_at]
+      properties:
+        id: {type: string, pattern: '^kb_'}
+        name: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [empty, processing, ready, partial, failed]}
+        attachable: {type: boolean}
+        document_count: {type: integer}
+        ready_count: {type: integer}
+        processing_count: {type: integer}
+        failed_count: {type: integer}
+        total_bytes: {type: integer}
+        agent_count: {type: integer, description: Agent drafts this KB is attached to}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    DocumentStatus:
+      type: string
+      enum: [uploaded, processing, ready, failed]
+
+    Document:
+      type: object
+      required: [id, kb_id, file_name, file_type, file_size, sha256, status, created_at]
+      properties:
+        id: {type: string, pattern: '^doc_'}
+        kb_id: {type: string}
+        file_name: {type: string}
+        file_type: {type: string, enum: [pdf, docx]}
+        file_size: {type: integer, maximum: 20971520}
+        sha256: {type: string}
+        status: {$ref: '#/components/schemas/DocumentStatus'}
+        error_code:
+          type: [string, 'null']
+          enum: [no_extractable_text, corrupt_file, encrypted_file, embedding_unavailable, too_many_chunks, internal, null]
+        error_message: {type: [string, 'null']}
+        page_count: {type: [integer, 'null']}
+        chunk_count: {type: [integer, 'null']}
+        replaces_doc_id: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        processed_at: {type: [string, 'null'], format: date-time}
+
+    SearchResult:
+      type: object
+      required: [chunk_id, kb_id, doc_id, file_name, content, score]
+      properties:
+        chunk_id: {type: string, description: Opaque}
+        kb_id: {type: string}
+        doc_id: {type: string}
+        file_name: {type: string}
+        page_from: {type: [integer, 'null']}
+        page_to: {type: [integer, 'null']}
+        heading: {type: [string, 'null']}
+        content: {type: string}
+        score: {type: number, minimum: 0, maximum: 1, description: Cosine similarity}
+
+    SearchResponse:
+      type: object
+      required: [results, embedding_ms, query_ms, embedding_cache_hit]
+      properties:
+        results:
+          type: array
+          maxItems: 8
+          items: {$ref: '#/components/schemas/SearchResult'}
+        embedding_ms: {type: integer}
+        query_ms: {type: integer}
+        embedding_cache_hit: {type: boolean}

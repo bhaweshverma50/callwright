@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, review module
+  version: 0.1.0
+  description: Review queue of calls not yet labelled by the viewer. Owned by spec 007.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /review/queue:
+    get:
+      operationId: getReviewQueue
+      parameters:
+        - name: strategy
+          in: query
+          schema: { type: string, enum: [random, failed, disagreement], default: disagreement }
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/LookbackDays"
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: Queue items in strategy order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [strategy, items]
+                properties:
+                  strategy: { type: string, enum: [random, failed, disagreement] }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/QueueItem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /review/queue/summary:
+    get:
+      operationId: getReviewQueueSummary
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/LookbackDays"
+      responses:
+        "200":
+          description: Counts per strategy for the same scope
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [random, failed, disagreement]
+                properties:
+                  random: { type: integer }
+                  failed: { type: integer }
+                  disagreement: { type: integer }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    AgentId:
+      name: agent_id
+      in: query
+      schema: { type: string, pattern: "^agt_" }
+    LookbackDays:
+      name: lookback_days
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 90, default: 30 }
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [type, title, status]
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }
+  schemas:
+    QueueItem:
+      type: object
+      required: [call_id, agent_id, agent_name, ended_at, duration_s, eval_count, pass_count, fail_count]
+      properties:
+        call_id: { type: string }
+        agent_id: { type: string }
+        agent_name: { type: string }
+        ended_at: { type: string, format: date-time }
+        duration_s: { type: integer }
+        sentiment: { type: [string, "null"], enum: [positive, neutral, negative, unknown, null] }
+        eval_count: { type: integer, description: Current completed runs with verdict pass or fail }
+        pass_count: { type: integer }
+        fail_count: { type: integer }

@@ -1,0 +1,642 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, simulator module
+  version: 0.1.0
+  description: >
+    Fragment owned by 008-testing-simulation (services/api/app/simulator). Text-mode
+    simulations in replay or persona mode, individual runs (srun_) and batches (exp_), the
+    per-run comparison and the batch scorecard. Billed as feature charges simulation.*.
+    Shared components marked x-owner 001 are repeated for validation only.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: simulator
+paths:
+  /simulations/preflight:
+    post:
+      tags: [simulator]
+      operationId: simulationPreflight
+      summary: Check mocks, count runs and estimate cost before starting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, mode, target]
+              properties:
+                agent_id: { type: string, pattern: '^agt_' }
+                mode: { $ref: '#/components/schemas/SimMode' }
+                target: { $ref: '#/components/schemas/SimTarget' }
+                base_call_ids:
+                  type: array
+                  items: { type: string, pattern: '^call_' }
+                dataset_id: { type: string, pattern: '^ds_' }
+      responses:
+        '200':
+          description: Pre-flight report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run_count, tools_missing_mock, estimated_cost_usd, invalid_calls, warnings]
+                properties:
+                  run_count: { type: integer }
+                  tools_missing_mock:
+                    type: array
+                    items:
+                      type: object
+                      required: [name, kind]
+                      properties:
+                        tool_id: { type: [string, 'null'] }
+                        node_id: { type: [string, 'null'] }
+                        name: { type: string }
+                        kind: { type: string, enum: [tool, webhook_node] }
+                  estimated_cost_usd: { type: number }
+                  invalid_calls:
+                    type: array
+                    items: { $ref: '#/components/schemas/InvalidCall' }
+                  warnings:
+                    type: array
+                    items: { type: string }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /simulation-runs:
+    get:
+      tags: [simulator]
+      operationId: listSimulationRuns
+      parameters:
+        - { name: agent_id, in: query, schema: { type: string } }
+        - { name: base_call_id, in: query, schema: { type: string } }
+        - { name: experiment_id, in: query, schema: { type: string } }
+        - { name: standalone, in: query, schema: { type: boolean }, description: true returns only runs outside a batch }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/SimStatus' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Runs, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/SimulationRun' }
+    post:
+      tags: [simulator]
+      operationId: startSimulationRun
+      summary: Start one simulation (replay needs base_call_id; persona needs base_call_id or persona_brief)
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, mode]
+              properties:
+                agent_id: { type: string, pattern: '^agt_' }
+                mode: { $ref: '#/components/schemas/SimMode' }
+                base_call_id: { type: string, pattern: '^call_' }
+                target: { $ref: '#/components/schemas/SimTarget' }
+                persona_brief: { $ref: '#/components/schemas/PersonaBrief' }
+                dynamic_variables:
+                  type: object
+                  additionalProperties: { type: string }
+                settings: { $ref: '#/components/schemas/SimSettings' }
+      responses:
+        '202':
+          description: Run created as pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimulationRun' }
+        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /simulation-runs/{simulation_run_id}:
+    get:
+      tags: [simulator]
+      operationId: getSimulationRun
+      parameters:
+        - { $ref: '#/components/parameters/SimulationRunId' }
+      responses:
+        '200':
+          description: Run
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimulationRun' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /simulation-runs/{simulation_run_id}/comparison:
+    get:
+      tags: [simulator]
+      operationId: getSimulationComparison
+      summary: Side-by-side transcripts, flow paths and evaluator verdict diffs
+      parameters:
+        - { $ref: '#/components/parameters/SimulationRunId' }
+      responses:
+        '200':
+          description: Comparison (original is null for standalone persona runs)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comparison' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Run not completed yet
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /simulation-runs/{simulation_run_id}/cancel:
+    post:
+      tags: [simulator]
+      operationId: cancelSimulationRun
+      parameters:
+        - { $ref: '#/components/parameters/SimulationRunId' }
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimulationRun' }
+        '409':
+          description: Only pending runs can be cancelled
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /experiments:
+    get:
+      tags: [simulator]
+      operationId: listExperiments
+      parameters:
+        - { name: agent_id, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { type: string, enum: [call_selection, dataset, issue_validation, api] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Batches, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Experiment' }
+    post:
+      tags: [simulator]
+      operationId: startExperiment
+      summary: Start a batch over base_call_ids or a dataset (exactly one)
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, mode]
+              properties:
+                agent_id: { type: string, pattern: '^agt_' }
+                name: { type: string, maxLength: 120 }
+                mode: { $ref: '#/components/schemas/SimMode' }
+                target: { $ref: '#/components/schemas/SimTarget' }
+                base_call_ids:
+                  type: array
+                  minItems: 2
+                  maxItems: 100
+                  items: { type: string, pattern: '^call_' }
+                dataset_id: { type: string, pattern: '^ds_' }
+                settings: { $ref: '#/components/schemas/SimSettings' }
+              oneOf:
+                - required: [base_call_ids]
+                - required: [dataset_id]
+      responses:
+        '202':
+          description: Batch created; runs pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Experiment' }
+        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '422':
+          description: Mixed agents, too many calls, invalid calls or invalid variant
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /experiments/{experiment_id}:
+    get:
+      tags: [simulator]
+      operationId: getExperiment
+      parameters:
+        - { $ref: '#/components/parameters/ExperimentId' }
+      responses:
+        '200':
+          description: Batch
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Experiment' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /experiments/{experiment_id}/runs:
+    get:
+      tags: [simulator]
+      operationId: listExperimentRuns
+      parameters:
+        - { $ref: '#/components/parameters/ExperimentId' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Runs of the batch
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/SimulationRun' }
+  /experiments/{experiment_id}/scorecard:
+    get:
+      tags: [simulator]
+      operationId: getExperimentScorecard
+      parameters:
+        - { $ref: '#/components/parameters/ExperimentId' }
+        - { name: baseline, in: query, schema: { type: string, enum: [original, experiment], default: original } }
+        - { name: baseline_experiment_id, in: query, schema: { type: string, pattern: '^exp_' }, description: Required when baseline is experiment; must share base calls }
+      responses:
+        '200':
+          description: Scorecard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Scorecard' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /experiments/{experiment_id}/cancel:
+    post:
+      tags: [simulator]
+      operationId: cancelExperiment
+      parameters:
+        - { $ref: '#/components/parameters/ExperimentId' }
+      responses:
+        '200':
+          description: Pending runs cancelled; in-flight runs finish
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Experiment' }
+  /internal/simulation-runs/{simulation_run_id}/spec:
+    get:
+      tags: [simulator]
+      operationId: internalGetSimulationSpec
+      summary: Called by the voice-worker text runner (service token)
+      security:
+        - serviceToken: []
+      parameters:
+        - { $ref: '#/components/parameters/SimulationRunId' }
+      responses:
+        '200':
+          description: Everything the runner needs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspace_id, simulation_run_id, output_call_id, mode, config_snapshot, settings, dynamic_variables]
+                properties:
+                  workspace_id: { type: string }
+                  simulation_run_id: { type: string }
+                  output_call_id: { type: string, description: Call row pre-created with origin simulation }
+                  mode: { $ref: '#/components/schemas/SimMode' }
+                  config_snapshot: { type: object }
+                  settings: { $ref: '#/components/schemas/SimSettings' }
+                  dynamic_variables: { type: object, additionalProperties: { type: string } }
+                  start_speaker: { type: string, enum: [agent, user] }
+                  caller_turns:
+                    type: array
+                    description: Replay only
+                    items: { type: string }
+                  recorded_tool_outputs:
+                    type: array
+                    description: Replay only; in call order
+                    items:
+                      type: object
+                      required: [name, output]
+                      properties:
+                        name: { type: string }
+                        output: { type: string }
+                  original_node_path:
+                    type: array
+                    items: { type: string }
+                  persona_brief: { $ref: '#/components/schemas/PersonaBrief' }
+  /internal/simulation-runs/{simulation_run_id}/result:
+    post:
+      tags: [simulator]
+      operationId: internalPostSimulationResult
+      security:
+        - serviceToken: []
+      parameters:
+        - { $ref: '#/components/parameters/SimulationRunId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, usage]
+              properties:
+                status: { type: string, enum: [completed, failed] }
+                end_reason: { $ref: '#/components/schemas/SimEndReason' }
+                diverged_at_turn: { type: [integer, 'null'] }
+                answer_source_counts: { $ref: '#/components/schemas/AnswerSourceCounts' }
+                persona_brief: { $ref: '#/components/schemas/PersonaBrief' }
+                usage: { type: object }
+                error_message: { type: [string, 'null'] }
+      responses:
+        '204': { description: Accepted; post-call pipeline starts for the simulated call }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    serviceToken: { type: http, scheme: bearer, description: Internal service token }
+  parameters:
+    SimulationRunId: { name: simulation_run_id, in: path, required: true, schema: { type: string, pattern: '^srun_' } }
+    ExperimentId: { name: experiment_id, in: path, required: true, schema: { type: string, pattern: '^exp_' } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InsufficientCredit:
+      description: Balance at or below zero
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      x-owner: '001'
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    PageMeta:
+      x-owner: '001'
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
+    SimMode: { type: string, enum: [replay, persona] }
+    SimStatus: { type: string, enum: [pending, running, completed, failed, cancelled] }
+    SimEndReason:
+      type: string
+      enum: [caller_turns_exhausted, caller_hung_up, agent_hangup, call_transfer, turn_limit_reached, error]
+    SimTarget:
+      type: object
+      required: [type]
+      description: Defaults to published. A variant carries a full configuration snapshot.
+      properties:
+        type: { type: string, enum: [published, draft, version, variant], default: published }
+        agent_version_id: { type: string, pattern: '^agv_', description: Required for version; base version for variant }
+        config: { type: object, description: Full agent snapshot (config, tools, flow, knowledge ids); required for variant }
+        label: { type: string, maxLength: 60, description: Display name for a variant }
+    SimSettings:
+      type: object
+      properties:
+        max_caller_turns: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        missing_mock_policy: { type: string, enum: [synthesize, error], default: synthesize }
+        persona_model: { type: string, description: Defaults to the workspace simulator model }
+    PersonaBrief:
+      type: object
+      required: [goal]
+      properties:
+        goal: { type: string, maxLength: 1000 }
+        known_facts:
+          type: array
+          maxItems: 30
+          items: { type: string, maxLength: 300 }
+        temperament: { type: string, maxLength: 300 }
+        speaking_style: { type: string, maxLength: 300 }
+        constraints:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 300 }
+        opening_line: { type: [string, 'null'], maxLength: 500 }
+    AnswerSourceCounts:
+      type: object
+      properties:
+        mock: { type: integer }
+        recorded: { type: integer }
+        synthesized: { type: integer }
+        error: { type: integer }
+    InvalidCall:
+      type: object
+      required: [call_id, reason]
+      properties:
+        call_id: { type: string }
+        reason: { type: string, enum: [not_found, wrong_agent, simulated_call, not_completed, unavailable] }
+    SimulationRun:
+      type: object
+      required: [simulation_run_id, agent_id, mode, target_type, config_hash, status, created_at]
+      properties:
+        simulation_run_id: { type: string, pattern: '^srun_' }
+        agent_id: { type: string }
+        experiment_id: { type: [string, 'null'] }
+        base_call_id: { type: [string, 'null'] }
+        mode: { $ref: '#/components/schemas/SimMode' }
+        target_type: { type: string, enum: [published, draft, version, variant] }
+        agent_version_id: { type: [string, 'null'] }
+        variant_label: { type: [string, 'null'] }
+        config_hash: { type: string }
+        persona_brief: { oneOf: [{ $ref: '#/components/schemas/PersonaBrief' }, { type: 'null' }] }
+        persona_source: { type: [string, 'null'], enum: [extracted, provided, null] }
+        status: { $ref: '#/components/schemas/SimStatus' }
+        output_call_id: { type: [string, 'null'] }
+        end_reason: { oneOf: [{ $ref: '#/components/schemas/SimEndReason' }, { type: 'null' }] }
+        diverged_at_turn: { type: [integer, 'null'] }
+        answer_source_counts: { $ref: '#/components/schemas/AnswerSourceCounts' }
+        eval_status: { type: string, enum: [pending, running, completed, failed, not_started] }
+        cost_usd: { type: [number, 'null'] }
+        error_message: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        started_at: { type: [string, 'null'], format: date-time }
+        finished_at: { type: [string, 'null'], format: date-time }
+    Experiment:
+      type: object
+      required: [experiment_id, agent_id, name, mode, target_type, config_hash, source, status, total_count, completed_count, failed_count, cancelled_count, created_at]
+      properties:
+        experiment_id: { type: string, pattern: '^exp_' }
+        agent_id: { type: string }
+        name: { type: string }
+        mode: { $ref: '#/components/schemas/SimMode' }
+        target_type: { type: string, enum: [published, draft, version, variant] }
+        agent_version_id: { type: [string, 'null'] }
+        variant_label: { type: [string, 'null'] }
+        variant_diff:
+          type: [array, 'null']
+          items:
+            type: object
+            properties:
+              op: { type: string, enum: [add, remove, replace] }
+              path: { type: string }
+              value: {}
+              old: {}
+        config_hash: { type: string }
+        source: { type: string, enum: [call_selection, dataset, issue_validation, api] }
+        dataset_id: { type: [string, 'null'] }
+        issue_id: { type: [string, 'null'] }
+        settings: { $ref: '#/components/schemas/SimSettings' }
+        status: { $ref: '#/components/schemas/SimStatus' }
+        total_count: { type: integer }
+        completed_count: { type: integer }
+        failed_count: { type: integer }
+        cancelled_count: { type: integer }
+        cost_usd: { type: [number, 'null'] }
+        error_message: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: [string, 'null'], format: date-time }
+    TranscriptItem:
+      type: object
+      description: Same item shape as the call transcript in 006, plus answer_source on tool outputs
+      required: [type]
+      properties:
+        type: { type: string, enum: [message, function_call, function_call_output] }
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        name: { type: string }
+        arguments: { type: string }
+        output: { type: string }
+        is_error: { type: boolean }
+        answer_source: { type: string, enum: [mock, recorded, synthesized, error] }
+        node_id: { type: [string, 'null'] }
+    ConversationSide:
+      type: object
+      required: [call_id, transcript, node_path]
+      properties:
+        call_id: { type: string }
+        transcript:
+          type: array
+          items: { $ref: '#/components/schemas/TranscriptItem' }
+        node_path:
+          type: array
+          items:
+            type: object
+            properties:
+              node_id: { type: string }
+              node_label: { type: string }
+    VerdictDiff:
+      type: object
+      required: [evaluator_id, evaluator_display_name, evaluator_version, scope, original, simulated, change]
+      properties:
+        evaluator_id: { type: string, pattern: '^evl_' }
+        evaluator_display_name: { type: string }
+        evaluator_version: { type: integer }
+        scope: { type: string, enum: [call, turn, flow_node] }
+        node_id: { type: [string, 'null'] }
+        original: { type: [string, 'null'], enum: [pass, fail, error, not_applicable, null] }
+        simulated: { type: [string, 'null'], enum: [pass, fail, error, not_applicable, null] }
+        change: { type: string, enum: [improved, regressed, unchanged, not_comparable] }
+        original_score: { type: [number, 'null'] }
+        simulated_score: { type: [number, 'null'] }
+        simulated_reason: { type: [string, 'null'] }
+        original_reason: { type: [string, 'null'] }
+    Comparison:
+      type: object
+      required: [simulation_run_id, simulated, verdicts]
+      properties:
+        simulation_run_id: { type: string }
+        original: { oneOf: [{ $ref: '#/components/schemas/ConversationSide' }, { type: 'null' }] }
+        simulated: { $ref: '#/components/schemas/ConversationSide' }
+        diverged_at_turn: { type: [integer, 'null'] }
+        unused_caller_turns:
+          type: array
+          items: { type: string }
+        verdicts:
+          type: array
+          items: { $ref: '#/components/schemas/VerdictDiff' }
+    PairCounts:
+      type: object
+      required: [n, improved, regressed, unchanged_pass, unchanged_fail, version_mismatch]
+      properties:
+        n: { type: integer }
+        improved: { type: integer }
+        regressed: { type: integer }
+        unchanged_pass: { type: integer }
+        unchanged_fail: { type: integer }
+        version_mismatch: { type: integer }
+    ScorecardRow:
+      type: object
+      required: [evaluator_id, evaluator_name, evaluator_display_name, evaluator_version, scope, base_n, base_passes, sim_n, sim_passes, pairs]
+      properties:
+        evaluator_id: { type: string }
+        evaluator_name: { type: string }
+        evaluator_display_name: { type: string }
+        evaluator_version: { type: integer }
+        scope: { type: string, enum: [call, turn, flow_node] }
+        node_id: { type: [string, 'null'] }
+        node_label: { type: [string, 'null'] }
+        base_n: { type: integer }
+        base_passes: { type: integer }
+        base_pass_rate: { type: [number, 'null'] }
+        sim_n: { type: integer }
+        sim_passes: { type: integer }
+        sim_pass_rate: { type: [number, 'null'] }
+        delta_pp: { type: [number, 'null'] }
+        base_mean_score: { type: [number, 'null'] }
+        sim_mean_score: { type: [number, 'null'] }
+        pairs: { $ref: '#/components/schemas/PairCounts' }
+    Scorecard:
+      type: object
+      required: [experiment_id, baseline, base_call_count, sim_call_count, excluded_runs, evaluators, by_node]
+      properties:
+        experiment_id: { type: string }
+        baseline: { type: string, enum: [original, experiment] }
+        baseline_experiment_id: { type: [string, 'null'] }
+        base_call_count: { type: integer }
+        sim_call_count: { type: integer }
+        excluded_runs:
+          type: array
+          items:
+            type: object
+            properties:
+              simulation_run_id: { type: string }
+              status: { $ref: '#/components/schemas/SimStatus' }
+              error_message: { type: [string, 'null'] }
+        evaluators:
+          type: array
+          items: { $ref: '#/components/schemas/ScorecardRow' }
+        by_node:
+          type: array
+          items: { $ref: '#/components/schemas/ScorecardRow' }

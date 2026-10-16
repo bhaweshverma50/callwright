@@ -1,0 +1,361 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, phone_numbers module
+  version: 0.1.0
+  description: >
+    Fragment owned by 010-channels. Bring-your-own SIP numbers: import, routing setup, agent
+    attachment, edit, safe deletion. Also documents the `call_inbound` request Callwright sends to
+    a number's (or WhatsApp channel's) inbound webhook, signed like 003 customer webhooks.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - bearerAuth: []
+paths:
+  /phone-numbers:
+    get:
+      operationId: listPhoneNumbers
+      tags: [phone-numbers]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/PhoneNumberStatus'}}
+      responses:
+        '200':
+          description: Numbers in this workspace (deleted excluded), newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/PhoneNumber'}
+                  total: {type: integer}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total_pages: {type: integer}
+    post:
+      operationId: importPhoneNumber
+      summary: Import a bring-your-own SIP number and set up routing
+      tags: [phone-numbers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PhoneNumberImport'}
+            examples:
+              basic:
+                value:
+                  e164: '+14155550100'
+                  label: Main Office Line
+                  termination_address: trunk.example-carrier.com:5060
+      responses:
+        '201':
+          description: >
+            Saved. `status` is `active` when routing setup succeeded, or `error` with
+            `status_detail` when the media platform call failed (retry later).
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PhoneNumber'}
+        '409':
+          description: '`number-already-registered` (any workspace) or `number-being-deleted`'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: Validation failed (E.164, termination address, CIDR, agent not published)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ValidationProblem'}
+  /phone-numbers/sip-settings:
+    get:
+      operationId: getSipSettings
+      summary: Addresses to configure at the carrier
+      tags: [phone-numbers]
+      responses:
+        '200':
+          description: Origination settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [origination_uri, direct_uri_template, transports]
+                properties:
+                  origination_uri:
+                    type: string
+                    examples: ['sip:abc123.sip.livekit.cloud']
+                  direct_uri_template:
+                    type: string
+                    examples: ['sip:{e164}@abc123.sip.livekit.cloud']
+                  transports:
+                    type: array
+                    items: {type: string, enum: [udp, tcp, tls]}
+  /phone-numbers/{number_id}:
+    parameters:
+      - $ref: '#/components/parameters/NumberId'
+    get:
+      operationId: getPhoneNumber
+      tags: [phone-numbers]
+      responses:
+        '200':
+          description: Number
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PhoneNumber'}
+        '404': {$ref: '#/components/responses/Problem'}
+    patch:
+      operationId: updatePhoneNumber
+      summary: Edit a number; omitted fields are unchanged; null clears nullable fields
+      description: >
+        `inbound_agent_id: null` detaches the inbound agent (calls then declined at the network
+        edge). Omitting `auth_password` keeps the stored password; `remove_auth_password: true`
+        clears it. Changes apply to new calls only.
+      tags: [phone-numbers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PhoneNumberUpdate'}
+      responses:
+        '200':
+          description: Updated number
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PhoneNumber'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409':
+          description: Number is `draining`
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ValidationProblem'}
+          description: Validation failed
+        '502':
+          description: Media platform update failed; nothing changed (`routing-update-failed`)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+    delete:
+      operationId: deletePhoneNumber
+      tags: [phone-numbers]
+      parameters:
+        - name: when_idle
+          in: query
+          description: If calls are active, stop new calls now and delete after the last one ends.
+          schema: {type: boolean, default: false}
+      responses:
+        '202':
+          description: Number is draining; it will be deleted when idle
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PhoneNumber'}
+        '204':
+          description: Deleted (no active calls)
+        '404': {$ref: '#/components/responses/Problem'}
+        '409':
+          description: '`number-has-active-calls`; body includes `active_call_count`'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ActiveCallsProblem'}
+  /phone-numbers/{number_id}/retry-provisioning:
+    parameters:
+      - $ref: '#/components/parameters/NumberId'
+    post:
+      operationId: retryPhoneNumberProvisioning
+      tags: [phone-numbers]
+      responses:
+        '200':
+          description: Result of the retry (`active` or `error` with detail)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PhoneNumber'}
+        '409':
+          description: Number is not in `error`
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+webhooks:
+  call_inbound:
+    post:
+      summary: Sent to an inbound webhook before the agent answers; reply within 3 seconds
+      parameters:
+        - name: Callwright-Signature
+          in: header
+          required: true
+          schema: {type: string}
+        - name: Callwright-Event
+          in: header
+          required: true
+          schema: {type: string, const: call_inbound}
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/InboundWebhookRequest'}
+      responses:
+        '200':
+          description: Optional instructions. Any non-2xx, invalid JSON, body over 16 KB or a late reply is ignored.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/InboundWebhookReply'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    NumberId:
+      name: number_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^num_[0-9A-HJKMNP-TV-Z]{26}$'
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    E164:
+      type: string
+      pattern: '^\+[1-9]\d{1,14}$'
+    PhoneNumberStatus:
+      type: string
+      enum: [provisioning, active, error, draining]
+    Transport:
+      type: string
+      enum: [auto, udp, tcp, tls]
+      default: auto
+    TerminationAddress:
+      type: string
+      maxLength: 260
+      description: >
+        host[:port] where host is a DNS name, IPv4, or bracketed IPv6. A leading `sip:` or
+        `sips:` is accepted and removed. No user part, path or parameters.
+      examples: ['trunk.example-carrier.com:5060', '203.0.113.10', '[2001:db8::10]:5061']
+    PhoneNumberImport:
+      type: object
+      additionalProperties: false
+      required: [e164, label, termination_address]
+      properties:
+        e164: {$ref: '#/components/schemas/E164'}
+        label: {type: string, minLength: 1, maxLength: 100}
+        termination_address: {$ref: '#/components/schemas/TerminationAddress'}
+        transport: {$ref: '#/components/schemas/Transport'}
+        auth_username: {type: string, maxLength: 128}
+        auth_password: {type: string, maxLength: 256, writeOnly: true}
+        inbound_allowed_cidrs:
+          type: array
+          maxItems: 20
+          items: {type: string, examples: ['203.0.113.0/24']}
+        inbound_agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
+        outbound_agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
+        inbound_webhook_url: {type: string, format: uri, maxLength: 2048}
+    PhoneNumberUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label: {type: string, minLength: 1, maxLength: 100}
+        termination_address: {$ref: '#/components/schemas/TerminationAddress'}
+        transport: {$ref: '#/components/schemas/Transport'}
+        auth_username: {type: [string, 'null'], maxLength: 128}
+        auth_password: {type: string, maxLength: 256, writeOnly: true}
+        remove_auth_password: {type: boolean}
+        inbound_allowed_cidrs:
+          type: array
+          maxItems: 20
+          items: {type: string}
+        inbound_agent_id: {type: [string, 'null']}
+        outbound_agent_id: {type: [string, 'null']}
+        inbound_webhook_url: {type: [string, 'null'], format: uri, maxLength: 2048}
+    PhoneNumber:
+      type: object
+      required: [id, e164, label, termination_address, transport, has_auth_password, status, active_call_count, created_at]
+      properties:
+        id: {type: string}
+        e164: {$ref: '#/components/schemas/E164'}
+        label: {type: string}
+        termination_address: {type: string}
+        transport: {$ref: '#/components/schemas/Transport'}
+        auth_username: {type: [string, 'null']}
+        has_auth_password: {type: boolean}
+        inbound_allowed_cidrs:
+          type: array
+          items: {type: string}
+        inbound_agent_id: {type: [string, 'null']}
+        outbound_agent_id: {type: [string, 'null']}
+        inbound_webhook_url: {type: [string, 'null']}
+        direct_uri: {type: string}
+        status: {$ref: '#/components/schemas/PhoneNumberStatus'}
+        status_detail: {type: [string, 'null']}
+        active_call_count: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    InboundWebhookRequest:
+      type: object
+      required: [event, event_id, call_id, channel, from_number, to_number]
+      properties:
+        event: {type: string, const: call_inbound}
+        event_id: {type: string}
+        call_id: {type: string}
+        channel: {type: string, enum: [sip_inbound, whatsapp]}
+        from_number: {$ref: '#/components/schemas/E164'}
+        to_number: {$ref: '#/components/schemas/E164'}
+        phone_number_id: {type: [string, 'null']}
+        whatsapp_channel_id: {type: [string, 'null']}
+        agent_id:
+          type: [string, 'null']
+          description: Agent that will answer unless the reply overrides it.
+    InboundWebhookReply:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [answer, decline]
+          default: answer
+        agent_id:
+          type: string
+          description: Must be in the same workspace and published, else ignored.
+        dynamic_variables:
+          type: object
+          maxProperties: 50
+          additionalProperties: {type: string, maxLength: 2000}
+        metadata:
+          type: object
+          additionalProperties: true
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field: {type: string}
+                  message: {type: string}
+    ActiveCallsProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [active_call_count]
+          properties:
+            active_call_count: {type: integer, minimum: 1}

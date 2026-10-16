@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, usage module
+  version: 1.0.0
+servers:
+  - url: /v1
+paths:
+  /usage:
+    get:
+      operationId: getUsage
+      tags: [usage]
+      security: [{bearerAuth: []}]
+      summary: Raw and billable cost per feature for a date window (FR-014)
+      parameters:
+        - name: from
+          in: query
+          description: Inclusive start date (UTC). Default 30 days before `to`.
+          schema: {type: string, format: date}
+        - name: to
+          in: query
+          description: Inclusive end date (UTC). Default today. Window may not exceed 366 days.
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Usage report; `rows` is empty when there is no usage in the window
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UsageReport'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    FeatureFamily:
+      type: string
+      enum: [calls, evaluations, simulations, analytics_chat, prompt_generation, post_call_analysis]
+    UsageDetail:
+      type: object
+      required: [feature_key, event_count, raw_cost_usd, billable_cost_usd]
+      properties:
+        feature_key: {type: string, examples: [eval.intent_fulfillment]}
+        event_count: {type: integer}
+        raw_cost_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        billable_cost_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+    UsageRow:
+      type: object
+      required: [feature, event_count, raw_cost_usd, billable_cost_usd, details]
+      properties:
+        feature: {$ref: '#/components/schemas/FeatureFamily'}
+        event_count: {type: integer}
+        raw_cost_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        billable_cost_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        details:
+          type: array
+          items: {$ref: '#/components/schemas/UsageDetail'}
+    UsageReport:
+      type: object
+      required: [window, rows, total_raw_cost_usd, total_billable_cost_usd]
+      properties:
+        window:
+          type: object
+          required: [from, to]
+          properties:
+            from: {type: string, format: date}
+            to: {type: string, format: date}
+        rows:
+          type: array
+          items: {$ref: '#/components/schemas/UsageRow'}
+        total_raw_cost_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        total_billable_cost_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}

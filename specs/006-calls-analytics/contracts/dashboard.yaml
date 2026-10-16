@@ -1,0 +1,239 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, dashboard module
+  version: 0.1.0
+  description: Fleet KPIs, activity series, breakdowns and quality pass rates. Owned by spec 006.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      parameters:
+        - $ref: "#/components/parameters/Period"
+        - $ref: "#/components/parameters/StartDate"
+        - $ref: "#/components/parameters/EndDate"
+        - $ref: "#/components/parameters/AgentIds"
+        - $ref: "#/components/parameters/Tz"
+      responses:
+        "200":
+          description: Stats for the window
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardStats" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /dashboard/quality:
+    get:
+      operationId: getDashboardQuality
+      parameters:
+        - $ref: "#/components/parameters/Period"
+        - $ref: "#/components/parameters/StartDate"
+        - $ref: "#/components/parameters/EndDate"
+        - $ref: "#/components/parameters/AgentIds"
+        - $ref: "#/components/parameters/Tz"
+        - name: compare
+          in: query
+          description: Include the previous window of equal length.
+          schema: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Per-evaluator pass rates
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardQuality" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /dashboard/agent-health:
+    get:
+      operationId: getAgentHealth
+      summary: Headline evaluators, last 30 days vs the prior 30 days
+      parameters:
+        - $ref: "#/components/parameters/AgentIds"
+        - $ref: "#/components/parameters/Tz"
+      responses:
+        "200":
+          description: Agent health
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentHealth" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    Period:
+      name: period
+      in: query
+      schema: { type: string, enum: [all_time, last_7_days, last_30_days, last_90_days, custom], default: last_30_days }
+    StartDate:
+      name: start_date
+      in: query
+      description: Inclusive local date; required when period is custom.
+      schema: { type: string, format: date }
+    EndDate:
+      name: end_date
+      in: query
+      description: Inclusive local date; must be on or after start_date; range at most 731 days.
+      schema: { type: string, format: date }
+    AgentIds:
+      name: agent_ids
+      in: query
+      description: Comma-separated agt_ IDs; empty means all agents.
+      schema: { type: string }
+    Tz:
+      name: tz
+      in: query
+      description: IANA timezone used for day boundaries.
+      schema: { type: string, default: UTC, examples: [Asia/Kolkata] }
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [type, title, status]
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }
+  schemas:
+    Window:
+      type: object
+      required: [from, to]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+    DashboardStats:
+      type: object
+      required: [window, bucket, kpis, sparklines, series, disconnect_reasons, sentiment, channels, leaderboard, distribution]
+      properties:
+        window: { $ref: "#/components/schemas/Window" }
+        bucket: { type: string, enum: [day, week] }
+        kpis:
+          type: object
+          required: [total_calls, daily_avg_calls, total_duration_s, total_cost_usd, cost_per_call_usd, avg_duration_s]
+          properties:
+            total_calls: { type: integer }
+            daily_avg_calls: { type: number }
+            total_duration_s: { type: integer }
+            peak_day:
+              type: [object, "null"]
+              properties:
+                date: { type: string, format: date }
+                total_calls: { type: integer }
+            total_cost_usd: { type: number }
+            cost_per_call_usd: { type: number }
+            avg_duration_s: { type: number }
+            median_turn_latency_ms: { type: [integer, "null"] }
+            p95_turn_latency_ms: { type: [integer, "null"] }
+        sparklines:
+          type: object
+          properties:
+            calls: { type: array, items: { type: integer } }
+            duration_s: { type: array, items: { type: integer } }
+            cost_usd: { type: array, items: { type: number } }
+            avg_duration_s: { type: array, items: { type: number } }
+        series:
+          type: array
+          items:
+            type: object
+            required: [bucket_start, total_calls, total_duration_s, avg_duration_s]
+            properties:
+              bucket_start: { type: string, format: date }
+              total_calls: { type: integer }
+              total_duration_s: { type: integer }
+              avg_duration_s: { type: number }
+        disconnect_reasons:
+          type: object
+          additionalProperties: { type: integer }
+          description: Keys are DisconnectReason values from the calls contract.
+        sentiment:
+          type: object
+          required: [positive, neutral, negative, unknown]
+          properties:
+            positive: { type: integer }
+            neutral: { type: integer }
+            negative: { type: integer }
+            unknown: { type: integer }
+        channels:
+          type: object
+          required: [web, sip_inbound, sip_outbound, whatsapp]
+          properties:
+            web: { type: integer }
+            sip_inbound: { type: integer }
+            sip_outbound: { type: integer }
+            whatsapp: { type: integer }
+        leaderboard:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [agent_id, agent_name, total_calls, positive_calls, negative_calls]
+            properties:
+              agent_id: { type: string }
+              agent_name: { type: string }
+              total_calls: { type: integer }
+              positive_calls: { type: integer }
+              negative_calls: { type: integer }
+        distribution:
+          type: array
+          maxItems: 11
+          items:
+            type: object
+            required: [agent_id, agent_name, total_calls, share]
+            properties:
+              agent_id: { type: string, description: "agt_ ID, or the literal others" }
+              agent_name: { type: string }
+              total_calls: { type: integer }
+              share: { type: number, minimum: 0, maximum: 1 }
+    EvaluatorStat:
+      type: object
+      required: [evaluator_id, evaluator_name, display_name, scope, pass_count, fail_count, not_applicable_count, total_runs, calls_evaluated]
+      properties:
+        evaluator_id: { type: string }
+        evaluator_name: { type: string }
+        display_name: { type: string }
+        scope: { type: string, enum: [call, turn, flow_node] }
+        pass_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+        avg_score: { type: [number, "null"] }
+        pass_count: { type: integer }
+        fail_count: { type: integer }
+        not_applicable_count: { type: integer }
+        total_runs: { type: integer }
+        calls_evaluated: { type: integer }
+    DashboardQuality:
+      type: object
+      required: [window, total_calls_evaluated, per_evaluator]
+      properties:
+        window: { $ref: "#/components/schemas/Window" }
+        prior_window:
+          oneOf:
+            - { $ref: "#/components/schemas/Window" }
+            - { type: "null" }
+        total_calls_evaluated: { type: integer }
+        per_evaluator:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluatorStat" }
+        per_evaluator_prior:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluatorStat" }
+    AgentHealth:
+      type: object
+      required: [window, prior_window, items]
+      properties:
+        window: { $ref: "#/components/schemas/Window" }
+        prior_window: { $ref: "#/components/schemas/Window" }
+        items:
+          type: array
+          maxItems: 4
+          items:
+            type: object
+            required: [evaluator_id, display_name]
+            properties:
+              evaluator_id: { type: string }
+              display_name: { type: string }
+              pass_rate: { type: [number, "null"] }
+              prior_pass_rate: { type: [number, "null"] }
+              delta_pp: { type: [number, "null"], description: Change in percentage points, one decimal }

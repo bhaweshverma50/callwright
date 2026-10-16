@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, core module
+  version: 1.0.0
+  description: |
+    Health check and the shared components every other fragment references.
+    Fragments under specs/*/contracts/ are merged by scripts/assemble_contracts.py into
+    contracts/openapi.yaml. Cross-file $refs are rewritten to local refs during assembly;
+    identical duplicate components (for example securitySchemes) are merged, conflicting ones fail.
+servers:
+  - url: /v1
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [core]
+      summary: Liveness and build info
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version]
+                properties:
+                  status: {type: string, enum: [ok]}
+                  version: {type: string, examples: ['2026.10.16+abc1234']}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token issued by the identity provider via /v1/auth endpoints.
+    serviceToken:
+      type: http
+      scheme: bearer
+      description: Static service token for /v1/internal/* endpoints (voice worker only).
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: {type: integer, minimum: 1, default: 1}
+    PageSize:
+      name: page_size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated key (max 255 chars). A repeat with the same key returns the first result.
+      schema: {type: string, maxLength: 255}
+  schemas:
+    MoneyUsd:
+      type: string
+      description: USD amount as a decimal string with up to 6 fractional digits.
+      pattern: '^-?\d+\.\d{1,6}$'
+      examples: ['30.000000', '-0.477000']
+    WorkspaceId:
+      type: string
+      pattern: '^ws_[0-9A-HJKMNP-TV-Z]{26}$'
+    UserId:
+      type: string
+      pattern: '^usr_[0-9A-HJKMNP-TV-Z]{26}$'
+    TransactionId:
+      type: string
+      pattern: '^txn_[0-9A-HJKMNP-TV-Z]{26}$'
+    CallId:
+      type: string
+      pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+    PageMeta:
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total: {type: integer, minimum: 0}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1}
+        total_pages: {type: integer, minimum: 0}
+    FieldError:
+      type: object
+      required: [pointer, code, message]
+      properties:
+        pointer:
+          type: string
+          description: JSON Pointer into the request body, e.g. /config/llm/temperature
+        code:
+          type: string
+          examples: [required, out_of_range, invalid_format, not_in_catalog]
+        message: {type: string}
+    Problem:
+      type: object
+      description: RFC 9457 problem details. `type` is a URI under https://callwright.dev/problems/.
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        code:
+          type: string
+          description: Stable machine-readable code, e.g. insufficient_credit, email_unverified.
+        retry_after_s:
+          type: integer
+          description: Present on 429 responses.
+        errors:
+          type: array
+          description: Present on 422 responses; every failing field in one list.
+          items: {$ref: '#/components/schemas/FieldError'}
+  responses:
+    Unauthorized:
+      description: Missing, expired or revoked token
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Forbidden:
+      description: Authenticated but not allowed
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: Resource does not exist in this workspace
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Conflict:
+      description: State conflict
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    ValidationFailed:
+      description: Request failed validation; `errors` lists every problem
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    TooManyRequests:
+      description: Rate limited; `retry_after_s` says when to retry
+      headers:
+        Retry-After:
+          schema: {type: integer}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}

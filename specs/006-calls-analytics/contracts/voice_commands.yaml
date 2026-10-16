@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, voice_commands module
+  version: 0.1.0
+  description: Push-to-talk voice copilot. Owned by spec 006.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /voice-commands/stream-token:
+    post:
+      operationId: createSttStreamCredential
+      summary: Mint a short-lived, transcription-only credential for browser-direct streaming
+      responses:
+        "200":
+          description: Credential (valid at most 60 seconds)
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StreamCredential" }
+        "429":
+          description: More than 30 credentials per user per minute
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "503":
+          description: Transcription vendor unavailable; the client falls back to /voice-commands/transcribe
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /voice-commands/transcribe:
+    post:
+      operationId: transcribeVoiceCommand
+      summary: Fallback transcription of a recorded clip (max 30 seconds, 2 MB)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio: { type: string, contentMediaType: audio/webm, description: "audio/webm or audio/ogg (opus)" }
+      responses:
+        "200":
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [transcript]
+                properties:
+                  transcript: { type: string }
+        "413":
+          description: Clip too large or too long
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /voice-commands/interpret:
+    post:
+      operationId: interpretVoiceCommand
+      summary: Interpret a transcript into exactly one action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InterpretRequest" }
+      responses:
+        "200":
+          description: Interpreted action, already validated against the route allowlist and the page's registered actions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InterpretResult" }
+        "422":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    StreamCredential:
+      type: object
+      required: [provider, stream_url, auth_scheme, token, expires_at, encoding, language]
+      properties:
+        provider: { type: string, examples: [deepgram] }
+        stream_url: { type: string, format: uri }
+        auth_scheme: { type: string, enum: [websocket_subprotocol_token, query_token, bearer] }
+        token: { type: string }
+        expires_at: { type: string, format: date-time }
+        encoding: { type: string, examples: [webm_opus] }
+        sample_rate_hz: { type: [integer, "null"] }
+        language: { type: string, default: en }
+    RegisteredAction:
+      type: object
+      required: [key, label]
+      properties:
+        key: { type: string, examples: [save_flow, filter_calls] }
+        label: { type: string }
+        params_schema:
+          type: [object, "null"]
+          description: JSON Schema for the action's params.
+    VisualState:
+      type: object
+      required: [current_route, current_datetime, timezone, available_actions]
+      properties:
+        current_route: { type: string, examples: [/dashboard] }
+        page_title: { type: string }
+        current_datetime: { type: string, format: date-time }
+        timezone: { type: string }
+        available_actions:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/RegisteredAction" }
+        highlightable_elements:
+          type: array
+          items: { type: string }
+        visible_entities:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [agent, flow, call, evaluator] }
+              id: { type: string }
+              name: { type: string }
+        open_panels:
+          type: array
+          items: { type: string }
+    InterpretRequest:
+      type: object
+      required: [transcript, visual_state]
+      properties:
+        transcript: { type: string, minLength: 1, maxLength: 1000 }
+        visual_state: { $ref: "#/components/schemas/VisualState" }
+        conversation_history:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            properties:
+              role: { type: string, enum: [user, copilot] }
+              content: { type: string, maxLength: 1000 }
+    InterpretResult:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [navigate, route_to_copilot, ui_action, answer, decline] }
+        target:
+          type: [string, "null"]
+          description: |
+            navigate: an allowlisted route (for example /calls). route_to_copilot: analytics_chat,
+            prompt_builder or flow_builder. ui_action: a key from visual_state.available_actions.
+        params:
+          type: [object, "null"]
+          additionalProperties: true
+          description: For navigate to /calls, filter params (status, channel, agent_id, date_range of today, yesterday, this_week, last_7_days).
+        query: { type: [string, "null"], description: Prefilled question for route_to_copilot }
+        speak: { type: [string, "null"], maxLength: 280 }
+        highlight_element: { type: [string, "null"], description: A key from visual_state.highlightable_elements }
+        fallback_suggestion: { type: [string, "null"] }

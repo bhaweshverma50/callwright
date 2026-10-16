@@ -1,0 +1,160 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, outbound module
+  version: 0.1.0
+  description: >
+    Fragment owned by 010-channels. Places an outbound phone call from an imported number with an
+    agent. Admission (credit, concurrency, configuration) is the shared 003 admission; the call
+    then follows the standard lifecycle and webhooks.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - bearerAuth: []
+paths:
+  /outbound-calls:
+    post:
+      operationId: createOutboundCall
+      summary: Start an outbound call
+      tags: [outbound]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Same key and body within 24 h returns the original call; different body is refused.
+          schema: {type: string, minLength: 8, maxLength: 255}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OutboundCallRequest'}
+            examples:
+              reminder:
+                value:
+                  to_number: '+14155550199'
+                  from_number: '+14155550100'
+                  dynamic_variables: {customer_name: Asha, appointment_time: '3 pm'}
+                  metadata: {crm_id: '8812'}
+      responses:
+        '202':
+          description: Call admitted and dialling started (also returned for an idempotent replay)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OutboundCallAccepted'}
+        '400':
+          description: Missing Idempotency-Key
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '402':
+          description: '`insufficient-credit` (call record created, status failed)'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+        '403':
+          description: '`email-unverified`'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '409':
+          description: >
+            `from-number-not-active` (provisioning, error or draining), `no-outbound-agent`,
+            `agent-not-published`, `idempotency-key-in-use`.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: >
+            Validation (`invalid-number`, `same-number`, variables), `idempotency-key-reused`,
+            `unsupported-vendor`, `pricing-unavailable`, `outbound-policy`.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+        '429':
+          description: >
+            `rate-limited` (more than 10 requests per second; `Retry-After` header) or
+            `concurrency-limit` (call record created, status failed).
+          headers:
+            Retry-After:
+              schema: {type: integer}
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    E164:
+      type: string
+      pattern: '^\+[1-9]\d{1,14}$'
+    OutboundCallRequest:
+      type: object
+      additionalProperties: false
+      required: [to_number, from_number]
+      properties:
+        to_number:
+          $ref: '#/components/schemas/E164'
+        from_number:
+          description: An active imported number in this workspace.
+          allOf:
+            - $ref: '#/components/schemas/E164'
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+          description: Defaults to the from number's outbound agent.
+        dynamic_variables:
+          type: object
+          maxProperties: 50
+          propertyNames:
+            pattern: '^[A-Za-z_][A-Za-z0-9_]{0,63}$'
+          additionalProperties: {type: string, maxLength: 2000}
+        metadata:
+          type: object
+          maxProperties: 20
+          additionalProperties: true
+          description: Max 4 KB serialized; echoed in webhooks.
+        ring_timeout_s:
+          type: integer
+          minimum: 10
+          maximum: 60
+          default: 30
+    OutboundCallAccepted:
+      type: object
+      required: [call_id, status, to_number, from_number, agent_id, agent_version_id, phone_number_id]
+      properties:
+        call_id: {type: string, pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'}
+        status: {type: string, enum: [queued, ringing, in_progress, ended, processing, completed, failed, no_answer, busy, voicemail]}
+        to_number: {$ref: '#/components/schemas/E164'}
+        from_number: {$ref: '#/components/schemas/E164'}
+        agent_id: {type: string}
+        agent_version_id: {type: string}
+        phone_number_id: {type: string}
+        missing_variables:
+          type: array
+          items: {type: string}
+        idempotent_replay:
+          type: boolean
+          description: True when this response replays an earlier request with the same key.
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+    CallRefusedProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            call_id:
+              type: string
+              description: Present when admission refused the call (a failed call record exists).
+            disconnect_reason:
+              type: string
+              enum: [insufficient_credit, concurrency_limit, error]
+            diagnostic: {type: string}

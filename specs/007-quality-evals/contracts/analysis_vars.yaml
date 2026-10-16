@@ -1,0 +1,208 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, analysis_vars module
+  version: 0.1.0
+  description: Per-agent analysis variables and per-call post-call analysis. Owned by spec 007.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /agents/{agent_id}/analysis-variables:
+    parameters:
+      - { name: agent_id, in: path, required: true, schema: { type: string, pattern: "^agt_" } }
+    get:
+      operationId: listAnalysisVariables
+      responses:
+        "200":
+          description: Active variables in order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AnalysisVariable" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createAnalysisVariable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnalysisVariableInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalysisVariable" }
+        "409":
+          description: Name already used on this agent, or 25-variable limit reached
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /agents/{agent_id}/analysis-variables/order:
+    put:
+      operationId: reorderAnalysisVariables
+      parameters:
+        - { name: agent_id, in: path, required: true, schema: { type: string, pattern: "^agt_" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variable_ids]
+              properties:
+                variable_ids: { type: array, items: { type: string, pattern: "^var_" } }
+      responses:
+        "204": { description: Reordered }
+        "422": { $ref: "#/components/responses/Problem" }
+  /analysis-variables/{variable_id}:
+    parameters:
+      - { name: variable_id, in: path, required: true, schema: { type: string, pattern: "^var_" } }
+    patch:
+      operationId: updateAnalysisVariable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { $ref: "#/components/schemas/VariableName" }
+                type: { $ref: "#/components/schemas/VariableType" }
+                description: { type: string, minLength: 1, maxLength: 500 }
+                choices: { type: [array, "null"], items: { type: string, minLength: 1, maxLength: 64 } }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalysisVariable" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteAnalysisVariable
+      description: Soft delete. Stops future extraction; past call values are kept.
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}/analysis:
+    get:
+      operationId: getCallAnalysis
+      parameters:
+        - { name: call_id, in: path, required: true, schema: { type: string, pattern: "^call_" } }
+      responses:
+        "200":
+          description: Analysis for the call
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallAnalysis" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}/analysis/rerun:
+    post:
+      operationId: rerunCallAnalysis
+      description: Re-run summary, sentiment and variable extraction with the agent's current variables. Charged as post_call_analysis.
+      parameters:
+        - { name: call_id, in: path, required: true, schema: { type: string, pattern: "^call_" } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 128 } }
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallAnalysis" }
+        "402":
+          description: Balance at or below zero
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
+          description: Call not completed yet, or analysis already running
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    VariableName:
+      type: string
+      pattern: "^[a-z][a-z0-9_]{0,63}$"
+      examples: [appointment_booked]
+    VariableType: { type: string, enum: [boolean, string, number, choice] }
+    AnalysisVariableInput:
+      type: object
+      required: [name, type, description]
+      properties:
+        name: { $ref: "#/components/schemas/VariableName" }
+        type: { $ref: "#/components/schemas/VariableType" }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        choices:
+          type: [array, "null"]
+          minItems: 2
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 64 }
+    AnalysisVariable:
+      allOf:
+        - $ref: "#/components/schemas/AnalysisVariableInput"
+        - type: object
+          required: [id, agent_id, position, created_at, updated_at]
+          properties:
+            id: { type: string, pattern: "^var_" }
+            agent_id: { type: string }
+            position: { type: integer }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+    CallAnalysis:
+      type: object
+      required: [call_id, status]
+      properties:
+        call_id: { type: string }
+        status: { type: string, enum: [pending, running, completed, skipped, error] }
+        skip_reason: { type: [string, "null"], enum: [insufficient_credit, null] }
+        error: { type: [string, "null"] }
+        model: { type: [string, "null"] }
+        summary: { type: [string, "null"], maxLength: 600 }
+        sentiment: { type: [string, "null"], enum: [positive, neutral, negative, unknown, null] }
+        values:
+          type: array
+          items:
+            type: object
+            required: [name, type, value]
+            properties:
+              variable_id: { type: [string, "null"] }
+              name: { type: string }
+              type: { $ref: "#/components/schemas/VariableType" }
+              value: { type: [boolean, string, number, "null"], description: null means not found }
+              status: { type: string, enum: [current, renamed, deleted] }
+        analyzed_at: { type: [string, "null"], format: date-time }

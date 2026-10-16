@@ -1,0 +1,198 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, analytics_chat module
+  version: 0.1.0
+  description: |
+    "Ask about your data" assistant. The model can only issue typed MetricQuery objects from a
+    fixed catalog; the server compiles them to parameterised queries over read-only, RLS-scoped
+    views. No model-written SQL is ever executed. Owned by spec 006.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /analytics/chat:
+    post:
+      operationId: askAnalytics
+      summary: Ask a question about the workspace's data (charged as feature analytics_chat)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Same key returns the stored answer and is charged at most once.
+          schema: { type: string, minLength: 16, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatRequest" }
+      responses:
+        "200":
+          description: Answer (outcome answered or declined)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatAnswer" }
+        "402":
+          description: Balance at or below zero (problem type insufficient_credit)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "422":
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "429":
+          description: More than 20 questions per user per minute
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "503":
+          description: Model provider unavailable; not charged (problem type assistant_unavailable)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /analytics/catalog:
+    get:
+      operationId: getAnalyticsCatalog
+      summary: Metrics, groupings, filters and periods the assistant can use
+      responses:
+        "200":
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [metrics, group_by, filters, periods, suggested_questions]
+                properties:
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { $ref: "#/components/schemas/MetricName" }
+                        label: { type: string }
+                        unit: { type: string, enum: [count, seconds, usd, ms, ratio] }
+                  group_by:
+                    type: array
+                    items: { $ref: "#/components/schemas/Dimension" }
+                  filters: { type: array, items: { type: string } }
+                  periods: { type: array, items: { type: string } }
+                  suggested_questions: { type: array, items: { type: string } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    ChatRequest:
+      type: object
+      required: [messages, timezone]
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: Full conversation, oldest first; the last item must be from the user.
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role: { type: string, enum: [user, assistant] }
+              content: { type: string, maxLength: 2000 }
+        timezone: { type: string, examples: [Asia/Kolkata] }
+    MetricName:
+      type: string
+      enum: [call_count, total_duration_s, avg_duration_s, total_cost_usd, avg_cost_usd, median_turn_latency_ms, p95_turn_latency_ms, evaluator_pass_rate, evaluator_run_count, positive_sentiment_share, negative_sentiment_share]
+    Dimension:
+      type: string
+      enum: [day, week, month, hour_of_day, weekday, agent, channel, status, disconnect_reason, sentiment, evaluator]
+    MetricQuery:
+      type: object
+      required: [metrics, period]
+      additionalProperties: false
+      properties:
+        metrics:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: { $ref: "#/components/schemas/MetricName" }
+        group_by:
+          type: array
+          maxItems: 2
+          items: { $ref: "#/components/schemas/Dimension" }
+        filters:
+          type: object
+          additionalProperties: false
+          properties:
+            agent_ids: { type: array, items: { type: string, pattern: "^agt_" } }
+            channels: { type: array, items: { type: string, enum: [web, sip_inbound, sip_outbound, whatsapp] } }
+            statuses: { type: array, items: { type: string } }
+            disconnect_reasons: { type: array, items: { type: string } }
+            sentiments: { type: array, items: { type: string, enum: [positive, neutral, negative, unknown] } }
+            evaluator_names: { type: array, items: { type: string } }
+        period:
+          type: object
+          required: [preset]
+          additionalProperties: false
+          properties:
+            preset: { type: string, enum: [today, yesterday, this_week, last_week, this_month, last_month, last_n_days, between] }
+            n_days: { type: integer, minimum: 1, maximum: 365 }
+            start_date: { type: string, format: date }
+            end_date: { type: string, format: date }
+        order_by:
+          type: object
+          properties:
+            key: { type: string }
+            direction: { type: string, enum: [asc, desc] }
+        limit: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    ChatAnswer:
+      type: object
+      required: [outcome, content, computed_with, truncated]
+      properties:
+        outcome: { type: string, enum: [answered, declined] }
+        content: { type: string }
+        chart:
+          type: [object, "null"]
+          required: [chart_type, x_key, series, data]
+          properties:
+            chart_type: { type: string, enum: [bar, line, area, pie] }
+            x_key: { type: string }
+            series:
+              type: array
+              items:
+                type: object
+                properties:
+                  key: { type: string }
+                  label: { type: string }
+            data:
+              type: array
+              maxItems: 100
+              items: { type: object, additionalProperties: true }
+        table:
+          type: [object, "null"]
+          required: [columns, rows]
+          properties:
+            columns:
+              type: array
+              items:
+                type: object
+                properties:
+                  key: { type: string }
+                  label: { type: string }
+                  type: { type: string, enum: [string, integer, number, usd, seconds, ms, ratio, date] }
+            rows:
+              type: array
+              maxItems: 100
+              items: { type: object, additionalProperties: true }
+        truncated: { type: boolean }
+        computed_with:
+          type: array
+          items: { $ref: "#/components/schemas/MetricQuery" }
+        charged_usd: { type: [number, "null"] }

@@ -1,0 +1,495 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, agents module
+  version: 1.0.0
+  description: |
+    Agents, the AgentConfig document, draft saves (each change records a version), validation,
+    duplicate and delete. Providers and models are free strings checked against the catalog
+    (no vendor enums, Principle I). Shared components come from 001's core.yaml.
+servers:
+  - url: /v1
+paths:
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page'}
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize'}
+        - name: search
+          in: query
+          description: Partial name (case-insensitive) or an exact agent id
+          schema: {type: string, maxLength: 100}
+        - name: type
+          in: query
+          schema: {$ref: '#/components/schemas/AgentType'}
+      responses:
+        '200':
+          description: Agents, most recently updated first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta'}
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: {$ref: '#/components/schemas/AgentSummary'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+    post:
+      operationId: createAgent
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      summary: Create an agent from defaults, a template or a given config; records version 1
+      description: The resulting config must pass blocking validation (a blank form is saved with this call on its first save).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80}
+                type: {$ref: '#/components/schemas/AgentType'}
+                language: {type: string, description: 'Default en-US; seeds speech and voice defaults'}
+                template_id:
+                  type: string
+                  pattern: '^[a-z0-9-]{3,64}$'
+                  description: Overlay this template on the defaults (single_prompt only)
+                config:
+                  description: Optional partial config overlaid on defaults (and on the template if given)
+                  type: object
+      responses:
+        '201':
+          description: Created; ETag carries draft_revision
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentDetail'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404':
+          description: template_id not found or inactive
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+  /agents/defaults:
+    get:
+      operationId: getAgentDefaults
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      summary: Fully defaulted AgentConfig for a type and language (blank form)
+      parameters:
+        - name: type
+          in: query
+          schema: {$ref: '#/components/schemas/AgentType'}
+        - name: language
+          in: query
+          schema: {type: string, default: en-US}
+      responses:
+        '200':
+          description: Defaults
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentConfig'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+  /agents/validate:
+    post:
+      operationId: validateAgentConfig
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      summary: Validate an unsaved config; same rules as save and publish (research R10)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, config]
+              properties:
+                type: {$ref: '#/components/schemas/AgentType'}
+                config: {type: object}
+                agent_id:
+                  $ref: '#/components/schemas/AgentId'
+                  description: Optional; lets attachment validators check workspace references
+      responses:
+        '200':
+          description: Result (always 200; `valid` says whether a save would pass)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ValidationResult'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+  /agents/{agent_id}:
+    parameters:
+      - {$ref: '#/components/parameters/AgentIdPath'}
+    get:
+      operationId: getAgent
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Agent with draft config, versions pointers and current publish blockers
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentDetail'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+    patch:
+      operationId: renameAgent
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      summary: Change metadata only (no version is recorded)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80}
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentSummary'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+    delete:
+      operationId: deleteAgent
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      summary: Soft delete; versions are kept for call history
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '409':
+          description: Agent is attached to a live channel (code agent_in_use)
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+                  - type: object
+                    properties:
+                      attachments:
+                        type: array
+                        items:
+                          type: object
+                          required: [kind, id, label]
+                          properties:
+                            kind: {type: string, examples: [phone_number, whatsapp_channel, outbound]}
+                            id: {type: string}
+                            label: {type: string}
+  /agents/{agent_id}/draft:
+    parameters:
+      - {$ref: '#/components/parameters/AgentIdPath'}
+    put:
+      operationId: saveAgentDraft
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      summary: Save the draft; records a new version when the config changed
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          description: The draft_revision ETag the editor loaded
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80}
+                config: {$ref: '#/components/schemas/AgentConfig'}
+                note: {type: string, maxLength: 500}
+      responses:
+        '200':
+          description: Saved (created=false means nothing changed)
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SaveResult'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '412':
+          description: Draft changed since it was loaded (code draft_changed); body has current_revision
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+                  - type: object
+                    properties:
+                      current_revision: {type: integer}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+  /agents/{agent_id}/duplicate:
+    parameters:
+      - {$ref: '#/components/parameters/AgentIdPath'}
+    post:
+      operationId: duplicateAgent
+      tags: [agents]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80, description: 'Default "<name> (copy)"'}
+      responses:
+        '201':
+          description: New agent with version 1 and no published version
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentDetail'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    AgentIdPath:
+      name: agent_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/AgentId'}
+  schemas:
+    AgentId:
+      type: string
+      pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+    AgentVersionId:
+      type: string
+      pattern: '^agv_[0-9A-HJKMNP-TV-Z]{26}$'
+    AgentType:
+      type: string
+      enum: [single_prompt, flow]
+    Issue:
+      type: object
+      required: [pointer, code, message]
+      properties:
+        pointer: {type: string, examples: [/llm/temperature, '/dynamic_variables[customer_name]/name']}
+        code: {type: string}
+        message: {type: string}
+    ValidationResult:
+      type: object
+      required: [valid, errors, publish_blockers, warnings, normalized_config]
+      properties:
+        valid: {type: boolean}
+        errors: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        publish_blockers: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        normalized_config: {$ref: '#/components/schemas/AgentConfig'}
+    VersionRef:
+      type: object
+      required: [id, version_number, created_at]
+      properties:
+        id: {$ref: '#/components/schemas/AgentVersionId'}
+        version_number: {type: integer, minimum: 1}
+        created_at: {type: string, format: date-time}
+    AgentSummary:
+      type: object
+      required: [id, name, type, language, llm_model, voice_label, published_version, created_at, updated_at]
+      properties:
+        id: {$ref: '#/components/schemas/AgentId'}
+        name: {type: string}
+        type: {$ref: '#/components/schemas/AgentType'}
+        language: {type: string}
+        llm_model: {type: string, description: '"provider/model" of the draft'}
+        voice_label: {type: string, description: Voice name or id of the draft}
+        published_version:
+          oneOf:
+            - {$ref: '#/components/schemas/VersionRef'}
+            - {type: 'null'}
+        has_publish_blockers: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AgentDetail:
+      type: object
+      required: [id, name, type, draft_revision, draft_config, draft_version, published_version, publish_blockers, warnings, created_at, updated_at]
+      properties:
+        id: {$ref: '#/components/schemas/AgentId'}
+        name: {type: string}
+        type: {$ref: '#/components/schemas/AgentType'}
+        template_id: {type: [string, 'null']}
+        draft_revision: {type: integer}
+        draft_config: {$ref: '#/components/schemas/AgentConfig'}
+        draft_version: {$ref: '#/components/schemas/VersionRef'}
+        published_version:
+          oneOf:
+            - {$ref: '#/components/schemas/VersionRef'}
+            - {type: 'null'}
+        publish_blockers: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    SaveResult:
+      type: object
+      required: [agent, created, version, warnings, publish_blockers]
+      properties:
+        agent: {$ref: '#/components/schemas/AgentDetail'}
+        created: {type: boolean, description: false when the config was unchanged}
+        version: {$ref: '#/components/schemas/VersionRef'}
+        warnings: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        publish_blockers: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+    ModelRef:
+      type: object
+      required: [provider, model]
+      properties:
+        provider: {type: string, pattern: '^[a-z0-9_]+$'}
+        model: {type: string, minLength: 1}
+    DynamicVariable:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, pattern: '^[A-Za-z_][A-Za-z0-9_]{0,63}$'}
+        default: {type: [string, 'null'], maxLength: 2000}
+        description: {type: [string, 'null'], maxLength: 200}
+    BackgroundAudioSource:
+      oneOf:
+        - type: object
+          required: [kind, id]
+          properties:
+            kind: {const: builtin}
+            id: {type: string, examples: [office_ambience]}
+        - type: object
+          required: [kind, key]
+          properties:
+            kind: {const: upload}
+            key: {type: string, description: Storage key returned by the ambient audio upload}
+    PronunciationEntry:
+      type: object
+      required: [word, replacement]
+      properties:
+        word: {type: string, minLength: 1, maxLength: 100}
+        replacement: {type: string, minLength: 1, maxLength: 200}
+    AgentConfig:
+      type: object
+      description: |
+        Plain, versioned agent configuration (data-model.md section 4). Ranges are enforced by
+        the server on save; catalog membership is checked at save and publish. Blocks owned by
+        other features (tool_ids, kb_ids, flow, evals) are stored and versioned here, validated by
+        their owners. `tools` appears only in version snapshots.
+      required: [schema_version, type, language, llm, prompt, start_speaker, dynamic_variables, stt, tts, call_behavior, advanced]
+      properties:
+        schema_version: {type: integer, const: 1}
+        type: {$ref: '#/components/schemas/AgentType'}
+        language: {type: string, examples: [en-US, hi, multi]}
+        llm:
+          type: object
+          required: [provider, model, temperature]
+          properties:
+            provider: {type: string}
+            model: {type: string}
+            temperature: {type: number, minimum: 0, maximum: 2}
+        prompt: {type: string, maxLength: 50000}
+        begin_message: {type: [string, 'null'], maxLength: 1000}
+        start_speaker: {type: string, enum: [agent, user]}
+        dynamic_variables:
+          type: array
+          maxItems: 50
+          items: {$ref: '#/components/schemas/DynamicVariable'}
+        stt:
+          type: object
+          required: [provider]
+          properties:
+            provider: {type: string}
+            model: {type: [string, 'null'], description: null means Auto}
+        tts:
+          type: object
+          required: [provider, model, voice_id]
+          properties:
+            provider: {type: string}
+            model: {type: string}
+            voice_id: {type: string, minLength: 1}
+            speed: {type: number, minimum: 0.5, maximum: 2, default: 1.0}
+            expressiveness: {type: number, minimum: 0, maximum: 2, default: 0.9}
+            volume: {type: number, minimum: 0, maximum: 2, default: 1.0}
+        noise_cancellation:
+          description: null means off
+          oneOf:
+            - {$ref: '#/components/schemas/ModelRef'}
+            - {type: 'null'}
+        call_behavior:
+          type: object
+          required: [end_on_silence_s, max_duration_s, ring_duration_ms, interruption_sensitivity, responsiveness]
+          properties:
+            end_on_silence_s: {type: integer, minimum: 10, maximum: 300}
+            max_duration_s: {type: integer, minimum: 30, maximum: 3600}
+            ring_duration_ms: {type: integer, minimum: 0, maximum: 30000}
+            interruption_sensitivity: {type: number, minimum: 0, maximum: 1}
+            responsiveness: {type: number, minimum: 0, maximum: 1}
+        advanced:
+          type: object
+          required: [webhook_timeout_ms, voicemail_detection, dtmf, background_audio, pronunciation]
+          properties:
+            webhook_url: {type: [string, 'null'], format: uri, maxLength: 2048}
+            webhook_timeout_ms: {type: integer, minimum: 1000, maximum: 30000}
+            voicemail_detection:
+              type: object
+              required: [enabled, action]
+              properties:
+                enabled: {type: boolean}
+                action: {type: string, enum: [hang_up, leave_message]}
+                message: {type: [string, 'null'], maxLength: 500}
+            dtmf:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: {type: boolean}
+                timeout_ms: {type: integer, minimum: 1000, maximum: 10000}
+                termination_key: {type: [string, 'null'], enum: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '#', '*', null]}
+                digits: {type: integer, minimum: 1, maximum: 99}
+            background_audio:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: {type: boolean}
+                source:
+                  oneOf:
+                    - {$ref: '#/components/schemas/BackgroundAudioSource'}
+                    - {type: 'null'}
+                volume: {type: number, minimum: 0, maximum: 3}
+            analysis_model:
+              description: null means use the agent's llm
+              oneOf:
+                - {$ref: '#/components/schemas/ModelRef'}
+                - {type: 'null'}
+            pronunciation:
+              type: array
+              maxItems: 200
+              items: {$ref: '#/components/schemas/PronunciationEntry'}
+        tool_ids:
+          type: array
+          maxItems: 25
+          items: {type: string}
+        kb_ids:
+          type: array
+          maxItems: 10
+          items: {type: string}
+        flow:
+          description: Owned by 004 ({flow_id, graph, graph_hash, compiled}); null for single_prompt
+          type: [object, 'null']
+        evals:
+          description: Owned by 007
+          type: [object, 'null']
+        tools:
+          description: Snapshot-only resolved tool definitions written by 005; never accepted on save
+          type: array
+          readOnly: true
+          items: {type: object}

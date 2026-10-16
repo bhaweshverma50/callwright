@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, prompt_ai module
+  version: 1.0.0
+  description: |
+    Stateless prompt-writing assistant (research R18). Each request is charged through
+    billing.charge_feature as prompt_generation. Chat history is sent by the client each time.
+servers:
+  - url: /v1
+paths:
+  /prompt-ai/generate:
+    post:
+      operationId: generatePrompt
+      tags: [prompt_ai]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                agent_id:
+                  $ref: './agents.yaml#/components/schemas/AgentId'
+                  description: Optional; recorded as the usage reference
+                language: {type: string, default: en-US}
+                messages:
+                  type: array
+                  minItems: 1
+                  maxItems: 40
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role: {type: string, enum: [user, assistant]}
+                      content: {type: string, minLength: 1, maxLength: 8000}
+                current:
+                  description: The editor's current values; null for a blank agent
+                  oneOf:
+                    - type: object
+                      properties:
+                        prompt: {type: string, maxLength: 50000}
+                        begin_message: {type: [string, 'null'], maxLength: 1000}
+                        dynamic_variables:
+                          type: array
+                          items: {type: string}
+                    - {type: 'null'}
+      responses:
+        '200':
+          description: Assistant reply and an optional proposal
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reply, proposal, billed_usd]
+                properties:
+                  reply: {type: string}
+                  proposal:
+                    oneOf:
+                      - type: object
+                        required: [prompt]
+                        properties:
+                          prompt: {type: string}
+                          begin_message: {type: [string, 'null']}
+                          dynamic_variables:
+                            type: array
+                            items: {type: string, pattern: '^[A-Za-z_][A-Za-z0-9_]{0,63}$'}
+                      - {type: 'null'}
+                  billed_usd: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/MoneyUsd'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '402':
+          description: Balance at or below zero (code insufficient_credit)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/TooManyRequests'}
+        '504':
+          description: Assistant model did not answer within 60 s (not charged)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

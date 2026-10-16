@@ -1,0 +1,197 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, sessions module (browser test calls)
+  version: 0.1.0
+  description: >
+    Fragment owned by 003-voice-runtime. Assembled into contracts/openapi.yaml.
+    Issues a short-lived room credential for a browser test call after admission.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - bearerAuth: []
+paths:
+  /sessions/web-call:
+    post:
+      operationId: createWebCall
+      summary: Start a browser test call for an agent
+      description: >
+        Runs admission (email verified, version resolvable and priced, balance above zero,
+        under concurrency limit), creates the call in `queued`, creates the room, dispatches the
+        voice worker and returns a join credential. Refused requests still create a call record
+        with status `failed` and the reason, and the problem body carries its `call_id`.
+      tags: [sessions]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebCallRequest'
+            examples:
+              draft:
+                value:
+                  agent_id: agt_01JABCDEF0123456789ABCDEFG
+                  version: draft
+                  dynamic_variables:
+                    customer_name: Priya
+      responses:
+        '201':
+          description: Call admitted and room ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebCallSession'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '402':
+          description: Insufficient credit (`type` ends with `/insufficient-credit`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '403':
+          description: Email not verified (`type` ends with `/email-unverified`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: >
+            `agent-not-published` (version=published with none pinned) or
+            `idempotency-key-in-use` (same key, request still running).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: >
+            Invalid variables, unsupported vendor (`unsupported-vendor`), unpriced
+            configuration (`pricing-unavailable`), flow agent without flow runtime
+            (`flow-runtime-unavailable`), or idempotency key reused with a different body.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '429':
+          description: Concurrency limit reached (`type` ends with `/concurrency-limit`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated key; replays within 24 h return the original response.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    WebCallRequest:
+      type: object
+      additionalProperties: false
+      required: [agent_id]
+      properties:
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        version:
+          description: '`draft` (default), `published`, or a specific `agv_` id of this agent.'
+          type: string
+          default: draft
+          pattern: '^(draft|published|agv_[0-9A-HJKMNP-TV-Z]{26})$'
+        dynamic_variables:
+          $ref: '#/components/schemas/DynamicVariables'
+        metadata:
+          type: object
+          description: Passthrough echoed in webhooks; max 4 KB serialized, max 20 keys.
+          maxProperties: 20
+          additionalProperties: true
+    DynamicVariables:
+      type: object
+      maxProperties: 50
+      propertyNames:
+        pattern: '^[A-Za-z_][A-Za-z0-9_]{0,63}$'
+      additionalProperties:
+        type: string
+        maxLength: 2000
+    WebCallSession:
+      type: object
+      required: [call_id, agent_version_id, room_name, server_url, participant_token, expires_at, status]
+      properties:
+        call_id:
+          type: string
+          pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+        agent_version_id:
+          type: string
+          pattern: '^agv_[0-9A-HJKMNP-TV-Z]{26}$'
+        room_name:
+          type: string
+        server_url:
+          type: string
+          format: uri
+          description: WebSocket URL of the realtime media server.
+        participant_token:
+          type: string
+          description: Join credential for this room only; publish microphone and data, subscribe.
+        expires_at:
+          type: string
+          format: date-time
+          description: Join deadline (15 minutes after issue).
+        status:
+          type: string
+          const: queued
+        missing_variables:
+          type: array
+          items:
+            type: string
+        ignored_overrides:
+          type: array
+          items:
+            type: string
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+    CallRefusedProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            call_id:
+              type: string
+              description: The `failed` call record created for the refused attempt.
+            disconnect_reason:
+              type: string
+              enum: [insufficient_credit, concurrency_limit, error]
+            diagnostic:
+              type: string

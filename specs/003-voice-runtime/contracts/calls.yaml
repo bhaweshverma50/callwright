@@ -1,0 +1,212 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, calls module (write side, internal)
+  version: 0.1.0
+  description: >
+    Fragment owned by 003-voice-runtime. Internal endpoint the voice worker calls when it
+    starts a job. Authenticated with the service token, never with a user JWT. The read side of
+    the calls module (list, detail, recording URLs) is defined by 006-calls-analytics.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - serviceToken: []
+paths:
+  /internal/calls/claim:
+    post:
+      operationId: claimCall
+      summary: Claim a dispatched job and receive the frozen runtime configuration
+      description: >
+        For API-created calls (web, outbound) the dispatch metadata carries `call_id`; the API
+        marks the call claimed and returns its configuration. For SIP-created calls (inbound
+        phone, WhatsApp) the API routes the call with the channel's inbound router (010), runs
+        admission, creates the call and returns the configuration, or `admitted: false` with the
+        reason. Idempotent per `job_id`: a repeated claim returns the same body.
+      tags: [calls-internal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      responses:
+        '200':
+          description: Claim result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '404':
+          description: Unknown `call_id` in metadata
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Call already claimed by a different job, or already terminal
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  securitySchemes:
+    serviceToken:
+      type: http
+      scheme: bearer
+      description: Static service token shared by API and voice worker.
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    ClaimRequest:
+      type: object
+      additionalProperties: false
+      required: [job_id, room_name, worker_id, dispatch_metadata]
+      properties:
+        job_id:
+          type: string
+        room_name:
+          type: string
+        worker_id:
+          type: string
+        dispatch_metadata:
+          type: object
+          description: >
+            Opaque JSON from the dispatch. Either `{call_id}` or
+            `{channel: sip_inbound|whatsapp, route_ref}`.
+          additionalProperties: true
+        sip:
+          $ref: '#/components/schemas/SipAttributes'
+    SipAttributes:
+      type: object
+      description: Attributes of the SIP participant when the room was created by a SIP call.
+      properties:
+        call_id:
+          type: string
+          description: Carrier call identifier.
+        trunk_id:
+          type: string
+        trunk_phone_number:
+          type: string
+          description: The called number (our number), E.164.
+        caller_number:
+          type: string
+          description: The calling number, E.164 when available.
+        participant_identity:
+          type: string
+    ClaimResponse:
+      type: object
+      required: [admitted, call_id]
+      properties:
+        admitted:
+          type: boolean
+        call_id:
+          type: string
+          pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+        refusal:
+          type: object
+          description: Present when `admitted` is false. The worker hangs up without speaking.
+          properties:
+            disconnect_reason:
+              type: string
+              enum: [insufficient_credit, concurrency_limit, error]
+            diagnostic:
+              type: string
+        runtime:
+          $ref: '#/components/schemas/RuntimeConfig'
+    RuntimeConfig:
+      type: object
+      required: [channel, direction, agent_id, agent_version_id, config, variables, limits, heartbeat_interval_s]
+      properties:
+        channel:
+          type: string
+          enum: [web, sip_inbound, sip_outbound, whatsapp]
+        direction:
+          type: string
+          enum: [inbound, outbound]
+        from_number:
+          type: [string, 'null']
+        to_number:
+          type: [string, 'null']
+        agent_id:
+          type: string
+        agent_version_id:
+          type: string
+        agent_type:
+          type: string
+          enum: [single_prompt, flow]
+        config:
+          type: object
+          description: Frozen AgentConfig from the agent version (schema owned by 002-agent-builder).
+          additionalProperties: true
+        variables:
+          type: object
+          description: Resolved dynamic variables including built-ins.
+          additionalProperties:
+            type: string
+        limits:
+          type: object
+          required: [end_on_silence_s, max_duration_s, ring_duration_ms]
+          properties:
+            end_on_silence_s:
+              type: integer
+              minimum: 10
+              maximum: 300
+            max_duration_s:
+              type: integer
+              minimum: 30
+              maximum: 3600
+            ring_duration_ms:
+              type: integer
+              minimum: 0
+              maximum: 30000
+        background_audio_url:
+          type: [string, 'null']
+          format: uri
+          description: Signed URL (10 minutes) for an uploaded ambience file, else null.
+        caller_join_timeout_s:
+          type: integer
+          default: 60
+          description: Web calls only; fail the call if the browser has not joined by then.
+        outbound_dial:
+          description: Set by 010-channels for `sip_outbound` calls; the worker dials this.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OutboundDial'
+        heartbeat_interval_s:
+          type: integer
+          default: 10
+    OutboundDial:
+      type: object
+      required: [sip_trunk_id, to_number, from_number, ring_timeout_s]
+      properties:
+        sip_trunk_id:
+          type: string
+        to_number:
+          type: string
+        from_number:
+          type: string
+        ring_timeout_s:
+          type: integer
+          minimum: 10
+          maximum: 60
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string

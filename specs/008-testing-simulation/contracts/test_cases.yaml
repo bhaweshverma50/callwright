@@ -1,0 +1,370 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, test_cases module
+  version: 0.1.0
+  description: >
+    Fragment owned by 008-testing-simulation (services/api/app/test_cases).
+    Assembled into contracts/openapi.yaml. Shared components marked x-owner 001 are defined by
+    the platform foundation and repeated here only so the fragment validates on its own.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: test_cases
+paths:
+  /test-categories:
+    get:
+      tags: [test_cases]
+      operationId: listTestCategories
+      summary: List seed and custom test categories of the workspace
+      responses:
+        '200':
+          description: Categories, seeds first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/TestCategory' }
+    post:
+      tags: [test_cases]
+      operationId: createTestCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 60 }
+                slug:
+                  type: string
+                  pattern: '^[a-z][a-z0-9_]{1,39}$'
+                  description: Derived from name when omitted.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCategory' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /test-categories/{slug}:
+    delete:
+      tags: [test_cases]
+      operationId: deleteTestCategory
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Deleted }
+        '409':
+          description: Seed category, or category still used by test cases
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /test-cases:
+    get:
+      tags: [test_cases]
+      operationId: listTestCases
+      parameters:
+        - { name: agent_id, in: query, required: true, schema: { type: string, pattern: '^agt_' } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: last_status, in: query, schema: { type: string, enum: [passed, failed, error, not_run] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Page of test cases
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/TestCase' }
+    post:
+      tags: [test_cases]
+      operationId: createTestCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TestCaseCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCase' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /test-cases/{test_case_id}:
+    parameters:
+      - { name: test_case_id, in: path, required: true, schema: { type: string, pattern: '^tc_' } }
+    get:
+      tags: [test_cases]
+      operationId: getTestCase
+      responses:
+        '200':
+          description: Test case
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCase' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [test_cases]
+      operationId: updateTestCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TestCaseUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCase' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [test_cases]
+      operationId: deleteTestCase
+      responses:
+        '204': { description: Deleted; past results keep their copy }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /test-cases/import:
+    post:
+      tags: [test_cases]
+      operationId: importTestCases
+      summary: Bulk create from the JSON import format (also used to save reviewed AI drafts)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, test_cases]
+              properties:
+                agent_id: { type: string, pattern: '^agt_' }
+                dry_run: { type: boolean, default: false }
+                format: { type: string, const: callwright.test_cases.v1 }
+                test_cases:
+                  type: array
+                  maxItems: 500
+                  items: { $ref: '#/components/schemas/TestCaseImportRow' }
+      responses:
+        '200':
+          description: Import outcome (rows are validated individually; valid rows are saved unless dry_run)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created, skipped_duplicates, errors]
+                properties:
+                  created: { type: integer }
+                  skipped_duplicates: { type: integer }
+                  created_ids:
+                    type: array
+                    items: { type: string }
+                  duplicates:
+                    type: array
+                    items: { type: integer, description: Zero-based row index }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      required: [index, field, message]
+                      properties:
+                        index: { type: integer }
+                        field: { type: string }
+                        message: { type: string }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /test-cases/export:
+    get:
+      tags: [test_cases]
+      operationId: exportTestCases
+      parameters:
+        - { name: agent_id, in: query, required: true, schema: { type: string, pattern: '^agt_' } }
+        - { name: template, in: query, schema: { type: boolean, default: false }, description: Return an example file instead of the agent's cases }
+      responses:
+        '200':
+          description: JSON file (Content-Disposition attachment)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestCaseFile' }
+  /test-cases/generate:
+    post:
+      tags: [test_cases]
+      operationId: generateTestCases
+      summary: Draft test cases with an LLM (not saved). Billed as feature testing.generate.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: string, pattern: '^agt_' }
+                category: { type: [string, 'null'], description: Slug, or null for a mix across all categories }
+                count: { type: integer, minimum: 1, maximum: 20, default: 5 }
+                guidance: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Drafts for review
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [drafts, cost_usd]
+                properties:
+                  drafts:
+                    type: array
+                    items: { $ref: '#/components/schemas/TestCaseImportRow' }
+                  cost_usd: { type: number }
+        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '409':
+          description: Agent has no prompt or no agent node
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Conflict (duplicate name or case)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InsufficientCredit:
+      description: Balance at or below zero
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      x-owner: '001'
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    PageMeta:
+      x-owner: '001'
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
+    TestCategory:
+      type: object
+      required: [slug, name, is_seed]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        is_seed: { type: boolean }
+    TestCaseCreate:
+      type: object
+      required: [agent_id, category, user_prompt, expected_behaviour]
+      properties:
+        agent_id: { type: string, pattern: '^agt_' }
+        name: { type: [string, 'null'], maxLength: 120, description: Blank becomes "<Category name> test" }
+        category: { type: string }
+        user_prompt: { type: string, minLength: 1, maxLength: 2000 }
+        expected_behaviour: { type: string, minLength: 1, maxLength: 2000 }
+        dynamic_variables:
+          type: object
+          additionalProperties: { type: string }
+    TestCaseUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        category: { type: string }
+        user_prompt: { type: string, minLength: 1, maxLength: 2000 }
+        expected_behaviour: { type: string, minLength: 1, maxLength: 2000 }
+        dynamic_variables:
+          type: object
+          additionalProperties: { type: string }
+    TestCase:
+      type: object
+      required: [test_case_id, agent_id, name, category, user_prompt, expected_behaviour, dynamic_variables, last_status, created_at, updated_at]
+      properties:
+        test_case_id: { type: string, pattern: '^tc_' }
+        agent_id: { type: string }
+        name: { type: string }
+        category: { type: string }
+        user_prompt: { type: string }
+        expected_behaviour: { type: string }
+        dynamic_variables:
+          type: object
+          additionalProperties: { type: string }
+        last_status: { type: [string, 'null'], enum: [passed, failed, error, null] }
+        last_run_id: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    TestCaseImportRow:
+      type: object
+      required: [user_prompt, expected_behaviour]
+      properties:
+        name: { type: string }
+        category: { type: string }
+        user_prompt: { type: string }
+        expected_behaviour: { type: string }
+        dynamic_variables:
+          type: object
+          additionalProperties: { type: string }
+    TestCaseFile:
+      type: object
+      required: [format, test_cases]
+      properties:
+        format: { type: string, const: callwright.test_cases.v1 }
+        agent_id: { type: string }
+        exported_at: { type: string, format: date-time }
+        test_cases:
+          type: array
+          items: { $ref: '#/components/schemas/TestCaseImportRow' }

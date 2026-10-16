@@ -1,0 +1,89 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, livekit_hooks module
+  version: 0.1.0
+  description: >
+    Fragment owned by 003-voice-runtime. Receives webhooks from the realtime media server
+    (LiveKit). Requests are authenticated by the media server's signed JWT in the
+    `Authorization` header, whose `sha256` claim must match the raw body. Unknown events are
+    acknowledged and ignored. Handlers are idempotent (events can repeat).
+servers:
+  - url: https://api.callwright.example/v1
+paths:
+  /livekit/webhook:
+    post:
+      operationId: receiveLivekitWebhook
+      summary: Media server events (room, participant, egress)
+      tags: [livekit-hooks]
+      security: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: JWT signed with the LiveKit API secret; carries a `sha256` body hash claim.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/webhook+json:
+            schema:
+              $ref: '#/components/schemas/LivekitWebhookEvent'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LivekitWebhookEvent'
+      responses:
+        '200':
+          description: Accepted (also returned for ignored event types)
+        '401':
+          description: Signature or body hash invalid
+components:
+  schemas:
+    LivekitWebhookEvent:
+      type: object
+      required: [event, id, createdAt]
+      description: >
+        Subset of the LiveKit webhook payload the API reads. Handled events:
+        `room_finished` (end any open call for the room with reason `error` if the worker did not
+        report an end), `participant_left` (logged; the worker reports hangups),
+        `egress_started`, `egress_ended` (set recording status and key).
+      properties:
+        event:
+          type: string
+          examples: [room_finished, participant_left, egress_started, egress_ended]
+        id:
+          type: string
+        createdAt:
+          type: [integer, string]
+        room:
+          type: object
+          properties:
+            name: {type: string}
+            sid: {type: string}
+            metadata: {type: string}
+        participant:
+          type: object
+          properties:
+            identity: {type: string}
+            kind: {type: string}
+            attributes:
+              type: object
+              additionalProperties: {type: string}
+        egressInfo:
+          type: object
+          properties:
+            egressId: {type: string}
+            roomName: {type: string}
+            status:
+              type: string
+              examples: [EGRESS_COMPLETE, EGRESS_FAILED, EGRESS_ABORTED, EGRESS_LIMIT_REACHED]
+            error: {type: string}
+            fileResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  filename: {type: string}
+                  location: {type: string}
+                  duration: {type: [integer, string]}
+                  size: {type: [integer, string]}

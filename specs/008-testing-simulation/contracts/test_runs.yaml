@@ -1,0 +1,318 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, test_runs module
+  version: 0.1.0
+  description: >
+    Fragment owned by 008-testing-simulation (services/api/app/test_runs). Test runs execute
+    single-turn test cases in text mode and judge each reply with an LLM judge. Billed as
+    feature testing.run. Shared components marked x-owner 001 are repeated for validation only.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: test_runs
+paths:
+  /test-runs:
+    get:
+      tags: [test_runs]
+      operationId: listTestRuns
+      parameters:
+        - { name: agent_id, in: query, required: true, schema: { type: string, pattern: '^agt_' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Runs, newest first (without results)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/TestRun' }
+    post:
+      tags: [test_runs]
+      operationId: startTestRun
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: string, pattern: '^agt_' }
+                test_case_ids:
+                  type: array
+                  items: { type: string, pattern: '^tc_' }
+                  description: Omit to run all cases (optionally filtered by category)
+                category: { type: string }
+                target: { $ref: '#/components/schemas/TestTarget' }
+                judge_model: { type: string, description: Defaults to the workspace judge model }
+      responses:
+        '202':
+          description: Run queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRun' }
+        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '409':
+          description: Agent has no prompt / no agent node, or no test cases selected
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /test-runs/{test_run_id}:
+    parameters:
+      - { $ref: '#/components/parameters/TestRunId' }
+    get:
+      tags: [test_runs]
+      operationId: getTestRun
+      responses:
+        '200':
+          description: Run with results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/TestRun' }
+                  - type: object
+                    required: [results]
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: '#/components/schemas/TestResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /test-runs/{test_run_id}/cancel:
+    post:
+      tags: [test_runs]
+      operationId: cancelTestRun
+      parameters:
+        - { $ref: '#/components/parameters/TestRunId' }
+      responses:
+        '200':
+          description: Cancelled; finished results kept, unfinished results marked error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestRun' }
+        '409':
+          description: Run already finished
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /test-runs/{test_run_id}/results/{test_case_id}:
+    patch:
+      tags: [test_runs]
+      operationId: overrideTestResult
+      summary: Set or clear a manual verdict
+      parameters:
+        - { $ref: '#/components/parameters/TestRunId' }
+        - { name: test_case_id, in: path, required: true, schema: { type: string, pattern: '^tc_' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [override_status]
+              properties:
+                override_status: { type: [string, 'null'], enum: [passed, failed, null] }
+                override_note: { type: [string, 'null'], maxLength: 500 }
+      responses:
+        '200':
+          description: Updated result and run counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result, run]
+                properties:
+                  result: { $ref: '#/components/schemas/TestResult' }
+                  run: { $ref: '#/components/schemas/TestRun' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Run not completed yet
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /test-runs/{test_run_id}/export:
+    get:
+      tags: [test_runs]
+      operationId: exportTestRun
+      parameters:
+        - { $ref: '#/components/parameters/TestRunId' }
+      responses:
+        '200':
+          description: JSON attachment test_run_<id>_results.json
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [format, run, results]
+                properties:
+                  format: { type: string, const: callwright.test_run_results.v1 }
+                  run: { $ref: '#/components/schemas/TestRun' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/TestResult' }
+  /internal/test-runs/{test_run_id}/cases/{test_case_id}/spec:
+    get:
+      tags: [test_runs]
+      operationId: internalGetTestCaseSpec
+      summary: Called by the voice-worker text runner (service token)
+      security:
+        - serviceToken: []
+      parameters:
+        - { $ref: '#/components/parameters/TestRunId' }
+        - { name: test_case_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Snapshot and single caller turn
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspace_id, config_snapshot, user_prompt, dynamic_variables]
+                properties:
+                  workspace_id: { type: string }
+                  config_snapshot: { type: object }
+                  user_prompt: { type: string }
+                  dynamic_variables: { type: object, additionalProperties: { type: string } }
+  /internal/test-runs/{test_run_id}/cases/{test_case_id}/result:
+    post:
+      tags: [test_runs]
+      operationId: internalPostTestCaseResult
+      security:
+        - serviceToken: []
+      parameters:
+        - { $ref: '#/components/parameters/TestRunId' }
+        - { name: test_case_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [completed, error] }
+                agent_response: { type: [string, 'null'] }
+                tool_calls:
+                  type: array
+                  items: { $ref: '#/components/schemas/ToolCallRecord' }
+                usage: { type: object }
+                duration_ms: { type: integer }
+                error_message: { type: [string, 'null'] }
+      responses:
+        '204': { description: Accepted; judging is enqueued }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    serviceToken: { type: http, scheme: bearer, description: Internal service token }
+  parameters:
+    TestRunId: { name: test_run_id, in: path, required: true, schema: { type: string, pattern: '^trn_' } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InsufficientCredit:
+      description: Balance at or below zero
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      x-owner: '001'
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    PageMeta:
+      x-owner: '001'
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
+    TestTarget:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [draft, published, version], default: draft }
+        agent_version_id: { type: string, pattern: '^agv_', description: Required when type is version }
+    ToolCallRecord:
+      type: object
+      required: [name, arguments, answer_source]
+      properties:
+        name: { type: string }
+        arguments: { type: object }
+        output: { type: [string, 'null'] }
+        answer_source: { type: string, enum: [mock, recorded, synthesized, error] }
+    TestRun:
+      type: object
+      required: [test_run_id, agent_id, target, status, total, passed, failed, errored, judge_model, agent_model, config_hash, created_at]
+      properties:
+        test_run_id: { type: string, pattern: '^trn_' }
+        number: { type: integer, description: Sequential per agent, for display }
+        agent_id: { type: string }
+        target: { $ref: '#/components/schemas/TestTarget' }
+        config_hash: { type: string }
+        agent_model: { type: string }
+        judge_model: { type: string }
+        status: { type: string, enum: [queued, running, completed, failed, cancelled] }
+        total: { type: integer }
+        passed: { type: integer }
+        failed: { type: integer }
+        errored: { type: integer }
+        cost_usd: { type: [number, 'null'] }
+        created_at: { type: string, format: date-time }
+        started_at: { type: [string, 'null'], format: date-time }
+        finished_at: { type: [string, 'null'], format: date-time }
+    TestResult:
+      type: object
+      required: [test_case_id, case_name, category, user_prompt, expected_behaviour, status, is_manual]
+      properties:
+        test_case_id: { type: string }
+        case_name: { type: string }
+        category: { type: string }
+        user_prompt: { type: string }
+        expected_behaviour: { type: string }
+        agent_response: { type: [string, 'null'] }
+        tool_calls:
+          type: array
+          items: { $ref: '#/components/schemas/ToolCallRecord' }
+        judge_status: { type: [string, 'null'], enum: [passed, failed, error, null] }
+        judge_reasoning: { type: [string, 'null'] }
+        override_status: { type: [string, 'null'], enum: [passed, failed, null] }
+        override_note: { type: [string, 'null'] }
+        overridden_at: { type: [string, 'null'], format: date-time }
+        status: { type: [string, 'null'], enum: [passed, failed, error, null], description: Effective status (override wins); null while pending }
+        is_manual: { type: boolean }
+        error_message: { type: [string, 'null'] }
+        duration_ms: { type: [integer, 'null'] }

@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, voices module
+  version: 1.0.0
+  description: |
+    Speech catalog (languages, speech recognition, voices, noise cancellation, built-in ambient
+    sounds), the normalised voice browser, and background audio uploads (research R6, R7, R19).
+servers:
+  - url: /v1
+paths:
+  /voices/catalog:
+    get:
+      operationId: getVoiceCatalog
+      tags: [voices]
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: include_withdrawn
+          in: query
+          schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Speech catalog
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/VoiceCatalog'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+  /voices/{provider}/voices:
+    get:
+      operationId: listProviderVoices
+      tags: [voices]
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: {type: string, pattern: '^[a-z0-9_]+$'}
+        - name: search
+          in: query
+          schema: {type: string, maxLength: 100}
+        - name: gender
+          in: query
+          schema: {type: string, enum: [female, male, neutral]}
+        - name: language
+          in: query
+          schema: {type: string}
+        - name: model
+          in: query
+          description: Only voices usable with this TTS model
+          schema: {type: string}
+        - name: cursor
+          in: query
+          schema: {type: string}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        '200':
+          description: Normalised voices (cached up to 1 hour)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/Voice'}
+                  next_cursor: {type: [string, 'null']}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404':
+          description: Provider not in the catalog
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '503':
+          description: Provider listing temporarily unavailable (code catalog_unavailable)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+  /voices/ambient-audio:
+    get:
+      operationId: listAmbientAudio
+      tags: [voices]
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: This workspace's uploads with 10-minute preview URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/AmbientAudioFile'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+    post:
+      operationId: uploadAmbientAudio
+      tags: [voices]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: mp3, wav, ogg, flac, aac or opus; max 10 MB
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AmbientAudioFile'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '409':
+          description: Workspace already has 20 uploads (code upload_limit)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '413':
+          description: File larger than 10 MB
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '415':
+          description: Not a supported audio format
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+    delete:
+      operationId: deleteAmbientAudio
+      tags: [voices]
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema: {type: string}
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '409':
+          description: Referenced by a draft or published version (code audio_in_use)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PricePerMin:
+      oneOf:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/MoneyUsd'}
+        - {type: 'null'}
+      description: null means price unavailable
+    Language:
+      type: object
+      required: [code, label, stt_default, tts_default]
+      properties:
+        code: {type: string, examples: [en-US, hi, multi]}
+        label: {type: string, examples: [English (US)]}
+        stt_default:
+          type: object
+          required: [provider, model]
+          properties:
+            provider: {type: string}
+            model: {type: [string, 'null']}
+        tts_default:
+          type: object
+          required: [provider, model, voice_id]
+          properties:
+            provider: {type: string}
+            model: {type: string}
+            voice_id: {type: string}
+    SttModel:
+      type: object
+      required: [id, label, languages, price_per_min_usd, withdrawn]
+      properties:
+        id: {type: string, examples: [nova-3]}
+        label: {type: string}
+        description: {type: [string, 'null']}
+        languages: {type: array, items: {type: string}}
+        price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
+        withdrawn: {type: boolean}
+    SttProvider:
+      type: object
+      required: [provider, label, supports_auto, models]
+      properties:
+        provider: {type: string, examples: [deepgram, sarvam, assemblyai]}
+        label: {type: string}
+        supports_auto: {type: boolean, description: True when model null lets the platform choose per language}
+        models: {type: array, items: {$ref: '#/components/schemas/SttModel'}}
+    TtsModel:
+      type: object
+      required: [id, label, price_per_min_usd, withdrawn]
+      properties:
+        id: {type: string, examples: [eleven_flash_v2_5]}
+        label: {type: string}
+        description: {type: [string, 'null']}
+        chars_bundle_per_min: {type: [integer, 'null']}
+        price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
+        withdrawn: {type: boolean}
+    TtsProvider:
+      type: object
+      required: [provider, label, default_model, capabilities, models]
+      properties:
+        provider: {type: string, examples: [elevenlabs, cartesia, fishaudio, sarvam]}
+        label: {type: string}
+        default_model: {type: string}
+        capabilities:
+          type: object
+          required: [speed, expressiveness, volume]
+          properties:
+            speed: {type: boolean}
+            expressiveness: {type: boolean}
+            volume: {type: boolean}
+        models: {type: array, items: {$ref: '#/components/schemas/TtsModel'}}
+    NoiseCancellationOption:
+      type: object
+      required: [provider, model, label, default, price_per_min_usd]
+      properties:
+        provider: {type: string}
+        model: {type: string}
+        label: {type: string}
+        description: {type: [string, 'null']}
+        default: {type: boolean}
+        price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
+    VoiceCatalog:
+      type: object
+      required: [languages, stt, tts, noise_cancellation, ambient_sounds]
+      properties:
+        languages: {type: array, items: {$ref: '#/components/schemas/Language'}}
+        stt: {type: array, items: {$ref: '#/components/schemas/SttProvider'}}
+        tts: {type: array, items: {$ref: '#/components/schemas/TtsProvider'}}
+        noise_cancellation: {type: array, items: {$ref: '#/components/schemas/NoiseCancellationOption'}}
+        ambient_sounds:
+          type: array
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id: {type: string, examples: [office_ambience]}
+              label: {type: string}
+              preview_url: {type: [string, 'null'], format: uri}
+    Voice:
+      type: object
+      required: [voice_id, name, provider, languages, model_ids]
+      properties:
+        voice_id: {type: string}
+        provider: {type: string}
+        name: {type: string}
+        description: {type: [string, 'null']}
+        gender: {type: [string, 'null'], enum: [female, male, neutral, null]}
+        languages: {type: array, items: {type: string}}
+        preview_url: {type: [string, 'null'], format: uri}
+        model_ids: {type: array, items: {type: string}, description: Empty means usable with every model of the provider}
+    AmbientAudioFile:
+      type: object
+      required: [key, filename, content_type, size_bytes, preview_url, created_at]
+      properties:
+        key: {type: string, description: Use as background_audio.source.key}
+        filename: {type: string}
+        content_type: {type: string}
+        size_bytes: {type: integer}
+        preview_url: {type: string, format: uri, description: Signed, valid 10 minutes}
+        created_at: {type: string, format: date-time}

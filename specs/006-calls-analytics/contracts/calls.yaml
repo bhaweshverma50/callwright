@@ -1,0 +1,394 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, calls module (read side)
+  version: 0.1.0
+  description: |
+    Read side of calls, owned by spec 006. The write side (creating calls, call events) is in
+    spec 003. Assembled into contracts/openapi.yaml.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /calls:
+    get:
+      operationId: listCalls
+      summary: List calls with sort, filters and pagination
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [started_at, duration_s, cost_usd, latency_avg_ms], default: started_at }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - name: call_id
+          in: query
+          description: Exact ID or prefix (minimum 8 characters).
+          schema: { type: string, minLength: 8 }
+        - { name: agent_id, in: query, description: Comma-separated agt_ IDs, schema: { type: string } }
+        - { name: status, in: query, description: Comma-separated CallStatus values, schema: { type: string } }
+        - { name: channel, in: query, description: Comma-separated Channel values, schema: { type: string } }
+        - { name: disconnect_reason, in: query, description: Comma-separated DisconnectReason values, schema: { type: string } }
+        - { name: sentiment, in: query, description: Comma-separated Sentiment values, schema: { type: string } }
+        - { name: from_number, in: query, schema: { type: string } }
+        - { name: to_number, in: query, schema: { type: string } }
+        - { name: started_after, in: query, schema: { type: string, format: date-time } }
+        - { name: started_before, in: query, schema: { type: string, format: date-time } }
+        - name: label
+          in: query
+          description: Comma-separated values of good, bad, unannotated (viewer's own label).
+          schema: { type: string }
+        - name: eval_status
+          in: query
+          description: Comma-separated EvalStatus values.
+          schema: { type: string }
+        - name: origin
+          in: query
+          description: Comma-separated values of live, test, simulation. Default live,test.
+          schema: { type: string, default: "live,test" }
+      responses:
+        "200":
+          description: A page of calls
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallPage" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}:
+    get:
+      operationId: getCall
+      summary: Call detail without transcript
+      parameters: [{ $ref: "#/components/parameters/CallId" }]
+      responses:
+        "200":
+          description: Call detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallDetail" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}/transcript:
+    get:
+      operationId: getCallTranscript
+      summary: Ordered transcript items including tool calls and tool results
+      parameters: [{ $ref: "#/components/parameters/CallId" }]
+      responses:
+        "200":
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [call_id, items]
+                properties:
+                  call_id: { type: string }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/TranscriptItem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}/turn-latencies:
+    get:
+      operationId: getCallTurnLatencies
+      summary: Measured latency per agent turn, in milliseconds
+      parameters: [{ $ref: "#/components/parameters/CallId" }]
+      responses:
+        "200":
+          description: Turn latencies
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [call_id, summary, turns]
+                properties:
+                  call_id: { type: string }
+                  summary: { $ref: "#/components/schemas/LatencySummary" }
+                  turns:
+                    type: array
+                    items: { $ref: "#/components/schemas/TurnLatency" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}/flow-transitions:
+    get:
+      operationId: getCallFlowTransitions
+      summary: Flow path for flow-agent calls (empty for single-prompt agents)
+      parameters: [{ $ref: "#/components/parameters/CallId" }]
+      responses:
+        "200":
+          description: Flow transitions in order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [call_id, items]
+                properties:
+                  call_id: { type: string }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/FlowTransition" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /calls/{call_id}/compare:
+    get:
+      operationId: compareCalls
+      summary: Compare a call with another call or a simulation run's output call
+      description: Exactly one of `with_call_id` or `with_simulation_run_id` is required.
+      parameters:
+        - $ref: "#/components/parameters/CallId"
+        - { name: with_call_id, in: query, schema: { type: string, pattern: "^call_" } }
+        - { name: with_simulation_run_id, in: query, schema: { type: string, pattern: "^srun_" } }
+      responses:
+        "200":
+          description: Comparison
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallComparison" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    CallId:
+      name: call_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^call_[0-9A-HJKMNP-TV-Z]{26}$" }
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    Channel: { type: string, enum: [web, sip_inbound, sip_outbound, whatsapp] }
+    Origin: { type: string, enum: [live, test, simulation] }
+    CallStatus:
+      type: string
+      enum: [queued, ringing, in_progress, ended, processing, completed, failed, no_answer, busy, voicemail]
+    DisconnectReason:
+      type: string
+      enum: [user_hangup, agent_hangup, call_transfer, voicemail_reached, inactivity, max_duration_reached, error, concurrency_limit, insufficient_credit]
+    Sentiment: { type: string, enum: [positive, neutral, negative, unknown] }
+    EvalStatus: { type: string, enum: [not_evaluated, running, passed, failed, error] }
+    QualitySummary:
+      type: object
+      required: [eval_status, pass_count, fail_count, label]
+      properties:
+        eval_status: { $ref: "#/components/schemas/EvalStatus" }
+        pass_count: { type: integer, minimum: 0 }
+        fail_count: { type: integer, minimum: 0 }
+        label: { type: [string, "null"], enum: [good, bad, null] }
+    AgentRef:
+      type: object
+      required: [id, name, deleted]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        deleted: { type: boolean }
+    CallListItem:
+      type: object
+      required: [call_id, started_at, agent, channel, origin, status, duration_s, has_recording, quality]
+      properties:
+        call_id: { type: string }
+        started_at: { type: string, format: date-time }
+        agent: { $ref: "#/components/schemas/AgentRef" }
+        from_number: { type: [string, "null"] }
+        to_number: { type: [string, "null"] }
+        channel: { $ref: "#/components/schemas/Channel" }
+        origin: { $ref: "#/components/schemas/Origin" }
+        disconnect_reason:
+          oneOf:
+            - { $ref: "#/components/schemas/DisconnectReason" }
+            - { type: "null" }
+        duration_s: { type: integer, minimum: 0 }
+        status: { $ref: "#/components/schemas/CallStatus" }
+        cost_usd: { type: [number, "null"] }
+        latency_avg_ms: { type: [integer, "null"] }
+        has_recording: { type: boolean }
+        summary: { type: [string, "null"] }
+        sentiment:
+          oneOf:
+            - { $ref: "#/components/schemas/Sentiment" }
+            - { type: "null" }
+        analysis_values:
+          type: [object, "null"]
+          additionalProperties: true
+        quality: { $ref: "#/components/schemas/QualitySummary" }
+    CallPage:
+      type: object
+      required: [items, total, page, page_size, total_pages]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CallListItem" }
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
+    LatencySummary:
+      type: object
+      required: [turns_measured]
+      properties:
+        avg_ms: { type: [integer, "null"] }
+        p50_ms: { type: [integer, "null"] }
+        p95_ms: { type: [integer, "null"] }
+        turns_measured: { type: integer }
+    CostLine:
+      type: object
+      required: [component, rate_per_min_usd, billed_minutes, cost_usd]
+      properties:
+        component: { type: string, enum: [stt, llm, tts, nc, platform] }
+        provider: { type: [string, "null"] }
+        model: { type: [string, "null"] }
+        rate_per_min_usd: { type: number }
+        billed_minutes: { type: number }
+        cost_usd: { type: number }
+    SurchargeLine:
+      type: object
+      required: [component, label, surcharge_usd, multiplier]
+      properties:
+        component: { type: string, enum: [llm, tts] }
+        label: { type: string, examples: ["Model token surcharge", "Speech character surcharge"] }
+        surcharge_usd: { type: number }
+        multiplier: { type: number, description: "billed_minutes / duration_minutes, e.g. 1.13" }
+    CostView:
+      type: object
+      required: [header, lines, surcharges, catalog_version]
+      properties:
+        header:
+          type: object
+          required: [duration_s, billed_minutes, avg_rate_per_min_usd, total_usd]
+          properties:
+            duration_s: { type: integer }
+            billed_minutes: { type: number }
+            avg_rate_per_min_usd: { type: number }
+            total_usd: { type: number }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/CostLine" }
+        surcharges:
+          type: array
+          items: { $ref: "#/components/schemas/SurchargeLine" }
+        catalog_version: { type: string }
+    CallDetail:
+      allOf:
+        - $ref: "#/components/schemas/CallListItem"
+        - type: object
+          required: [agent_version_id, latency, processing_state]
+          properties:
+            agent_version_id: { type: string }
+            agent_version_label: { type: [string, "null"] }
+            ended_at: { type: [string, "null"], format: date-time }
+            latency: { $ref: "#/components/schemas/LatencySummary" }
+            cost:
+              oneOf:
+                - { $ref: "#/components/schemas/CostView" }
+                - { type: "null" }
+            processing_state: { type: string, enum: [pending, done] }
+    TranscriptItem:
+      oneOf:
+        - type: object
+          required: [id, type, role, text, interrupted, offset_ms]
+          properties:
+            id: { type: string }
+            type: { const: message }
+            role: { type: string, enum: [user, agent] }
+            text: { type: string }
+            interrupted: { type: boolean }
+            stt_confidence: { type: [number, "null"], minimum: 0, maximum: 1 }
+            offset_ms: { type: integer }
+            turn_index: { type: [integer, "null"] }
+        - type: object
+          required: [id, type, tool_name, arguments, offset_ms]
+          properties:
+            id: { type: string }
+            type: { const: tool_call }
+            tool_name: { type: string }
+            arguments: { type: object, additionalProperties: true }
+            offset_ms: { type: integer }
+            turn_index: { type: [integer, "null"] }
+        - type: object
+          required: [id, type, tool_call_id, tool_name, output, is_error, offset_ms]
+          properties:
+            id: { type: string }
+            type: { const: tool_result }
+            tool_call_id: { type: string }
+            tool_name: { type: string }
+            output: { type: string }
+            is_error: { type: boolean }
+            duration_ms: { type: [integer, "null"] }
+            offset_ms: { type: integer }
+      discriminator: { propertyName: type }
+    TurnLatency:
+      type: object
+      required: [turn_index]
+      properties:
+        turn_index: { type: integer }
+        stt_final_ms: { type: [integer, "null"] }
+        llm_ttft_ms: { type: [integer, "null"] }
+        tts_ttfb_ms: { type: [integer, "null"] }
+        e2e_ms: { type: [integer, "null"] }
+    FlowTransition:
+      type: object
+      required: [sequence, from_node_id, to_node_id]
+      properties:
+        sequence: { type: integer }
+        from_node_id: { type: string }
+        from_node_label: { type: [string, "null"] }
+        to_node_id: { type: string }
+        to_node_label: { type: [string, "null"] }
+        transition_label: { type: [string, "null"] }
+        occurred_offset_ms: { type: [integer, "null"] }
+    VerdictSide:
+      type: object
+      properties:
+        verdict: { type: [string, "null"], enum: [pass, fail, not_applicable, null] }
+        score: { type: [number, "null"] }
+    CallComparison:
+      type: object
+      required: [left, right, right_kind, alignment, flow_diff, verdict_diffs]
+      properties:
+        left: { $ref: "#/components/schemas/CallDetail" }
+        right: { $ref: "#/components/schemas/CallDetail" }
+        right_kind: { type: string, enum: [call, simulation] }
+        simulation_run_id: { type: [string, "null"] }
+        alignment:
+          type: array
+          items:
+            type: object
+            properties:
+              turn_index: { type: integer }
+              left_item_ids: { type: array, items: { type: string } }
+              right_item_ids: { type: array, items: { type: string } }
+        flow_diff:
+          type: array
+          items:
+            type: object
+            properties:
+              sequence: { type: integer }
+              left_node_id: { type: [string, "null"] }
+              right_node_id: { type: [string, "null"] }
+              differs: { type: boolean }
+        verdict_diffs:
+          type: array
+          items:
+            type: object
+            properties:
+              evaluator_id: { type: string }
+              evaluator_name: { type: string }
+              left: { $ref: "#/components/schemas/VerdictSide" }
+              right: { $ref: "#/components/schemas/VerdictSide" }
+              score_delta: { type: [number, "null"] }
+              right_rationale: { type: [string, "null"] }

@@ -1,0 +1,68 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, recordings module
+  version: 0.1.0
+  description: Short-lived signed links to call recordings (Principle V). Owned by spec 006.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /calls/{call_id}/recording:
+    get:
+      operationId: getRecordingLink
+      summary: Get a signed recording link valid for at most 10 minutes
+      parameters:
+        - name: call_id
+          in: path
+          required: true
+          schema: { type: string, pattern: "^call_" }
+        - name: disposition
+          in: query
+          description: inline for playback, attachment for download (filename call_<id>.<ext>).
+          schema: { type: string, enum: [inline, attachment], default: inline }
+      responses:
+        "200":
+          description: Signed link
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordingLink" }
+        "404":
+          description: Call not found, or the call has no recording (problem type not_recorded)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
+          description: Recording still being finalised (problem type recording_processing)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "410":
+          description: Recording deleted under the workspace retention policy (problem type recording_deleted)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    RecordingLink:
+      type: object
+      required: [url, expires_at, content_type, filename]
+      properties:
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+        content_type: { type: string, examples: [audio/ogg, audio/mpeg] }
+        filename: { type: string, examples: [call_01JABCDEFGHJKMNPQRSTVWXYZ0.ogg] }
+        duration_s: { type: [integer, "null"] }

@@ -1,0 +1,283 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, pricing module
+  version: 1.0.0
+  description: |
+    Versioned per-minute pricing catalog and the single pricing engine (research R1, R3, R4, R15).
+    Providers and models are free strings validated against catalog rows, never enums (Principle I).
+servers:
+  - url: /v1
+paths:
+  /pricing/catalog:
+    get:
+      operationId: getPricingCatalog
+      tags: [pricing]
+      security: []
+      summary: Catalog version in effect at `at` (default now). Cacheable for 5 minutes.
+      parameters:
+        - name: at
+          in: query
+          schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Catalog
+          headers:
+            Cache-Control:
+              schema: {type: string, examples: ['public, max-age=300']}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Catalog'}
+  /pricing/quote:
+    post:
+      operationId: quotePrice
+      tags: [pricing]
+      security: []
+      summary: Price a component selection per minute, and optionally a concrete call usage
+      description: |
+        Without `usage`, returns per-minute lines and the base total (agent builder cost card,
+        public calculator). With `usage`, also returns the full call breakdown exactly as
+        `charge_call` would bill it. Rate limited to 60 requests per minute per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QuoteRequest'}
+      responses:
+        '200':
+          description: Quote
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quote'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+        '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+  /admin/pricing/versions:
+    get:
+      operationId: listPricingVersions
+      tags: [pricing, admin]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: './core.yaml#/components/parameters/Page'}
+        - {$ref: './core.yaml#/components/parameters/PageSize'}
+      responses:
+        '200':
+          description: Versions newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: './core.yaml#/components/schemas/PageMeta'}
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: {$ref: '#/components/schemas/CatalogVersionSummary'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '403': {$ref: './core.yaml#/components/responses/Forbidden'}
+    post:
+      operationId: publishPricingVersion
+      tags: [pricing, admin]
+      security: [{bearerAuth: []}]
+      summary: Publish a complete new catalog version (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [effective_from, entries]
+              properties:
+                effective_from:
+                  type: string
+                  format: date-time
+                  description: Must be later than the current version's effective_from and not in the past.
+                notes: {type: string, maxLength: 500}
+                entries:
+                  type: array
+                  minItems: 1
+                  items: {$ref: '#/components/schemas/CatalogEntry'}
+      responses:
+        '201':
+          description: Published
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Catalog'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '403': {$ref: './core.yaml#/components/responses/Forbidden'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Component:
+      type: string
+      enum: [stt, llm, tts, nc, platform]
+    BundleUnit:
+      type: string
+      enum: [llm_input_tokens, llm_output_tokens, tts_chars]
+    Bundle:
+      type: object
+      required: [unit, per_min]
+      properties:
+        unit: {$ref: '#/components/schemas/BundleUnit'}
+        per_min: {type: integer, minimum: 1, examples: [20000, 200, 750]}
+    CatalogEntry:
+      type: object
+      required: [component, provider, model, label, rate_per_min_usd, bundles]
+      properties:
+        component: {$ref: '#/components/schemas/Component'}
+        provider: {type: string, pattern: '^[a-z0-9_]+$', examples: [deepgram, azure_openai, callwright]}
+        model:
+          type: [string, 'null']
+          description: null means the provider-level fallback rate
+        label: {type: string}
+        rate_per_min_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        bundles:
+          type: array
+          description: Only llm and tts entries may carry bundles
+          items: {$ref: '#/components/schemas/Bundle'}
+    CatalogVersionSummary:
+      type: object
+      required: [version, effective_from, created_at]
+      properties:
+        version: {type: integer, minimum: 1}
+        effective_from: {type: string, format: date-time}
+        effective_to: {type: [string, 'null'], format: date-time}
+        notes: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+    Catalog:
+      type: object
+      required: [version, effective_from, entries]
+      properties:
+        version: {type: integer}
+        effective_from: {type: string, format: date-time}
+        entries:
+          type: array
+          items: {$ref: '#/components/schemas/CatalogEntry'}
+    ComponentSelection:
+      type: object
+      required: [provider]
+      properties:
+        provider: {type: string}
+        model: {type: [string, 'null']}
+    QuoteRequest:
+      type: object
+      required: [components]
+      properties:
+        components:
+          type: object
+          required: [stt, llm, tts]
+          properties:
+            stt: {$ref: '#/components/schemas/ComponentSelection'}
+            llm: {$ref: '#/components/schemas/ComponentSelection'}
+            tts: {$ref: '#/components/schemas/ComponentSelection'}
+            nc:
+              description: null or absent means no noise cancellation
+              oneOf:
+                - {$ref: '#/components/schemas/ComponentSelection'}
+                - {type: 'null'}
+        usage:
+          $ref: '#/components/schemas/CallUsageMeters'
+        at:
+          type: string
+          format: date-time
+          description: Price with the catalog version in effect at this instant (default now)
+    CallUsageMeters:
+      type: object
+      required: [duration_ms]
+      properties:
+        duration_ms: {type: integer, minimum: 0}
+        llm_input_tokens: {type: integer, minimum: 0, default: 0}
+        llm_output_tokens: {type: integer, minimum: 0, default: 0}
+        tts_chars: {type: integer, minimum: 0, default: 0}
+    QuoteLine:
+      type: object
+      required: [component, provider, model, status]
+      properties:
+        component: {$ref: '#/components/schemas/Component'}
+        provider: {type: string}
+        model: {type: [string, 'null']}
+        label: {type: [string, 'null']}
+        status:
+          type: string
+          enum: [priced, unpriced]
+          description: unpriced means no catalog row matched; the UI shows "price unavailable"
+        rate_per_min_usd:
+          oneOf:
+            - {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+            - {type: 'null'}
+        bundles:
+          type: array
+          items: {$ref: '#/components/schemas/Bundle'}
+    Quote:
+      type: object
+      required: [catalog_version, lines, per_minute_total_usd, complete]
+      properties:
+        catalog_version: {type: integer}
+        lines:
+          type: array
+          description: Always includes a platform line
+          items: {$ref: '#/components/schemas/QuoteLine'}
+        per_minute_total_usd:
+          $ref: './core.yaml#/components/schemas/MoneyUsd'
+        complete:
+          type: boolean
+          description: false when any line is unpriced; the total then covers priced lines only
+        call:
+          description: Present when `usage` was sent
+          $ref: '#/components/schemas/CostBreakdown'
+    MeterUsage:
+      type: object
+      required: [unit, used, bundle_per_min, included]
+      properties:
+        unit: {$ref: '#/components/schemas/BundleUnit'}
+        used: {type: integer}
+        bundle_per_min: {type: integer}
+        included:
+          type: string
+          description: bundle_per_min times duration_minutes, decimal string
+    CostLine:
+      type: object
+      required: [component, provider, model, rate_per_min_usd, billed_minutes, cost_usd, surcharge_usd, bundle_multiplier, meters]
+      properties:
+        component: {$ref: '#/components/schemas/Component'}
+        provider: {type: string}
+        model: {type: [string, 'null']}
+        rate_per_min_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        billed_minutes:
+          type: string
+          description: max(duration_minutes, usage / bundle_per_min) as a decimal string, 6 places
+          examples: ['5.117400']
+        cost_usd:
+          $ref: './core.yaml#/components/schemas/MoneyUsd'
+          description: rate times billed_minutes, rounded up to $0.001
+        surcharge_usd:
+          $ref: './core.yaml#/components/schemas/MoneyUsd'
+          description: rate times (billed_minutes minus duration_minutes); informational, already inside cost_usd
+        bundle_multiplier:
+          type: string
+          description: billed_minutes / duration_minutes, e.g. "1.1330"
+        meters:
+          type: array
+          items: {$ref: '#/components/schemas/MeterUsage'}
+    CostBreakdown:
+      type: object
+      required: [catalog_version, duration_ms, billed_seconds, duration_minutes, lines, total_usd]
+      properties:
+        call_id:
+          oneOf:
+            - {$ref: './core.yaml#/components/schemas/CallId'}
+            - {type: 'null'}
+        catalog_version: {type: integer}
+        duration_ms: {type: integer}
+        billed_seconds: {type: integer, description: 'ceil(duration_ms / 1000)'}
+        duration_minutes: {type: string, examples: ['4.516667']}
+        lines:
+          type: array
+          items: {$ref: '#/components/schemas/CostLine'}
+        total_usd:
+          $ref: './core.yaml#/components/schemas/MoneyUsd'
+          description: Sum of line cost_usd values

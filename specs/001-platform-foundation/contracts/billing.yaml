@@ -1,0 +1,166 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, billing module
+  version: 1.0.0
+  description: |
+    Prepaid credit: balance, hosted-checkout top-ups, the append-only transaction history and the
+    Stripe webhook (research R10 to R12). Mid-call credit checks happen inside 003's event handler
+    using billing.service.get_balance; there is no separate internal endpoint.
+servers:
+  - url: /v1
+paths:
+  /billing/balance:
+    get:
+      operationId: getBalance
+      tags: [billing]
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Current balance, derived from the ledger
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balance_usd, as_of_seq]
+                properties:
+                  balance_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+                  as_of_seq:
+                    type: integer
+                    description: Ledger sequence number the balance reflects (0 when empty)
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+  /billing/checkout-sessions:
+    post:
+      operationId: createCheckoutSession
+      tags: [billing]
+      security: [{bearerAuth: []}]
+      summary: Start a hosted checkout for a top-up
+      parameters:
+        - {$ref: './core.yaml#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_usd]
+              properties:
+                amount_usd:
+                  $ref: './core.yaml#/components/schemas/MoneyUsd'
+                  description: Minimum 5.00, maximum 10000.00. Presets in the UI are 25, 100, 500, 1000.
+      responses:
+        '201':
+          description: Redirect the browser to checkout_url
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [checkout_url, expires_at]
+                properties:
+                  checkout_url: {type: string, format: uri}
+                  expires_at: {type: string, format: date-time}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+  /billing/transactions:
+    get:
+      operationId: listTransactions
+      tags: [billing]
+      security: [{bearerAuth: []}]
+      summary: Ledger rows newest first (FR-009)
+      parameters:
+        - {$ref: './core.yaml#/components/parameters/Page'}
+        - {$ref: './core.yaml#/components/parameters/PageSize'}
+        - name: type
+          in: query
+          schema: {$ref: '#/components/schemas/TransactionType'}
+      responses:
+        '200':
+          description: Page of transactions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: './core.yaml#/components/schemas/PageMeta'}
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: {$ref: '#/components/schemas/Transaction'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+  /billing/transactions/{transaction_id}:
+    get:
+      operationId: getTransaction
+      tags: [billing]
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: transaction_id
+          in: path
+          required: true
+          schema: {$ref: './core.yaml#/components/schemas/TransactionId'}
+      responses:
+        '200':
+          description: One transaction; call charges include the cost breakdown
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Transaction'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: './core.yaml#/components/responses/NotFound'}
+  /webhooks/stripe:
+    post:
+      operationId: stripeWebhook
+      tags: [billing, webhooks]
+      security: []
+      summary: Payment provider events; verified with the Stripe-Signature header
+      description: |
+        Handled events: checkout.session.completed (paid), checkout.session.async_payment_succeeded,
+        checkout.session.expired, charge.refunded, charge.dispute.created. Every event is
+        idempotent on its payment intent, refund or dispute id. Unknown events return 200.
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        '200': {description: Accepted (including duplicates and ignored event types)}
+        '400':
+          description: Signature invalid
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    TransactionType:
+      type: string
+      enum: [top_up, call_charge, feature_charge, trial_grant, refund, adjustment]
+    Transaction:
+      type: object
+      required: [id, type, amount_usd, balance_after_usd, description, created_at]
+      properties:
+        id: {$ref: './core.yaml#/components/schemas/TransactionId'}
+        type: {$ref: '#/components/schemas/TransactionType'}
+        amount_usd:
+          $ref: './core.yaml#/components/schemas/MoneyUsd'
+          description: Positive for credits, negative for charges
+        balance_after_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+        call_id:
+          oneOf:
+            - {$ref: './core.yaml#/components/schemas/CallId'}
+            - {type: 'null'}
+        feature_key: {type: [string, 'null'], examples: [prompt_generation, eval.intent_fulfillment]}
+        description: {type: string}
+        created_at: {type: string, format: date-time}
+        cost_breakdown:
+          description: Present on call_charge rows
+          oneOf:
+            - {$ref: './pricing.yaml#/components/schemas/CostBreakdown'}
+            - {type: 'null'}

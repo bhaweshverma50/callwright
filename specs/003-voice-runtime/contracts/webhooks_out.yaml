@@ -1,0 +1,343 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, webhooks_out module
+  version: 0.1.0
+  description: >
+    Fragment owned by 003-voice-runtime. Manages the workspace signing secret and the delivery
+    log, and documents (under `webhooks`) the events Callwright sends to an agent's webhook URL.
+
+    Verifying a delivery: read `Callwright-Signature: t=<unix>,v1=<hex>[,v1=<hex>]`, compute
+    HMAC-SHA256 with your secret over the string `<t>.<raw request body>`, compare in constant
+    time with any `v1` value, and reject if `t` is more than 300 seconds from your clock.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - bearerAuth: []
+paths:
+  /webhooks/signing-secret:
+    get:
+      operationId: getWebhookSigningSecret
+      summary: Show the masked signing secret
+      tags: [webhooks]
+      responses:
+        '200':
+          description: Masked secret (created on first read if missing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningSecretMasked'
+  /webhooks/signing-secret/rotate:
+    post:
+      operationId: rotateWebhookSigningSecret
+      summary: Rotate the signing secret; the previous one keeps signing for 24 hours
+      tags: [webhooks]
+      responses:
+        '200':
+          description: New secret, shown in full exactly once
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigningSecretRevealed'
+  /webhooks/deliveries:
+    get:
+      operationId: listWebhookDeliveries
+      summary: List deliveries from the last 30 days
+      tags: [webhooks]
+      parameters:
+        - {name: call_id, in: query, schema: {type: string}}
+        - {name: event, in: query, schema: {$ref: '#/components/schemas/WebhookEventName'}}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/DeliveryStatus'}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Page of deliveries, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookDelivery'
+                  total: {type: integer}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total_pages: {type: integer}
+  /webhooks/deliveries/{delivery_id}:
+    get:
+      operationId: getWebhookDelivery
+      summary: Delivery detail with attempts and body
+      tags: [webhooks]
+      parameters:
+        - $ref: '#/components/parameters/DeliveryId'
+      responses:
+        '200':
+          description: Delivery
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/WebhookDelivery'
+                  - type: object
+                    properties:
+                      body:
+                        type: string
+                        description: Exact JSON body that was signed and sent.
+        '404':
+          $ref: '#/components/responses/Problem'
+  /webhooks/deliveries/{delivery_id}/redeliver:
+    post:
+      operationId: redeliverWebhook
+      summary: Send the same body again as a new delivery (fresh signature and timestamp)
+      tags: [webhooks]
+      parameters:
+        - $ref: '#/components/parameters/DeliveryId'
+      responses:
+        '202':
+          description: New delivery queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDelivery'
+        '404':
+          $ref: '#/components/responses/Problem'
+  /webhooks/test:
+    post:
+      operationId: sendWebhookTest
+      summary: Send a signed `ping` event to a URL and wait for the result
+      tags: [webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: {type: string, format: uri, maxLength: 2048}
+                timeout_ms: {type: integer, minimum: 1000, maximum: 30000, default: 3000}
+      responses:
+        '200':
+          description: Result of the single attempt (no retries for tests)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryAttempt'
+        '422':
+          description: URL rejected (`url-not-allowed`), for example a private address
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+webhooks:
+  call_started:
+    post:
+      summary: Sent when a call connects
+      parameters:
+        - $ref: '#/components/parameters/SignatureHeader'
+        - $ref: '#/components/parameters/EventHeader'
+        - $ref: '#/components/parameters/DeliveryHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookEnvelope'
+      responses:
+        '200':
+          description: Any 2xx acknowledges the event
+  call_ended:
+    post:
+      summary: Sent when a call ends, including calls that never connected
+      parameters:
+        - $ref: '#/components/parameters/SignatureHeader'
+        - $ref: '#/components/parameters/EventHeader'
+        - $ref: '#/components/parameters/DeliveryHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookEnvelope'
+      responses:
+        '200':
+          description: Any 2xx acknowledges the event
+  call_analyzed:
+    post:
+      summary: Sent after post-call processing; includes transcript, analysis and cost
+      parameters:
+        - $ref: '#/components/parameters/SignatureHeader'
+        - $ref: '#/components/parameters/EventHeader'
+        - $ref: '#/components/parameters/DeliveryHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookEnvelope'
+      responses:
+        '200':
+          description: Any 2xx acknowledges the event
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DeliveryId:
+      name: delivery_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^whd_[0-9A-HJKMNP-TV-Z]{26}$'
+    SignatureHeader:
+      name: Callwright-Signature
+      in: header
+      required: true
+      schema:
+        type: string
+        examples: ['t=1760600000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd']
+    EventHeader:
+      name: Callwright-Event
+      in: header
+      required: true
+      schema:
+        $ref: '#/components/schemas/WebhookEventName'
+    DeliveryHeader:
+      name: Callwright-Delivery
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    WebhookEventName:
+      type: string
+      enum: [call_started, call_ended, call_analyzed, ping]
+    DeliveryStatus:
+      type: string
+      enum: [pending, delivering, succeeded, failed, blocked]
+    SigningSecretMasked:
+      type: object
+      required: [secret_last4, created_at]
+      properties:
+        secret_last4: {type: string}
+        created_at: {type: string, format: date-time}
+        rotated_at: {type: [string, 'null'], format: date-time}
+        previous_expires_at: {type: [string, 'null'], format: date-time}
+    SigningSecretRevealed:
+      allOf:
+        - $ref: '#/components/schemas/SigningSecretMasked'
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              type: string
+              pattern: '^whsec_[A-Za-z0-9_-]{43}$'
+    DeliveryAttempt:
+      type: object
+      required: [n, at]
+      properties:
+        n: {type: integer, minimum: 1, maximum: 6}
+        at: {type: string, format: date-time}
+        status_code: {type: [integer, 'null']}
+        duration_ms: {type: [integer, 'null']}
+        error:
+          type: [string, 'null']
+          description: '`timeout`, `connection_error`, `url_not_allowed`, or a short message.'
+        response_excerpt:
+          type: [string, 'null']
+          maxLength: 1024
+    WebhookDelivery:
+      type: object
+      required: [id, event, url, status, attempts, created_at]
+      properties:
+        id: {type: string}
+        call_id: {type: [string, 'null']}
+        event: {$ref: '#/components/schemas/WebhookEventName'}
+        url: {type: string}
+        status: {$ref: '#/components/schemas/DeliveryStatus'}
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliveryAttempt'
+        next_attempt_at: {type: [string, 'null'], format: date-time}
+        redelivery_of: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        completed_at: {type: [string, 'null'], format: date-time}
+    WebhookEnvelope:
+      type: object
+      required: [event, event_id, occurred_at, call]
+      properties:
+        event: {$ref: '#/components/schemas/WebhookEventName'}
+        event_id:
+          type: string
+          description: Stable across retries and redeliveries of the same event; use it to de-duplicate.
+        occurred_at: {type: string, format: date-time}
+        call:
+          $ref: '#/components/schemas/WebhookCall'
+    WebhookCall:
+      type: object
+      required: [call_id, agent_id, agent_version_id, channel, direction, status, created_at]
+      properties:
+        call_id: {type: string}
+        agent_id: {type: string}
+        agent_version_id: {type: string}
+        channel: {type: string, enum: [web, sip_inbound, sip_outbound, whatsapp]}
+        direction: {type: string, enum: [inbound, outbound]}
+        from_number: {type: [string, 'null']}
+        to_number: {type: [string, 'null']}
+        status:
+          type: string
+          enum: [queued, ringing, in_progress, ended, processing, completed, failed, no_answer, busy, voicemail]
+        disconnect_reason:
+          type: [string, 'null']
+          enum: [user_hangup, agent_hangup, call_transfer, voicemail_reached, inactivity,
+                 max_duration_reached, error, concurrency_limit, insufficient_credit, null]
+        created_at: {type: string, format: date-time}
+        connected_at: {type: [string, 'null'], format: date-time}
+        ended_at: {type: [string, 'null'], format: date-time}
+        billable_seconds: {type: [integer, 'null']}
+        dynamic_variables: {type: object, additionalProperties: {type: string}}
+        metadata: {type: object, additionalProperties: true}
+        transcript:
+          description: call_analyzed only
+          type: [object, 'null']
+          properties:
+            items:
+              type: array
+              items: {type: object, additionalProperties: true}
+        summary: {type: [string, 'null']}
+        sentiment: {type: [string, 'null']}
+        analysis: {type: [object, 'null'], additionalProperties: true}
+        cost:
+          description: call_analyzed only; breakdown as defined by 001 pricing
+          type: [object, 'null']
+          additionalProperties: true
+        latency:
+          type: [object, 'null']
+          additionalProperties: {type: [integer, 'null']}
+        recording_url:
+          type: [string, 'null']
+          format: uri
+          description: Signed, valid 10 minutes. Fetch a fresh one from the calls API after that.
+        processing_warnings:
+          type: array
+          items: {type: string}
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}

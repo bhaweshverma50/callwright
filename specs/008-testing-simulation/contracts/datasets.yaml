@@ -1,0 +1,288 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, datasets module
+  version: 0.1.0
+  description: >
+    Fragment owned by 008-testing-simulation (services/api/app/datasets). Named lists of
+    completed live calls of one agent, used as regression suites. Batches from a dataset are
+    started with POST /experiments (simulator module). Shared components marked x-owner 001 are
+    repeated for validation only.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: datasets
+paths:
+  /datasets:
+    get:
+      tags: [datasets]
+      operationId: listDatasets
+      parameters:
+        - { name: agent_id, in: query, schema: { type: string, pattern: '^agt_' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Datasets, most recently updated first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Dataset' }
+    post:
+      tags: [datasets]
+      operationId: createDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, agent_id]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+                description: { type: [string, 'null'], maxLength: 500 }
+                agent_id: { type: string, pattern: '^agt_' }
+                call_ids:
+                  type: array
+                  maxItems: 1000
+                  items: { type: string, pattern: '^call_' }
+                  description: Optional initial items (same rules as add items)
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Dataset' }
+                  - type: object
+                    properties:
+                      add_result: { $ref: '#/components/schemas/AddItemsResult' }
+        '409':
+          description: Name already in use (case-insensitive)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /datasets/{dataset_id}:
+    parameters:
+      - { $ref: '#/components/parameters/DatasetId' }
+    get:
+      tags: [datasets]
+      operationId: getDataset
+      responses:
+        '200':
+          description: Dataset
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dataset' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [datasets]
+      operationId: updateDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+                description: { type: [string, 'null'], maxLength: 500 }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dataset' }
+        '409':
+          description: Name already in use
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    delete:
+      tags: [datasets]
+      operationId: deleteDataset
+      responses:
+        '204': { description: Dataset and item links removed; calls untouched }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /datasets/{dataset_id}/items:
+    parameters:
+      - { $ref: '#/components/parameters/DatasetId' }
+    get:
+      tags: [datasets]
+      operationId: listDatasetItems
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Items, most recently added first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/PageMeta' }
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/DatasetItem' }
+    post:
+      tags: [datasets]
+      operationId: addDatasetItems
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [call_ids]
+              properties:
+                call_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items: { type: string, pattern: '^call_' }
+      responses:
+        '200':
+          description: Outcome per call
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AddItemsResult' }
+        '422':
+          description: Would exceed 1,000 items
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /datasets/{dataset_id}/items/{call_id}:
+    delete:
+      tags: [datasets]
+      operationId: removeDatasetItem
+      parameters:
+        - { $ref: '#/components/parameters/DatasetId' }
+        - { name: call_id, in: path, required: true, schema: { type: string, pattern: '^call_' } }
+      responses:
+        '204': { description: Removed }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /datasets/{dataset_id}/evaluate:
+    post:
+      tags: [datasets]
+      operationId: evaluateDataset
+      summary: Queue every enabled evaluator on every available call (charged by 007 per evaluation)
+      parameters:
+        - { $ref: '#/components/parameters/DatasetId' }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                only_missing: { type: boolean, default: false, description: Skip calls that already have results from the current evaluator versions }
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enqueued, skipped_unavailable]
+                properties:
+                  enqueued: { type: integer }
+                  skipped_up_to_date: { type: integer }
+                  skipped_unavailable: { type: integer }
+        '402':
+          description: Balance at or below zero
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    DatasetId: { name: dataset_id, in: path, required: true, schema: { type: string, pattern: '^ds_' } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      x-owner: '001'
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    PageMeta:
+      x-owner: '001'
+      type: object
+      required: [total, page, page_size, total_pages]
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        total_pages: { type: integer }
+    Dataset:
+      type: object
+      required: [dataset_id, name, agent_id, item_count, created_at, updated_at]
+      properties:
+        dataset_id: { type: string, pattern: '^ds_' }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        agent_id: { type: string }
+        agent_name: { type: string }
+        item_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    DatasetItem:
+      type: object
+      required: [call_id, added_at, available]
+      properties:
+        call_id: { type: string }
+        added_at: { type: string, format: date-time }
+        available: { type: boolean, description: false when the transcript was purged by retention }
+        started_at: { type: [string, 'null'], format: date-time }
+        duration_s: { type: [integer, 'null'] }
+        call_status: { type: [string, 'null'] }
+        eval_status: { type: [string, 'null'] }
+        sentiment: { type: [string, 'null'], enum: [positive, neutral, negative, null] }
+    AddItemsResult:
+      type: object
+      required: [added, skipped_duplicates, skipped_invalid, invalid]
+      properties:
+        added: { type: integer }
+        skipped_duplicates: { type: integer }
+        skipped_invalid: { type: integer }
+        invalid:
+          type: array
+          items:
+            type: object
+            required: [call_id, reason]
+            properties:
+              call_id: { type: string }
+              reason: { type: string, enum: [not_found, wrong_agent, simulated_call, not_completed, unavailable] }

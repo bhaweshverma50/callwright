@@ -1,0 +1,362 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, call_events module (internal)
+  version: 0.1.0
+  description: >
+    Fragment owned by 003-voice-runtime. The voice worker posts batches of call events: status
+    changes, per-turn latency, transcript items, cumulative usage, tool and flow activity (from
+    005 and 004 hooks), keypad turns, warnings and errors. Every post is also a heartbeat and a
+    mid-call credit check; the response may instruct the worker to end the call.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - serviceToken: []
+paths:
+  /internal/calls/{call_id}/events:
+    post:
+      operationId: postCallEvents
+      summary: Append runtime events for a call (idempotent per seq)
+      tags: [call-events-internal]
+      parameters:
+        - name: call_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventBatch'
+      responses:
+        '200':
+          description: Batch accepted; duplicates by `seq` are ignored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventBatchResult'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Call is in a terminal or processing state; worker should stop posting.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+components:
+  securitySchemes:
+    serviceToken:
+      type: http
+      scheme: bearer
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    EventBatch:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 0
+          maxItems: 200
+          description: Empty batch is a pure heartbeat.
+          items:
+            $ref: '#/components/schemas/CallEvent'
+    EventBatchResult:
+      type: object
+      required: [accepted, duplicates, control]
+      properties:
+        accepted:
+          type: integer
+        duplicates:
+          type: integer
+        control:
+          type: object
+          required: [action]
+          properties:
+            action:
+              type: string
+              enum: [none, end_call]
+            disconnect_reason:
+              type: string
+              enum: [insufficient_credit, error]
+    EventBase:
+      type: object
+      required: [seq, type, occurred_at]
+      properties:
+        seq:
+          type: integer
+          minimum: 1
+        type:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        offset_ms:
+          type: [integer, 'null']
+          description: Milliseconds since connection; null before connection.
+    CallEvent:
+      oneOf:
+        - $ref: '#/components/schemas/StatusEvent'
+        - $ref: '#/components/schemas/TurnEvent'
+        - $ref: '#/components/schemas/TranscriptItemEvent'
+        - $ref: '#/components/schemas/UsageEvent'
+        - $ref: '#/components/schemas/ToolCallEvent'
+        - $ref: '#/components/schemas/FlowTransitionEvent'
+        - $ref: '#/components/schemas/DtmfEvent'
+        - $ref: '#/components/schemas/WarningEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          status: '#/components/schemas/StatusEvent'
+          turn: '#/components/schemas/TurnEvent'
+          transcript_item: '#/components/schemas/TranscriptItemEvent'
+          usage: '#/components/schemas/UsageEvent'
+          tool_call: '#/components/schemas/ToolCallEvent'
+          flow_transition: '#/components/schemas/FlowTransitionEvent'
+          dtmf: '#/components/schemas/DtmfEvent'
+          warning: '#/components/schemas/WarningEvent'
+          error: '#/components/schemas/WarningEvent'
+    StatusEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [status]
+          properties:
+            type:
+              const: status
+            status:
+              type: string
+              enum: [ringing, in_progress, ended, no_answer, busy, failed]
+            disconnect_reason:
+              type: string
+              enum: [user_hangup, agent_hangup, call_transfer, voicemail_reached, inactivity,
+                     max_duration_reached, error, concurrency_limit, insufficient_credit]
+            diagnostic:
+              type: string
+            sip_status_code:
+              type: integer
+    TurnEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [turn_index]
+          properties:
+            type:
+              const: turn
+            turn_index:
+              type: integer
+              minimum: 0
+              description: 0 is the opening line; e2e_ms then holds greeting latency.
+            stt_final_ms:
+              type: [integer, 'null']
+            eou_delay_ms:
+              type: [integer, 'null']
+            llm_ttft_ms:
+              type: [integer, 'null']
+            tts_ttfb_ms:
+              type: [integer, 'null']
+            e2e_ms:
+              type: [integer, 'null']
+            tool_ms:
+              type: [integer, 'null']
+            interrupted:
+              type: boolean
+    TranscriptItemEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [item]
+          properties:
+            type:
+              const: transcript_item
+            item:
+              $ref: '#/components/schemas/TranscriptItem'
+    TranscriptItem:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [message, tool_call, tool_result, flow_transition, system]
+        role:
+          type: string
+          enum: [user, agent]
+        text:
+          type: string
+        started_ms:
+          type: integer
+        ended_ms:
+          type: integer
+        turn_index:
+          type: integer
+        interrupted:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        source:
+          type: string
+          enum: [voice, keypad]
+        ref:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: object
+          additionalProperties: true
+        output:
+          type: string
+          maxLength: 8192
+        is_error:
+          type: boolean
+        duration_ms:
+          type: integer
+        from_node_id:
+          type: string
+        to_node_id:
+          type: string
+        label:
+          type: string
+        event:
+          type: string
+          enum: [voicemail_detected, silence_timeout, max_duration, credit_exhausted, vendor_error]
+        detail:
+          type: string
+        at_ms:
+          type: integer
+    UsageEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [usage]
+          properties:
+            type:
+              const: usage
+            usage:
+              $ref: '#/components/schemas/UsageSnapshot'
+    UsageSnapshot:
+      type: object
+      description: Cumulative counters since call start. Lower `seq` than stored is ignored.
+      properties:
+        stt:
+          type: array
+          items:
+            type: object
+            required: [provider, audio_ms]
+            properties:
+              provider: {type: string}
+              model: {type: [string, 'null']}
+              audio_ms: {type: integer, minimum: 0}
+        llm:
+          type: array
+          items:
+            type: object
+            required: [provider, model, input_tokens, output_tokens]
+            properties:
+              provider: {type: string}
+              model: {type: string}
+              input_tokens: {type: integer, minimum: 0}
+              cached_input_tokens: {type: integer, minimum: 0}
+              output_tokens: {type: integer, minimum: 0}
+        tts:
+          type: array
+          items:
+            type: object
+            required: [provider, characters]
+            properties:
+              provider: {type: string}
+              model: {type: [string, 'null']}
+              characters: {type: integer, minimum: 0}
+        nc:
+          type: array
+          items:
+            type: object
+            required: [provider, audio_ms]
+            properties:
+              provider: {type: string}
+              audio_ms: {type: integer, minimum: 0}
+    ToolCallEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [name]
+          description: Emitted through the 005 tool hook; mirrored as transcript items.
+          properties:
+            type:
+              const: tool_call
+            ref: {type: string}
+            name: {type: string}
+            arguments: {type: object, additionalProperties: true}
+            output: {type: string, maxLength: 8192}
+            is_error: {type: boolean}
+            duration_ms: {type: integer}
+    FlowTransitionEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [to_node_id]
+          description: Emitted through the 004 flow hook.
+          properties:
+            type:
+              const: flow_transition
+            from_node_id: {type: [string, 'null']}
+            to_node_id: {type: string}
+            label: {type: string}
+    DtmfEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [digits, direction]
+          properties:
+            type:
+              const: dtmf
+            digits:
+              type: string
+              pattern: '^[0-9*#]{1,99}$'
+            direction:
+              type: string
+              enum: [received, sent]
+            flush_reason:
+              type: string
+              enum: [termination_key, digit_limit, timeout]
+    WarningEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [code]
+          properties:
+            type:
+              enum: [warning, error]
+            code:
+              type: string
+              examples: [background_audio_unavailable, config_value_clamped, vendor_retry, vendor_error]
+            component:
+              type: string
+              enum: [stt, llm, tts, nc, vad, runtime, recording]
+            provider:
+              type: string
+            detail:
+              type: string
+              maxLength: 2000
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}

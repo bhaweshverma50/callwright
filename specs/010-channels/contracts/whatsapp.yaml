@@ -1,0 +1,409 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, whatsapp module
+  version: 0.1.0
+  description: >
+    Fragment owned by 010-channels. WhatsApp Business voice channels: create with credentials,
+    automatic calling setup, webhook verification, default agent, caller routes. Includes the
+    unauthenticated callback endpoints WhatsApp calls.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - bearerAuth: []
+paths:
+  /whatsapp/settings:
+    get:
+      operationId: getWhatsAppSettings
+      summary: Callback URL to paste into the WhatsApp app configuration
+      tags: [whatsapp]
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [callback_url, default_graph_api_version]
+                properties:
+                  callback_url: {type: string, format: uri, examples: ['https://api.callwright.example/v1/whatsapp/webhook']}
+                  default_graph_api_version: {type: string, examples: ['v23.0']}
+  /whatsapp/channels:
+    get:
+      operationId: listWhatsAppChannels
+      tags: [whatsapp]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Channels in this workspace (deleted excluded)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/WhatsAppChannel'}
+                  total: {type: integer}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total_pages: {type: integer}
+    post:
+      operationId: createWhatsAppChannel
+      summary: Connect a WhatsApp Business number for voice
+      description: >
+        Checks the token and number with WhatsApp first; if that fails nothing is saved (422).
+        Then enables calling and creates routing; failures there save the channel in `error`.
+      tags: [whatsapp]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WhatsAppChannelCreate'}
+      responses:
+        '201':
+          description: Created (`setup_incomplete` until verification, or `error` with detail)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WhatsAppChannel'}
+        '409':
+          description: '`whatsapp-number-already-connected` or `verify-token-in-use`'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: >
+            Validation, `whatsapp-token-rejected` (detail carries WhatsApp's message), or
+            `whatsapp-number-mismatch` (detail names both numbers).
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /whatsapp/channels/{channel_id}:
+    parameters:
+      - $ref: '#/components/parameters/ChannelId'
+    get:
+      operationId: getWhatsAppChannel
+      tags: [whatsapp]
+      responses:
+        '200':
+          description: Channel
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WhatsAppChannel'}
+        '404': {$ref: '#/components/responses/Problem'}
+    patch:
+      operationId: updateWhatsAppChannel
+      summary: Edit a channel; omitted fields unchanged; empty or omitted access_token keeps the current one
+      tags: [whatsapp]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WhatsAppChannelUpdate'}
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WhatsAppChannel'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409':
+          description: Channel is draining, or verify token used by another channel
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: Validation or WhatsApp rejected new credentials (nothing changed)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+    delete:
+      operationId: deleteWhatsAppChannel
+      tags: [whatsapp]
+      parameters:
+        - name: when_idle
+          in: query
+          schema: {type: boolean, default: false}
+      responses:
+        '202':
+          description: Draining
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WhatsAppChannel'}
+        '204':
+          description: Deleted
+        '404': {$ref: '#/components/responses/Problem'}
+        '409':
+          description: '`channel-has-active-calls` with `active_call_count`'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ActiveCallsProblem'}
+  /whatsapp/channels/{channel_id}/retry-setup:
+    parameters:
+      - $ref: '#/components/parameters/ChannelId'
+    post:
+      operationId: retryWhatsAppSetup
+      tags: [whatsapp]
+      responses:
+        '200':
+          description: Result of the retry
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WhatsAppChannel'}
+  /whatsapp/channels/{channel_id}/caller-routes:
+    parameters:
+      - $ref: '#/components/parameters/ChannelId'
+    get:
+      operationId: listCallerRoutes
+      tags: [whatsapp]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - {name: caller, in: query, description: Prefix search on caller number, schema: {type: string}}
+      responses:
+        '200':
+          description: Routes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/CallerRoute'}
+                  total: {type: integer}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total_pages: {type: integer}
+    post:
+      operationId: createCallerRoute
+      tags: [whatsapp]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [caller_number, agent_id]
+              properties:
+                caller_number:
+                  type: string
+                  description: E.164; digits without "+" are accepted and normalised.
+                agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CallerRoute'}
+        '409':
+          description: '`duplicate-caller-route` or `route-limit-reached` (1,000 per channel)'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: Invalid number, or agent not in workspace or not published
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /whatsapp/channels/{channel_id}/caller-routes/{route_id}:
+    parameters:
+      - $ref: '#/components/parameters/ChannelId'
+      - name: route_id
+        in: path
+        required: true
+        schema: {type: string, pattern: '^wcr_[0-9A-HJKMNP-TV-Z]{26}$'}
+    patch:
+      operationId: updateCallerRoute
+      tags: [whatsapp]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [agent_id]
+              properties:
+                agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CallerRoute'}
+        '404': {$ref: '#/components/responses/Problem'}
+    delete:
+      operationId: deleteCallerRoute
+      tags: [whatsapp]
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/Problem'}
+  /whatsapp/webhook:
+    get:
+      operationId: verifyWhatsAppWebhook
+      summary: WhatsApp callback verification (public)
+      tags: [whatsapp-public]
+      security: []
+      parameters:
+        - {name: hub.mode, in: query, required: true, schema: {type: string, const: subscribe}}
+        - {name: hub.verify_token, in: query, required: true, schema: {type: string}}
+        - {name: hub.challenge, in: query, required: true, schema: {type: string, maxLength: 256}}
+      responses:
+        '200':
+          description: Echo of `hub.challenge` when the verify token matches a channel
+          content:
+            text/plain:
+              schema: {type: string}
+        '403':
+          description: No channel has this verify token
+    post:
+      operationId: receiveWhatsAppWebhook
+      summary: WhatsApp notifications (public, signed with the app secret)
+      tags: [whatsapp-public]
+      security: []
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema: {type: string, pattern: '^sha256=[0-9a-f]{64}$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [object, entry]
+              properties:
+                object: {type: string, const: whatsapp_business_account}
+                entry:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id: {type: string}
+                      changes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field: {type: string, examples: [calls, messages]}
+                            value:
+                              type: object
+                              properties:
+                                metadata:
+                                  type: object
+                                  properties:
+                                    phone_number_id: {type: string}
+                                    display_phone_number: {type: string}
+                              additionalProperties: true
+      responses:
+        '200':
+          description: Accepted, or ignored for unknown numbers
+        '401':
+          description: Signature does not match the channel's app secret
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ChannelId:
+      name: channel_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^wa_[0-9A-HJKMNP-TV-Z]{26}$'}
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    E164:
+      type: string
+      pattern: '^\+[1-9]\d{1,14}$'
+    WhatsAppChannelStatus:
+      type: string
+      enum: [setup_incomplete, active, error, draining]
+    WhatsAppChannelCreate:
+      type: object
+      additionalProperties: false
+      required: [meta_phone_number_id, e164, label, access_token, verify_token, app_secret]
+      properties:
+        meta_phone_number_id: {type: string, pattern: '^\d{5,32}$'}
+        e164: {$ref: '#/components/schemas/E164'}
+        label: {type: string, minLength: 1, maxLength: 100}
+        access_token: {type: string, minLength: 1, maxLength: 1024, writeOnly: true}
+        verify_token: {type: string, minLength: 8, maxLength: 128, writeOnly: true}
+        app_secret: {type: string, minLength: 1, maxLength: 1024, writeOnly: true}
+        graph_api_version: {type: string, pattern: '^v?\d+\.\d+$'}
+        inbound_agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
+        inbound_webhook_url: {type: string, format: uri, maxLength: 2048}
+    WhatsAppChannelUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label: {type: string, minLength: 1, maxLength: 100}
+        access_token: {type: string, maxLength: 1024, writeOnly: true}
+        verify_token: {type: string, minLength: 8, maxLength: 128, writeOnly: true}
+        app_secret: {type: string, minLength: 1, maxLength: 1024, writeOnly: true}
+        graph_api_version: {type: string, pattern: '^v?\d+\.\d+$'}
+        inbound_agent_id: {type: [string, 'null']}
+        inbound_webhook_url: {type: [string, 'null'], format: uri, maxLength: 2048}
+    WhatsAppChannel:
+      type: object
+      required: [id, meta_phone_number_id, e164, label, graph_api_version, status, active_call_count, created_at]
+      properties:
+        id: {type: string}
+        meta_phone_number_id: {type: string}
+        e164: {$ref: '#/components/schemas/E164'}
+        label: {type: string}
+        access_token_last4: {type: string}
+        verify_token_last4: {type: string}
+        has_app_secret: {type: boolean}
+        graph_api_version: {type: string}
+        inbound_agent_id: {type: [string, 'null']}
+        inbound_webhook_url: {type: [string, 'null']}
+        caller_route_count: {type: integer}
+        status: {$ref: '#/components/schemas/WhatsAppChannelStatus'}
+        status_detail: {type: [string, 'null']}
+        credentials_verified_at: {type: [string, 'null'], format: date-time}
+        calling_enabled_at: {type: [string, 'null'], format: date-time}
+        webhook_verified_at: {type: [string, 'null'], format: date-time}
+        last_webhook_at: {type: [string, 'null'], format: date-time}
+        active_call_count: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CallerRoute:
+      type: object
+      required: [id, channel_id, caller_number, agent_id, created_at]
+      properties:
+        id: {type: string}
+        channel_id: {type: string}
+        caller_number: {$ref: '#/components/schemas/E164'}
+        agent_id: {type: string}
+        agent_published: {type: boolean, description: False means the route is currently skipped.}
+        created_at: {type: string, format: date-time}
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+    ActiveCallsProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [active_call_count]
+          properties:
+            active_call_count: {type: integer, minimum: 1}

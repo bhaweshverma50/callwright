@@ -1,0 +1,199 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, auth module
+  version: 1.0.0
+  description: |
+    Thin wrapper over the identity provider (research R5). Adds per-account throttling,
+    workspace bootstrap on verification, and global sign-out.
+servers:
+  - url: /v1
+paths:
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      security: []
+      summary: Create an account and send a verification email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email, maxLength: 254}
+                password: {type: string, minLength: 10, maxLength: 128}
+      responses:
+        '202':
+          description: Verification email sent (also returned when the email already exists, to avoid enumeration)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [verification_sent]}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+        '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+  /auth/verify-email:
+    post:
+      operationId: verifyEmail
+      tags: [auth]
+      security: []
+      summary: Confirm the email link; creates the workspace and trial credit on first success
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token_hash]
+              properties:
+                token_hash: {type: string, minLength: 1}
+      responses:
+        '200':
+          description: Verified and signed in
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '400':
+          description: Link invalid, used or expired
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
+  /auth/verify-email/resend:
+    post:
+      operationId: resendVerification
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: {type: string, format: email}
+      responses:
+        '202':
+          description: Sent if the account exists and is unverified
+        '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+  /auth/sign-in:
+    post:
+      operationId: signIn
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email}
+                password: {type: string}
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '401':
+          description: Wrong email or password (code invalid_credentials)
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
+        '403':
+          description: Email not verified (code email_unverified)
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
+        '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: {type: string}
+      responses:
+        '200':
+          description: New tokens
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+  /auth/sign-out:
+    post:
+      operationId: signOut
+      tags: [auth]
+      security: [{bearerAuth: []}]
+      summary: Revoke this session everywhere (all tabs and devices for the session)
+      responses:
+        '204': {description: Signed out}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+  /auth/password-reset:
+    post:
+      operationId: requestPasswordReset
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: {type: string, format: email}
+      responses:
+        '202': {description: Always returned; a single-use link valid for 60 minutes is sent if the account exists}
+        '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+  /auth/password-reset/confirm:
+    post:
+      operationId: confirmPasswordReset
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token_hash, new_password]
+              properties:
+                token_hash: {type: string}
+                new_password: {type: string, minLength: 10, maxLength: 128}
+      responses:
+        '204': {description: Password changed; other sessions are revoked}
+        '400':
+          description: Link invalid, used or expired
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Session:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token: {type: string}
+        refresh_token: {type: string}
+        token_type: {type: string, enum: [bearer]}
+        expires_in: {type: integer, description: Seconds until the access token expires}

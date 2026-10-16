@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, calibration module
+  version: 0.1.0
+  description: |
+    Agreement between evaluator verdicts and human labels. Pairs: evaluator pass or fail against
+    the resolved human label (good expects pass, bad expects fail). Owned by spec 007.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /calibration/evaluators:
+    get:
+      operationId: listCalibrationRows
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/LookbackDays"
+        - name: version_scope
+          in: query
+          schema: { type: string, enum: [current, all], default: current }
+      responses:
+        "200":
+          description: One row per evaluator (and per flow step for flow_node evaluators) with at least one pair
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [min_sample_for_signal, items]
+                properties:
+                  min_sample_for_signal: { type: integer, const: 5 }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/CalibrationRow" }
+  /calibration/summary:
+    get:
+      operationId: getCalibrationSummary
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+        - $ref: "#/components/parameters/LookbackDays"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [annotated_calls, annotated_and_evaluated_calls, conflicting_label_calls, min_sample_for_signal]
+                properties:
+                  annotated_calls: { type: integer }
+                  annotated_and_evaluated_calls: { type: integer }
+                  conflicting_label_calls: { type: integer }
+                  min_sample_for_signal: { type: integer, const: 5 }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    AgentId:
+      name: agent_id
+      in: query
+      schema: { type: string, pattern: "^agt_" }
+    LookbackDays:
+      name: lookback_days
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 365, default: 90 }
+  schemas:
+    CalibrationRow:
+      type: object
+      required: [evaluator_id, evaluator_name, display_name, scope, cost_class, version_scope, both_pass, both_fail, over_eager, missed, n, under_min_sample, reading]
+      properties:
+        evaluator_id: { type: string, pattern: "^evl_" }
+        evaluator_name: { type: string }
+        display_name: { type: string }
+        scope: { type: string, enum: [call, turn, flow_node] }
+        cost_class: { type: string, enum: [free, llm_judge] }
+        evaluator_version: { type: [integer, "null"], description: Set when version_scope is current }
+        version_scope: { type: string, enum: [current, all] }
+        flow_node_id: { type: [string, "null"] }
+        flow_node_label: { type: [string, "null"] }
+        both_pass: { type: integer, description: Evaluator pass, human good }
+        both_fail: { type: integer, description: Evaluator fail, human bad }
+        over_eager: { type: integer, description: Evaluator fail, human good }
+        missed: { type: integer, description: Evaluator pass, human bad }
+        n: { type: integer }
+        agreement_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+        agreement_ci:
+          type: [object, "null"]
+          description: Wilson 95% interval
+          properties:
+            low: { type: number }
+            high: { type: number }
+        under_min_sample: { type: boolean }
+        reading: { type: string, enum: [insufficient, strong, over_eager, misses, partial, low] }
+        current_threshold: { type: [number, "null"] }
+        best_threshold: { type: [number, "null"] }
+        best_threshold_agreement: { type: [number, "null"] }

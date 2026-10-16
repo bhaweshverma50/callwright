@@ -1,0 +1,73 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, workspaces module
+  version: 1.0.0
+servers:
+  - url: /v1
+paths:
+  /me:
+    get:
+      operationId: getMe
+      tags: [workspaces]
+      summary: Current user, workspace, balance and limits (FR-004)
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Identity payload used by the app shell
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Me'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+  /workspaces/current:
+    patch:
+      operationId: updateCurrentWorkspace
+      tags: [workspaces]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              additionalProperties: false
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80}
+      responses:
+        '200':
+          description: Updated workspace
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Workspace'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      required: [id, email, email_verified, is_admin]
+      properties:
+        id: {$ref: './core.yaml#/components/schemas/UserId'}
+        email: {type: string, format: email}
+        email_verified: {type: boolean}
+        is_admin: {type: boolean}
+    Workspace:
+      type: object
+      required: [id, name, concurrency_limit, created_at]
+      properties:
+        id: {$ref: './core.yaml#/components/schemas/WorkspaceId'}
+        name: {type: string}
+        concurrency_limit: {type: integer, minimum: 1}
+        created_at: {type: string, format: date-time}
+    Me:
+      type: object
+      required: [user, workspace, balance_usd]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+        workspace: {$ref: '#/components/schemas/Workspace'}
+        balance_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}

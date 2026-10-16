@@ -1,0 +1,241 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, evaluators module
+  version: 0.1.0
+  description: Evaluator catalog (built-in and custom), versions and trial runs. Owned by spec 007.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /evaluators:
+    get:
+      operationId: listEvaluators
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [builtin, custom] } }
+        - { name: agent_type, in: query, schema: { type: string, enum: [single_prompt, flow] } }
+        - { name: include_deleted, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Evaluator" }
+    post:
+      operationId: createCustomEvaluator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomEvaluatorInput" }
+      responses:
+        "201":
+          description: Created at version 1
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Evaluator" }
+        "409":
+          description: Name in use ("You already have a custom check named ...") or 50-evaluator limit reached
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /evaluators/{evaluator_id}:
+    parameters:
+      - { name: evaluator_id, in: path, required: true, schema: { type: string, pattern: "^evl_" } }
+    get:
+      operationId: getEvaluator
+      responses:
+        "200":
+          description: Evaluator with all versions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Evaluator"
+                  - type: object
+                    properties:
+                      versions:
+                        type: array
+                        items: { $ref: "#/components/schemas/EvaluatorVersion" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateCustomEvaluator
+      description: Custom only. A change to `config` creates a new version; display_name and description edits do not.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                display_name: { type: string, minLength: 1, maxLength: 80 }
+                description: { type: [string, "null"], maxLength: 500 }
+                config: { $ref: "#/components/schemas/CustomConfig" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Evaluator" }
+        "403":
+          description: Built-in evaluators cannot be edited
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteCustomEvaluator
+      description: Soft delete; past results and versions are kept and the name can be reused.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /evaluators/trial:
+    post:
+      operationId: trialCustomEvaluator
+      summary: Try an unsaved custom definition on one call (judge trials are charged)
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 128 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [evaluator_type, config, call_id]
+              properties:
+                evaluator_type: { type: string, enum: [phrase_check, llm_judge_custom] }
+                config: { $ref: "#/components/schemas/CustomConfig" }
+                call_id: { type: string, pattern: "^call_" }
+      responses:
+        "200":
+          description: Trial result (not stored as a run)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verdict, rationale]
+                properties:
+                  verdict: { type: string, enum: [pass, fail, not_applicable] }
+                  score: { type: [number, "null"] }
+                  rationale: { type: string }
+                  evidence:
+                    type: object
+                    properties:
+                      turn_indices: { type: array, items: { type: integer } }
+                      quote: { type: [string, "null"] }
+                  charged_usd: { type: [number, "null"] }
+        "402": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    SettingsField:
+      type: object
+      required: [key, label, type]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        type: { type: string, enum: [select, number, bool, text, text_long] }
+        options: { type: array, items: { type: string } }
+        min: { type: number }
+        max: { type: number }
+        step: { type: number }
+        default: {}
+        helper: { type: string }
+    Evaluator:
+      type: object
+      required: [id, kind, evaluator_type, name, display_name, scope, cost_class, agent_types, settings_schema, score_range, current_version, enabled_by_default]
+      properties:
+        id: { type: string, pattern: "^evl_" }
+        kind: { type: string, enum: [builtin, custom] }
+        evaluator_type:
+          type: string
+          description: Built-in name, or phrase_check or llm_judge_custom.
+          examples: [intent_fulfillment, tool_call_correctness, kb_relevance, factual_consistency, process_reward, anomaly_detection, flow_step_completion, phrase_check, llm_judge_custom]
+        name: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$" }
+        display_name: { type: string }
+        description: { type: [string, "null"] }
+        scope: { type: string, enum: [call, turn, flow_node] }
+        cost_class: { type: string, enum: [free, llm_judge] }
+        agent_types: { type: array, items: { type: string, enum: [single_prompt, flow] } }
+        settings_schema:
+          type: object
+          properties:
+            fields: { type: array, items: { $ref: "#/components/schemas/SettingsField" } }
+        score_range:
+          type: object
+          properties:
+            min: { type: number }
+            max: { type: number }
+        current_version: { type: integer, minimum: 1 }
+        enabled_by_default: { type: boolean }
+        config:
+          oneOf:
+            - { $ref: "#/components/schemas/CustomConfig" }
+            - { type: "null" }
+        deleted_at: { type: [string, "null"], format: date-time }
+    EvaluatorVersion:
+      type: object
+      required: [version, created_at]
+      properties:
+        version: { type: integer }
+        judge_model: { type: [string, "null"] }
+        definition: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+    PhraseCheckConfig:
+      type: object
+      required: [pattern, mode, target]
+      additionalProperties: false
+      properties:
+        pattern: { type: string, minLength: 1, maxLength: 500 }
+        mode: { type: string, enum: [required, forbidden] }
+        target: { type: string, enum: [agent, user, both] }
+        is_regex: { type: boolean, default: false }
+        case_sensitive: { type: boolean, default: false }
+    JudgeQuestionConfig:
+      type: object
+      required: [question, pass_when]
+      additionalProperties: false
+      properties:
+        question: { type: string, minLength: 5, maxLength: 1000 }
+        pass_when: { type: string, enum: ["yes", "no"] }
+        judge_model: { type: string, description: Model id from the LLM catalog; defaults to the platform judge model }
+    CustomConfig:
+      oneOf:
+        - { $ref: "#/components/schemas/PhraseCheckConfig" }
+        - { $ref: "#/components/schemas/JudgeQuestionConfig" }
+    CustomEvaluatorInput:
+      type: object
+      required: [name, display_name, evaluator_type, config]
+      properties:
+        name: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$" }
+        display_name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: [string, "null"], maxLength: 500 }
+        evaluator_type: { type: string, enum: [phrase_check, llm_judge_custom] }
+        config: { $ref: "#/components/schemas/CustomConfig" }

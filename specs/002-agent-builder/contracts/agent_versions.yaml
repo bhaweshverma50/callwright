@@ -1,0 +1,225 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, agent_versions module
+  version: 1.0.0
+  description: |
+    Immutable agent versions: history, detail, diff, restore, publish and unpublish. Versions are
+    recorded by draft saves (agents module), restores, template and duplicate creation, 004's flow
+    publish and 003's test snapshots.
+servers:
+  - url: /v1
+paths:
+  /agents/{agent_id}/versions:
+    parameters:
+      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+    get:
+      operationId: listAgentVersions
+      tags: [agent_versions]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page'}
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize'}
+        - name: include_test
+          in: query
+          description: Include versions created only for test calls
+          schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Versions newest first (no config bodies)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta'}
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: {$ref: '#/components/schemas/VersionSummary'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+  /agents/{agent_id}/versions/{version_id}:
+    parameters:
+      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '#/components/parameters/VersionIdPath'}
+    get:
+      operationId: getAgentVersion
+      tags: [agent_versions]
+      security: [{bearerAuth: []}]
+      description: Readable even after the agent is deleted, so call detail pages can show the config.
+      responses:
+        '200':
+          description: Full version
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/VersionDetail'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+  /agents/{agent_id}/versions/{version_id}/diff:
+    parameters:
+      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '#/components/parameters/VersionIdPath'}
+    get:
+      operationId: diffAgentVersion
+      tags: [agent_versions]
+      security: [{bearerAuth: []}]
+      summary: Changes from `against` to this version (keyed list matching, research R12)
+      parameters:
+        - name: against
+          in: query
+          required: true
+          description: Another version id of the same agent, or the literal `draft`
+          schema:
+            oneOf:
+              - {$ref: './agents.yaml#/components/schemas/AgentVersionId'}
+              - {const: draft}
+      responses:
+        '200':
+          description: Ordered change list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [from, to, changes]
+                properties:
+                  from: {type: string, description: Version id or "draft"}
+                  to: {$ref: './agents.yaml#/components/schemas/AgentVersionId'}
+                  changes:
+                    type: array
+                    items: {$ref: '#/components/schemas/Change'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+  /agents/{agent_id}/versions/{version_id}/restore:
+    parameters:
+      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+      - {$ref: '#/components/parameters/VersionIdPath'}
+    post:
+      operationId: restoreAgentVersion
+      tags: [agent_versions]
+      security: [{bearerAuth: []}]
+      summary: Copy this version into the draft as a new version; optionally publish it
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: {type: string, maxLength: 500}
+                publish: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Restored; `version` is the new version
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: './agents.yaml#/components/schemas/SaveResult'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '412':
+          description: Draft changed since it was loaded (code draft_changed)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '422':
+          description: publish=true but the restored version has publish blockers (restore is not applied)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+  /agents/{agent_id}/published-version:
+    parameters:
+      - {$ref: './agents.yaml#/components/parameters/AgentIdPath'}
+    put:
+      operationId: publishAgentVersion
+      tags: [agent_versions]
+      security: [{bearerAuth: []}]
+      summary: Publish (pin) a version for live channels
+      description: Publish blockers are re-evaluated now against the current catalog and attachments.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version_id]
+              properties:
+                version_id: {$ref: './agents.yaml#/components/schemas/AgentVersionId'}
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema: {$ref: './agents.yaml#/components/schemas/AgentSummary'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '422':
+          description: Version has publish blockers (code publish_blocked); `errors` lists them
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+    delete:
+      operationId: unpublishAgent
+      tags: [agent_versions]
+      security: [{bearerAuth: []}]
+      summary: Remove the published version; live channels then refuse calls for this agent
+      responses:
+        '204': {description: Unpublished}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    VersionIdPath:
+      name: version_id
+      in: path
+      required: true
+      schema: {$ref: './agents.yaml#/components/schemas/AgentVersionId'}
+  schemas:
+    VersionSource:
+      type: string
+      enum: [create, save, restore, template, duplicate, flow_publish, test]
+    VersionSummary:
+      type: object
+      required: [id, version_number, source, created_at, content_hash, is_published, is_draft, has_publish_blockers]
+      properties:
+        id: {$ref: './agents.yaml#/components/schemas/AgentVersionId'}
+        version_number: {type: integer, minimum: 1}
+        source: {$ref: '#/components/schemas/VersionSource'}
+        note: {type: [string, 'null']}
+        restored_from_version_number: {type: [integer, 'null']}
+        created_by_email: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        content_hash: {type: string, pattern: '^[0-9a-f]{64}$'}
+        is_published: {type: boolean}
+        is_draft: {type: boolean, description: True for the version matching the saved draft}
+        has_publish_blockers: {type: boolean}
+    VersionDetail:
+      allOf:
+        - {$ref: '#/components/schemas/VersionSummary'}
+        - type: object
+          required: [agent_id, schema_version, config, publish_blockers]
+          properties:
+            agent_id: {$ref: './agents.yaml#/components/schemas/AgentId'}
+            schema_version: {type: integer}
+            config: {$ref: './agents.yaml#/components/schemas/AgentConfig'}
+            publish_blockers:
+              type: array
+              items: {$ref: './agents.yaml#/components/schemas/Issue'}
+    Change:
+      type: object
+      required: [op, path]
+      properties:
+        op: {type: string, enum: [add, remove, replace]}
+        path:
+          type: string
+          description: JSON Pointer; keyed list items use the key in brackets
+          examples: [/prompt, /tts/speed, '/dynamic_variables[order_id]/default', '/advanced/pronunciation[sql]/replacement']
+        old: {description: Previous value (absent for add)}
+        new: {description: New value (absent for remove)}
