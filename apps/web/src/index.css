@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/*
+  Callwright tokens. One source for both themes; components only use the semantic names.
+
+  Palette: cool grey-blue neutrals (hue 240-255), one signal accent (teal, hue ~188) for
+  primary actions, focus and "live" state, and amber (hue ~70) reserved for evidence and
+  warnings. Red only for destructive and error states.
+
+  Shape rule: controls (buttons, inputs, selects) 6px; panels, cards, dialogs 10px;
+  chips and badges fully rounded. Nothing else.
+
+  Type: Bricolage Grotesque for display (page titles, hero), IBM Plex Sans for UI and body,
+  IBM Plex Mono for numbers, ids, money and small labels.
+*/
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: light;
+  --bg: oklch(0.972 0.005 245);
+  --surface: oklch(0.995 0.002 245);
+  --surface-2: oklch(0.952 0.007 245);
+  --surface-3: oklch(0.925 0.009 245);
+  --rail: oklch(0.948 0.008 245);
+  --border: oklch(0.895 0.009 245);
+  --border-strong: oklch(0.8 0.012 245);
+  --text: oklch(0.235 0.02 252);
+  --text-2: oklch(0.44 0.02 252);
+  --text-3: oklch(0.52 0.017 252);
+  --accent: oklch(0.5 0.095 192);
+  --accent-hover: oklch(0.45 0.09 192);
+  --accent-fg: oklch(0.99 0.004 192);
+  --accent-soft: oklch(0.94 0.032 190);
+  --accent-text: oklch(0.43 0.085 192);
+  --amber: oklch(0.76 0.135 72);
+  --amber-soft: oklch(0.955 0.045 82);
+  --amber-text: oklch(0.47 0.1 62);
+  --danger: oklch(0.53 0.175 27);
+  --danger-solid: oklch(0.53 0.175 27);
+  --danger-soft: oklch(0.955 0.03 25);
+  --danger-text: oklch(0.48 0.16 27);
+  --success-text: oklch(0.45 0.1 155);
+  --success-soft: oklch(0.95 0.035 155);
+  --ring: oklch(0.55 0.11 192);
+  --shadow-color: 245 30% 20%;
+  --overlay: oklch(0.2 0.02 252 / 0.36);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: oklch(0.168 0.012 252);
+  --surface: oklch(0.2 0.013 252);
+  --surface-2: oklch(0.183 0.012 252);
+  --surface-3: oklch(0.245 0.014 252);
+  --rail: oklch(0.15 0.011 252);
+  --border: oklch(0.285 0.014 252);
+  --border-strong: oklch(0.38 0.016 252);
+  --text: oklch(0.945 0.006 245);
+  --text-2: oklch(0.77 0.014 248);
+  --text-3: oklch(0.67 0.014 248);
+  --accent: oklch(0.78 0.11 188);
+  --accent-hover: oklch(0.83 0.1 188);
+  --accent-fg: oklch(0.2 0.03 210);
+  --accent-soft: oklch(0.29 0.045 195);
+  --accent-text: oklch(0.82 0.1 188);
+  --amber: oklch(0.8 0.13 76);
+  --amber-soft: oklch(0.29 0.05 70);
+  --amber-text: oklch(0.85 0.11 80);
+  --danger: oklch(0.68 0.16 25);
+  /* Filled destructive buttons keep white text at AA contrast in dark mode too. */
+  --danger-solid: oklch(0.52 0.17 25);
+  --danger-soft: oklch(0.28 0.06 25);
+  --danger-text: oklch(0.78 0.13 25);
+  --success-text: oklch(0.8 0.11 155);
+  --success-soft: oklch(0.28 0.05 155);
+  --ring: oklch(0.8 0.11 188);
+  --shadow-color: 252 40% 3%;
+  --overlay: oklch(0.08 0.01 252 / 0.6);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-rail: var(--rail);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-text: var(--amber-text);
+  --color-danger: var(--danger);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+  --color-success-text: var(--success-text);
+  --color-success-soft: var(--success-soft);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+
+  --shadow-panel: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 1px hsl(var(--shadow-color) / 0.04);
+  --shadow-pop: 0 10px 30px -8px hsl(var(--shadow-color) / 0.22), 0 2px 6px hsl(var(--shadow-color) / 0.1);
+
+  --animate-fade-in: fade-in 140ms ease-out;
+  --animate-slide-in-right: slide-in-right 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pop-in: pop-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes pop-in {
+  from { transform: translateY(4px) scale(0.985); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes shimmer {
+  0% { opacity: 0.55; }
+  50% { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    background: var(--bg);
+  }
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* Tabular figures wherever numbers line up. */
+  .tnum {
+    font-variant-numeric: tabular-nums slashed-zero;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
