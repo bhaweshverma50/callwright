@@ -1,0 +1,49 @@
+"""Sign-out revokes the session everywhere (T032, US1.3, R8)."""
+
+from __future__ import annotations
+
+import httpx
+from fastapi import FastAPI
+
+from tests.conftest import signup
+
+
+async def test_sign_out_revokes_access_and_refresh(client: httpx.AsyncClient, app: FastAPI) -> None:
+    account = await signup(client, app)
+    assert (await client.get("/v1/me", headers=account.headers)).status_code == 200
+    out = await client.post("/v1/auth/sign-out", headers=account.headers)
+    assert out.status_code == 204
+    after = await client.get("/v1/me", headers=account.headers)
+    assert after.status_code == 401
+    assert after.json()["code"] == "session_revoked"
+    refresh = await client.post("/v1/auth/refresh", json={"refresh_token": account.refresh_token})
+    assert refresh.status_code == 401
+
+
+async def test_sign_out_requires_a_token(client: httpx.AsyncClient) -> None:
+    response = await client.post("/v1/auth/sign-out")
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+async def test_garbage_and_expired_tokens_are_401(client: httpx.AsyncClient, app: FastAPI) -> None:
+    import time
+
+    import jwt
+
+    garbage = await client.get("/v1/me", headers={"Authorization": "Bearer not-a-jwt"})
+    assert garbage.status_code == 401 and garbage.json()["code"] == "invalid_token"
+    secret = app.state.settings.auth_jwt_secret.get_secret_value()
+    expired = jwt.encode(
+        {"sub": "x", "aud": "authenticated", "exp": int(time.time()) - 60, "session_id": "s"},
+        secret,
+        algorithm="HS256",
+    )
+    response = await client.get("/v1/me", headers={"Authorization": f"Bearer {expired}"})
+    assert response.status_code == 401 and response.json()["code"] == "token_expired"
+    forged = jwt.encode(
+        {"sub": "x", "aud": "authenticated", "exp": int(time.time()) + 60}, "wrong-secret-0123456789abcdef0123",
+        algorithm="HS256",
+    )
+    response = await client.get("/v1/me", headers={"Authorization": f"Bearer {forged}"})
+    assert response.status_code == 401
