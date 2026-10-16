@@ -48,7 +48,7 @@ export function Home() {
   return (
     <>
       <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-14 px-4 pb-20 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:pb-28 lg:pt-20">
+        <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pb-16 lg:pt-12">
           <Reveal>
             <RevealItem>
               <h1 className="grad-text max-w-[15ch] font-display text-[34px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[46px] lg:text-[54px]">

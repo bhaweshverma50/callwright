@@ -71,7 +71,7 @@ export function LiveCall({ className }: { className?: string }) {
         aria-label="Sample call: a dental front desk agent moves an appointment"
         className="relative overflow-hidden rounded-feature border border-console-line bg-console text-console-fg shadow-2"
       >
-        <header className="flex items-center justify-between gap-4 border-b border-console-line px-5 py-3.5">
+        <header className="flex items-center justify-between gap-4 border-b border-console-line px-5 py-2.5">
           {ended ? (
             <span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-console-fg-2">
               <CircleCheck className="size-4 text-[#5fd3a4]" aria-hidden />
@@ -109,11 +109,11 @@ export function LiveCall({ className }: { className?: string }) {
           </div>
         </header>
 
-        <div className="px-5 pt-4">
-          <Waveform bars={72} seed={11} progress={t / SAMPLE_CALL_SECONDS} live={!ended} onConsole height={44} />
+        <div className="px-5 pt-3">
+          <Waveform bars={72} seed={11} progress={t / SAMPLE_CALL_SECONDS} live={!ended} onConsole height={30} />
         </div>
 
-        <ol className="flex flex-col gap-3 px-5 py-4" aria-live="off">
+        <ol className="flex flex-col gap-2 px-5 py-3" aria-live="off">
           {SAMPLE_CALL.map((turn, i) => {
             const shown = t >= turn.at;
             return (
@@ -122,13 +122,13 @@ export function LiveCall({ className }: { className?: string }) {
                 initial={false}
                 animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className={cn("flex flex-col gap-1.5", turn.who === "agent" ? "items-end text-right" : "items-start")}
+                className={cn("flex flex-col gap-1", turn.who === "agent" ? "items-end text-right" : "items-start")}
                 aria-hidden={!shown}
               >
                 <span className="text-[11.5px] font-medium text-console-fg-2">{turn.who === "agent" ? "Agent" : "Caller"}</span>
                 <p
                   className={cn(
-                    "max-w-[34ch] rounded-panel px-3.5 py-2 text-[13.5px] leading-snug",
+                    "max-w-[36ch] rounded-panel px-3 py-1.5 text-[13px] leading-snug",
                     turn.who === "agent" ? "rounded-br-[4px] bg-[#2a33a8] text-white" : "rounded-bl-[4px] bg-console-2 text-console-fg",
                   )}
                 >
@@ -140,7 +140,7 @@ export function LiveCall({ className }: { className?: string }) {
           })}
         </ol>
 
-        <footer className="border-t border-console-line px-5 pb-4 pt-5">
+        <footer className="border-t border-console-line px-5 pb-3 pt-3.5">
           <FlowChain nodes={NODES} active={link} flow={!ended} onConsole size="sm" stack="never" />
         </footer>
       </figure>
