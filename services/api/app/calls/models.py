@@ -27,24 +27,54 @@ from app.core.db import Base
 logger = logging.getLogger(__name__)
 
 CallStatus = Literal[
-    "queued", "ringing", "in_progress", "ended", "processing", "completed", "failed", "no_answer",
-    "busy", "voicemail",
+    "queued",
+    "ringing",
+    "in_progress",
+    "ended",
+    "processing",
+    "completed",
+    "failed",
+    "no_answer",
+    "busy",
+    "voicemail",
 ]
 DisconnectReason = Literal[
-    "user_hangup", "agent_hangup", "call_transfer", "voicemail_reached", "inactivity",
-    "max_duration_reached", "error", "concurrency_limit", "insufficient_credit",
+    "user_hangup",
+    "agent_hangup",
+    "call_transfer",
+    "voicemail_reached",
+    "inactivity",
+    "max_duration_reached",
+    "error",
+    "concurrency_limit",
+    "insufficient_credit",
 ]
 Channel = Literal["web", "sip_inbound", "sip_outbound", "whatsapp"]
 Direction = Literal["inbound", "outbound"]
 Origin = Literal["live", "test", "simulation"]
 
 CALL_STATUSES: Final = (
-    "queued", "ringing", "in_progress", "ended", "processing", "completed", "failed", "no_answer",
-    "busy", "voicemail",
+    "queued",
+    "ringing",
+    "in_progress",
+    "ended",
+    "processing",
+    "completed",
+    "failed",
+    "no_answer",
+    "busy",
+    "voicemail",
 )
 DISCONNECT_REASONS: Final = (
-    "user_hangup", "agent_hangup", "call_transfer", "voicemail_reached", "inactivity",
-    "max_duration_reached", "error", "concurrency_limit", "insufficient_credit",
+    "user_hangup",
+    "agent_hangup",
+    "call_transfer",
+    "voicemail_reached",
+    "inactivity",
+    "max_duration_reached",
+    "error",
+    "concurrency_limit",
+    "insufficient_credit",
 )
 ACTIVE: Final = frozenset({"queued", "ringing", "in_progress"})
 NEVER_CONNECTED: Final = frozenset({"failed", "no_answer", "busy"})
