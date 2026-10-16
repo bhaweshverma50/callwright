@@ -36,22 +36,22 @@ paths:
           description: Balance at or below zero (problem type insufficient_credit)
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "422":
           description: Invalid request
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "429":
           description: More than 20 questions per user per minute
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "503":
           description: Model provider unavailable; not charged (problem type assistant_unavailable)
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
   /analytics/catalog:
     get:
       operationId: getAnalyticsCatalog
@@ -83,14 +83,6 @@ components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
     ChatRequest:
       type: object
       required: [messages, timezone]

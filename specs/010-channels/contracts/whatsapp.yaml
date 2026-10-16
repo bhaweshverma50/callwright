@@ -72,7 +72,7 @@ paths:
           description: '`whatsapp-number-already-connected` or `verify-token-in-use`'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: >
             Validation (`errors` lists each failing field, for example meta_phone_number_id
@@ -85,7 +85,7 @@ paths:
           description: '`whatsapp-unreachable`: the WhatsApp platform could not be reached; nothing is saved, retry later'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /whatsapp/channels/{channel_id}:
     parameters:
       - $ref: '#/components/parameters/ChannelId'
@@ -98,7 +98,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/WhatsAppChannel'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     patch:
       operationId: updateWhatsAppChannel
       summary: Edit a channel; omitted fields unchanged; empty or omitted access_token keeps the current one
@@ -114,17 +114,17 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/WhatsAppChannel'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: Channel is draining, or verify token used by another channel
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: Validation or WhatsApp rejected new credentials (nothing changed)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
     delete:
       operationId: deleteWhatsAppChannel
       tags: [whatsapp]
@@ -140,7 +140,7 @@ paths:
               schema: {$ref: '#/components/schemas/WhatsAppChannel'}
         '204':
           description: Deleted
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: '`channel-has-active-calls` with `active_call_count`'
           content:
@@ -210,12 +210,12 @@ paths:
           description: '`duplicate-caller-route` or `route-limit-reached` (1,000 per channel)'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: Invalid number, or agent not in workspace or not published
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /whatsapp/channels/{channel_id}/caller-routes/{route_id}:
     parameters:
       - $ref: '#/components/parameters/ChannelId'
@@ -242,13 +242,13 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CallerRoute'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     delete:
       operationId: deleteCallerRoute
       tags: [whatsapp]
       responses:
         '204': {description: Deleted}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
   /whatsapp/webhook:
     get:
       operationId: verifyWhatsAppWebhook
@@ -324,16 +324,7 @@ components:
       in: path
       required: true
       schema: {type: string, pattern: '^wa_[0-9A-HJKMNP-TV-Z]{26}$'}
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: {$ref: '#/components/schemas/Problem'}
   schemas:
-    E164:
-      type: string
-      pattern: '^\+[1-9]\d{1,14}$'
     WhatsAppChannelStatus:
       type: string
       enum: [setup_incomplete, active, error, draining]
@@ -343,7 +334,7 @@ components:
       required: [meta_phone_number_id, e164, label, access_token, verify_token, app_secret]
       properties:
         meta_phone_number_id: {type: string, pattern: '^\d{5,32}$'}
-        e164: {$ref: '#/components/schemas/E164'}
+        e164: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         label: {type: string, minLength: 1, maxLength: 100}
         access_token: {type: string, minLength: 1, maxLength: 1024, writeOnly: true}
         verify_token: {type: string, minLength: 8, maxLength: 128, writeOnly: true}
@@ -369,7 +360,7 @@ components:
       properties:
         id: {type: string}
         meta_phone_number_id: {type: string}
-        e164: {$ref: '#/components/schemas/E164'}
+        e164: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         label: {type: string}
         access_token_last4: {type: string}
         verify_token_last4: {type: string}
@@ -393,22 +384,13 @@ components:
       properties:
         id: {type: string}
         channel_id: {type: string}
-        caller_number: {$ref: '#/components/schemas/E164'}
+        caller_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         agent_id: {type: string}
         agent_published: {type: boolean, description: False means the route is currently skipped.}
         created_at: {type: string, format: date-time}
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: {type: string, format: uri-reference}
-        title: {type: string}
-        status: {type: integer}
-        detail: {type: string}
-        instance: {type: string}
     ValidationProblem:
       allOf:
-        - $ref: '#/components/schemas/Problem'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         - type: object
           properties:
             errors:
@@ -421,7 +403,7 @@ components:
                   message: {type: string}
     ActiveCallsProblem:
       allOf:
-        - $ref: '#/components/schemas/Problem'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         - type: object
           required: [active_call_count]
           properties:

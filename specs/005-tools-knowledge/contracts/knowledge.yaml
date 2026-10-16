@@ -49,8 +49,8 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/KnowledgeBase'}
-        '409': {$ref: '#/components/responses/Problem'}
-        '422': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /knowledge-bases/{kb_id}:
     parameters:
@@ -64,7 +64,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/KnowledgeBase'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     patch:
       tags: [knowledge]
       operationId: updateKnowledgeBase
@@ -105,7 +105,7 @@ paths:
           description: Attached and confirm is false (problem type `knowledge_base_in_use`, lists agents)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 
   /knowledge-bases/{kb_id}/documents:
     parameters:
@@ -166,22 +166,22 @@ paths:
           description: Same content already in this KB (`duplicate_document`) or unacknowledged cross-KB duplicate (`duplicate_elsewhere`)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '413':
           description: File larger than 20 MB (`file_too_large`)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '415':
           description: Not a PDF or DOCX (`unsupported_file_type`)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: Workspace storage or per-KB document quota exceeded (`quota_exceeded`)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 
   /knowledge-bases/{kb_id}/documents/check-duplicate:
     parameters:
@@ -238,14 +238,14 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Document'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     delete:
       tags: [knowledge]
       operationId: deleteDocument
       description: Removes chunks (search stops returning them at once), the stored file and the row.
       responses:
         '204': {description: Deleted}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /knowledge-bases/{kb_id}/documents/{doc_id}/reprocess:
     parameters:
@@ -261,7 +261,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Document'}
-        '409': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /knowledge-bases/{kb_id}/documents/{doc_id}/url:
     parameters:
@@ -305,7 +305,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/SearchResponse'}
-        '429': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /agents/{agent_id}/knowledge-bases:
     parameters:
@@ -360,7 +360,7 @@ paths:
           description: Unknown id, KB not attachable (`knowledge_base_not_ready`) or too many
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 
   /internal/knowledge/search:
     post:
@@ -393,7 +393,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/SearchResponse'}
-        '403': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
 components:
   securitySchemes:
@@ -412,23 +412,7 @@ components:
       required: true
       schema: {type: string, pattern: '^doc_[0-9A-HJKMNP-TV-Z]{26}$'}
 
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: {$ref: '#/components/schemas/Problem'}
-
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: {type: string}
-        title: {type: string}
-        status: {type: integer}
-        detail: {type: string}
-        instance: {type: string}
     Page:
       type: object
       required: [items, total, page, page_size, total_pages]

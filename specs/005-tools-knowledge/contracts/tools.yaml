@@ -35,7 +35,7 @@ paths:
                   - type: object
                     properties:
                       items: {type: array, items: {$ref: '#/components/schemas/Tool'}}
-        '401': {$ref: '#/components/responses/Problem'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     post:
       tags: [tools]
       operationId: createTool
@@ -50,7 +50,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Tool'}
-        '422': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /tools/presets:
     get:
@@ -84,7 +84,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Tool'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     patch:
       tags: [tools]
       operationId: updateTool
@@ -102,8 +102,8 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Tool'}
-        '404': {$ref: '#/components/responses/Problem'}
-        '422': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     delete:
       tags: [tools]
       operationId: deleteTool
@@ -127,7 +127,7 @@ paths:
           description: Attached to agents and force is false (problem type `tool_in_use`, lists agents)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 
   /tools/{tool_id}/duplicate:
     parameters:
@@ -197,12 +197,12 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/TestRunResult'}
-        '422': {$ref: '#/components/responses/Problem'}
-        '429': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /agents/{agent_id}/tools:
     parameters:
-      - $ref: '#/components/parameters/AgentId'
+      - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'
     get:
       tags: [tools]
       operationId: getAgentTools
@@ -235,16 +235,16 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/AgentToolSet'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '422':
           description: Unknown id, duplicate names (problem type `tool_name_conflict`) or too many tools
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 
   /agents/{agent_id}/tools/mock-coverage:
     parameters:
-      - $ref: '#/components/parameters/AgentId'
+      - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'
     get:
       tags: [tools]
       operationId: getAgentToolMockCoverage
@@ -298,8 +298,8 @@ paths:
                     type: object
                     additionalProperties: {type: string}
                     description: Map of secret_ref to value
-        '403': {$ref: '#/components/responses/Problem'}
-        '409': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '409': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
 components:
   securitySchemes:
@@ -312,36 +312,8 @@ components:
       in: path
       required: true
       schema: {type: string, pattern: '^tool_[0-9A-HJKMNP-TV-Z]{26}$'}
-    AgentId:
-      name: agent_id
-      in: path
-      required: true
-      schema: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
-
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: {$ref: '#/components/schemas/Problem'}
 
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: {type: string}
-        title: {type: string}
-        status: {type: integer}
-        detail: {type: string}
-        instance: {type: string}
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              loc: {type: array, items: {type: [string, integer]}}
-              msg: {type: string}
     Page:
       type: object
       required: [items, total, page, page_size, total_pages]
@@ -435,22 +407,18 @@ components:
       properties:
         message: {type: [string, 'null'], maxLength: 500}
 
-    E164:
-      type: string
-      pattern: '^\+[1-9]\d{6,14}$'
-
     TransferSpec:
       type: object
       additionalProperties: false
       description: Shared with 004 transfer nodes.
       properties:
         routing_type: {type: string, enum: [static, dynamic], default: static}
-        number: {$ref: '#/components/schemas/E164'}
+        number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         routing_instructions: {type: string, maxLength: 2000}
         allowed_numbers:
           type: array
           maxItems: 50
-          items: {$ref: '#/components/schemas/E164'}
+          items: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
           default: []
         transfer_type: {type: string, enum: [cold, warm], default: cold}
         warm_transfer:

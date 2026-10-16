@@ -62,7 +62,7 @@ paths:
           description: '`number-already-registered` (any workspace) or `number-being-deleted`'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: Validation failed (E.164, termination address, CIDR, agent not published)
           content:
@@ -103,7 +103,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/PhoneNumber'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     patch:
       operationId: updatePhoneNumber
       summary: Edit a number; omitted fields are unchanged; null clears nullable fields
@@ -123,12 +123,12 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/PhoneNumber'}
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: Number is `draining`
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           content:
             application/problem+json:
@@ -138,7 +138,7 @@ paths:
           description: Media platform update failed; nothing changed (`routing-update-failed`)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
     delete:
       operationId: deletePhoneNumber
       tags: [phone-numbers]
@@ -155,7 +155,7 @@ paths:
               schema: {$ref: '#/components/schemas/PhoneNumber'}
         '204':
           description: Deleted (no active calls)
-        '404': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: '`number-has-active-calls`; body includes `active_call_count`'
           content:
@@ -177,7 +177,7 @@ paths:
           description: Number is not in `error`
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 webhooks:
   call_inbound:
     post:
@@ -215,16 +215,7 @@ components:
       schema:
         type: string
         pattern: '^num_[0-9A-HJKMNP-TV-Z]{26}$'
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: {$ref: '#/components/schemas/Problem'}
   schemas:
-    E164:
-      type: string
-      pattern: '^\+[1-9]\d{1,14}$'
     PhoneNumberStatus:
       type: string
       enum: [provisioning, active, error, draining]
@@ -244,7 +235,7 @@ components:
       additionalProperties: false
       required: [e164, label, termination_address]
       properties:
-        e164: {$ref: '#/components/schemas/E164'}
+        e164: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         label: {type: string, minLength: 1, maxLength: 100}
         termination_address: {$ref: '#/components/schemas/TerminationAddress'}
         transport: {$ref: '#/components/schemas/Transport'}
@@ -280,7 +271,7 @@ components:
       required: [id, e164, label, termination_address, transport, has_auth_password, status, active_call_count, created_at]
       properties:
         id: {type: string}
-        e164: {$ref: '#/components/schemas/E164'}
+        e164: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         label: {type: string}
         termination_address: {type: string}
         transport: {$ref: '#/components/schemas/Transport'}
@@ -306,8 +297,8 @@ components:
         event_id: {type: string}
         call_id: {type: string}
         channel: {type: string, enum: [sip_inbound, whatsapp]}
-        from_number: {$ref: '#/components/schemas/E164'}
-        to_number: {$ref: '#/components/schemas/E164'}
+        from_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
+        to_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         phone_number_id: {type: [string, 'null']}
         whatsapp_channel_id: {type: [string, 'null']}
         agent_id:
@@ -330,18 +321,9 @@ components:
         metadata:
           type: object
           additionalProperties: true
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: {type: string, format: uri-reference}
-        title: {type: string}
-        status: {type: integer}
-        detail: {type: string}
-        instance: {type: string}
     ValidationProblem:
       allOf:
-        - $ref: '#/components/schemas/Problem'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         - type: object
           properties:
             errors:
@@ -354,7 +336,7 @@ components:
                   message: {type: string}
     ActiveCallsProblem:
       allOf:
-        - $ref: '#/components/schemas/Problem'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         - type: object
           required: [active_call_count]
           properties:

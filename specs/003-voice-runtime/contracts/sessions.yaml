@@ -21,7 +21,7 @@ paths:
         with status `failed` and the reason, and the problem body carries its `call_id`.
       tags: [sessions]
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired'
       requestBody:
         required: true
         content:
@@ -43,7 +43,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebCallSession'
         '400':
-          $ref: '#/components/responses/Problem'
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '402':
           description: Insufficient credit (`type` ends with `/insufficient-credit`)
           content:
@@ -55,9 +55,9 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Problem'
+                $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         '404':
-          $ref: '#/components/responses/Problem'
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '409':
           description: >
             `agent-not-published` (version=published with none pinned) or
@@ -65,7 +65,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Problem'
+                $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         '422':
           description: >
             Invalid variables, unsupported vendor (`unsupported-vendor`), unpriced
@@ -87,23 +87,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  parameters:
-    IdempotencyKey:
-      name: Idempotency-Key
-      in: header
-      required: true
-      description: Client-generated key; replays within 24 h return the original response.
-      schema:
-        type: string
-        minLength: 8
-        maxLength: 255
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
   schemas:
     WebCallRequest:
       type: object
@@ -167,24 +150,9 @@ components:
           type: array
           items:
             type: string
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type:
-          type: string
-          format: uri-reference
-        title:
-          type: string
-        status:
-          type: integer
-        detail:
-          type: string
-        instance:
-          type: string
     CallRefusedProblem:
       allOf:
-        - $ref: '#/components/schemas/Problem'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         - type: object
           properties:
             call_id:

@@ -61,7 +61,7 @@ paths:
                   warnings:
                     type: array
                     items: { type: string }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /simulation-runs:
     get:
       tags: [simulator]
@@ -72,8 +72,8 @@ paths:
         - { name: experiment_id, in: query, schema: { type: string } }
         - { name: standalone, in: query, schema: { type: boolean }, description: true returns only runs outside a batch }
         - { name: status, in: query, schema: { $ref: '#/components/schemas/SimStatus' } }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Runs, newest first
@@ -81,7 +81,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -93,7 +93,7 @@ paths:
       operationId: startSimulationRun
       summary: Start one simulation (replay needs base_call_id; persona needs base_call_id or persona_brief)
       parameters:
-        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired' }
       requestBody:
         required: true
         content:
@@ -117,8 +117,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SimulationRun' }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /simulation-runs/{simulation_run_id}:
     get:
       tags: [simulator]
@@ -131,7 +131,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SimulationRun' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /simulation-runs/{simulation_run_id}/comparison:
     get:
       tags: [simulator]
@@ -145,12 +145,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Comparison' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '409':
           description: Run not completed yet
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /simulation-runs/{simulation_run_id}/cancel:
     post:
       tags: [simulator]
@@ -167,7 +167,7 @@ paths:
           description: Only pending runs can be cancelled
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /experiments:
     get:
       tags: [simulator]
@@ -175,8 +175,8 @@ paths:
       parameters:
         - { name: agent_id, in: query, schema: { type: string } }
         - { name: source, in: query, schema: { type: string, enum: [call_selection, dataset, issue_validation, api] } }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Batches, newest first
@@ -184,7 +184,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -196,7 +196,7 @@ paths:
       operationId: startExperiment
       summary: Start a batch over base_call_ids or a dataset (exactly one)
       parameters:
-        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/IdempotencyKeyRequired' }
       requestBody:
         required: true
         content:
@@ -225,12 +225,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Experiment' }
-        '402': { $ref: '#/components/responses/InsufficientCredit' }
+        '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '422':
           description: Mixed agents, too many calls, invalid calls or invalid variant
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /experiments/{experiment_id}:
     get:
       tags: [simulator]
@@ -243,15 +243,15 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Experiment' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /experiments/{experiment_id}/runs:
     get:
       tags: [simulator]
       operationId: listExperimentRuns
       parameters:
         - { $ref: '#/components/parameters/ExperimentId' }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Runs of the batch
@@ -259,7 +259,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -280,8 +280,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Scorecard' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /experiments/{experiment_id}/cancel:
     post:
       tags: [simulator]
@@ -369,55 +369,7 @@ components:
   parameters:
     SimulationRunId: { name: simulation_run_id, in: path, required: true, schema: { type: string, pattern: '^srun_' } }
     ExperimentId: { name: experiment_id, in: path, required: true, schema: { type: string, pattern: '^exp_' } }
-    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
-    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
-    IdempotencyKey:
-      name: Idempotency-Key
-      in: header
-      required: true
-      schema: { type: string, minLength: 8, maxLength: 128 }
-  responses:
-    NotFound:
-      description: Not found
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    Unprocessable:
-      description: Validation failed
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    InsufficientCredit:
-      description: Balance at or below zero
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
-    Problem:
-      x-owner: '001'
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              field: { type: string }
-              message: { type: string }
-    PageMeta:
-      x-owner: '001'
-      type: object
-      required: [total, page, page_size, total_pages]
-      properties:
-        total: { type: integer }
-        page: { type: integer }
-        page_size: { type: integer }
-        total_pages: { type: integer }
     SimMode: { type: string, enum: [replay, persona] }
     SimStatus: { type: string, enum: [pending, running, completed, failed, cancelled] }
     SimEndReason:

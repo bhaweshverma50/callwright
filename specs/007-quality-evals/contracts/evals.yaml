@@ -25,7 +25,7 @@ paths:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/AgentEvalSetting" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /agents/{agent_id}/eval-settings/{evaluator_id}:
     put:
       operationId: putAgentEvalSetting
@@ -54,17 +54,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AgentEvalSetting" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
         "409":
           description: More than 4 headline evaluators ("Up to 4 headline checks per agent")
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "422":
           description: Field errors, for example sample_rate_pct 150 gives errors[{field "overrides.sample_rate_pct", message "Enter a whole number from 1 to 100"}]; evaluator not applicable to the agent type
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
   /calls/{call_id}/evaluations:
     get:
       operationId: getCallEvaluations
@@ -77,7 +77,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CallEvaluations" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /calls/{call_id}/evaluations/rerun:
     post:
       operationId: rerunCallEvaluations
@@ -112,8 +112,8 @@ paths:
           description: Call not completed, or checks already running ("Checks are already running")
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /evals/verdict-diff:
     get:
       operationId: getVerdictDiff
@@ -143,33 +143,11 @@ paths:
                         other: { $ref: "#/components/schemas/VerdictSide" }
                         score_delta: { type: [number, "null"] }
                         other_rationale: { type: [string, "null"] }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        errors:
-          type: array
-          items:
-            type: object
-            required: [field, message]
-            properties:
-              field: { type: string }
-              message: { type: string }
     Verdict: { type: string, enum: [pass, fail, not_applicable] }
     VerdictSide:
       type: object

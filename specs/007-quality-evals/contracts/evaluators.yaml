@@ -44,12 +44,12 @@ paths:
           description: Name in use ("You already have a custom check named ...") or 50-evaluator limit reached
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "422":
           description: Field errors (pattern invalid, question too short, judge model not in the list)
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
   /evaluators/judge-models:
     get:
       operationId: listJudgeModels
@@ -90,7 +90,7 @@ paths:
                       versions:
                         type: array
                         items: { $ref: "#/components/schemas/EvaluatorVersion" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
     patch:
       operationId: updateCustomEvaluator
       description: Custom only. A change to `config` creates a new version; display_name and description edits do not.
@@ -115,16 +115,16 @@ paths:
           description: Built-in evaluators cannot be edited
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
-        "404": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
     delete:
       operationId: deleteCustomEvaluator
       description: Soft delete; past results and versions are kept and the name can be reused.
       responses:
         "204": { description: Deleted }
-        "403": { $ref: "#/components/responses/Problem" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /evaluators/trial:
     post:
       operationId: trialCustomEvaluator
@@ -160,36 +160,13 @@ paths:
                       turn_indices: { type: array, items: { type: integer } }
                       quote: { type: [string, "null"] }
                   charged_usd: { type: [number, "null"] }
-        "402": { $ref: "#/components/responses/Problem" }
-        "404": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "402": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        errors:
-          type: array
-          description: Per-field validation messages (422)
-          items:
-            type: object
-            required: [field, message]
-            properties:
-              field: { type: string }
-              message: { type: string }
     SettingsField:
       type: object
       required: [key, label, type]

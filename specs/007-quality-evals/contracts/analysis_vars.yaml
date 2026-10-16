@@ -25,7 +25,7 @@ paths:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/AnalysisVariable" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
     post:
       operationId: createAnalysisVariable
       requestBody:
@@ -43,8 +43,8 @@ paths:
           description: Name already used on this agent, or 25-variable limit reached
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /agents/{agent_id}/analysis-variables/order:
     put:
       operationId: reorderAnalysisVariables
@@ -61,7 +61,7 @@ paths:
                 variable_ids: { type: array, items: { type: string, pattern: "^var_" } }
       responses:
         "204": { description: Reordered }
-        "422": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /analysis-variables/{variable_id}:
     parameters:
       - { name: variable_id, in: path, required: true, schema: { type: string, pattern: "^var_" } }
@@ -85,15 +85,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AnalysisVariable" }
-        "404": { $ref: "#/components/responses/Problem" }
-        "409": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "409": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
+        "422": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
     delete:
       operationId: deleteAnalysisVariable
       description: Soft delete. Stops future extraction; past call values are kept.
       responses:
         "204": { description: Deleted }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /calls/{call_id}/analysis:
     get:
       operationId: getCallAnalysis
@@ -105,7 +105,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CallAnalysis" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /calls/{call_id}/analysis/rerun:
     post:
       operationId: rerunCallAnalysis
@@ -123,37 +123,16 @@ paths:
           description: Balance at or below zero
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "409":
           description: Call not completed yet, or analysis already running
           content:
             application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
   schemas:
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              field: { type: string }
-              message: { type: string }
     VariableName:
       type: string
       pattern: "^[a-z][a-z0-9_]{0,63}$"

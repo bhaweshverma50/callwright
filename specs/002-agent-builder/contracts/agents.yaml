@@ -119,7 +119,7 @@ paths:
                 type: {$ref: '#/components/schemas/AgentType'}
                 config: {type: object}
                 agent_id:
-                  $ref: '#/components/schemas/AgentId'
+                  $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'
                   description: Optional; lets attachment validators check workspace references
       responses:
         '200':
@@ -130,7 +130,7 @@ paths:
         '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
   /agents/{agent_id}:
     parameters:
-      - {$ref: '#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
     get:
       operationId: getAgent
       tags: [agents]
@@ -196,7 +196,7 @@ paths:
                             label: {type: string}
   /agents/{agent_id}/draft:
     parameters:
-      - {$ref: '#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
     put:
       operationId: saveAgentDraft
       tags: [agents]
@@ -241,7 +241,7 @@ paths:
         '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
   /agents/{agent_id}/duplicate:
     parameters:
-      - {$ref: '#/components/parameters/AgentIdPath'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
     post:
       operationId: duplicateAgent
       tags: [agents]
@@ -270,16 +270,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  parameters:
-    AgentIdPath:
-      name: agent_id
-      in: path
-      required: true
-      schema: {$ref: '#/components/schemas/AgentId'}
   schemas:
-    AgentId:
-      type: string
-      pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
     AgentVersionId:
       type: string
       pattern: '^agv_[0-9A-HJKMNP-TV-Z]{26}$'
@@ -313,7 +304,7 @@ components:
       type: object
       required: [id, name, type, language, llm_model, voice_label, published_version, created_at, updated_at]
       properties:
-        id: {$ref: '#/components/schemas/AgentId'}
+        id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'}
         name: {type: string}
         type: {$ref: '#/components/schemas/AgentType'}
         language: {type: string}
@@ -330,7 +321,7 @@ components:
       type: object
       required: [id, name, type, draft_revision, draft_config, draft_version, published_version, publish_blockers, warnings, created_at, updated_at]
       properties:
-        id: {$ref: '#/components/schemas/AgentId'}
+        id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'}
         name: {type: string}
         type: {$ref: '#/components/schemas/AgentType'}
         template_id: {type: [string, 'null']}

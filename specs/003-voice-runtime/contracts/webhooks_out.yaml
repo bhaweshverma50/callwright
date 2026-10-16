@@ -87,7 +87,7 @@ paths:
                         type: string
                         description: Exact JSON body that was signed and sent.
         '404':
-          $ref: '#/components/responses/Problem'
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
   /webhooks/deliveries/{delivery_id}/redeliver:
     post:
       operationId: redeliverWebhook
@@ -103,7 +103,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebhookDelivery'
         '404':
-          $ref: '#/components/responses/Problem'
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
   /webhooks/test:
     post:
       operationId: sendWebhookTest
@@ -131,7 +131,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Problem'
+                $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
 webhooks:
   call_started:
     post:
@@ -211,13 +211,6 @@ components:
       required: true
       schema:
         type: string
-  responses:
-    Problem:
-      description: RFC 9457 problem
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
   schemas:
     WebhookEventName:
       type: string
@@ -343,12 +336,3 @@ components:
         processing_warnings:
           type: array
           items: {type: string}
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: {type: string, format: uri-reference}
-        title: {type: string}
-        status: {type: integer}
-        detail: {type: string}
-        instance: {type: string}

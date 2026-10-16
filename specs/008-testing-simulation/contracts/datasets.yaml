@@ -20,8 +20,8 @@ paths:
       operationId: listDatasets
       parameters:
         - { name: agent_id, in: query, schema: { type: string, pattern: '^agt_' } }
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Datasets, most recently updated first
@@ -29,7 +29,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -70,8 +70,8 @@ paths:
           description: Name already in use (case-insensitive)
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
   /datasets/{dataset_id}:
     parameters:
       - { $ref: '#/components/parameters/DatasetId' }
@@ -84,7 +84,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Dataset' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
     patch:
       tags: [datasets]
       operationId: updateDataset
@@ -108,13 +108,13 @@ paths:
           description: Name already in use
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
     delete:
       tags: [datasets]
       operationId: deleteDataset
       responses:
         '204': { description: Dataset and item links removed; calls untouched }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /datasets/{dataset_id}/items:
     parameters:
       - { $ref: '#/components/parameters/DatasetId' }
@@ -122,8 +122,8 @@ paths:
       tags: [datasets]
       operationId: listDatasetItems
       parameters:
-        - { $ref: '#/components/parameters/Page' }
-        - { $ref: '#/components/parameters/PageSize' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
+        - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
         '200':
           description: Items, most recently added first
@@ -131,7 +131,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - { $ref: '#/components/schemas/PageMeta' }
+                  - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta' }
                   - type: object
                     required: [items]
                     properties:
@@ -164,7 +164,7 @@ paths:
           description: Would exceed 1,000 items
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
   /datasets/{dataset_id}/items/{call_id}:
     delete:
       tags: [datasets]
@@ -174,7 +174,7 @@ paths:
         - { name: call_id, in: path, required: true, schema: { type: string, pattern: '^call_' } }
       responses:
         '204': { description: Removed }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /datasets/{dataset_id}/evaluate:
     post:
       tags: [datasets]
@@ -209,44 +209,13 @@ paths:
           description: Balance at or below zero
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   parameters:
     DatasetId: { name: dataset_id, in: path, required: true, schema: { type: string, pattern: '^ds_' } }
-    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
-    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
-  responses:
-    NotFound:
-      description: Not found
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-    Unprocessable:
-      description: Validation failed
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
-    Problem:
-      x-owner: '001'
-      type: object
-      required: [type, title, status]
-      properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-    PageMeta:
-      x-owner: '001'
-      type: object
-      required: [total, page, page_size, total_pages]
-      properties:
-        total: { type: integer }
-        page: { type: integer }
-        page_size: { type: integer }
-        total_pages: { type: integer }
     Dataset:
       type: object
       required: [dataset_id, name, agent_id, item_count, created_at, updated_at]

@@ -49,24 +49,24 @@ paths:
           description: Missing Idempotency-Key
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '402':
           description: '`insufficient-credit` (call record created, status failed)'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+              schema: {$ref: '../../003-voice-runtime/contracts/sessions.yaml#/components/schemas/CallRefusedProblem'}
         '403':
           description: '`email-unverified`'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '409':
           description: >
             `from-number-not-active` (provisioning, error or draining), `no-outbound-agent`,
             `agent-not-published`, `idempotency-key-in-use`.
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: >
             Validation (`invalid-number`, `same-number`, `invalid-timezone`, variables),
@@ -78,7 +78,7 @@ paths:
             application/problem+json:
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/CallRefusedProblem'
+                  - $ref: '../../003-voice-runtime/contracts/sessions.yaml#/components/schemas/CallRefusedProblem'
                   - $ref: '#/components/schemas/PolicyBlockedProblem'
               examples:
                 dnc:
@@ -109,7 +109,7 @@ paths:
               schema: {type: integer}
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/CallRefusedProblem'}
+              schema: {$ref: '../../003-voice-runtime/contracts/sessions.yaml#/components/schemas/CallRefusedProblem'}
   /dnc-entries:
     get:
       operationId: listDncEntries
@@ -154,12 +154,12 @@ paths:
           description: '`dnc-entry-exists` (the existing entry id is in `detail`) or `dnc-limit-reached`'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: '`invalid-number` (cannot be normalised to E.164)'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /dnc-entries/{dnc_id}:
     parameters:
       - name: dnc_id
@@ -177,7 +177,7 @@ paths:
           description: Unknown entry
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /dnc-entries/import:
     post:
       operationId: importDncEntries
@@ -212,12 +212,12 @@ paths:
           description: '`file-too-large` (over 10 MB or 100,000 rows)'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           description: '`invalid-csv` (not UTF-8, or no `number` header)'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /outbound-calling-hours:
     get:
       operationId: getCallingHours
@@ -248,7 +248,7 @@ paths:
           description: '`invalid-window` (bad time format, start not before end, or a missing weekday)'
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/Problem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /outbound-policy-decisions:
     get:
       operationId: listOutboundPolicyDecisions
@@ -258,7 +258,7 @@ paths:
         - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
         - {name: reason, in: query, schema: {$ref: '#/components/schemas/OutboundBlockReason'}}
-        - {name: to_number, in: query, schema: {$ref: '#/components/schemas/E164'}}
+        - {name: to_number, in: query, schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}}
         - {name: since, in: query, schema: {type: string, format: date-time}}
       responses:
         '200':
@@ -283,20 +283,17 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
-    E164:
-      type: string
-      pattern: '^\+[1-9]\d{1,14}$'
     OutboundCallRequest:
       type: object
       additionalProperties: false
       required: [to_number, from_number]
       properties:
         to_number:
-          $ref: '#/components/schemas/E164'
+          $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'
         from_number:
           description: An active imported number in this workspace.
           allOf:
-            - $ref: '#/components/schemas/E164'
+            - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'
         agent_id:
           type: string
           pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
@@ -330,8 +327,8 @@ components:
       properties:
         call_id: {type: string, pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'}
         status: {type: string, enum: [queued, ringing, in_progress, ended, processing, completed, failed, no_answer, busy, voicemail]}
-        to_number: {$ref: '#/components/schemas/E164'}
-        from_number: {$ref: '#/components/schemas/E164'}
+        to_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
+        from_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         agent_id: {type: string}
         agent_version_id: {type: string}
         phone_number_id: {type: string}
@@ -348,27 +345,6 @@ components:
         timezone_source:
           type: string
           enum: [override, number_region]
-    Problem:
-      type: object
-      required: [type, title, status]
-      properties:
-        type: {type: string, format: uri-reference}
-        title: {type: string}
-        status: {type: integer}
-        detail: {type: string}
-        instance: {type: string}
-    CallRefusedProblem:
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-        - type: object
-          properties:
-            call_id:
-              type: string
-              description: Present when admission refused the call (a failed call record exists).
-            disconnect_reason:
-              type: string
-              enum: [insufficient_credit, concurrency_limit, error]
-            diagnostic: {type: string}
     OutboundBlockReason:
       type: string
       enum: [dnc_listed, outside_calling_hours]
@@ -377,12 +353,12 @@ components:
         Compliance block (type `outbound-policy`). No call record exists, nothing is billed, and a
         policy decision is logged.
       allOf:
-        - $ref: '#/components/schemas/Problem'
+        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         - type: object
           required: [reason, to_number]
           properties:
             reason: {$ref: '#/components/schemas/OutboundBlockReason'}
-            to_number: {$ref: '#/components/schemas/E164'}
+            to_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
             dnc_entry_id:
               type: string
               pattern: '^dnc_[0-9A-HJKMNP-TV-Z]{26}$'
@@ -421,7 +397,7 @@ components:
       required: [id, number, source, created_at]
       properties:
         id: {type: string, pattern: '^dnc_[0-9A-HJKMNP-TV-Z]{26}$'}
-        number: {$ref: '#/components/schemas/E164'}
+        number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         note: {type: [string, 'null']}
         source: {type: string, enum: [manual, csv_import]}
         created_by_user_id: {type: [string, 'null']}
@@ -490,8 +466,8 @@ components:
         id: {type: integer}
         decided_at: {type: string, format: date-time}
         reason: {$ref: '#/components/schemas/OutboundBlockReason'}
-        to_number: {$ref: '#/components/schemas/E164'}
-        from_number: {$ref: '#/components/schemas/E164'}
+        to_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
+        from_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
         phone_number_id: {type: [string, 'null']}
         agent_id: {type: [string, 'null']}
         requested_by: {type: string, description: User id or API key id}

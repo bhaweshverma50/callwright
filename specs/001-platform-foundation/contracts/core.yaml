@@ -53,6 +53,24 @@ components:
       required: false
       description: Client-generated key (max 255 chars). A repeat with the same key returns the first result.
       schema: {type: string, maxLength: 255}
+    IdempotencyKeyRequired:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Client-generated key (8 to 255 chars), required on POSTs that spend credit or place calls.
+        A replay with the same key within 24 h returns the original response.
+      schema: {type: string, minLength: 8, maxLength: 255}
+    AgentIdPath:
+      name: agent_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/AgentId'}
+    CallIdPath:
+      name: call_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/CallId'}
   schemas:
     MoneyUsd:
       type: string
@@ -71,6 +89,14 @@ components:
     CallId:
       type: string
       pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+    AgentId:
+      type: string
+      pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+    E164:
+      type: string
+      description: Phone number in E.164 form, a plus sign and 7 to 15 digits.
+      pattern: '^\+[1-9]\d{6,14}$'
+      examples: ['+14155550123']
     PageMeta:
       type: object
       required: [total, page, page_size, total_pages]
@@ -144,6 +170,16 @@ components:
       headers:
         Retry-After:
           schema: {type: integer}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    InsufficientCredit:
+      description: Balance at or below zero (code insufficient_credit)
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Problem:
+      description: RFC 9457 problem; the status code and `code` say what went wrong
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
