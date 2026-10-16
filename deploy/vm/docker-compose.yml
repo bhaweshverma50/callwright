@@ -1,0 +1,36 @@
+# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis.
+# Secrets come from /opt/callwright/.env, written by deploy/vm/render-env.sh from Secret Manager.
+# The voice worker joins this file once vendor keys exist (see deploy/vm/README.md).
+services:
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    restart: unless-stopped
+    network_mode: host
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    network_mode: host
+    # Reachable on the VPC (firewall allows tcp:6379 only from internal ranges) with a password.
+    command: ["redis-server", "--port", "6379", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:
