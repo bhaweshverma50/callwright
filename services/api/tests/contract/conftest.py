@@ -33,6 +33,10 @@ def contract_dict() -> dict[str, object]:
 
 def check(response: httpx.Response) -> httpx.Response:
     request = response.request
+    try:
+        body = request.content
+    except httpx.RequestNotRead:  # multipart uploads stream their body
+        body = request.read()
     content_type = response.headers.get("content-type", "application/json").split(";")[0]
     mock_request = MockRequest(
         "http://testserver",
@@ -40,7 +44,7 @@ def check(response: httpx.Response) -> httpx.Response:
         request.url.path,
         args=dict(request.url.params),
         headers=dict(request.headers),
-        data=request.content,
+        data=body,
         content_type=request.headers.get("content-type", "application/json").split(";")[0],
     )
     mock_response = MockResponse(
