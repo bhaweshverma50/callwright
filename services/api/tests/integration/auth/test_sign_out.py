@@ -48,3 +48,27 @@ async def test_garbage_and_expired_tokens_are_401(client: httpx.AsyncClient, app
     )
     response = await client.get("/v1/me", headers={"Authorization": f"Bearer {forged}"})
     assert response.status_code == 401
+
+
+async def test_valid_token_for_unknown_user_is_401_not_403(client: httpx.AsyncClient, app: FastAPI) -> None:
+    """A correctly signed token whose user no longer exists (deleted account, reset database) is a
+    dead session: 401 lets the web client refresh or sign out instead of looping on 403."""
+    import time
+    import uuid
+
+    import jwt
+
+    secret = app.state.settings.auth_jwt_secret.get_secret_value()
+    token = jwt.encode(
+        {
+            "sub": str(uuid.uuid4()),
+            "aud": "authenticated",
+            "exp": int(time.time()) + 600,
+            "session_id": str(uuid.uuid4()),
+        },
+        secret,
+        algorithm="HS256",
+    )
+    response = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert response.json()["code"] == "session_invalid"

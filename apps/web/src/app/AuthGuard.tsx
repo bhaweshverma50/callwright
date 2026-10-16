@@ -1,5 +1,9 @@
+import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
+import { isApiError } from "../api/errors";
 import { useMe } from "../api/queries";
+import { session } from "./session";
+import { queryClient } from "./queryClient";
 import { FullPageLoader } from "../components";
 import { loginPathFor, useSignedIn } from "./auth";
 
@@ -9,14 +13,27 @@ import { loginPathFor, useSignedIn } from "./auth";
  * refresh fails the session clears and this guard redirects on the next render.
  *
  * A stored session is confirmed once with /me before the shell renders, behind the full-page logo
- * loader, so a dead session goes straight to sign-in instead of flashing the app. Later visits use
- * the cached identity and render at once; if /me fails for another reason the pages show the error.
+ * loader, so a dead session goes straight to sign-in instead of flashing the app. If /me rejects
+ * the session (401, or 403 for any reason other than an unverified email) the stored tokens are
+ * dropped so nothing keeps polling with them; an unverified account goes to the verify page.
  */
 export function AuthGuard() {
   const signedIn = useSignedIn();
   const location = useLocation();
   const me = useMe();
+  const rejected = me.isError && isApiError(me.error) && (me.error.status === 401 || me.error.status === 403);
+  const unverified = rejected && isApiError(me.error) && me.error.code === "email_unverified";
+
+  useEffect(() => {
+    if (rejected && !unverified) {
+      queryClient.clear();
+      session.clear();
+    }
+  }, [rejected, unverified]);
+
   if (!signedIn) return <Navigate to={loginPathFor(location)} replace />;
+  if (unverified) return <Navigate to="/verify-email" replace />;
+  if (rejected) return <FullPageLoader label="Signing you out" />;
   if (me.isPending) return <FullPageLoader label="Checking your session" />;
   return <Outlet />;
 }

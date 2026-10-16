@@ -151,7 +151,11 @@ async def current_principal(
     request: Request, claims: Annotated[TokenClaims, Depends(current_claims)]
 ) -> Principal:
     row = await resolve_subject(request.app.state.db, claims.subject)
-    if row is None or row.workspace_id is None:
+    if row is None:
+        # A valid signature for a user that no longer exists (deleted account, reset database):
+        # the session is dead, so 401 lets clients refresh or sign out instead of looping on 403.
+        raise unauthorized("This session is no longer valid. Sign in again.", "session_invalid")
+    if row.workspace_id is None:
         raise ProblemError(
             403, "email_unverified", "Email not verified", "Verify your email address to continue."
         )
