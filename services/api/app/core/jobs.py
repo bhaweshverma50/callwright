@@ -6,7 +6,7 @@ one Redis client at startup and passes them through ``ctx``.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar
 
 from arq import cron
 from arq.connections import ArqRedis, RedisSettings, create_pool
@@ -15,6 +15,9 @@ from arq.cron import CronJob
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
+from app.core.queue import ArqJobQueue, JobQueue
+
+__all__ = ["ArqJobQueue", "JobQueue", "WorkerSettings", "enqueue"]
 
 
 def redis_settings() -> RedisSettings:
@@ -22,13 +25,27 @@ def redis_settings() -> RedisSettings:
 
 
 async def startup(ctx: dict[str, Any]) -> None:
+    import httpx
+
+    from app.calls.catalog import load_catalog
+    from app.core.livekit import build_livekit
+
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
     ctx["settings"] = settings
     ctx["db"] = Database(settings.database_url, settings.database_admin_url, pool_size=4)
+    # Voice runtime (003): jobs enqueue follow-ups on the worker's own pool.
+    ctx["jobs"] = ArqJobQueue(pool=ctx["redis"])
+    ctx["livekit"] = build_livekit(settings)
+    ctx["adapter_catalog"] = load_catalog(settings.adapter_catalog_path)
+    ctx["http"] = httpx.AsyncClient(follow_redirects=False)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
+    for key in ("http", "livekit"):
+        client = ctx.get(key)
+        if client is not None:
+            await client.aclose()
     db: Database | None = ctx.get("db")
     if db is not None:
         await db.dispose()
@@ -42,49 +59,32 @@ async def enqueue(job_name: str, *args: Any, **kwargs: Any) -> None:
         await pool.aclose()
 
 
-class JobQueue(Protocol):
-    """Where request handlers and jobs enqueue work (``app.state.jobs``, ``ctx["jobs"]``)."""
-
-    async def enqueue(
-        self, name: str, *args: Any, defer_by_s: float | None = None, job_id: str | None = None
-    ) -> None: ...
-
-
-class ArqJobQueue:
-    """``JobQueue`` over one shared arq pool, created on first use."""
-
-    def __init__(self, settings: RedisSettings | None = None, pool: ArqRedis | None = None) -> None:
-        self._settings = settings
-        self._pool = pool
-        self._owns_pool = pool is None
-
-    async def _get(self) -> ArqRedis:
-        if self._pool is None:
-            self._pool = await create_pool(self._settings or redis_settings())
-        return self._pool
-
-    async def enqueue(
-        self, name: str, *args: Any, defer_by_s: float | None = None, job_id: str | None = None
-    ) -> None:
-        pool = await self._get()
-        await pool.enqueue_job(name, *args, _defer_by=defer_by_s, _job_id=job_id)
-
-    async def aclose(self) -> None:
-        if self._pool is not None and self._owns_pool:
-            await self._pool.aclose()
-        self._pool = None
-
-
 def _functions() -> list[Any]:
     from app.billing.jobs import reconcile_balances
+    from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
+    from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
 
-    return [reconcile_balances]
+    return [
+        reconcile_balances,
+        run_pipeline,
+        start_recording,
+        deliver_webhook,
+        reap_stuck_calls,
+        purge_webhook_deliveries,
+    ]
 
 
 def _crons() -> list[CronJob]:
     from app.billing.jobs import reconcile_balances
+    from app.calls.jobs import reap_stuck_calls
+    from app.webhooks_out.jobs import purge_webhook_deliveries
 
-    return [cron(reconcile_balances, hour={3}, minute={0}, run_at_startup=False)]
+    return [
+        cron(reconcile_balances, hour={3}, minute={0}, run_at_startup=False),
+        # 003 R16: stuck calls every 15 s; deliveries older than 30 days once a day.
+        cron(reap_stuck_calls, second={0, 15, 30, 45}, run_at_startup=False, unique=True),
+        cron(purge_webhook_deliveries, hour={4}, minute={0}, run_at_startup=False),
+    ]
 
 
 class WorkerSettings:

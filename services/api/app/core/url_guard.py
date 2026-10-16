@@ -160,7 +160,7 @@ async def guarded_request(
     *,
     content: bytes | None = None,
     headers: Mapping[str, str] | None = None,
-    timeout: float | httpx.Timeout | None = None,
+    timeout: float | httpx.Timeout | None = None,  # noqa: ASYNC109 - per-request httpx timeout
 ) -> httpx.Response:
     """Send one request to the first checked address of ``checked`` (no redirects)."""
     address = checked.addresses[0]

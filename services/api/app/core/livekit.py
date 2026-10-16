@@ -137,7 +137,9 @@ class _TokenMixin:
     def join_token(
         self, *, room: str, identity: str, name: str | None = None, ttl_s: int = JOIN_TOKEN_TTL_S
     ) -> str:
-        return mint_join_token(self.api_key, self._secret, room=room, identity=identity, name=name, ttl_s=ttl_s)
+        return mint_join_token(
+            self.api_key, self._secret, room=room, identity=identity, name=name, ttl_s=ttl_s
+        )
 
     def verify_webhook(self, body: str, authorization: str | None) -> dict[str, Any]:
         return verify_webhook(self.api_key, self._secret, body, authorization)

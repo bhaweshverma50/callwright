@@ -103,6 +103,8 @@ class Settings(BaseSettings):
     recordings_s3_access_key: SecretStr | None = None
     recordings_s3_secret_key: SecretStr | None = None
     recordings_kms_key_id: str | None = None
+    # Uploaded media (background ambience files, 002) served to the worker by signed URL.
+    media_bucket: str = "callwright-media"
     # Outbound customer webhooks (FR-040): plain http only when allowed (development).
     webhooks_allow_http: bool = False
     webhooks_allow_private: bool = False
