@@ -1,0 +1,36 @@
+{
+ "url": "https://calldash-api-prod.azurewebsites.net/api/tools/predefined/?limit=100&offset=0",
+ "template": "/api/tools/predefined/?limit=&offset=",
+ "body": [
+  {
+   "pre_defined_tool_id": "predef_u1u2u3u4u5u6u7u8u9",
+   "name": "end_call",
+   "tool_config": {
+    "name": "end_call",
+    "type": "end_call",
+    "message": "Thank you for calling. Have a great day!",
+    "description": "End the call politely"
+   },
+   "created_at": "2025-10-09T23:16:22.473477",
+   "updated_at": "2025-10-09T23:16:22.473477"
+  },
+  {
+   "pre_defined_tool_id": "predef_t1t2t3t4t5t6t7t8t9",
+   "name": "transfer_call",
+   "tool_config": {
+    "name": "transfer_call",
+    "type": "transfer_call",
+    "description": "Transfer to human agent when requested",
+    "transfer_option": {
+     "type": "warm_transfer"
+    },
+    "transfer_destination": {
+     "type": "predefined",
+     "number": "+18005551234"
+    }
+   },
+   "created_at": "2025-10-09T23:16:22.473477",
+   "updated_at": "2025-10-09T23:16:22.473477"
+  }
+ ]
+}

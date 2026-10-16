@@ -1,0 +1,32 @@
+[
+ {
+  "category_id": "tcat_bb",
+  "name": "Bad Behavior",
+  "slug": "bad_behavior",
+  "color": "#ff5800"
+ },
+ {
+  "category_id": "tcat_gr",
+  "name": "Guardrails",
+  "slug": "guardrails",
+  "color": "#058244"
+ },
+ {
+  "category_id": "tcat_id",
+  "name": "Identity",
+  "slug": "identity",
+  "color": "#5e007e"
+ },
+ {
+  "category_id": "tcat_oos",
+  "name": "Out of Scope",
+  "slug": "out_of_scope",
+  "color": "#1d55a5"
+ },
+ {
+  "category_id": "tcat_pi",
+  "name": "Prompt Injection",
+  "slug": "prompt_injection",
+  "color": "#c42423"
+ }
+]

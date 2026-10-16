@@ -1,0 +1,374 @@
+{
+ "url": "https://calldash-api-prod.azurewebsites.net/api/evals/agents/GkFGZHpQ0GXgXoix9VRKc/config",
+ "template": "/api/evals/agents/{id}/config",
+ "body": [
+  {
+   "evaluator_id": "4e87e8bd-b9c8-49a2-805f-1d5487eefbc2",
+   "name": "anomaly_detection",
+   "display_name": "Anomaly detection",
+   "description": "Flags calls that don't resemble recent normal calls for this agent. Catches failure modes you didn't write a check for — no labels required.",
+   "scope": "call",
+   "cost_class": "free",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "threshold",
+      "max": 1,
+      "min": 0,
+      "type": "number",
+      "label": "Anomaly threshold (0–1)",
+      "helper": "KNN mean cosine distance above which a call is flagged."
+     },
+     {
+      "key": "window_days",
+      "max": 365,
+      "min": 1,
+      "type": "number",
+      "label": "Reference window (days)",
+      "helper": "Compare against calls ending in the last N days."
+     },
+     {
+      "key": "min_sample_size",
+      "max": 500,
+      "min": 5,
+      "type": "number",
+      "label": "Min neighbours before scoring",
+      "helper": "Below this, the detector returns insufficient_data instead of a number."
+     },
+     {
+      "key": "knn_k",
+      "max": 50,
+      "min": 1,
+      "type": "number",
+      "label": "KNN k",
+      "helper": "Number of nearest neighbours to average."
+     },
+     {
+      "key": "backfill_per_run",
+      "max": 20,
+      "min": 0,
+      "type": "number",
+      "label": "Backfill per run",
+      "helper": "Embed this many un-embedded neighbour calls per run (0 = off)."
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "knn_k": 10,
+    "threshold": 0.7,
+    "window_days": 30,
+    "min_sample_size": 30,
+    "backfill_per_run": 5
+   },
+   "is_overridden": false,
+   "evaluator_type": "anomaly",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "f4782939-e092-4273-a814-c074cec473e5",
+   "name": "factual_consistency",
+   "display_name": "Factual consistency",
+   "description": "LLM judge: did the agent's responses stay grounded in the KB chunks the search returned, or did it hallucinate? Reads tool call trace events for search_knowledge_base invocations.",
+   "scope": "call",
+   "cost_class": "llm_judge",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "judge_model",
+      "type": "select",
+      "label": "Judge model",
+      "helper": "Only model available for evaluator judges.",
+      "options": [
+       "gpt-5-mini"
+      ]
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "judge_model": "gpt-5-mini"
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "7706d198-88b0-4813-8731-c5bd8317a9c8",
+   "name": "flow_completion",
+   "display_name": "Flow completion",
+   "description": "Did the flow reach a terminal node (end or transfer) — or did the call drop out mid-flow? Free, flow-only.",
+   "scope": "call",
+   "cost_class": "free",
+   "config_schema": {
+    "fields": []
+   },
+   "enabled": true,
+   "config": {},
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "5b0189b3-eb6d-432f-8e48-7226c36ed14a",
+   "name": "intent_fulfillment",
+   "display_name": "Intent fulfillment",
+   "description": "LLM judge: given the agent's instructions, did this call achieve the goal?",
+   "scope": "call",
+   "cost_class": "llm_judge",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "judge_model",
+      "type": "select",
+      "label": "Judge model",
+      "helper": "Uses the OpenAI eval-judge model. Other tiers are not enabled for evaluators.",
+      "options": [
+       "gpt-5-mini"
+      ]
+     },
+     {
+      "key": "sample_rate_pct",
+      "max": 100,
+      "min": 1,
+      "type": "number",
+      "label": "Sample rate (%)",
+      "helper": "100 = every call. Lower for cost control."
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "judge_model": "gpt-5-mini",
+    "sample_rate_pct": 100
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "6ddb2ba1-5027-4a95-a4fd-f4f1bc56e7b5",
+   "name": "kb_relevance",
+   "display_name": "KB retrieval relevance",
+   "description": "LLM judge: did the knowledge-base search return chunks that addressed the user's query? Reads tool call trace events for search_knowledge_base invocations.",
+   "scope": "call",
+   "cost_class": "llm_judge",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "judge_model",
+      "type": "select",
+      "label": "Judge model",
+      "helper": "Only model available for evaluator judges.",
+      "options": [
+       "gpt-5-mini"
+      ]
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "judge_model": "gpt-5-mini"
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "66883f62-f5c4-45d1-97ab-b4cad911e630",
+   "name": "audio_silence",
+   "display_name": "Long silences",
+   "description": "Listens to the recording (not the transcript) for unusually long silences — dead air, TTS stalls, mid-word hangups. Catches things text-only evaluators physically can't see.",
+   "scope": "call",
+   "cost_class": "free",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "max_acceptable_silence_ms",
+      "max": 60000,
+      "min": 500,
+      "type": "number",
+      "label": "Max silence (ms)",
+      "helper": "Pass when no single silence exceeds this; default 5000ms (5s)."
+     },
+     {
+      "key": "silence_threshold_db",
+      "max": -10,
+      "min": -80,
+      "type": "number",
+      "label": "Silence threshold (dB below avg)",
+      "helper": "How quiet a stretch must be to count as silent. -40 ≈ very quiet."
+     },
+     {
+      "key": "min_silence_ms",
+      "max": 10000,
+      "min": 200,
+      "type": "number",
+      "label": "Min silence run (ms)",
+      "helper": "Ignore silences shorter than this. Keeps natural conversational pauses out."
+     }
+    ]
+   },
+   "enabled": true,
+   "config": {
+    "min_silence_ms": 1000,
+    "silence_threshold_db": -40,
+    "max_acceptable_silence_ms": 3000
+   },
+   "is_overridden": false,
+   "evaluator_type": "audio_quality",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "d0c5c239-3a8e-40b7-b234-c2379714ea69",
+   "name": "node_dead_end",
+   "display_name": "Per-node dead-ends",
+   "description": "For each node visited in the call, did the conversation transition out of it (good) or end there mid-flow (bad)? Free, flow-only. Lets the Issues page surface which specific nodes are dead-ending most often.",
+   "scope": "call",
+   "cost_class": "free",
+   "config_schema": {
+    "fields": []
+   },
+   "enabled": true,
+   "config": {},
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "b6fac601-2b4d-484e-8ca4-44fbef83f502",
+   "name": "process_reward",
+   "display_name": "Per-turn progress",
+   "description": "Scores each turn as +1 progress / 0 neutral / -1 regression toward the agent's stated goal. Surfaces calls that \"succeeded\" but spent turns going backwards.",
+   "scope": "turn",
+   "cost_class": "llm_judge",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "judge_model",
+      "type": "select",
+      "label": "Judge model",
+      "helper": "Only model available for evaluator judges.",
+      "options": [
+       "gpt-5-mini"
+      ]
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "judge_model": "gpt-5-mini"
+   },
+   "is_overridden": false,
+   "evaluator_type": "process_reward",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "0414b4fa-6d6a-4c7c-a8ac-3cbcd3ea7db8",
+   "name": "stuck_loop_detector",
+   "display_name": "Stuck loops",
+   "description": "Did the conversation keep returning to the same flow node instead of progressing? Flags 'agent is stuck in a loop at node X' patterns. Free, flow-only.",
+   "scope": "call",
+   "cost_class": "free",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "max_visits_per_node",
+      "max": 10,
+      "min": 2,
+      "type": "int",
+      "label": "Max visits per node before flagging as stuck",
+      "default": 3
+     }
+    ]
+   },
+   "enabled": true,
+   "config": {
+    "max_visits_per_node": 3
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "b60f137c-0d3f-43eb-a39e-21fe5e40dbba",
+   "name": "tool_call_correctness",
+   "display_name": "Tool call correctness",
+   "description": "LLM judge: were the agent's tool/function invocations the right choices given the conversation? Unlocked by tool-call tracing.",
+   "scope": "call",
+   "cost_class": "llm_judge",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "judge_model",
+      "type": "select",
+      "label": "Judge model",
+      "helper": "Only model available for evaluator judges.",
+      "options": [
+       "gpt-5-mini"
+      ]
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "judge_model": "gpt-5-mini"
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "68ede3e0-acc2-4599-acb9-bcad7e277ef6",
+   "name": "transition_correctness",
+   "display_name": "Transition correctness",
+   "description": "LLM judge: was each flow transition the right edge to take? Per-source-node attribution lets the Issues page surface which nodes have mis-firing transitions. Uses map-reduce per-transition judging with shuffled alternatives to fight position bias.",
+   "scope": "call",
+   "cost_class": "llm_judge",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "judge_model",
+      "type": "string",
+      "label": "Judge LLM model",
+      "default": "gpt-5-mini"
+     }
+    ]
+   },
+   "enabled": false,
+   "config": {
+    "judge_model": "gpt-5-mini"
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  },
+  {
+   "evaluator_id": "180789bf-9a3e-4ea1-b475-bc0b3685aebd",
+   "name": "latency_slo",
+   "display_name": "Turn latency",
+   "description": "Flags turns where total latency exceeds the SLO threshold. Free heuristic, runs on every call.",
+   "scope": "turn",
+   "cost_class": "free",
+   "config_schema": {
+    "fields": [
+     {
+      "key": "threshold_ms",
+      "max": 30000,
+      "min": 100,
+      "type": "number",
+      "label": "Threshold (ms)",
+      "helper": "Turns slower than this are flagged. Industry default: 3000ms."
+     }
+    ]
+   },
+   "enabled": true,
+   "config": {
+    "threshold_ms": 3000
+   },
+   "is_overridden": false,
+   "evaluator_type": "class",
+   "is_custom": false
+  }
+ ]
+}

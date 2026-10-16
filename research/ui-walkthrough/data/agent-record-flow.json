@@ -1,0 +1,38 @@
+{
+ "url": "https://calldash-api-prod.azurewebsites.net/api/agents/get-agent/GkFGZHpQ0GXgXoix9VRKc",
+ "template": "/api/agents/get-agent/{id}",
+ "body": {
+  "agent_id": "GkFGZHpQ0GXgXoix9VRKc",
+  "agent_name": "Test Flow Agent",
+  "user_id": "user_REDACTED",
+  "llm_id": "wJz8jDJRbMD3Ye9hkqdT0",
+  "agent_type": "flow",
+  "active_flow_id": null,
+  "language": "en-US",
+  "end_call_after_silence_ms": 30000,
+  "post_call_analysis_model": null,
+  "voice_id": "cgSgspJ2msm6clMCkdW9",
+  "voice_provider": "elevenlabs",
+  "voice_model": "eleven_flash_v2_5",
+  "voice_temperature": 0.9,
+  "voice_speed": 1,
+  "volume": 0.94,
+  "stt_provider": "deepgram",
+  "stt_model": "",
+  "noise_cancellation": "sanas_vi",
+  "max_call_duration_ms": null,
+  "ring_duration_ms": null,
+  "interruption_sensitivity": 0.95,
+  "responsiveness": 0.79,
+  "webhook_url": null,
+  "webhook_timeout_ms": 3000,
+  "voicemail_option": null,
+  "dtmf_option": {
+   "enabled": false
+  },
+  "background_audio": null,
+  "pronunciation_dictionary": null,
+  "created_at": "2026-10-16T04:48:58.431173",
+  "updated_at": "2026-10-16T04:48:58.431173"
+ }
+}

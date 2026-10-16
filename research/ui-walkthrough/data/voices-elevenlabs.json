@@ -1,0 +1,214 @@
+{
+ "url": "https://calldash-api-prod.azurewebsites.net/api/voices/elevenlabs?page_size=100&fetch_all=true",
+ "template": "/api/voices/elevenlabs?page_size=&fetch_all=",
+ "body": {
+  "voices": [
+   {
+    "voice_id": "Z6K3Dq8hMsGNSGhLtnrI",
+    "name": "Dr. Jason",
+    "description": "Calm, confident voice. Great for all conversation purposes.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/Z6K3Dq8hMsGNSGhLtnrI/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJjN2MyZGZmZDQ1MDQ0YmZjOGIxZmMxZGUxMjUxNmYyMSIsImZpbGVuYW1lIjoiNzIxZjQ4MjMtMGU4Mi00ZmFlLTk5NjItNzNkZDhjZDRiNDdiLm1wMyIsInRpbWVzdGFtcCI6MTc5MjEyNjgwMDAwMDAwMH0%3D",
+    "category": "professional"
+   },
+   {
+    "voice_id": "Z3R5wn05IrDiVCyEkUrK",
+    "name": "Arabella",
+    "description": "A young, mature female narrator with a mysterious and emotive tone, perfect for fantasy, romance, urban fantasy, and wellness.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/Z3R5wn05IrDiVCyEkUrK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI2N2FkYWRiN2QyYTk0ZjZlYWQ2NGU5NWY0NWJlMjI1NCIsImZpbGVuYW1lIjoiQ0JZS2FmbzVvbkllNTIzNHJBR1MubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "professional"
+   },
+   {
+    "voice_id": "DpnM70iDHNHZ0Mguv6GJ",
+    "name": "Saavi – Natural Hindi Customer Care Agent",
+    "description": "A friendly, empathetic voice designed for seamless, natural customer service in Hindi.\n\nWhether it's addressing inquiries, offering assistance, or resolving issues, her voice creates a comfortable and positive experience. Perfect for IVR systems, chatbots, and virtual assistants, Saavi offers reliable, friendly customer support in Hindi for platforms like mobile apps, websites, and customer service platforms. ",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ed9b05e6324c457685490352e9a1ec90/voices/DpnM70iDHNHZ0Mguv6GJ/LvEALGCOBMHkx6FYHjLZ.mp3",
+    "category": "professional"
+   },
+   {
+    "voice_id": "Z9hrfEHGU3dykHntWvIY",
+    "name": "David Ashby",
+    "description": "A young American male with a slightly monotone voice. Calming for some people.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/V9tL44HERebn0cOqwU3tvkjHOS92/voices/Z9hrfEHGU3dykHntWvIY/94e3ac5f-707e-4cb6-8819-40b3934c6c78.mp3",
+    "category": "professional"
+   },
+   {
+    "voice_id": "broqrJkktxd1CclKTudW",
+    "name": "Anika - Hindi Customer Care Agent",
+    "description": "Hindi version of one of ElevenLabs’ most-used customer care voices.\n\nAnika’s English version is already the go-to for customer care, product support bots, and enterprise helpdesks—and now her Hindi tone brings the same clarity, warmth, and professionalism to regional audiences. Designed for telecoms, banks, e-commerce, healthcare, and any high-volume support system, she delivers service scripts with precision and calm authority.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/broqrJkktxd1CclKTudW/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlZDliMDVlNjMyNGM0NTc2ODU0OTAzNTJlOWExZWM5MCIsImZpbGVuYW1lIjoieDgxQmhrOEswRHhkZk1yQ21DbUYubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "professional"
+   },
+   {
+    "voice_id": "sd5Iq5Amd7qzKFz0Jc3q",
+    "name": "Alok K - Customer Care: Human-like, Professional & Empathetic ",
+    "description": "A balanced & articulate voice designed for trust-building and smooth issue resolution.\n\nAlok brings a professional yet warm tone that is ideal for formal support conversations.\n\nPerfectly suited for customer care flows, onboarding journeys, escalation handling, and product explanations. Best used on Customer engagement platforms, fintech, and e-commerce support automation.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/sd5Iq5Amd7qzKFz0Jc3q/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlZDliMDVlNjMyNGM0NTc2ODU0OTAzNTJlOWExZWM5MCIsImZpbGVuYW1lIjoiaDdyU1ZqWHZOTW1udGJxZkNaR0IubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "professional"
+   },
+   {
+    "voice_id": "uMM5TEnpKKgD758knVJO",
+    "name": "Liz- Customer Service Assistant",
+    "description": "A warm, reassuring customer service assistant with over a decade of experience helping people feel heard, supported, and confident in every interaction. Known for a calm, friendly tone, thoughtful listening, and clear guidance, they create comfortable, trustworthy conversations while efficiently resolving billing, account, and service needs with care and professionalism.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/database/workspace/af050efbdab9479ca29e5d48c00bd675/voices/uMM5TEnpKKgD758knVJO/O0FyWnfz0UI6X55jzQhm.mp3",
+    "category": "professional"
+   },
+   {
+    "voice_id": "yA5sg1jAeFs7jFtteRx8",
+    "name": "Henna",
+    "description": "Elegant, Calm Conversational Indian Accent for AI Call Centre.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/database/workspace/11710f624fd04bb9889e573abff9a3b0/voices/yA5sg1jAeFs7jFtteRx8/cce0e6d5-1bf2-4227-8312-800bcaed523d.mp3",
+    "category": "professional"
+   },
+   {
+    "voice_id": "hpp4J3VqNfWAUOO0d1Us",
+    "name": "Bella - Professional, Bright, Warm",
+    "description": "This voice is warm, bright, and professional, characterized by a Standard American accent and a polished, narrative quality. It features a medium-high pitch with crisp diction and a deliberate, rhythmic pace that makes it highly intelligible and engaging for long-form listening.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/hpp4J3VqNfWAUOO0d1Us/dab0f5ba-3aa4-48a8-9fad-f138fea1126d.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "CwhRBWXzGAHq8TQ4Fs17",
+    "name": "Roger - Laid-Back, Casual, Resonant",
+    "description": "Easy going and perfect for casual conversations.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/CwhRBWXzGAHq8TQ4Fs17/58ee3ff5-f6f2-4628-93b8-e38eb31806b0.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "name": "Sarah - Mature, Reassuring, Confident",
+    "description": "Young adult woman with a confident and warm, mature quality and a reassuring, professional tone.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "FGY2WhTYpPnrIDTdsKH5",
+    "name": "Laura - Enthusiast, Quirky Attitude",
+    "description": "This young adult female voice delivers sunny enthusiasm with a quirky attitude.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/FGY2WhTYpPnrIDTdsKH5/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiI2NzM0MTc1OS1hZDA4LTQxYTUtYmU2ZS1kZTEyZmU0NDg2MTgubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "premade"
+   },
+   {
+    "voice_id": "IKne3meq5aSn9XLyUdCD",
+    "name": "Charlie - Deep, Confident, Energetic",
+    "description": "A young Australian male with a confident and energetic voice.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/IKne3meq5aSn9XLyUdCD/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiIxMDJkZTZmMi0yMmVkLTQzZTAtYTFmMS0xMTFmYTc1YzU0ODEubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "premade"
+   },
+   {
+    "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+    "name": "George - Warm, Captivating Storyteller",
+    "description": "Warm resonance that instantly captivates listeners.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/JBFqnCBsd6RMkjVDRZzb/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiJlNjIwNmQxYS0wNzIxLTQ3ODctYWFmYi0wNmE2ZTcwNWNhYzUubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "premade"
+   },
+   {
+    "voice_id": "N2lVS1w4EtoT3dr4eOWO",
+    "name": "Callum - Husky Trickster",
+    "description": "Deceptively gravelly, yet unsettling edge.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/N2lVS1w4EtoT3dr4eOWO/ac833bd8-ffda-4938-9ebc-b0f99ca25481.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "SAz9YHcvj6GT2YYXdXww",
+    "name": "River - Relaxed, Neutral, Informative",
+    "description": "A relaxed, neutral voice ready for narrations or conversational projects.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/SAz9YHcvj6GT2YYXdXww/e6c95f0b-2227-491a-b3d7-2249240decb7.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "SOYHLrjzK2X1ezoPC6cr",
+    "name": "Harry - Fierce Warrior",
+    "description": "An animated warrior ready to charge forward.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/SOYHLrjzK2X1ezoPC6cr/86d178f6-f4b6-4e0e-85be-3de19f490794.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
+    "name": "Liam - Energetic, Social Media Creator",
+    "description": "A young adult with energy and warmth - suitable for reels and shorts.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/TX3LPaxmHKxFdv7VOQHJ/63148076-6363-42db-aea8-31424308b92c.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "Xb7hH8MSUJpSbSDYk0k2",
+    "name": "Alice - Clear, Engaging Educator",
+    "description": "Clear and engaging, friendly woman with a British accent suitable for e-learning.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/Xb7hH8MSUJpSbSDYk0k2/d10f7534-11f6-41fe-a012-2de1e482d336.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "XrExE9yKIg1WjnnlVkGX",
+    "name": "Matilda - Knowledgable, Professional",
+    "description": "A professional woman with a pleasing alto pitch. Suitable for many use cases.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/XrExE9yKIg1WjnnlVkGX/b930e18d-6b4d-466e-bab2-0ae97c6d8535.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "bIHbv24MWmeRgasZH58o",
+    "name": "Will - Relaxed Optimist",
+    "description": "Conversational and laid back.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/bIHbv24MWmeRgasZH58o/8caf8f3d-ad29-4980-af41-53f20c72d7a4.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "cgSgspJ2msm6clMCkdW9",
+    "name": "Jessica - Playful, Bright, Warm",
+    "description": "Young and popular, this playful American female voice is perfect for trendy content.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/cgSgspJ2msm6clMCkdW9/56a97bf8-b69b-448f-846c-c3a11683d45a.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "cjVigY5qzO86Huf0OWal",
+    "name": "Eric - Smooth, Trustworthy",
+    "description": "A smooth tenor pitch from a man in his 40s - perfect for agentic use cases.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/cjVigY5qzO86Huf0OWal/d098fda0-6456-4030-b3d8-63aa048c9070.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "iP95p4xoKVk53GoZ742B",
+    "name": "Chris - Charming, Down-to-Earth",
+    "description": "Natural and real, this down-to-earth voice is great across many use-cases.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/iP95p4xoKVk53GoZ742B/3f4bde72-cc48-40dd-829f-57fbf906f4d7.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "name": "Brian - Deep, Resonant and Comforting",
+    "description": "Middle-aged man with a resonant and comforting tone. Great for narrations and advertisements.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/nPczCjzI2devNBz1zQrb/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiIyZGQzZTcyYy00ZmQzLTQyZjEtOTNlYS1hYmM1ZDRlNWFhMWQubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "premade"
+   },
+   {
+    "voice_id": "onwK4e9ZLuTAKqWW03F9",
+    "name": "Daniel - Steady Broadcaster",
+    "description": "A strong voice perfect for delivering a professional broadcast or news story.",
+    "preview_url": "https://api.us.elevenlabs.io/v1/voices/onwK4e9ZLuTAKqWW03F9/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiI3ZWVlMDIzNi0xYTcyLTRiODYtYjMwMy01ZGNhZGMwMDdiYTkubXAzIiwidGltZXN0YW1wIjoxNzkyMTI2ODAwMDAwMDAwfQ%3D%3D",
+    "category": "premade"
+   },
+   {
+    "voice_id": "pFZP5JQG7iQjIQuC4Bku",
+    "name": "Lily - Velvety Actress",
+    "description": "Velvety British female voice delivers news and narrations with warmth and clarity.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84a-a3c13a3c2b30.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "pNInz6obpgDQGcFmaJgB",
+    "name": "Adam - Dominant, Firm",
+    "description": "A bright tenor pitch that immediately cuts through. The delivery is brash and openly confident, speaking with unwavering certainty and a slightly aggressive self-assurance.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/pNInz6obpgDQGcFmaJgB/d6905d7a-dd26-4187-bfff-1bd3a5ea7cac.mp3",
+    "category": "premade"
+   },
+   {
+    "voice_id": "pqHfZKP75CvOlQylNhV4",
+    "name": "Bill - Wise, Mature, Balanced",
+    "description": "Friendly and comforting voice ready to narrate your stories.",
+    "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/pqHfZKP75CvOlQylNhV4/d782b3ff-84ba-4029-848c-acf01285524d.mp3",
+    "category": "premade"
+   }
+  ],
+  "total_count": 29,
+  "has_more": false,
+  "next_page_token": null
+ }
+}

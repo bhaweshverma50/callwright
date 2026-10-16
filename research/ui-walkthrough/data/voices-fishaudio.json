@@ -1,0 +1,511 @@
+{
+ "url": "https://calldash-api-prod.azurewebsites.net/api/voices/fishaudio?page_size=50&page_number=1&sort_by=score",
+ "template": "/api/voices/fishaudio?page_size=&page_number=&sort_by=",
+ "body": {
+  "voices": [
+   {
+    "id": "90e65eaaf50e4470b8e6d43ee6afd7d5",
+    "title": "Super Smash Bros. 4/Ultimate Announcer",
+    "description": "A powerful and authoritative middle-aged male voice with a dramatic, cinematic quality. It features a deep, resonant tone perfectly suited for gaming announcers or high-energy sports commentary.",
+    "cover_image": "coverimage/90e65eaaf50e4470b8e6d43ee6afd7d5",
+    "languages": [
+     "en"
+    ],
+    "task_count": 19628513
+   },
+   {
+    "id": "2a1036d645634680b3cc69aeeb60375b",
+    "title": "Спокойный женский голос",
+    "description": "Спокойный, размеренный женский голос, идеально подходящий для повествования и создания уютной атмосферы.",
+    "cover_image": "coverimage/2a1036d645634680b3cc69aeeb60375b",
+    "languages": [
+     "ru"
+    ],
+    "task_count": 3257673
+   },
+   {
+    "id": "8d2c17a9b26d4d83888ea67a1ee565b2",
+    "title": "Valentino Narración Biblica Fer",
+    "description": "A mature and authoritative male voice with a calm, spiritual tone. It is well-suited for religious narration, educational content, and professional storytelling in Spanish.",
+    "cover_image": "coverimage/8d2c17a9b26d4d83888ea67a1ee565b2",
+    "languages": [
+     "es"
+    ],
+    "task_count": 2168512
+   },
+   {
+    "id": "dfa5b230c8054f429e434f4a6e9bbdec",
+    "title": "Farid Dieck",
+    "description": "A warm and reflective male voice with a calm, storytelling tone, speaking in Spanish. It features a measured pace and an expressive quality suitable for narrative or philosophical content.",
+    "cover_image": "coverimage/dfa5b230c8054f429e434f4a6e9bbdec",
+    "languages": [
+     "es"
+    ],
+    "task_count": 2153014
+   },
+   {
+    "id": "0a690dbeb3984a9f88cd39353880775f",
+    "title": "Меллстрой",
+    "description": "A young male voice with high energy and a confident, informal tone, speaking Russian at a fast and dynamic pace. It is highly expressive and well-suited for social media or entertainment contexts.",
+    "cover_image": "coverimage/0a690dbeb3984a9f88cd39353880775f",
+    "languages": [
+     "ru"
+    ],
+    "task_count": 3870711
+   },
+   {
+    "id": "52e0660e03fe4f9a8d2336f67cab5440",
+    "title": "ALEX_CHIKNA",
+    "description": "A confident and energetic young male voice with a fast-paced, enthusiastic delivery. This voice is well-suited for social media content, sports commentary, and high-energy promotional announcements.",
+    "cover_image": "coverimage/52e0660e03fe4f9a8d2336f67cab5440",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1265621
+   },
+   {
+    "id": "d13f84b987ad4f22b56d2b47f4eb838e",
+    "title": "Mortal Kombat",
+    "description": "Pedro ",
+    "cover_image": "coverimage/d13f84b987ad4f22b56d2b47f4eb838e",
+    "languages": [
+     "en"
+    ],
+    "task_count": 4111195
+   },
+   {
+    "id": "5b67899dc9a34685ae09c94c890a606f",
+    "title": "عصام الشوالي ",
+    "description": "عصام الشوالي انا التاريخ",
+    "cover_image": "coverimage/5b67899dc9a34685ae09c94c890a606f",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 2957297
+   },
+   {
+    "id": "d8a1340984ee4b63ad1ffae27a6a4339",
+    "title": "ELITE",
+    "description": "A confident and energetic young male voice with a crisp, professional tone, well-suited for sports commentary or engaging narrations.",
+    "cover_image": "coverimage/d8a1340984ee4b63ad1ffae27a6a4339",
+    "languages": [
+     "en"
+    ],
+    "task_count": 831920
+   },
+   {
+    "id": "7eee0787bf1a476fb0864270853e344a",
+    "title": "يي",
+    "description": "This voice is a gentle and emotional female speaker with a soft, breathy quality. It conveys a sincere, apologetic tone in Arabic, making it ideal for intimate character dialogue or storytelling.",
+    "cover_image": "coverimage/7eee0787bf1a476fb0864270853e344a",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 1699894
+   },
+   {
+    "id": "3f45a7fd7a614655a61eb7027b955783",
+    "title": "voz de locutor k",
+    "description": "A deep and authoritative middle-aged male voice with a calm, serious tone. It is well-suited for philosophical narration, educational content, and dramatic storytelling in Spanish.",
+    "cover_image": "coverimage/3f45a7fd7a614655a61eb7027b955783",
+    "languages": [
+     "es"
+    ],
+    "task_count": 749057
+   },
+   {
+    "id": "802e3bc2b27e49c2995d23ef70e6ac89",
+    "title": "Energetic Male",
+    "description": "A youthful and energetic male voice with a clear, professional American accent. The tone is dynamic and enthusiastic, well-suited for high-energy announcements and promotional content.",
+    "cover_image": "coverimage/802e3bc2b27e49c2995d23ef70e6ac89",
+    "languages": [
+     "en"
+    ],
+    "task_count": 687647
+   },
+   {
+    "id": "933563129e564b19a115bedd57b7406a",
+    "title": "Sarah",
+    "description": "An engaged speaker. ",
+    "cover_image": "coverimage/933563129e564b19a115bedd57b7406a",
+    "languages": [
+     "en"
+    ],
+    "task_count": 2399968
+   },
+   {
+    "id": "b8a16ccac9ad4bc78f5f3f5dd46dc6b5",
+    "title": "ميماتي",
+    "description": "اريد صوت ميماتي يقول هذي سياره ادم الصنقري تيوتا  سكيواه 57سياره رعبت مافيا وزراه داخليه يمكن نستخدمه في مهمتنا يامراد على مدار اسئل بعد لحي ونشوف",
+    "cover_image": "coverimage/b8a16ccac9ad4bc78f5f3f5dd46dc6b5",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 1415806
+   },
+   {
+    "id": "92565bd2b241473eb8255cf392323cf4",
+    "title": "Smash Bros ",
+    "description": "Smash Bros voz ",
+    "cover_image": "coverimage/92565bd2b241473eb8255cf392323cf4",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1497925
+   },
+   {
+    "id": "bf322df2096a46f18c579d0baa36f41d",
+    "title": "Adrian",
+    "description": "A steady and reliable narrator. ",
+    "cover_image": "coverimage/bf322df2096a46f18c579d0baa36f41d",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1005427
+   },
+   {
+    "id": "98655a12fa944e26b274c535e5e03842",
+    "title": "E-girl",
+    "description": "A cute e-girl to chat with you.",
+    "cover_image": "coverimage/98655a12fa944e26b274c535e5e03842",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1804560
+   },
+   {
+    "id": "536d3a5e000945adb7038665781a4aca",
+    "title": "Ethan",
+    "description": "A curious explainer. ",
+    "cover_image": "coverimage/536d3a5e000945adb7038665781a4aca",
+    "languages": [
+     "en"
+    ],
+    "task_count": 623043
+   },
+   {
+    "id": "c5f56a6cc2ec4fa8920cb4c5889a3fb7",
+    "title": "Slax",
+    "description": "This male voice delivers clear, precise, and measured narration, ideal for educational content and professional presentations.",
+    "cover_image": "coverimage/c5f56a6cc2ec4fa8920cb4c5889a3fb7",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1533580
+   },
+   {
+    "id": "f48d143a59a946ab87c0130fd081f349",
+    "title": "Polo",
+    "description": "",
+    "cover_image": "coverimage/f48d143a59a946ab87c0130fd081f349",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1689080
+   },
+   {
+    "id": "0118a35dcb604837abe7961a43e13ba8",
+    "title": "Kasane Teto (español)",
+    "description": "Utaaloid conocida como Kasane teto",
+    "cover_image": "coverimage/0118a35dcb604837abe7961a43e13ba8",
+    "languages": [
+     "es"
+    ],
+    "task_count": 834100
+   },
+   {
+    "id": "c35aeeb5f9c145199fbffdbc2ef8ed95",
+    "title": "Рената Литвинова",
+    "description": "Яркий и энергичный женский голос, идеально подходящий для озвучивания игрового контента или историй. Обладает живой и выразительной интонацией.",
+    "cover_image": "coverimage/c35aeeb5f9c145199fbffdbc2ef8ed95",
+    "languages": [
+     "ru"
+    ],
+    "task_count": 899144
+   },
+   {
+    "id": "4fb9539672c34e3cab46da3c5104fe85",
+    "title": "ميماتي باش",
+    "description": "A powerful and authoritative middle-aged male voice with an intense, dramatic tone, ideal for epic character roles or storytelling in Arabic.",
+    "cover_image": "coverimage/4fb9539672c34e3cab46da3c5104fe85",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 1703872
+   },
+   {
+    "id": "88872b3d83694d8490b55d75480205a0",
+    "title": "Mortal Kombat Announcer ",
+    "description": "SCORPION WINS!",
+    "cover_image": "coverimage/88872b3d83694d8490b55d75480205a0",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1587590
+   },
+   {
+    "id": "6dc11f3f67a543f6ad4537a4a347e224",
+    "title": "Mita Miside (Russian voice)",
+    "description": "Голос миты из игры Miside. Её обычный голос в начале игры не злой.",
+    "cover_image": "coverimage/6dc11f3f67a543f6ad4537a4a347e224",
+    "languages": [
+     "en",
+     "ru"
+    ],
+    "task_count": 1045672
+   },
+   {
+    "id": "35a41c4c9e754e49a124a4bab5aa47e6",
+    "title": "Energetic Crowd",
+    "description": "An energetic and boisterous crowd sound, perfect for adding an enthusiastic atmosphere to any project or scene.",
+    "cover_image": "coverimage/35a41c4c9e754e49a124a4bab5aa47e6",
+    "languages": [
+     "en"
+    ],
+    "task_count": 2472993
+   },
+   {
+    "id": "fb7ec16ca51a45a5a4db881244d7990a",
+    "title": "WNBA VOICEOVER",
+    "description": "WNBA ",
+    "cover_image": "coverimage/fb7ec16ca51a45a5a4db881244d7990a",
+    "languages": [
+     "en"
+    ],
+    "task_count": 292428
+   },
+   {
+    "id": "a335d470fff248e8890dce6550a2874b",
+    "title": "Esqueleto voz",
+    "description": "This energetic young male voice delivers content with a dramatic and engaging tone, perfect for fast-paced educational or storytelling videos. It features a clear Latin American Spanish accent with a confident and urgent delivery.",
+    "cover_image": "coverimage/a335d470fff248e8890dce6550a2874b",
+    "languages": [
+     "es"
+    ],
+    "task_count": 354840
+   },
+   {
+    "id": "690813f2df56491b82ee02a22d1c67fd",
+    "title": "Fille",
+    "description": "Écrit moi sur WhatsApp :+33756910858 ou telgramme:@jessicanympho",
+    "cover_image": "coverimage/690813f2df56491b82ee02a22d1c67fd",
+    "languages": [
+     "fr"
+    ],
+    "task_count": 987296
+   },
+   {
+    "id": "9259a7392c454a1eb6436141abb5a558",
+    "title": "adam adam",
+    "description": "A confident and energetic young male voice with a friendly, conversational tone. This voice is ideal for social media content, advertisements, and lifestyle advice.",
+    "cover_image": "coverimage/9259a7392c454a1eb6436141abb5a558",
+    "languages": [
+     "en"
+    ],
+    "task_count": 427966
+   },
+   {
+    "id": "ef9c79b62ef34530bf452c0e50e3c260",
+    "title": "horror",
+    "description": "A deep and serious middle-aged male voice with a calm, mysterious tone. Well-suited for suspenseful narration, documentaries, or cinematic storytelling.",
+    "cover_image": "coverimage/ef9c79b62ef34530bf452c0e50e3c260",
+    "languages": [
+     "en"
+    ],
+    "task_count": 375686
+   },
+   {
+    "id": "59e9dc1cb20c452584788a2690c80970",
+    "title": "ALLE",
+    "description": "A young female voice with an energetic and friendly tone, ideal for social media content and product reviews. The voice is clear, expressive, and maintains a high-paced, conversational flow.",
+    "cover_image": "coverimage/59e9dc1cb20c452584788a2690c80970",
+    "languages": [
+     "en"
+    ],
+    "task_count": 391351
+   },
+   {
+    "id": "5161d41404314212af1254556477c17d",
+    "title": "元気な女性",
+    "description": "A youthful and friendly female voice with a gentle, polite tone. Her speech is clear and expressive, making it well-suited for conversational and narrative content.",
+    "cover_image": "coverimage/5161d41404314212af1254556477c17d",
+    "languages": [
+     "ja"
+    ],
+    "task_count": 519815
+   },
+   {
+    "id": "4b215a58407c4def88e0892def6421b2",
+    "title": "NARRADOR DO TODO MUNDO ODEIA O CHRIS",
+    "description": "A clear and energetic middle-aged male voice speaking Brazilian Portuguese with a confident and professional tone. It is well-suited for announcements or instructional content due to its crisp delivery.",
+    "cover_image": "coverimage/4b215a58407c4def88e0892def6421b2",
+    "languages": [
+     "pt"
+    ],
+    "task_count": 2167744
+   },
+   {
+    "id": "f53102becdf94a51af6d64010bc658f2",
+    "title": "jesus narrador",
+    "description": "tambien para otras narraciones versatil",
+    "cover_image": "coverimage/f53102becdf94a51af6d64010bc658f2",
+    "languages": [
+     "es"
+    ],
+    "task_count": 227953
+   },
+   {
+    "id": "e9b134e4c0b547a3894793be502314f1",
+    "title": "Jasphina",
+    "description": "Jasphina wm",
+    "cover_image": "coverimage/e9b134e4c0b547a3894793be502314f1",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1127182
+   },
+   {
+    "id": "692a2e659a8748558a1abc97ec051e0e",
+    "title": "美区克隆",
+    "description": "A professional and calm middle-aged male voice with a smooth, deep tone. It is well-suited for narration, delivering information with a measured and confident pace.",
+    "cover_image": "coverimage/692a2e659a8748558a1abc97ec051e0e",
+    "languages": [
+     "en"
+    ],
+    "task_count": 236759
+   },
+   {
+    "id": "acc8237220d8470985ec9be6c4c480a9",
+    "title": "Hatsune Miku (Text To Speech)",
+    "description": "A vibrant and cheerful young male voice with an energetic, melodic tone. Its high energy and friendly delivery make it well-suited for upbeat characters or digital personalities.",
+    "cover_image": "coverimage/acc8237220d8470985ec9be6c4c480a9",
+    "languages": [
+     "es",
+     "en"
+    ],
+    "task_count": 918338
+   },
+   {
+    "id": "711cf3ed00ab441a8f54a45058047b7a",
+    "title": "Verity",
+    "description": "An energetic and friendly young male voice that is perfect for interactive AI assistants and playful character roles. This voice brings a cheerful and expressive tone to any script.",
+    "cover_image": "coverimage/711cf3ed00ab441a8f54a45058047b7a",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1885997
+   },
+   {
+    "id": "26ff45fab722431c85eea2536e5c5197",
+    "title": "Idea Vilariño",
+    "description": "Quisiera ser ese gato\r\ndel que te ríes,\r\nronronearte la nuca,\r\nmorderte la oreja,\r\ny que la piel que se erice,\r\nal tocarse,\r\nsea la tuya.\r\n\r\nMe gustaría trepar por tu espalda\r\ny trepar por tu cabello, \r\nmaullarte despacito,\r\nhasta cansarte.\r\n\r\nAnoche me sentí culpable\r\nde verte descansar.\r\nConfiaste tu descanso.\r\n\r\nQuise lamerte,\r\ntantito,\r\npara que me aprietes fuerte\r\ncuando las cosquillas\r\nse vuelvan deseo.\r\n\r\nIntenté olfatearte\r\nde cerca,\r\nhasta sentirte en mis pulmones.\r\nQue me recorras por dentro\r\nde a poquitos,\r\nhasta donde tú quieras.\r\n\r\nHice preguntas\r\nque no tenían respuesta.\r\n\r\nTerminé ronroneando\r\nen tus piernas,\r\ny me sentí hipócrita\r\nal cuidar tu sueño,\r\nporque era yo\r\nquien quería quitártelo.\r\n\r\nSi yo fuera ese gato\r\nque te da paz,\r\nme gustaría arañarte\r\nde vez en cuando,\r\npara dejarte una cicatriz\r\nahí en el alma.",
+    "cover_image": "coverimage/26ff45fab722431c85eea2536e5c5197",
+    "languages": [
+     "es"
+    ],
+    "task_count": 329969
+   },
+   {
+    "id": "f9ae9be4831448acb831ee1990ef9605",
+    "title": "قرد",
+    "description": "صوت قرد",
+    "cover_image": "coverimage/f9ae9be4831448acb831ee1990ef9605",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 476865
+   },
+   {
+    "id": "33ceed22a1ff4c15b5a7d4b0617e21b8",
+    "title": "ميماتي ",
+    "description": "ميماتي ",
+    "cover_image": "coverimage/33ceed22a1ff4c15b5a7d4b0617e21b8",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 657324
+   },
+   {
+    "id": "4c6a6762e4ac4bdebdb4fa8525d054a2",
+    "title": "ATOMIC ",
+    "description": "This voice delivers a loud and clear alphabet with dramatic flair, ideal for instructional or attention-grabbing content.",
+    "cover_image": "coverimage/4c6a6762e4ac4bdebdb4fa8525d054a2",
+    "languages": [
+     "en"
+    ],
+    "task_count": 743118
+   },
+   {
+    "id": "79b0fd32e00645e2827b841629034be5",
+    "title": "فارس عوض ",
+    "description": "فارس عوض",
+    "cover_image": "coverimage/79b0fd32e00645e2827b841629034be5",
+    "languages": [
+     "ar"
+    ],
+    "task_count": 745339
+   },
+   {
+    "id": "8d21b053e2804e2a890e1cf62f267b6f",
+    "title": "Verity",
+    "description": "Heloooo! Ask me anything I know everything",
+    "cover_image": "coverimage/8d21b053e2804e2a890e1cf62f267b6f",
+    "languages": [
+     "en"
+    ],
+    "task_count": 1954063
+   },
+   {
+    "id": "46745543e52548238593a3962be77e3a",
+    "title": "ふうか",
+    "description": "A young male Japanese voice with an energetic and friendly tone, ideal for informative or social media content. His delivery is crisp and fast-paced, making it engaging for tutorials and announcements.",
+    "cover_image": "coverimage/46745543e52548238593a3962be77e3a",
+    "languages": [
+     "ja"
+    ],
+    "task_count": 311809
+   },
+   {
+    "id": "b545c585f631496c914815291da4e893",
+    "title": "Friendly Women",
+    "description": "A bright and energetic female voice with a youthful, professional tone. Her delivery is clear and enthusiastic, making it highly engaging for a variety of media.",
+    "cover_image": "coverimage/b545c585f631496c914815291da4e893",
+    "languages": [
+     "en"
+    ],
+    "task_count": 268058
+   },
+   {
+    "id": "e9e9d36027424e55ac3faa620f78a72b",
+    "title": "a2ksi",
+    "description": "A high-pitched, energetic male voice perfect for animated characters, playful exclamations, and dramatic, expressive moments.",
+    "cover_image": "coverimage/e9e9d36027424e55ac3faa620f78a72b",
+    "languages": [
+     "en"
+    ],
+    "task_count": 2145354
+   },
+   {
+    "id": "04736e4d6a644abab81e601a7d2ae4b9",
+    "title": "Waldo Morais",
+    "description": "A deep and resonant male voice with a dramatic, cinematic quality, ideal for impactful announcements and high-energy advertising. The delivery is confident, authoritative, and professional.",
+    "cover_image": "coverimage/04736e4d6a644abab81e601a7d2ae4b9",
+    "languages": [
+     "pt"
+    ],
+    "task_count": 606846
+   },
+   {
+    "id": "bfed5c0810a347dbb62e8ccce7f59c48",
+    "title": "Voz Femenina Español",
+    "description": "A deep and resonant middle-aged male voice speaking Spanish with a serious and calm narrative tone. Its smooth and measured delivery is well-suited for storytelling and professional narration.",
+    "cover_image": "coverimage/bfed5c0810a347dbb62e8ccce7f59c48",
+    "languages": [
+     "es"
+    ],
+    "task_count": 281214
+   }
+  ],
+  "total": 1000
+ }
+}

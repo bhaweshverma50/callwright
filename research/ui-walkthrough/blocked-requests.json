@@ -1,0 +1,610 @@
+{
+ "generated": "2026-10-16",
+ "note": "Every request below was aborted in the browser before leaving the machine (Playwright context.route). Shapes show keys and value types only, never values. Paths are relative to https://calldash-api-prod.azurewebsites.net/api; ids replaced with {id}. The 2 early flows/generate rows were logged before nested array objects were deep-merged; the later row is complete.",
+ "total_aborted": 58,
+ "unique": [
+  {
+   "method": "POST",
+   "path": "/agents/duplicate-agent/{id}",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": null,
+   "triggered_by": [
+    "agents-duplicate"
+   ],
+   "count": 1
+  },
+  {
+   "method": "PATCH",
+   "path": "/agents/update-agent/{id}",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "agent_name": "string",
+    "language": "string",
+    "voice_id": "string",
+    "voice_provider": "string",
+    "voice_model": "string",
+    "voice_temperature": "number",
+    "voice_speed": "number",
+    "volume": "number",
+    "stt_provider": "string",
+    "stt_model": "string",
+    "noise_cancellation": "string",
+    "end_call_after_silence_ms": "number",
+    "max_call_duration_ms": "null",
+    "ring_duration_ms": "null",
+    "interruption_sensitivity": "number",
+    "responsiveness": "number",
+    "webhook_url": "string",
+    "voicemail_option": {
+     "enabled": "boolean",
+     "action": "string"
+    },
+    "dtmf_option": {
+     "enabled": "boolean",
+     "timeout_ms": "number",
+     "termination_key": "string",
+     "digits_to_collect": "number"
+    },
+    "background_audio": {
+     "enabled": "boolean"
+    }
+   },
+   "triggered_by": [
+    "flow-save-valid"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/analysis/variables",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "variable_id": "string",
+    "agent_id": "string",
+    "name": "string",
+    "type": "string",
+    "description": "string",
+    "choices": [
+     "string"
+    ]
+   },
+   "triggered_by": [
+    "gs-add-variable"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/analytics/chat",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "messages": [
+     {
+      "role": "string",
+      "content": "string"
+     }
+    ],
+    "timezone": "string"
+   },
+   "triggered_by": [
+    "dash-ask"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/billing/create-checkout-session",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "amount_usd": "number"
+   },
+   "triggered_by": [
+    "billing-addfunds"
+   ],
+   "count": 2
+  },
+  {
+   "method": "POST",
+   "path": "/calldash/create",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "agent_id": "string",
+    "dynamic_variables": {}
+   },
+   "triggered_by": [
+    "flow-test"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/datasets",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "name": "string",
+    "description": "string"
+   },
+   "triggered_by": [
+    "datasets-create"
+   ],
+   "count": 1
+  },
+  {
+   "method": "PUT",
+   "path": "/evals/agents/{id}/config/intent_fulfillment",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "enabled": "boolean",
+    "config": {
+     "judge_model": "string",
+     "sample_rate_pct": "number"
+    }
+   },
+   "triggered_by": [
+    "gs-quality-toggle",
+    "gs-quality-config-save"
+   ],
+   "count": 2
+  },
+  {
+   "method": "POST",
+   "path": "/evals/evaluators/custom",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "name": "string",
+    "description": "null",
+    "evaluator_type": "string",
+    "config": {
+     "pattern": "string",
+     "mode": "string",
+     "target": "string",
+     "regex": "boolean",
+     "case_sensitive": "boolean"
+    }
+   },
+   "triggered_by": [
+    "gs-custom-phrase-create"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/evals/evaluators/custom",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "name": "string",
+    "description": "string",
+    "evaluator_type": "string",
+    "config": {
+     "question": "string",
+     "judge_model": "string"
+    }
+   },
+   "triggered_by": [
+    "gs-custom-judge-create"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/flows/generate",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "messages": [
+     {
+      "role": "string",
+      "content": "string"
+     }
+    ],
+    "current_graph": {
+     "nodes": [
+      {
+       "node_id": "string",
+       "node_type": "string",
+       "label": "string",
+       "config": {
+        "transfer_type": "string",
+        "number": "string",
+        "warm_transfer_config": {
+         "handoff_type": "string",
+         "briefing_message_type": "string",
+         "briefing_message": "string"
+        }
+       }
+      }
+     ],
+     "edges": [
+      {
+       "source_node_id": "string",
+       "target_node_id": "string",
+       "edge_label": "string",
+       "edge_config": {}
+      }
+     ]
+    }
+   },
+   "triggered_by": [
+    "flow-ai"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/flows/generate",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "messages": [
+     {
+      "role": "string",
+      "content": "string"
+     }
+    ],
+    "current_graph": {
+     "nodes": [
+      {
+       "node_id": "string",
+       "node_type": "string",
+       "label": "string",
+       "config": {
+        "first_message_type": "string",
+        "start_speaker": "string",
+        "context_strategy": "string",
+        "llm_model": "string",
+        "voice_provider": "string",
+        "stt_provider": "string",
+        "max_rounds": "number",
+        "result_schema": {
+         "type": "string",
+         "properties": {
+          "name": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "string"
+         ]
+        },
+        "type": "string",
+        "operator": "string",
+        "categories": [
+         "string"
+        ],
+        "extraction_fields": [
+         {
+          "name": "string",
+          "type": "string",
+          "description": "string"
+         }
+        ],
+        "transfer_type": "string",
+        "number": "string",
+        "warm_transfer_config": {
+         "handoff_type": "string",
+         "briefing_message_type": "string",
+         "briefing_message": "string"
+        }
+       }
+      }
+     ],
+     "edges": [
+      {
+       "source_node_id": "string",
+       "target_node_id": "string",
+       "edge_label": "string",
+       "edge_config": {
+        "handoff_condition": "string"
+       }
+      }
+     ]
+    }
+   },
+   "triggered_by": [
+    "flow-ai-2"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/issues/detect",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "agent_id": "string",
+    "days": "number",
+    "include_simulations": "boolean"
+   },
+   "triggered_by": [
+    "issues-detect"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/knowledge-bases/agents/{id}",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "kb_ids": []
+   },
+   "triggered_by": [
+    "gs-kb-confirm"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/llms/create-llm",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "llm_id": "string",
+    "model": "string",
+    "provider": "string",
+    "model_temperature": "number",
+    "general_prompt": "string",
+    "start_speaker": "string"
+   },
+   "triggered_by": [
+    "agents-new-flow"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/llms/create-llm",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "llm_id": "string",
+    "model": "string",
+    "model_temperature": "number",
+    "general_prompt": "string",
+    "start_speaker": "string",
+    "begin_message": "string"
+   },
+   "triggered_by": [
+    "templates"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/llms/create-llm",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "llm_id": "string",
+    "model": "string",
+    "provider": "string",
+    "model_temperature": "number",
+    "general_prompt": "string",
+    "start_speaker": "string",
+    "begin_message": "string",
+    "dynamic_variables": [
+     "string"
+    ]
+   },
+   "triggered_by": [
+    "single-save-invalid2"
+   ],
+   "count": 1
+  },
+  {
+   "method": "PATCH",
+   "path": "/llms/update-llm/{id}",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "model": "string",
+    "provider": "string",
+    "model_temperature": "number",
+    "general_prompt": "string",
+    "start_speaker": "string"
+   },
+   "triggered_by": [
+    "flow-save-valid"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/phone-numbers/import",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "phone_number": "string",
+    "user_id": "string",
+    "label": "string",
+    "sip_trunk_termination_uri": "string",
+    "username": "string",
+    "password": "string"
+   },
+   "triggered_by": [
+    "phone-import"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/tests/cases",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "agent_id": "string",
+    "name": "string",
+    "category_id": "string",
+    "user_prompt": "string",
+    "success_criteria": "string"
+   },
+   "triggered_by": [
+    "testing-new-case"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/tests/cases/generate",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "agent_id": "string",
+    "category_id": "null",
+    "count": "number",
+    "guidance": "string"
+   },
+   "triggered_by": [
+    "testing-generate"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/tools/create",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "tool_id": "string",
+    "llm_id": "string",
+    "tool_config": {
+     "name": "string",
+     "description": "string",
+     "url": "string",
+     "method": "string",
+     "timeout_ms": "number",
+     "parameters": {
+      "type": "string",
+      "properties": {
+       "appointment_available_ts": {
+        "type": "string",
+        "description": "string"
+       },
+       "doctor_name": {
+        "type": "string",
+        "description": "string"
+       }
+      },
+      "required": [
+       "string"
+      ]
+     },
+     "type": "string"
+    }
+   },
+   "triggered_by": [
+    "gs-function-custom"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/tools/create",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "tool_id": "string",
+    "llm_id": "string",
+    "tool_config": {
+     "name": "string",
+     "description": "string",
+     "transfer_destination": {
+      "type": "string",
+      "routing_type": "string",
+      "routing_instructions": "string",
+      "transfer_type": "string",
+      "warm_transfer_config": {
+       "handoff_type": "string",
+       "briefing_message_type": "string",
+       "briefing_message": "string"
+      }
+     },
+     "transfer_option": {
+      "type": "string"
+     },
+     "type": "string"
+    }
+   },
+   "triggered_by": [
+    "gs-function-transfer"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/tools/create",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "tool_id": "string",
+    "llm_id": "string",
+    "tool_config": {
+     "name": "string",
+     "description": "string",
+     "message": "string",
+     "type": "string"
+    }
+   },
+   "triggered_by": [
+    "gs-function-endcall"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/tools/create",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "tool_id": "string",
+    "llm_id": "string",
+    "tool_config": {
+     "name": "string",
+     "description": "string",
+     "enabled": "boolean",
+     "delay_ms": "number",
+     "cooldown_ms": "number",
+     "type": "string"
+    }
+   },
+   "triggered_by": [
+    "gs-function-pressdigit"
+   ],
+   "count": 1
+  },
+  {
+   "method": "POST",
+   "path": "/voice-commands/stream-token",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": null,
+   "triggered_by": [
+    "dash",
+    "shell",
+    "agents-list",
+    "agents-new",
+    "templates",
+    "single-basic",
+    "single-save-empty",
+    "flow-redirect",
+    "flow-canvas",
+    "testing",
+    "calls",
+    "datasets",
+    "simulations",
+    "datasets-detail",
+    "review",
+    "calibration",
+    "issues",
+    "issues-detect",
+    "phone",
+    "kb",
+    "billing",
+    "misc",
+    "gs-advanced-toggles"
+   ],
+   "count": 30
+  },
+  {
+   "method": "POST",
+   "path": "/whatsapp/channels",
+   "host": "calldash-api-prod.azurewebsites.net",
+   "payload_shape": {
+    "whatsapp_phone_number_id": "string",
+    "phone_number": "string",
+    "label": "string",
+    "whatsapp_api_token": "string",
+    "whatsapp_cloud_api_version": "string",
+    "meta_verify_token": "string"
+   },
+   "triggered_by": [
+    "whatsapp-create"
+   ],
+   "count": 1
+  }
+ ]
+}
