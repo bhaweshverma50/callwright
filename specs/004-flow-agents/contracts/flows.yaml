@@ -242,13 +242,9 @@ paths:
               schema:
                 $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
   /calls/{call_id}/flow-transitions:
+    description: Served by the flows module under 006's /calls path (architecture section 5).
     parameters:
-      - name: call_id
-        in: path
-        required: true
-        schema:
-          type: string
-          pattern: '^call_[0-9A-HJKMNP-TV-Z]{26}$'
+      - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath'
     get:
       tags: [flows]
       operationId: listCallFlowTransitions

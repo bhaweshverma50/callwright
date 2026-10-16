@@ -72,7 +72,7 @@ specs/006-calls-analytics/
 ```text
 services/api/app/
 ├── calls/                 # read side (003 owns the write side in the same module)
-│   ├── router.py          # GET /v1/calls, /{id}, /transcript, /turn-latencies, /flow-transitions, /compare
+│   ├── router.py          # GET /v1/calls, /{id}, /transcript, /turn-latencies, /compare (/flow-transitions is 004's)
 │   ├── schemas.py
 │   ├── queries.py         # list filters, sort, pagination; detail loaders
 │   ├── cost_view.py       # maps 001 cost lines to header, lines, surcharges

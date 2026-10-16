@@ -153,25 +153,6 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/TurnLatency" }
         "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
-  /calls/{call_id}/flow-transitions:
-    get:
-      operationId: getCallFlowTransitions
-      summary: Flow path for flow-agent calls (empty for single-prompt agents)
-      parameters: [{ $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }]
-      responses:
-        "200":
-          description: Flow transitions in order
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [call_id, items]
-                properties:
-                  call_id: { type: string }
-                  items:
-                    type: array
-                    items: { $ref: "#/components/schemas/FlowTransition" }
-        "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /calls/{call_id}/compare:
     get:
       operationId: compareCalls
@@ -390,17 +371,6 @@ components:
         llm_ttft_ms: { type: [integer, "null"] }
         tts_ttfb_ms: { type: [integer, "null"] }
         e2e_ms: { type: [integer, "null"] }
-    FlowTransition:
-      type: object
-      required: [sequence, from_node_id, to_node_id]
-      properties:
-        sequence: { type: integer }
-        from_node_id: { type: string }
-        from_node_label: { type: [string, "null"] }
-        to_node_id: { type: string }
-        to_node_label: { type: [string, "null"] }
-        transition_label: { type: [string, "null"] }
-        occurred_offset_ms: { type: [integer, "null"] }
     CallVerdictSide:
       type: object
       properties:
