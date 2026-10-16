@@ -24,6 +24,7 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from worker import telemetry
@@ -306,6 +307,7 @@ class LiveCall:
 
     def _on_user_state(self, ev: Any) -> None:
         if ev.new_state == "speaking":
+            self.tracker.user_speech_started()
             if self.inactivity:
                 self.inactivity.activity()
                 self.inactivity.busy_begin("caller")
@@ -681,19 +683,27 @@ def prewarm(proc: Any) -> None:
     proc.userdata["vad"] = silero.VAD.load()
 
 
-def create_server(settings: WorkerSettings) -> Any:
+def create_server(
+    settings: WorkerSettings,
+    *,
+    entrypoint: Callable[[Any], Awaitable[None]] = job_entry,
+    **server_options: Any,
+) -> Any:
+    """The LiveKit agent server. ``entrypoint`` and ``server_options`` exist for the live
+    benchmark, which runs the same server with fake vendors and an ephemeral health port."""
     # Importing the plugin registers the turn-detector model for download and inference.
     import livekit.plugins.turn_detector.multilingual  # noqa: F401
     from livekit.agents import AgentServer
 
+    options: dict[str, Any] = {"port": settings.health_port, **server_options}
     server = AgentServer(
         setup_fnc=prewarm,
         ws_url=settings.livekit_url,
         api_key=settings.livekit_api_key.get_secret_value(),
         api_secret=settings.livekit_api_secret.get_secret_value(),
-        port=settings.health_port,
+        **options,
     )
-    server.rtc_session(job_entry, agent_name=settings.agent_name)
+    server.rtc_session(entrypoint, agent_name=settings.agent_name)
     return server
 
 

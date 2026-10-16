@@ -127,20 +127,52 @@ class LatencyTracker:
 
     Turn 0 is the opening line; its ``e2e_ms`` holds the greeting latency (connection to first
     agent audio). Component metrics are attached to the turn currently being generated.
+
+    On a live session the framework commits the caller's turn (``EOUMetrics``) before the agent
+    enters ``thinking`` for it, so end-of-turn components and the end-of-speech anchor that
+    arrive while no turn is open are held and applied to the next caller turn. The anchor from
+    :meth:`speech_end_observed` (the framework's backdated last speaking time) wins over the
+    ``user_state_changed`` emission time. With preemptive generation the LLM request for a
+    caller turn also finishes before that turn opens, so an LLM time to first token that
+    arrives after the caller started speaking is held the same way.
     """
+
+    HELD_COMPONENTS = ("stt_final", "eou_delay")
 
     def __init__(self) -> None:
         self._next_index = 0
         self._connected_at: float | None = None
         self._pending_eos: float | None = None
+        self._pending_anchor: float | None = None
+        self._held: dict[str, float] = {}
+        self._caller_speaking_since_reply = False
         self.current: TurnRecord | None = None
         self.greeting_done = False
+
+    def _open_reply(self) -> TurnRecord | None:
+        """The caller turn whose reply has not started yet, if any."""
+        turn = self.current
+        if turn is None or turn.turn_index == 0 or turn.agent_first_audio_at is not None:
+            return None
+        return turn
 
     def connected(self, at: float) -> None:
         self._connected_at = at
 
+    def user_speech_started(self) -> None:
+        self._caller_speaking_since_reply = True
+
     def user_speech_ended(self, at: float) -> None:
         self._pending_eos = at
+        self._pending_anchor = None
+
+    def speech_end_observed(self, at: float) -> None:
+        """Precise end of caller speech for the turn being committed (from ``EOUMetrics``)."""
+        turn = self._open_reply()
+        if turn is not None:
+            turn.user_end_of_speech_at = at
+        else:
+            self._pending_anchor = at
 
     def begin_turn(self, *, greeting: bool = False) -> TurnRecord:
         if greeting:
@@ -148,14 +180,28 @@ class LatencyTracker:
             eos = self._connected_at
         else:
             index = max(1, self._next_index)
-            eos = self._pending_eos
+            eos = self._pending_anchor if self._pending_anchor is not None else self._pending_eos
         self._next_index = index + 1
         self._pending_eos = None
+        self._pending_anchor = None
         self.current = TurnRecord(turn_index=index, user_end_of_speech_at=eos)
+        if not greeting:
+            self._caller_speaking_since_reply = False
+            held, self._held = self._held, {}
+            for name, seconds in held.items():
+                self.component(name, seconds)
         return self.current
 
     def component(self, name: str, seconds: float | None) -> None:
-        if self.current is None or seconds is None:
+        if seconds is None:
+            return
+        if self._open_reply() is None and (
+            name in self.HELD_COMPONENTS
+            or (name == "llm_ttft" and self._caller_speaking_since_reply)
+        ):
+            self._held.setdefault(name, seconds)  # first generation of the turn counts
+            return
+        if self.current is None:
             return
         value = _ms(seconds)
         if name == "stt_final":
@@ -218,6 +264,13 @@ class MetricsBridge:
         if kind == "eou_metrics":
             self._tracker.component("stt_final", metrics.transcription_delay)
             self._tracker.component("eou_delay", metrics.end_of_utterance_delay)
+            # Commit time minus the hook and end-of-turn delays is the last speaking time.
+            if metrics.timestamp > 0 and metrics.end_of_utterance_delay > 0:
+                self._tracker.speech_end_observed(
+                    metrics.timestamp
+                    - metrics.on_user_turn_completed_delay
+                    - metrics.end_of_utterance_delay
+                )
         elif kind == "llm_metrics":
             if metrics.ttft is not None and metrics.ttft >= 0 and not metrics.cancelled:
                 self._tracker.component("llm_ttft", metrics.ttft)
