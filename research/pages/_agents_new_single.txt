@@ -1,0 +1,111 @@
+https://www.calldash.ai/agents/new/single
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+Back to agents
+
+NEW AGENT
+
+Configure your new agent.
+
+Fine-tune every aspect of your voice agent — from prompt and voice to call behavior and webhooks.
+
+Test agent
+Save agent
+Basic Configuration
+Voice Settings
+Call Behavior
+Advanced
+Basic Configuration
+
+Agent Name *
+
+​
+A descriptive name to identify your agent
+
+Language *
+
+🇺🇸
+English (US)
+​
+The primary language your agent will speak
+LLM Configuration
+
+AI Model *
+
+GPT-5.1
+$0.0000/min
+​
+
+Provider
+
+Azure OpenAI
+​
+Which LLM provider to use for this agent
+
+Model Temperature
+
+1.00
+
+Precise
+Balanced
+Creative
+Temperature is fixed at 1.0 for GPT-5 series models
+
+General Prompt (System Prompt) *
+
+​
+The main instructions that define your agent's behavior and personality. Type \n for newlines, \t for tabs.
+
+Start Speaker
+
+Assistant (AI speaks first)
+​
+Who should speak first when the call connects
+
+Begin Message
+
+​
+The first message your agent will say when the call starts
+
+Dynamic Variables (Optional)
+
+​
+Variables that can be dynamically set per call (e.g., customer_name, order_id)
+
+ESTIMATED COST
+
+STT
+
+Deepgram
+
+$0.0085/min
+
+LLM
+
+Azure OpenAI · gpt-5.1
+
+$0.0000/min
+
+TTS
+
+ElevenLabs · eleven_flash_v2_5
+
+750 chars/min
+
+$0.0450/min
+
+PLATFORM
+
+CallDash fee
+
+$0.0500/min
+
+Total (base)
+
+$0.1035/min
+
+Surcharge if usage exceeds bundle

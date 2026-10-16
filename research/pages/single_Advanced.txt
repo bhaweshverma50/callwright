@@ -1,0 +1,99 @@
+Back to agents
+
+NEW AGENT
+
+Configure your new agent.
+
+Fine-tune every aspect of your voice agent — from prompt and voice to call behavior and webhooks.
+
+Test agent
+Save agent
+Basic Configuration
+Voice Settings
+Call Behavior
+Advanced
+Advanced Settings
+
+Webhook Configuration
+
+Webhook URL (Optional)
+
+​
+Receive real-time call events and updates via webhook
+
+Webhook Timeout
+
+ms
+​
+Maximum time to wait for webhook response (milliseconds)
+
+Voicemail Configuration
+
+Enable Voicemail Detection
+
+Detect when a call goes to voicemail
+
+Disabled
+
+User Keypad Input Detection
+
+Enable the AI to listen for keypad input during a call
+
+The AI will respond when any of the following conditions are met
+
+Disabled
+
+Background Audio
+
+Enable Background Audio
+
+Play ambient sounds during calls
+
+Disabled
+
+Post-Call Analysis
+
+Analysis Model (Optional)
+
+​
+​
+AI model to use for analyzing call transcripts and extracting variables
+
+Pronunciation Dictionary
+
+Define how specific words should be pronounced. Words are replaced before TTS.
+Add Entry
+
+ESTIMATED COST
+
+STT
+
+Deepgram
+
+$0.0085/min
+
+LLM
+
+Azure OpenAI · gpt-5.1
+
+$0.0000/min
+
+TTS
+
+ElevenLabs · eleven_flash_v2_5
+
+750 chars/min
+
+$0.0450/min
+
+PLATFORM
+
+CallDash fee
+
+$0.0500/min
+
+Total (base)
+
+$0.1035/min
+
+Surcharge if usage exceeds bundle

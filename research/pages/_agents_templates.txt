@@ -1,0 +1,83 @@
+https://www.calldash.ai/agents/templates
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+
+NEW AGENT
+
+Start from scratch, or pick a template.
+
+Choose a pre-configured agent tailored to your industry, or build your own from a blank slate.
+
+BLANK
+
+Start from scratch
+
+Create a blank agent and configure everything yourself
+
+​
+All
+Automotive
+Banking
+E-Commerce
+Healthcare
+Telecom
+
+BANKING
+
+Collection Voice Bot
+
+AI voice bot for collecting outstanding loan payments with professional rebuttals, payment guidance, and promise-to-pay capture.
+
+Use template
+
+BANKING
+
+Telesales Assistant
+
+Personal loan telesales agent with full compliance flow — product pitching, customer verification, health declarations, and loan processing.
+
+Use template
+
+TELECOM
+
+Telecom Sales Agent
+
+Outbound agent for upgrading prepaid customers to premium postpaid or 5G family plans with plan details and verification.
+
+Use template
+
+E-COMMERCE
+
+E-Commerce Sales Agent
+
+Agent offering shopping credit lines and premium membership with buy-now-pay-later, verification, and app onboarding.
+
+Use template
+
+HEALTHCARE
+
+Healthcare Triage & Booking
+
+AI assistant for symptom assessment, emergency triage, department recommendation, and appointment booking with pharmacy integration.
+
+Use template
+
+AUTOMOTIVE
+
+Auto Assist & EV Support
+
+Roadside assistance and EV support agent handling distress calls with safety checks, location tracking, and technician dispatch.
+
+Use template
+
+HEALTHCARE
+
+Healthcare Check-in
+
+Agent for appointment preparation and patient check-ins with insurance verification and medical history collection.
+
+Use template

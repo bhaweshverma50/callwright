@@ -1,0 +1,22 @@
+https://www.calldash.ai/issues
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+
+ISSUES
+
+Recurring failure patterns the system has clustered from your evaluator results. Each issue ships with an LLM-drafted prompt edit you can validate then apply.
+
+​
+all
+​
+Last 14d
+​
+Real calls
+​
+Detect
+
+Pick an agent and run "Detect issues" to surface recurring failure patterns.

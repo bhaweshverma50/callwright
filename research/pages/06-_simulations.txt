@@ -1,0 +1,17 @@
+https://www.calldash.ai/simulations
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+
+SIMULATIONS
+
+Replay historical calls through your agent (or a variant) and compare evaluator verdicts side by side.
+
+Batch (0)
+Individual (0)
+​
+
+No batch simulations yet. Run one from Call History → select several calls → "Run simulation".

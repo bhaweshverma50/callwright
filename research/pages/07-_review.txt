@@ -1,0 +1,31 @@
+https://www.calldash.ai/review
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+
+REVIEW QUEUE
+
+Label the ones that matter
+
+Label a few calls so the Calibration page can learn which automated checks you can trust. Click a card → thumbs up/down inside the call modal → it drops from the queue.
+
+Random
+0
+Flagged
+0
+Mixed verdicts
+0
+
+Unlabeled calls where your checks split — some passed, some failed on the same call. Each label here teaches calibration the most.
+
+0 calls to label
+
+​
+Refresh
+
+Nothing to review.
+
+Either every recent call in this category is already annotated, or the eval worker hasn't scored any yet.

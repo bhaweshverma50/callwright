@@ -1,0 +1,265 @@
+https://www.calldash.ai/pricing
+Call
+Dash
+
+Home
+
+Features
+
+Benefits
+
+Enterprise
+
+Pricing
+
+Log in
+Book a demo
+PRICING · IN DETAIL
+Simple, transparent pricing — explained.
+
+Pay only for what you use, billed per minute of call. This page walks through every line of your bill — what each component does, when a surcharge can apply, and a real worked example.
+
+Get started →
+Talk to us →
+01 · COST CALCULATOR
+Build your stack, see the per-minute price.
+
+Choose a transcription, model and voice. The estimate updates live. Numbers shown below assume a typical conversation that stays inside every bundle.
+
+COST CALCULATOR · INTERACTIVE
+
+MONTHLY CALL MINUTES
+
+100
+
+0
+
+250K
+
+SPEECH-TO-TEXT
+
+Deepgram Nova 3 / Flux
+0.85¢
+Sarvam Saaras v3 / Saarika v2.5
+0.60¢
+AssemblyAI Universal Streaming
+0.30¢
+
+AI MODEL
+
+gpt-5.1
+0.00¢
+gpt-5.2
+0.00¢
+gpt-5-mini
+0.15¢
+
+VOICE ENGINE
+
+ElevenLabs Turbo / Flash v2.5
+4.50¢
+ElevenLabs Multilingual v2
+9.00¢
+Cartesia Sonic 3
+2.75¢
+Fish S2 Pro
+1.50¢
+
+COST PER MINUTE
+
+$0.104
+
+STT
+0.85¢ / min
+LLM
+0.00¢ / min
+TTS
+4.50¢ / min
+Platform fee
+5.00¢ / min
+
+ESTIMATED MONTHLY COST
+
+$10.35/ month
+
+Estimate covers a typical call inside the bundle. Heavier calls may incur a small surcharge — see the next section.
+
+Get started →
+02 · HOW PRICING WORKS
+Five components, one bill.
+
+Every call is priced from the same five components. Each one is quoted as a per-minute rate. Your bill is the call duration multiplied across all of them — rounded up to the nearest second.
+
+Speech-to-text (STT)
+
+Transcribes the caller's voice in real time. Billed strictly per minute of call duration — no usage cap, no surcharge.
+
+NEVER SURCHARGES
+
+Large language model (LLM)
+
+The reasoning brain that decides what your agent says next. Billed per minute, with a generous token bundle included. Surcharges only kick in if a call uses far more tokens than a typical conversation of that length.
+
+CAN SURCHARGE
+
+Text-to-speech (TTS)
+
+Renders the agent's reply into a natural voice. Billed per minute with a character bundle included. Surcharges apply only on unusually verbose calls that exceed the bundle.
+
+CAN SURCHARGE
+
+Noise cancellation (NC)
+
+Optional. Cleans up background noise on incoming audio. Billed per minute of call duration. Never surcharges.
+
+NEVER SURCHARGES
+
+Platform fee
+
+Covers orchestration, telephony, analytics and the dashboard. Flat per-minute fee. Never surcharges.
+
+NEVER SURCHARGES
+
+Call duration is rounded up to the nearest whole second before any math, so a 4.2-second hang-up bills as 5 seconds — never less.
+
+03 · SURCHARGE PRICING
+When the bundle isn't enough.
+
+The per-minute prices already include a generous bundle of usage — enough for a normal voice conversation. A surcharge only kicks in when a single call uses dramatically more LLM tokens or TTS characters than its duration would suggest.
+
+COMPONENT
+
+BUNDLE PER MINUTE
+
+WHAT TRIGGERS A SURCHARGE
+
+LLM input tokens
+
+20,000 tokens / min
+
+Calls that send long system prompts, large knowledge-base context, or repeated tool results.
+
+LLM output tokens
+
+200 tokens / min
+
+Agents that generate unusually long responses for the call duration.
+
+TTS characters
+
+750 characters / min
+
+Calls where the agent talks far more than usual relative to call length.
+
+THE RULE
+
+Each surchargeable component is billed on whichever of these is bigger:
+
+ratio = max(
+  duration_in_minutes,
+  usage / bundle_per_minute
+)
+cost = rate_per_min × ratio
+
+If usage stays within the bundle, the duration wins and the bill is just rate × minutes — no surcharge. If usage spills over, the bundle ratio wins and you pay for the overage at the same per-minute rate.
+
+WHAT YOU'LL SEE IN YOUR BILL
+
+For any call where a surcharge applied, the call detail panel shows two extra numbers next to the affected component:
+
+Surcharge amount — the dollar value added on top of the base duration price. Calculated as rate × (ratio − duration_in_minutes).
+Bundle multiplier — how many times over the bundle you went, e.g. 1.13× means usage was 13% above what the duration alone would cover.
+
+WORKED EXAMPLE · GPT-5-MINI · 271 SECOND CALL
+
+LLM surcharges, TTS does not.
+
+A 271-second call rounds to 4.5167 minutes. The agent consumed 102,348 input tokens, 745 output tokens and the voice rendered 2,555 characters.
+
+COMPONENT
+RATE / MIN
+RATIO (MIN)
+COST
+STT
+$0.0085
+4.5167
+$0.039
+LLM
+$0.0015
+5.1174 ← surcharge
+$0.008
+TTS
+$0.0450
+4.5167
+$0.204
+Platform fee
+$0.0500
+4.5167
+$0.226
+Total billed
+$0.477
+
+WHY LLM SURCHARGED
+
+Input tokens used: 102,348. Bundle for this duration was 20,000 × 4.5167 ≈ 90,334. Going 13% over the bundle pushes the LLM ratio up to 5.1174 min. Surcharge = 0.0015 × (5.1174 − 4.5167) ≈ $0.0009.
+
+WHY TTS DID NOT
+
+Characters used: 2,555. Bundle for this duration was 750 × 4.5167 ≈ 3,388. Usage stayed inside the bundle, so the duration ratio wins and TTS bills as a flat 4.5167 minutes — no surcharge.
+
+Most calls never surcharge
+
+A normal voice conversation stays well inside both the LLM and TTS bundles. The numbers in the calculator above are what you'll actually pay.
+
+Surcharges are predictable
+
+They're charged at the same per-minute rate as the base component — no penalty multiplier, no separate line item, no surprise tier.
+
+You can see them per call
+
+Each call's detail panel shows the exact dollar surcharge and the bundle multiplier, so you always know which calls drove cost.
+
+04 · INCLUDED
+No upfront cost. No commitments.
+
+Every account ships with the full platform. You only pay for the minutes you actually use.
+
+Advanced AI voice agents
+
+Real-time analytics & insights
+
+Pre-built functions
+
+Email & Slack support
+
+Multiple LLM options
+
+Premium voice engines
+
+CallDash
+
+Call
+Dash
+Ready to transform your voice operations?
+
+Join 300+ enterprise teams delivering concierge-quality experiences at scale. Launch your first AI agent in minutes.
+
+Get started →
+Book a demo
+
+Home
+
+Features
+
+Benefits
+
+Enterprise
+
+Pricing
+
+Privacy Policy
+Terms Of Use
+
+© 2026 CALLDASH, INC.
+
+MADE FOR VOICE · DEPLOYED WORLDWIDE

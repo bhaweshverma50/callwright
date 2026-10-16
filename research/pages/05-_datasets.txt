@@ -1,0 +1,19 @@
+https://www.calldash.ai/datasets
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+
+DATASETS
+
+Curated collections.
+
+Bundle interesting calls into datasets for regression checks and bulk evaluation.
+
+New dataset
+NAME	AGENT	ITEMS	UPDATED	
+
+
+No datasets yet. Create one to bundle calls for regression testing.

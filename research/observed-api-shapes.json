@@ -1,0 +1,1261 @@
+[
+ {
+  "page": "https://www.calldash.ai/login",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "localId": "string",
+   "email": "string",
+   "displayName": "string",
+   "idToken": "string",
+   "registered": "boolean",
+   "refreshToken": "string",
+   "expiresIn": "string"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/login",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/login",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "POST",
+  "url": "https://securetoken.googleapis.com/v1/token?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "access_token": "string",
+   "expires_in": "string",
+   "token_type": "string",
+   "refresh_token": "string",
+   "id_token": "string",
+   "user_id": "string",
+   "project_id": "string"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/dashboard/stats?",
+  "status": 200,
+  "shape": {
+   "overview": {
+    "total_calls": "number",
+    "total_duration_seconds": "number",
+    "total_cost": "number",
+    "avg_duration_seconds": "number",
+    "avg_cost": "number"
+   },
+   "disconnection_reasons": {
+    "user_hangup": "number",
+    "agent_hangup": "number",
+    "call_transfer": "number",
+    "voicemail_reached": "number",
+    "inactivity": "number",
+    "max_duration_reached": "number",
+    "dial_failed": "number",
+    "connection_failed": "number",
+    "recording_failed": "number",
+    "concurrency_limit": "number",
+    "insufficient_balance": "number",
+    "agent_error": "number",
+    "system_error": "number"
+   },
+   "sentiment": {
+    "positive": "number",
+    "negative": "number",
+    "neutral": "number",
+    "unknown": "number"
+   },
+   "call_types": {
+    "web_calls": "number",
+    "inbound_calls": "number",
+    "outbound_calls": "number"
+   },
+   "daily_stats": [],
+   "top_agents": [],
+   "agent_distribution": []
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/dashboard/quality?",
+  "status": 200,
+  "shape": {
+   "window": {
+    "from": "string",
+    "to": "string"
+   },
+   "total_calls_evaluated": "number",
+   "per_evaluator": []
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/dashboard/quality?compare=true",
+  "status": 200,
+  "shape": {
+   "window": {
+    "from": "string",
+    "to": "string"
+   },
+   "total_calls_evaluated": "number",
+   "per_evaluator": [],
+   "per_evaluator_prior": [],
+   "prior_window": {
+    "from": "string",
+    "to": "string"
+   }
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/dashboard/stats?",
+  "status": 200,
+  "shape": {
+   "overview": {
+    "total_calls": "number",
+    "total_duration_seconds": "number",
+    "total_cost": "number",
+    "avg_duration_seconds": "number",
+    "avg_cost": "number"
+   },
+   "disconnection_reasons": {
+    "user_hangup": "number",
+    "agent_hangup": "number",
+    "call_transfer": "number",
+    "voicemail_reached": "number",
+    "inactivity": "number",
+    "max_duration_reached": "number",
+    "dial_failed": "number",
+    "connection_failed": "number",
+    "recording_failed": "number",
+    "concurrency_limit": "number",
+    "insufficient_balance": "number",
+    "agent_error": "number",
+    "system_error": "number"
+   },
+   "sentiment": {
+    "positive": "number",
+    "negative": "number",
+    "neutral": "number",
+    "unknown": "number"
+   },
+   "call_types": {
+    "web_calls": "number",
+    "inbound_calls": "number",
+    "outbound_calls": "number"
+   },
+   "daily_stats": [],
+   "top_agents": [],
+   "agent_distribution": []
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/dashboard/quality?",
+  "status": 200,
+  "shape": {
+   "window": {
+    "from": "string",
+    "to": "string"
+   },
+   "total_calls_evaluated": "number",
+   "per_evaluator": []
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/dashboard",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/dashboard/quality?compare=true",
+  "status": 200,
+  "shape": {
+   "window": {
+    "from": "string",
+    "to": "string"
+   },
+   "total_calls_evaluated": "number",
+   "per_evaluator": [],
+   "per_evaluator_prior": [],
+   "prior_window": {
+    "from": "string",
+    "to": "string"
+   }
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/agents",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/agents",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/agents",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/agents",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/agents",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calls",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calls",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calls",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calls",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/calls",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/calls/user/{user_id}/paginated?page=1&page_size=20&sort_by=start_timestamp&sort_order=desc",
+  "status": 200,
+  "shape": {
+   "calls": [],
+   "total": "number",
+   "page": "number",
+   "page_size": "number",
+   "total_pages": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calls",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/datasets",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/datasets",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/datasets",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/datasets",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/datasets",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/datasets",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/simulator/experiments?limit=50",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/simulator/runs?limit=50",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/simulations",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/review/queue?strategy=disagreement&limit=50",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/review/queue/summary",
+  "status": 200,
+  "shape": {
+   "random": "number",
+   "failed": "number",
+   "disagreement": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/review",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/calibration/evaluators",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/calibration/summary",
+  "status": 200,
+  "shape": {
+   "annotated_calls": "number",
+   "annotated_and_evaluated_calls": "number",
+   "min_sample_for_signal": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/calibration",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/issues",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/issues",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/issues",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/issues",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/issues?limit=20",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/issues",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/issues",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/whatsapp/channels",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/phone-numbers/",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/phone-numbers",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/agents/list-agents",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/knowledge-base",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/knowledge-base",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/knowledge-base",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/knowledge-bases",
+  "status": 200,
+  "shape": []
+ },
+ {
+  "page": "https://www.calldash.ai/knowledge-base",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/knowledge-base",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "POST",
+  "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=<redacted>",
+  "status": 200,
+  "shape": {
+   "kind": "string",
+   "users": [
+    {
+     "localId": "string",
+     "email": "string",
+     "displayName": "string",
+     "passwordHash": "string",
+     "emailVerified": "boolean",
+     "passwordUpdatedAt": "number",
+     "providerUserInfo": [
+      {
+       "providerId": "\u2026",
+       "displayName": "\u2026",
+       "federatedId": "\u2026",
+       "email": "\u2026",
+       "rawId": "\u2026"
+      }
+     ],
+     "validSince": "string",
+     "disabled": "boolean",
+     "lastLoginAt": "string",
+     "createdAt": "string",
+     "lastRefreshAt": "string"
+    }
+   ]
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/auth/me",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "email": "string",
+   "workspace_name": "string",
+   "email_verified": "boolean",
+   "credits_balance": "number",
+   "max_concurrency": "number",
+   "firebase_uid": "string",
+   "is_admin": "boolean"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/transactions?page=1&page_size=20",
+  "status": 200,
+  "shape": {
+   "transactions": [],
+   "total": "number",
+   "page": "number",
+   "page_size": "number",
+   "total_pages": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/usage/me",
+  "status": 200,
+  "shape": {
+   "window": {
+    "from": "string",
+    "to": "string"
+   },
+   "rows": [],
+   "total_raw_cost_usd": "number",
+   "total_billable_cost_usd": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "GET",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/billing/balance",
+  "status": 200,
+  "shape": {
+   "user_id": "string",
+   "balance": "number"
+  }
+ },
+ {
+  "page": "https://www.calldash.ai/billing",
+  "method": "POST",
+  "url": "https://calldash-api-prod.azurewebsites.net/api/voice-commands/stream-token",
+  "status": 200,
+  "shape": {
+   "key": "string",
+   "expires_in": "number"
+  }
+ }
+]

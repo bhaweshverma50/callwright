@@ -1,0 +1,37 @@
+https://www.calldash.ai/agents/new
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+Back to agents
+
+NEW AGENT
+
+How should this agent think?
+
+Pick how the agent decides what to say next. You can't change this later, so choose the one that fits your conversation shape.
+
+Single-prompt agent
+
+One system prompt drives the whole conversation. Best for open-ended assistants where the LLM decides the path turn-by-turn.
+
+·
+Free-form prompt with dynamic variables
+·
+Tool-calling (functions, transfers, end-call)
+·
+Knowledge-base attachments
+
+Flow agent
+
+A visual graph of nodes (greet, ask, branch, transfer). Best for scripted journeys, qualification flows, and hand-offs you need to control step-by-step.
+
+·
+Drag-and-drop canvas with conditions and branches
+·
+Per-node prompts, tools, and variable extraction
+·
+Each node can use a different model
+Continue

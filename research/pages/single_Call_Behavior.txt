@@ -1,0 +1,91 @@
+Back to agents
+
+NEW AGENT
+
+Configure your new agent.
+
+Fine-tune every aspect of your voice agent — from prompt and voice to call behavior and webhooks.
+
+Test agent
+Save agent
+Basic Configuration
+Voice Settings
+Call Behavior
+Advanced
+Call Behavior
+
+End Call on Silence
+
+30s
+
+10s
+1m
+2m
+3m
+4m
+5m
+Automatically end the call after this duration of silence (10 seconds - 5 minutes)
+
+Maximum Call Duration (Optional)
+
+minutes
+​
+Max duration: 10m
+
+Ring Duration (Optional)
+
+ms
+​
+Ring for 5s before connecting
+
+Interruption Sensitivity
+
+0.95
+
+Low
+Medium
+High
+How easily the agent can be interrupted. Higher = more interruptible (0-1)
+
+Responsiveness
+
+0.79
+
+Slow
+Medium
+Fast
+How quickly the agent responds to user input. Higher = faster responses (0-1)
+
+ESTIMATED COST
+
+STT
+
+Deepgram
+
+$0.0085/min
+
+LLM
+
+Azure OpenAI · gpt-5.1
+
+$0.0000/min
+
+TTS
+
+ElevenLabs · eleven_flash_v2_5
+
+750 chars/min
+
+$0.0450/min
+
+PLATFORM
+
+CallDash fee
+
+$0.0500/min
+
+Total (base)
+
+$0.1035/min
+
+Surcharge if usage exceeds bundle

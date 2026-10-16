@@ -1,0 +1,96 @@
+https://www.calldash.ai/dashboard
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+01 · OVERVIEW
+
+LIVE · UPDATED NOW
+
+Refresh
+Your voice agents, in numbers.
+
+Every call, every sentiment, every disconnect — live across your entire fleet of agents.
+
+All time
+7d
+30d
+90d
+Custom
+​
+Apply filters
+TOTAL CALLS
+0
+Daily avg
+0
+TOTAL DURATION
+0s
+Peak day
+—
+TOTAL COST
+$0.00
+Per call
+$0.000
+AVG DURATION
+0s
+Per call
+0s
+02
+Call activity
+Daily volume, duration, and average across the selected window
+VOLUME
+Calls per day
+Total 0
+Range 0 days
+TALK TIME
+Total talk time
+Total 0s
+Sessions 0
+03
+Quality & outcomes
+Why calls end, how long they last, and how they feel
+DISCONNECTS
+Why calls ended
+No data
+Top reason
+—
+AVG
+Average call duration
+Overall avg
+0s
+SENTIMENT
+Conversation mood
+No data
+Analyzed
+0
+CHANNELS
+Call channels
+No data
+Total
+0
+04
+Channels & agents
+Where calls come in, and who's handling them
+LEADERBOARD
+Most active agents
+Showing top
+0
+DISTRIBUTION
+Calls by agent · top 10
+No data
+Top agent share
+—
+05
+Quality checks
+How each evaluator scored across the selected window
+Agent health
+Last 30 days vs prior 30 days
+No headline evaluators have scored calls in this window yet.
+QUALITY CHECKS
+Per-evaluator pass rate
+No evaluator runs in this window. Enable quality checks in Agent Builder, then come back.
+0 calls evaluated in window
+Ask about your
+data

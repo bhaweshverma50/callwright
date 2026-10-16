@@ -1,0 +1,35 @@
+https://www.calldash.ai/calibration
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+
+CALIBRATION
+
+Which checks agree with you?
+
+Agreement between automated evaluators and your annotations. High = trustworthy; low = needs tuning. Off-diagonal cells show how each evaluator misses — over-eager (flags clean calls) vs. missed problems.
+
+​
+
+ANNOTATIONS
+
+0
+
+WITH EVALS
+
+0
+
+MIN SAMPLE
+
+5
+
+for trustworthy %
+
+No calibration data yet.
+
+Label calls with thumbs up/down in the Quality modal — once a call has both a human label and at least one evaluator score, it shows up here.
+
+Open Review queue

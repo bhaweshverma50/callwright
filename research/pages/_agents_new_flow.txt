@@ -1,0 +1,27 @@
+https://www.calldash.ai/agents/new/flow
+$5.000
+
+bhawesh.verma@sanas.ai
+
+B
+BV
+Back to type
+
+NEW FLOW AGENT
+
+Name your flow agent.
+
+We'll set up the agent and an empty canvas. You'll design the flow next — drag nodes, connect them, and configure each one.
+
+AGENT NAME *
+
+​
+
+LANGUAGE
+
+🇺🇸 English (US)
+​
+
+Voice and STT defaults are seeded for this language. You can refine them later.
+
+Create & open flow builder
