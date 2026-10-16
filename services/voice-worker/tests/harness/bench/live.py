@@ -104,6 +104,7 @@ class LiveReport:
     tts_ttfb_median_ms: float | None
     contract_violations: int
     wall_s: float
+    cutoffs: int = 0
     mode: str = "live"
     vendors: str = "fake"
     caller_e2e_ms: list[float] = field(default_factory=list)
@@ -263,6 +264,9 @@ class CallerMic:
         self._utterances.append((pcm, done))
         return await done
 
+    def duration_s(self, pcm: npt.NDArray[np.int16]) -> float:
+        return len(pcm) / self.rate
+
     async def _pump(self) -> None:
         step = self.rate // 100
         while True:
@@ -288,6 +292,7 @@ class CallResult:
     caller_e2e_ms: list[float | None]
     events: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    cutoffs: list[bool] = field(default_factory=list)
 
 
 def _token(options: LiveOptions, identity: str, room: str) -> str:
@@ -356,6 +361,10 @@ async def run_caller(
         await monitor.wait_quiet(options.quiet_s)
         for pcm in fixtures:
             eos = await mic.say(pcm)
+            # The agent talking before the caller's last sample is a cut-off: it took the turn
+            # during a mid-sentence pause (or talked over the caller).
+            started = eos - mic.duration_s(pcm)
+            result.cutoffs.append(any(started < at < eos for at in monitor.onsets))
             onset = await monitor.onset_after(eos, options.turn_timeout_s)
             result.caller_e2e_ms.append(None if onset is None else (onset - eos) * 1000.0)
             await monitor.wait_quiet(options.quiet_s)
@@ -383,14 +392,20 @@ async def run_caller(
 
 def load_fixtures(callset: Mapping[str, Any]) -> tuple[list[npt.NDArray[np.int16]], int]:
     turns = list(callset["turns"])
-    paths = [synth.FIXTURES_DIR / synth.fixture_name(i) for i in range(len(turns))]
+    directory = synth.fixtures_dir(callset)
+    paths = [directory / synth.fixture_name(i) for i in range(len(turns))]
     if not all(p.exists() for p in paths):
-        synth.generate(turns)
+        synth.generate(turns, directory)
     loaded = [synth.read_wav(p) for p in paths]
     rates = {rate for _, rate in loaded}
     if len(rates) != 1:
         raise ValueError(f"fixtures must share one sample rate, got {sorted(rates)}")
     return [pcm for pcm, _ in loaded], rates.pop()
+
+
+def scripted_transcripts(callset: Mapping[str, Any]) -> list[str]:
+    """What the fake STT returns, in order: one final per said segment (R4 pause scenarios)."""
+    return [part for raw in callset["turns"] for part in synth.Turn.parse(raw).segments]
 
 
 def summarize(
@@ -446,6 +461,7 @@ def summarize(
         tts_ttfb_median_ms=med("tts_ttfb_ms"),
         contract_violations=violations,
         wall_s=round(wall_s, 1),
+        cutoffs=sum(1 for r in results for cut in r.cutoffs if cut),
         caller_e2e_ms=caller,
         details=[call_details(r) for r in results],
     )
@@ -461,6 +477,7 @@ def call_details(result: CallResult) -> dict[str, Any]:
         turns.append(
             {
                 "turn": i,
+                "cutoff": result.cutoffs[i - 1] if i <= len(result.cutoffs) else False,
                 "caller_e2e_ms": None if caller is None else round(caller, 1),
                 **{f"worker_{k}": event.get(k) for k in keys},
             }
@@ -514,7 +531,7 @@ async def run_live(callset_path: Path, options: LiveOptions) -> LiveReport:
         async def one(i: int) -> CallResult:
             async with gate:
                 params = LiveFakeParams(
-                    turns=list(callset["turns"]),
+                    turns=scripted_transcripts(callset),
                     profile=dict(callset["profile"]),
                     seed=seed + i,
                     **{k: v for k, v in (live_cfg.get("fakes") or {}).items()},

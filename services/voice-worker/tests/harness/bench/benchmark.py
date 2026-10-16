@@ -9,12 +9,16 @@ Live mode (``--mode live``, :mod:`tests.harness.bench.live`) runs the same call 
 WebRTC rooms on a LiveKit server (``livekit-server --dev``): a scripted caller publishes the WAV
 fixtures, the production agent server and job entry handle the call with fake STT, LLM and TTS
 adapters, and ``e2e_ms`` is measured at the caller. It gates on the same budgets against
-``baseline_live.json`` and also fails on missed turns or event contract violations. Real
+``baseline_live.json`` and also fails on missed turns, event contract violations, or a cut-off
+(the agent speaking before the caller's last sample, research R4).
+``--callset bench/callset_pauses.yaml`` runs the mid-sentence pause and digit-group scenarios. Real
 vendors need keys and are not wired yet (see the live module).
 
     python -m tests.harness.bench.benchmark
     python -m tests.harness.bench.benchmark --update-baseline
     python -m tests.harness.bench.benchmark --mode live [--calls 4 --concurrency 2]
+    python -m tests.harness.bench.benchmark --mode live --callset \
+        tests/harness/bench/callset_pauses.yaml
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ from typing import Any, Protocol
 
 import yaml
 
+from tests.harness.bench.synth import Turn
 from tests.harness.runner import DEFAULT_CONFIG, HarnessCall, deep_merge, load_agent_config
 from tests.harness.script_schema import Script, Step
 
@@ -78,15 +83,20 @@ class BenchReport:
 
 
 async def run_call(
-    config: Mapping[str, Any], turns: Sequence[str], rng: random.Random, profile: Mapping[str, Any]
+    config: Mapping[str, Any],
+    turns: Sequence[str | Mapping[str, Any]],
+    rng: random.Random,
+    profile: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     call = HarnessCall(Script(name="bench", steps=[]), dict(config))
     await call.connect()
-    for text in turns:
+    for raw in turns:
+        turn = Turn.parse(raw)
         call.stt.final_delay_s = sample_ms(rng, profile["stt_final_ms"]) / 1000.0
         call.llm.ttft_s = sample_ms(rng, profile["llm_ttft_ms"]) / 1000.0
         call.tts.ttfb_s = sample_ms(rng, profile["tts_ttfb_ms"]) / 1000.0
-        await call.caller_says(Step(say=text), text)
+        step = Step(say=turn.say, segment_pause_ms=turn.pause_ms)
+        await call.caller_says(step, turn.say)
         await call.wait_idle()
     await call.control.hang_up("user_hangup")
     return [e for e in call.recorder.history if e["type"] == "turn" and e["turn_index"] > 0]
@@ -125,10 +135,16 @@ class LatencyReport(Protocol):
     def e2e_p95_ms(self) -> float: ...
 
 
-def gate(report: LatencyReport, baseline: Mapping[str, Any] | None) -> list[str]:
-    """Budget and regression checks. Returns the failures (empty means pass)."""
+def gate(
+    report: LatencyReport, baseline: Mapping[str, Any] | None, *, p50_budget: bool = True
+) -> list[str]:
+    """Budget and regression checks. Returns the failures (empty means pass).
+
+    ``p50_budget=False`` is for call sets that are not a representative turn mix (the R4 pause
+    scenarios, where most turns end in a digit string and wait the unfinished-turn delay).
+    """
     failures: list[str] = []
-    if report.e2e_p50_ms > P50_BUDGET_MS:
+    if p50_budget and report.e2e_p50_ms > P50_BUDGET_MS:
         failures.append(f"p50 {report.e2e_p50_ms:.0f} ms > {P50_BUDGET_MS} ms")
     if report.e2e_p95_ms > P95_BUDGET_MS:
         failures.append(f"p95 {report.e2e_p95_ms:.0f} ms > {P95_BUDGET_MS} ms")
@@ -174,7 +190,12 @@ def run_live_mode(args: argparse.Namespace) -> int:
     from tests.harness.bench.live import DEFAULT_LIVE_BASELINE, LiveOptions, run_live
 
     logging.basicConfig(level=logging.WARNING)
-    baseline_path = DEFAULT_LIVE_BASELINE if args.baseline == DEFAULT_BASELINE else args.baseline
+    # The live baseline belongs to the default call set; other call sets (the R4 pause
+    # scenarios) gate on the budgets and cut-offs unless a baseline is named.
+    baseline_path: Path | None = args.baseline
+    if args.baseline == DEFAULT_BASELINE:
+        default = args.callset.resolve() == DEFAULT_CALLSET.resolve()
+        baseline_path = DEFAULT_LIVE_BASELINE if default else None
     options = LiveOptions(
         url=args.url,
         api_key=args.api_key,
@@ -183,12 +204,20 @@ def run_live_mode(args: argparse.Namespace) -> int:
         concurrency=args.concurrency,
     )
     report = asyncio.run(run_live(args.callset, options))
+    callset = yaml.safe_load(args.callset.read_text())
+    p50_budget = bool((callset.get("gate") or {}).get("p50", True))
     if args.details:
         args.details.write_text(json.dumps(report.details, indent=2) + "\n")
-    if args.update_baseline:
+    if args.update_baseline and baseline_path is not None:
         baseline_path.write_text(json.dumps(report.to_json(), indent=2) + "\n")
-    baseline = json.loads(baseline_path.read_text()) if baseline_path.exists() else None
-    failures = gate(report, baseline)
+    baseline = (
+        json.loads(baseline_path.read_text())
+        if baseline_path is not None and baseline_path.exists()
+        else None
+    )
+    failures = gate(report, baseline, p50_budget=p50_budget)
+    if report.cutoffs:
+        failures.append(f"{report.cutoffs} caller turns were cut off mid-sentence")
     if report.missed_turns:
         failures.append(f"{report.missed_turns} caller turns got no agent audio")
     if report.contract_violations:

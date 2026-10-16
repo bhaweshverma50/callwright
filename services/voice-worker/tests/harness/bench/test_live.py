@@ -18,6 +18,7 @@ from tests.harness.bench.live import (
     AgentAudioMonitor,
     CallResult,
     FakeInternalApi,
+    scripted_transcripts,
     summarize,
 )
 from tests.harness.bench.live_fakes import (
@@ -167,3 +168,46 @@ def test_summarize_pairs_caller_and_worker_turns() -> None:
     assert report.greeting_median_ms == 300.0 and report.llm_ttft_median_ms == 200.0
     assert report.details[0]["turns"][1]["worker_e2e_ms"] == 800
     assert "details" not in report.to_json()
+
+
+PAUSES = synth.BENCH_DIR / "callset_pauses.yaml"
+
+
+def test_pause_fixtures_match_the_generator() -> None:
+    """R4 scenarios: each turn is its parts with the call set's pause between them."""
+    callset = yaml.safe_load(PAUSES.read_text())
+    directory = synth.fixtures_dir(callset)
+    assert directory == synth.FIXTURES_DIR / "pauses"
+    for i, raw in enumerate(callset["turns"]):
+        turn = synth.Turn.parse(raw)
+        assert len(turn.segments) >= 2
+        committed, rate = synth.read_wav(directory / synth.fixture_name(i))
+        expected = synth.to_pcm16(synth.synthesize_turn(turn.say, pause_ms=turn.pause_ms))
+        assert committed.shape == expected.shape
+        assert int(np.max(np.abs(committed.astype(np.int32) - expected))) <= 2
+        # The pause is real silence in the middle of the turn.
+        gap = int(turn.pause_ms / 1000 * rate)
+        first = synth.to_pcm16(synth.synthesize(turn.segments[0]))
+        assert not np.any(committed[len(first) : len(first) + gap])
+
+
+def test_turn_without_pause_mark_is_unchanged() -> None:
+    text = "Please send me the payment link."
+    assert synth.segments(text) == [text]
+    assert np.array_equal(synth.synthesize_turn(text), synth.synthesize(text))
+
+
+def test_fake_stt_gets_one_transcript_per_part() -> None:
+    callset = {"turns": ["one", {"say": "two a | two b", "pause_ms": 700}]}
+    assert scripted_transcripts(callset) == ["one", "two a", "two b"]
+
+
+def test_summarize_counts_cut_offs() -> None:
+    results = [
+        CallResult("a", [900.0, 1000.0], cutoffs=[False, True]),
+        CallResult("b", [800.0], cutoffs=[False]),
+    ]
+    report = summarize(results, violations=0, wall_s=1.0, calls=2)
+    assert report.cutoffs == 1
+    assert [t["cutoff"] for t in report.details[0]["turns"]] == [False, True]
+    assert report.to_json()["cutoffs"] == 1

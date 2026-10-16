@@ -30,6 +30,7 @@ from typing import Any
 from worker import telemetry
 from worker.adapters.registry import AdapterRegistry, Kind, UnsupportedLanguage, UnsupportedVendor
 from worker.call_behavior import (
+    VAD_MIN_SILENCE_S,
     VOICEMAIL_INSTRUCTION,
     VOICEMAIL_TOOL_NAME,
     AsyncioClock,
@@ -70,6 +71,7 @@ from worker.pipeline import (
 from worker.settings import WorkerSettings, get_settings
 from worker.telephony import TelephonyUnavailable, dtmf_code, sip_attributes
 from worker.tools import ToolActivity
+from worker.turn_detection import DigitAwareTurnDetector
 
 log = logging.getLogger("callwright.worker")
 
@@ -469,7 +471,9 @@ class LiveCall:
         if plan.turn_detection == "semantic":
             from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-            turn_detector = MultilingualModel()
+            # R4: one model for every language (it ignores STT punctuation, the English model
+            # does not); a trailing digit string is held as unfinished.
+            turn_detector = DigitAwareTurnDetector(MultilingualModel())
         self.session = build_session(
             plan,
             self.components,
@@ -563,7 +567,9 @@ class LiveCall:
             agent=self.agent,
             room=self.ctx.room,
             room_options=room_io.RoomOptions(
-                audio_input=room_io.AudioInputOptions(noise_cancellation=self.components.nc),
+                audio_input=room_io.AudioInputOptions(
+                    noise_cancellation=self.components.nc, frame_size_ms=INPUT_FRAME_MS
+                ),
                 participant_identity=self.caller_identity or "",
                 close_on_disconnect=False,
             ),
@@ -674,13 +680,22 @@ async def job_entry(ctx: Any, registry: AdapterRegistry | None = None) -> None:
     telemetry.flush()
 
 
+INPUT_FRAME_MS = 20
+"""Caller audio frame size into VAD and STT (framework default 50 ms). Every caller turn ends
+somewhere inside a frame, so 50 ms frames add about 25 ms on average before VAD and the STT
+hear the end of speech; 20 ms halves the framing cost for a few more frames per second (R4)."""
+
+
 def prewarm(proc: Any) -> None:
-    """Load Silero VAD once per process (R1); the turn-detector model loads with its plugin."""
+    """Load Silero VAD once per process (R1); the turn-detector model loads with its plugin.
+
+    ``min_silence_duration`` is the R4 floor of every end of turn (0.3 s, not the 0.55 s
+    default)."""
     from livekit.plugins import silero
 
     if not telemetry.enabled():
         telemetry.configure_tracing(get_settings().otel_exporter)
-    proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["vad"] = silero.VAD.load(min_silence_duration=VAD_MIN_SILENCE_S)
 
 
 def create_server(

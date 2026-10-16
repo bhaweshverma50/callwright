@@ -1,0 +1,18 @@
+name: digit_groups
+description: >-
+  Digit strings read in groups with a pause after each group, the way callers read account and
+  phone numbers. Every pause stays inside the unfinished-turn wait, so the number arrives as one
+  turn, and the reply after the last group still lands inside the latency budget (research R4).
+steps:
+  - say: "My account number is four four one | nine two three | seven seven."
+    segment_pause_ms: 700
+  - expect_cutoffs: 0
+  - expect_user_says: "My account number is four four one nine two three seven seven."
+  - expect_turns: 2
+  - expect_within_ms: 1500
+  - say: "And my phone number is nine eight four | five five five | one two three four."
+    segment_pause_ms: 600
+  - expect_cutoffs: 0
+  - expect_user_says: "And my phone number is nine eight four five five five one two three four."
+  - expect_turns: 3
+  - expect_within_ms: 1500

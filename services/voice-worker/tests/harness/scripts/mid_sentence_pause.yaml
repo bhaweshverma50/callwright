@@ -1,0 +1,18 @@
+name: mid_sentence_pause
+description: >-
+  The caller stops for up to a second in the middle of a sentence. The semantic turn detector
+  reads the first part as unfinished, so the turn waits up to the max endpointing delay (1.22 s
+  at the default responsiveness) and the caller's next words continue the same turn: one user
+  message, one reply, no cut-off (research R4).
+steps:
+  - say: "I would like to | change the address on my account."
+    segment_pause_ms: 1000
+  - expect_cutoffs: 0
+  - expect_user_says: "I would like to change the address on my account."
+  - expect_turns: 2
+  - expect_within_ms: 1500
+  - say: "The new address is | twelve Park Lane in Leeds."
+    segment_pause_ms: 900
+  - expect_cutoffs: 0
+  - expect_user_says: "The new address is twelve Park Lane in Leeds."
+  - expect_turns: 3

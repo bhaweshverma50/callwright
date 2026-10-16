@@ -133,11 +133,13 @@ class LatencyTracker:
     arrive while no turn is open are held and applied to the next caller turn. The anchor from
     :meth:`speech_end_observed` (the framework's backdated last speaking time) wins over the
     ``user_state_changed`` emission time. With preemptive generation the LLM request for a
-    caller turn also finishes before that turn opens, so an LLM time to first token that
-    arrives after the caller started speaking is held the same way.
+    caller turn also finishes before that turn opens, so an LLM time to first token (and, with
+    preemptive TTS, a TTS time to first byte) that arrives after the caller started speaking is
+    held the same way.
     """
 
     HELD_COMPONENTS = ("stt_final", "eou_delay")
+    PREEMPTIVE_COMPONENTS = ("llm_ttft", "tts_ttfb")
 
     def __init__(self) -> None:
         self._next_index = 0
@@ -197,7 +199,7 @@ class LatencyTracker:
             return
         if self._open_reply() is None and (
             name in self.HELD_COMPONENTS
-            or (name == "llm_ttft" and self._caller_speaking_since_reply)
+            or (name in self.PREEMPTIVE_COMPONENTS and self._caller_speaking_since_reply)
         ):
             self._held.setdefault(name, seconds)  # first generation of the turn counts
             return

@@ -7,10 +7,19 @@ telephony. The worker's own code does the work: ``plan_session`` and the adapter
 recorder and the event poster (against a fake internal API that checks the events contract).
 What is simulated is the media: caller speech, vendor delays and audio playout.
 
-Timing model per caller turn (livekit-agents 1.8 defaults, preemptive LLM, no preemptive TTS):
-``first_audio = max(eos + eou, eos + stt_final + llm_ttft) + tool + tts_ttfb`` where ``eou`` is
-``max(stt_final, min_endpointing_delay)``, or ``max_endpointing_delay`` for an utterance the
-semantic turn detector sees as unfinished (no closing punctuation).
+Timing model per caller turn (livekit-agents 1.8, research R4): preemptive generation runs the
+LLM and the TTS on the final transcript, so
+``first_audio = max(eos + eou, eos + stt_final + llm_ttft + tts_ttfb)``; a tool call runs after
+the turn commits (``max(eos + eou, eos + stt_final + llm_ttft) + tool + llm_ttft + tts_ttfb``).
+With the semantic turn detector ``eou`` is ``max(stt_final, VAD_MIN_SILENCE_S,
+min_endpointing_delay)``, or ``max_endpointing_delay`` for an utterance it sees as unfinished
+(no closing punctuation, or a trailing digit string as in ``worker.turn_detection``); STT end of
+turn uses ``max(stt_final, min_endpointing_delay)``.
+
+A ``say`` written ``first part | second part`` is said with ``segment_pause_ms`` of silence
+between the parts. Speech that resumes before the end-of-turn wait runs out continues the same
+turn; a pause longer than the wait commits the turn early (a cut-off) and the rest is a new
+caller turn that barges in on the reply.
 
 CLI::
 
@@ -31,12 +40,14 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from tests.harness.bench.synth import segments
 from tests.harness.clock import VirtualClock, VirtualTimer
 from tests.harness.fakes import FakeEventSink, FakeLLM, FakeSTT, FakeTTS, fake_registry
 from tests.harness.script_schema import Script, Step, load_script
 from worker.adapters.registry import AdapterRegistry, Kind, VendorSpec
 from worker.audio import BackgroundAudioSpec, PronunciationTransform
 from worker.call_behavior import (
+    VAD_MIN_SILENCE_S,
     VOICEMAIL_TOOL_NAME,
     DtmfCollector,
     DurationTimer,
@@ -55,6 +66,7 @@ from worker.pipeline import (
     plan_session,
 )
 from worker.tools import SegmentOverrides, ToolActivity
+from worker.turn_detection import ends_with_digit_string
 
 HARNESS_DIR = Path(__file__).parent
 DEFAULT_CONFIG = HARNESS_DIR / "configs" / "default_agent.json"
@@ -152,6 +164,7 @@ class HarnessResult:
     violations: list[str]
     background: BackgroundAudioSpec | None
     usage: dict[str, Any]
+    cutoffs: int = 0
 
     @property
     def ok(self) -> bool:
@@ -264,6 +277,7 @@ class HarnessCall:
         self.history: list[str] = []
         self.spoken: list[str] = []
         self.failures: list[str] = []
+        self.cutoffs = 0
         self.ended = False
         self.end_reason: str | None = None
         self.ended_at: float | None = None
@@ -539,28 +553,54 @@ class HarnessCall:
             await self.advance_to(max(self.clock.now(), base + step.interrupt_after_ms / 1000.0))
         if self.ended:
             return
-        duration = (
-            step.duration_ms / 1000.0
-            if step.duration_ms is not None
-            else max(0.4, len(text.split()) / WORDS_PER_SECOND)
-        )
+        parts = segments(text) or [text]
+        await self._utterance(step, parts, machine=machine)
+
+    async def _utterance(self, step: Step, parts: list[str], *, machine: bool) -> None:
+        """One caller turn said as ``parts`` with ``segment_pause_ms`` between them."""
+        pause_s = step.segment_pause_ms / 1000.0
         start = self.clock.now()
         self.inactivity.activity()
         self.inactivity.busy_begin("caller")
         if self.voicemail is not None:
             self.voicemail.caller_speech_started()
-        self._maybe_interrupt(text, start, duration)
-        eos = start + duration
-        await self.advance_to(eos)
-        if self.ended:
+        heard: list[str] = []
+        for i, part in enumerate(parts):
+            duration = (
+                step.duration_ms / 1000.0
+                if step.duration_ms is not None and len(parts) == 1
+                else max(0.4, len(part.split()) / WORDS_PER_SECOND)
+            )
+            part_start = self.clock.now()
+            self._maybe_interrupt(part, part_start, duration)
+            await self.advance_to(part_start + duration)
+            if self.ended:
+                return
+            heard.append(part)
+            last = i == len(parts) - 1
+            if not last and pause_s < self.end_of_turn_s(" ".join(heard)):
+                # The caller resumes inside the end-of-turn wait: same turn (R4).
+                await self.advance_to(self.clock.now() + pause_s)
+                if self.ended:
+                    return
+                continue
+            eos = self.clock.now()
+            self.inactivity.busy_end("caller")
+            if self.voicemail is not None:
+                self.voicemail.caller_speech_ended()
+            self.tracker.user_speech_ended(eos)
+            if self._speech is not None or self._generation is not None:
+                return  # spoke over an uninterruptible agent: input discarded
+            await self._respond(" ".join(heard), eos, start, machine=machine)
+            if last or self.ended:
+                return
+            # Cut off: the pause outlasted the wait, so the rest is a new caller turn.
+            self.cutoffs += 1
+            await self.advance_to(eos + pause_s)
+            if self.ended:
+                return
+            await self._utterance(step, parts[i + 1 :], machine=machine)
             return
-        self.inactivity.busy_end("caller")
-        if self.voicemail is not None:
-            self.voicemail.caller_speech_ended()
-        self.tracker.user_speech_ended(eos)
-        if self._speech is not None or self._generation is not None:
-            return  # spoke over an uninterruptible agent: input discarded
-        await self._respond(text, eos, start, machine=machine)
 
     def _maybe_interrupt(self, text: str, start: float, duration: float) -> None:
         params = self.plan.behavior.interruption
@@ -580,23 +620,22 @@ class HarnessCall:
             self._generation = None
             self.inactivity.busy_end("agent")
 
+    def end_of_turn_s(self, text: str) -> float:
+        """Seconds from the end of caller speech to the turn committing (R4, R5)."""
+        endpointing = self.plan.behavior.endpointing
+        stt_s = self.stt.final_delay_s
+        if self.plan.turn_detection == "stt":
+            return max(stt_s, endpointing.min_endpointing_delay)
+        finished = text.rstrip().endswith((".", "?", "!")) and not ends_with_digit_string(text)
+        delay = endpointing.min_endpointing_delay if finished else endpointing.max_endpointing_delay
+        return max(stt_s, VAD_MIN_SILENCE_S, delay)
+
     async def _respond(
         self, text: str, eos: float, started: float, *, machine: bool = False, keypad: bool = False
     ) -> None:
         behavior = self.plan.behavior
         stt_s = 0.0 if keypad else self.stt.final_delay_s
-        if keypad:
-            eou_s = 0.0
-        elif self.plan.turn_detection == "stt":
-            eou_s = max(stt_s, behavior.endpointing.min_endpointing_delay)
-        else:
-            finished = text.rstrip().endswith((".", "?", "!"))
-            delay = (
-                behavior.endpointing.min_endpointing_delay
-                if finished
-                else behavior.endpointing.max_endpointing_delay
-            )
-            eou_s = max(stt_s, delay)
+        eou_s = 0.0 if keypad else self.end_of_turn_s(text)
         await self.advance_to(eos + stt_s)
         if self.ended:
             return
@@ -649,6 +688,9 @@ class HarnessCall:
         tts = self.tts
         self.tracker.component("tts_ttfb", tts.ttfb_s)
         first_audio = text_ready + extra_s + tts.ttfb_s
+        if preemptive and behavior.endpointing.preemptive_tts and not extra_s:
+            # Preemptive TTS: the reply audio is synthesized during the end-of-turn wait.
+            first_audio = max(eos + eou_s, eos + stt_s + llm.ttft_s + tts.ttfb_s)
         on_done = (
             (lambda: self._hang_up_soon("agent_hangup"))
             if rule is not None and rule.end_call
@@ -751,6 +793,8 @@ class HarnessCall:
                 self._fail(step, f"last turn interrupted={last_turn and last_turn['interrupted']}")
         if step.expect_turns is not None and len(turns) != step.expect_turns:
             self._fail(step, f"{len(turns)} turns, wanted {step.expect_turns}")
+        if step.expect_cutoffs is not None and self.cutoffs != step.expect_cutoffs:
+            self._fail(step, f"{self.cutoffs} cut-offs, wanted {step.expect_cutoffs}")
         if step.expect_event is not None and not any(
             self._matches(e, step.expect_event) for e in history
         ):
@@ -809,6 +853,7 @@ class HarnessCall:
             violations=list(self.sink.violations),
             background=self.plan.background,
             usage=snapshot,
+            cutoffs=self.cutoffs,
         )
 
     async def _act(self, step: Step) -> None:

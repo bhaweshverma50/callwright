@@ -1,0 +1,30 @@
+# Mid-sentence pause and digit-group scenarios for the live benchmark (research R4).
+# Each "a | b" turn is said with pause_ms of silence between the parts. The fake STT returns one
+# final transcript per part, so the real multilingual turn-detector model and endpointing decide
+# whether the turn ends in the pause. A reply that starts before the caller's last sample is a
+# cut-off and fails the run; e2e_ms is measured from the end of the last part.
+#   python -m tests.harness.bench.benchmark --mode live --callset tests/harness/bench/callset_pauses.yaml
+calls: 8
+seed: 20261017
+config_overrides: {}
+fixtures: fixtures/pauses
+# Half the turns end in a digit string and wait the unfinished-turn delay on purpose, so the
+# p50 budget does not apply; p95 (every turn under 1,500 ms) and zero cut-offs do.
+gate: {p50: false}
+profile:
+  stt_final_ms: {median: 160, p95: 280}
+  llm_ttft_ms: {median: 320, p95: 700}
+  tts_ttfb_ms: {median: 130, p95: 240}
+turns:
+  - {say: "I would like to | change the address on my account.", pause_ms: 1000}
+  - {say: "My account number is four four one | nine two three | seven seven.", pause_ms: 700}
+  - {say: "The new address is | twelve Park Lane in Leeds.", pause_ms: 900}
+  - {say: "And my phone number is nine eight four | five five five | one two three four.", pause_ms: 600}
+  - {say: "Can you also tell me | when the next instalment is due?", pause_ms: 800}
+  - {say: "I was born on | the fourteenth of March nineteen ninety.", pause_ms: 900}
+live:
+  calls: 8
+  concurrency: 4
+  fakes:
+    reply: "Sure, I can help with that."
+    ms_per_char: 45

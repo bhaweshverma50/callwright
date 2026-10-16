@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.harness.runner import SCRIPTS_DIR, HarnessResult, run_script
+from tests.harness.script_schema import Script, Step
 
 SCRIPTS = sorted(SCRIPTS_DIR.glob("*.yaml"))
 
@@ -41,7 +42,9 @@ async def test_unfinished_utterance_waits_for_max_delay() -> None:
 
     script = Script(name="unfinished", steps=[Step(say="I would like to book a table for")])
     unfinished = await run_script(script)
-    assert _reply_waits(unfinished)[0] > _reply_waits(finished)[0] + 1000
+    max_ms = unfinished.plan.behavior.endpointing.max_endpointing_delay * 1000
+    assert _reply_waits(unfinished)[0] >= max_ms
+    assert _reply_waits(unfinished)[0] > _reply_waits(finished)[0] + 500
 
 
 async def test_stt_turn_detection_uses_min_delay_only() -> None:
@@ -80,3 +83,38 @@ async def test_heartbeat_posts_at_least_every_interval() -> None:
     # Two heartbeats at 10 s and 20 s; the second carries end_call.
     assert result.end_reason == "insufficient_credit"
     assert 20.0 <= result.duration_s < 21.0
+
+
+def _paused(name: str, say: str, pause_ms: float) -> Script:
+    return Script(name=name, steps=[Step(say=say, segment_pause_ms=pause_ms)])
+
+
+async def test_pause_longer_than_the_wait_is_a_cut_off() -> None:
+    """The boundary of R4: a mid-sentence pause past max_endpointing_delay ends the turn.
+
+    The rest of the sentence then barges in on the reply (interruption sensitivity 0.9), so
+    the caller still gets to finish; the scenarios keep their pauses inside the wait.
+    """
+    say = "I would like to | change my address."
+    assert (await run_script(_paused("held", say, 1100))).cutoffs == 0
+    result = await run_script(_paused("cut", say, 1400))
+    assert result.cutoffs == 1
+    users = [t["text"] for t in result.transcript if t["role"] == "user"]
+    assert users == ["I would like to", "change my address."]
+    assert any(t["interrupted"] for t in result.turns if t["turn_index"] == 1)
+
+
+async def test_finished_sounding_part_then_pause_is_a_new_turn() -> None:
+    """A part that reads as a complete sentence commits after min_endpointing_delay (R4)."""
+    result = await run_script(_paused("complete", "I paid. | The rest comes Friday.", 800))
+    assert result.cutoffs == 1
+
+
+async def test_digit_groups_hold_at_the_fastest_responsiveness() -> None:
+    """Even at responsiveness 1.0 (max delay 0.9 s) a 700 ms pause between groups holds."""
+    result = await run_script(
+        SCRIPTS_DIR / "digit_groups.yaml",
+        config_overrides={"call_behavior": {"responsiveness": 1.0}},
+    )
+    assert result.ok, result.failures
+    assert result.cutoffs == 0

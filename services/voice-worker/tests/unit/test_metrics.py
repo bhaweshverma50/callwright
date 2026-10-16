@@ -132,9 +132,10 @@ def test_turn_commit_before_thinking_keeps_components_and_anchor() -> None:
     tracker.user_speech_started()
     tracker.component("llm_ttft", 0.31)
     tracker.component("llm_ttft", 0.5)  # a preemptive retry: the first one counts
+    tracker.component("tts_ttfb", 0.14)  # preemptive TTS (R4) is held the same way
     tracker.user_speech_ended(140.0)
     preemptive = tracker.begin_turn()
-    assert preemptive.llm_ttft_ms == 310
+    assert (preemptive.llm_ttft_ms, preemptive.tts_ttfb_ms) == (310, 140)
 
 
 def test_metrics_bridge_maps_framework_metrics() -> None:

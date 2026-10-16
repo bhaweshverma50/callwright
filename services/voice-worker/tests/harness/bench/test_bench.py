@@ -40,6 +40,8 @@ def test_gate_flags_budget_and_regression() -> None:
     assert len(failures) == 1 and "e2e_p50_ms" in failures[0]
     failures = gate(_report(900, 1600), None)
     assert len(failures) == 2
+    # The R4 pause call set gates on p95 only.
+    assert gate(_report(900, 1400), None, p50_budget=False) == []
 
 
 def test_percentile_nearest_rank() -> None:
