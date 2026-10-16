@@ -21,6 +21,7 @@ export { Panel, PageHeader, Label, WorkLayout, PanelRows, FieldRow, InfoRow } fr
 export { LeaveGuard } from "./LeaveGuard";
 export { ErrorSummaryDialog, type ErrorSummaryItem } from "./ErrorSummaryDialog";
 export { Logo } from "./Logo";
+export { LogoLoader, FullPageLoader, PanelLoader, type LogoLoaderSize } from "./LogoLoader";
 export { Waveform, OnAir, LatencyChip, ChainLink, waveHeights, type Latency } from "./signal";
 export { FlowChain, ActiveDisc, Halo, type FlowNode } from "./FlowChain";
 export { PageTransition, Reveal, RevealItem, Ticker, useTicker, useRipple, EASE_OUT, EASE_OUT_SOFT, STATE_DURATION } from "./motion";

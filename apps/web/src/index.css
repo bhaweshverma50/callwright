@@ -320,6 +320,157 @@
   }
 }
 
+/*
+  LogoLoader (components/LogoLoader.tsx): one 2.4 s loop, a swing out and a swing back about the
+  mark's centre. Out: the ink half (a) leads half a turn clockwise from 1% to 39%, the gradient
+  half (b) follows 6% behind and arrives at 45%; both rest, locked with places traded, until
+  51%. Back: b leads counter-clockwise home from 51% to 89%, a follows and arrives at
+  95%; both rest until the loop restarts at 1%. The leader always moves into the opening of the
+  C, so the halves never cross. Only keyframes that start a move carry an easing, so every move is
+  one smooth ease in and out and the loop has no seam. While a half travels it parts 1.4 units from
+  the waist and its comet for that direction fades up; the glow breathes up at each lock.
+*/
+@keyframes ll-orbit-a {
+  0%,
+  1% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  39%,
+  57% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  95%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes ll-orbit-b {
+  0%,
+  7% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  45%,
+  51% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0.62, 0, 0.32, 1);
+  }
+  89%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes ll-split-a {
+  0%,
+  1%,
+  39%,
+  57%,
+  95%,
+  100% {
+    transform: translate(0, 0);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  20%,
+  76% {
+    transform: translate(-1.3px, -0.6px);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-split-b {
+  0%,
+  7%,
+  45%,
+  51%,
+  89%,
+  100% {
+    transform: translate(0, 0);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  26%,
+  70% {
+    transform: translate(1.3px, 0.6px);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-aCw {
+  0%,
+  1%,
+  39%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  20% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-aCcw {
+  0%,
+  57%,
+  95%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  76% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-bCw {
+  0%,
+  7%,
+  45%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  26% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-trail-bCcw {
+  0%,
+  51%,
+  89%,
+  100% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  70% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-glow {
+  0%,
+  48%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  23%,
+  73% {
+    opacity: 0.35;
+    transform: scale(0.9);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+}
+@keyframes ll-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 @property --border-angle {
   syntax: "<angle>";
   inherits: false;
@@ -688,6 +839,66 @@
     animation: halo-pulse var(--halo-pulse-duration) infinite;
   }
 
+  /* LogoLoader: keyframes and timing are documented above the ll-orbit keyframes. */
+  .ll {
+    --ll-duration: 2.4s;
+    animation: fade-in 260ms ease-out 140ms both;
+  }
+  .ll-a,
+  .ll-b,
+  .ll-a-split,
+  .ll-b-split {
+    transform-box: view-box;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  .ll-a {
+    animation: ll-orbit-a var(--ll-duration) infinite;
+  }
+  .ll-b {
+    animation: ll-orbit-b var(--ll-duration) infinite;
+  }
+  .ll-a-split {
+    animation: ll-split-a var(--ll-duration) infinite;
+  }
+  .ll-b-split {
+    animation: ll-split-b var(--ll-duration) infinite;
+  }
+  .ll-trail {
+    opacity: 0;
+  }
+  .ll-trail-aCw {
+    animation: ll-trail-aCw var(--ll-duration) infinite;
+  }
+  .ll-trail-aCcw {
+    animation: ll-trail-aCcw var(--ll-duration) infinite;
+  }
+  .ll-trail-bCw {
+    animation: ll-trail-bCw var(--ll-duration) infinite;
+  }
+  .ll-trail-bCcw {
+    animation: ll-trail-bCcw var(--ll-duration) infinite;
+  }
+  .ll-glow {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ll-glow var(--ll-duration) infinite;
+  }
+  /* Still state (reduced motion, or `still`): the mark at rest, breathing slowly in opacity. */
+  .ll-still .ll-a,
+  .ll-still .ll-b,
+  .ll-still .ll-a-split,
+  .ll-still .ll-b-split,
+  .ll-still .ll-glow {
+    animation: none;
+  }
+  .ll-still .ll-trail {
+    display: none;
+  }
+  .ll-still .ll-mark {
+    animation: ll-breathe var(--ll-duration) ease-in-out infinite;
+  }
+
   .ripple {
     position: absolute;
     border-radius: 9999px;
@@ -757,8 +968,15 @@
     transform: none;
   }
   .halo > .halo-pulse,
-  .on-air-pulse {
+  .on-air-pulse,
+  .ll .ll-trail {
     display: none;
+  }
+  /* The loader keeps one calm signal: the mark at rest (its orbits end on the mark), breathing. */
+  .ll .ll-mark {
+    animation: ll-breathe 2.4s ease-in-out infinite !important;
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

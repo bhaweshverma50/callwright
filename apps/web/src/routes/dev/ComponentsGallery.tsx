@@ -20,6 +20,7 @@ import {
   Kbd,
   LatencyChip,
   Logo,
+  LogoLoader,
   MoneyText,
   OnAir,
   Pagination,
@@ -639,6 +640,37 @@ export function ComponentsGallery() {
               <Skeleton className="h-3 w-5/6" />
               <Skeleton className="h-3 w-2/3" />
             </div>
+          </div>
+        </Section>
+
+        <Section
+          title="Loading mark"
+          note="LogoLoader: the two halves of the Handoff C orbit and pass the turn back and forth, locking into the mark twice a loop. For app boot, route loading and full-page checks; content-shaped loading keeps shimmer skeletons. Reduced motion shows the still mark breathing."
+        >
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <Demo name="Small, 24 px (inline)">
+              <div className="flex items-center gap-3 text-[13px] text-fg-2">
+                <LogoLoader size="sm" />
+                Checking your session
+              </div>
+            </Demo>
+            <Demo name="Medium, 40 px">
+              <LogoLoader size="md" className="self-center" />
+            </Demo>
+            <Demo name="Large, 64 px, with label">
+              <LogoLoader size="lg" label="Loading billing" className="self-center" />
+            </Demo>
+            <Demo name="Extra large, 96 px">
+              <LogoLoader size="xl" className="self-center" />
+            </Demo>
+            <Demo name="On the console">
+              <div className="grid place-items-center rounded-control bg-console py-6">
+                <LogoLoader size="lg" onConsole />
+              </div>
+            </Demo>
+            <Demo name="Reduced motion">
+              <LogoLoader size="lg" still label="Still, breathing" className="self-center" />
+            </Demo>
           </div>
         </Section>
 
