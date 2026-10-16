@@ -59,7 +59,12 @@ describe("talk time (docs/DESIGN.md section 6)", () => {
     }) as Transaction;
 
   it("turns balance into whole minutes and projects the run-out from 14 days of spend", () => {
-    const f = talkTimeFacts(14_000_000n, 105_000n, [row(1, "call_charge", "-7.000000", "14.000000"), row(20, "top_up", "21.000000", "21.000000")], now);
+    const f = talkTimeFacts(
+      14_000_000n,
+      105_000n,
+      [row(1, "call_charge", "-7.000000", "14.000000"), row(20, "top_up", "21.000000", "21.000000")],
+      now,
+    );
     expect(f.minutes).toBe(133);
     expect(f.perDayMicros).toBe(500_000n);
     expect(f.runOut?.toISOString()).toBe("2026-11-13T12:00:00.000Z");

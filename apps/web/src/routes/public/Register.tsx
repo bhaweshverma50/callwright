@@ -40,14 +40,27 @@ export function Register() {
   if (register.isSuccess) {
     const addr = email.trim().toLowerCase();
     return (
-      <AuthLayout title="Check your email" subtitle={<>We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with $5.00 of trial credit.</>}>
+      <AuthLayout
+        title="Check your email"
+        subtitle={
+          <>
+            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with $5.00 of trial
+            credit.
+          </>
+        }
+      >
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3 rounded-panel border border-line bg-surface px-4 py-3.5 text-[13.5px] text-fg-2 shadow-1">
             <EnvelopeSimple weight="duotone" className="size-7 shrink-0 text-accent-text" aria-hidden />
             The link works once. If it does not arrive in a few minutes, check spam or send it again.
           </div>
           <div className="flex items-center gap-3">
-            <Button pending={resend.isPending} disabled={resend.isSuccess} onClick={() => resend.mutate()} icon={resend.isSuccess ? <MailCheck aria-hidden /> : <RefreshCw aria-hidden />}>
+            <Button
+              pending={resend.isPending}
+              disabled={resend.isSuccess}
+              onClick={() => resend.mutate()}
+              icon={resend.isSuccess ? <MailCheck aria-hidden /> : <RefreshCw aria-hidden />}
+            >
               {resend.isSuccess ? "Link sent again" : "Send it again"}
             </Button>
             <Button variant="ghost" onClick={() => register.reset()}>

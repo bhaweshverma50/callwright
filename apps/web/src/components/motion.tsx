@@ -12,12 +12,7 @@ export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 /** Fade and 6px rise for routed pages. Keyed by the caller so each route animates in. */
 export function PageTransition({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, ease: EASE_OUT }}
-    >
+    <motion.div className={className} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: EASE_OUT }}>
       {children}
     </motion.div>
   );
@@ -42,7 +37,15 @@ export function Reveal({ children, className, as = "div" }: { children: ReactNod
   );
 }
 
-export function RevealItem({ children, className, as = "div" }: { children?: ReactNode; className?: string; as?: "div" | "li" | "section" | "article" }) {
+export function RevealItem({
+  children,
+  className,
+  as = "div",
+}: {
+  children?: ReactNode;
+  className?: string;
+  as?: "div" | "li" | "section" | "article";
+}) {
   const M = motion[as];
   return (
     <M className={className} variants={staggerChild}>
@@ -110,8 +113,6 @@ export function useRipple() {
     },
     [reduce],
   );
-  const ripples = dots.map((d) => (
-    <span key={d.id} aria-hidden className="ripple" style={{ left: d.x, top: d.y, width: d.size, height: d.size }} />
-  ));
+  const ripples = dots.map((d) => <span key={d.id} aria-hidden className="ripple" style={{ left: d.x, top: d.y, width: d.size, height: d.size }} />);
   return { onPointerDown, ripples };
 }

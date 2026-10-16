@@ -45,9 +45,7 @@ export function Chip({ selected, className, children, onPointerDown, ...rest }: 
       }}
       className={cn(
         "relative inline-flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full border px-3.5 font-mono text-[12.5px] tnum transition-colors duration-150",
-        selected
-          ? "border-accent bg-accent-soft text-accent-text"
-          : "border-line-strong bg-surface text-fg-2 hover:border-accent/50 hover:text-fg",
+        selected ? "border-accent bg-accent-soft text-accent-text" : "border-line-strong bg-surface text-fg-2 hover:border-accent/50 hover:text-fg",
         "disabled:cursor-not-allowed disabled:opacity-50",
         focusRing,
         className,

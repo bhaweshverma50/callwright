@@ -60,12 +60,31 @@ export function ResetPassword() {
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Field label="New password" error={pwErr} hint={<PasswordStrength password={pw} />}>
           {({ id, describedBy, invalid }) => (
-            <Input id={id} type="password" autoComplete="new-password" inputSize="lg" value={pw} onChange={(e) => setPw(e.target.value)} aria-describedby={describedBy} aria-invalid={invalid} autoFocus />
+            <Input
+              id={id}
+              type="password"
+              autoComplete="new-password"
+              inputSize="lg"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              autoFocus
+            />
           )}
         </Field>
         <Field label="Repeat it" error={confirmErr}>
           {({ id, describedBy, invalid }) => (
-            <Input id={id} type="password" autoComplete="new-password" inputSize="lg" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-describedby={describedBy} aria-invalid={invalid} />
+            <Input
+              id={id}
+              type="password"
+              autoComplete="new-password"
+              inputSize="lg"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+            />
           )}
         </Field>
         <Button type="submit" variant="primary" size="lg" pending={reset.isPending} icon={<KeyRound aria-hidden />}>

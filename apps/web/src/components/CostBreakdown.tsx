@@ -91,7 +91,9 @@ export function CostBreakdownCard({
         <thead className="sr-only">
           <tr>
             <th scope="col">Component</th>
-            <th scope="col" className="hidden @[24rem]:table-cell">Rate per minute</th>
+            <th scope="col" className="hidden @[24rem]:table-cell">
+              Rate per minute
+            </th>
             <th scope="col">Billed minutes</th>
             <th scope="col">Cost</th>
           </tr>
@@ -107,12 +109,18 @@ export function CostBreakdownCard({
                     <Icon className={cn("size-3.5 shrink-0", surcharge ? "text-warning-text" : "text-fg-3")} aria-hidden />
                     <span className="whitespace-nowrap text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
                     <span className="hidden truncate text-fg-3 @[30rem]:inline">
-                      {l.component === "platform" ? providerLabel(l.provider) : (modelLabel(l.component, l.provider, l.model) ?? providerLabel(l.provider))}
+                      {l.component === "platform"
+                        ? providerLabel(l.provider)
+                        : (modelLabel(l.component, l.provider, l.model) ?? providerLabel(l.provider))}
                     </span>
                   </span>
                 </th>
-                <td className="hidden px-2 text-right font-mono text-fg-3 tnum @[24rem]:table-cell">{formatUsd(l.rate_per_min_usd, { places: 4 })}/m</td>
-                <td className={cn("px-2 text-right font-mono tnum", surcharge ? "font-medium text-warning-text" : "text-fg-3")}>{Number(l.billed_minutes).toFixed(2)}m</td>
+                <td className="hidden px-2 text-right font-mono text-fg-3 tnum @[24rem]:table-cell">
+                  {formatUsd(l.rate_per_min_usd, { places: 4 })}/m
+                </td>
+                <td className={cn("px-2 text-right font-mono tnum", surcharge ? "font-medium text-warning-text" : "text-fg-3")}>
+                  {Number(l.billed_minutes).toFixed(2)}m
+                </td>
                 <td className="py-2.5 pl-2 pr-5 text-right">
                   <MoneyText value={l.cost_usd} places={3} className="text-fg" />
                 </td>
@@ -134,7 +142,8 @@ export function CostBreakdownCard({
               return (
                 <li key={l.component} className="grid grid-cols-[1fr_auto] gap-x-4 text-[12.5px]">
                   <span className="text-fg">
-                    {COMPONENT_LABELS[l.component]} billed at <span className="font-mono tnum">{Number(l.bundle_multiplier).toFixed(2)}x</span> the call length
+                    {COMPONENT_LABELS[l.component]} billed at <span className="font-mono tnum">{Number(l.bundle_multiplier).toFixed(2)}x</span> the
+                    call length
                   </span>
                   <MoneyText value={l.surcharge_usd} places={4} signed className="font-medium text-warning-text" />
                   {over.map((m) => (
@@ -150,7 +159,12 @@ export function CostBreakdownCard({
         </div>
       )}
 
-      <footer className={cn("flex items-baseline justify-between border-t border-dashed border-line-strong px-5 py-3.5", onConsole ? "bg-surface" : "bg-surface-2/60")}>
+      <footer
+        className={cn(
+          "flex items-baseline justify-between border-t border-dashed border-line-strong px-5 py-3.5",
+          onConsole ? "bg-surface" : "bg-surface-2/60",
+        )}
+      >
         <span className="text-[13px] text-fg-2">
           Total <span className="text-[12px] text-fg-3">on catalog version {breakdown.catalog_version}</span>
         </span>

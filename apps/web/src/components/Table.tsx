@@ -38,7 +38,19 @@ export interface TableProps<T> {
  * Dense data table: sentence-case headers on a recessed band, single hairlines, numeric columns
  * right aligned in Geist Mono, a cobalt marker on the selected row.
  */
-export function Table<T>({ columns, rows, rowKey, loading, skeletonRows = 8, empty, caption, stale, selectedKey, onRowPreview, className }: TableProps<T>) {
+export function Table<T>({
+  columns,
+  rows,
+  rowKey,
+  loading,
+  skeletonRows = 8,
+  empty,
+  caption,
+  stale,
+  selectedKey,
+  onRowPreview,
+  className,
+}: TableProps<T>) {
   const showSkeleton = loading && !rows;
   return (
     <div className={cn("overflow-x-auto", className)}>

@@ -80,7 +80,11 @@ export function Sidebar({
                 focusRing,
               )}
             >
-              {expanded ? <PanelLeftClose className="size-[18px] shrink-0" aria-hidden /> : <PanelLeftOpen className="size-[18px] shrink-0" aria-hidden />}
+              {expanded ? (
+                <PanelLeftClose className="size-[18px] shrink-0" aria-hidden />
+              ) : (
+                <PanelLeftOpen className="size-[18px] shrink-0" aria-hidden />
+              )}
               {expanded && <span>Collapse</span>}
             </button>
           </Tooltip>

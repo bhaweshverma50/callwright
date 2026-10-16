@@ -82,7 +82,9 @@ export function PublicLayout() {
         <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-4 py-12 sm:flex-row sm:items-start sm:justify-between sm:px-6">
           <div className="flex flex-col gap-3">
             <Logo />
-            <p className="max-w-[40ch] text-[13px] leading-relaxed text-fg-3">Build voice agents, put them on the phone, and fix what callers trip over.</p>
+            <p className="max-w-[40ch] text-[13px] leading-relaxed text-fg-3">
+              Build voice agents, put them on the phone, and fix what callers trip over.
+            </p>
           </div>
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-14 gap-y-2.5 text-[13.5px] sm:grid-cols-3">
             {[

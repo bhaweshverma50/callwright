@@ -38,8 +38,7 @@ export function talkTimeFacts(balanceMicros: bigint, perMinuteMicros: bigint, tx
     }
   }
   const perDay = spent > 0n ? spent / BigInt(SPEND_WINDOW_DAYS) : 0n;
-  const runOut =
-    perDay > 0n && balanceMicros > 0n ? new Date(now.getTime() + Number((balanceMicros * BigInt(DAY_MS)) / perDay)) : null;
+  const runOut = perDay > 0n && balanceMicros > 0n ? new Date(now.getTime() + Number((balanceMicros * BigInt(DAY_MS)) / perDay)) : null;
   const fill = peak > 0n && balanceMicros > 0n ? Math.min(1, Number((balanceMicros * 10_000n) / peak) / 10_000) : 0;
   return { minutes: talkMinutes(balanceMicros, perMinuteMicros), fill, peakMicros: peak, perDayMicros: perDay, runOut };
 }
@@ -69,7 +68,12 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
           <div className="absolute inset-x-0 bottom-1 flex flex-col items-center">
             <span className="text-[12.5px] text-fg-3">about</span>
             {facts ? (
-              <Ticker value={facts.minutes} fromZero format={(n) => Math.round(n).toLocaleString()} className="font-mono text-[40px] font-medium leading-none tracking-[-0.02em] text-fg" />
+              <Ticker
+                value={facts.minutes}
+                fromZero
+                format={(n) => Math.round(n).toLocaleString()}
+                className="font-mono text-[40px] font-medium leading-none tracking-[-0.02em] text-fg"
+              />
             ) : (
               <Skeleton className="my-1 h-9 w-24" />
             )}
@@ -85,7 +89,12 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
             {loading || balance === null ? (
               <Skeleton className="mt-1.5 h-9 w-40" />
             ) : (
-              <MoneyText value={balanceUsd!} places={3} animate className={cn("mt-0.5 block text-[34px] font-medium leading-tight tracking-[-0.02em]", low ? "text-warning-text" : "text-fg")} />
+              <MoneyText
+                value={balanceUsd!}
+                places={3}
+                animate
+                className={cn("mt-0.5 block text-[34px] font-medium leading-tight tracking-[-0.02em]", low ? "text-warning-text" : "text-fg")}
+              />
             )}
           </div>
           <ul className="flex flex-col gap-2.5 text-[13.5px] text-fg-2">
@@ -108,8 +117,9 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
                 <Skeleton className="mt-1 h-3.5 w-64" />
               ) : facts.runOut ? (
                 <span>
-                  At your last {SPEND_WINDOW_DAYS} days of spend, <span className="font-mono text-fg tnum">{formatUsd(facts.perDayMicros, { places: 2 })}</span> a day,
-                  it lasts until about <span className="font-medium text-fg">{dateFmt.format(facts.runOut)}</span>.
+                  At your last {SPEND_WINDOW_DAYS} days of spend,{" "}
+                  <span className="font-mono text-fg tnum">{formatUsd(facts.perDayMicros, { places: 2 })}</span> a day, it lasts until about{" "}
+                  <span className="font-medium text-fg">{dateFmt.format(facts.runOut)}</span>.
                 </span>
               ) : (
                 <span>No calls in the last {SPEND_WINDOW_DAYS} days, so there is no run-out date yet.</span>

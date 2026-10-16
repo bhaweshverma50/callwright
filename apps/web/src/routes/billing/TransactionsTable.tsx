@@ -102,7 +102,8 @@ export function TransactionsTable({
         <p className="text-[13px] text-fg-3" aria-live="polite">
           {q.data ? (
             <>
-              <span className="font-mono text-fg-2 tnum">{q.data.total.toLocaleString()}</span> {q.data.total === 1 ? "transaction" : "transactions"}, newest first
+              <span className="font-mono text-fg-2 tnum">{q.data.total.toLocaleString()}</span> {q.data.total === 1 ? "transaction" : "transactions"},
+              newest first
             </>
           ) : (
             "Loading transactions"
@@ -139,11 +140,18 @@ export function TransactionsTable({
           ))}
         </div>
       ) : q.data.items.length === 0 ? (
-        <EmptyState compact icon={<ReceiptDuo weight="duotone" />} title={type === "all" ? "No transactions yet" : `No ${TYPE_LABELS[type].toLowerCase()} transactions`}>
+        <EmptyState
+          compact
+          icon={<ReceiptDuo weight="duotone" />}
+          title={type === "all" ? "No transactions yet" : `No ${TYPE_LABELS[type].toLowerCase()} transactions`}
+        >
           Top-ups, call charges and adjustments appear here as they happen.
         </EmptyState>
       ) : (
-        <section aria-label="Credit transactions, newest first" className={cn("px-3 pb-2 pt-1 transition-opacity sm:px-5", q.isPlaceholderData && "opacity-60")}>
+        <section
+          aria-label="Credit transactions, newest first"
+          className={cn("px-3 pb-2 pt-1 transition-opacity sm:px-5", q.isPlaceholderData && "opacity-60")}
+        >
           {groups.map((g) => (
             <div key={g.key} className="pt-4">
               <div className="flex items-baseline justify-between px-2 pb-2">
@@ -175,7 +183,14 @@ export function TransactionsTable({
       )}
       {q.data && q.data.total > 0 && (
         <div className="border-t border-line">
-          <Pagination page={q.data.page} totalPages={q.data.total_pages} total={q.data.total} pageSize={q.data.page_size} onPageChange={setPage} noun="transactions" />
+          <Pagination
+            page={q.data.page}
+            totalPages={q.data.total_pages}
+            total={q.data.total}
+            pageSize={q.data.page_size}
+            onPageChange={setPage}
+            noun="transactions"
+          />
         </div>
       )}
     </div>
@@ -212,7 +227,9 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
           <MoneyText value={t.balance_after_usd} places={3} />
         </span>
       </span>
-      {t.cost_breakdown && <ChevronRight className={cn("size-4 shrink-0 text-fg-3 transition-transform", selected && "translate-x-0.5 text-accent-text")} aria-hidden />}
+      {t.cost_breakdown && (
+        <ChevronRight className={cn("size-4 shrink-0 text-fg-3 transition-transform", selected && "translate-x-0.5 text-accent-text")} aria-hidden />
+      )}
     </>
   );
   const cls = cn(

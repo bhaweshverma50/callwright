@@ -22,13 +22,14 @@ export function Pricing() {
         Pay per minute, billed per second.
       </h1>
       <p className="mt-5 max-w-[60ch] text-[16px] leading-relaxed text-fg-2">
-        Build the chain your agent uses. The price per minute is the sum of its links plus the platform fee, and the same engine prices
-        your real calls.
+        Build the chain your agent uses. The price per minute is the sum of its links plus the platform fee, and the same engine prices your real
+        calls.
       </p>
       <p className="mt-3 flex items-start gap-2 text-[13.5px] text-fg-3">
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
-          $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes on the default chain.
+          $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes
+          on the default chain.
         </span>
       </p>
 
@@ -56,27 +57,30 @@ export function Pricing() {
         </dl>
       </section>
 
-      <section aria-labelledby="rule" className="mt-24 grid grid-cols-[minmax(0,1fr)] items-start gap-12 border-t border-line pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section
+        aria-labelledby="rule"
+        className="mt-24 grid grid-cols-[minmax(0,1fr)] items-start gap-12 border-t border-line pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+      >
         <div>
           <h2 id="rule" className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
             When a call uses more than its bundle
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-fg-2">
-            The model and voice include a usage bundle per minute. Each is billed for whichever is longer: the call itself, or its usage
-            divided by the bundle. Speech to text, noise cancellation and the platform fee never carry a surcharge.
+            The model and voice include a usage bundle per minute. Each is billed for whichever is longer: the call itself, or its usage divided by
+            the bundle. Speech to text, noise cancellation and the platform fee never carry a surcharge.
           </p>
           <pre className="mt-6 overflow-x-auto rounded-panel border border-line bg-surface px-4 py-3.5 font-mono text-[12.5px] leading-relaxed text-fg">
-{`billed minutes = max(call minutes, usage / bundle)
+            {`billed minutes = max(call minutes, usage / bundle)
 cost           = rate x billed minutes`}
           </pre>
           <p className="mt-6 text-[15px] leading-relaxed text-fg-2">
             Example: a <span className="font-mono tnum">{Math.round(REFERENCE_USAGE.duration_ms / 1000)}</span> second call sent{" "}
             <span className="font-mono tnum">{REFERENCE_USAGE.llm_input_tokens.toLocaleString()}</span> input tokens to the model. That is{" "}
             <span className="font-mono tnum">{Number(llm.billed_minutes).toFixed(2)}</span> minutes of bundle on a{" "}
-            <span className="font-mono tnum">{Number(referenceBreakdown.duration_minutes).toFixed(2)}</span> minute call, so the model line bills
-            at <span className="font-mono tnum">{Number(llm.bundle_multiplier).toFixed(2)}x</span> and adds{" "}
-            <span className="font-mono tnum">${Number(llm.surcharge_usd).toFixed(4)}</span>. The voice stayed inside its bundle and bills at the
-            call length.
+            <span className="font-mono tnum">{Number(referenceBreakdown.duration_minutes).toFixed(2)}</span> minute call, so the model line bills at{" "}
+            <span className="font-mono tnum">{Number(llm.bundle_multiplier).toFixed(2)}x</span> and adds{" "}
+            <span className="font-mono tnum">${Number(llm.surcharge_usd).toFixed(4)}</span>. The voice stayed inside its bundle and bills at the call
+            length.
           </p>
           <Button asChild variant="secondary" className="mt-7" icon={<Building aria-hidden />}>
             <Link to="/enterprise">Talk to us about volume</Link>

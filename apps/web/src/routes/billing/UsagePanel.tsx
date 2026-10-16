@@ -106,12 +106,30 @@ export function UsagePanel() {
           <legend className="sr-only">Date window</legend>
           <Field label="From" className="w-[150px]">
             {({ id, describedBy }) => (
-              <Input id={id} type="date" className="font-mono tnum" value={from} max={to} onChange={(e) => setFrom(e.target.value)} aria-describedby={describedBy} aria-invalid={Boolean(err)} />
+              <Input
+                id={id}
+                type="date"
+                className="font-mono tnum"
+                value={from}
+                max={to}
+                onChange={(e) => setFrom(e.target.value)}
+                aria-describedby={describedBy}
+                aria-invalid={Boolean(err)}
+              />
             )}
           </Field>
           <Field label="To" className="w-[150px]" error={err}>
             {({ id, describedBy }) => (
-              <Input id={id} type="date" className="font-mono tnum" value={to} min={from} onChange={(e) => setTo(e.target.value)} aria-describedby={describedBy} aria-invalid={Boolean(err)} />
+              <Input
+                id={id}
+                type="date"
+                className="font-mono tnum"
+                value={to}
+                min={from}
+                onChange={(e) => setTo(e.target.value)}
+                aria-describedby={describedBy}
+                aria-invalid={Boolean(err)}
+              />
             )}
           </Field>
         </fieldset>
@@ -163,7 +181,10 @@ export function UsagePanel() {
                         type="button"
                         aria-expanded={expanded}
                         onClick={() => toggle(r.feature)}
-                        className={cn("inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-fg hover:bg-surface-2", focusRing)}
+                        className={cn(
+                          "inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2 py-1 text-fg hover:bg-surface-2",
+                          focusRing,
+                        )}
                       >
                         <ChevronRight className={cn("size-3.5 text-fg-3 transition-transform duration-200", expanded && "rotate-90")} aria-hidden />
                         <FamilyIcon family={r.feature} />

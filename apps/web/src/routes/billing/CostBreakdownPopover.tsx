@@ -12,7 +12,13 @@ const when = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeri
 export function BreakdownInspector({ txn, onClose, asDrawer }: { txn: Transaction | null; onClose: () => void; asDrawer: boolean }) {
   if (asDrawer) {
     return (
-      <Drawer open={Boolean(txn)} onOpenChange={(o) => !o && onClose()} title="Cost breakdown" meta={txn ? when.format(new Date(txn.created_at)) : undefined} width="md">
+      <Drawer
+        open={Boolean(txn)}
+        onOpenChange={(o) => !o && onClose()}
+        title="Cost breakdown"
+        meta={txn ? when.format(new Date(txn.created_at)) : undefined}
+        width="md"
+      >
         {txn?.cost_breakdown && <Body txn={txn} />}
       </Drawer>
     );

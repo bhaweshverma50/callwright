@@ -150,9 +150,7 @@ function formatDuration(sec: number) {
 }
 
 export function balanceOf(state: MockState, workspaceId: string): bigint {
-  return state.transactions
-    .filter((t) => t.workspace_id === workspaceId)
-    .reduce((s, t) => s + (toMicros(t.amount_usd) ?? 0n), 0n);
+  return state.transactions.filter((t) => t.workspace_id === workspaceId).reduce((s, t) => s + (toMicros(t.amount_usd) ?? 0n), 0n);
 }
 
 export function appendTransaction(

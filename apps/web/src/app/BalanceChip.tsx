@@ -17,7 +17,11 @@ export function BalanceChip() {
   const micros = data ? toMicros(data.balance_usd) : null;
   const tone = micros === null ? "neutral" : micros <= 0n ? "danger" : micros < LOW ? "warning" : "neutral";
   const hint =
-    tone === "danger" ? "Balance is empty. New calls are refused until you add funds." : tone === "warning" ? "Balance is low. Add funds to keep calls running." : "Open billing";
+    tone === "danger"
+      ? "Balance is empty. New calls are refused until you add funds."
+      : tone === "warning"
+        ? "Balance is low. Add funds to keep calls running."
+        : "Open billing";
 
   return (
     <Tooltip content={hint} side="bottom">

@@ -48,7 +48,7 @@ function validation(errors: FieldError[]) {
   return problem(422, "validation_failed", "Request failed validation", { errors });
 }
 
-const json = <T,>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
+const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
 
 function issueSession(user: MockUser): Session {
   const access = `mock-access.${user.id}.${mockId("tok")}`;
@@ -135,8 +135,7 @@ export const handlers = [
     const errors: FieldError[] = [];
     if (!body.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email))
       errors.push({ pointer: "/email", code: "invalid_format", message: "Enter a valid email address." });
-    if (!body.password || body.password.length < 10)
-      errors.push({ pointer: "/password", code: "too_short", message: "Use at least 10 characters." });
+    if (!body.password || body.password.length < 10) errors.push({ pointer: "/password", code: "too_short", message: "Use at least 10 characters." });
     if (errors.length) return validation(errors);
     const email = body.email!.toLowerCase();
     if (!db().users.some((u) => u.email === email)) {
@@ -220,10 +219,8 @@ export const handlers = [
   http.post(url("/auth/password-reset/confirm"), async ({ request }) => {
     const { token_hash, new_password = "" } = (await request.json()) as { token_hash: string; new_password?: string };
     const t = db().resetTokens[token_hash];
-    if (!t || t.used || t.expires < Date.now() || token_hash === "expired")
-      return problem(400, "link_invalid", "Link invalid, used or expired");
-    if (new_password.length < 10)
-      return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
+    if (!t || t.used || t.expires < Date.now() || token_hash === "expired") return problem(400, "link_invalid", "Link invalid, used or expired");
+    if (new_password.length < 10) return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
     const user = db().users.find((u) => u.email === t.email);
     if (user) user.password = new_password;
     t.used = true;
@@ -254,8 +251,7 @@ export const handlers = [
     if (body.name !== undefined) {
       if (typeof body.name !== "string" || body.name.trim().length === 0)
         errors.push({ pointer: "/name", code: "required", message: "Enter a workspace name." });
-      else if (body.name.length > 80)
-        errors.push({ pointer: "/name", code: "too_long", message: "Keep the name to 80 characters or fewer." });
+      else if (body.name.length > 80) errors.push({ pointer: "/name", code: "too_long", message: "Keep the name to 80 characters or fewer." });
     }
     if (body.recording_default !== undefined && typeof body.recording_default !== "boolean")
       errors.push({ pointer: "/recording_default", code: "invalid_format", message: "Choose on or off." });
@@ -307,9 +303,7 @@ export const handlers = [
       .slice()
       .reverse();
     await delay(180);
-    const items: Transaction[] = rows
-      .slice((page - 1) * pageSize, page * pageSize)
-      .map(({ workspace_id: _ws, ...t }) => t);
+    const items: Transaction[] = rows.slice((page - 1) * pageSize, page * pageSize).map(({ workspace_id: _ws, ...t }) => t);
     return json<TransactionPage>({
       items,
       total: rows.length,

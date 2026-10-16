@@ -14,9 +14,19 @@ export interface SampleTurn {
 
 export const SAMPLE_CALL: SampleTurn[] = [
   { who: "caller", text: "Hi, I need to move my cleaning on Tuesday. Something came up at work.", at: 0 },
-  { who: "agent", text: "No problem. I can see your 9:30 with Dr. Okafor. Thursday has 10:40 or 2:15. Which works?", at: 4.2, latency: { stt: 160, llm: 310, tts: 140 } },
+  {
+    who: "agent",
+    text: "No problem. I can see your 9:30 with Dr. Okafor. Thursday has 10:40 or 2:15. Which works?",
+    at: 4.2,
+    latency: { stt: 160, llm: 310, tts: 140 },
+  },
   { who: "caller", text: "2:15 is good.", at: 9.8 },
-  { who: "agent", text: "Done. You're booked for Thursday at 2:15. I'll text you a reminder the day before.", at: 11.6, latency: { stt: 150, llm: 280, tts: 130 } },
+  {
+    who: "agent",
+    text: "Done. You're booked for Thursday at 2:15. I'll text you a reminder the day before.",
+    at: 11.6,
+    latency: { stt: 150, llm: 280, tts: 130 },
+  },
 ];
 
 export const SAMPLE_CALL_SECONDS = 16;

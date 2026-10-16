@@ -142,7 +142,15 @@ export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLIn
             className="block rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             aria-describedby={disabledWhy ? "topup-why" : undefined}
           >
-            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={!check.ok} pending={checkout.isPending} icon={<Lock aria-hidden />}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={!check.ok}
+              pending={checkout.isPending}
+              icon={<Lock aria-hidden />}
+            >
               {label}
             </Button>
           </span>

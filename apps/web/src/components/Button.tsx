@@ -77,7 +77,11 @@ function PendingDots() {
   return (
     <span aria-hidden className="inline-flex items-center gap-0.5">
       {[0, 1, 2].map((i) => (
-        <span key={i} className="size-1 rounded-full bg-current opacity-80 animate-[bar-breathe_900ms_ease-in-out_infinite]" style={{ animationDelay: `${i * 140}ms` }} />
+        <span
+          key={i}
+          className="size-1 rounded-full bg-current opacity-80 animate-[bar-breathe_900ms_ease-in-out_infinite]"
+          style={{ animationDelay: `${i * 140}ms` }}
+        />
       ))}
     </span>
   );

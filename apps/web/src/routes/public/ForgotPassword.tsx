@@ -30,7 +30,15 @@ export function ForgotPassword() {
   if (request.isSuccess) {
     const addr = email.trim().toLowerCase();
     return (
-      <AuthLayout title="Check your email" subtitle={<>If an account exists for <span className="font-medium text-fg">{addr}</span>, it has a reset link. The link works once, for 60 minutes.</>} footer={back}>
+      <AuthLayout
+        title="Check your email"
+        subtitle={
+          <>
+            If an account exists for <span className="font-medium text-fg">{addr}</span>, it has a reset link. The link works once, for 60 minutes.
+          </>
+        }
+        footer={back}
+      >
         {env.mocks && (
           <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
             Demo data is on, so no email is sent.{" "}
@@ -44,7 +52,11 @@ export function ForgotPassword() {
   }
 
   return (
-    <AuthLayout title="Reset your password" subtitle="Enter the email you sign in with and we will send a link to choose a new password." footer={back}>
+    <AuthLayout
+      title="Reset your password"
+      subtitle="Enter the email you sign in with and we will send a link to choose a new password."
+      footer={back}
+    >
       {request.error ? <FormAlert>{problemMessage(request.error)}</FormAlert> : null}
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Field label="Email">

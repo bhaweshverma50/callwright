@@ -55,7 +55,10 @@ describe("shell (T042, T095, T096, FR-005, FR-018)", () => {
     const first = renderApp("/dashboard");
     const nav = await screen.findByRole("navigation", { name: "Main" });
     for (const g of ["Build", "Observe", "Quality", "Feedback loop"]) expect(within(nav).getByText(g)).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "Workspace" })).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+    expect(within(screen.getByRole("navigation", { name: "Workspace" })).getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
 
     await user.click(screen.getByRole("button", { name: "Collapse navigation" }));
     expect(localStorage.getItem("cw.rail.expanded")).toBe("0");

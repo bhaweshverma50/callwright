@@ -38,7 +38,11 @@ export function Dialog({ open, onOpenChange, title, description, icon, children,
         >
           <div className="flex items-start justify-between gap-4 px-5 pb-1 pt-5">
             <div className="flex items-start gap-3">
-              {icon && <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-[18px]">{icon}</span>}
+              {icon && (
+                <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-[18px]">
+                  {icon}
+                </span>
+              )}
               <div className="flex flex-col gap-1">
                 <RD.Title className="font-display text-[17px] font-medium tracking-[-0.01em] text-fg">{title}</RD.Title>
                 {description ? (
@@ -78,7 +82,18 @@ export interface ConfirmDialogProps {
 }
 
 /** Two-choice alert dialog. The safe choice (cancel) gets initial focus. */
-export function ConfirmDialog({ open, onOpenChange, title, description, icon, confirmLabel, cancelLabel = "Cancel", tone = "default", pending, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  icon,
+  confirmLabel,
+  cancelLabel = "Cancel",
+  tone = "default",
+  pending,
+  onConfirm,
+}: ConfirmDialogProps) {
   return (
     <Dialog
       open={open}

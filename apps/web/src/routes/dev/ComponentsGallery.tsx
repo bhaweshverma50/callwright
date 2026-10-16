@@ -142,9 +142,9 @@ export function ComponentsGallery() {
       <main id="main" className="mx-auto max-w-[1120px] px-4 pb-24 pt-12 sm:px-6">
         <h1 className="font-display text-[30px] font-semibold tracking-[-0.03em] text-fg">Components</h1>
         <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-fg-2">
-          The signal chain system: ink and paper, one cobalt action colour with a cobalt to violet gradient on primary actions, on-air red for
-          live state only, and the heat ramp inside data visualisation. Unbounded for display, Geist for interface text, Geist Mono for
-          figures. Rules live in docs/DESIGN.md.
+          The signal chain system: ink and paper, one cobalt action colour with a cobalt to violet gradient on primary actions, on-air red for live
+          state only, and the heat ramp inside data visualisation. Unbounded for display, Geist for interface text, Geist Mono for figures. Rules live
+          in docs/DESIGN.md.
         </p>
 
         <Section title="Tokens">
@@ -213,7 +213,9 @@ export function ComponentsGallery() {
               {({ id, describedBy }) => <Input id={id} aria-describedby={describedBy} defaultValue="Halcyon Dental Group" />}
             </Field>
             <Field label="Amount" error="The minimum top-up is $5.">
-              {({ id, describedBy, invalid }) => <Input id={id} prefix="$" className="font-mono" aria-describedby={describedBy} aria-invalid={invalid} defaultValue="4" />}
+              {({ id, describedBy, invalid }) => (
+                <Input id={id} prefix="$" className="font-mono" aria-describedby={describedBy} aria-invalid={invalid} defaultValue="4" />
+              )}
             </Field>
             <Field label="Disabled">{({ id }) => <Input id={id} disabled defaultValue="Read only" />}</Field>
             <Field label="Speech to text">
@@ -274,7 +276,10 @@ export function ComponentsGallery() {
           </div>
         </Section>
 
-        <Section title="Signal visuals" note="The chain, the waveform, per-turn latency and the on-air indicator. Heat ramp colours appear only here.">
+        <Section
+          title="Signal visuals"
+          note="The chain, the waveform, per-turn latency and the on-air indicator. Heat ramp colours appear only here."
+        >
           <div className="grid gap-4 md:grid-cols-2">
             <Demo name="Waveform, live">
               <Waveform bars={64} progress={0.6} live height={48} />
@@ -421,8 +426,8 @@ export function ComponentsGallery() {
             </Demo>
           </div>
           <p className="mt-4 text-[12.5px] text-fg-3">
-            Route transitions (fade and rise), drawers, dialogs, menus and toasts animate on open and close; open the overlays below to see
-            them. Ticker values end on the exact figure, for example {formatUsd(BigInt(ticker), { places: 3 })}.
+            Route transitions (fade and rise), drawers, dialogs, menus and toasts animate on open and close; open the overlays below to see them.
+            Ticker values end on the exact figure, for example {formatUsd(BigInt(ticker), { places: 3 })}.
           </p>
         </Section>
 
@@ -463,7 +468,11 @@ export function ComponentsGallery() {
             <Button onClick={() => setConfirm(true)}>Confirm dialog</Button>
             <Button onClick={() => setDrawer(true)}>Open drawer</Button>
             <Button onClick={() => toast({ tone: "success", title: "Settings saved" })}>Success toast</Button>
-            <Button onClick={() => toast({ tone: "error", title: "Settings were not saved", description: "The server did not answer. Try again; reference 4f1c9e0a." })}>
+            <Button
+              onClick={() =>
+                toast({ tone: "error", title: "Settings were not saved", description: "The server did not answer. Try again; reference 4f1c9e0a." })
+              }
+            >
               Error toast
             </Button>
           </div>

@@ -33,7 +33,9 @@ export function SettingsPage() {
           <Skeleton className="h-28 w-full rounded-panel" />
         </div>
       ) : me.isError ? (
-        <EmptyState icon={<GearSix weight="duotone" />} title="Settings did not load">{problemMessage(me.error, "workspace")}</EmptyState>
+        <EmptyState icon={<GearSix weight="duotone" />} title="Settings did not load">
+          {problemMessage(me.error, "workspace")}
+        </EmptyState>
       ) : (
         <SettingsForm key={me.data.workspace.id} me={me.data} />
       )}
@@ -77,57 +79,82 @@ function SettingsForm({ me }: { me: Me }) {
   return (
     <WorkLayout
       main={
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
-      <LeaveGuard when={dirty && !save.isPending} />
-      <Panel title="Workspace" description="Shown in the top bar and the account menu." icon={<Building2 />} className={dirty ? "live-border" : undefined}>
-        <div className="flex flex-col gap-5">
-          <Field label="Workspace name" error={serverErr.name ?? localErr} aside={<span className="font-mono text-[11px] text-fg-3 tnum">{name.length}/{NAME_MAX}</span>}>
-            {({ id, describedBy, invalid }) => (
-              <Input id={id} value={name} maxLength={NAME_MAX + 20} onChange={(e) => setName(e.target.value)} aria-describedby={describedBy} aria-invalid={invalid} />
-            )}
-          </Field>
-          <Switch
-            icon={<Disc />}
-            checked={recording}
-            onCheckedChange={setRecording}
-            label="Record calls by default"
-            description="Agents set to follow the workspace record their calls. Each agent can override this."
-          />
-        </div>
-      </Panel>
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+          <LeaveGuard when={dirty && !save.isPending} />
+          <Panel
+            title="Workspace"
+            description="Shown in the top bar and the account menu."
+            icon={<Building2 />}
+            className={dirty ? "live-border" : undefined}
+          >
+            <div className="flex flex-col gap-5">
+              <Field
+                label="Workspace name"
+                error={serverErr.name ?? localErr}
+                aside={
+                  <span className="font-mono text-[11px] text-fg-3 tnum">
+                    {name.length}/{NAME_MAX}
+                  </span>
+                }
+              >
+                {({ id, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    value={name}
+                    maxLength={NAME_MAX + 20}
+                    onChange={(e) => setName(e.target.value)}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                  />
+                )}
+              </Field>
+              <Switch
+                icon={<Disc />}
+                checked={recording}
+                onCheckedChange={setRecording}
+                label="Record calls by default"
+                description="Agents set to follow the workspace record their calls. Each agent can override this."
+              />
+            </div>
+          </Panel>
 
-      {save.error && !serverErr.name && (
-        <p role="alert" className="text-[13px] text-danger-text">
-          {problemMessage(save.error, "workspace")}
-        </p>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" variant="primary" pending={save.isPending} disabled={!dirty} icon={<Save aria-hidden />}>
-          Save changes
-        </Button>
-        <Button
-          variant="ghost"
-          icon={<RotateCcw aria-hidden />}
-          disabled={!dirty || save.isPending}
-          onClick={() => {
-            setName(saved.name);
-            setRecording(saved.recording);
-            setSubmitted(false);
-            save.reset();
-          }}
-        >
-          Discard
-        </Button>
-        <AnimatePresence>
-          {dirty && (
-            <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="text-[13px] text-warning-text">
-              Unsaved changes
-            </motion.span>
+          {save.error && !serverErr.name && (
+            <p role="alert" className="text-[13px] text-danger-text">
+              {problemMessage(save.error, "workspace")}
+            </p>
           )}
-        </AnimatePresence>
-      </div>
-    </form>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="primary" pending={save.isPending} disabled={!dirty} icon={<Save aria-hidden />}>
+              Save changes
+            </Button>
+            <Button
+              variant="ghost"
+              icon={<RotateCcw aria-hidden />}
+              disabled={!dirty || save.isPending}
+              onClick={() => {
+                setName(saved.name);
+                setRecording(saved.recording);
+                setSubmitted(false);
+                save.reset();
+              }}
+            >
+              Discard
+            </Button>
+            <AnimatePresence>
+              {dirty && (
+                <motion.span
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-[13px] text-warning-text"
+                >
+                  Unsaved changes
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
+        </form>
       }
       inspector={
         <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">

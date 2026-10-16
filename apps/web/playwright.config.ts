@@ -16,7 +16,5 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: external
-    ? undefined
-    : { command: "pnpm dev:mock", url: "http://localhost:5180", reuseExistingServer: true, timeout: 60_000 },
+  webServer: external ? undefined : { command: "pnpm dev:mock", url: "http://localhost:5180", reuseExistingServer: true, timeout: 60_000 },
 });

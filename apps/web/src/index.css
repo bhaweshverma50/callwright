@@ -157,50 +157,107 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes pop-in {
-  from { transform: translateY(4px) scale(0.985); opacity: 0; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
+  from {
+    transform: translateY(4px) scale(0.985);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 @keyframes drawer-in-right {
-  from { transform: translateX(32px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 @keyframes drawer-in-left {
-  from { transform: translateX(-32px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(-32px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 @keyframes toast-in {
-  from { transform: translateY(12px) scale(0.98); opacity: 0; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
+  from {
+    transform: translateY(12px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 @keyframes shimmer {
-  from { background-position: 150% 0; }
-  to { background-position: -50% 0; }
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
 }
 @keyframes on-air {
-  0% { transform: scale(1); opacity: 0.7; }
-  100% { transform: scale(2.6); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
 }
 @keyframes flow {
-  to { stroke-dashoffset: -24; }
+  to {
+    stroke-dashoffset: -24;
+  }
 }
 @keyframes sheen {
-  from { transform: translateX(-120%) skewX(-18deg); }
-  to { transform: translateX(220%) skewX(-18deg); }
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-18deg);
+  }
 }
 @keyframes ripple {
-  from { transform: translate(-50%, -50%) scale(0); opacity: 0.35; }
-  to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  from {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.35;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
 }
 @keyframes spin-angle {
-  to { --border-angle: 360deg; }
+  to {
+    --border-angle: 360deg;
+  }
 }
 @keyframes bar-breathe {
-  0%, 100% { transform: scaleY(1); }
-  50% { transform: scaleY(0.45); }
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.45);
+  }
 }
 
 @property --border-angle {
@@ -232,7 +289,9 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     text-wrap: balance;
   }
   p {
@@ -270,8 +329,7 @@
   /* Soft radial glows behind feature surfaces. */
   .glow-backdrop {
     background-image:
-      radial-gradient(60% 55% at 78% 30%, var(--glow-b), transparent 70%),
-      radial-gradient(55% 60% at 20% 70%, var(--glow-a), transparent 70%);
+      radial-gradient(60% 55% at 78% 30%, var(--glow-b), transparent 70%), radial-gradient(55% 60% at 20% 70%, var(--glow-a), transparent 70%);
   }
 
   /* Shimmer skeleton. */
@@ -300,7 +358,10 @@
 
   /* Hover lift with a cobalt glow for interactive cards. */
   .lift {
-    transition: transform 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out;
+    transition:
+      transform 180ms ease-out,
+      box-shadow 180ms ease-out,
+      border-color 180ms ease-out;
   }
   .lift:hover {
     transform: translateY(-2px);
@@ -346,7 +407,9 @@
     border-radius: inherit;
     padding: 1px;
     background: conic-gradient(from var(--border-angle), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-1));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     opacity: 0;
@@ -370,7 +433,9 @@
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(120deg, var(--heat-1), var(--heat-2), var(--heat-3));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
@@ -384,9 +449,15 @@
   a:focus-visible .breathe > * {
     animation: bar-breathe 900ms ease-in-out infinite;
   }
-  .breathe > *:nth-child(2) { animation-delay: 120ms; }
-  .breathe > *:nth-child(3) { animation-delay: 240ms; }
-  .breathe > *:nth-child(4) { animation-delay: 360ms; }
+  .breathe > *:nth-child(2) {
+    animation-delay: 120ms;
+  }
+  .breathe > *:nth-child(3) {
+    animation-delay: 240ms;
+  }
+  .breathe > *:nth-child(4) {
+    animation-delay: 360ms;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

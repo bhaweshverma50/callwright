@@ -11,7 +11,10 @@ export function MenuContent({ children, align = "end", className }: { children: 
       <DM.Content
         align={align}
         sideOffset={6}
-        className={cn("z-50 min-w-[232px] rounded-panel border border-line bg-surface p-1.5 shadow-pop data-[state=open]:animate-pop-in data-[state=closed]:animate-[pop-in_120ms_ease-in_reverse]", className)}
+        className={cn(
+          "z-50 min-w-[232px] rounded-panel border border-line bg-surface p-1.5 shadow-pop data-[state=open]:animate-pop-in data-[state=closed]:animate-[pop-in_120ms_ease-in_reverse]",
+          className,
+        )}
       >
         {children}
       </DM.Content>

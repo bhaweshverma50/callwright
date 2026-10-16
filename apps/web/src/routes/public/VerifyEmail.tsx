@@ -85,14 +85,21 @@ function ResendForm() {
     e.preventDefault();
     if (email.trim()) resend.mutate();
   };
-  if (resend.isSuccess)
-    return <FormAlert tone="info">If {email.trim()} has an unverified account, a new link is on its way.</FormAlert>;
+  if (resend.isSuccess) return <FormAlert tone="info">If {email.trim()} has an unverified account, a new link is on its way.</FormAlert>;
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       {resend.error ? <FormAlert>{problemMessage(resend.error)}</FormAlert> : null}
       <Field label="Email">
         {({ id, describedBy }) => (
-          <Input id={id} type="email" autoComplete="email" inputSize="lg" value={email} onChange={(e) => setEmail(e.target.value)} aria-describedby={describedBy} />
+          <Input
+            id={id}
+            type="email"
+            autoComplete="email"
+            inputSize="lg"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-describedby={describedBy}
+          />
         )}
       </Field>
       <Button type="submit" variant="primary" size="lg" pending={resend.isPending} disabled={!email.trim()} icon={<Send aria-hidden />}>

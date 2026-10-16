@@ -90,9 +90,7 @@ export const api = createClient<paths>({ baseUrl: env.apiBaseUrl, fetch: authFet
  * Unwraps an openapi-fetch result: returns data or throws ApiError with the problem body.
  * Use inside TanStack Query functions so errors reach error states and boundaries.
  */
-export async function unwrap<T>(
-  call: Promise<{ data?: T; error?: unknown; response: Response }>,
-): Promise<T> {
+export async function unwrap<T>(call: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
   const { data, error, response } = await call;
   if (response.ok) return data as T;
   throw new ApiError(response.status, toProblem(response.status, error));

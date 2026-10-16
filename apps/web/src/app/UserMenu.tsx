@@ -35,14 +35,15 @@ export function UserMenu() {
     <Menu>
       <MenuTrigger
         aria-label={email ? `Account menu for ${email}` : "Account menu"}
-        className={cn("flex cursor-pointer items-center gap-2 rounded-full py-0.5 pl-0.5 pr-0.5 transition-colors hover:bg-surface-3 lg:pr-2.5", focusRing)}
+        className={cn(
+          "flex cursor-pointer items-center gap-2 rounded-full py-0.5 pl-0.5 pr-0.5 transition-colors hover:bg-surface-3 lg:pr-2.5",
+          focusRing,
+        )}
       >
         <span className="grad-action grid size-8 place-items-center rounded-full text-[11.5px] font-semibold text-white">
           {email ? initialsOf(email) : ""}
         </span>
-        <span className="hidden max-w-[200px] truncate text-[13px] text-fg-2 lg:inline">
-          {email ?? <Skeleton className="h-3 w-28" />}
-        </span>
+        <span className="hidden max-w-[200px] truncate text-[13px] text-fg-2 lg:inline">{email ?? <Skeleton className="h-3 w-28" />}</span>
       </MenuTrigger>
       <MenuContent>
         <MenuLabel>

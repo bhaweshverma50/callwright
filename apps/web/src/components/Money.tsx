@@ -36,7 +36,19 @@ export function MoneyText({ value, places = 2, signed, toned, animate, fromZero,
   );
 }
 
-function Animated({ micros, places, signed, fromZero, exact }: { micros: bigint; places: number; signed?: boolean; fromZero?: boolean; exact: string }) {
+function Animated({
+  micros,
+  places,
+  signed,
+  fromZero,
+  exact,
+}: {
+  micros: bigint;
+  places: number;
+  signed?: boolean;
+  fromZero?: boolean;
+  exact: string;
+}) {
   const { shown, done } = useTicker(Number(micros), { fromZero });
   return <>{done ? exact : formatUsd(BigInt(Math.round(shown)), { places, signed })}</>;
 }

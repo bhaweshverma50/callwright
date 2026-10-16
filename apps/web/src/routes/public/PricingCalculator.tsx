@@ -137,13 +137,7 @@ export function PricingCalculator() {
             {CHAIN.map((c) => (
               <li key={c} className="contents">
                 <Wire subtotal={subtotalAfter[CHAIN[CHAIN.indexOf(c) - 1] as keyof Sel] ?? 0n} pulse={pulse} first={c === "nc"} loading={!q} />
-                <ChainChoice
-                  component={c}
-                  value={sel[c]}
-                  groups={groups?.[c] ?? null}
-                  line={lineFor(c)}
-                  onChoose={(v) => choose(c, v)}
-                />
+                <ChainChoice component={c} value={sel[c]} groups={groups?.[c] ?? null} line={lineFor(c)} onChoose={(v) => choose(c, v)} />
               </li>
             ))}
             <li className="contents">
@@ -155,7 +149,14 @@ export function PricingCalculator() {
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <div className="flex flex-col gap-6 px-5 py-6 sm:px-7">
-            <Field label="Minutes per month" aside={<span className="text-[12px] text-fg-3">0 to <span className="font-mono tnum">{MAX_MINUTES.toLocaleString()}</span></span>}>
+            <Field
+              label="Minutes per month"
+              aside={
+                <span className="text-[12px] text-fg-3">
+                  0 to <span className="font-mono tnum">{MAX_MINUTES.toLocaleString()}</span>
+                </span>
+              }
+            >
               {({ id, describedBy }) => (
                 <div className="flex items-center gap-4">
                   <Slider
@@ -189,9 +190,30 @@ export function PricingCalculator() {
                 <span className="font-normal text-fg-3">for long prompts or chatty agents</span>
               </summary>
               <div className="mt-4 flex flex-col gap-4">
-                <ProfileSlider label="LLM input tokens" bundle={20_000} max={80_000} step={1_000} value={profile.inputTokens} onChange={(v) => setProfile((p) => ({ ...p, inputTokens: v }))} />
-                <ProfileSlider label="LLM output tokens" bundle={200} max={800} step={10} value={profile.outputTokens} onChange={(v) => setProfile((p) => ({ ...p, outputTokens: v }))} />
-                <ProfileSlider label="Voice characters" bundle={750} max={2_000} step={25} value={profile.ttsChars} onChange={(v) => setProfile((p) => ({ ...p, ttsChars: v }))} />
+                <ProfileSlider
+                  label="LLM input tokens"
+                  bundle={20_000}
+                  max={80_000}
+                  step={1_000}
+                  value={profile.inputTokens}
+                  onChange={(v) => setProfile((p) => ({ ...p, inputTokens: v }))}
+                />
+                <ProfileSlider
+                  label="LLM output tokens"
+                  bundle={200}
+                  max={800}
+                  step={10}
+                  value={profile.outputTokens}
+                  onChange={(v) => setProfile((p) => ({ ...p, outputTokens: v }))}
+                />
+                <ProfileSlider
+                  label="Voice characters"
+                  bundle={750}
+                  max={2_000}
+                  step={25}
+                  value={profile.ttsChars}
+                  onChange={(v) => setProfile((p) => ({ ...p, ttsChars: v }))}
+                />
               </div>
             </details>
 
@@ -206,7 +228,12 @@ export function PricingCalculator() {
                     <div key={d} className="rounded-control border border-line bg-surface-2/60 px-3.5 py-3">
                       <dt className="font-mono text-[12.5px] text-fg-3 tnum">{formatUsd(String(d), { places: 0 })}</dt>
                       <dd className="mt-1 text-[13px] text-fg-2">
-                        <Ticker value={Number((BigInt(d) * 1_000_000n) / perMinute)} format={(n) => Math.round(n).toLocaleString()} className="font-mono text-[16px] font-medium text-fg" /> min
+                        <Ticker
+                          value={Number((BigInt(d) * 1_000_000n) / perMinute)}
+                          format={(n) => Math.round(n).toLocaleString()}
+                          className="font-mono text-[16px] font-medium text-fg"
+                        />{" "}
+                        min
                       </dd>
                     </div>
                   ))}
@@ -228,7 +255,11 @@ export function PricingCalculator() {
             baseMicros={baseMicros}
             monthly={monthly}
             minutes={minutes}
-            surcharged={surcharged.map((l) => ({ component: l.component, multiplier: l.bundle_multiplier, perMinute: (toMicros(l.surcharge_usd) ?? 0n) / BigInt(SAMPLE_MINUTES) }))}
+            surcharged={surcharged.map((l) => ({
+              component: l.component,
+              multiplier: l.bundle_multiplier,
+              perMinute: (toMicros(l.surcharge_usd) ?? 0n) / BigInt(SAMPLE_MINUTES),
+            }))}
             fetching={quote.isFetching}
             version={q?.catalog_version ?? catalog.data?.version}
           />
@@ -252,7 +283,10 @@ function Wire({ subtotal, pulse, first, loading }: { subtotal: bigint; pulse: nu
   const reduce = useReducedMotion();
   const id = useId().replace(/:/g, "");
   return (
-    <div aria-hidden className="relative flex h-8 items-center pl-[21px] lg:h-auto lg:min-w-6 lg:flex-1 lg:flex-col lg:items-stretch lg:pl-0 lg:pt-[29px]">
+    <div
+      aria-hidden
+      className="relative flex h-8 items-center pl-[21px] lg:h-auto lg:min-w-6 lg:flex-1 lg:flex-col lg:items-stretch lg:pl-0 lg:pt-[29px]"
+    >
       <span className="grad-heat absolute bottom-0 left-[21px] top-0 w-0.5 opacity-70 lg:hidden" />
       <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="hidden h-1.5 w-full lg:block">
         <defs>
@@ -263,9 +297,27 @@ function Wire({ subtotal, pulse, first, loading }: { subtotal: bigint; pulse: nu
           </linearGradient>
         </defs>
         <line x1="0" x2="100" y1="3" y2="3" stroke="var(--border-strong)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        <line x1="0" x2="100" y1="3" y2="3" stroke={`url(#w-${id})`} strokeWidth="2" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" className="animate-flow" />
+        <line
+          x1="0"
+          x2="100"
+          y1="3"
+          y2="3"
+          stroke={`url(#w-${id})`}
+          strokeWidth="2"
+          strokeDasharray="5 5"
+          vectorEffect="non-scaling-stroke"
+          className="animate-flow"
+        />
         {!reduce && pulse > 0 && (
-          <motion.circle key={pulse} r="3" cy="3" fill="var(--heat-2)" initial={{ cx: 0, opacity: 1 }} animate={{ cx: 100, opacity: [1, 1, 0] }} transition={{ duration: 0.9, ease: "easeInOut" }} />
+          <motion.circle
+            key={pulse}
+            r="3"
+            cy="3"
+            fill="var(--heat-2)"
+            initial={{ cx: 0, opacity: 1 }}
+            animate={{ cx: 100, opacity: [1, 1, 0] }}
+            transition={{ duration: 0.9, ease: "easeInOut" }}
+          />
         )}
       </svg>
       {!first && (
@@ -307,7 +359,12 @@ function ChainChoice({
         )}
         data-active={open}
       >
-        <span className={cn("grid size-9 shrink-0 place-items-center rounded-full [&_svg]:size-4", off ? "bg-surface-2 text-fg-3" : "grad-action text-white")}>
+        <span
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-full [&_svg]:size-4",
+            off ? "bg-surface-2 text-fg-3" : "grad-action text-white",
+          )}
+        >
           {off ? <Plus aria-hidden /> : <Icon aria-hidden />}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -318,7 +375,13 @@ function ChainChoice({
             <Skeleton className="mt-1 h-3.5 w-20" />
           )}
           <span className="font-mono text-[12px] text-fg-2 tnum">
-            {off ? "optional" : line?.rate_per_min_usd ? `${formatUsd(line.rate_per_min_usd, { places: 4 })}/m` : line?.status === "unpriced" ? "unavailable" : ""}
+            {off
+              ? "optional"
+              : line?.rate_per_min_usd
+                ? `${formatUsd(line.rate_per_min_usd, { places: 4 })}/m`
+                : line?.status === "unpriced"
+                  ? "unavailable"
+                  : ""}
           </span>
         </span>
         <ChevronDown className="size-4 shrink-0 text-fg-3 transition-transform group-data-[state=open]:rotate-180 lg:hidden" aria-hidden />
@@ -388,7 +451,11 @@ function Receipt({
   version: number | undefined;
 }) {
   return (
-    <section aria-label="Receipt" aria-live="polite" className="flex flex-col border-t border-line bg-surface-2/60 px-5 py-6 sm:px-7 lg:border-l lg:border-t-0">
+    <section
+      aria-label="Receipt"
+      aria-live="polite"
+      className="flex flex-col border-t border-line bg-surface-2/60 px-5 py-6 sm:px-7 lg:border-l lg:border-t-0"
+    >
       <table className={cn("w-full text-[13px] transition-opacity", fetching && "opacity-70")}>
         <caption className="sr-only">Rate per component</caption>
         <tbody>
@@ -429,8 +496,8 @@ function Receipt({
           <ul className="mt-1 flex flex-col gap-0.5 text-fg-2">
             {surcharged.map((l) => (
               <li key={l.component}>
-                {COMPONENT_LABELS[l.component]} bills at <span className="font-mono tnum">{Number(l.multiplier).toFixed(2)}x</span> the call length, adding{" "}
-                <span className="font-mono tnum">{formatUsd(l.perMinute, { places: 4 })}</span> a minute.
+                {COMPONENT_LABELS[l.component]} bills at <span className="font-mono tnum">{Number(l.multiplier).toFixed(2)}x</span> the call length,
+                adding <span className="font-mono tnum">{formatUsd(l.perMinute, { places: 4 })}</span> a minute.
               </li>
             ))}
           </ul>
@@ -484,7 +551,21 @@ function Exact({ micros, places }: { micros: bigint; places: 2 | 4 }) {
   return <Ticker value={Number(micros)} format={(n) => (Math.round(n) === Number(micros) ? exact : places === 4 ? usd4(n) : usd2(n))} />;
 }
 
-function ProfileSlider({ label, bundle, max, step, value, onChange }: { label: string; bundle: number; max: number; step: number; value: number; onChange: (v: number) => void }) {
+function ProfileSlider({
+  label,
+  bundle,
+  max,
+  step,
+  value,
+  onChange,
+}: {
+  label: string;
+  bundle: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (v: number) => void;
+}) {
   const over = value > bundle;
   return (
     <div className="flex flex-col gap-1.5">
@@ -498,7 +579,16 @@ function ProfileSlider({ label, bundle, max, step, value, onChange }: { label: s
           </span>
         </span>
       </div>
-      <Slider aria-label={`${label} per minute`} tone="heat" value={value} min={0} max={max} step={step} onValueChange={onChange} valueText={(v) => `${v.toLocaleString()} per minute`} />
+      <Slider
+        aria-label={`${label} per minute`}
+        tone="heat"
+        value={value}
+        min={0}
+        max={max}
+        step={step}
+        onValueChange={onChange}
+        valueText={(v) => `${v.toLocaleString()} per minute`}
+      />
     </div>
   );
 }

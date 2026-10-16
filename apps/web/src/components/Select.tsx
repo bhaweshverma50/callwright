@@ -81,11 +81,7 @@ export function Select({
           <RS.Viewport className="p-1">
             {allGroups.map((g, gi) => (
               <RS.Group key={g.label || gi}>
-                {g.label && (
-                  <RS.Label className="px-2 pb-1 pt-2 text-[12px] font-medium text-fg-3">
-                    {g.label}
-                  </RS.Label>
-                )}
+                {g.label && <RS.Label className="px-2 pb-1 pt-2 text-[12px] font-medium text-fg-3">{g.label}</RS.Label>}
                 {g.options.map((o) => (
                   <RS.Item
                     key={o.value}

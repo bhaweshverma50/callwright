@@ -139,7 +139,11 @@ export function BillingPage() {
               ]}
             >
               <TabPanel value="transactions">
-                <TransactionsTable pollMs={polling ? POLL_MS : false} selectedId={selected?.id ?? null} onSelect={(t) => setSelected((s) => (s?.id === t.id ? null : t))} />
+                <TransactionsTable
+                  pollMs={polling ? POLL_MS : false}
+                  selectedId={selected?.id ?? null}
+                  onSelect={(t) => setSelected((s) => (s?.id === t.id ? null : t))}
+                />
               </TabPanel>
               <TabPanel value="usage">
                 <UsagePanel />

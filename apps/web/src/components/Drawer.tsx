@@ -40,7 +40,11 @@ export function Drawer({ open, onOpenChange, title, meta, actions, children, foo
           <header className="flex items-start gap-3 border-b border-line px-5 py-4">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <RD.Title className="truncate font-display text-[16px] font-medium tracking-[-0.01em] text-fg">{title}</RD.Title>
-              {meta ? <RD.Description className="truncate text-[12.5px] text-fg-3">{meta}</RD.Description> : <RD.Description className="sr-only">Details</RD.Description>}
+              {meta ? (
+                <RD.Description className="truncate text-[12.5px] text-fg-3">{meta}</RD.Description>
+              ) : (
+                <RD.Description className="sr-only">Details</RD.Description>
+              )}
             </div>
             {actions}
             <RD.Close asChild>

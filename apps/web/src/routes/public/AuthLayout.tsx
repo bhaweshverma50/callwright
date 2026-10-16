@@ -43,10 +43,15 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
           </Link>
         </p>
       </div>
-      <aside aria-label="A sample call" className="relative hidden overflow-hidden bg-console text-console-fg lg:flex lg:items-center lg:justify-center">
+      <aside
+        aria-label="A sample call"
+        className="relative hidden overflow-hidden bg-console text-console-fg lg:flex lg:items-center lg:justify-center"
+      >
         <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0" />
         <div className="relative w-full max-w-[500px] px-10 py-12">
-          <p className="max-w-[24ch] font-display text-[22px] font-medium leading-[1.25] tracking-[-0.02em]">Every turn timed. Every second priced.</p>
+          <p className="max-w-[24ch] font-display text-[22px] font-medium leading-[1.25] tracking-[-0.02em]">
+            Every turn timed. Every second priced.
+          </p>
           <div className="mt-8 rounded-feature border border-console-line bg-console-2/70 p-5 backdrop-blur-sm">
             <div className="flex items-center justify-between text-[12px] text-console-fg-2">
               <span>Sample call, front desk agent</span>

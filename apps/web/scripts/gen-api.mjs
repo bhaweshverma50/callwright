@@ -44,7 +44,11 @@ const same = (a, b) => JSON.stringify(sortDeep(a)) === JSON.stringify(sortDeep(b
 function sortDeep(v) {
   if (Array.isArray(v)) return v.map(sortDeep);
   if (v && typeof v === "object") {
-    return Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])]));
+    return Object.fromEntries(
+      Object.keys(v)
+        .sort()
+        .map((k) => [k, sortDeep(v[k])]),
+    );
   }
   return v;
 }
@@ -68,7 +72,9 @@ const specDirs = readdirSync(specsDir, { withFileTypes: true })
 for (const spec of specDirs) {
   const cdir = join(specsDir, spec, "contracts");
   if (!existsSync(cdir)) continue;
-  const files = readdirSync(cdir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml")).sort();
+  const files = readdirSync(cdir)
+    .filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
+    .sort();
   for (const file of files) {
     const rel = `${spec}/contracts/${file}`;
     let doc;

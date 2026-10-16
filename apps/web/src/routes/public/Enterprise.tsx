@@ -14,7 +14,9 @@ export function Enterprise() {
   return (
     <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] gap-14 px-4 pb-24 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:pt-16">
       <div>
-        <h1 className="max-w-[16ch] font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[42px]">Running voice at scale?</h1>
+        <h1 className="max-w-[16ch] font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[42px]">
+          Running voice at scale?
+        </h1>
         <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-fg-2">
           Tell us your call volume, channels and compliance needs. We reply within one business day with a plan and a price.
         </p>

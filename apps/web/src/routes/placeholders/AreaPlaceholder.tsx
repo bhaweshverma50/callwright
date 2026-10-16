@@ -33,8 +33,8 @@ export function AreaPlaceholder({ to }: { to: string }) {
             </span>
             <h2 className="font-display text-[19px] font-medium tracking-[-0.015em] text-fg">{item.label} is being built</h2>
             <p className="max-w-[52ch] text-[14px] leading-relaxed text-fg-2">
-              Your account, credit and pricing already work, so anything you set up here later is billed from the same balance at the
-              same per-minute rates.
+              Your account, credit and pricing already work, so anything you set up here later is billed from the same balance at the same per-minute
+              rates.
             </p>
             <div className="mt-1 flex flex-wrap gap-2">
               <Button asChild variant="secondary" icon={<Wallet aria-hidden />}>

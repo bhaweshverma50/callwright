@@ -181,7 +181,13 @@ export function ChainStrip({
               >
                 {n.icon}
               </motion.span>
-              <span className={cn("whitespace-nowrap text-[11.5px]", compact && "sr-only sm:not-sr-only", onConsole ? (on ? "text-console-fg" : "text-console-fg-2") : on ? "text-fg" : "text-fg-3")}>
+              <span
+                className={cn(
+                  "whitespace-nowrap text-[11.5px]",
+                  compact && "sr-only sm:not-sr-only",
+                  onConsole ? (on ? "text-console-fg" : "text-console-fg-2") : on ? "text-fg" : "text-fg-3",
+                )}
+              >
                 {n.label}
               </span>
             </div>
@@ -205,7 +211,15 @@ export function ChainLink({ flow, onConsole, className }: { flow?: boolean; onCo
           <stop offset="1" stopColor="var(--heat-3)" />
         </linearGradient>
       </defs>
-      <line x1="0" x2="100" y1="2" y2="2" stroke={onConsole ? "var(--console-line)" : "var(--border-strong)"} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      <line
+        x1="0"
+        x2="100"
+        y1="2"
+        y2="2"
+        stroke={onConsole ? "var(--console-line)" : "var(--border-strong)"}
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+      />
       <line
         x1="0"
         x2="100"

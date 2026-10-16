@@ -111,7 +111,10 @@ export function Login() {
           label="Password"
           error={fe.password}
           aside={
-            <Link to={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="link-underline text-[13px] text-accent-text">
+            <Link
+              to={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+              className="link-underline text-[13px] text-accent-text"
+            >
               Forgot password?
             </Link>
           }
@@ -130,7 +133,15 @@ export function Login() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={signIn.isPending} disabled={!email || !password} className="mt-1 w-full" icon={<LogIn aria-hidden />}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          pending={signIn.isPending}
+          disabled={!email || !password}
+          className="mt-1 w-full"
+          icon={<LogIn aria-hidden />}
+        >
           Sign in
         </Button>
       </form>

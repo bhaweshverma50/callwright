@@ -20,9 +20,30 @@ interface Step {
  */
 export function setupSteps(): Step[] {
   return [
-    { title: "Create an agent", detail: "Write what it should do, then pick its speech recognition, model and voice.", action: "Create an agent", to: "/agents/new", icon: Robot, done: false },
-    { title: "Make a test call", detail: "Talk to it from the browser. Every turn shows its latency and every second its cost.", action: "Make a test call", to: "/agents", icon: PhoneCallDuo, done: false },
-    { title: "Connect a number", detail: "Put the agent on a phone number or SIP trunk so real callers can reach it.", action: "Connect a number", to: "/phone-numbers", icon: PhoneList, done: false },
+    {
+      title: "Create an agent",
+      detail: "Write what it should do, then pick its speech recognition, model and voice.",
+      action: "Create an agent",
+      to: "/agents/new",
+      icon: Robot,
+      done: false,
+    },
+    {
+      title: "Make a test call",
+      detail: "Talk to it from the browser. Every turn shows its latency and every second its cost.",
+      action: "Make a test call",
+      to: "/agents",
+      icon: PhoneCallDuo,
+      done: false,
+    },
+    {
+      title: "Connect a number",
+      detail: "Put the agent on a phone number or SIP trunk so real callers can reach it.",
+      action: "Connect a number",
+      to: "/phone-numbers",
+      icon: PhoneList,
+      done: false,
+    },
   ];
 }
 
@@ -85,7 +106,9 @@ export function DashboardPlaceholder() {
                 const active = i === current;
                 return (
                   <RevealItem as="li" key={s.title} className="relative">
-                    {i < steps.length - 1 && <span aria-hidden className="absolute bottom-0 left-[31px] top-[60px] w-px bg-line-strong sm:left-[35px]" />}
+                    {i < steps.length - 1 && (
+                      <span aria-hidden className="absolute bottom-0 left-[31px] top-[60px] w-px bg-line-strong sm:left-[35px]" />
+                    )}
                     <div
                       className={cn(
                         "flex flex-col gap-4 rounded-panel px-3 py-4 transition-colors sm:flex-row sm:items-center",
@@ -97,7 +120,11 @@ export function DashboardPlaceholder() {
                         <span
                           className={cn(
                             "grid size-10 shrink-0 place-items-center rounded-full font-mono text-[14px] font-medium tnum",
-                            s.done ? "bg-success-soft text-success-text" : active ? "grad-action text-white shadow-glow" : "border border-line-strong bg-surface text-fg-2",
+                            s.done
+                              ? "bg-success-soft text-success-text"
+                              : active
+                                ? "grad-action text-white shadow-glow"
+                                : "border border-line-strong bg-surface text-fg-2",
                           )}
                         >
                           {s.done ? <Check className="size-4" aria-label="Done" /> : i + 1}
@@ -141,7 +168,9 @@ export function DashboardPlaceholder() {
               </Fact>
               <Fact icon={<Disc />} label="Call recording" loading={isPending}>
                 {me && (
-                  <Badge tone={me.workspace.recording_default ? "accent" : "neutral"}>{me.workspace.recording_default ? "On by default" : "Off by default"}</Badge>
+                  <Badge tone={me.workspace.recording_default ? "accent" : "neutral"}>
+                    {me.workspace.recording_default ? "On by default" : "Off by default"}
+                  </Badge>
                 )}
               </Fact>
             </dl>

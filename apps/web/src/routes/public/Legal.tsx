@@ -19,8 +19,8 @@ export function Privacy() {
       <section>
         <h2>What we collect</h2>
         <p>
-          Your account email and password hash, your workspace settings, and the data your agents produce: call recordings,
-          transcripts, call metadata, evaluator results and usage records used for billing.
+          Your account email and password hash, your workspace settings, and the data your agents produce: call recordings, transcripts, call
+          metadata, evaluator results and usage records used for billing.
         </p>
       </section>
       <section>
@@ -34,15 +34,15 @@ export function Privacy() {
       <section>
         <h2>Recording</h2>
         <p>
-          Each workspace chooses whether calls are recorded by default, and agents can override it. You are responsible for telling
-          callers when a call is recorded where the law requires it.
+          Each workspace chooses whether calls are recorded by default, and agents can override it. You are responsible for telling callers when a
+          call is recorded where the law requires it.
         </p>
       </section>
       <section>
         <h2>Vendors</h2>
         <p>
-          Speech recognition, language model, voice and payment providers process call content or payment details only to perform
-          the service you selected for each agent.
+          Speech recognition, language model, voice and payment providers process call content or payment details only to perform the service you
+          selected for each agent.
         </p>
       </section>
       <section>
@@ -73,8 +73,8 @@ export function Terms() {
       <section>
         <h2>Acceptable use</h2>
         <p>
-          Do not use Callwright for unlawful calling, to deceive callers about who they are talking to, or to call numbers that asked
-          not to be contacted.
+          Do not use Callwright for unlawful calling, to deceive callers about who they are talking to, or to call numbers that asked not to be
+          contacted.
         </p>
       </section>
       <section>

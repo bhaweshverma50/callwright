@@ -70,7 +70,10 @@ const PAGES = [
     path: "/billing",
     auth: true,
     before: async (p) => {
-      await p.getByRole("button", { name: /Show cost breakdown$/ }).first().click();
+      await p
+        .getByRole("button", { name: /Show cost breakdown$/ })
+        .first()
+        .click();
       await p.waitForTimeout(500);
     },
   },

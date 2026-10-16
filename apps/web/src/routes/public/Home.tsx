@@ -31,8 +31,16 @@ const LINKS: { c: Part; text: string }[] = [
 
 const LOOP = [
   { icon: ChartLineUp, title: "See every call", text: "Transcript, recording, per-turn latency and the itemised cost of each call, as it happens." },
-  { icon: Crosshair, title: "Score it, then check the score", text: "Evaluators grade calls with their reasons. Your own labels show how often each one agrees with a person." },
-  { icon: Wrench, title: "Fix what repeats", text: "Repeated failures become issues with a drafted prompt fix, replayed against the calls it would change before you apply it." },
+  {
+    icon: Crosshair,
+    title: "Score it, then check the score",
+    text: "Evaluators grade calls with their reasons. Your own labels show how often each one agrees with a person.",
+  },
+  {
+    icon: Wrench,
+    title: "Fix what repeats",
+    text: "Repeated failures become issues with a drafted prompt fix, replayed against the calls it would change before you apply it.",
+  },
 ];
 
 /** Public home (T044, FR-016). Product visuals are real components fed by the pricing engine. */
@@ -49,8 +57,8 @@ export function Home() {
             </RevealItem>
             <RevealItem>
               <p className="mt-6 max-w-[48ch] text-[16px] leading-relaxed text-fg-2">
-                Choose the speech recognition, model and voice. Callwright runs the call, times every turn and prices every second, so you can
-                see why a caller stayed or hung up.
+                Choose the speech recognition, model and voice. Callwright runs the call, times every turn and prices every second, so you can see why
+                a caller stayed or hung up.
               </p>
             </RevealItem>
             <RevealItem className="mt-8 flex flex-wrap gap-3">
@@ -80,8 +88,8 @@ export function Home() {
             Every link in the call is yours to choose.
           </h2>
           <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-fg-2">
-            A call travels from the caller through speech to text, the model and the voice, and back. Swap any link in the agent settings;
-            nothing else changes.
+            A call travels from the caller through speech to text, the model and the voice, and back. Swap any link in the agent settings; nothing
+            else changes.
           </p>
           <ol className="mt-12 grid gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch md:gap-0">
             {LINKS.map((l, i) => {
@@ -185,7 +193,9 @@ export function Home() {
                 <h2 className="mt-3 max-w-[22ch] font-display text-[24px] font-medium leading-[1.2] tracking-[-0.025em] sm:text-[30px]">
                   Your first $5 is about {TRIAL_MINUTES} minutes of calls.
                 </h2>
-                <p className="mt-3 max-w-[52ch] text-[14.5px] text-console-fg-2">No card needed until you add funds. Calls are billed per second from your balance.</p>
+                <p className="mt-3 max-w-[52ch] text-[14.5px] text-console-fg-2">
+                  No card needed until you add funds. Calls are billed per second from your balance.
+                </p>
               </div>
               <Button asChild variant="primary" size="lg" icon={<UserPlus aria-hidden />}>
                 <Link to="/register">Create account</Link>

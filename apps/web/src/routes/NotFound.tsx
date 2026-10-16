@@ -19,9 +19,8 @@ export function NotFound() {
         }
       >
         <p>
-          Nothing is on the line at{" "}
-          <code className="rounded-inline bg-surface-3 px-1.5 py-0.5 font-mono text-[12.5px] text-fg">{pathname}</code>. Check the address, or pick
-          an area from the navigation.
+          Nothing is on the line at <code className="rounded-inline bg-surface-3 px-1.5 py-0.5 font-mono text-[12.5px] text-fg">{pathname}</code>.
+          Check the address, or pick an area from the navigation.
         </p>
       </EmptyState>
     </div>
