@@ -101,7 +101,7 @@ interface Ratio {
   d: bigint;
 }
 const gt = (a: Ratio, b: Ratio) => a.n * b.d > b.n * a.d;
-const ceilDiv = (n: bigint, d: bigint) => (n <= 0n ? -((-n) / d) : (n + d - 1n) / d);
+const ceilDiv = (n: bigint, d: bigint) => (n <= 0n ? -(-n / d) : (n + d - 1n) / d);
 const roundDiv = (n: bigint, d: bigint) => (n >= 0n ? (2n * n + d) / (2n * d) : -((2n * -n + d) / (2n * d)));
 /** Ratio to a decimal string with `places` digits, half-up. */
 function ratioToDecimal(r: Ratio, places: number): string {

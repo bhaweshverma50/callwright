@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 
 function LegalPage({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
   return (
-    <article className="mx-auto max-w-[720px] px-4 pb-24 pt-14 sm:px-6">
-      <h1 className="font-display text-[34px] font-semibold tracking-[-0.025em] text-fg">{title}</h1>
-      <p className="mt-2 font-mono text-[12px] text-fg-3">Last updated {updated}</p>
-      <div className="mt-10 flex flex-col gap-8 text-[14.5px] leading-[1.7] text-fg-2 [&_h2]:mb-2 [&_h2]:font-display [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:text-fg [&_li]:ml-5 [&_li]:list-disc">
+    <article className="mx-auto max-w-[720px] px-4 pb-24 pt-12 sm:px-6 lg:pt-16">
+      <h1 className="font-display text-[30px] font-semibold tracking-[-0.03em] text-fg sm:text-[38px]">{title}</h1>
+      <p className="mt-3 text-[13px] text-fg-3">Last updated {updated}</p>
+      <div className="mt-10 flex flex-col gap-9 border-t border-line pt-10 text-[15.5px] leading-[1.75] text-fg-2 [&_h2]:mb-2.5 [&_h2]:font-display [&_h2]:text-[17px] [&_h2]:font-medium [&_h2]:tracking-[-0.01em] [&_h2]:text-fg [&_li]:ml-5 [&_li]:list-disc [&_li]:marker:text-accent [&_ul]:flex [&_ul]:flex-col [&_ul]:gap-1.5">
         {children}
       </div>
     </article>
@@ -19,8 +19,8 @@ export function Privacy() {
       <section>
         <h2>What we collect</h2>
         <p>
-          Your account email and password hash, your workspace settings, and the data your agents produce: call recordings,
-          transcripts, call metadata, evaluator results and usage records used for billing.
+          Your account email and password hash, your workspace settings, and the data your agents produce: call recordings, transcripts, call
+          metadata, evaluator results and usage records used for billing.
         </p>
       </section>
       <section>
@@ -34,15 +34,15 @@ export function Privacy() {
       <section>
         <h2>Recording</h2>
         <p>
-          Each workspace chooses whether calls are recorded by default, and agents can override it. You are responsible for telling
-          callers when a call is recorded where the law requires it.
+          Each workspace chooses whether calls are recorded by default, and agents can override it. You are responsible for telling callers when a
+          call is recorded where the law requires it.
         </p>
       </section>
       <section>
         <h2>Vendors</h2>
         <p>
-          Speech recognition, language model, voice and payment providers process call content or payment details only to perform
-          the service you selected for each agent.
+          Speech recognition, language model, voice and payment providers process call content or payment details only to perform the service you
+          selected for each agent.
         </p>
       </section>
       <section>
@@ -73,8 +73,8 @@ export function Terms() {
       <section>
         <h2>Acceptable use</h2>
         <p>
-          Do not use Callwright for unlawful calling, to deceive callers about who they are talking to, or to call numbers that asked
-          not to be contacted.
+          Do not use Callwright for unlawful calling, to deceive callers about who they are talking to, or to call numbers that asked not to be
+          contacted.
         </p>
       </section>
       <section>

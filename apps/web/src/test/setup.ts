@@ -1,8 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
+import { MotionGlobalConfig } from "motion";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "../mocks/node";
 import { resetMockDb } from "../mocks/db";
+
+// Animations finish instantly in tests, so tickers and transitions show their final state.
+MotionGlobalConfig.skipAnimations = true;
 
 // jsdom gaps used by Radix primitives.
 class ResizeObserverStub {

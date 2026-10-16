@@ -1,0 +1,10 @@
+dist
+coverage
+node_modules
+playwright-report
+test-results
+public/mockServiceWorker.js
+src/api/schema.d.ts
+pnpm-lock.yaml
+docs/screens
+*.md

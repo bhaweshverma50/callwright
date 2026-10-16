@@ -28,7 +28,7 @@ research/architecture.md section 2.
 - [x] T002 Initialise the API project in `services/api/pyproject.toml` (Python 3.12; fastapi, pydantic v2, sqlalchemy[asyncio], asyncpg, alembic, arq, redis, python-ulid, pyjwt[crypto], httpx, stripe; dev: pytest, pytest-asyncio, openapi-core, ruff, mypy)
 - [x] T003 [P] Initialise the web app in `apps/web/package.json` with Vite + React 18 + TypeScript, TanStack Query, React Router, Tailwind, Radix, openapi-fetch, openapi-typescript, Vitest, Testing Library, Playwright; config in `apps/web/vite.config.ts`, `apps/web/tailwind.config.ts` (done in apps/web: React 19, Tailwind v4 via @tailwindcss/vite so no tailwind.config.ts)
 - [x] T004 [P] Add `docker-compose.yml` at the repo root with Postgres 16 + pgvector, Redis 7 and MinIO, plus `services/api/.env.example`
-- [ ] T005 [P] Configure ruff and mypy in `services/api/pyproject.toml` and ESLint + Prettier in `apps/web/.eslintrc.cjs`
+- [x] T005 [P] Configure ruff and mypy in `services/api/pyproject.toml` and ESLint + Prettier in `apps/web/.eslintrc.cjs` (web: flat config in apps/web/eslint.config.js with eslint-config-prettier, `.prettierrc.json`; `pnpm lint` fails on any warning or unformatted file)
 - [x] T006 [P] Write `scripts/assemble_contracts.py`: merge `specs/*/contracts/*.yaml` into `contracts/openapi.yaml`, rewrite cross-file `$ref`s to local refs, merge identical duplicate components, fail on conflicting duplicates or duplicate paths; `--check` mode exits non-zero when the committed file is stale
 - [x] T007 [P] Add CI in `.github/workflows/ci.yml`: compose services, ruff, mypy, pytest unit/contract/integration, `assemble_contracts.py --check`, openapi-typescript regeneration diff, web lint, Vitest, Playwright
 
@@ -82,7 +82,7 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [x] T031 [P] [US1] Integration test: 5 failures then 429 with `retry_after_s`; success clears the counter; per-IP limit, in `services/api/tests/integration/auth/test_throttle.py`
 - [x] T032 [P] [US1] Integration test: sign-out revokes the session; the old access token gets 401, in `services/api/tests/integration/auth/test_sign_out.py`
 - [x] T033 [P] [US1] Integration test: unverified sign-in returns 403 `email_unverified`; reset request returns 202 for unknown emails, in `services/api/tests/integration/auth/test_verification_and_reset.py`
-- [ ] T034 [P] [US1] Playwright journey register, verify via mail catcher, land on dashboard, see $5.00 and 11 nav items, in `apps/web/tests/e2e/signup.spec.ts`
+- [x] T034 [P] [US1] Playwright journey register, verify via mail catcher, land on dashboard, see $5.00 and 11 nav items, in `apps/web/tests/e2e/signup.spec.ts` (project `real`: runs against the API's local identity provider and `GET /v1/dev/mail`)
 
 ### Implementation for User Story 1
 
@@ -121,7 +121,7 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [x] T048 [P] [US2] Integration test with signed Stripe fixtures: `checkout.session.completed` posts one `top_up`; replay and `async_payment_succeeded` for the same intent post nothing; invalid signature 400; unknown event 200, in `services/api/tests/integration/billing/test_stripe_webhook.py`
 - [x] T049 [P] [US2] Integration test: expired or abandoned session writes no transaction; `charge.refunded` and `charge.dispute.created` write negative `adjustment` rows, in `services/api/tests/integration/billing/test_checkout_lifecycle.py`
 - [x] T050 [P] [US2] Unit tests for `credit_check` (balance 0 refused `insufficient_credit`, unverified refused `email_unverified`, positive allowed) in `services/api/tests/unit/billing/test_credit_check.py`
-- [ ] T051 [P] [US2] Playwright journey: $4 rejected, $25 top-up with test card, balance $30.00 and new row within 10 s, in `apps/web/tests/e2e/topup.spec.ts`
+- [x] T051 [P] [US2] Playwright journey: $4 rejected, $25 top-up with test card, balance $30.00 and new row within 10 s, in `apps/web/tests/e2e/topup.spec.ts` (project `real`: pays through the dev fake checkout at `/v1/dev/fake-checkout/{id}`)
 
 ### Implementation for User Story 2
 
@@ -202,7 +202,7 @@ IDs, the ledger table and writer, contract test harness, app shell skeleton.
 - [x] T084 [P] Load the secrets (Stripe keys, webhook secret, IdP service key) from the encrypted `secrets` store in `services/api/app/core/config.py`; confirm no endpoint echoes them
 - [x] T085 [P] Leave guard and aggregated error dialog primitives in `apps/web/src/components/LeaveGuard.tsx` and `apps/web/src/components/ErrorSummaryDialog.tsx` (reused by 002)
 - [x] T086 Performance check: `GET /v1/me` and `GET /v1/billing/balance` p95 under 150 ms with 1M ledger rows, recorded in `services/api/tests/integration/test_perf_smoke.py`
-- [ ] T087 Run every step of `specs/001-platform-foundation/quickstart.md` and fix gaps
+- [x] T087 Run every step of `specs/001-platform-foundation/quickstart.md` and fix gaps (browser steps automated in `apps/web/tests/e2e/quickstart.spec.ts`; the web app now also accepts the API's `?checkout=canceled` return)
 - [x] T099 [P] Leave-guard coverage (FR-021) in `apps/web/tests/e2e/leave-guard.spec.ts`: a never-saved form and an edited saved form both prompt on in-app navigation, reload and tab close (`beforeunload`); "Stay" keeps input, "Leave" discards; a clean form leaves without a prompt (Settings form; never-saved create forms arrive with 002 and reuse LeaveGuard)
 
 ---

@@ -64,9 +64,7 @@ export function formatCentsPerMin(rate: string): string {
   return `${(hundredths / 100n).toString()}.${(hundredths % 100n).toString().padStart(2, "0")}¢`;
 }
 
-export type AmountCheck =
-  | { ok: true; micros: bigint; normalized: string }
-  | { ok: false; reason: string };
+export type AmountCheck = { ok: true; micros: bigint; normalized: string } | { ok: false; reason: string };
 
 export const TOP_UP_MIN = 5n * MICRO;
 export const TOP_UP_MAX = 10_000n * MICRO;

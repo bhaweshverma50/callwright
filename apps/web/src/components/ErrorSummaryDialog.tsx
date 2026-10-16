@@ -1,4 +1,4 @@
-import { WarningCircle } from "@phosphor-icons/react";
+import { CircleAlert } from "lucide-react";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 
@@ -46,7 +46,7 @@ export function ErrorSummaryDialog({
               onClick={() => jump(it.targetId)}
               className="flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <WarningCircle weight="fill" className="mt-0.5 size-3.5 shrink-0 text-danger-text" aria-hidden />
+              <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-danger-text" aria-hidden />
               <span>
                 <span className="font-medium text-fg">{it.label}</span>
                 <span className="text-fg-2">: {it.message}</span>

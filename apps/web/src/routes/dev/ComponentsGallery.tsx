@@ -1,10 +1,13 @@
-import { FolderOpen, Moon, Plus, Sun, Trash } from "@phosphor-icons/react";
+import { FolderOpen, PhoneCall as PhoneCallDuo, PhoneList, Robot } from "@phosphor-icons/react";
+import { BrainCircuit, Captions, Disc, Ear, Gauge, Mail, Mic, Moon, Play, Plus, Shuffle, Sun, Trash2, Volume2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { resolvedTheme, setThemePref, useThemePref } from "../../app/theme";
 import {
   Badge,
   Button,
+  FlowChain,
   Chip,
   ConfirmDialog,
   CostBreakdownCard,
@@ -15,25 +18,37 @@ import {
   IconButton,
   Input,
   Kbd,
-  Label,
+  LatencyChip,
   Logo,
   MoneyText,
+  OnAir,
   Pagination,
+  Reveal,
+  RevealItem,
   Select,
+  InfoRow,
+  Panel,
+  PanelRows,
   Skeleton,
   Slider,
+  Stepper,
   Switch,
+  SwitchControl,
   TabPanel,
   Table,
   Tabs,
   Textarea,
+  Ticker,
+  Waveform,
   toast,
+  type FlowNode,
   type Column,
 } from "../../components";
+import { formatUsd } from "../../lib/money";
 import { referenceBreakdown } from "../public/reference";
 
 const SWATCHES = [
-  ["bg", "--bg"],
+  ["bg (paper / ink)", "--bg"],
   ["surface", "--surface"],
   ["surface-2", "--surface-2"],
   ["surface-3", "--surface-3"],
@@ -41,13 +56,21 @@ const SWATCHES = [
   ["text", "--text"],
   ["text-2", "--text-2"],
   ["text-3", "--text-3"],
-  ["accent", "--accent"],
+  ["accent (cobalt)", "--accent"],
   ["accent-soft", "--accent-soft"],
-  ["amber", "--amber"],
-  ["amber-soft", "--amber-soft"],
+  ["on-air", "--on-air"],
+  ["success", "--success"],
+  ["warning", "--warning"],
   ["danger", "--danger"],
-  ["success-soft", "--success-soft"],
 ] as const;
+
+const NODES: FlowNode[] = [
+  { key: "caller", label: "Caller", icon: <Mic aria-hidden /> },
+  { key: "stt", label: "Speech to text", icon: <Captions aria-hidden /> },
+  { key: "llm", label: "Model", icon: <BrainCircuit aria-hidden /> },
+  { key: "tts", label: "Voice", icon: <Volume2 aria-hidden /> },
+  { key: "hears", label: "Caller hears", icon: <Ear aria-hidden /> },
+];
 
 interface Row {
   id: string;
@@ -68,16 +91,26 @@ const COLS: Column<Row>[] = [
   { key: "cost", header: "Cost", numeric: true, cell: (r) => <MoneyText value={r.cost} places={3} /> },
 ];
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
-    <section className="border-t border-line py-8">
-      <h2 className="mb-5 font-display text-[18px] font-semibold tracking-[-0.01em] text-fg">{title}</h2>
-      {children}
+    <section className="border-t border-line py-10">
+      <h2 className="font-display text-[18px] font-medium tracking-[-0.015em] text-fg">{title}</h2>
+      {note && <p className="mt-1.5 max-w-[70ch] text-[13.5px] text-fg-2">{note}</p>}
+      <div className="mt-6">{children}</div>
     </section>
   );
 }
 
-/** Design-system gallery at /dev/components: every primitive, in the current theme. */
+function Demo({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-5 shadow-1">
+      <p className="text-[12.5px] font-medium text-fg-3">{name}</p>
+      <div className="flex min-h-16 flex-1 flex-col justify-center">{children}</div>
+    </div>
+  );
+}
+
+/** Design-system gallery at /dev/components: every primitive and motion effect, in the current theme. */
 export function ComponentsGallery() {
   const pref = useThemePref();
   const theme = resolvedTheme(pref);
@@ -90,10 +123,15 @@ export function ComponentsGallery() {
   const [drawer, setDrawer] = useState(false);
   const [chip, setChip] = useState("100");
   const [page, setPage] = useState(2);
+  const [ticker, setTicker] = useState(96_042_000);
+  const [revealKey, setRevealKey] = useState(0);
+  const [items, setItems] = useState([1, 2, 3]);
+  const [chainActive, setChainActive] = useState(2);
+  const [gauge, setGauge] = useState(0.62);
 
   return (
     <div className="min-h-dvh bg-bg">
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-line bg-bg/85 px-6 backdrop-blur-sm">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-bg/80 px-4 backdrop-blur-md sm:px-6">
         <Link to="/" aria-label="Home">
           <Logo />
         </Link>
@@ -106,11 +144,12 @@ export function ComponentsGallery() {
           {theme === "dark" ? "Light" : "Dark"} theme
         </Button>
       </header>
-      <main className="mx-auto max-w-[1100px] px-6 pb-24 pt-10">
-        <h1 className="font-display text-[30px] font-semibold tracking-[-0.025em] text-fg">Components</h1>
-        <p className="mt-2 max-w-[70ch] text-[13.5px] text-fg-2">
-          Callwright design system. Cool grey-blue neutrals, a signal teal for action, focus and live state, amber for evidence and
-          warnings. Bricolage Grotesque for display, IBM Plex Sans for UI, IBM Plex Mono for numbers and labels.
+      <main id="main" className="mx-auto max-w-[1120px] px-4 pb-24 pt-12 sm:px-6">
+        <h1 className="font-display text-[30px] font-semibold tracking-[-0.03em] text-fg">Components</h1>
+        <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-fg-2">
+          The signal chain system: ink and paper, one cobalt action colour with a cobalt to violet gradient on primary actions, on-air red for live
+          state only, and the heat ramp inside data visualisation. Unbounded for display, Geist for interface text, Geist Mono for figures. Rules live
+          in docs/DESIGN.md.
         </p>
 
         <Section title="Tokens">
@@ -118,14 +157,31 @@ export function ComponentsGallery() {
             {SWATCHES.map(([name, v]) => (
               <div key={name} className="flex flex-col gap-1.5">
                 <span className="h-12 rounded-control border border-line" style={{ background: `var(${v})` }} />
-                <span className="font-mono text-[11px] text-fg-2">{name}</span>
+                <span className="text-[12px] text-fg-2">{name}</span>
               </div>
             ))}
           </div>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <p className="font-display text-[28px] font-semibold tracking-[-0.025em] text-fg">Display 28</p>
-            <p className="text-[14px] text-fg">IBM Plex Sans 14 for interface and body text.</p>
-            <p className="font-mono text-[13px] text-fg tnum">$1,234.567 / 0.0085</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <span className="grad-action h-12 rounded-control" />
+              <span className="text-[12px] text-fg-2">Action gradient, cobalt to violet (primary buttons, logo, switches, the active step)</span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="grad-heat h-12 rounded-control" />
+              <span className="text-[12px] text-fg-2">Heat ramp (data visualisation, chain links, highlight borders)</span>
+            </div>
+          </div>
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            <p className="font-display text-[28px] font-semibold tracking-[-0.03em] text-fg">Unbounded</p>
+            <p className="text-[14px] leading-relaxed text-fg">Geist 14 for interface and body text, sentence case everywhere.</p>
+            <p className="font-mono text-[14px] text-fg tnum">$1,234.567 / 0.0085 / 640 ms</p>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end gap-6">
+            <div className="h-10 w-24 rounded-inline border border-line bg-surface" title="Inline 4px" />
+            <div className="h-10 w-24 rounded-control border border-line bg-surface" title="Control 8px" />
+            <div className="h-10 w-24 rounded-panel border border-line bg-surface shadow-1" title="Work surface 12px" />
+            <div className="h-10 w-24 rounded-feature border border-line bg-surface shadow-2" title="Feature 20px" />
+            <span className="text-[12.5px] text-fg-3">Radius and elevation by hierarchy: inline, control, work surface, feature</span>
           </div>
         </Section>
 
@@ -136,10 +192,10 @@ export function ComponentsGallery() {
             </Button>
             <Button>Secondary</Button>
             <Button variant="ghost">Ghost</Button>
-            <Button variant="danger" icon={<Trash aria-hidden />}>
+            <Button variant="danger" icon={<Trash2 aria-hidden />}>
               Delete
             </Button>
-            <Button variant="link">Link</Button>
+            <Button variant="link">Text link</Button>
             <Button variant="primary" pending>
               Saving
             </Button>
@@ -162,12 +218,12 @@ export function ComponentsGallery() {
               {({ id, describedBy }) => <Input id={id} aria-describedby={describedBy} defaultValue="Halcyon Dental Group" />}
             </Field>
             <Field label="Amount" error="The minimum top-up is $5.">
-              {({ id, describedBy, invalid }) => <Input id={id} prefix="$" className="font-mono" aria-describedby={describedBy} aria-invalid={invalid} defaultValue="4" />}
+              {({ id, describedBy, invalid }) => (
+                <Input id={id} prefix="$" className="font-mono" aria-describedby={describedBy} aria-invalid={invalid} defaultValue="4" />
+              )}
             </Field>
-            <Field label="Disabled">
-              {({ id }) => <Input id={id} disabled defaultValue="Read only" />}
-            </Field>
-            <Field label="Speech to text" className="sm:col-span-1">
+            <Field label="Disabled">{({ id }) => <Input id={id} disabled defaultValue="Read only" />}</Field>
+            <Field label="Speech to text">
               {({ id }) => (
                 <Select
                   id={id}
@@ -192,19 +248,21 @@ export function ComponentsGallery() {
           </div>
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label>Slider {slider.toLocaleString()}</Label>
-              <Slider aria-label="Tokens" value={slider} min={0} max={80_000} step={1_000} onValueChange={setSlider} />
+              <span className="text-[13px] text-fg-2">
+                Tokens per minute <span className="font-mono text-fg tnum">{slider.toLocaleString()}</span>
+              </span>
+              <Slider aria-label="Tokens" tone="heat" value={slider} min={0} max={80_000} step={1_000} onValueChange={setSlider} />
             </div>
             <Switch checked={sw} onCheckedChange={setSw} label="Record calls by default" description="Agents can override this." />
           </div>
         </Section>
 
-        <Section title="Badges and chips">
+        <Section title="Badges, chips and money">
           <div className="flex flex-wrap items-center gap-2">
             <Badge>Draft</Badge>
-            <Badge tone="accent">Live</Badge>
+            <Badge tone="accent">Published</Badge>
             <Badge tone="success">Passed</Badge>
-            <Badge tone="amber">Surcharge</Badge>
+            <Badge tone="warning">Surcharge</Badge>
             <Badge tone="danger">Failed</Badge>
             <span className="mx-2 h-5 w-px bg-line" />
             {["25", "100", "500"].map((v) => (
@@ -214,12 +272,273 @@ export function ComponentsGallery() {
             ))}
             <span className="mx-2 h-5 w-px bg-line" />
             <Kbd>[</Kbd>
-            <span className="text-[12.5px] text-fg-3">toggles the rail</span>
+            <span className="text-[13px] text-fg-3">toggles the sidebar</span>
           </div>
           <div className="mt-5 flex flex-wrap items-baseline gap-6">
             <MoneyText value="1234.567891" places={3} className="text-[22px] text-fg" />
             <MoneyText value="25.000000" places={3} signed toned />
             <MoneyText value="-0.477000" places={3} signed toned />
+          </div>
+        </Section>
+
+        <Section
+          title="Signal visuals"
+          note="The chain, the waveform, per-turn latency and the on-air indicator. Heat ramp colours appear only here."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Demo name="Waveform, live">
+              <Waveform bars={64} progress={0.6} live height={48} />
+            </Demo>
+            <Demo name="Latency chip and on-air">
+              <div className="flex flex-wrap items-center gap-4">
+                <LatencyChip latency={{ stt: 160, llm: 310, tts: 140 }} />
+                <OnAir label="Live call" />
+              </div>
+            </Demo>
+            <Demo name="Flow chain, active node and flowing links">
+              <FlowChain nodes={NODES} active="llm" flow />
+            </Demo>
+            <Demo name="Console surface">
+              <div className="rounded-feature bg-console p-4">
+                <Waveform bars={48} progress={0.4} onConsole height={32} />
+                <div className="mt-3 flex items-center justify-between">
+                  <OnAir onConsole />
+                  <LatencyChip latency={{ stt: 150, llm: 280, tts: 130 }} onConsole />
+                </div>
+              </div>
+            </Demo>
+          </div>
+        </Section>
+
+        <Section
+          title="Motion"
+          note="Every effect animates transform and opacity (plus SVG dash offset) and respects reduced motion. Hover, press and focus the demos."
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Demo name="Number ticker">
+              <div className="flex items-center justify-between gap-3">
+                <MoneyText value={BigInt(ticker)} places={3} animate className="text-[24px] font-medium text-fg" />
+                <IconButton label="New value" onClick={() => setTicker(Math.round(Math.random() * 200_000_000))}>
+                  <Shuffle className="size-4" aria-hidden />
+                </IconButton>
+              </div>
+            </Demo>
+            <Demo name="Staggered reveal">
+              <div className="flex items-center gap-3">
+                <Reveal key={revealKey} className="flex flex-1 gap-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <RevealItem key={i} className="h-10 flex-1 rounded-control bg-accent-soft" />
+                  ))}
+                </Reveal>
+                <IconButton label="Replay reveal" onClick={() => setRevealKey((k) => k + 1)}>
+                  <Play className="size-4" aria-hidden />
+                </IconButton>
+              </div>
+            </Demo>
+            <Demo name="List enter and exit">
+              <div className="flex items-start gap-3">
+                <ul className="flex flex-1 flex-col gap-1.5">
+                  <AnimatePresence initial={false}>
+                    {items.map((n) => (
+                      <motion.li
+                        key={n}
+                        layout
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: 12 }}
+                        className="rounded-control border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-fg-2"
+                      >
+                        Call {n}
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+                <div className="flex flex-col gap-1">
+                  <IconButton label="Add row" onClick={() => setItems((x) => [Math.max(0, ...x) + 1, ...x].slice(0, 4))}>
+                    <Plus className="size-4" aria-hidden />
+                  </IconButton>
+                  <IconButton label="Remove row" onClick={() => setItems((x) => x.slice(1))}>
+                    <Trash2 className="size-4" aria-hidden />
+                  </IconButton>
+                </div>
+              </div>
+            </Demo>
+            <Demo name="Hero CTA idle sheen (one pass every 7 s)">
+              <Button variant="primary" idleSheen icon={<Plus aria-hidden />}>
+                Create account
+              </Button>
+            </Demo>
+            <Demo name="Ripple, press and sheen (press and hover)">
+              <Button variant="primary" icon={<Play aria-hidden />}>
+                Make a test call
+              </Button>
+            </Demo>
+            <Demo name="Card lift with glow (hover)">
+              <div className="lift rounded-panel border border-line bg-surface p-4 text-[13px] text-fg-2 shadow-1">Front desk agent</div>
+            </Demo>
+            <Demo name="Animated link underline">
+              <a href="#motion" className="link-underline self-start text-[14px] text-accent-text">
+                Open the calculator
+              </a>
+            </Demo>
+            <Demo name="Chain flow (click to move)">
+              <button type="button" className="cursor-pointer text-left" onClick={() => setChainActive((a) => (a + 1) % NODES.length)}>
+                <FlowChain nodes={NODES} active={NODES[chainActive]!.key} flow size="sm" stack="never" />
+              </button>
+            </Demo>
+            <Demo name="Gauge arc">
+              <div className="flex items-center gap-4">
+                <svg viewBox="0 0 120 64" className="w-28" aria-hidden>
+                  <defs>
+                    <linearGradient id="gal-arc" x1="10" x2="110" y1="0" y2="0" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stopColor="var(--heat-1)" />
+                      <stop offset="0.55" stopColor="var(--heat-2)" />
+                      <stop offset="1" stopColor="var(--heat-3)" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="var(--surface-3)" strokeWidth="8" strokeLinecap="round" />
+                  <motion.path
+                    d="M 10 60 A 50 50 0 0 1 110 60"
+                    fill="none"
+                    stroke="url(#gal-arc)"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: gauge }}
+                    transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </svg>
+                <Ticker value={Math.round(gauge * 914)} format={(n) => `${Math.round(n)} min`} className="font-mono text-[16px] text-fg" />
+                <IconButton label="New gauge value" onClick={() => setGauge(Math.round(Math.random() * 100) / 100)}>
+                  <Shuffle className="size-4" aria-hidden />
+                </IconButton>
+              </div>
+            </Demo>
+            <Demo name="Animated border on focus">
+              <div className="live-border rounded-panel border border-line bg-surface p-3">
+                <Input aria-label="Focus me" placeholder="Focus this field" />
+              </div>
+            </Demo>
+            <Demo name="Logo mark (hover)">
+              <Link to="/" className="self-start">
+                <Logo />
+              </Link>
+            </Demo>
+            <Demo name="On-air pulse">
+              <OnAir label="Recording" />
+            </Demo>
+            <Demo name="Shimmer skeleton">
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+              </div>
+            </Demo>
+          </div>
+          <dl className="mt-6 grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["Sheen pass", "560 ms, cubic-bezier(0.22, 1, 0.36, 1), on hover or keyboard focus"],
+              ["Hero idle sheen", "one pass every 7 s, hero CTA only"],
+              ["Press", "scale 0.975 for 90 ms, plus the ripple"],
+              ["Skeleton shimmer", "1.3 s per cycle, ease-in-out, stops when content arrives"],
+              ["Route transition", "220 ms fade and 6px rise"],
+              ["Ticker", "about 700 ms, ease-out, ends on the exact figure"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex flex-col gap-0.5 border-t border-line pt-2">
+                <dt className="font-medium text-fg">{k}</dt>
+                <dd className="text-fg-3">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-[12.5px] text-fg-3">
+            Route transitions (fade and rise), drawers, dialogs, menus and toasts animate on open and close; open the overlays below to see them.
+            Ticker values end on the exact figure, for example {formatUsd(BigInt(ticker), { places: 3 })}.
+          </p>
+        </Section>
+
+        <Section
+          title="Stepper"
+          note="Numbered because order matters. One centre axis, a continuous connector, done steps fill the segment below them."
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Demo name="First step active">
+              <Stepper
+                label="Setup, nothing done"
+                steps={[
+                  {
+                    title: "Create an agent",
+                    description: "Write what it should do.",
+                    icon: <Robot weight="duotone" />,
+                    status: "active",
+                    action: (
+                      <Button size="sm" variant="primary">
+                        Create an agent
+                      </Button>
+                    ),
+                  },
+                  {
+                    title: "Make a test call",
+                    description: "Talk to it from the browser.",
+                    icon: <PhoneCallDuo weight="duotone" />,
+                    status: "pending",
+                  },
+                  { title: "Connect a number", description: "Put it on a phone line.", icon: <PhoneList weight="duotone" />, status: "pending" },
+                ]}
+              />
+            </Demo>
+            <Demo name="Done, active and pending">
+              <Stepper
+                label="Setup, one done"
+                steps={[
+                  { title: "Create an agent", description: "Front desk agent is ready.", icon: <Robot weight="duotone" />, status: "done" },
+                  {
+                    title: "Make a test call",
+                    description: "Talk to it from the browser.",
+                    icon: <PhoneCallDuo weight="duotone" />,
+                    status: "active",
+                    action: (
+                      <Button size="sm" variant="primary">
+                        Make a test call
+                      </Button>
+                    ),
+                  },
+                  { title: "Connect a number", description: "Put it on a phone line.", icon: <PhoneList weight="duotone" />, status: "pending" },
+                ]}
+              />
+            </Demo>
+          </div>
+        </Section>
+
+        <Section
+          title="Panels and rows"
+          note="One card anatomy: icon, title and one-line description in the header; rows with the icon and label left, the value or control right."
+        >
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <Panel title="Workspace" description="Name and defaults for new calls." icon={<Gauge />} bodyClassName="p-0">
+              <PanelRows>
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <span className="flex items-center gap-3 text-[13.5px] font-medium text-fg">
+                    <Disc className="size-4 text-fg-3" aria-hidden />
+                    Switch, on and off
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <SwitchControl aria-label="Demo switch on" checked onCheckedChange={() => {}} />
+                    <SwitchControl aria-label="Demo switch off" checked={false} onCheckedChange={() => {}} />
+                    <SwitchControl aria-label="Demo switch disabled" checked disabled onCheckedChange={() => {}} />
+                  </span>
+                </div>
+              </PanelRows>
+            </Panel>
+            <Panel title="Limits and account" description="Contact support to change these." icon={<Gauge />} bodyClassName="p-0">
+              <PanelRows as="dl">
+                <InfoRow icon={<Gauge />} label="Concurrent calls">
+                  <span className="font-mono tnum">5</span> at once
+                </InfoRow>
+                <InfoRow icon={<Mail />} label="Account email" title="operations-team+frontdesk@halcyon-dental-group.com">
+                  operations-team+frontdesk@halcyon-dental-group.com
+                </InfoRow>
+              </PanelRows>
+            </Panel>
           </div>
         </Section>
 
@@ -234,17 +553,17 @@ export function ComponentsGallery() {
             ]}
           >
             <TabPanel value="one">
-              <p className="text-[13px] text-fg-2">Arrow keys move between tabs.</p>
+              <p className="text-[13.5px] text-fg-2">Arrow keys move between tabs; the marker slides.</p>
             </TabPanel>
             <TabPanel value="two">
-              <p className="text-[13px] text-fg-2">Second panel.</p>
+              <p className="text-[13.5px] text-fg-2">Second panel.</p>
             </TabPanel>
           </Tabs>
         </Section>
 
         <Section title="Table and pagination">
-          <div className="rounded-panel border border-line bg-surface">
-            <Table columns={COLS} rows={ROWS} rowKey={(r) => r.id} caption="Sample calls" />
+          <div className="rounded-panel border border-line bg-surface shadow-1">
+            <Table columns={COLS} rows={ROWS} rowKey={(r) => r.id} caption="Sample calls" selectedKey="call_01JA8Z4C9M2R" />
             <div className="border-t border-line">
               <Pagination page={page} totalPages={16} total={312} pageSize={20} onPageChange={setPage} noun="calls" />
             </div>
@@ -260,7 +579,11 @@ export function ComponentsGallery() {
             <Button onClick={() => setConfirm(true)}>Confirm dialog</Button>
             <Button onClick={() => setDrawer(true)}>Open drawer</Button>
             <Button onClick={() => toast({ tone: "success", title: "Settings saved" })}>Success toast</Button>
-            <Button onClick={() => toast({ tone: "error", title: "Could not save", description: "Something went wrong on our side. Reference 4f1c9e0a." })}>
+            <Button
+              onClick={() =>
+                toast({ tone: "error", title: "Settings were not saved", description: "The server did not answer. Try again; reference 4f1c9e0a." })
+              }
+            >
               Error toast
             </Button>
           </div>
@@ -273,7 +596,7 @@ export function ComponentsGallery() {
               <>
                 <Button onClick={() => setDialog(false)}>Cancel</Button>
                 <Button variant="primary" onClick={() => setDialog(false)}>
-                  Save
+                  Save name
                 </Button>
               </>
             }
@@ -290,7 +613,7 @@ export function ComponentsGallery() {
             tone="danger"
             onConfirm={() => setConfirm(false)}
           />
-          <Drawer open={drawer} onOpenChange={setDrawer} title="Call with +1 (312) 847-1928" meta="call_01JA8Z3QK0X7 / Oct 14, 10:42">
+          <Drawer open={drawer} onOpenChange={setDrawer} title="Call with +1 (312) 847-1928" meta="14 Oct, 10:42">
             <CostBreakdownCard breakdown={referenceBreakdown} />
           </Drawer>
         </Section>
@@ -299,7 +622,7 @@ export function ComponentsGallery() {
           <div className="grid gap-5 md:grid-cols-2">
             <div className="rounded-panel border border-dashed border-line-strong px-5">
               <EmptyState
-                icon={<FolderOpen />}
+                icon={<FolderOpen weight="duotone" />}
                 title="No datasets yet"
                 actions={
                   <Button variant="primary" size="sm" icon={<Plus aria-hidden />}>
@@ -319,8 +642,8 @@ export function ComponentsGallery() {
           </div>
         </Section>
 
-        <Section title="Cost breakdown">
-          <div className="max-w-[460px]">
+        <Section title="Receipt">
+          <div className="max-w-[480px]">
             <CostBreakdownCard breakdown={referenceBreakdown} />
           </div>
         </Section>

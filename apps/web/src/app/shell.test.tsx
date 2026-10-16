@@ -49,16 +49,31 @@ describe("shell (T042, T095, T096, FR-005, FR-018)", () => {
     for (const a of areas) expect(within(nav).getByRole("link", { name: a })).toBeInTheDocument();
   });
 
-  it("remembers the rail expand state", async () => {
+  it("groups areas in a labelled sidebar and remembers the collapsed state", async () => {
     await signInDemo();
     const user = userEvent.setup();
     const first = renderApp("/dashboard");
-    await user.click(await screen.findByRole("button", { name: "Expand navigation" }));
-    expect(localStorage.getItem("cw.rail.expanded")).toBe("1");
-    expect(within(screen.getByRole("navigation", { name: "Main" })).getByText("Quality")).toBeInTheDocument();
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    for (const g of ["Build", "Observe", "Quality", "Feedback loop"]) expect(within(nav).getByText(g)).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Workspace" })).getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Collapse navigation" }));
+    expect(localStorage.getItem("cw.rail.expanded")).toBe("0");
+    expect(within(screen.getByRole("navigation", { name: "Main" })).queryByText("Quality")).not.toBeInTheDocument();
     first.unmount();
     renderApp("/dashboard");
-    expect(await screen.findByRole("button", { name: "Collapse navigation" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Expand navigation" })).toBeInTheDocument();
+  });
+
+  it("shows the numbered setup sequence on an empty dashboard", async () => {
+    await signInDemo();
+    renderApp("/dashboard");
+    expect(await screen.findByRole("heading", { name: "Get your first call on the line" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Setup progress" })).toHaveAttribute("aria-valuenow", "0");
+    for (const s of ["Create an agent", "Make a test call", "Connect a number"]) expect(screen.getByRole("heading", { name: s })).toBeInTheDocument();
   });
 
   it("shows not found inside the shell for unknown addresses", async () => {

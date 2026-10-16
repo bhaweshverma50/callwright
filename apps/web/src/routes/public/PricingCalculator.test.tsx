@@ -23,7 +23,7 @@ describe("PricingCalculator (T065, US3.4)", () => {
     expect(screen.getByTestId("monthly")).toHaveTextContent("$1,050.00");
 
     fireEvent.change(screen.getByLabelText("Minutes per month", { selector: "input" }), { target: { value: "20,000" } });
-    expect(screen.getByTestId("monthly")).toHaveTextContent("$2,100.00");
+    await waitFor(() => expect(screen.getByTestId("monthly")).toHaveTextContent("$2,100.00"));
   });
 
   it("caps minutes at 250,000 and exposes the slider range", async () => {
@@ -33,7 +33,7 @@ describe("PricingCalculator (T065, US3.4)", () => {
     expect(slider).toHaveAttribute("aria-valuemin", "0");
     expect(slider).toHaveAttribute("aria-valuemax", String(MAX_MINUTES));
     fireEvent.change(screen.getByLabelText("Minutes per month", { selector: "input" }), { target: { value: "999999" } });
-    expect(screen.getByTestId("monthly")).toHaveTextContent("$26,250.00");
+    await waitFor(() => expect(screen.getByTestId("monthly")).toHaveTextContent("$26,250.00"));
   });
 
   it("applies the bundle surcharge when usage per minute passes the bundle", async () => {

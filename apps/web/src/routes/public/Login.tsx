@@ -5,6 +5,7 @@ import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { safeNext, startSession, useSignedIn } from "../../app/auth";
+import { LogIn } from "lucide-react";
 import { Button, Field, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
@@ -58,7 +59,7 @@ export function Login() {
       footer={
         <>
           New here?{" "}
-          <Link to="/register" className="font-medium text-accent-text underline-offset-4 hover:underline">
+          <Link to="/register" className="link-underline font-medium text-accent-text">
             Create an account
           </Link>
         </>
@@ -110,7 +111,10 @@ export function Login() {
           label="Password"
           error={fe.password}
           aside={
-            <Link to={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="text-[12.5px] text-accent-text underline-offset-4 hover:underline">
+            <Link
+              to={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+              className="link-underline text-[13px] text-accent-text"
+            >
               Forgot password?
             </Link>
           }
@@ -129,18 +133,26 @@ export function Login() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={signIn.isPending} disabled={!email || !password} className="mt-1 w-full">
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          pending={signIn.isPending}
+          disabled={!email || !password}
+          className="mt-1 w-full"
+          icon={<LogIn aria-hidden />}
+        >
           Sign in
         </Button>
       </form>
 
       {env.mocks && (
-        <p className="mt-5 rounded-control border border-dashed border-line-strong px-3 py-2 text-[12px] text-fg-3">
-          Demo data is on. Use <span className="font-mono text-fg-2">ops@halcyon-dental.com</span> with{" "}
-          <span className="font-mono text-fg-2">correct-horse-9</span>.{" "}
+        <p className="mt-5 rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
+          Demo data is on. Use <span className="font-medium text-fg-2">ops@halcyon-dental.com</span> with{" "}
+          <span className="font-medium text-fg-2">correct-horse-9</span>.{" "}
           <button
             type="button"
-            className="text-accent-text underline-offset-4 hover:underline"
+            className="link-underline text-accent-text"
             onClick={() => {
               setEmail("ops@halcyon-dental.com");
               setPassword("correct-horse-9");

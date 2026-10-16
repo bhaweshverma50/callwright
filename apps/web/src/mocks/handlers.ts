@@ -48,7 +48,7 @@ function validation(errors: FieldError[]) {
   return problem(422, "validation_failed", "Request failed validation", { errors });
 }
 
-const json = <T,>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
+const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
 
 function issueSession(user: MockUser): Session {
   const access = `mock-access.${user.id}.${mockId("tok")}`;
@@ -97,14 +97,27 @@ function bootstrapWorkspace(user: MockUser) {
   appendTransaction(db(), ws.id, "trial_grant", "5.000000", "Trial credit");
 }
 
-const FAMILY: [RegExp, FeatureFamily][] = [
-  [/^calls$/, "calls"],
-  [/^eval\./, "evaluations"],
-  [/^simulator\./, "simulations"],
-  [/^analytics_chat$/, "analytics_chat"],
-  [/^prompt_generation$/, "prompt_generation"],
-  [/^post_call_analysis$/, "post_call_analysis"],
+const FAMILIES: FeatureFamily[] = [
+  "calls",
+  "evaluations",
+  "simulations",
+  "testing",
+  "analytics_chat",
+  "prompt_generation",
+  "post_call_analysis",
+  "flow_assistant",
+  "voice_copilot",
+  "issues",
+  "knowledge_ingestion",
+  "embedding",
 ];
+
+/** usage.yaml FeatureFamily: the key prefix before the first dot; eval and simulator are renamed. */
+function familyOf(featureKey: string): FeatureFamily | undefined {
+  const prefix = featureKey.split(".")[0] ?? "";
+  const name = prefix === "eval" ? "evaluations" : prefix === "simulator" ? "simulations" : prefix;
+  return FAMILIES.find((f) => f === name);
+}
 
 const today = () => new Date().toISOString().slice(0, 10);
 function addDays(date: string, days: number) {
@@ -122,8 +135,7 @@ export const handlers = [
     const errors: FieldError[] = [];
     if (!body.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email))
       errors.push({ pointer: "/email", code: "invalid_format", message: "Enter a valid email address." });
-    if (!body.password || body.password.length < 10)
-      errors.push({ pointer: "/password", code: "too_short", message: "Use at least 10 characters." });
+    if (!body.password || body.password.length < 10) errors.push({ pointer: "/password", code: "too_short", message: "Use at least 10 characters." });
     if (errors.length) return validation(errors);
     const email = body.email!.toLowerCase();
     if (!db().users.some((u) => u.email === email)) {
@@ -207,10 +219,8 @@ export const handlers = [
   http.post(url("/auth/password-reset/confirm"), async ({ request }) => {
     const { token_hash, new_password = "" } = (await request.json()) as { token_hash: string; new_password?: string };
     const t = db().resetTokens[token_hash];
-    if (!t || t.used || t.expires < Date.now() || token_hash === "expired")
-      return problem(400, "link_invalid", "Link invalid, used or expired");
-    if (new_password.length < 10)
-      return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
+    if (!t || t.used || t.expires < Date.now() || token_hash === "expired") return problem(400, "link_invalid", "Link invalid, used or expired");
+    if (new_password.length < 10) return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
     const user = db().users.find((u) => u.email === t.email);
     if (user) user.password = new_password;
     t.used = true;
@@ -241,8 +251,7 @@ export const handlers = [
     if (body.name !== undefined) {
       if (typeof body.name !== "string" || body.name.trim().length === 0)
         errors.push({ pointer: "/name", code: "required", message: "Enter a workspace name." });
-      else if (body.name.length > 80)
-        errors.push({ pointer: "/name", code: "too_long", message: "Keep the name to 80 characters or fewer." });
+      else if (body.name.length > 80) errors.push({ pointer: "/name", code: "too_long", message: "Keep the name to 80 characters or fewer." });
     }
     if (body.recording_default !== undefined && typeof body.recording_default !== "boolean")
       errors.push({ pointer: "/recording_default", code: "invalid_format", message: "Choose on or off." });
@@ -294,9 +303,7 @@ export const handlers = [
       .slice()
       .reverse();
     await delay(180);
-    const items: Transaction[] = rows
-      .slice((page - 1) * pageSize, page * pageSize)
-      .map(({ workspace_id: _ws, ...t }) => t);
+    const items: Transaction[] = rows.slice((page - 1) * pageSize, page * pageSize).map(({ workspace_id: _ws, ...t }) => t);
     return json<TransactionPage>({
       items,
       total: rows.length,
@@ -349,7 +356,7 @@ export const handlers = [
     let totalRaw = 0n;
     let totalBill = 0n;
     for (const ev of inWindow) {
-      const family = FAMILY.find(([re]) => re.test(ev.feature_key))?.[1];
+      const family = familyOf(ev.feature_key);
       if (!family) continue;
       const row = rows.get(family) ?? { feature: family, event_count: 0, raw_cost_usd: "0.000000", billable_cost_usd: "0.000000", details: [] };
       const raw = toMicros(ev.raw) ?? 0n;

@@ -38,10 +38,18 @@ export function useBalance(opts: { pollMs?: number | false } = {}) {
 export function useTransactions(page: number, pageSize: number, type?: TransactionType, pollMs?: number | false) {
   return useQuery({
     queryKey: qk.transactions(page, pageSize, type),
-    queryFn: () =>
-      unwrap(api.GET("/billing/transactions", { params: { query: { page, page_size: pageSize, ...(type && { type }) } } })),
+    queryFn: () => unwrap(api.GET("/billing/transactions", { params: { query: { page, page_size: pageSize, ...(type && { type }) } } })),
     placeholderData: keepPreviousData,
     refetchInterval: pollMs ?? false,
+  });
+}
+
+/** The latest 100 ledger rows, for spend rate and recent peak on the talk-time gauge. */
+export function useRecentTransactions() {
+  return useQuery({
+    queryKey: [...qk.transactionsAll, "recent"] as const,
+    queryFn: () => unwrap(api.GET("/billing/transactions", { params: { query: { page: 1, page_size: 100 } } })),
+    staleTime: 30_000,
   });
 }
 

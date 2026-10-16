@@ -1,88 +1,182 @@
-import { ArrowRight, ChartLine, CheckCircle, Circle } from "@phosphor-icons/react";
+import { PhoneCall as PhoneCallDuo, PhoneList, Robot, type Icon as DuoIcon } from "@phosphor-icons/react";
+import { Bot, Disc, Gauge, Mail, Wallet } from "lucide-react";
+import { motion } from "motion/react";
 import { Link } from "react-router";
 import { useMe } from "../../api/queries";
-import { Badge, EmptyState, Label, MoneyText, PageHeader, Skeleton, cn } from "../../components";
-import { toMicros } from "../../lib/money";
+import {
+  Badge,
+  Button,
+  InfoRow,
+  MoneyText,
+  PageHeader,
+  Panel,
+  PanelRows,
+  Skeleton,
+  Stepper,
+  WorkLayout,
+  cn,
+  focusRing,
+  type Step,
+} from "../../components";
+
+interface SetupStep {
+  title: string;
+  detail: string;
+  action: string;
+  to: string;
+  icon: DuoIcon;
+  done: boolean;
+}
 
 /**
- * Dashboard until spec 006 ships (T043): the workspace's real limits and a short setup path.
- * Analytics charts replace the lower half when calls exist.
+ * The three steps to a first real call, in order. Each step's `done` comes from the feature that
+ * owns it (002 agents, 003 test calls, 010 numbers); until those ship nothing reports done.
+ */
+export function setupSteps(): SetupStep[] {
+  return [
+    {
+      title: "Create an agent",
+      detail: "Write what it should do, then pick its speech recognition, model and voice.",
+      action: "Create an agent",
+      to: "/agents/new",
+      icon: Robot,
+      done: false,
+    },
+    {
+      title: "Make a test call",
+      detail: "Talk to it from the browser. Every turn shows its latency and every second its cost.",
+      action: "Make a test call",
+      to: "/agents",
+      icon: PhoneCallDuo,
+      done: false,
+    },
+    {
+      title: "Connect a number",
+      detail: "Put the agent on a phone number or SIP trunk so real callers can reach it.",
+      action: "Connect a number",
+      to: "/phone-numbers",
+      icon: PhoneList,
+      done: false,
+    },
+  ];
+}
+
+/** Maps setup progress to stepper rows: done steps, then the first open one active, the rest pending. */
+export function toStepperSteps(steps: SetupStep[]): Step[] {
+  const current = steps.findIndex((s) => !s.done);
+  return steps.map((s, i) => ({
+    title: s.title,
+    description: s.detail,
+    icon: <s.icon weight="duotone" aria-hidden />,
+    status: s.done ? "done" : i === current ? "active" : "pending",
+    action: (
+      <Button asChild variant="primary" size="sm">
+        <Link to={s.to}>{s.action}</Link>
+      </Button>
+    ),
+  }));
+}
+
+/**
+ * Dashboard for a workspace with no calls yet (T043; docs/DESIGN.md section 6): a numbered setup
+ * sequence with progress, and the workspace facts in the inspector. Analytics (006) replace the
+ * sequence once calls exist. Reads only identity and balance (FR-020).
  */
 export function DashboardPlaceholder() {
   const { data: me, isPending } = useMe();
-  const funded = me ? (toMicros(me.balance_usd) ?? 0n) > 5_000_000n : false;
+  const steps = setupSteps();
+  const done = steps.filter((s) => s.done).length;
 
   return (
     <>
-      <PageHeader title="Dashboard" description={me ? `Signed in as ${me.user.email}` : " "} />
-
-      <dl className="grid grid-cols-1 overflow-hidden rounded-panel border border-line bg-surface shadow-panel sm:grid-cols-3">
-        <Stat label="Balance" loading={isPending}>
-          {me && <MoneyText value={me.balance_usd} places={3} className="text-[22px] font-medium text-fg" />}
-        </Stat>
-        <Stat label="Concurrent calls" loading={isPending}>
-          <span className="font-mono text-[22px] font-medium text-fg tnum">{me?.workspace.concurrency_limit}</span>
-          <span className="ml-1.5 text-[12.5px] text-fg-3">at once</span>
-        </Stat>
-        <Stat label="Call recording" loading={isPending}>
-          {me && <Badge tone={me.workspace.recording_default ? "accent" : "neutral"}>{me.workspace.recording_default ? "On by default" : "Off by default"}</Badge>}
-        </Stat>
-      </dl>
-
-      <section aria-labelledby="setup" className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div>
-          <h2 id="setup" className="mb-3 font-display text-[16px] font-semibold tracking-[-0.01em] text-fg">
-            Set up your workspace
-          </h2>
-          <ol className="flex flex-col gap-1">
-            <SetupItem done={funded} to="/billing" title="Add funds" detail="Calls draw from your prepaid balance, billed per second." />
-            <SetupItem done={false} to="/pricing" title="Estimate a call" detail="Pick speech, model and voice to see the price per minute." />
-            <SetupItem done={false} to="/agents" title="Create an agent" detail="Prompt or flow, then test it from the browser." />
-          </ol>
-        </div>
-        <div className="rounded-panel border border-dashed border-line-strong px-6">
-          <EmptyState icon={<ChartLine />} title="No calls yet">
-            Call volume, cost per minute, latency and pass rates appear here once your agents take calls.
-          </EmptyState>
-        </div>
-      </section>
+      <PageHeader
+        title="Dashboard"
+        description="Calls, cost and quality for this workspace. Get your first call on the line to fill it."
+        actions={
+          <Button asChild variant="secondary" icon={<Bot aria-hidden />}>
+            <Link to="/agents">See agents</Link>
+          </Button>
+        }
+      />
+      <WorkLayout
+        main={
+          <section aria-labelledby="setup" className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
+            <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-60" />
+            <div className="relative px-5 pb-5 pt-6 sm:px-6">
+              <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                <div className="min-w-0">
+                  <h2 id="setup" className="font-display text-[19px] font-medium tracking-[-0.015em] text-fg">
+                    Get your first call on the line
+                  </h2>
+                  <p className="mt-1.5 text-[13.5px] text-fg-2">Three steps, about ten minutes. Your trial credit covers the test calls.</p>
+                </div>
+                <p className="text-[13px] text-fg-2" aria-live="polite">
+                  <span className="font-mono text-fg tnum">{done}</span> of <span className="font-mono tnum">{steps.length}</span> done
+                </p>
+              </div>
+              <div
+                role="progressbar"
+                aria-label="Setup progress"
+                aria-valuemin={0}
+                aria-valuemax={steps.length}
+                aria-valuenow={done}
+                className="mt-5 h-1.5 overflow-hidden rounded-full bg-surface-3"
+              >
+                <motion.div
+                  className="grad-action h-full origin-left rounded-full"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: done / steps.length }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                />
+              </div>
+              <div className="-mx-1 mt-5 sm:-mx-2">
+                <Stepper label="Setup steps" steps={toStepperSteps(steps)} />
+              </div>
+            </div>
+          </section>
+        }
+        inspector={
+          <Panel title="Workspace" description="What this workspace runs with today." icon={<Gauge />} bodyClassName="p-0">
+            <PanelRows as="dl">
+              <InfoRow icon={<Wallet />} label="Balance">
+                {isPending || !me ? (
+                  <Skeleton className="ml-auto h-4 w-20" />
+                ) : (
+                  <Link to="/billing" className={cn("link-underline rounded-inline text-fg", focusRing)}>
+                    <MoneyText value={me.balance_usd} places={3} animate fromZero className="font-medium" />
+                  </Link>
+                )}
+              </InfoRow>
+              <InfoRow icon={<Gauge />} label="Calls at once">
+                {isPending ? (
+                  <Skeleton className="ml-auto h-4 w-8" />
+                ) : (
+                  <span className="font-mono text-fg tnum">{me?.workspace.concurrency_limit}</span>
+                )}
+              </InfoRow>
+              <InfoRow icon={<Disc />} label="Call recording">
+                {me ? (
+                  <Badge tone={me.workspace.recording_default ? "accent" : "neutral"}>
+                    {me.workspace.recording_default ? "On by default" : "Off by default"}
+                  </Badge>
+                ) : (
+                  <Skeleton className="ml-auto h-4 w-24" />
+                )}
+              </InfoRow>
+              <InfoRow icon={<Mail />} label="Signed in as" title={me?.user.email}>
+                {me?.user.email ?? <Skeleton className="ml-auto h-4 w-32" />}
+              </InfoRow>
+            </PanelRows>
+            <p className="border-t border-line px-5 py-3.5 text-[12.5px] leading-relaxed text-fg-3">
+              Change the name and recording default in{" "}
+              <Link to="/settings" className={cn("link-underline text-accent-text", focusRing)}>
+                Settings
+              </Link>
+              .
+            </p>
+          </Panel>
+        }
+      />
     </>
   );
 }
-
-function Stat({ label, loading, children }: { label: string; loading: boolean; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2 border-b border-line px-5 py-4 last:border-0 sm:border-b-0 sm:border-r">
-      <dt>
-        <Label>{label}</Label>
-      </dt>
-      <dd className="flex h-8 items-center">{loading ? <Skeleton className="h-5 w-24" /> : children}</dd>
-    </div>
-  );
-}
-
-function SetupItem({ done, to, title, detail }: { done: boolean; to: string; title: string; detail: string }) {
-  return (
-    <li>
-      <Link
-        to={to}
-        className={cn(
-          "group flex items-start gap-3 rounded-panel px-3 py-2.5 transition-colors hover:bg-surface",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        )}
-      >
-        {done ? (
-          <CheckCircle weight="fill" className="mt-0.5 size-4 shrink-0 text-accent-text" aria-label="Done" />
-        ) : (
-          <Circle className="mt-0.5 size-4 shrink-0 text-fg-3" aria-label="To do" />
-        )}
-        <span className="flex flex-1 flex-col gap-0.5">
-          <span className={cn("text-[13.5px] font-medium", done ? "text-fg-2" : "text-fg")}>{title}</span>
-          <span className="text-[12.5px] text-fg-3">{detail}</span>
-        </span>
-        <ArrowRight className="mt-1 size-3.5 text-fg-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
-      </Link>
-    </li>
-  );
-}
-

@@ -34,7 +34,7 @@ test("settings save persists after reload", async ({ page }) => {
   const name = page.getByLabel("Workspace name");
   await name.fill("Halcyon Dental East");
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Settings saved")).toBeVisible();
+  await expect(page.getByText("Settings saved", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("Workspace name")).toHaveValue("Halcyon Dental East");
 });
