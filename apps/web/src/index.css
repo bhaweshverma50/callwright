@@ -652,84 +652,55 @@
   --logo-pink: #f06a97;
 }
 /* Logo motion: one pass on hover or focus of the logo or its link, never idle, none under reduced motion. */
+/* Held state: while the logo (or its link) is hovered or focused, the symbol stays split and the
+   wordmark's cut C stays closed; leaving eases both back. Reduced motion: same states, no easing. */
+.logo-handoff .lg-a,
+.logo-handoff .lg-b,
+.logo-handoff .wc-u,
+.logo-handoff .wc-l,
+.logo-handoff .wc-full {
+  transform: translate(0, 0);
+}
+.logo-handoff.logo-anim:hover .lg-a,
+a:hover .logo-handoff.logo-anim .lg-a,
+a:focus-visible .logo-handoff.logo-anim .lg-a {
+  transform: translate(-3px, -1.5px);
+}
+.logo-handoff.logo-anim:hover .lg-b,
+a:hover .logo-handoff.logo-anim .lg-b,
+a:focus-visible .logo-handoff.logo-anim .lg-b {
+  transform: translate(3px, 1.5px);
+}
+/* Wordmark C: each half sits half a step (1.142 units) off the glyph; hover slides it home and the
+   uncut glyph fades in to fill the waist, so the turn reads as handed over to the word. */
+.logo-handoff.logo-anim:hover .wc-u,
+a:hover .logo-handoff.logo-anim .wc-u,
+a:focus-visible .logo-handoff.logo-anim .wc-u {
+  transform: translate(1.142px, 0);
+}
+.logo-handoff.logo-anim:hover .wc-l,
+a:hover .logo-handoff.logo-anim .wc-l,
+a:focus-visible .logo-handoff.logo-anim .wc-l {
+  transform: translate(-1.142px, 0);
+}
+.logo-handoff.logo-anim:hover .wc-full,
+a:hover .logo-handoff.logo-anim .wc-full,
+a:focus-visible .logo-handoff.logo-anim .wc-full {
+  opacity: 1;
+}
 @media (prefers-reduced-motion: no-preference) {
-  /* The halves slide apart, a turn changing hands, and step back together. */
-  .logo-handoff.logo-anim:hover .lg-a,
-  a:hover .logo-handoff.logo-anim .lg-a,
-  a:focus-visible .logo-handoff.logo-anim .lg-a {
-    animation: logo-handoff-a 720ms var(--ease-out-soft);
+  .logo-handoff .lg-a,
+  .logo-handoff .lg-b,
+  .logo-handoff .wc-u,
+  .logo-handoff .wc-l {
+    transition: transform 380ms var(--ease-out-soft);
   }
-  .logo-handoff.logo-anim:hover .lg-b,
-  a:hover .logo-handoff.logo-anim .lg-b,
-  a:focus-visible .logo-handoff.logo-anim .lg-b {
-    animation: logo-handoff-b 720ms var(--ease-out-soft);
+  .logo-handoff .wc-full {
+    transition: opacity 240ms var(--ease-out-soft) 120ms;
   }
-  /* In the same beat the wordmark's cut C closes into one letter: the turn has been handed over. */
-  .logo-handoff.logo-anim:hover .wc-u,
-  a:hover .logo-handoff.logo-anim .wc-u,
-  a:focus-visible .logo-handoff.logo-anim .wc-u {
-    animation: logo-handoff-wc-u 720ms var(--ease-out-soft);
-  }
-  .logo-handoff.logo-anim:hover .wc-l,
-  a:hover .logo-handoff.logo-anim .wc-l,
-  a:focus-visible .logo-handoff.logo-anim .wc-l {
-    animation: logo-handoff-wc-l 720ms var(--ease-out-soft);
-  }
-  .logo-handoff.logo-anim:hover .wc-full,
-  a:hover .logo-handoff.logo-anim .wc-full,
-  a:focus-visible .logo-handoff.logo-anim .wc-full {
-    animation: logo-handoff-wc-full 720ms var(--ease-out-soft);
-  }
-}
-@keyframes logo-handoff-a {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  45% {
-    transform: translate(-3px, -1.5px);
-  }
-}
-@keyframes logo-handoff-b {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  45% {
-    transform: translate(3px, 1.5px);
-  }
-}
-/* Wordmark C: halves offset by half the step (1.142 units) slide onto the glyph, the full C fills the waist. */
-@keyframes logo-handoff-wc-u {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  30%,
-  60% {
-    transform: translate(1.142px, 0);
-  }
-}
-@keyframes logo-handoff-wc-l {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  30%,
-  60% {
-    transform: translate(-1.142px, 0);
-  }
-}
-@keyframes logo-handoff-wc-full {
-  0%,
-  22%,
-  72%,
-  100% {
-    opacity: 0;
-  }
-  34%,
-  58% {
-    opacity: 1;
+  /* Leaving: the fill fades first so the cut reappears before the halves part. */
+  .logo-handoff.logo-anim:not(:hover) .wc-full {
+    transition-delay: 0ms;
   }
 }
 /* brand:logo:end */
