@@ -13,12 +13,13 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.core.config import get_settings
+from app.core.db import migration_url
 
 config = context.config
 
 
 def sync_url(url: str) -> str:
-    return url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+    return migration_url(url)
 
 
 def _url() -> str:

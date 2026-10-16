@@ -17,6 +17,7 @@ from app.auth.schemas import (
 )
 from app.auth.service import AuthService
 from app.core.auth import CurrentClaims, bearer_token
+from app.core.client_ip import client_ip
 from app.core.errors import problem_responses
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,10 +26,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _service(request: Request) -> AuthService:
     state = request.app.state
     return AuthService(state.settings, state.db, state.redis, state.idp)
-
-
-def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
 
 
 def _session(session: IdpSession) -> Session:
@@ -40,11 +37,24 @@ def _session(session: IdpSession) -> Session:
 
 
 @router.post(
-    "/register", status_code=202, response_model=RegisterResponse, responses=problem_responses(422, 429)
+    "/register",
+    status_code=202,
+    response_model=RegisterResponse,
+    response_model_exclude_none=True,
+    responses={200: {"description": "Signed in (AUTH_AUTO_VERIFY_EMAIL)"}, **problem_responses(422, 429)},
 )
-async def register(body: RegisterRequest, request: Request) -> RegisterResponse:
-    await _service(request).register(body.email, body.password, client_ip(request))
-    return RegisterResponse()
+async def register(body: RegisterRequest, request: Request, response: Response) -> RegisterResponse:
+    session = await _service(request).register(body.email, body.password, client_ip(request))
+    if session is None:
+        return RegisterResponse()
+    response.status_code = 200
+    return RegisterResponse(
+        status="signed_in",
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        token_type="bearer",  # noqa: S106
+        expires_in=session.expires_in,
+    )
 
 
 @router.post("/verify-email", response_model=Session, responses=problem_responses(400))

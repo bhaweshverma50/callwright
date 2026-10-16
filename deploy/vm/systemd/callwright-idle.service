@@ -1,0 +1,11 @@
+[Unit]
+Description=Callwright idle check (powers the VM off after 15 idle minutes)
+Documentation=file:///opt/callwright/README.md
+After=docker.service network-online.target
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/callwright/idle-shutdown.sh
+SyslogIdentifier=callwright-idle
+TimeoutStartSec=60

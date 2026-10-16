@@ -61,14 +61,27 @@ class AuthService:
         if not result.allowed:
             raise too_many_requests(result.retry_after_s, "Too many emails requested. Try again later.")
 
-    async def register(self, email: str, password: str, ip: str) -> None:
+    async def register(self, email: str, password: str, ip: str) -> IdpSession | None:
+        """Create the account. Returns a session only with AUTH_AUTO_VERIFY_EMAIL (demo hosting):
+        the account is confirmed at once and signed in through the normal sign-in path, which
+        also bootstraps the workspace. Otherwise, or when that sign-in does not succeed (the
+        email belongs to an account this password does not open, or the IdP still wants the
+        email link), the caller answers ``verification_sent`` as usual."""
         await self._email_rate_limit(ip)
+        auto_verify = self.settings.auth_auto_verify_email
         try:
-            await self.idp.sign_up(email, password)
+            await self.idp.sign_up(email, password, confirmed=auto_verify)
         except idp_mod.IdpRateLimited as exc:
             raise too_many_requests(60, "Too many sign-up attempts. Try again later.") from exc
         except idp_mod.IdpUnavailable as exc:
             raise _idp_down() from exc
+        if not auto_verify:
+            return None
+        try:
+            return await self.sign_in(email, password, ip)
+        except ProblemError as exc:
+            logger.info("registration auto-verify did not sign in (%s)", exc.code)
+            return None
 
     async def resend_verification(self, email: str, ip: str) -> None:
         await self._email_rate_limit(ip)

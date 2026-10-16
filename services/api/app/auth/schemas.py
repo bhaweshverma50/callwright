@@ -13,7 +13,13 @@ class RegisterRequest(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    status: Literal["verification_sent"] = "verification_sent"
+    """202 ``verification_sent``; or 200 ``signed_in`` with tokens when AUTH_AUTO_VERIFY_EMAIL is on."""
+
+    status: Literal["verification_sent", "signed_in"] = "verification_sent"
+    access_token: str | None = None
+    refresh_token: str | None = None
+    token_type: Literal["bearer"] | None = None
+    expires_in: int | None = None
 
 
 class TokenHashRequest(BaseModel):

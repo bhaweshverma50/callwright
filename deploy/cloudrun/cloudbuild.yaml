@@ -1,0 +1,14 @@
+# Builds the API image on Cloud Build from the repo root (deploy.sh build). The Dockerfile needs
+# BuildKit (cache mounts, COPY --chmod).
+#   gcloud builds submit . --config deploy/cloudrun/cloudbuild.yaml \
+#     --substitutions=_IMAGE=asia-south1-docker.pkg.dev/<project>/callwright/api:<tag> \
+#     --account <account> --project <project>
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env: ["DOCKER_BUILDKIT=1"]
+    args: ["build", "-f", "services/api/Dockerfile", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 1200s

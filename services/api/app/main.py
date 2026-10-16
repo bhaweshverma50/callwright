@@ -15,6 +15,10 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
+from redis.asyncio.retry import Retry
+from redis.backoff import NoBackoff
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from app.agent_versions.router import router as agent_versions_router
 from app.agent_versions.runtime_port import register as register_agent_versions
@@ -36,6 +40,8 @@ from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
+from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
+from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
 from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
@@ -95,6 +101,38 @@ def _instrument_db(db: Database) -> None:
     )
 
 
+def build_redis(settings: Settings) -> Redis:
+    """The API's Redis client: short timeouts (a stopped VM must not hang requests), a health
+    check on idle pooled connections and one retry, so connections broken by a VM restart are
+    replaced instead of failing the next request."""
+    client: Redis = Redis.from_url(
+        settings.redis_url,
+        socket_connect_timeout=settings.redis_connect_timeout_s,
+        socket_timeout=settings.redis_socket_timeout_s,
+        health_check_interval=30,
+        retry=Retry(NoBackoff(), 1),
+        retry_on_error=[RedisConnectionError, RedisTimeoutError],
+    )
+    return client
+
+
+def _log_hosting_flags(settings: Settings) -> None:
+    if settings.auth_auto_verify_email:
+        logger.warning(
+            "AUTH_AUTO_VERIFY_EMAIL is on: registration confirms accounts without an email check "
+            "(ENV=%s). Use it only for a demo.",
+            settings.env,
+        )
+    dev_routes = settings.dev_routes_enabled or settings.fake_checkout_enabled
+    if settings.env not in ("dev", "test") and dev_routes:
+        logger.warning(
+            "development routes are mounted (ENV=%s): dev mail and storage previews %s, fake checkout %s",
+            settings.env,
+            "on" if settings.dev_routes_enabled else "off",
+            "on" if settings.fake_checkout_enabled else "off",
+        )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_json)
@@ -102,7 +140,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         db = Database(settings.database_url, settings.database_admin_url, pool_size=settings.db_pool_size)
-        redis = Redis.from_url(settings.redis_url)
+        redis = build_redis(settings)
         _instrument_db(db)
         app.state.db = db
         app.state.redis = redis
@@ -119,9 +157,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.webhook_http = httpx.AsyncClient(follow_redirects=False)
         app.state.storage = build_store(settings)
         app.state.llm_client = LlmClient(settings)
+        app.state.vm_waker = VmWaker(settings.wake_vm_project, settings.wake_vm_zone, settings.wake_vm_name)
         try:
             yield
         finally:
+            await app.state.vm_waker.aclose()
             await app.state.webhook_http.aclose()
             await jobs.aclose()
             await app.state.livekit.aclose()
@@ -138,7 +178,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     install_error_handlers(app)
+    for exc_class in REDIS_DOWN_ERRORS:
+        app.add_exception_handler(exc_class, redis_down_handler)
     app.add_middleware(UnhandledErrorMiddleware)
+    app.add_middleware(
+        ActivityMarker,
+        redis_getter=lambda: getattr(app.state, "redis", None),
+        skip_prefixes=(f"{API_PREFIX}/health",),
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -167,9 +214,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         prompt_ai_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
-    if settings.dev_tools_enabled:
+    if settings.dev_routes_enabled:
         app.include_router(dev_router, prefix=API_PREFIX)
         app.include_router(dev_storage_router, prefix=API_PREFIX)
+    if settings.fake_checkout_enabled:
+        app.include_router(fake_checkout_router, prefix=API_PREFIX)
+    _log_hosting_flags(settings)
     _setup_tracing(app, settings)
     return app
 

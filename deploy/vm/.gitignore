@@ -1,2 +1,3 @@
 livekit.yaml
 .env
+worker.env

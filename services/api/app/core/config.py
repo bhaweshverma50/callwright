@@ -8,13 +8,14 @@ in reprs, logs or responses.
 
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, Field, SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 DEV_JWT_SECRET = "dev-only-jwt-secret-change-me-0123456789abcdef"  # noqa: S105
 DEV_WEBHOOK_SECRET = "whsec_dev_fake_stripe_webhook_secret"  # noqa: S105
@@ -34,7 +35,10 @@ class Settings(BaseSettings):
         env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore", env_ignore_empty=True
     )
 
-    env: Literal["dev", "test", "prod"] = "dev"
+    # dev and test run with offline defaults; staging is a hosted non-production deployment (the
+    # demo): dev secrets are refused like prod, but the local IdP, fake Stripe and fake LiveKit
+    # are allowed. "production" and "development" are accepted as aliases.
+    env: Literal["dev", "test", "staging", "prod"] = "dev"
     version: str = "0.1.0+dev"
     log_level: str = "INFO"
     log_json: bool = False
@@ -49,11 +53,25 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
 
     redis_url: str = "redis://localhost:56379/0"
+    # Fail fast when Redis is away (the realtime VM is stopped): the API then answers 503
+    # waking_up instead of hanging on a TCP connect to a powered-off address.
+    redis_connect_timeout_s: float = Field(2.0, gt=0, le=30)
+    redis_socket_timeout_s: float = Field(5.0, gt=0, le=60)
+    # The VM that hosts Redis, LiveKit and the workers (deploy/vm). When all three are set, a
+    # Redis outage starts it through the Compute Engine API (app/core/vm_waker.py).
+    wake_vm_project: str | None = None
+    wake_vm_zone: str | None = None
+    wake_vm_name: str | None = None
 
     # Public URLs
     api_base_url: str = "http://localhost:8100"
     web_base_url: str = "http://localhost:5180"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5180"])
+    # CORS_ORIGINS: comma separated ("https://a.example,https://b.example") or a JSON list.
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["http://localhost:5180"])
+    # Proxies in front of the API that append to X-Forwarded-For (Cloud Run: 1; Cloud Run behind
+    # an external HTTPS load balancer: 2). 0 ignores the header and uses the socket peer. Client
+    # IPs feed the sign-in throttles and rate limits, so only count proxies you control.
+    trusted_proxy_hops: int = Field(0, ge=0, le=5)
 
     # Identity provider: "local" is the offline dev IdP; "supabase" is production.
     auth_provider: Literal["local", "supabase"] = "local"
@@ -62,6 +80,10 @@ class Settings(BaseSettings):
     auth_jwt_audience: str = "authenticated"
     auth_jwt_issuer: str | None = None
     auth_access_token_ttl_s: int = 3600
+    # Hosted demo without email delivery: registration confirms the account at once and returns
+    # session tokens. Refused when ENV=prod unless ALLOW_AUTO_VERIFY_IN_PRODUCTION=true.
+    auth_auto_verify_email: bool = False
+    allow_auto_verify_in_production: bool = False
     supabase_url: str | None = None
     supabase_anon_key: SecretStr | None = None
     supabase_service_key: SecretStr | None = None
@@ -118,6 +140,15 @@ class Settings(BaseSettings):
 
     otel_exporter_otlp_endpoint: str | None = None
 
+    # Development routes. ENABLE_DEV_ROUTES covers /v1/dev/mail and the fake storage previews;
+    # ENABLE_FAKE_CHECKOUT covers /v1/dev/fake-checkout (STRIPE_MODE=fake only). Unset means on
+    # for ENV=dev and test, off otherwise; fake checkout follows ENABLE_DEV_ROUTES when unset.
+    enable_dev_routes: bool | None = None
+    enable_fake_checkout: bool | None = None
+
+    # arq polling interval. Metered Redis (Upstash bills per command) is cheaper at 2 to 5 s.
+    arq_poll_delay_s: float = Field(0.5, gt=0, le=60)
+
     # --- 002 agent builder ----------------------------------------------------------------
     # Object storage (ambient audio uploads; later recordings and KB documents). "fake" keeps
     # objects in process memory and serves previews through a signed dev route.
@@ -141,6 +172,24 @@ class Settings(BaseSettings):
     azure_openai_api_key: SecretStr | None = None
     azure_openai_api_version: str = "2025-04-01-preview"
     anthropic_api_key: SecretStr | None = None
+
+    @field_validator("env", mode="before")
+    @classmethod
+    def _env_alias(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip().lower()
+            return {"production": "prod", "development": "dev"}.get(value, value)
+        return value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                return json.loads(raw)
+            return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+        return value
 
     @model_validator(mode="after")
     def _check(self) -> Settings:
@@ -167,7 +216,7 @@ class Settings(BaseSettings):
             if isinstance(value, SecretStr) and value.get_secret_value().startswith("enc:"):
                 plain = decrypt_config_value(value.get_secret_value(), self.secrets_master_key)
                 object.__setattr__(self, name, SecretStr(plain))
-        if self.env == "prod":
+        if self.env in ("staging", "prod"):
             insecure = [
                 n
                 for n, default in (
@@ -178,15 +227,21 @@ class Settings(BaseSettings):
                     ("livekit_api_secret", DEV_LIVEKIT_SECRET),
                 )
                 if getattr(self, n).get_secret_value() == default
+                and not (n == "livekit_api_secret" and self.livekit_mode == "fake")
             ]
             if insecure:
-                raise ValueError(f"production settings use dev defaults: {', '.join(insecure)}")
+                raise ValueError(f"{self.env} settings use dev defaults: {', '.join(insecure)}")
+        if self.env == "prod":
             if self.auth_provider == "local" or self.stripe_mode == "fake":
                 raise ValueError("production requires AUTH_PROVIDER=supabase and STRIPE_MODE=live")
             if self.livekit_mode == "fake" or self.webhooks_allow_http or self.webhooks_allow_private:
                 raise ValueError(
                     "production requires LIVEKIT_MODE=live and refuses WEBHOOKS_ALLOW_HTTP/PRIVATE"
                 )
+        if self.auth_auto_verify_email and self.env == "prod" and not self.allow_auto_verify_in_production:
+            raise ValueError(
+                "AUTH_AUTO_VERIFY_EMAIL is refused when ENV=prod unless ALLOW_AUTO_VERIFY_IN_PRODUCTION=true"
+            )
         if self.auth_provider == "supabase" and not self.supabase_url:
             raise ValueError("AUTH_PROVIDER=supabase requires SUPABASE_URL")
         if self.stripe_mode == "live" and not self.stripe_secret_key:
@@ -196,6 +251,22 @@ class Settings(BaseSettings):
     @property
     def dev_tools_enabled(self) -> bool:
         return self.env != "prod"
+
+    @property
+    def dev_routes_enabled(self) -> bool:
+        """/v1/dev/mail and the fake storage previews."""
+        if self.enable_dev_routes is not None:
+            return self.enable_dev_routes
+        return self.env in ("dev", "test")
+
+    @property
+    def fake_checkout_enabled(self) -> bool:
+        """/v1/dev/fake-checkout, the stand-in for Stripe's hosted page (STRIPE_MODE=fake only)."""
+        if self.stripe_mode != "fake":
+            return False
+        if self.enable_fake_checkout is not None:
+            return self.enable_fake_checkout
+        return self.dev_routes_enabled
 
     @property
     def livekit_client_url(self) -> str:

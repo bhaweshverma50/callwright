@@ -36,10 +36,14 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.execute(_role("callwright_app", APP_PASSWORD))
     op.execute(_role("callwright_admin", ADMIN_PASSWORD))
+    # On managed Postgres the migrating role may not own the database; PUBLIC keeps CONNECT by
+    # default there and scripts/bootstrap_managed_db.sql grants it, so a refusal is not fatal.
     op.execute("""
     DO $$
     BEGIN
       EXECUTE format('GRANT CONNECT ON DATABASE %I TO callwright_app, callwright_admin', current_database());
+    EXCEPTION WHEN insufficient_privilege THEN
+      RAISE NOTICE 'GRANT CONNECT skipped: % (grant it as the database owner if PUBLIC lacks CONNECT)', SQLERRM;
     END $$;
     """)
     op.execute("GRANT USAGE ON SCHEMA public TO callwright_app, callwright_admin")

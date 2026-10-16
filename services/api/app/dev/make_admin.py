@@ -10,13 +10,13 @@ import asyncio
 import sys
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import get_settings
+from app.core.db import make_engine
 
 
 async def grant(email: str) -> bool:
-    engine = create_async_engine(get_settings().database_owner_url)
+    engine = make_engine(get_settings().database_owner_url)
     try:
         async with engine.begin() as conn:
             result = await conn.execute(

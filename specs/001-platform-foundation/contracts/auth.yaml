@@ -14,6 +14,12 @@ paths:
       tags: [auth]
       security: []
       summary: Create an account and send a verification email
+      description: >-
+        On a demo deployment with AUTH_AUTO_VERIFY_EMAIL=true the account is verified at once and
+        the response is 200 with session tokens (the workspace and trial credit exist). When the
+        email already belongs to an account the password does not open, the answer is the usual
+        202. That difference tells a caller the email is taken, one reason auto-verify is for
+        demos only (it is refused in production unless explicitly allowed).
       requestBody:
         required: true
         content:
@@ -25,6 +31,11 @@ paths:
                 email: {type: string, format: email, maxLength: 254}
                 password: {type: string, minLength: 10, maxLength: 128}
       responses:
+        '200':
+          description: Account verified and signed in (AUTH_AUTO_VERIFY_EMAIL only)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RegisteredSession'}
         '202':
           description: Verification email sent (also returned when the email already exists, to avoid enumeration)
           content:
@@ -197,3 +208,10 @@ components:
         refresh_token: {type: string}
         token_type: {type: string, enum: [bearer]}
         expires_in: {type: integer, description: Seconds until the access token expires}
+    RegisteredSession:
+      allOf:
+        - $ref: '#/components/schemas/Session'
+        - type: object
+          required: [status]
+          properties:
+            status: {type: string, enum: [signed_in]}

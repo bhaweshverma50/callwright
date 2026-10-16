@@ -10,6 +10,7 @@ export type MoneyUsd = S["MoneyUsd"];
 export type PageMeta = S["PageMeta"];
 
 export type Session = S["Session"];
+export type RegisteredSession = S["RegisteredSession"];
 export type Me = S["Me"];
 export type User = S["User"];
 export type Workspace = S["Workspace"];

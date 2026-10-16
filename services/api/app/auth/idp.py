@@ -94,7 +94,10 @@ class OutboxMessage:
 class IdentityProvider(Protocol):
     name: str
 
-    async def sign_up(self, email: str, password: str) -> None: ...
+    async def sign_up(self, email: str, password: str, *, confirmed: bool = False) -> None:
+        """Create the account. ``confirmed`` (AUTH_AUTO_VERIFY_EMAIL) skips the verification
+        email where the adapter can; Supabase decides through its own "Confirm email" setting."""
+        ...
 
     async def resend_verification(self, email: str) -> None: ...
 
@@ -237,22 +240,38 @@ class LocalIdentityProvider:
 
     # protocol --------------------------------------------------------------------------
 
-    async def sign_up(self, email: str, password: str) -> None:
+    async def sign_up(self, email: str, password: str, *, confirmed: bool = False) -> None:
         existing = await self._user_by_email(email)
         if existing is not None:
             if existing.email_confirmed_at is None:
-                await self._issue_token(existing.id, existing.email, "verify_email")
+                # Auto-verify confirms an unverified account only for the password that made it.
+                if confirmed and check_password(password, existing.password_hash):
+                    await self._confirm(existing.id)
+                else:
+                    await self._issue_token(existing.id, existing.email, "verify_email")
             return
         user_id = str(uuid.uuid4())
         async with self.db.transaction() as s:
             await s.execute(
                 text(
-                    "insert into local_idp.users (id, email, password_hash) values (:id, :e, :p) "
+                    "insert into local_idp.users (id, email, password_hash, email_confirmed_at) "
+                    "values (:id, :e, :p, case when :confirmed then now() end) "
                     "on conflict (email) do nothing"
                 ),
-                {"id": user_id, "e": email.lower(), "p": hash_password(password)},
+                {"id": user_id, "e": email.lower(), "p": hash_password(password), "confirmed": confirmed},
             )
-        await self._issue_token(user_id, email.lower(), "verify_email")
+        if not confirmed:
+            await self._issue_token(user_id, email.lower(), "verify_email")
+
+    async def _confirm(self, user_id: str) -> None:
+        async with self.db.transaction() as s:
+            await s.execute(
+                text(
+                    "update local_idp.users set email_confirmed_at = coalesce(email_confirmed_at, now()) "
+                    "where id = :id"
+                ),
+                {"id": user_id},
+            )
 
     async def resend_verification(self, email: str) -> None:
         user = await self._user_by_email(email)
@@ -261,14 +280,7 @@ class LocalIdentityProvider:
 
     async def verify_email(self, token_hash: str) -> IdpSession:
         row = await self._consume(token_hash, "verify_email")
-        async with self.db.transaction() as s:
-            await s.execute(
-                text(
-                    "update local_idp.users set email_confirmed_at = coalesce(email_confirmed_at, now()) "
-                    "where id = :id"
-                ),
-                {"id": row.id},
-            )
+        await self._confirm(row.id)
         return await self._new_session(row.id, row.email)
 
     async def sign_in(self, email: str, password: str) -> IdpSession:
@@ -410,7 +422,8 @@ class SupabaseIdentityProvider:
             ),
         )
 
-    async def sign_up(self, email: str, password: str) -> None:
+    async def sign_up(self, email: str, password: str, *, confirmed: bool = False) -> None:
+        # ``confirmed`` is decided by the project's "Confirm email" setting in Supabase.
         response = await self._post(
             "/signup",
             {"email": email, "password": password},

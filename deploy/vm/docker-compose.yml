@@ -1,6 +1,8 @@
-# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis.
-# Secrets come from /opt/callwright/.env, written by deploy/vm/render-env.sh from Secret Manager.
-# The voice worker joins this file once vendor keys exist (see deploy/vm/README.md).
+# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis, the arq jobs worker.
+# Secrets come from /opt/callwright/.env and worker.env, written by deploy/vm/render-env.sh from
+# Secret Manager. The voice worker joins this file once vendor keys exist (see deploy/vm/README.md).
+# Every service restarts on its own after the VM boots (restart: unless-stopped, docker enabled
+# at boot by install-idle.sh); the VM powers itself off when idle (idle-shutdown.sh).
 services:
   caddy:
     image: caddy:2.8.4
@@ -29,6 +31,20 @@ services:
     command: ["redis-server", "--port", "6379", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
+
+  # arq jobs worker: the API image (deploy/cloudrun builds and pushes it) in ROLE=worker, with a
+  # small health listener on PORT. Pull access: the VM service account needs
+  # roles/artifactregistry.reader (see README.md).
+  worker:
+    image: ${API_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/api:latest}
+    restart: unless-stopped
+    network_mode: host
+    env_file: worker.env
+    environment:
+      ROLE: worker
+      PORT: "8191"
+    depends_on:
+      - redis
 
 volumes:
   caddy_data:

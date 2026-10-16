@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.core.auth import AdminPrincipal
+from app.core.client_ip import client_ip
 from app.core.errors import ProblemError, problem_responses, too_many_requests
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.core.rate_limit import RateLimiter
@@ -38,7 +39,7 @@ async def get_pricing_catalog(
 
 @router.post("/pricing/quote", responses=problem_responses(422, 429))
 async def quote_price(body: QuoteRequest, request: Request) -> dict[str, Any]:
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     limit = request.app.state.settings.quote_rate_limit_per_min
     result = await RateLimiter(request.app.state.redis).hit("quote", ip, limit=limit, window_s=60)
     if not result.allowed:

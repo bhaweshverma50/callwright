@@ -11,10 +11,31 @@ from typing import Any, Protocol
 from arq.connections import ArqRedis, RedisSettings, create_pool
 
 
+def redis_settings_for(url: str, *, conn_timeout: float = 1.0, conn_retries: int = 5) -> RedisSettings:
+    """arq connection settings from a ``redis://`` or ``rediss://`` (TLS) URL. TLS verifies the
+    server certificate and host name against the system CAs; ``?ssl_cert_reqs=none`` turns
+    verification off (self-signed test servers only)."""
+    from urllib.parse import parse_qs, urlparse
+
+    settings = RedisSettings.from_dsn(url)
+    settings.conn_timeout = max(1, round(conn_timeout))
+    settings.conn_retries = conn_retries
+    if settings.ssl:
+        query = parse_qs(urlparse(url).query)
+        reqs = (query.get("ssl_cert_reqs") or ["required"])[0].lower()
+        settings.ssl_cert_reqs = reqs
+        settings.ssl_check_hostname = reqs == "required"
+    return settings
+
+
 def _default_settings() -> RedisSettings:
     from app.core.config import get_settings
 
-    return RedisSettings.from_dsn(get_settings().redis_url)
+    settings = get_settings()
+    # Request handlers enqueue: fail fast so a stopped VM turns into a 503 waking_up quickly.
+    return redis_settings_for(
+        settings.redis_url, conn_timeout=settings.redis_connect_timeout_s, conn_retries=1
+    )
 
 
 class JobQueue(Protocol):
