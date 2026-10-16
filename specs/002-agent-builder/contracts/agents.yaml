@@ -126,7 +126,7 @@ paths:
           description: Result (always 200; `valid` says whether a save would pass)
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ValidationResult'}
+              schema: {$ref: '#/components/schemas/ConfigValidationResult'}
         '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
   /agents/{agent_id}:
     parameters:
@@ -277,21 +277,21 @@ components:
     AgentType:
       type: string
       enum: [single_prompt, flow]
-    Issue:
+    ConfigIssue:
       type: object
       required: [pointer, code, message]
       properties:
         pointer: {type: string, examples: [/llm/temperature, '/dynamic_variables[customer_name]/name']}
         code: {type: string}
         message: {type: string}
-    ValidationResult:
+    ConfigValidationResult:
       type: object
       required: [valid, errors, publish_blockers, warnings, normalized_config]
       properties:
         valid: {type: boolean}
-        errors: {type: array, items: {$ref: '#/components/schemas/Issue'}}
-        publish_blockers: {type: array, items: {$ref: '#/components/schemas/Issue'}}
-        warnings: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        errors: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
+        publish_blockers: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
         normalized_config: {$ref: '#/components/schemas/AgentConfig'}
     VersionRef:
       type: object
@@ -332,8 +332,8 @@ components:
           oneOf:
             - {$ref: '#/components/schemas/VersionRef'}
             - {type: 'null'}
-        publish_blockers: {type: array, items: {$ref: '#/components/schemas/Issue'}}
-        warnings: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        publish_blockers: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
     SaveResult:
@@ -343,8 +343,8 @@ components:
         agent: {$ref: '#/components/schemas/AgentDetail'}
         created: {type: boolean, description: false when the config was unchanged}
         version: {$ref: '#/components/schemas/VersionRef'}
-        warnings: {type: array, items: {$ref: '#/components/schemas/Issue'}}
-        publish_blockers: {type: array, items: {$ref: '#/components/schemas/Issue'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
+        publish_blockers: {type: array, items: {$ref: '#/components/schemas/ConfigIssue'}}
     ModelRef:
       type: object
       required: [provider, model]

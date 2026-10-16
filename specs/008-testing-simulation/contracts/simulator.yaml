@@ -479,7 +479,7 @@ components:
         error_message: { type: [string, 'null'] }
         created_at: { type: string, format: date-time }
         finished_at: { type: [string, 'null'], format: date-time }
-    TranscriptItem:
+    SimTranscriptItem:
       type: object
       description: Same item shape as the call transcript in 006, plus answer_source on tool outputs
       required: [type]
@@ -500,7 +500,7 @@ components:
         call_id: { type: string }
         transcript:
           type: array
-          items: { $ref: '#/components/schemas/TranscriptItem' }
+          items: { $ref: '#/components/schemas/SimTranscriptItem' }
         node_path:
           type: array
           items:

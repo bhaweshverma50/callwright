@@ -148,7 +148,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationResult'
+                $ref: '#/components/schemas/FlowValidationResult'
         '404':
           $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'
   /flows/{flow_id}/compile:
@@ -341,7 +341,7 @@ components:
           $ref: '#/components/schemas/FlowGraph'
         revision: {type: integer, minimum: 1}
         last_validation:
-          $ref: '#/components/schemas/ValidationResult'
+          $ref: '#/components/schemas/FlowValidationResult'
         last_published_version_id: {type: [string, 'null'], pattern: '^agv_'}
         agent_draft_revision:
           type: integer
@@ -621,7 +621,7 @@ components:
         node_id: {type: [string, 'null']}
         edge_id: {type: [string, 'null']}
         field: {type: [string, 'null']}
-    ValidationResult:
+    FlowValidationResult:
       type: object
       required: [errors, warnings, issues]
       properties:

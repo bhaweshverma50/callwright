@@ -95,7 +95,7 @@ paths:
           description: Issue with current fix, latest validation and post-apply tracking
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Issue' }
+              schema: { $ref: '#/components/schemas/DetectedIssue' }
         '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /issues/{issue_id}/samples:
     get:
@@ -276,7 +276,7 @@ paths:
           description: Cancelled; issue back to open
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Issue' }
+              schema: { $ref: '#/components/schemas/DetectedIssue' }
         '409':
           description: No validation running
           content:
@@ -306,7 +306,7 @@ paths:
                 type: object
                 required: [issue, agent_version_id, published, tool_copies]
                 properties:
-                  issue: { $ref: '#/components/schemas/Issue' }
+                  issue: { $ref: '#/components/schemas/DetectedIssue' }
                   agent_version_id: { type: string, pattern: '^agv_' }
                   published: { type: boolean }
                   release_notes: { type: string }
@@ -352,7 +352,7 @@ paths:
           description: Dismissed (a running validation is cancelled)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Issue' }
+              schema: { $ref: '#/components/schemas/DetectedIssue' }
         '409':
           description: Issue already applied or dismissed
           content:
@@ -409,7 +409,7 @@ components:
         recurrence_of: { type: [string, 'null'] }
         first_seen_at: { type: string, format: date-time }
         last_seen_at: { type: string, format: date-time }
-    Issue:
+    DetectedIssue:
       allOf:
         - { $ref: '#/components/schemas/IssueSummary' }
         - type: object

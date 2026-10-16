@@ -131,7 +131,7 @@ paths:
                   call_id: { type: string }
                   items:
                     type: array
-                    items: { $ref: "#/components/schemas/TranscriptItem" }
+                    items: { $ref: "#/components/schemas/CallTranscriptItem" }
         "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
   /calls/{call_id}/turn-latencies:
     get:
@@ -295,7 +295,7 @@ components:
         p50_ms: { type: [integer, "null"] }
         p95_ms: { type: [integer, "null"] }
         turns_measured: { type: integer }
-    CostLine:
+    CallCostLine:
       type: object
       required: [component, rate_per_min_usd, billed_minutes, cost_usd]
       properties:
@@ -327,7 +327,7 @@ components:
             total_usd: { type: number }
         lines:
           type: array
-          items: { $ref: "#/components/schemas/CostLine" }
+          items: { $ref: "#/components/schemas/CallCostLine" }
         surcharges:
           type: array
           items: { $ref: "#/components/schemas/SurchargeLine" }
@@ -347,7 +347,7 @@ components:
                 - { $ref: "#/components/schemas/CostView" }
                 - { type: "null" }
             processing_state: { type: string, enum: [pending, done] }
-    TranscriptItem:
+    CallTranscriptItem:
       oneOf:
         - type: object
           required: [id, type, role, text, interrupted, offset_ms]
@@ -401,7 +401,7 @@ components:
         to_node_label: { type: [string, "null"] }
         transition_label: { type: [string, "null"] }
         occurred_offset_ms: { type: [integer, "null"] }
-    VerdictSide:
+    CallVerdictSide:
       type: object
       properties:
         verdict: { type: [string, "null"], enum: [pass, fail, not_applicable, null] }
@@ -438,7 +438,7 @@ components:
             properties:
               evaluator_id: { type: string }
               evaluator_name: { type: string }
-              left: { $ref: "#/components/schemas/VerdictSide" }
-              right: { $ref: "#/components/schemas/VerdictSide" }
+              left: { $ref: "#/components/schemas/CallVerdictSide" }
+              right: { $ref: "#/components/schemas/CallVerdictSide" }
               score_delta: { type: [number, "null"] }
               right_rationale: { type: [string, "null"] }

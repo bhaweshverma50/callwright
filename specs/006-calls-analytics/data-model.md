@@ -116,7 +116,7 @@ All `WITH (security_invoker = true)`; role `cw_analytics_reader` has `SELECT` on
 
 ## 3. Read models (API shapes)
 
-### TranscriptItem (discriminated by `type`)
+### CallTranscriptItem (discriminated by `type`)
 
 | type | fields |
 |---|---|

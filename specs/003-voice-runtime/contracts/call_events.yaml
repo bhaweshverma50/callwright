@@ -175,8 +175,8 @@ components:
             type:
               const: transcript_item
             item:
-              $ref: '#/components/schemas/TranscriptItem'
-    TranscriptItem:
+              $ref: '#/components/schemas/RuntimeTranscriptItem'
+    RuntimeTranscriptItem:
       type: object
       required: [type]
       properties:

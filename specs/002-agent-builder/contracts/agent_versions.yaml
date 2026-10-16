@@ -225,7 +225,7 @@ components:
             config: {$ref: './agents.yaml#/components/schemas/AgentConfig'}
             publish_blockers:
               type: array
-              items: {$ref: './agents.yaml#/components/schemas/Issue'}
+              items: {$ref: './agents.yaml#/components/schemas/ConfigIssue'}
     Change:
       type: object
       required: [op, path]

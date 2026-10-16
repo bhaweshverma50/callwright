@@ -143,9 +143,9 @@ Built-in ambient sound ids: `office_ambience`, `city_ambience`, `forest_ambience
 ## 5. Validation result
 
 ```text
-ValidationResult {
+ConfigValidationResult {
   valid: bool                      # no errors
-  errors[]:            {pointer, code, message}   # block save
+  errors[]:            ConfigIssue {pointer, code, message}   # block save
   publish_blockers[]:  {pointer, code, message}   # block publish
   warnings[]:          {pointer, code, message}
   normalized_config:   AgentConfig                # defaults filled, fixed temperature applied, empty rows dropped

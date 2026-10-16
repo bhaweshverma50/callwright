@@ -139,8 +139,8 @@ paths:
                         evaluator_id: { type: string }
                         evaluator_name: { type: string }
                         display_name: { type: string }
-                        base: { $ref: "#/components/schemas/VerdictSide" }
-                        other: { $ref: "#/components/schemas/VerdictSide" }
+                        base: { $ref: "#/components/schemas/EvalVerdictSide" }
+                        other: { $ref: "#/components/schemas/EvalVerdictSide" }
                         score_delta: { type: [number, "null"] }
                         other_rationale: { type: [string, "null"] }
         "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
@@ -149,7 +149,7 @@ components:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   schemas:
     Verdict: { type: string, enum: [pass, fail, not_applicable] }
-    VerdictSide:
+    EvalVerdictSide:
       type: object
       properties:
         verdict:
