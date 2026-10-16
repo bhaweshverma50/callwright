@@ -88,6 +88,30 @@ class Settings(BaseSettings):
 
     otel_exporter_otlp_endpoint: str | None = None
 
+    # --- 002 agent builder ----------------------------------------------------------------
+    # Object storage (ambient audio uploads; later recordings and KB documents). "fake" keeps
+    # objects in process memory and serves previews through a signed dev route.
+    storage_mode: Literal["fake", "s3"] = "fake"
+    s3_endpoint_url: str | None = None  # e.g. http://localhost:59000 for the compose MinIO
+    s3_region: str = "us-east-1"
+    s3_bucket: str = "callwright"
+    s3_access_key_id: SecretStr | None = None
+    s3_secret_access_key: SecretStr | None = None
+    # Vendor keys for voice listings (voices/adapters). Without a key the adapter serves its
+    # bundled sample list (fake mode).
+    elevenlabs_api_key: SecretStr | None = None
+    cartesia_api_key: SecretStr | None = None
+    # API-side model gateway (llms/client.py). "fake" or a missing provider key selects the
+    # deterministic fake adapter.
+    prompt_ai_model: str = "azure_openai/gpt-5-mini"
+    prompt_ai_timeout_s: float = 60.0
+    prompt_ai_rate_limit_per_min: int = 20
+    openai_api_key: SecretStr | None = None
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: SecretStr | None = None
+    azure_openai_api_version: str = "2025-04-01-preview"
+    anthropic_api_key: SecretStr | None = None
+
     @model_validator(mode="after")
     def _check(self) -> Settings:
         from app.core.secrets import decrypt_config_value
@@ -99,6 +123,13 @@ class Settings(BaseSettings):
             "stripe_secret_key",
             "stripe_webhook_secret",
             "service_token",
+            "s3_access_key_id",
+            "s3_secret_access_key",
+            "elevenlabs_api_key",
+            "cartesia_api_key",
+            "openai_api_key",
+            "azure_openai_api_key",
+            "anthropic_api_key",
         ):
             value = getattr(self, name)
             if isinstance(value, SecretStr) and value.get_secret_value().startswith("enc:"):

@@ -28,6 +28,8 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.66b1",
     "opentelemetry-instrumentation-httpx>=0.66b1",
     "opentelemetry-instrumentation-redis>=0.66b1",
+    "boto3>=1.43.114",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]
@@ -38,6 +40,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "types-pyyaml>=6.0",
+    "types-boto3>=1.43.114",
 ]
 
 [tool.uv]
