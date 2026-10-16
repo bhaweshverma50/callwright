@@ -1,0 +1,75 @@
+[project]
+name = "callwright-api"
+version = "0.1.0"
+description = "Callwright API service (FastAPI) and its arq jobs worker"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "email-validator>=2.2",
+    "sqlalchemy[asyncio]>=2.0.32",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "arq>=0.26",
+    "redis>=5.0",
+    "python-ulid>=2.7",
+    "pyjwt[crypto]>=2.9",
+    "cryptography>=43",
+    "httpx>=0.27",
+    "stripe>=10.0",
+    "pyyaml>=6.0",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "psycopg[binary]>=3.2",
+    "opentelemetry-instrumentation-sqlalchemy>=0.66b1",
+    "opentelemetry-instrumentation-httpx>=0.66b1",
+    "opentelemetry-instrumentation-redis>=0.66b1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "openapi-core>=0.19",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-pyyaml>=6.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["app/migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "RUF"]
+ignore = ["S101", "B008", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311", "S603", "S608"]
+"app/dev/**" = ["S105"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+ignore_missing_imports = true
+exclude = ["app/migrations/versions/"]
+
+[[tool.mypy.overrides]]
+module = ["app.core.*", "app.pricing.*", "app.billing.*", "app.usage.*"]
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
