@@ -1,5 +1,5 @@
-import { FolderOpen } from "@phosphor-icons/react";
-import { BrainCircuit, Captions, Ear, Mic, Moon, Play, Plus, Shuffle, Sun, Trash2, Volume2 } from "lucide-react";
+import { FolderOpen, PhoneCall as PhoneCallDuo, PhoneList, Robot } from "@phosphor-icons/react";
+import { BrainCircuit, Captions, Disc, Ear, Gauge, Mail, Mic, Moon, Play, Plus, Shuffle, Sun, Trash2, Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
@@ -26,9 +26,14 @@ import {
   Reveal,
   RevealItem,
   Select,
+  InfoRow,
+  Panel,
+  PanelRows,
   Skeleton,
   Slider,
+  Stepper,
   Switch,
+  SwitchControl,
   TabPanel,
   Table,
   Tabs,
@@ -429,6 +434,92 @@ export function ComponentsGallery() {
             Route transitions (fade and rise), drawers, dialogs, menus and toasts animate on open and close; open the overlays below to see them.
             Ticker values end on the exact figure, for example {formatUsd(BigInt(ticker), { places: 3 })}.
           </p>
+        </Section>
+
+        <Section
+          title="Stepper"
+          note="Numbered because order matters. One centre axis, a continuous connector, done steps fill the segment below them."
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Demo name="First step active">
+              <Stepper
+                label="Setup, nothing done"
+                steps={[
+                  {
+                    title: "Create an agent",
+                    description: "Write what it should do.",
+                    icon: <Robot weight="duotone" />,
+                    status: "active",
+                    action: (
+                      <Button size="sm" variant="primary">
+                        Create an agent
+                      </Button>
+                    ),
+                  },
+                  {
+                    title: "Make a test call",
+                    description: "Talk to it from the browser.",
+                    icon: <PhoneCallDuo weight="duotone" />,
+                    status: "pending",
+                  },
+                  { title: "Connect a number", description: "Put it on a phone line.", icon: <PhoneList weight="duotone" />, status: "pending" },
+                ]}
+              />
+            </Demo>
+            <Demo name="Done, active and pending">
+              <Stepper
+                label="Setup, one done"
+                steps={[
+                  { title: "Create an agent", description: "Front desk agent is ready.", icon: <Robot weight="duotone" />, status: "done" },
+                  {
+                    title: "Make a test call",
+                    description: "Talk to it from the browser.",
+                    icon: <PhoneCallDuo weight="duotone" />,
+                    status: "active",
+                    action: (
+                      <Button size="sm" variant="primary">
+                        Make a test call
+                      </Button>
+                    ),
+                  },
+                  { title: "Connect a number", description: "Put it on a phone line.", icon: <PhoneList weight="duotone" />, status: "pending" },
+                ]}
+              />
+            </Demo>
+          </div>
+        </Section>
+
+        <Section
+          title="Panels and rows"
+          note="One card anatomy: icon, title and one-line description in the header; rows with the icon and label left, the value or control right."
+        >
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <Panel title="Workspace" description="Name and defaults for new calls." icon={<Gauge />} bodyClassName="p-0">
+              <PanelRows>
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <span className="flex items-center gap-3 text-[13.5px] font-medium text-fg">
+                    <Disc className="size-4 text-fg-3" aria-hidden />
+                    Switch, on and off
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <SwitchControl aria-label="Demo switch on" checked onCheckedChange={() => {}} />
+                    <SwitchControl aria-label="Demo switch off" checked={false} onCheckedChange={() => {}} />
+                    <SwitchControl aria-label="Demo switch disabled" checked disabled onCheckedChange={() => {}} />
+                  </span>
+                </div>
+              </PanelRows>
+            </Panel>
+            <Panel title="Limits and account" description="Contact support to change these." icon={<Gauge />} bodyClassName="p-0">
+              <PanelRows as="dl">
+                <InfoRow icon={<Gauge />} label="Concurrent calls">
+                  <span className="font-mono tnum">5</span> at once
+                </InfoRow>
+                <InfoRow icon={<Mail />} label="Account email" title="operations-team+frontdesk@halcyon-dental-group.com">
+                  operations-team+frontdesk@halcyon-dental-group.com
+                </InfoRow>
+              </PanelRows>
+            </Panel>
+          </div>
         </Section>
 
         <Section title="Tabs">
