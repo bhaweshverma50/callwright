@@ -3,6 +3,7 @@ import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { controlBase } from "./Field";
+import { TruncatedText } from "./TruncatedText";
 
 export interface SelectOption {
   value: string;
@@ -48,6 +49,7 @@ export function Select({
   ...aria
 }: SelectProps) {
   const allGroups: SelectGroup[] = groups ?? [{ label: "", options: options ?? [] }];
+  const selected = allGroups.flatMap((g) => g.options).find((o) => o.value === value);
   return (
     <RS.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <RS.Trigger
@@ -62,9 +64,10 @@ export function Select({
           className,
         )}
       >
-        <span className="truncate">
+        {/* The trigger takes focus; a cut-off choice shows in full on hover and in the open list. */}
+        <TruncatedText focusable={false} title={selected?.label}>
           <RS.Value placeholder={placeholder} />
-        </span>
+        </TruncatedText>
         <RS.Icon>
           <ChevronDown className="size-4 text-fg-3" aria-hidden />
         </RS.Icon>
