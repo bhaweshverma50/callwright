@@ -31,7 +31,7 @@ def fixed(*addresses: str):  # type: ignore[no-untyped-def]
         "169.254.169.254",  # cloud metadata
         "100.64.0.1",  # CGNAT
         "100.100.100.200",  # Alibaba metadata, inside CGNAT
-        "0.0.0.0",
+        "0.0.0.0",  # noqa: S104 - a blocked address, not a bind
         "224.0.0.1",
         "::1",
         "fe80::1",
