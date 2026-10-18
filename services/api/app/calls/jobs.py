@@ -106,7 +106,10 @@ async def start_recording_for(
                 text(
                     "update calls set recording_status = 'failed', pipeline_warnings = case "
                     "when :warning = any(pipeline_warnings) then pipeline_warnings "
-                    "else array_append(pipeline_warnings, :warning) end "
+                    "else array_append(pipeline_warnings, :warning) end, "
+                    # A short call can finish processing before the start gives up.
+                    "pipeline_status = case when pipeline_status = 'done' then 'done_with_warnings' "
+                    "else pipeline_status end "
                     "where id = :id and recording_status = 'none' and recording_enabled"
                 ),
                 {"id": call_id, "warning": RECORDING_UNAVAILABLE},

@@ -66,6 +66,19 @@ async def test_failed_egress_start_leaves_the_call_running_and_priced(runtime: R
     ) == [(1,)]
 
 
+async def test_egress_failing_after_processing_marks_the_call_with_warnings(runtime: Runtime) -> None:
+    # A short call can be priced and completed before a slow egress start gives up.
+    done = await ended_call(runtime)
+    await runtime.run_jobs("run_pipeline")
+    assert owner_sql("select pipeline_status from calls where id = %s", (done.call_id,)) == [("done",)]
+    runtime.livekit.fail_next.add("start_audio_recording")
+    await start_recording_for(runtime.db, runtime.livekit, BUCKET, done.workspace_id, done.call_id)
+    assert owner_sql(
+        "select status, recording_status, pipeline_status, pipeline_warnings from calls where id = %s",
+        (done.call_id,),
+    ) == [("completed", "failed", "done_with_warnings", [RECORDING_UNAVAILABLE])]
+
+
 class BrokenEgress:
     """A gateway whose egress raises something other than LiveKitError (bug, network, ...)."""
 
