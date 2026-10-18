@@ -20,6 +20,11 @@ class WorkerSettings(BaseSettings):
     role: Literal["live", "textsim"] = Field("live", alias="WORKER_ROLE")
     agent_name: str = Field("callwright-voice", alias="WORKER_AGENT_NAME")
     health_port: int = Field(8190, alias="WORKER_HEALTH_PORT")
+    # Agent server capacity (unset: the framework defaults, 12 prewarmed job processes and a 0.7
+    # load threshold in production). A small VM shares its CPU and memory with LiveKit, so the
+    # hosted deployment sets fewer idle processes and a higher threshold (deploy/vm/render-env.sh).
+    num_idle_processes: int | None = Field(None, alias="WORKER_NUM_IDLE_PROCESSES", ge=0)
+    load_threshold: float | None = Field(None, alias="WORKER_LOAD_THRESHOLD", gt=0, le=1)
 
     internal_api_url: str = Field(
         "http://localhost:8100/v1/internal", alias="CALLWRIGHT_INTERNAL_API_URL"

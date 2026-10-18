@@ -11,8 +11,9 @@ import pytest
 import respx
 
 from tests.harness.runner import CALL_ID
-from worker.entry import claim_job, parse_dispatch_metadata, run_textsim
+from worker.entry import claim_job, create_server, parse_dispatch_metadata, run_textsim
 from worker.internal_api import InternalApiClient
+from worker.settings import WorkerSettings
 from worker.telephony import TelephonyUnavailable, dtmf_code, ring_phase, sip_attributes
 
 BASE = "http://api.test/v1/internal"
@@ -44,6 +45,23 @@ async def test_telephony_stubs_raise_until_010() -> None:
 
 def test_textsim_role_is_a_stub() -> None:
     assert run_textsim() == 2
+
+
+def test_create_server_applies_capacity_settings() -> None:
+    settings = WorkerSettings.model_validate(
+        {"WORKER_NUM_IDLE_PROCESSES": "2", "WORKER_LOAD_THRESHOLD": "0.9"}
+    )
+    server = create_server(settings)
+    assert server._num_idle_processes == 2
+    assert server._load_threshold == 0.9
+
+
+def test_create_server_keeps_framework_defaults_when_unset() -> None:
+    from livekit.agents.worker import ServerEnvOption
+
+    server = create_server(WorkerSettings())
+    assert isinstance(server._num_idle_processes, ServerEnvOption)
+    assert isinstance(server._load_threshold, ServerEnvOption)
 
 
 class Participant:

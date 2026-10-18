@@ -710,7 +710,12 @@ def create_server(
     import livekit.plugins.turn_detector.multilingual  # noqa: F401
     from livekit.agents import AgentServer
 
-    options: dict[str, Any] = {"port": settings.health_port, **server_options}
+    options: dict[str, Any] = {"port": settings.health_port}
+    if settings.num_idle_processes is not None:
+        options["num_idle_processes"] = settings.num_idle_processes
+    if settings.load_threshold is not None:
+        options["load_threshold"] = settings.load_threshold
+    options.update(server_options)
     server = AgentServer(
         setup_fnc=prewarm,
         ws_url=settings.livekit_url,
