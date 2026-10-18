@@ -1,5 +1,5 @@
 import { FlowArrow, PhoneCall } from "@phosphor-icons/react";
-import { ChevronLeft, Clock3, MessageSquareText, Settings2 } from "lucide-react";
+import { ChevronLeft, Clock3, MessageSquareText } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router";
 import { useAgent } from "../../api/agents";
@@ -79,26 +79,6 @@ export function FlowBuilderPlaceholder() {
     >
       Flow agents are drawn as a canvas of steps with branches and per-step prompts. Until the builder is released, single-prompt agents cover most
       call flows: their prompt can describe each step and tools handle transfers.
-    </Later>
-  );
-}
-
-/** `/agents/:id/testing`: test calls ship with spec 003. */
-export function AgentTestingPlaceholder() {
-  const { id = "" } = useParams();
-  return (
-    <Later
-      back={`/agents/${id}/edit`}
-      backLabel="Back to the agent"
-      icon={<PhoneCall weight="duotone" />}
-      title="Test calls are on their way"
-      actions={
-        <Button asChild icon={<Settings2 aria-hidden />}>
-          <Link to={`/agents/${id}/edit`}>Keep editing</Link>
-        </Button>
-      }
-    >
-      Your agent is saved. Soon you will call it from the browser, watch each turn's latency and cost, and save the call as a test case.
     </Later>
   );
 }

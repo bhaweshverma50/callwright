@@ -5,7 +5,7 @@ import { BILLING_ITEM } from "./nav";
 import { AuthGuard } from "./AuthGuard";
 import { RouteError } from "./RouteError";
 import { Shell } from "./Shell";
-import { AgentRedirect, AgentTestingPlaceholder, FlowBuilderPlaceholder } from "../routes/agents/agentRedirect";
+import { AgentRedirect, FlowBuilderPlaceholder } from "../routes/agents/agentRedirect";
 import { DashboardPlaceholder } from "../routes/dashboard/DashboardPlaceholder";
 import { NotFound } from "../routes/NotFound";
 import { AreaPlaceholder, RecordPlaceholder } from "../routes/placeholders/AreaPlaceholder";
@@ -32,8 +32,9 @@ const AgentsListPage = lazy(() => import("../routes/agents/AgentsListPage").then
 const NewAgentTypePage = lazy(() => import("../routes/agents/NewAgentTypePage").then((m) => ({ default: m.NewAgentTypePage })));
 const TemplatesPage = lazy(() => import("../routes/agents/TemplatesPage").then((m) => ({ default: m.TemplatesPage })));
 const AgentEditorPage = lazy(() => import("../routes/agents/editor/AgentEditorPage").then((m) => ({ default: m.AgentEditorPage })));
+const AgentTestingPage = lazy(() => import("../routes/agents/AgentTestingPage").then((m) => ({ default: m.AgentTestingPage })));
 
-/** Agent builder (spec 002, T024). Flow building (004) and test calls (003) are placeholders here. */
+/** Agent builder (spec 002, T024) and browser test calls (003). Flow building (004) is a placeholder here. */
 const agentRoutes: RouteObject[] = [
   { path: "agents", element: <AgentsListPage /> },
   { path: "agents/new", element: <NewAgentTypePage /> },
@@ -43,7 +44,7 @@ const agentRoutes: RouteObject[] = [
   { path: "agents/:id", element: <AgentRedirect /> },
   { path: "agents/:id/edit", element: <AgentEditorPage /> },
   { path: "agents/:id/flow", element: <FlowBuilderPlaceholder /> },
-  { path: "agents/:id/testing", element: <AgentTestingPlaceholder /> },
+  { path: "agents/:id/testing", element: <AgentTestingPage /> },
 ];
 
 /** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */

@@ -7,8 +7,9 @@ import { env } from "../lib/env";
 import { server } from "../mocks/node";
 import { TooltipProvider } from "./Tooltip";
 import { WebCallPanel, type WebCallPanelProps } from "./WebCallPanel";
-import { createMockDriver, type MockOptions, type MockStep, type WebCallDriver } from "./webCall";
-import { checkMicrophone, createLiveDriver } from "./webCallLive";
+import { ApiError } from "../api/errors";
+import { createMockDriver, problemFromError, type MockOptions, type MockStep, type WebCallDriver } from "./webCall";
+import { checkMicrophone, createLiveDriver, parseLatencyMessage } from "./webCallLive";
 
 const AGENT = "agt_01JABCDEF0123456789ABCDEFG";
 
@@ -245,5 +246,47 @@ describe("live driver", () => {
     const s = await createLiveDriver().createSession({ agent_id: AGENT, dynamic_variables: { customer_name: "Priya" } }, "key-12345678");
     expect(s.call_id).toBe("call_01JABCDEF0123456789ABCDEFG");
     expect(seen).toEqual({ key: "key-12345678", body: { agent_id: AGENT, version: "draft", dynamic_variables: { customer_name: "Priya" } } });
+  });
+
+  it("reads the worker's cw.turn_latency messages and ignores malformed ones", () => {
+    const enc = (v: unknown) => new TextEncoder().encode(typeof v === "string" ? v : JSON.stringify(v));
+    // The worker's payload (worker/metrics.py latency_payload): extra fields are fine.
+    expect(parseLatencyMessage(enc({ turn_index: 1, stt_ms: 200, llm_ms: 300.4, tts_ms: 150, e2e_ms: 650 }))).toEqual({
+      turnId: null,
+      latency: { stt: 200, llm: 300, tts: 150 },
+    });
+    expect(parseLatencyMessage(enc({ segment_id: "SG_1", stt_ms: 1, llm_ms: 2, tts_ms: 3 }))?.turnId).toBe("SG_1");
+    expect(parseLatencyMessage(enc("not json"))).toBeNull();
+    expect(parseLatencyMessage(enc({ stt_ms: "1", llm_ms: 2, tts_ms: 3 }))).toBeNull();
+    expect(parseLatencyMessage(enc({ stt_ms: 0, llm_ms: 0, tts_ms: 0 }))).toBeNull();
+  });
+});
+
+describe("session refusals", () => {
+  const problem = (status: number, code: string, extra: Record<string, unknown> = {}) =>
+    new ApiError(status, { type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title: code, status, code, ...extra });
+
+  it("explains servers that did not wake up in time, and that nothing was charged", () => {
+    const p = problemFromError(problem(503, "waking_up"));
+    expect(p.title).toBe("The call servers are still starting");
+    expect(p.detail).toContain("nothing was charged");
+  });
+
+  it("tells a media server outage and an unpublished agent apart", () => {
+    expect(problemFromError(problem(503, "media_unavailable")).title).toBe("The call server is unavailable");
+    expect(problemFromError(problem(409, "agent_not_published")).title).toBe("This agent is not published yet");
+  });
+
+  it("shows a waking_up refusal in the panel when the wake gate gives up", async () => {
+    const user = userEvent.setup();
+    const driver: WebCallDriver = {
+      ...createMockDriver(FAST),
+      createSession: async () => {
+        throw problem(503, "waking_up");
+      },
+    };
+    renderPanel({ driver });
+    await user.click(screen.getByRole("button", { name: "Start test call" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The call servers are still starting");
   });
 });
