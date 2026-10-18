@@ -63,18 +63,34 @@ class WorkerSettings(BaseSettings):
     sanas_max_latency_ms: float = Field(20.0, alias="SANAS_MAX_LATENCY_MS")
     ai_coustics_api_key: SecretStr = Field(SecretStr(""), alias="AI_COUSTICS_API_KEY")
 
+    def azure_openai_falls_back_to_openai(self) -> bool:
+        """True when Azure OpenAI is not configured (no key or no endpoint) but an OpenAI key is.
+
+        Agents select the LLM by ``llm.provider`` in their config, and the platform default
+        (and the launch templates) is ``azure_openai``. A deployment that only holds
+        ``OPENAI_API_KEY`` (the hosted demo) then runs those agents' models (the same ids,
+        ``gpt-5.1``, ``gpt-5.2``, ``gpt-5-mini``) on OpenAI directly; an agent can also pick
+        ``{"provider": "openai"}`` itself. Both providers are priced the same per minute."""
+        azure_ready = bool(
+            self.azure_openai_api_key.get_secret_value() and self.azure_openai_endpoint
+        )
+        return not azure_ready and bool(self.openai_api_key.get_secret_value())
+
     def vendor_credentials(self) -> dict[str, dict[str, str]]:
         """Credentials per provider id, as passed to adapter ``build(spec, creds)``."""
+        azure: dict[str, str] = {
+            "api_key": self.azure_openai_api_key.get_secret_value(),
+            "endpoint": self.azure_openai_endpoint,
+            "api_version": self.azure_openai_api_version,
+        }
+        if self.azure_openai_falls_back_to_openai():
+            azure["fallback_openai_api_key"] = self.openai_api_key.get_secret_value()
         return {
             "deepgram": {"api_key": self.deepgram_api_key.get_secret_value()},
             "assemblyai": {"api_key": self.assemblyai_api_key.get_secret_value()},
             "sarvam": {"api_key": self.sarvam_api_key.get_secret_value()},
             "openai": {"api_key": self.openai_api_key.get_secret_value()},
-            "azure_openai": {
-                "api_key": self.azure_openai_api_key.get_secret_value(),
-                "endpoint": self.azure_openai_endpoint,
-                "api_version": self.azure_openai_api_version,
-            },
+            "azure_openai": azure,
             "elevenlabs": {"api_key": self.eleven_api_key.get_secret_value()},
             "cartesia": {"api_key": self.cartesia_api_key.get_secret_value()},
             "fishaudio": {"api_key": self.fishaudio_api_key.get_secret_value()},

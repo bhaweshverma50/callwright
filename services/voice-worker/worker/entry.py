@@ -445,6 +445,16 @@ class LiveCall:
             )
         for warning in plan.warnings:
             self.recorder.warning(warning.code, component="runtime", detail=warning.detail)
+        if (
+            plan.llm.provider == "azure_openai"
+            and self.settings.azure_openai_falls_back_to_openai()
+        ):
+            self.recorder.warning(
+                "llm_provider_fallback",
+                component="llm",
+                provider="azure_openai",
+                detail=f"Azure OpenAI is not configured; {plan.llm.model} runs on OpenAI",
+            )
 
         self.overrides = OverrideManager(
             plan, self.registry, runtime.controls, on_system_event=self.recorder.system
