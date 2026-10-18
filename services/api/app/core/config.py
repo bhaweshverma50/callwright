@@ -119,6 +119,12 @@ class Settings(BaseSettings):
     # vendors before a room exists.
     adapter_catalog_path: Path = _API_DIR.parent / "voice-worker" / "worker" / "adapters" / "catalog.json"
     # Recordings (research R13): room-composite egress uploads to this bucket with SSE-KMS.
+    # RECORDINGS_ENABLED=false admits every call with recording off (``not_recorded``) whatever
+    # the workspace and agent settings say: for deployments without a LiveKit egress service.
+    recordings_enabled: bool = True
+    # A missing or stuck egress service must not hold the recording job: past this the start
+    # counts as failed (``recording_status=failed``) and the call goes on unrecorded.
+    recordings_egress_timeout_s: float = 20.0
     recordings_bucket: str = "callwright-recordings"
     recordings_s3_endpoint: str | None = None
     recordings_s3_region: str = "us-east-1"

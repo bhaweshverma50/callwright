@@ -54,6 +54,7 @@ REDIS_URL_ENCODED_PASSWORD="$(python3 -c 'import sys, urllib.parse; print(urllib
   line AUTH_PROVIDER "${CW_AUTH_PROVIDER:-local}"
   line STRIPE_MODE "${CW_STRIPE_MODE:-fake}"
   line ARQ_POLL_DELAY_S "${CW_ARQ_POLL_DELAY_S:-1}"
+  line RECORDINGS_ENABLED "${CW_RECORDINGS_ENABLED:-false}"
   line REDIS_URL "redis://:${REDIS_URL_ENCODED_PASSWORD}@127.0.0.1:6379/0"
   line LIVEKIT_MODE live
   line LIVEKIT_URL "ws://127.0.0.1:7880"

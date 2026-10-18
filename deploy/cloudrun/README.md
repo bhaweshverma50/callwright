@@ -178,6 +178,7 @@ keeps the default internet path.
 | `LIVEKIT_URL`, `LIVEKIT_PUBLIC_URL` | `wss://rtc.bhawesh.dev` | no |
 | `WAKE_VM_PROJECT`, `WAKE_VM_ZONE`, `WAKE_VM_NAME` | `callwright-dev`, `asia-south1-a`, `callwright-rtc` | no |
 | `DB_POOL_SIZE` | `5` | no |
+| `RECORDINGS_ENABLED` | `false` (no LiveKit egress service yet: calls are admitted with recording off, `not_recorded`). With `true` and no egress, the recording start fails within `RECORDINGS_EGRESS_TIMEOUT_S` (20 s), the call goes on, and it reads `recording_status=failed` with a `recording_unavailable` processing warning | no |
 | `REDIS_CONNECT_TIMEOUT_S`, `REDIS_SOCKET_TIMEOUT_S` | defaults `2`, `5` (a stopped VM fails fast) | no |
 | `DATABASE_URL`, `DATABASE_ADMIN_URL`, `REDIS_URL`, `AUTH_JWT_SECRET`, `SECRETS_MASTER_KEY`, `SERVICE_TOKEN`, `STRIPE_WEBHOOK_SECRET`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (+ optional vendor keys) | see section 2 | yes |
 | `PORT` | set by Cloud Run | no |

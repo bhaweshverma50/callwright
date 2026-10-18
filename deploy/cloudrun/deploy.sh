@@ -16,12 +16,13 @@
 #   migrate        deploy and run the callwright-migrate Cloud Run job (alembic + templates sync)
 #   api            deploy the callwright-api service (scale to zero, Direct VPC egress to the VM)
 #   worker-hint    print the commands that roll the new images out to the VM (jobs and voice worker)
-# Environment overrides: REGION, REPO, TAG, VM_NAME, VM_ZONE, WEB_ORIGIN, LIVEKIT_URL, DRY_RUN=1
+# Environment overrides: REGION, REPO, TAG, VM_NAME, VM_ZONE, WEB_ORIGIN, LIVEKIT_URL,
+# RECORDINGS_ENABLED (default false: no egress service), DRY_RUN=1
 # (print the gcloud commands instead of running them).
 set -euo pipefail
 
 if [ "$#" -lt 2 ]; then
-  sed -n '2,20p' "$0" >&2
+  sed -n '2,21p' "$0" >&2
   exit 2
 fi
 PROJECT="$1"
@@ -193,6 +194,9 @@ step_api() {
   env+="@STRIPE_MODE=fake@ENABLE_FAKE_CHECKOUT=true@ENABLE_DEV_ROUTES=false"
   env+="@LIVEKIT_MODE=live@LIVEKIT_URL=$LIVEKIT_URL@LIVEKIT_PUBLIC_URL=$LIVEKIT_URL"
   env+="@WAKE_VM_PROJECT=$PROJECT@WAKE_VM_ZONE=$VM_ZONE@WAKE_VM_NAME=$VM_NAME@DB_POOL_SIZE=5"
+  # No LiveKit egress service on the VM: admit calls with recording off (RECORDINGS_ENABLED=true
+  # once an egress service and a recordings bucket exist).
+  env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
   [ -n "$url" ] && env+="@API_BASE_URL=$url"
   gc run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-account "$SA" \
     --allow-unauthenticated --port 8080 --cpu 1 --memory 512Mi --concurrency 40 \
