@@ -229,6 +229,44 @@ class LatencyTracker:
         return turn
 
 
+LATENCY_TOPIC = "cw.turn_latency"
+"""LiveKit data topic for per-turn latency; the browser test call panel (``WebCallPanel``) draws
+a latency chip on the latest agent turn from it."""
+
+
+def latency_payload(record: TurnRecord) -> dict[str, int] | None:
+    """The ``cw.turn_latency`` message for a finished agent turn, or None when there is nothing
+    to show (the greeting, or a turn with no measurement).
+
+    The panel draws one chip per agent turn whose total is ``stt_ms + llm_ms + tts_ms``. The
+    total is the measured answer time (``e2e_ms``) whenever it exists: ``llm_ms`` is the model's
+    time to first token plus tool time, ``tts_ms`` the voice's time to first byte, and ``stt_ms``
+    the rest (speech to text and end-of-turn detection). With preemptive generation the model
+    can start before the caller finishes, so when model plus voice exceed the answer time they
+    are scaled down to fit it. Without ``e2e_ms`` the parts are the raw component metrics.
+    """
+    if record.turn_index == 0:
+        return None
+    llm = (record.llm_ttft_ms or 0) + (record.tool_ms or 0)
+    tts = record.tts_ttfb_ms or 0
+    e2e = record.e2e_ms
+    if e2e is None:
+        stt = (record.stt_final_ms or 0) + (record.eou_delay_ms or 0)
+        if stt + llm + tts == 0:
+            return None
+    else:
+        e2e = max(0, e2e)
+        if llm + tts > e2e:
+            scale = e2e / (llm + tts)
+            llm = round(llm * scale)
+            tts = e2e - llm
+        stt = e2e - llm - tts
+    payload = {"turn_index": record.turn_index, "stt_ms": stt, "llm_ms": llm, "tts_ms": tts}
+    if e2e is not None:
+        payload["e2e_ms"] = e2e
+    return payload
+
+
 def played_words(text: str, fraction: float) -> str:
     """Truncate an interrupted agent turn to the words actually played (FR-012)."""
     words = text.split()

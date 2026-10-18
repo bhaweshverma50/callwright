@@ -49,12 +49,14 @@ from worker.internal_api import (
     SipAttributes,
 )
 from worker.metrics import (
+    LATENCY_TOPIC,
     EventPoster,
     EventRecorder,
     LatencyTracker,
     MetricsBridge,
     TurnRecord,
     UsageMeters,
+    latency_payload,
 )
 from worker.pipeline import (
     GENERATED_GREETING_INSTRUCTION,
@@ -361,6 +363,7 @@ class LiveCall:
                 turn.interrupted = bool(getattr(item, "interrupted", False))
                 turn.text = turn.played_text = text
                 self.recorder.turn(turn)
+                self._publish_latency(turn)
             self.recorder.message(
                 "agent",
                 text,
@@ -369,6 +372,23 @@ class LiveCall:
                 turn_index=turn.turn_index if turn else None,
                 interrupted=turn.interrupted if turn else False,
             )
+
+    def _publish_latency(self, turn: TurnRecord) -> None:
+        """Send the turn's latency split to the room (``cw.turn_latency``) for the browser panel.
+        Best effort: a failed publish never affects the call."""
+        payload = latency_payload(turn)
+        participant = getattr(self.ctx.room, "local_participant", None)
+        if payload is None or participant is None:
+            return
+        data = json.dumps(payload).encode()
+
+        async def publish() -> None:
+            try:
+                await participant.publish_data(data, reliable=True, topic=LATENCY_TOPIC)
+            except Exception as exc:
+                log.debug("turn latency not published for %s: %s", self.call_id, exc)
+
+        self._spawn(publish())
 
     def _on_error(self, ev: Any, plan: SessionPlan) -> None:
         error = ev.error

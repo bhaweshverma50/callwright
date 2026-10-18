@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 from typing import Any
@@ -95,6 +96,54 @@ def test_turn_events_from_session_state_changes() -> None:
         ("user", "Hello"),
         ("agent", "How can"),
     ]
+
+
+class Publisher:
+    def __init__(self, fail: bool = False) -> None:
+        self.sent: list[tuple[dict[str, Any], bool, str]] = []
+        self.fail = fail
+
+    async def publish_data(self, data: bytes, *, reliable: bool, topic: str) -> None:
+        if self.fail:
+            raise RuntimeError("room closed")
+        self.sent.append((json.loads(data), reliable, topic))
+
+
+async def test_agent_turns_publish_latency_on_the_data_topic() -> None:
+    call, ctx, _ = live_call()
+    publisher = Publisher()
+    ctx.room.local_participant = publisher
+    call.tracker.connected(100.0)
+    call.tracker.begin_turn(greeting=True)
+    call._on_agent_state(ev(old_state="listening", new_state="speaking", created_at=100.3))
+    call._on_item(ev(item=ev(role="assistant", text_content="Hi there", interrupted=False)))
+    call._on_user_state(ev(old_state="listening", new_state="speaking", created_at=101.0))
+    call._on_user_state(ev(old_state="speaking", new_state="listening", created_at=102.0))
+    call._on_agent_state(ev(old_state="listening", new_state="thinking", created_at=102.1))
+    call.tracker.component("llm_ttft", 0.3)
+    call.tracker.component("tts_ttfb", 0.15)
+    call._on_agent_state(ev(old_state="thinking", new_state="speaking", created_at=102.65))
+    call._on_item(ev(item=ev(role="assistant", text_content="Sure", interrupted=False)))
+    await asyncio.gather(*call._tasks)
+    # The greeting has no chip; the answer's parts add up to its measured 650 ms.
+    assert publisher.sent == [
+        (
+            {"turn_index": 1, "stt_ms": 200, "llm_ms": 300, "tts_ms": 150, "e2e_ms": 650},
+            True,
+            "cw.turn_latency",
+        )
+    ]
+
+
+async def test_latency_publish_failure_does_not_break_the_call() -> None:
+    call, ctx, _ = live_call()
+    ctx.room.local_participant = Publisher(fail=True)
+    call.tracker.connected(100.0)
+    call.tracker.begin_turn()
+    call.tracker.component("llm_ttft", 0.3)
+    call._on_item(ev(item=ev(role="assistant", text_content="Sure", interrupted=False)))
+    await asyncio.gather(*call._tasks)
+    assert [e["type"] for e in call.recorder.history] == ["turn", "transcript_item"]
 
 
 async def test_keypad_flush_becomes_a_user_turn() -> None:
