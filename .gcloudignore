@@ -1,5 +1,5 @@
-# Upload filter for `gcloud builds submit .` (deploy/cloudrun). Only the API and the voice
-# worker's adapter catalog are needed to build the API image.
+# Upload filter for `gcloud builds submit .` (deploy/cloudrun/cloudbuild.yaml builds the API image,
+# deploy/vm/cloudbuild-voice.yaml the voice worker image). Only services/ is needed.
 .gcloudignore
 .git
 .gitignore

@@ -27,11 +27,15 @@ def redis_settings() -> RedisSettings:
 async def startup(ctx: dict[str, Any]) -> None:
     import httpx
 
+    from app.agent_versions.runtime_port import register as register_agent_versions
     from app.calls.catalog import load_catalog
     from app.core.livekit import build_livekit
 
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
+    # The post-call pipeline reads each call's agent version (pricing, analysis): 002 supplies
+    # it here as it does in create_app, or every standalone worker run would fail to price.
+    register_agent_versions()
     ctx["settings"] = settings
     ctx["db"] = Database(settings.database_url, settings.database_admin_url, pool_size=4)
     # Voice runtime (003): jobs enqueue follow-ups on the worker's own pool.

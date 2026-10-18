@@ -31,6 +31,7 @@ from app.calls.catalog import AdapterCatalog
 from app.calls.effects import START_RECORDING, Deferred
 from app.calls.models import ACTIVE, Call
 from app.calls.ports import AgentSnapshot, ObjectSigner, registry
+from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
 from app.core.ids import is_valid_id, new_id
@@ -236,10 +237,20 @@ async def _lock_admissions(session: AsyncSession, workspace_id: str) -> None:
 
 
 async def admit_in_session(
-    session: AsyncSession, request: AdmissionRequest, *, catalog: AdapterCatalog, now: datetime | None = None
+    session: AsyncSession,
+    request: AdmissionRequest,
+    *,
+    catalog: AdapterCatalog,
+    now: datetime | None = None,
+    recordings_enabled: bool | None = None,
 ) -> Admission:
-    """Admission inside the caller's workspace-scoped transaction (see ``admit``)."""
+    """Admission inside the caller's workspace-scoped transaction (see ``admit``).
+
+    ``recordings_enabled`` is the deployment switch (``RECORDINGS_ENABLED``, read from the settings
+    when None): when false every call is admitted with recording off."""
     now = now or datetime.now(UTC)
+    if recordings_enabled is None:
+        recordings_enabled = get_settings().recordings_enabled
     if request.idempotency_key:
         existing = (
             await session.execute(
@@ -284,6 +295,8 @@ async def admit_in_session(
         ).scalar_one()
     )
     recording_enabled, source = resolve_recording(recording_override(config), workspace_default)
+    # No egress on this deployment: the source still names where the setting came from.
+    recording_enabled = recording_enabled and recordings_enabled
     builtins = variables_mod.builtin_values(
         call_id=call_id,
         channel=request.channel,
@@ -340,11 +353,18 @@ async def admit_in_session(
 
 
 async def admit(
-    db: Database, request: AdmissionRequest, *, catalog: AdapterCatalog, now: datetime | None = None
+    db: Database,
+    request: AdmissionRequest,
+    *,
+    catalog: AdapterCatalog,
+    now: datetime | None = None,
+    recordings_enabled: bool | None = None,
 ) -> Admission:
     """Run admission in its own transaction (committed even when the call is refused)."""
     async with db.transaction(workspace_id=request.workspace_id, user_id=request.initiated_by_user_id) as s:
-        return await admit_in_session(s, request, catalog=catalog, now=now)
+        return await admit_in_session(
+            s, request, catalog=catalog, now=now, recordings_enabled=recordings_enabled
+        )
 
 
 async def mark_failed(

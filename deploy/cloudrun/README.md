@@ -86,9 +86,10 @@ printf %s "$VALUE" | gcloud secrets versions add NAME --data-file=- --account "$
 | `REDIS_PASSWORD` | VM (exists) | Redis password; keep `REDIS_URL` in step |
 | `AUTH_JWT_SECRET` | API, VM worker | 48+ random characters (`openssl rand -base64 48`) |
 | `SECRETS_MASTER_KEY` | API, VM worker | 32 random bytes, base64 (`openssl rand -base64 32`) |
-| `SERVICE_TOKEN` | API, VM worker, voice worker | random token for `/v1/internal/*` |
+| `SERVICE_TOKEN` | API, VM worker, VM voice worker | random token for `/v1/internal/*` |
 | `STRIPE_WEBHOOK_SECRET` | API, VM worker | any random value in fake Stripe mode (signs the fake checkout events) |
 | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | API, VM (exist) | the self-hosted LiveKit keys |
+| optional, voice worker only: `DEEPGRAM_API_KEY`, `ASSEMBLYAI_API_KEY`, `SARVAM_API_KEY`, `FISHAUDIO_API_KEY`, `SANAS_API_KEY`, `AI_COUSTICS_API_KEY` | VM voice worker | written to `voice.env` when the secret exists (`deploy/vm/README.md`) |
 | optional: `STRIPE_SECRET_KEY`, `OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `CARTESIA_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` | API, VM worker | mounted only when the secret exists; without them the adapters run in fake mode |
 
 `ENV=staging` refuses the development defaults of `AUTH_JWT_SECRET`, `SECRETS_MASTER_KEY`,
@@ -100,7 +101,8 @@ service at startup instead of running with a known key.
 ```bash
 deploy/cloudrun/deploy.sh "$PROJECT" "$ACCOUNT" setup          # once: APIs, registry, IAM
 deploy/cloudrun/deploy.sh "$PROJECT" "$ACCOUNT"                # check-secrets build migrate api
-deploy/cloudrun/deploy.sh "$PROJECT" "$ACCOUNT" worker-hint    # how to roll the image to the VM worker
+deploy/cloudrun/deploy.sh "$PROJECT" "$ACCOUNT" build-voice    # voice worker image (deploy/vm/cloudbuild-voice.yaml)
+deploy/cloudrun/deploy.sh "$PROJECT" "$ACCOUNT" worker-hint    # how to roll both images out to the VM workers
 DRY_RUN=1 deploy/cloudrun/deploy.sh "$PROJECT" "$ACCOUNT" setup build migrate api   # print only
 ```
 
@@ -176,6 +178,7 @@ keeps the default internet path.
 | `LIVEKIT_URL`, `LIVEKIT_PUBLIC_URL` | `wss://rtc.bhawesh.dev` | no |
 | `WAKE_VM_PROJECT`, `WAKE_VM_ZONE`, `WAKE_VM_NAME` | `callwright-dev`, `asia-south1-a`, `callwright-rtc` | no |
 | `DB_POOL_SIZE` | `5` | no |
+| `RECORDINGS_ENABLED` | `false` (no LiveKit egress service yet: calls are admitted with recording off, `not_recorded`). With `true` and no egress, the recording start fails within `RECORDINGS_EGRESS_TIMEOUT_S` (20 s), the call goes on, and it reads `recording_status=failed` with a `recording_unavailable` processing warning | no |
 | `REDIS_CONNECT_TIMEOUT_S`, `REDIS_SOCKET_TIMEOUT_S` | defaults `2`, `5` (a stopped VM fails fast) | no |
 | `DATABASE_URL`, `DATABASE_ADMIN_URL`, `REDIS_URL`, `AUTH_JWT_SECRET`, `SECRETS_MASTER_KEY`, `SERVICE_TOKEN`, `STRIPE_WEBHOOK_SECRET`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (+ optional vendor keys) | see section 2 | yes |
 | `PORT` | set by Cloud Run | no |

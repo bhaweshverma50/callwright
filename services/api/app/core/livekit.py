@@ -15,6 +15,7 @@ left channel, everyone else on the right) into an MP4 (AAC) object. Server-side 
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -208,8 +209,13 @@ class LiveKitClient(_TokenMixin):
             advanced=lk.EncodingOptions(audio_codec=lk.AudioCodec.AAC),
             file_outputs=[lk.EncodedFileOutput(file_type=lk.EncodedFileType.MP4, filepath=target.key, s3=s3)],
         )
+        timeout = s.recordings_egress_timeout_s
         try:
-            info = await self._client().egress.start_room_composite_egress(request)
+            info = await asyncio.wait_for(self._client().egress.start_room_composite_egress(request), timeout)
+        except TimeoutError as exc:
+            raise LiveKitError(
+                f"start egress for {room}: no egress service answered within {timeout:g} s"
+            ) from exc
         except Exception as exc:
             raise LiveKitError(f"start egress for {room}: {exc}") from exc
         return str(info.egress_id)

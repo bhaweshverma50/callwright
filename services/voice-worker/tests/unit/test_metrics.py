@@ -11,7 +11,9 @@ from worker.metrics import (
     EventRecorder,
     LatencyTracker,
     MetricsBridge,
+    TurnRecord,
     UsageMeters,
+    latency_payload,
     played_words,
 )
 
@@ -235,3 +237,30 @@ def test_played_words_truncates_interrupted_text() -> None:
     assert played_words(text, 0.35) == "one two three"
     assert played_words(text, 1.2) == text
     assert played_words(text, 0) == ""
+
+
+def test_latency_payload_splits_the_measured_answer_time() -> None:
+    turn = TurnRecord(turn_index=2, llm_ttft_ms=300, tool_ms=50, tts_ttfb_ms=120, e2e_ms=900)
+    assert latency_payload(turn) == {
+        "turn_index": 2,
+        "stt_ms": 430,
+        "llm_ms": 350,
+        "tts_ms": 120,
+        "e2e_ms": 900,
+    }
+
+
+def test_latency_payload_scales_preemptive_parts_into_the_answer_time() -> None:
+    # The model started before the caller finished: model plus voice exceed the answer time.
+    turn = TurnRecord(turn_index=1, llm_ttft_ms=600, tts_ttfb_ms=200, e2e_ms=400)
+    payload = latency_payload(turn)
+    assert payload is not None
+    assert payload["stt_ms"] + payload["llm_ms"] + payload["tts_ms"] == 400
+    assert (payload["stt_ms"], payload["llm_ms"], payload["tts_ms"]) == (0, 300, 100)
+
+
+def test_latency_payload_without_e2e_uses_components_and_skips_empty_turns() -> None:
+    turn = TurnRecord(turn_index=1, stt_final_ms=80, eou_delay_ms=200, llm_ttft_ms=310)
+    assert latency_payload(turn) == {"turn_index": 1, "stt_ms": 280, "llm_ms": 310, "tts_ms": 0}
+    assert latency_payload(TurnRecord(turn_index=3)) is None
+    assert latency_payload(TurnRecord(turn_index=0, e2e_ms=700)) is None

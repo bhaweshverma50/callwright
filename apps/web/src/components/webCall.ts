@@ -129,6 +129,22 @@ export function problemFromError(e: unknown): CallProblem {
       title: "Too many calls at once",
       detail: p.detail ?? "Your workspace is at its concurrent call limit. End another call or wait a moment, then try again.",
     };
+  // The wake gate (api/wakeGate.ts) already waited for the call servers; this is what is left
+  // when they did not start in time.
+  if (e.status === 503 && (p.code === "waking_up" || type.endsWith("/waking-up")))
+    return {
+      kind: "network",
+      title: "The call servers are still starting",
+      detail: `They sleep when nobody is calling and usually start within a minute. Wait a moment, then start the call again. ${NOT_CHARGED}`,
+    };
+  if (e.status === 503 || type.endsWith("/media-unavailable"))
+    return {
+      kind: "network",
+      title: "The call server is unavailable",
+      detail: "The call could not start and was not charged. Try again in a moment.",
+    };
+  if (e.status === 409 && (p.code === "agent_not_published" || type.endsWith("/agent-not-published")))
+    return { kind: "refused", title: "This agent is not published yet", detail: "Publish a version first, or test the draft instead." };
   return { kind: "refused", title: p.title || "The call was refused", detail: p.detail ?? "Try again in a moment." };
 }
 

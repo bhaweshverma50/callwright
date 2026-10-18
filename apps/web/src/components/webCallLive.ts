@@ -28,6 +28,25 @@ export async function checkMicrophone(): Promise<MicCheck> {
   }
 }
 
+/**
+ * One `cw.turn_latency` message from the voice worker (worker/metrics.py `latency_payload`):
+ * `{turn_index, stt_ms, llm_ms, tts_ms, e2e_ms?, segment_id?}`. Without a segment id the chip goes
+ * on the latest agent turn. Null for anything malformed.
+ */
+export function parseLatencyMessage(payload: Uint8Array): { turnId: string | null; latency: Latency } | null {
+  try {
+    const m = JSON.parse(new TextDecoder().decode(payload)) as Record<string, unknown>;
+    const ms = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+    const stt = ms(m.stt_ms);
+    const llm = ms(m.llm_ms);
+    const tts = ms(m.tts_ms);
+    if (stt === null || llm === null || tts === null || stt + llm + tts === 0) return null;
+    return { turnId: typeof m.segment_id === "string" ? m.segment_id : null, latency: { stt, llm, tts } };
+  } catch {
+    return null;
+  }
+}
+
 const ACTIVITY: Record<string, AgentActivity> = {
   initializing: "joining",
   listening: "listening",
@@ -95,13 +114,8 @@ export function createLiveDriver(): WebCallDriver {
       });
       room.on(lk.RoomEvent.DataReceived, (payload, _p, _kind, topic) => {
         if (topic !== LATENCY_TOPIC) return;
-        try {
-          const m = JSON.parse(new TextDecoder().decode(payload)) as { segment_id?: string; stt_ms: number; llm_ms: number; tts_ms: number };
-          const l: Latency = { stt: Math.round(m.stt_ms), llm: Math.round(m.llm_ms), tts: Math.round(m.tts_ms) };
-          listener.latency(m.segment_id ?? null, l);
-        } catch {
-          /* ignore malformed metrics */
-        }
+        const m = parseLatencyMessage(payload);
+        if (m) listener.latency(m.turnId, m.latency);
       });
       room.on(lk.RoomEvent.ParticipantDisconnected, (p) => {
         if (!p.isAgent) return;

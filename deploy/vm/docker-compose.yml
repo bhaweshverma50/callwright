@@ -1,6 +1,6 @@
-# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis, the arq jobs worker.
-# Secrets come from /opt/callwright/.env and worker.env, written by deploy/vm/render-env.sh from
-# Secret Manager. The voice worker joins this file once vendor keys exist (see deploy/vm/README.md).
+# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis, the arq jobs worker
+# and the voice worker. Secrets come from /opt/callwright/.env, worker.env and voice.env, written
+# by deploy/vm/render-env.sh from Secret Manager (see deploy/vm/README.md).
 # Every service restarts on its own after the VM boots (restart: unless-stopped, docker enabled
 # at boot by install-idle.sh); the VM powers itself off when idle (idle-shutdown.sh).
 services:
@@ -45,6 +45,18 @@ services:
       PORT: "8191"
     depends_on:
       - redis
+
+  # Voice worker (services/voice-worker image, built by deploy/vm/cloudbuild-voice.yaml): joins
+  # LiveKit on ws://127.0.0.1:7880 and calls the API's /v1/internal endpoints. voice.env comes
+  # from render-env.sh; VOICE_IMAGE is pinned in .env. Health on 127.0.0.1:8190.
+  voice:
+    image: ${VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}
+    restart: unless-stopped
+    network_mode: host
+    env_file: voice.env
+    stop_grace_period: 30s
+    depends_on:
+      - livekit
 
 volumes:
   caddy_data:

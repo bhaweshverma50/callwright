@@ -1,0 +1,14 @@
+# Builds the voice worker image on Cloud Build from the repo root (deploy.sh build-voice). The
+# Dockerfile needs BuildKit (cache mounts). Upload filter: the root .gcloudignore.
+#   gcloud builds submit . --config deploy/vm/cloudbuild-voice.yaml \
+#     --substitutions=_IMAGE=asia-south1-docker.pkg.dev/<project>/callwright/voice-worker:<tag> \
+#     --account <account> --project <project>
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env: ["DOCKER_BUILDKIT=1"]
+    args: ["build", "-f", "services/voice-worker/Dockerfile", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

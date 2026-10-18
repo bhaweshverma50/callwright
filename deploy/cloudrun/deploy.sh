@@ -11,15 +11,18 @@
 #   check-secrets  fail when a required Secret Manager secret is missing
 #   build          build and push the image with Cloud Build
 #   build-local    build for linux/amd64 with local docker and push it
+#   build-voice    build and push the voice worker image with Cloud Build (deploy/vm)
+#   build-voice-local  build the voice worker image for linux/amd64 locally and push it
 #   migrate        deploy and run the callwright-migrate Cloud Run job (alembic + templates sync)
 #   api            deploy the callwright-api service (scale to zero, Direct VPC egress to the VM)
-#   worker-hint    print the commands that roll the new image out to the VM's jobs worker
-# Environment overrides: REGION, REPO, TAG, VM_NAME, VM_ZONE, WEB_ORIGIN, LIVEKIT_URL, DRY_RUN=1
+#   worker-hint    print the commands that roll the new images out to the VM (jobs and voice worker)
+# Environment overrides: REGION, REPO, TAG, VM_NAME, VM_ZONE, WEB_ORIGIN, LIVEKIT_URL,
+# RECORDINGS_ENABLED (default false: no egress service), DRY_RUN=1
 # (print the gcloud commands instead of running them).
 set -euo pipefail
 
 if [ "$#" -lt 2 ]; then
-  sed -n '2,20p' "$0" >&2
+  sed -n '2,21p' "$0" >&2
   exit 2
 fi
 PROJECT="$1"
@@ -33,6 +36,7 @@ REGION="${REGION:-asia-south1}"
 REPO="${REPO:-callwright}"
 TAG="${TAG:-$(git -C "$ROOT" rev-parse --short HEAD)}"
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/api:$TAG"
+VOICE_IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/voice-worker:$TAG"
 SA_NAME="callwright-api"
 SA="$SA_NAME@$PROJECT.iam.gserviceaccount.com"
 VM_NAME="${VM_NAME:-callwright-rtc}"
@@ -48,6 +52,9 @@ MIGRATE_SECRETS=(DATABASE_OWNER_URL DATABASE_URL DATABASE_ADMIN_URL)
 # Read by the VM (render-env.sh): the worker's secrets plus Redis.
 VM_SECRETS=(REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET DATABASE_URL DATABASE_ADMIN_URL AUTH_JWT_SECRET
   SECRETS_MASTER_KEY SERVICE_TOKEN STRIPE_WEBHOOK_SECRET)
+# Read by the VM's voice worker when they exist (render-env.sh writes voice.env).
+VOICE_OPTIONAL_SECRETS=(DEEPGRAM_API_KEY ASSEMBLYAI_API_KEY SARVAM_API_KEY FISHAUDIO_API_KEY SANAS_API_KEY
+  AI_COUSTICS_API_KEY)
 # Mounted when they exist.
 OPTIONAL_SECRETS=(STRIPE_SECRET_KEY OPENAI_API_KEY AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_KEY ANTHROPIC_API_KEY
   ELEVENLABS_API_KEY CARTESIA_API_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_KEY)
@@ -112,7 +119,7 @@ step_setup() {
   fi
   gc artifacts repositories add-iam-policy-binding "$REPO" --location "$REGION" \
     --member "serviceAccount:$vm_sa" --role roles/artifactregistry.reader --format none
-  for name in "${VM_SECRETS[@]}" "${OPTIONAL_SECRETS[@]}"; do
+  for name in "${VM_SECRETS[@]}" "${OPTIONAL_SECRETS[@]}" "${VOICE_OPTIONAL_SECRETS[@]}"; do
     if exists secrets describe "$name"; then
       gc secrets add-iam-policy-binding "$name" --member "serviceAccount:$vm_sa" \
         --role roles/secretmanager.secretAccessor --format none
@@ -148,6 +155,23 @@ step_build_local() {
   docker push "$IMAGE"
 }
 
+step_build_voice() {
+  gc builds submit "$ROOT" --config "$ROOT/deploy/vm/cloudbuild-voice.yaml" --region "$REGION" \
+    --substitutions "_IMAGE=$VOICE_IMAGE"
+}
+
+step_build_voice_local() {
+  docker buildx build --platform linux/amd64 -f "$ROOT/services/voice-worker/Dockerfile" \
+    -t "$VOICE_IMAGE" --load "$ROOT"
+  if [ "${DRY_RUN:-0}" = "1" ]; then
+    gc auth print-access-token
+  else
+    gc auth print-access-token \
+      | docker login -u oauth2accesstoken --password-stdin "https://$REGION-docker.pkg.dev"
+  fi
+  docker push "$VOICE_IMAGE"
+}
+
 step_migrate() {
   gc run jobs deploy callwright-migrate --region "$REGION" --image "$IMAGE" \
     --service-account "$SA" --args migrate --tasks 1 --max-retries 0 --task-timeout 900s \
@@ -170,6 +194,9 @@ step_api() {
   env+="@STRIPE_MODE=fake@ENABLE_FAKE_CHECKOUT=true@ENABLE_DEV_ROUTES=false"
   env+="@LIVEKIT_MODE=live@LIVEKIT_URL=$LIVEKIT_URL@LIVEKIT_PUBLIC_URL=$LIVEKIT_URL"
   env+="@WAKE_VM_PROJECT=$PROJECT@WAKE_VM_ZONE=$VM_ZONE@WAKE_VM_NAME=$VM_NAME@DB_POOL_SIZE=5"
+  # No LiveKit egress service on the VM: admit calls with recording off (RECORDINGS_ENABLED=true
+  # once an egress service and a recordings bucket exist).
+  env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
   [ -n "$url" ] && env+="@API_BASE_URL=$url"
   gc run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-account "$SA" \
     --allow-unauthenticated --port 8080 --cpu 1 --memory 512Mi --concurrency 40 \
@@ -184,11 +211,25 @@ step_api() {
 }
 
 step_worker_hint() {
+  local ssh="gcloud compute ssh $VM_NAME --zone $VM_ZONE --account $ACCOUNT --project $PROJECT --"
+  local scp="gcloud compute scp --zone $VM_ZONE --account $ACCOUNT --project $PROJECT"
   cat <<EOF
-Roll the new image out to the VM's jobs worker:
-  gcloud compute ssh $VM_NAME --zone $VM_ZONE --account $ACCOUNT --project $PROJECT -- \\
-    'cd /opt/callwright && sudo API_IMAGE=$IMAGE docker compose up -d worker'
-(or set API_IMAGE=$IMAGE in /opt/callwright/.env so later restarts keep it)
+Roll the new images out to the VM (jobs worker: $IMAGE, voice worker: $VOICE_IMAGE).
+The VM sleeps when idle: start it first if it is off (any API request wakes it too).
+  gcloud compute instances start $VM_NAME --zone $VM_ZONE --account $ACCOUNT --project $PROJECT
+
+1. Copy the compose files (only when deploy/vm changed):
+  $scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl $VM_NAME:/opt/callwright/
+
+2. Pin both images and render .env, worker.env and voice.env from Secret Manager:
+  $ssh 'cd /opt/callwright && CW_API_IMAGE=$IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh'
+
+3. Pull and restart the workers (and LiveKit once when livekit.yaml.tmpl changed, with no call running):
+  $ssh 'cd /opt/callwright && sudo docker compose pull worker voice && sudo docker compose up -d worker voice'
+  $ssh 'cd /opt/callwright && sudo docker compose restart livekit'
+
+4. Check them:
+  $ssh 'curl -s localhost:8191; echo; curl -s -o /dev/null -w "voice %{http_code}\\n" localhost:8190; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice'
 EOF
 }
 
@@ -199,6 +240,8 @@ for step in "${STEPS[@]}"; do
     check-secrets) step_check_secrets ;;
     build) step_build ;;
     build-local) step_build_local ;;
+    build-voice) step_build_voice ;;
+    build-voice-local) step_build_voice_local ;;
     migrate) step_migrate ;;
     api) step_api ;;
     worker-hint) step_worker_hint ;;

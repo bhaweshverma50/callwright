@@ -49,12 +49,14 @@ from worker.internal_api import (
     SipAttributes,
 )
 from worker.metrics import (
+    LATENCY_TOPIC,
     EventPoster,
     EventRecorder,
     LatencyTracker,
     MetricsBridge,
     TurnRecord,
     UsageMeters,
+    latency_payload,
 )
 from worker.pipeline import (
     GENERATED_GREETING_INSTRUCTION,
@@ -361,6 +363,7 @@ class LiveCall:
                 turn.interrupted = bool(getattr(item, "interrupted", False))
                 turn.text = turn.played_text = text
                 self.recorder.turn(turn)
+                self._publish_latency(turn)
             self.recorder.message(
                 "agent",
                 text,
@@ -369,6 +372,23 @@ class LiveCall:
                 turn_index=turn.turn_index if turn else None,
                 interrupted=turn.interrupted if turn else False,
             )
+
+    def _publish_latency(self, turn: TurnRecord) -> None:
+        """Send the turn's latency split to the room (``cw.turn_latency``) for the browser panel.
+        Best effort: a failed publish never affects the call."""
+        payload = latency_payload(turn)
+        participant = getattr(self.ctx.room, "local_participant", None)
+        if payload is None or participant is None:
+            return
+        data = json.dumps(payload).encode()
+
+        async def publish() -> None:
+            try:
+                await participant.publish_data(data, reliable=True, topic=LATENCY_TOPIC)
+            except Exception as exc:
+                log.debug("turn latency not published for %s: %s", self.call_id, exc)
+
+        self._spawn(publish())
 
     def _on_error(self, ev: Any, plan: SessionPlan) -> None:
         error = ev.error
@@ -425,6 +445,16 @@ class LiveCall:
             )
         for warning in plan.warnings:
             self.recorder.warning(warning.code, component="runtime", detail=warning.detail)
+        if (
+            plan.llm.provider == "azure_openai"
+            and self.settings.azure_openai_falls_back_to_openai()
+        ):
+            self.recorder.warning(
+                "llm_provider_fallback",
+                component="llm",
+                provider="azure_openai",
+                detail=f"Azure OpenAI is not configured; {plan.llm.model} runs on OpenAI",
+            )
 
         self.overrides = OverrideManager(
             plan, self.registry, runtime.controls, on_system_event=self.recorder.system
@@ -710,7 +740,12 @@ def create_server(
     import livekit.plugins.turn_detector.multilingual  # noqa: F401
     from livekit.agents import AgentServer
 
-    options: dict[str, Any] = {"port": settings.health_port, **server_options}
+    options: dict[str, Any] = {"port": settings.health_port}
+    if settings.num_idle_processes is not None:
+        options["num_idle_processes"] = settings.num_idle_processes
+    if settings.load_threshold is not None:
+        options["load_threshold"] = settings.load_threshold
+    options.update(server_options)
     server = AgentServer(
         setup_fnc=prewarm,
         ws_url=settings.livekit_url,

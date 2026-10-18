@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 STUCK_QUEUED_S = 60
 STUCK_HEARTBEAT_S = 60
+RECORDING_UNAVAILABLE = "recording_unavailable"
+"""Processing warning on a call whose recording could not start (no egress service)."""
 
 
 def recording_key(workspace_id: str, call_id: str) -> str:
@@ -94,15 +96,23 @@ async def start_recording_for(
     key = recording_key(workspace_id, call_id)
     try:
         egress_id = await livekit.start_audio_recording(room, EgressTarget(bucket=bucket, key=key))
-    except LiveKitError as exc:
-        logger.warning("recording did not start for %s: %s", call_id, exc)
+    except Exception as exc:
+        # No egress service (or a broken one) never touches the call itself: it keeps running
+        # unrecorded, the recording reads "unavailable" (failed) and the call carries the
+        # ``recording_unavailable`` processing warning.
+        logger.warning("recording unavailable for %s: %s", call_id, exc)
         async with db.transaction(workspace_id=workspace_id) as session:
             await session.execute(
                 text(
-                    "update calls set recording_status = 'failed' "
+                    "update calls set recording_status = 'failed', pipeline_warnings = case "
+                    "when :warning = any(pipeline_warnings) then pipeline_warnings "
+                    "else array_append(pipeline_warnings, :warning) end, "
+                    # A short call can finish processing before the start gives up.
+                    "pipeline_status = case when pipeline_status = 'done' then 'done_with_warnings' "
+                    "else pipeline_status end "
                     "where id = :id and recording_status = 'none' and recording_enabled"
                 ),
-                {"id": call_id},
+                {"id": call_id, "warning": RECORDING_UNAVAILABLE},
             )
         return "failed"
     async with db.transaction(workspace_id=workspace_id) as session:
