@@ -23,10 +23,12 @@ fake vendor delays, the TTS adapter, room output and downlink jitter buffer. The
 ``turn`` events are collected too, so the report shows how close the worker's stored latency
 is to what the caller experiences.
 
-Real vendors are not used: there are no vendor keys in this environment. A real-vendor run
-needs ``DEEPGRAM_API_KEY``, ``AZURE_OPENAI_API_KEY`` (plus endpoint and API version) and
-``ELEVEN_API_KEY`` for the default stack, and a ``--vendors real`` switch that skips
-:func:`~tests.harness.bench.live_fakes.live_registry` (not built yet).
+``--vendors real`` keeps the real adapters (``live_real``): the job needs the vendor keys in
+its environment (``DEEPGRAM_API_KEY``, ``OPENAI_API_KEY`` or Azure OpenAI, ``ELEVEN_API_KEY``
+for the default stack) and the call set needs real-speech fixtures (``fixtures_source:
+elevenlabs``, see ``callset_real.yaml``). The caller then also reports the greeting as heard
+(join to first agent audio) and every agent audio onset per turn, so an acknowledgement
+("Let me check that") and the answer after a tool show up separately.
 """
 
 from __future__ import annotations
@@ -84,6 +86,7 @@ class LiveOptions:
     quiet_s: float = 0.7
     turn_timeout_s: float = 10.0
     join_timeout_s: float = 45.0
+    vendors: str = "fake"
 
 
 @dataclass
@@ -107,6 +110,8 @@ class LiveReport:
     cutoffs: int = 0
     mode: str = "live"
     vendors: str = "fake"
+    greeting_caller_median_ms: float | None = None
+    greeting_caller_max_ms: float | None = None
     caller_e2e_ms: list[float] = field(default_factory=list)
     details: list[dict[str, Any]] = field(default_factory=list)
 
@@ -293,6 +298,8 @@ class CallResult:
     events: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
     cutoffs: list[bool] = field(default_factory=list)
+    greeting_caller_ms: float | None = None
+    onsets_ms: list[list[float]] = field(default_factory=list)
 
 
 def _token(options: LiveOptions, identity: str, room: str) -> str:
@@ -312,9 +319,10 @@ async def run_caller(
     options: LiveOptions,
     fixtures: Sequence[npt.NDArray[np.int16]],
     rate: int,
-    params: LiveFakeParams,
+    params: Any,
     fake_api: FakeInternalApi,
     lkapi: Any,
+    quiet_s: Sequence[float | None] = (),
 ) -> CallResult:
     from livekit import api, rtc
 
@@ -347,6 +355,7 @@ async def run_caller(
     result = CallResult(call_id, [])
     mic = CallerMic(rate, rtc, seed=index)
     try:
+        connect_started = time.time()
         await room.connect(options.url, _token(options, f"caller-{index}", room_name))
         track = rtc.LocalAudioTrack.create_audio_track("caller-mic", mic.source)
         await room.local_participant.publish_track(
@@ -358,8 +367,9 @@ async def run_caller(
         if greeting is None:
             result.error = "no greeting audio from the agent"
             return result
+        result.greeting_caller_ms = (greeting - connect_started) * 1000.0
         await monitor.wait_quiet(options.quiet_s)
-        for pcm in fixtures:
+        for turn_i, pcm in enumerate(fixtures):
             eos = await mic.say(pcm)
             # The agent talking before the caller's last sample is a cut-off: it took the turn
             # during a mid-sentence pause (or talked over the caller).
@@ -367,7 +377,11 @@ async def run_caller(
             result.cutoffs.append(any(started < at < eos for at in monitor.onsets))
             onset = await monitor.onset_after(eos, options.turn_timeout_s)
             result.caller_e2e_ms.append(None if onset is None else (onset - eos) * 1000.0)
-            await monitor.wait_quiet(options.quiet_s)
+            quiet = quiet_s[turn_i] if turn_i < len(quiet_s) else None
+            await monitor.wait_quiet(quiet or options.quiet_s)
+            result.onsets_ms.append(
+                [round((at - eos) * 1000.0, 1) for at in monitor.onsets if at > eos]
+            )
     except Exception as exc:  # report the call as failed, keep the run going
         result.error = f"{type(exc).__name__}: {exc}"
     finally:
@@ -395,7 +409,10 @@ def load_fixtures(callset: Mapping[str, Any]) -> tuple[list[npt.NDArray[np.int16
     directory = synth.fixtures_dir(callset)
     paths = [directory / synth.fixture_name(i) for i in range(len(turns))]
     if not all(p.exists() for p in paths):
-        synth.generate(turns, directory)
+        if callset.get("fixtures_source") == "elevenlabs":
+            synth.generate_tts(turns, directory, os.environ["ELEVEN_API_KEY"])
+        else:
+            synth.generate(turns, directory)
     loaded = [synth.read_wav(p) for p in paths]
     rates = {rate for _, rate in loaded}
     if len(rates) != 1:
@@ -439,6 +456,7 @@ def summarize(
     def med(key: str) -> float | None:
         return _median([float(e[key]) for e in turns if e.get(key) is not None])
 
+    heard = [r.greeting_caller_ms for r in results if r.greeting_caller_ms is not None]
     if not caller:
         raise RuntimeError(
             "no caller turn got agent audio: "
@@ -462,6 +480,8 @@ def summarize(
         contract_violations=violations,
         wall_s=round(wall_s, 1),
         cutoffs=sum(1 for r in results for cut in r.cutoffs if cut),
+        greeting_caller_median_ms=_round(_median(heard)),
+        greeting_caller_max_ms=_round(max(heard)) if heard else None,
         caller_e2e_ms=caller,
         details=[call_details(r) for r in results],
     )
@@ -479,10 +499,17 @@ def call_details(result: CallResult) -> dict[str, Any]:
                 "turn": i,
                 "cutoff": result.cutoffs[i - 1] if i <= len(result.cutoffs) else False,
                 "caller_e2e_ms": None if caller is None else round(caller, 1),
+                "caller_onsets_ms": result.onsets_ms[i - 1] if i <= len(result.onsets_ms) else [],
                 **{f"worker_{k}": event.get(k) for k in keys},
             }
         )
-    return {"call_id": result.call_id, "error": result.error, "turns": turns}
+    return {
+        "call_id": result.call_id,
+        "error": result.error,
+        "greeting_caller_ms": _round(result.greeting_caller_ms),
+        "greeting_worker_ms": worker.get(0, {}).get("e2e_ms"),
+        "turns": turns,
+    }
 
 
 async def run_live(callset_path: Path, options: LiveOptions) -> LiveReport:
@@ -528,15 +555,28 @@ async def run_live(callset_path: Path, options: LiveOptions) -> LiveReport:
         await asyncio.wait_for(registered.wait(), timeout=60.0)
         gate = asyncio.Semaphore(concurrency)
 
+        quiet = [
+            float(t["quiet_s"]) if isinstance(t, Mapping) and t.get("quiet_s") else None
+            for t in callset["turns"]
+        ]
+
         async def one(i: int) -> CallResult:
             async with gate:
-                params = LiveFakeParams(
-                    turns=scripted_transcripts(callset),
-                    profile=dict(callset["profile"]),
-                    seed=seed + i,
-                    **{k: v for k, v in (live_cfg.get("fakes") or {}).items()},
+                params: Any
+                if options.vendors == "real":
+                    from tests.harness.bench.live_real import RealBenchParams
+
+                    params = RealBenchParams.from_json(live_cfg.get("real") or {})
+                else:
+                    params = LiveFakeParams(
+                        turns=scripted_transcripts(callset),
+                        profile=dict(callset["profile"]),
+                        seed=seed + i,
+                        **{k: v for k, v in (live_cfg.get("fakes") or {}).items()},
+                    )
+                return await run_caller(
+                    i, run_id, options, fixtures, rate, params, fake_api, lkapi, quiet
                 )
-                return await run_caller(i, run_id, options, fixtures, rate, params, fake_api, lkapi)
 
         results = await asyncio.gather(*(one(i) for i in range(calls)))
     finally:
@@ -557,4 +597,6 @@ async def run_live(callset_path: Path, options: LiveOptions) -> LiveReport:
             log.warning("call %s: %s", r.call_id, r.error)
     for violation in fake_api.violations[:20]:
         log.warning("contract: %s", violation)
-    return summarize(results, len(fake_api.violations), time.time() - started, calls)
+    report = summarize(results, len(fake_api.violations), time.time() - started, calls)
+    report.vendors = options.vendors
+    return report

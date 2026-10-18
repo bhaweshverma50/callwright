@@ -1,0 +1,30 @@
+# Real-vendor live benchmark: the default stack (Deepgram, OpenAI gpt-5.1, ElevenLabs) answers
+# for real; keys come from the environment. Fixtures are real speech made once with ElevenLabs
+# (python -m tests.harness.bench.synth --callset tests/harness/bench/callset_real.yaml).
+#   python -m tests.harness.bench.benchmark --mode live --vendors real \
+#     --callset tests/harness/bench/callset_real.yaml --details /tmp/real.json
+# Keep vendor spend small: 2 calls x 6 turns is about 3 minutes of audio.
+calls: 2
+seed: 20261018
+fixtures: fixtures/real
+fixtures_source: elevenlabs
+gate: {p50: false}
+config_overrides:
+  prompt: >-
+    You are the friendly receptionist for Halcyon Dental in Bengaluru. You can book cleanings
+    and check-ups, and you tell callers the clinic opens at 9 am and closes at 6 pm, Monday to
+    Saturday. A cleaning costs 1,500 rupees and a check-up 800 rupees. Use check_availability
+    whenever the caller asks about free slots.
+  begin_message: "Hi, thanks for calling Halcyon Dental. How can I help you today?"
+  tts: {voice_id: EXAVITQu4vr4xnSDxMaL}
+profile: {}
+turns:
+  - "Hi there. What can you help me with today?"
+  - "What time do you open tomorrow?"
+  - "How much does a cleaning cost?"
+  - "Are you open on Sundays?"
+  - "Do I need to bring anything with me?"
+  - "Thank you, that is everything."
+live:
+  calls: 2
+  concurrency: 1

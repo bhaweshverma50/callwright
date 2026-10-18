@@ -194,6 +194,53 @@ def generate(
     return paths
 
 
+CALLER_VOICE = "JBFqnCBsd6RMkjVDRZzb"
+"""ElevenLabs voice for real-speech fixtures (a male voice, distinct from the agent's)."""
+
+
+def tts_speech(text: str, api_key: str, *, voice_id: str = CALLER_VOICE) -> Signal:
+    """Real speech for ``text`` from ElevenLabs (16 kHz PCM), for real-vendor benchmarks.
+
+    Deepgram and the other real STT vendors need human-like speech; the formant synthesizer
+    is only good enough for VAD. Leading and trailing silence is trimmed so the end of the
+    file is the end of speech (``e2e_ms`` is measured from the last sample).
+    """
+    import httpx
+
+    response = httpx.post(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+        params={"output_format": "pcm_16000"},
+        headers={"xi-api-key": api_key},
+        json={"text": text, "model_id": "eleven_flash_v2_5"},
+        timeout=60.0,
+    )
+    response.raise_for_status()
+    audio = np.frombuffer(response.content, dtype=np.int16).astype(np.float64) / 32767.0
+    loud = np.flatnonzero(np.abs(audio) > 0.02)
+    if loud.size:
+        audio = audio[max(0, loud[0] - 800) : loud[-1] + 160]
+    return audio
+
+
+def generate_tts(
+    turns: Sequence[str | Mapping[str, Any]], out_dir: Path, api_key: str
+) -> list[Path]:
+    """Real-speech fixtures: each segment from ElevenLabs, ``pause_ms`` of silence between."""
+    paths = []
+    for i, raw in enumerate(turns):
+        turn = Turn.parse(raw)
+        gap = np.zeros(int(turn.pause_ms / 1000.0 * SAMPLE_RATE))
+        pieces: list[Signal] = []
+        for j, part in enumerate(turn.segments):
+            if j:
+                pieces.append(gap)
+            pieces.append(tts_speech(part, api_key))
+        path = out_dir / fixture_name(i)
+        write_wav(path, np.concatenate(pieces))
+        paths.append(path)
+    return paths
+
+
 def fixtures_dir(callset: Mapping[str, Any]) -> Path:
     """Fixture directory of a call set (``fixtures`` key, relative to the bench directory)."""
     rel = callset.get("fixtures")
@@ -207,6 +254,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     callset = yaml.safe_load(args.callset.read_text())
     out = args.out if args.out is not None else fixtures_dir(callset)
+    if callset.get("fixtures_source") == "elevenlabs":
+        import os
+
+        for path in generate_tts(callset["turns"], out, os.environ["ELEVEN_API_KEY"]):
+            print(path)
+        return 0
     for path in generate(callset["turns"], out):
         print(path)
     return 0
