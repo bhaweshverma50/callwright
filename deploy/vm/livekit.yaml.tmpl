@@ -6,6 +6,9 @@ rtc:
   port_range_start: 50000
   port_range_end: 50200
   use_external_ip: true
+  # The voice worker runs on this host: offer a 127.0.0.1 candidate so its media stays on
+  # loopback instead of hairpinning through the external IP. Browsers ignore it.
+  enable_loopback_candidate: true
 redis:
   address: 127.0.0.1:6379
   password: ${REDIS_PASSWORD}
