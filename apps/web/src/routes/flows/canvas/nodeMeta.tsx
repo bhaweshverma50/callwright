@@ -21,8 +21,12 @@ export const NODE_META: Record<NodeType, NodeMeta> = {
   end: { title: "End", blurb: "Closes the call with a reason", icon: <PhoneOff aria-hidden /> },
 };
 
-/** Palette order: the steps most flows use first. */
-export const PALETTE: NodeType[] = ["agent", "task", "condition", "say", "extract_variable", "webhook", "transfer", "end", "start"];
+/** Palette groups, the steps most flows use first. */
+export const PALETTE_GROUPS: { title: string; types: NodeType[] }[] = [
+  { title: "Conversation", types: ["agent", "task", "say"] },
+  { title: "Logic and data", types: ["condition", "extract_variable", "webhook"] },
+  { title: "Call control", types: ["transfer", "end", "start"] },
+];
 
 /** Drag payload type when a palette tile is dropped on the canvas. */
 export const DRAG_TYPE = "application/x-callwright-node";

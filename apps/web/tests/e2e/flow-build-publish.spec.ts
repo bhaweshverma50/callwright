@@ -12,6 +12,7 @@ test("create a flow agent, fix a validation error and publish", async ({ page, r
   await expect(page.locator(".react-flow__node")).toHaveCount(3);
 
   // A Say step with no message and no connection is an error.
+  await page.getByRole("button", { name: "Add step", exact: true }).click();
   await page.getByRole("button", { name: "Add Say" }).click();
   await expect(page.locator(".react-flow__node")).toHaveCount(4);
   await page.getByRole("button", { name: "Close settings" }).click();

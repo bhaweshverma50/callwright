@@ -89,7 +89,18 @@ describe("canvas keyboard and toolbar (T100)", () => {
     render(<Harness initial={{ nodes: [], edges: [] }} />);
     for (const name of ["Auto-layout", "Fit to screen", "Zoom in", "Zoom out", "Undo", "Redo"])
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add Agent" })).toBeInTheDocument();
+  });
+
+  it("Add step opens a grouped, labelled list; clicking a step adds and selects it", () => {
+    render(<Harness initial={{ nodes: [], edges: [] }} />);
+    expect(screen.queryByRole("button", { name: "Add Agent" })).not.toBeInTheDocument();
+    act(() => void fireEvent.click(screen.getByRole("button", { name: "Add step" })));
+    for (const group of ["Conversation", "Logic and data", "Call control"]) expect(screen.getByRole("region", { name: group })).toBeInTheDocument();
+    for (const title of ["Agent", "Task", "Say", "Condition", "Extract", "API call", "Transfer", "End", "Start"])
+      expect(screen.getByRole("button", { name: `Add ${title}` })).toHaveAttribute("draggable", "true");
+    act(() => void fireEvent.click(screen.getByRole("button", { name: "Add Task" })));
+    expect(current!.graph.nodes).toHaveLength(4);
+    expect(current!.graph.nodes.at(-1)!.type).toBe("task");
   });
 });
 

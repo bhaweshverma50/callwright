@@ -17,6 +17,7 @@ const TRIGGER_ICON: Partial<Record<FlowEdge["trigger"], ReactNode>> = {
   llm_condition: <MessageSquareText aria-hidden />,
   category: <Tag aria-hidden />,
   rule: <CornerDownRight aria-hidden />,
+  else: <CornerDownRight aria-hidden />,
   success: <Check aria-hidden />,
   failure: <X aria-hidden />,
 };
@@ -44,10 +45,18 @@ export function edgeText(e: FlowEdge): string | null {
 
 const OPS: Record<string, string> = { equals: "=", not_equals: "≠", contains: "contains", matches: "matches", gt: ">", lt: "<" };
 
+/** Below this much free run between two steps a pill shows its icon only (the text on hover). */
+const COMPACT_BELOW = 48;
+/** Below this the icon is left out so the text has the room (it wraps onto two lines). */
+const NARROW_BELOW = 104;
+const PILL_MAX = 200;
+
 /**
  * A connection: a smooth step line with a closed arrow, and a pill at its middle with the label,
  * category or rule. Connections the model chooses read as the label it sees; a missing label is
- * shown in the warning colour so it is found before publishing.
+ * shown in the warning colour so it is found before publishing. The pill never grows wider than
+ * the run between the two steps, so it does not sit on top of a card: on a short run its text
+ * wraps onto a second line, and on a very short one only its icon shows.
  */
 function TransitionEdgeImpl({
   id,
@@ -75,6 +84,9 @@ function TransitionEdgeImpl({
   const text = edge ? edgeText(edge) : null;
   const missing = edge?.trigger === "llm_condition" && !edge.label?.trim();
   const state = data?.diff ?? (data?.errors ? "error" : data?.traversed ? "traversed" : selected ? "selected" : undefined);
+  const room = Math.max(Math.abs(targetX - sourceX), Math.abs(targetY - sourceY)) - 16;
+  const compact = room < COMPACT_BELOW;
+  const narrow = !compact && room < NARROW_BELOW;
   return (
     <>
       <BaseEdge id={id} path={path} markerEnd={markerEnd} className="fedge" data-state={state} interactionWidth={22} />
@@ -85,10 +97,16 @@ function TransitionEdgeImpl({
             data-state={state}
             data-missing={missing || undefined}
             data-trigger={edge.trigger}
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+            data-compact={compact || undefined}
+            data-narrow={narrow || undefined}
+            title={text}
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              maxWidth: compact ? undefined : Math.min(PILL_MAX, room),
+            }}
           >
             {data?.errors ? <CircleAlert aria-hidden /> : TRIGGER_ICON[edge.trigger]}
-            <span className="truncate">{text}</span>
+            <span className="fedge-text">{text}</span>
           </div>
         </EdgeLabelRenderer>
       )}

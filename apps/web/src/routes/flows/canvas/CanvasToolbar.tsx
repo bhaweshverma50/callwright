@@ -1,13 +1,18 @@
-import { Panel, useReactFlow } from "@xyflow/react";
+import { Panel, useReactFlow, useStore } from "@xyflow/react";
 import { Maximize, Minus, Network, Plus, Redo2, Undo2 } from "lucide-react";
-import { IconButton } from "../../../components";
+import { memo } from "react";
+import { IconButton, Tooltip, cn, focusRing } from "../../../components";
 import { fitOptions } from "./layout";
 
+const BTN = "size-8 rounded-full text-fg-2 hover:text-fg";
+
 /**
- * Canvas toolbar (FR-040, T101): Auto-layout, Fit to screen, zoom in and out, undo and redo.
- * Every control is icon-only with an accessible name and a visible tooltip.
+ * Canvas toolbar (FR-040, T101): Auto-layout, Fit to screen, zoom out, the zoom level (click for
+ * 100%), zoom in, undo and redo. A light pill in the bottom-left corner; every icon-only control
+ * has an accessible name and a visible tooltip. Only the zoom readout follows the viewport, so
+ * panning never re-renders the toolbar.
  */
-export function CanvasToolbar({
+export const CanvasToolbar = memo(function CanvasToolbar({
   onLayout,
   onViewChanged,
   onUndo,
@@ -23,38 +28,49 @@ export function CanvasToolbar({
   canRedo: boolean;
 }) {
   const flow = useReactFlow();
+  const zoom = useStore((s) => Math.round(s.transform[2] * 100));
   return (
-    <Panel position="bottom-center" className="!m-3 sm:!m-4">
-      <div
-        role="toolbar"
-        aria-label="Canvas"
-        className="flex items-center gap-0.5 rounded-full border border-line bg-surface/90 p-1 shadow-pop backdrop-blur-md"
-      >
-        <IconButton label="Auto-layout" tooltipSide="top" className="size-8 rounded-full" onClick={onLayout}>
+    <Panel position="bottom-left" className="!m-3 sm:!m-4">
+      <div role="toolbar" aria-label="Canvas" className="canvas-toolbar flex items-center gap-0.5 rounded-full p-1">
+        <IconButton label="Auto-layout" tooltipSide="top" className={BTN} onClick={onLayout}>
           <Network className="size-4" aria-hidden />
         </IconButton>
         <IconButton
           label="Fit to screen"
-          className="size-8 rounded-full"
+          tooltipSide="top"
+          className={BTN}
           onClick={() => void flow.fitView({ ...fitOptions(), duration: 320 }).then(onViewChanged)}
         >
           <Maximize className="size-4" aria-hidden />
         </IconButton>
-        <span aria-hidden className="mx-1 h-5 w-px bg-line" />
-        <IconButton label="Zoom out" className="size-8 rounded-full" onClick={() => void flow.zoomOut({ duration: 200 }).then(onViewChanged)}>
+        <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+        <IconButton label="Zoom out" tooltipSide="top" className={BTN} onClick={() => void flow.zoomOut({ duration: 200 }).then(onViewChanged)}>
           <Minus className="size-4" aria-hidden />
         </IconButton>
-        <IconButton label="Zoom in" className="size-8 rounded-full" onClick={() => void flow.zoomIn({ duration: 200 }).then(onViewChanged)}>
+        <Tooltip side="top" content="Zoom to 100%">
+          <button
+            type="button"
+            aria-label={`Zoom ${zoom}%, zoom to 100%`}
+            onClick={() => void flow.zoomTo(1, { duration: 220 }).then(onViewChanged)}
+            className={cn(
+              "h-8 min-w-[3.25rem] cursor-pointer rounded-full px-1.5 font-mono text-[11.5px] tabular-nums text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg",
+              focusRing,
+            )}
+          >
+            {zoom}%
+          </button>
+        </Tooltip>
+        <IconButton label="Zoom in" tooltipSide="top" className={BTN} onClick={() => void flow.zoomIn({ duration: 200 }).then(onViewChanged)}>
           <Plus className="size-4" aria-hidden />
         </IconButton>
-        <span aria-hidden className="mx-1 h-5 w-px bg-line" />
-        <IconButton label="Undo" className="size-8 rounded-full" disabled={!canUndo} onClick={onUndo}>
+        <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+        <IconButton label="Undo" tooltipSide="top" className={BTN} disabled={!canUndo} onClick={onUndo}>
           <Undo2 className="size-4" aria-hidden />
         </IconButton>
-        <IconButton label="Redo" className="size-8 rounded-full" disabled={!canRedo} onClick={onRedo}>
+        <IconButton label="Redo" tooltipSide="top" className={BTN} disabled={!canRedo} onClick={onRedo}>
           <Redo2 className="size-4" aria-hidden />
         </IconButton>
       </div>
     </Panel>
   );
-}
+});
