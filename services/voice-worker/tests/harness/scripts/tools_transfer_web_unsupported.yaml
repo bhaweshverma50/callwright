@@ -1,0 +1,14 @@
+name: tools_transfer_web_unsupported
+description: On a web call a transfer answers channel_unsupported and the call goes on (005 T020).
+config:
+  tools:
+    - {tool_id: tool_tr, type: transfer_call, name: transfer_to_desk, description: Transfer to the desk, config: {routing_type: static, number: "+14155550100"}}
+fakes:
+  rules:
+    - {match: "person", reply: "I cannot transfer this call, but I can help.", tool: transfer_to_desk, tool_ms: 50}
+steps:
+  - say: "Can I speak to a person?"
+  - expect_event: {type: tool_call, name: transfer_to_desk, error_code: channel_unsupported, is_error: true}
+  - say: "Okay, then help me."
+  - expect_turns: 3
+  - hangup: true

@@ -1,0 +1,17 @@
+name: kb_refund_question
+description: With knowledge attached the agent gets kb_search; a search returns numbered passages and a kb_search event (005 T074).
+runtime:
+  kb_stub:
+    results:
+      - {chunk_id: c1, kb_id: kb_1, doc_id: doc_1, file_name: refund_policy.pdf, page_from: 1, page_to: 1, heading: Refunds, content: "Refunds within 14 days of purchase.", score: 0.71}
+config:
+  kb_ids: [kb_1]
+  knowledge: [{kb_id: kb_1, name: Clinic policies, description: Refunds and hours}]
+fakes:
+  rules:
+    - {match: "refund", reply: "You can get a refund within 14 days.", tool: kb_search, tool_arguments: {query: "refund window"}, tool_ms: 150}
+steps:
+  - say: "How long do I have to ask for a refund?"
+  - expect_event: {type: tool_call, name: kb_search, tool_type: kb_search, output: "[1] (refund_policy.pdf, page 1) Refunds within 14 days of purchase."}
+  - expect_agent_says: "You can get a refund within 14 days."
+  - hangup: true

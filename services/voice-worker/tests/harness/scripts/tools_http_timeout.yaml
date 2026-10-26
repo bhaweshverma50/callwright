@@ -1,0 +1,27 @@
+name: tools_http_timeout
+description: A slow API times out after the tool's timeout, is not retried and the agent hears the failure (005 T040).
+runtime:
+  http_stub: {status: 200, delay_ms: 1300, body: {}}
+config:
+  tools:
+    - tool_id: tool_slots
+      type: http
+      name: check_availability
+      description: Look up free slots
+      config:
+        url: "https://api.example.com/slots"
+        method: POST
+        headers: []
+        body_template: null
+        timeout_ms: 1000
+        response_mappings: [{variable_name: next_slot, json_path: "data.slots[0].time"}]
+        speak_during_execution: true
+        execution_message: "One moment while I check that."
+        parameters: {type: object, properties: {date: {type: string}}, required: [date]}
+fakes:
+  rules:
+    - {match: "tomorrow", reply: "Sorry, I could not check that.", tool: check_availability, tool_arguments: {date: "2026-10-27"}, tool_ms: 1000}
+steps:
+  - say: "Anything tomorrow?"
+  - expect_event: {type: tool_call, name: check_availability, error_code: timeout, is_error: true}
+  - hangup: true

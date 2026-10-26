@@ -44,3 +44,4 @@ async def test_delete_detaches_and_published_gets_nothing(
     assert after["published_version"]["id"] == version_id
     gone = await client.post("/v1/internal/knowledge/search", json=body, headers=service)
     assert gone.status_code == 200 and gone.json()["results"] == []
+    owner_sql("update calls set status = 'ended' where id = %s", (call_id,))  # keep the reaper tests clean

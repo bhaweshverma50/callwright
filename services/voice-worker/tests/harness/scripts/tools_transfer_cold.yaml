@@ -1,0 +1,14 @@
+name: tools_transfer_cold
+description: A cold transfer on a phone call ends the agent's part with call_transfer (005 T020; simulated telephony).
+runtime: {channel: sip_inbound, simulation: true}
+config:
+  tools:
+    - {tool_id: tool_tr, type: transfer_call, name: transfer_to_desk, description: Transfer to the desk, config: {routing_type: static, number: "+14155550100", transfer_type: cold}}
+fakes:
+  rules:
+    - {match: "person", reply: "Connecting you now.", tool: transfer_to_desk, tool_ms: 100}
+steps:
+  - say: "Can I speak to a person?"
+  - silence_s: 3
+  - expect_event: {type: tool_call, name: transfer_to_desk, tool_type: transfer_call, mocked: true}
+  - expect_end_reason: call_transfer

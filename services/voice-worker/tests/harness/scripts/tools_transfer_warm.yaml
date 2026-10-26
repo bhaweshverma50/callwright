@@ -1,0 +1,22 @@
+name: tools_transfer_warm
+description: A warm transfer with a private briefing completes with call_transfer (005 T020; simulated telephony).
+runtime: {channel: sip_inbound, simulation: true}
+config:
+  tools:
+    - tool_id: tool_warm
+      type: transfer_call
+      name: transfer_to_desk
+      description: Transfer to the desk
+      config:
+        routing_type: static
+        number: "+14155550100"
+        transfer_type: warm
+        warm_transfer: {handoff_type: private, briefing_message_type: static, briefing_message: "Caller wants to reschedule."}
+fakes:
+  rules:
+    - {match: "person", reply: "One moment.", tool: transfer_to_desk, tool_ms: 100}
+steps:
+  - say: "I would like a person please."
+  - silence_s: 3
+  - expect_event: {type: tool_call, name: transfer_to_desk, is_error: false}
+  - expect_end_reason: call_transfer

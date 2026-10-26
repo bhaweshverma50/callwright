@@ -320,3 +320,4 @@ async def test_internal_search(client: httpx.AsyncClient, account: Account, app:
     assert (
         await client.post("/v1/internal/knowledge/search", json=body, headers=account.headers)
     ).status_code == 401
+    owner_sql("update calls set status = 'ended' where id = %s", (call_id,))  # keep the reaper tests clean

@@ -1,0 +1,16 @@
+name: kb_search_timeout
+description: A search slower than 800 ms returns nothing (timed out) and the call goes on (005 T074).
+runtime:
+  kb_stub: {delay_ms: 1200, results: []}
+config:
+  kb_ids: [kb_1]
+  knowledge: [{kb_id: kb_1, name: Clinic policies, description: ""}]
+fakes:
+  rules:
+    - {match: "refund", reply: "I do not have that information.", tool: kb_search, tool_arguments: {query: "refund"}, tool_ms: 800}
+steps:
+  - say: "What is the refund policy?"
+  - expect_event: {type: tool_call, name: kb_search, output: "No relevant information was found in the knowledge base."}
+  - say: "Okay, thanks."
+  - expect_turns: 3
+  - hangup: true

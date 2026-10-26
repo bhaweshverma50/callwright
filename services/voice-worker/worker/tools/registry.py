@@ -431,7 +431,8 @@ def build_call_tools(
     specs = specs_from(config)
     kb = kb_spec(config)
     clients: list[httpx.AsyncClient] = []
-    if http_client is None and any(s.type == "http" for s in specs):
+    simulation = is_simulation(runtime)
+    if http_client is None and not simulation and any(s.type == "http" for s in specs):
         http_client = httpx.AsyncClient(follow_redirects=False)
         clients.append(http_client)
     executors: dict[str, ToolExecutor] = {
@@ -452,7 +453,7 @@ def build_call_tools(
     ctx = ToolContext(
         control=control,
         channel=runtime.channel,
-        simulation=is_simulation(runtime),
+        simulation=simulation,
         dynamic_variables=dict(runtime.variables),
         secrets=dict(tool_secrets or {}),
         reply_spoke=lambda: fillers.reply_spoke,

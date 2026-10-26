@@ -1,0 +1,13 @@
+name: tools_press_digit
+description: Press digits reports the digits sent (005 T020; simulated telephony).
+runtime: {channel: sip_outbound, simulation: true}
+config:
+  tools:
+    - {tool_id: tool_dtmf, type: press_digit, name: press_digit, description: Press keypad digits, config: {delay_ms: 1000, cooldown_ms: 5000}}
+fakes:
+  rules:
+    - {match: "press", reply: "Done.", tool: press_digit, tool_arguments: {digits: "2"}, tool_ms: 50}
+steps:
+  - say: "For billing press 2."
+  - expect_event: {type: tool_call, name: press_digit, output: "2", is_error: false}
+  - hangup: true

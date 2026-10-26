@@ -357,6 +357,7 @@ async def test_internal_tool_secrets(client: httpx.AsyncClient, account: Account
     closed = insert_call(account.workspace_id, status="ended")
     refused = check(await client.get(f"/v1/internal/calls/{closed}/tool-secrets", headers=service))
     assert refused.status_code == 409
+    owner_sql("update calls set status = 'ended' where id = %s", (call_id,))  # keep the reaper tests clean
 
 
 @pytest.mark.parametrize("path", ["/v1/tools/presets", "/v1/tools"])
