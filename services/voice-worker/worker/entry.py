@@ -597,11 +597,11 @@ class LiveCall:
             if not plan.greeting:
                 self.session.generate_reply(instructions=GENERATED_GREETING_INSTRUCTION)
                 return
+            # A fixed opening often carries disclosures (recorded line, virtual assistant, debt
+            # collection notice) that must be heard in full, so the caller cannot talk over it.
             frames = await self._greeting_frames(greeting_audio)
-            if frames is None:
-                self.session.say(plan.greeting)
-            else:
-                self.session.say(plan.greeting, audio=_replay(frames))
+            audio = {} if frames is None else {"audio": _replay(frames)}
+            self.session.say(plan.greeting, allow_interruptions=False, **audio)
 
     def _open_session_span(self, plan: SessionPlan) -> Any:
         return telemetry.start_span(
