@@ -3,9 +3,11 @@ info:
   title: Callwright API, analytics_chat module
   version: 0.1.0
   description: |
-    "Ask about your data" assistant. The model can only issue typed MetricQuery objects from a
-    fixed catalog; the server compiles them to parameterised queries over read-only, RLS-scoped
-    views. No model-written SQL is ever executed. Owned by spec 006.
+    "Ask about your data" assistant. The model can only issue typed MetricQuery objects (aggregates
+    from a fixed catalog) and CallQuery objects (specific or recent calls); the server compiles them
+    to parameterised queries over read-only, workspace-scoped views. No model-written SQL is ever
+    executed. Aggregates count live calls unless the user asks to include test or simulated calls;
+    call lookups include test calls by default. Owned by spec 006.
 servers:
   - url: /v1
 security:
@@ -104,11 +106,24 @@ components:
     Dimension:
       type: string
       enum: [day, week, month, hour_of_day, weekday, agent, channel, status, disconnect_reason, sentiment, evaluator]
+    AnalyticsPeriod:
+      type: object
+      required: [preset]
+      additionalProperties: false
+      properties:
+        preset: { type: string, enum: [today, yesterday, this_week, last_week, this_month, last_month, last_n_days, between] }
+        n_days: { type: integer, minimum: 1, maximum: 365 }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+    Origin:
+      type: string
+      enum: [live, test, simulation]
     MetricQuery:
       type: object
       required: [metrics, period]
       additionalProperties: false
       properties:
+        kind: { type: string, enum: [metrics], default: metrics }
         metrics:
           type: array
           minItems: 1
@@ -128,21 +143,48 @@ components:
             disconnect_reasons: { type: array, items: { type: string } }
             sentiments: { type: array, items: { type: string, enum: [positive, neutral, negative, unknown] } }
             evaluator_names: { type: array, items: { type: string } }
-        period:
-          type: object
-          required: [preset]
-          additionalProperties: false
-          properties:
-            preset: { type: string, enum: [today, yesterday, this_week, last_week, this_month, last_month, last_n_days, between] }
-            n_days: { type: integer, minimum: 1, maximum: 365 }
-            start_date: { type: string, format: date }
-            end_date: { type: string, format: date }
+        period: { $ref: "#/components/schemas/AnalyticsPeriod" }
         order_by:
           type: object
           properties:
             key: { type: string }
             direction: { type: string, enum: [asc, desc] }
         limit: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        origins:
+          type: array
+          minItems: 1
+          maxItems: 3
+          default: [live]
+          description: Call origins counted; live only unless the user asks to include test calls.
+          items: { $ref: "#/components/schemas/Origin" }
+    CallQuery:
+      type: object
+      description: |
+        Specific or recent calls (the last call, the last N, the most expensive, longest or slowest,
+        one by ID), newest first by default. Rows carry call_id, started_at, agent_name, origin,
+        channel, status, duration_s, cost_usd and avg_latency_ms.
+      required: [kind]
+      additionalProperties: false
+      properties:
+        kind: { type: string, enum: [calls] }
+        call_id: { type: string, pattern: "^call_[0-9A-HJKMNP-TV-Z]{26}$" }
+        order: { type: string, enum: [recent, cost, duration, latency], default: recent }
+        direction: { type: string, enum: [asc, desc], default: desc }
+        period: { $ref: "#/components/schemas/AnalyticsPeriod" }
+        filters:
+          type: object
+          additionalProperties: false
+          properties:
+            agent_ids: { type: array, items: { type: string, pattern: "^agt_" } }
+            channels: { type: array, items: { type: string, enum: [web, sip_inbound, sip_outbound, whatsapp] } }
+            statuses: { type: array, items: { type: string } }
+        origins:
+          type: array
+          minItems: 1
+          maxItems: 3
+          default: [live, test]
+          items: { $ref: "#/components/schemas/Origin" }
+        limit: { type: integer, minimum: 1, maximum: 20, default: 5 }
     ChatAnswer:
       type: object
       required: [outcome, content, computed_with, truncated]
@@ -177,7 +219,10 @@ components:
                 properties:
                   key: { type: string }
                   label: { type: string }
-                  type: { type: string, enum: [string, integer, number, usd, seconds, ms, ratio, date] }
+                  type:
+                    type: string
+                    enum: [string, integer, number, usd, seconds, ms, ratio, date, datetime, call]
+                    description: "call: a call ID the client links to /calls?call=<id>; datetime: an ISO timestamp."
             rows:
               type: array
               maxItems: 100
@@ -185,5 +230,15 @@ components:
         truncated: { type: boolean }
         computed_with:
           type: array
-          items: { $ref: "#/components/schemas/MetricQuery" }
+          items:
+            oneOf:
+              - { $ref: "#/components/schemas/MetricQuery" }
+              - { $ref: "#/components/schemas/CallQuery" }
+        suggestions:
+          type: array
+          maxItems: 3
+          description: |
+            Follow-up questions the client offers as one-tap chips: example questions on a decline,
+            "including test calls" when an aggregate left test calls out.
+          items: { type: string }
         charged_usd: { type: [number, "null"] }

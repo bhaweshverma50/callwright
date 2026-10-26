@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { Drawer, PageTransition, PanelLoader, cn } from "../components";
-import { CopilotDock } from "./assistant/CopilotDock";
+import { CopilotDock, isFullHeightEditor } from "./assistant/CopilotDock";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -31,6 +31,7 @@ export function Shell() {
   const [expanded, setExpanded] = useState(readExpanded);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
+  const editor = isFullHeightEditor(pathname);
 
   const toggle = useCallback(() => {
     setExpanded((v) => {
@@ -79,8 +80,9 @@ export function Shell() {
         </div>
       </Drawer>
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar onOpenNav={() => setMobileOpen(true)} />
-        <main id="main" tabIndex={-1} className="flex-1 px-4 pb-16 pt-6 outline-none sm:px-6 lg:px-10 lg:pt-8">
+        <TopBar onOpenNav={() => setMobileOpen(true)} assist={editor ? <CopilotDock placement="bar" /> : null} />
+        {/* Pages end above the floating dock (16 px inset + 46 px capsule), so it never covers a footer action. */}
+        <main id="main" tabIndex={-1} className={cn("flex-1 px-4 pt-6 outline-none sm:px-6 lg:px-10 lg:pt-8", editor ? "pb-16" : "pb-24")}>
           <PageTransition key={pathname} className="mx-auto w-full max-w-[1320px]">
             <Suspense fallback={<PanelLoader label="Loading page" />}>
               <Outlet />
@@ -88,7 +90,7 @@ export function Shell() {
           </PageTransition>
         </main>
       </div>
-      <CopilotDock />
+      {!editor && <CopilotDock />}
     </div>
   );
 }

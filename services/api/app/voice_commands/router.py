@@ -1,7 +1,9 @@
 """``/v1/voice-commands/*`` (006 T078, FR-028 to FR-033, contracts/voice_commands.yaml).
 
-``stream-token`` mints a 60 s transcription-only credential (30 a minute per user); without a
-vendor key it answers 503 and the browser records the clip and calls ``transcribe`` instead.
+``stream-token`` mints a 60 s transcription-only credential (30 a minute per user). When the vendor
+fails it answers 503 ``stt_unavailable`` and the browser records the clip and calls ``transcribe``
+instead; without a vendor key (``DEEPGRAM_API_KEY``) both answer 503 ``stt_not_configured`` and
+the browser offers typing.
 ``interpret`` validates every proposal before returning it, logs the command for 30 days and
 records feature usage ``voice_copilot`` (billable amount from the catalog, zero by default).
 """
@@ -25,7 +27,7 @@ from app.llms.client import ModelError, ModelRef, ModelTimeout, token_cost
 from app.voice_commands.interpreter import keyword_interpret, model_interpret, validate
 from app.voice_commands.models import VoiceCommandLog
 from app.voice_commands.schemas import InterpretRequest
-from app.voice_commands.stt.base import FakeSttAdapter, SttCommandAdapter, SttUnavailable
+from app.voice_commands.stt.base import FakeSttAdapter, SttCommandAdapter, SttNotConfigured, SttUnavailable
 from app.voice_commands.stt.deepgram import DeepgramSttAdapter
 
 router = APIRouter(tags=["voice-commands"])
@@ -54,6 +56,15 @@ async def _limit(request: Request, bucket: str, user_id: str) -> None:
         raise too_many_requests(result.retry_after_s, "Too many voice commands. Try again in a minute.")
 
 
+def stt_not_configured() -> ProblemError:
+    return ProblemError(
+        503,
+        "stt_not_configured",
+        "Voice input is not set up",
+        "Speech transcription is not configured on this server. Type the command instead.",
+    )
+
+
 def stt_unavailable() -> ProblemError:
     return ProblemError(
         503,
@@ -68,12 +79,14 @@ async def stream_token(request: Request, principal: CurrentPrincipal) -> JSONRes
     await _limit(request, "voice_token", principal.user_id)
     try:
         credential = await stt_adapter(request).mint_stream_credential(TOKEN_TTL_S)
+    except SttNotConfigured as exc:
+        raise stt_not_configured() from exc
     except SttUnavailable as exc:
         raise stt_unavailable() from exc
     return JSONResponse(credential, headers={"Cache-Control": "no-store"})
 
 
-@router.post("/voice-commands/transcribe", responses=problem_responses(401, 413))
+@router.post("/voice-commands/transcribe", responses=problem_responses(401, 413, 503))
 async def transcribe(
     request: Request, principal: CurrentPrincipal, audio: Annotated[UploadFile, File()]
 ) -> dict[str, str]:
@@ -90,6 +103,8 @@ async def transcribe(
         )
     try:
         text = await stt_adapter(request).transcribe(data, mime)
+    except SttNotConfigured as exc:
+        raise stt_not_configured() from exc
     except SttUnavailable as exc:
         raise ProblemError(
             503, "stt_unavailable", "Transcription unavailable", "Try again, or type the command."

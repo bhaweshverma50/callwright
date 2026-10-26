@@ -1,4 +1,4 @@
-"""MetricQuery to SQLAlchemy Core over the ``analytics`` views (006 T064, research R4).
+"""MetricQuery and CallQuery to SQLAlchemy Core over the ``analytics`` views (006 T064, research R4).
 
 The compiler is the only path from the model to the database: relations are the three
 ``analytics.*`` views, columns come from fixed tables below, and every value (dates, timezone,
@@ -30,7 +30,7 @@ from sqlalchemy import (
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.analytics_chat.catalog import Source
-from app.analytics_chat.schemas import MetricQuery, Period
+from app.analytics_chat.schemas import CallQuery, MetricQuery, Period
 
 calls_v = table(
     "calls_v",
@@ -44,6 +44,9 @@ calls_v = table(
     column("started_at"),
     column("duration_s"),
     column("cost_usd"),
+    column("origin"),
+    column("avg_latency_ms"),
+    column("ended_at"),
     schema="analytics",
 )
 latency_v = table(
@@ -52,6 +55,7 @@ latency_v = table(
     column("agent_id"),
     column("occurred_at"),
     column("e2e_ms"),
+    column("origin"),
     schema="analytics",
 )
 verdicts_v = table(
@@ -151,6 +155,8 @@ def compile_query(query: MetricQuery, *, tz: str, today: date) -> Select[Any]:
     start, end = resolve_period(query.period, tz, today)
     tz_param: Any = bindparam("tz", tz)
     where: list[ColumnElement[bool]] = [when >= bindparam("start", start), when < bindparam("end", end)]
+    if view is not verdicts_v:  # the evaluator stub has no origin; 007 counts live calls only
+        where.append(view.c.origin.in_(bindparam("origins", list(query.origins), expanding=True)))
     f = query.filters
     for values, col, key in (
         (f.agent_ids, "agent_id", "agent_ids"),
@@ -189,3 +195,46 @@ def compile_query(query: MetricQuery, *, tz: str, today: date) -> Select[Any]:
     elif query.group_by:
         stmt = stmt.order_by(column(query.metrics[0]).desc().nulls_last())
     return stmt.limit(bindparam("row_limit", query.limit + 1))
+
+
+CALL_COLUMNS = (
+    "call_id",
+    "started_at",
+    "agent_id",
+    "agent_name",
+    "origin",
+    "channel",
+    "status",
+    "duration_s",
+    "cost_usd",
+    "avg_latency_ms",
+)
+_CALL_ORDER = {
+    "recent": "started_at",
+    "cost": "cost_usd",
+    "duration": "duration_s",
+    "latency": "avg_latency_ms",
+}
+
+
+def compile_calls(query: CallQuery, *, tz: str, today: date) -> Select[Any]:
+    """Individual calls, newest first by default; ``limit + 1`` rows to detect truncation."""
+    c = calls_v.c
+    where: list[ColumnElement[bool]] = [
+        c.origin.in_(bindparam("origins", list(query.origins), expanding=True))
+    ]
+    if query.call_id:
+        where.append(c.call_id == bindparam("call_id", query.call_id))
+    if query.period is not None:
+        start, end = resolve_period(query.period, tz, today)
+        where += [c.started_at >= bindparam("start", start), c.started_at < bindparam("end", end)]
+    f = query.filters
+    for values, col in ((f.agent_ids, "agent_id"), (f.channels, "channel"), (f.statuses, "status")):
+        if values:
+            where.append(c[col].in_(bindparam(f"{col}s", list(values), expanding=True)))
+    key = c[_CALL_ORDER[query.order]]
+    if query.order != "recent":
+        where.append(key.is_not(None))
+    ordered = key.asc() if query.direction == "asc" else key.desc().nulls_last()
+    stmt = select(*[c[name] for name in CALL_COLUMNS]).select_from(calls_v).where(and_(*where))
+    return stmt.order_by(ordered, c.started_at.desc()).limit(bindparam("row_limit", query.limit + 1))

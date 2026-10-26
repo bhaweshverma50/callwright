@@ -75,12 +75,12 @@ PERIODS = (
 )
 
 SUGGESTED_QUESTIONS = (
+    "What did my last call cost?",
+    "Show my last 5 calls",
     "How many calls did each agent take last week?",
     "Cost by agent this month",
     "Busiest day last week",
-    "Average call duration trend over the last 30 days",
     "Median turn latency by agent this month",
-    "Why did calls end yesterday?",
 )
 
 

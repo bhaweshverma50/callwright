@@ -1,6 +1,7 @@
 """Analytics assistant request and query schemas (006 T063, contracts/analytics_chat.yaml).
 
-``MetricQuery`` is the only thing the model can ask for. Unknown names, extra keys, oversized
+``MetricQuery`` (aggregates over a period) and ``CallQuery`` (specific or recent calls) are the
+only things the model can ask for. Unknown names, extra keys, oversized
 lists and mixed sources fail validation; agent IDs are checked against the workspace separately
 (``check_agents``) because that needs the database.
 """
@@ -65,6 +66,7 @@ ReasonName = Literal[
     "insufficient_credit",
 ]
 SentimentName = Literal["positive", "neutral", "negative", "unknown"]
+Origin = Literal["live", "test", "simulation"]
 
 
 class QueryRejected(ValueError):
@@ -112,13 +114,29 @@ class OrderBy(_Strict):
     direction: Literal["asc", "desc"] = "desc"
 
 
+def _live() -> list[Origin]:
+    return ["live"]
+
+
+def _live_and_test() -> list[Origin]:
+    return ["live", "test"]
+
+
+def _unique_origins(origins: list[Origin]) -> None:
+    if len(set(origins)) != len(origins):
+        raise ValueError("origins repeats a value")
+
+
 class MetricQuery(_Strict):
+    kind: Literal["metrics"] = "metrics"
     metrics: list[MetricName] = Field(min_length=1, max_length=4)
     group_by: list[Dimension] = Field(default_factory=list, max_length=2)
     filters: Filters = Field(default_factory=Filters)
     period: Period
     order_by: OrderBy | None = None
     limit: int = Field(default=50, ge=1, le=100)
+    # Aggregates count live calls unless the user asks to include test or simulated calls.
+    origins: list[Origin] = Field(default_factory=_live, min_length=1, max_length=3)
 
     @property
     def source(self) -> Source:
@@ -142,10 +160,50 @@ class MetricQuery(_Strict):
             raise ValueError("order_by must name a metric or dimension of the query")
         if any(not a.startswith("agt_") for a in self.filters.agent_ids):
             raise ValueError("agent_ids must be agt_ IDs")
+        _unique_origins(self.origins)
         return self
 
 
-def check_agents(query: MetricQuery, workspace_agents: set[str]) -> None:
+class CallFilters(_Strict):
+    agent_ids: list[str] = Field(default_factory=list, max_length=50)
+    channels: list[ChannelName] = Field(default_factory=list, max_length=4)
+    statuses: list[StatusName] = Field(default_factory=list, max_length=10)
+
+
+class CallQuery(_Strict):
+    """Specific or recent calls: the last call, the last N, the most expensive, one by ID.
+
+    Includes test calls by default so "my last call" finds the call the owner just tested.
+    """
+
+    kind: Literal["calls"]
+    call_id: str | None = Field(default=None, pattern=r"^call_[0-9A-HJKMNP-TV-Z]{26}$")
+    order: Literal["recent", "cost", "duration", "latency"] = "recent"
+    direction: Literal["asc", "desc"] = "desc"
+    period: Period | None = None
+    filters: CallFilters = Field(default_factory=CallFilters)
+    origins: list[Origin] = Field(default_factory=_live_and_test, min_length=1, max_length=3)
+    limit: int = Field(default=5, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def _coherent(self) -> CallQuery:
+        if any(not a.startswith("agt_") for a in self.filters.agent_ids):
+            raise ValueError("agent_ids must be agt_ IDs")
+        _unique_origins(self.origins)
+        return self
+
+
+AnyQuery = MetricQuery | CallQuery
+
+
+def parse_query(data: object) -> AnyQuery:
+    """Validate one planner query; ``kind: "calls"`` is a lookup, anything else a metric query."""
+    if isinstance(data, dict) and data.get("kind") == "calls":
+        return CallQuery.model_validate(data)
+    return MetricQuery.model_validate(data)
+
+
+def check_agents(query: AnyQuery, workspace_agents: set[str]) -> None:
     foreign = set(query.filters.agent_ids) - workspace_agents
     if foreign:
         raise QueryRejected("agent IDs outside this workspace")

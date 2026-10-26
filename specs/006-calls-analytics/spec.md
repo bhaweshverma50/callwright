@@ -177,6 +177,11 @@ operator types a question such as "Total calls this month", "Cost by agent", "Bu
 week" or "Average call duration trend". The assistant replies with a short text answer and, when
 useful, a chart (bar, line, area or pie) or a table. A "How this was computed" disclosure lists
 the metrics, groupings, filters and period used. Follow-up questions use the earlier conversation.
+Questions about specific calls ("What did my last call cost?", "Show my last 5 calls", "the most
+expensive call this month", a call by ID) answer with each call's cost, duration, agent, status and
+latency and a link that opens the call; they include test calls. Totals count live calls unless
+the operator asks to include test calls, and say so when test calls were left out. A question the
+assistant cannot answer gets what it can answer instead and two or three example questions.
 Each answered question is charged to the workspace as an analytics feature charge and appears in
 usage reporting.
 
@@ -208,7 +213,8 @@ another workspace's agent returns nothing from that workspace.
 
 ### User Story 6 - Drive the app by voice (Priority: P3)
 
-Anywhere in the app the operator holds the Space key (or presses the mic button) and speaks, for
+Anywhere in the app (except while typing in a text field) the operator holds the Space key, or
+presses the mic button and presses it again to send, and speaks, for
 example "show me failed calls from yesterday", "open the analytics assistant and ask what our
 busiest day was", "save the flow", or "what page am I on". On release the speech is transcribed
 and interpreted into one of five outcomes: navigate (go to a page, optionally with filters applied),

@@ -28,7 +28,10 @@ paths:
             application/problem+json:
               schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
         "503":
-          description: Transcription vendor unavailable; the client falls back to /voice-commands/transcribe
+          description: |
+            Problem code stt_unavailable: the vendor failed; the client records the clip and calls
+            /voice-commands/transcribe. Problem code stt_not_configured: no vendor key on this
+            server; the client offers typing instead of recording.
           content:
             application/problem+json:
               schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
@@ -58,6 +61,11 @@ paths:
                   transcript: { type: string }
         "413":
           description: Clip too large or too long
+          content:
+            application/problem+json:
+              schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }
+        "503":
+          description: Transcription failed (stt_unavailable) or is not configured on this server (stt_not_configured)
           content:
             application/problem+json:
               schema: { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem" }

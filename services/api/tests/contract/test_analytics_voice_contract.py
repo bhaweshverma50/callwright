@@ -65,7 +65,17 @@ async def test_voice_commands(client: httpx.AsyncClient, seeded_calls: SeededCal
     await _clear_limits(app)
     h = seeded_calls.a.headers
     token = check(await client.post("/v1/voice-commands/stream-token", headers=h))
-    assert token.status_code == 503  # no vendor key: the browser records and uploads instead
+    # No vendor key: a distinct code, so the browser offers typing instead of recording a clip
+    # that nothing can transcribe.
+    assert token.status_code == 503 and token.json()["code"] == "stt_not_configured"
+    audio = check(
+        await client.post(
+            "/v1/voice-commands/transcribe",
+            files={"audio": ("clip.webm", b"\x1aE\xdf\xa3\x9f\x42\x86", "audio/webm")},
+            headers=h,
+        )
+    )
+    assert audio.status_code == 503 and audio.json()["code"] == "stt_not_configured"
     clip = check(
         await client.post(
             "/v1/voice-commands/transcribe",
