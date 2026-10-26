@@ -42,6 +42,7 @@ from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
+from app.dashboard.router import router as dashboard_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
 from app.livekit_hooks.router import router as livekit_hooks_router
@@ -207,6 +208,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         calls_router,
         calls_read_router,
         recordings_router,
+        dashboard_router,
         call_events_router,
         webhooks_out_router,
         livekit_hooks_router,
