@@ -3,7 +3,7 @@
 Last updated: 2026-10-26. Read this first when resuming.
 
 ## Where things stand
-- `main` is pushed and deployed: Cloud Run API and VM jobs worker at image tag `6ff8a42`, VM voice worker at `62c172c` (voice speed work, rolled out 2026-10-26), web on Vercel from `a4056fd`.
+- `main` is pushed. Deployed 2026-10-26: Cloud Run API `22810e0` (templates 8 and 9), VM jobs worker `6ff8a42`, VM voice worker `62c172c`, VM LiveKit server `v1.13.3`, web from `22810e0`. Voice image `6e1c06d` (greeting plays in full) built; roll out with `CW_VOICE_IMAGE` at that tag.
 - Live app: https://callwright-one.vercel.app (sign up with any email; auto-verified; $5 trial credit). Voice calls work from Test agent on the hosted site only (localhost has no LiveKit).
 - Specs 001 done, 002 done except the accessibility audit (T085), 003 live (105 of 118).
 - Wave 3a in progress on branches `w3-calls` (spec 006) and `w3-tools` (spec 005), worktrees next to the main clone.
@@ -23,6 +23,11 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Flux is not worth switching the default to: the gain at the caller is within noise.
 - The remaining floor is the network round trip to OpenAI from India (about 550 ms). The next big step is an Azure OpenAI deployment in an Indian region (the `azure_openai` provider is already the default and used when Azure secrets exist).
 - Spoken filler before tools and "still checking" belong to spec 005 (tools), briefed to the `w3-tools` build.
+
+## Hosted call fix (2026-10-26)
+- Calls ended after one reply with the timer stuck at 0:00. Cause: LiveKit server 1.8.4 on the VM is too old for livekit-client 2.22; once the agent joined before the caller, the browser's publish negotiation timed out, the client did a full reconnect (leave and rejoin), and the worker treated the leave as a hang-up. Fixed by LiveKit 1.13.3 (verified with a scripted hosted call) and by marking the call live once the room is joined.
+- `apps/web/scripts/e2e-call.mjs` places a real browser test call with a fake microphone (`API=... WEB=... node scripts/e2e-call.mjs caller.wav out-dir [template]`); defaults target the local stack.
+- Follow-up: the worker hangs up as soon as the caller's participant leaves; a short rejoin grace would survive network blips but must not bill the grace seconds.
 
 ## Next, in order
 1. Place a hosted test call to confirm the faster greeting and answers (last measured live: greeting 2.1 s, answer 2.7 s). Note: `worker-hint` prints the HEAD tag; pin `CW_API_IMAGE` and `CW_VOICE_IMAGE` to tags that were actually built.
