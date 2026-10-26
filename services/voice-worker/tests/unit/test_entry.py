@@ -14,7 +14,7 @@ from tests.harness.runner import CALL_ID
 from worker.entry import claim_job, create_server, parse_dispatch_metadata, run_textsim
 from worker.internal_api import InternalApiClient
 from worker.settings import WorkerSettings
-from worker.telephony import TelephonyUnavailable, dtmf_code, ring_phase, sip_attributes
+from worker.telephony import dtmf_code, sip_attributes
 
 BASE = "http://api.test/v1/internal"
 
@@ -36,11 +36,6 @@ def test_sip_attributes_and_dtmf_codes() -> None:
     assert [dtmf_code(d) for d in "09*#"] == [0, 9, 10, 11]
     with pytest.raises(ValueError):
         dtmf_code("A")
-
-
-async def test_telephony_stubs_raise_until_010() -> None:
-    with pytest.raises(TelephonyUnavailable):
-        await ring_phase(None, 1000)
 
 
 def test_textsim_role_is_a_stub() -> None:
