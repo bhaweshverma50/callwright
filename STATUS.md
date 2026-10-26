@@ -3,7 +3,7 @@
 Last updated: 2026-10-26. Read this first when resuming.
 
 ## Where things stand
-- `main` is pushed. Deployed 2026-10-26: Cloud Run API `22810e0` (templates 8 and 9), VM jobs worker `6ff8a42`, VM voice worker `62c172c`, VM LiveKit server `v1.13.3`, web from `22810e0`. Voice image `6e1c06d` (greeting plays in full) built; roll out with `CW_VOICE_IMAGE` at that tag.
+- `main` is pushed. Deployed 2026-10-26: Cloud Run API `22810e0` (templates 8 and 9), VM jobs worker `6ff8a42`, VM voice worker `6e1c06d` (greeting plays in full), VM LiveKit server `v1.13.3`, web from `22810e0`. Verified with scripted hosted calls.
 - Live app: https://callwright-one.vercel.app (sign up with any email; auto-verified; $5 trial credit). Voice calls work from Test agent on the hosted site only (localhost has no LiveKit).
 - Specs 001 done, 002 done except the accessibility audit (T085), 003 live (105 of 118).
 - Wave 3a in progress on branches `w3-calls` (spec 006) and `w3-tools` (spec 005), worktrees next to the main clone.
