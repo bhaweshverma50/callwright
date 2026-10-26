@@ -2,7 +2,7 @@ import * as RP from "@radix-ui/react-popover";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Check, ChevronDown, PhoneCall, RefreshCw, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import {
   callKeys,
@@ -164,10 +164,16 @@ function Dashboard() {
   const applied = useMemo(() => readSelection(params), [params]);
   const [draft, setDraft] = useState(applied);
   const [synced, setSynced] = useState(params.toString());
+  // The address we wrote ourselves; only other changes (back button, a link, the voice copilot)
+  // replace the controls' state, so an edit made while our own write lands is never lost.
+  const pushed = useRef<string | null>(null);
   if (params.toString() !== synced) {
     setSynced(params.toString());
-    setDraft(applied);
+    if (params.toString() !== pushed.current) setDraft(applied);
   }
+  useEffect(() => {
+    if (params.toString() === pushed.current) pushed.current = null;
+  }, [params]);
   const error = rangeError(draft);
 
   // Changes apply on their own after a short pause; an incomplete custom range waits (FR-039).
@@ -175,7 +181,10 @@ function Dashboard() {
     if (error) return;
     const next = toParams(draft);
     if (next.toString() === params.toString()) return;
-    const t = window.setTimeout(() => setParams(next, { replace: true }), APPLY_DELAY_MS);
+    const t = window.setTimeout(() => {
+      pushed.current = next.toString();
+      setParams(next, { replace: true });
+    }, APPLY_DELAY_MS);
     return () => window.clearTimeout(t);
   }, [draft, error, params, setParams]);
 

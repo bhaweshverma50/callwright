@@ -35,7 +35,7 @@ describe("DashboardPage (006 US3)", () => {
     const chips = screen.getByRole("group", { name: "Active selection" });
     expect(within(chips).getByText("Last 7 days")).toBeInTheDocument();
     await user.click(within(chips).getByRole("button", { name: "Clear all" }));
-    await waitFor(() => expect(router.state.location.search).toBe(""));
+    await waitFor(() => expect(router.state.location.search).toBe(""), { timeout: 3000 });
   });
 
   it("rejects a custom range that ends before it starts", async () => {

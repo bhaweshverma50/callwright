@@ -7,6 +7,23 @@ import { ChartCard, ChartTooltip, axisTick, bucketLabel } from "./ChartFrame";
 type Series = DashboardStats["series"];
 
 const HEIGHT = 220;
+
+/** The chart's numbers as a table for screen readers (the chart itself is decorative to them). */
+function SeriesTable({ caption, series, value }: { caption: string; series: Series; value: (s: Series[number]) => string }) {
+  return (
+    <table className="sr-only">
+      <caption>{caption}</caption>
+      <tbody>
+        {series.map((s) => (
+          <tr key={s.bucket_start}>
+            <th scope="row">{bucketLabel(s.bucket_start)}</th>
+            <td>{value(s)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 const tickProps = { tickLine: false, axisLine: false, tick: axisTick } as const;
 
 function bucketWord(bucket: DashboardStats["bucket"]) {
@@ -27,7 +44,8 @@ export function CallsChart({ series, bucket }: { series: Series; bucket: Dashboa
         </span>
       }
     >
-      <div style={{ height: HEIGHT }} className="-ml-3">
+      <SeriesTable caption="Calls per bucket" series={series} value={(s) => String(s.total_calls)} />
+      <div style={{ height: HEIGHT }} className="-ml-3" aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={series} margin={{ top: 8, right: 22, bottom: 0, left: 0 }} barCategoryGap="22%">
             <defs>
@@ -64,7 +82,8 @@ export function TalkTimeChart({ series, bucket }: { series: Series; bucket: Dash
   const data = series.map((s) => ({ ...s, minutes: Math.round((s.total_duration_s / 60) * 10) / 10 }));
   return (
     <ChartCard title={bucket === "week" ? "Talk time per week" : "Talk time per day"} description="Connected minutes, rounded up per call">
-      <div style={{ height: HEIGHT }} className="-ml-3">
+      <SeriesTable caption="Talk time per bucket" series={series} value={(s) => talkTime(s.total_duration_s)} />
+      <div style={{ height: HEIGHT }} className="-ml-3" aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 8, right: 22, bottom: 0, left: 0 }}>
             <defs>
@@ -112,7 +131,8 @@ export function DurationTrend({ series }: { series: Series }) {
   const data = series.map((s) => ({ ...s, avg: s.total_calls ? s.avg_duration_s : null }));
   return (
     <ChartCard title="Average duration" description="Connected calls only">
-      <div style={{ height: HEIGHT }} className="-ml-3">
+      <SeriesTable caption="Average duration per bucket" series={series} value={(s) => (s.total_calls ? mss(s.avg_duration_s) : "No calls")} />
+      <div style={{ height: HEIGHT }} className="-ml-3" aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 22, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 4" />
