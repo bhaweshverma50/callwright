@@ -3,10 +3,10 @@
 Last updated: 2026-10-26. Read this first when resuming.
 
 ## Where things stand
-- `main` is pushed. Deployed 2026-10-26: Cloud Run API `22810e0` (templates 8 and 9), VM jobs worker `6ff8a42`, VM voice worker `6e1c06d` (greeting plays in full), VM LiveKit server `v1.13.3`, web from `22810e0`. Verified with scripted hosted calls.
+- `main` is pushed. Deployed 2026-10-26 (wave 3a live): Cloud Run API `316dbbb` (migrations through s006_0001 applied), VM jobs worker `31d6026`, VM voice worker `95a04c4`, VM LiveKit `v1.13.3`, web from `31d6026`. Web `df14244` (setup sequence until the first live call) is not deployed yet.
 - Live app: https://callwright-one.vercel.app (sign up with any email; auto-verified; $5 trial credit). Voice calls work from Test agent on the hosted site only (localhost has no LiveKit).
 - Specs 001 done, 002 done except the accessibility audit (T085), 003 live (105 of 118).
-- Wave 3a merged into `main` on 2026-10-26 (not deployed yet): spec 005 tools and knowledge (99 of 100 tasks; T092 quickstart run open) and spec 006 calls and analytics (95 of 95). Migrations chain s003_0002, s005_0001, s006_0001. Suites on the merge: API 1091, worker 385, web 145.
+- Wave 3a merged and deployed on 2026-10-26: spec 005 tools and knowledge (99 of 100 tasks; T092 quickstart run open) and spec 006 calls and analytics (95 of 95). Migrations chain s003_0002, s005_0001, s006_0001. Suites on the merge: API 1091, worker 385, web 145.
 
 ## Voice speed (done 2026-10-26, merged)
 Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nova-3, gpt-5.1, ElevenLabs Flash, run from India):
@@ -31,7 +31,7 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 
 ## Next, in order
 1. Place a hosted test call to confirm the faster greeting and answers (last measured live: greeting 2.1 s, answer 2.7 s). Note: `worker-hint` prints the HEAD tag; pin `CW_API_IMAGE` and `CW_VOICE_IMAGE` to tags that were actually built.
-2. Deploy wave 3a: API image, migrate (s005, s006; s006 creates role `cw_analytics_reader`), API, VM jobs worker and voice worker at the new tags, web. New optional env: `ANALYTICS_CHAT_MODEL`, `VOICE_COMMAND_MODEL`, `RECORDING_URL_TTL_S`, `SIP_OUTBOUND_TRUNK_ID`; `DEEPGRAM_API_KEY` now mounted on the API. Uploads stay in memory (`STORAGE_MODE=fake`) until a bucket exists.
+2. Wave 3a is live. Notes: new secrets need `deploy.sh ... setup` before `api` (it grants the API service account access); the dashboard counts live calls only. New optional env: `ANALYTICS_CHAT_MODEL`, `VOICE_COMMAND_MODEL`, `RECORDING_URL_TTL_S`, `SIP_OUTBOUND_TRUNK_ID`; `DEEPGRAM_API_KEY` now mounted on the API. Uploads stay in memory (`STORAGE_MODE=fake`) until a bucket exists.
 3. Wave 3b: specs 004 (flows, uses 005's tool ports) and 010 (channels). Then wave 4 (007, 008) and wave 5 (009).
 4. Later: recording service (LiveKit egress; `RECORDINGS_ENABLED=false` today), an object storage bucket (uploads are in memory on Cloud Run), Azure OpenAI in India, key rotation.
 
