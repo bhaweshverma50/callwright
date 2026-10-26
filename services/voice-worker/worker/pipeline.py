@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from worker.adapters.registry import (
     AdapterRegistry,
@@ -392,6 +392,45 @@ async def pronounce(
         yield chunk
 
 
+class FillerSource(Protocol):
+    """005's ``FillerPolicy``: lookup tool names and the line to say when one is called."""
+
+    reply_spoke: bool
+
+    def text_for(self, names: Sequence[str]) -> str | None: ...
+
+
+async def with_fillers(
+    stream: AsyncIterable[Any], policy: FillerSource | None
+) -> AsyncIterator[Any]:
+    """Pass the LLM stream through; when the first tool call of a reply arrives before any text
+    and the tool is a lookup (HTTP or knowledge search), say its filler line at once so the
+    caller is not left in silence while the tool runs. ``policy.reply_spoke`` tells the tools
+    whether this reply already said something (so they skip their own waiting line)."""
+    if policy is None:
+        async for chunk in stream:
+            yield chunk
+        return
+    policy.reply_spoke = False
+    spoke = False
+    async for chunk in stream:
+        if isinstance(chunk, str):
+            spoke = spoke or bool(chunk.strip())
+        else:
+            delta = getattr(chunk, "delta", None)
+            if delta is not None:
+                spoke = spoke or bool((getattr(delta, "content", None) or "").strip())
+                calls = getattr(delta, "tool_calls", None) or []
+                if calls and not spoke:
+                    filler = policy.text_for([str(getattr(c, "name", "")) for c in calls])
+                    if filler:
+                        yield filler + " "
+                        spoke = True
+                if calls:
+                    policy.reply_spoke = spoke
+        yield chunk
+
+
 def make_agent_class() -> type[Any]:
     """The single-prompt LiveKit agent. Built lazily so pure tests never import LiveKit."""
     from livekit.agents import Agent
@@ -406,6 +445,7 @@ def make_agent_class() -> type[Any]:
             tools: Sequence[Any] = (),
             on_tts_text: TtsTextHook | None = None,
             extra_instructions: str = "",
+            filler_policy: FillerSource | None = None,
             **kwargs: Any,
         ) -> None:
             instructions = "\n\n".join(
@@ -414,6 +454,14 @@ def make_agent_class() -> type[Any]:
             super().__init__(instructions=instructions, tools=list(tools), **kwargs)
             self.plan = plan
             self._on_tts_text = on_tts_text
+            self._fillers = filler_policy
+
+        async def llm_node(
+            self, chat_ctx: Any, tools: list[Any], model_settings: Any
+        ) -> AsyncIterator[Any]:
+            stream = Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+            async for chunk in with_fillers(stream, self._fillers):
+                yield chunk
 
         async def tts_node(self, text: AsyncIterable[str], model_settings: Any) -> Any:
             transform = PronunciationTransform(self.plan.pronunciation)
@@ -449,7 +497,10 @@ def build_agent(
     ``extra_tools`` and ``extra_instructions`` carry worker-internal tools such as voicemail
     detection (R10); they are added to single-prompt agents and passed to flows as tools.
     """
-    tools = list((tool_provider or get_tool_provider()).tools_for(runtime, control))
+    provider = tool_provider or get_tool_provider()
+    tools = list(provider.tools_for(runtime, control))
+    policy_for = getattr(provider, "filler_policy", None)
+    fillers = policy_for(runtime, control) if callable(policy_for) else None
     tools += list(extra_tools)
     if plan.agent_type == "flow":
         return (flow_runner or get_flow_runner()).build_agent(runtime, control, tools)
@@ -459,6 +510,7 @@ def build_agent(
         tools=tools,
         on_tts_text=on_tts_text,
         extra_instructions=extra_instructions,
+        filler_policy=fillers,
         **agent_kwargs,
     )
 
