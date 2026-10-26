@@ -36,6 +36,7 @@ const AgentEditorPage = lazy(() => import("../routes/agents/editor/AgentEditorPa
 const CallHistoryPage = lazy(() => import("../routes/calls/CallHistoryPage").then((m) => ({ default: m.CallHistoryPage })));
 const ComparePage = lazy(() => import("../routes/calls/ComparePage").then((m) => ({ default: m.ComparePage })));
 const DashboardPage = lazy(() => import("../routes/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const PhoneNumbersPage = lazy(() => import("../routes/channels/PhoneNumbersPage").then((m) => ({ default: m.PhoneNumbersPage })));
 const AgentTestingPage = lazy(() => import("../routes/agents/AgentTestingPage").then((m) => ({ default: m.AgentTestingPage })));
 
 /** Agent builder (spec 002, T024) and browser test calls (003). Flow building (004) is a placeholder here. */
@@ -53,7 +54,6 @@ const agentRoutes: RouteObject[] = [
 
 /** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */
 const placeholderRoutes: RouteObject[] = [
-  { path: "phone-numbers", element: <AreaPlaceholder to="/phone-numbers" /> },
   { path: "datasets", element: <AreaPlaceholder to="/datasets" /> },
   { path: "simulations", element: <AreaPlaceholder to="/simulations" /> },
   { path: "simulations/runs/:id", element: <RecordPlaceholder to="/simulations" prefix="srun" kind="simulation run" /> },
@@ -106,6 +106,7 @@ export const routes: RouteObject[] = [
                   { path: "calls/:callId/compare", element: <ComparePage /> },
                   { path: BILLING_ITEM.to.slice(1), element: <BillingPage /> },
                   { path: "settings", element: <SettingsPage /> },
+                  { path: "phone-numbers", element: <PhoneNumbersPage /> },
                   ...agentRoutes,
                   ...knowledgeRoutes,
                   ...placeholderRoutes,

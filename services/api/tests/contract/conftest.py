@@ -64,3 +64,4 @@ def check(response: httpx.Response) -> httpx.Response:
 
 
 from tests.calls_support import seeded_calls  # noqa: E402, F401  (006 seeded call history)
+from tests.fakes.livekit_fake import channels  # noqa: E402, F401  (010 in-memory SIP and WhatsApp)

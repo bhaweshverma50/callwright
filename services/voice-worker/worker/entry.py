@@ -72,7 +72,14 @@ from worker.pipeline import (
     voicemail_tool,
 )
 from worker.settings import WorkerSettings, get_settings
-from worker.telephony import TelephonyUnavailable, dtmf_code, sip_attributes
+from worker.telephony import (
+    DialFailed,
+    TelephonyUnavailable,
+    dial_outbound,
+    dtmf_code,
+    ring_phase,
+    sip_attributes,
+)
 from worker.tools import ToolActivity
 from worker.tools import registry as tool_registry
 from worker.tools.transfer import DESTINATION_IDENTITY, LiveKitTransferBackend
@@ -590,19 +597,41 @@ class LiveCall:
                 await self._fail("outbound-dial-missing")
                 return None
             try:
-                from worker.telephony import dial_outbound
-
-                return await dial_outbound(self.ctx, runtime.outbound_dial)
+                return await dial_outbound(self.ctx, runtime.outbound_dial, self.recorder)
             except TelephonyUnavailable as exc:
                 await self._fail(exc.diagnostic)
                 return None
+            except DialFailed as exc:
+                await self._not_answered(exc)
+                return None
         try:
-            return await asyncio.wait_for(
+            participant = await asyncio.wait_for(
                 self.ctx.wait_for_participant(), timeout=runtime.caller_join_timeout_s
             )
         except TimeoutError:
             await self._fail("caller_never_joined")
             return None
+        if runtime.channel in SIP_CHANNELS and self.plan is not None:
+            # 010 R5: ring for the agent's ring duration before answering; never billed.
+            ring_ms = self.plan.behavior.ring_duration_ms
+            if not await ring_phase(self.ctx.room, self.recorder, ring_ms, participant.identity):
+                await self._fail("caller_hung_up_while_ringing")
+                return None
+        return participant
+
+    async def _not_answered(self, exc: DialFailed) -> None:
+        """Outbound busy, no answer or failed (010 R6): never connected, never billed."""
+        self.recorder.status(
+            exc.status,
+            disconnect_reason="error" if exc.status == "failed" else None,
+            diagnostic=exc.diagnostic,
+            sip_status_code=exc.sip_status_code,
+        )
+        if self.session_span is not None:
+            self.session_span.set_attribute("call.diagnostic", exc.diagnostic)
+            self.session_span.end()
+        await self.poster.flush(with_usage=False)
+        await self._close_room()
 
     async def _connected(
         self, plan: SessionPlan, greeting_audio: asyncio.Task[list[Any]] | None = None

@@ -6446,12 +6446,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        ValidationProblem: components["schemas"]["Problem"] & {
-            errors?: {
-                field: string;
-                message: string;
-            }[];
-        };
         ActiveCallsProblem: components["schemas"]["Problem"] & {
             active_call_count: number;
         };
@@ -12928,6 +12922,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description `insufficient-credit` (call record created, status failed) */
             402: {
                 headers: {
@@ -12961,13 +12956,22 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["CallRefusedProblem"] | components["schemas"]["PolicyBlockedProblem"];
+                    "application/problem+json": components["schemas"]["CallRefusedProblem"] | components["schemas"]["PolicyBlockedProblem"] | components["schemas"]["Problem"];
                 };
             };
             /** @description `rate-limited` (more than 10 requests per second; `Retry-After` header) or `concurrency-limit` (call record created, status failed). */
             429: {
                 headers: {
                     "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CallRefusedProblem"];
+                };
+            };
+            /** @description `telephony-unavailable` (this deployment has no SIP service; nothing is created) or `media-unavailable` (the room could not be created; the call is `failed` and not charged). */
+            503: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {
@@ -13005,6 +13009,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     createDncEntry: {
@@ -13029,6 +13034,7 @@ export interface operations {
                     "application/json": components["schemas"]["DncEntry"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description `dnc-entry-exists` (the existing entry id is in `detail`) or `dnc-limit-reached` */
             409: {
                 headers: {
@@ -13067,6 +13073,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Unauthorized"];
             /** @description Unknown entry */
             404: {
                 headers: {
@@ -13102,6 +13109,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DncImportResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description `dnc-limit-reached` (the import would take the list over 1,000,000 numbers) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description `file-too-large` (over 10 MB or 100,000 rows) */
@@ -13142,6 +13159,7 @@ export interface operations {
                     "application/json": components["schemas"]["CallingHours"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     putCallingHours: {
@@ -13166,6 +13184,7 @@ export interface operations {
                     "application/json": components["schemas"]["CallingHours"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description `invalid-window` (bad time format, start not before end, or a missing weekday) */
             422: {
                 headers: {
@@ -13207,6 +13226,8 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     listPhoneNumbers: {
@@ -13237,6 +13258,8 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     importPhoneNumber: {
@@ -13261,6 +13284,7 @@ export interface operations {
                     "application/json": components["schemas"]["PhoneNumber"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description `number-already-registered` (any workspace) or `number-being-deleted` */
             409: {
                 headers: {
@@ -13276,7 +13300,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13297,6 +13321,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description False when this deployment has no SIP service yet: numbers can be saved and routed, but no call reaches them and outbound calls are refused. */
+                        telephony_enabled: boolean;
                         /** @example sip:abc123.sip.livekit.cloud */
                         origination_uri: string;
                         /** @example sip:{e164}@abc123.sip.livekit.cloud */
@@ -13305,6 +13331,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     getPhoneNumber: {
@@ -13327,6 +13354,7 @@ export interface operations {
                     "application/json": components["schemas"]["PhoneNumber"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
         };
     };
@@ -13360,6 +13388,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
             /** @description `number-has-active-calls`; body includes `active_call_count` */
             409: {
@@ -13368,6 +13397,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ActiveCallsProblem"];
+                };
+            };
+            /** @description The dispatch rule could not be removed (`routing-update-failed`); nothing changed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13396,8 +13434,9 @@ export interface operations {
                     "application/json": components["schemas"]["PhoneNumber"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
-            /** @description Number is `draining` */
+            /** @description Number is `draining` (`number-draining`) or still `provisioning` */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13412,7 +13451,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Media platform update failed; nothing changed (`routing-update-failed`) */
@@ -13446,6 +13485,8 @@ export interface operations {
                     "application/json": components["schemas"]["PhoneNumber"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["Problem"];
             /** @description Number is not in `error` */
             409: {
                 headers: {
@@ -13473,6 +13514,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description False until this deployment has a SIP service. */
+                        telephony_enabled: boolean;
                         /**
                          * Format: uri
                          * @example https://api.callwright.example/v1/whatsapp/webhook
@@ -13483,6 +13526,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listWhatsAppChannels: {
@@ -13512,6 +13556,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     createWhatsAppChannel: {
@@ -13536,6 +13581,7 @@ export interface operations {
                     "application/json": components["schemas"]["WhatsAppChannel"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description `whatsapp-number-already-connected` or `verify-token-in-use` */
             409: {
                 headers: {
@@ -13551,7 +13597,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description `whatsapp-unreachable`: the WhatsApp platform could not be reached; nothing is saved, retry later */
@@ -13585,6 +13631,7 @@ export interface operations {
                     "application/json": components["schemas"]["WhatsAppChannel"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
         };
     };
@@ -13617,6 +13664,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
             /** @description `channel-has-active-calls` with `active_call_count` */
             409: {
@@ -13625,6 +13673,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ActiveCallsProblem"];
+                };
+            };
+            /** @description The dispatch rule could not be removed (`routing-update-failed`); nothing changed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13653,6 +13710,7 @@ export interface operations {
                     "application/json": components["schemas"]["WhatsAppChannel"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
             /** @description Channel is draining, or verify token used by another channel */
             409: {
@@ -13665,6 +13723,15 @@ export interface operations {
             };
             /** @description Validation or WhatsApp rejected new credentials (nothing changed) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description `whatsapp-unreachable` or `routing-update-failed`; nothing changed */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13685,13 +13752,24 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Result of the retry */
+            /** @description Result of the retry (`error` with WhatsApp's reason when the check fails again) */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["WhatsAppChannel"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["Problem"];
+            /** @description Channel is draining */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -13727,6 +13805,8 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["Problem"];
         };
     };
     createCallerRoute: {
@@ -13757,6 +13837,8 @@ export interface operations {
                     "application/json": components["schemas"]["CallerRoute"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["Problem"];
             /** @description `duplicate-caller-route` or `route-limit-reached` (1,000 per channel) */
             409: {
                 headers: {
@@ -13796,6 +13878,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
         };
     };
@@ -13826,7 +13909,17 @@ export interface operations {
                     "application/json": components["schemas"]["CallerRoute"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
+            /** @description Agent not in workspace or not published */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     verifyWhatsAppWebhook: {
@@ -13856,7 +13949,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/plain": string;
+                };
             };
         };
     };

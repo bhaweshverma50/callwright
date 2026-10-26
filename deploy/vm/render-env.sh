@@ -25,9 +25,19 @@ PREV_API_IMAGE="$(sed -n 's/^API_IMAGE=//p' .env 2>/dev/null || true)"
 API_IMAGE="${CW_API_IMAGE:-${PREV_API_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/api:latest}}"
 PREV_VOICE_IMAGE="$(sed -n 's/^VOICE_IMAGE=//p' .env 2>/dev/null || true)"
 VOICE_IMAGE="${CW_VOICE_IMAGE:-${PREV_VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}}"
-printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\nVOICE_IMAGE=%s\n' "$REDIS_PASSWORD" "$API_IMAGE" "$VOICE_IMAGE" > .env
+PREV_SIP_IMAGE="$(sed -n 's/^SIP_IMAGE=//p' .env 2>/dev/null || true)"
+SIP_IMAGE="${CW_SIP_IMAGE:-${PREV_SIP_IMAGE:-livekit/sip:v1.2.0}}"
+printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\nVOICE_IMAGE=%s\nSIP_IMAGE=%s\n' \
+  "$REDIS_PASSWORD" "$API_IMAGE" "$VOICE_IMAGE" "$SIP_IMAGE" > .env
 export REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET
 envsubst < livekit.yaml.tmpl > livekit.yaml
+# Telephony (010): sip.yaml only when the SIP service is being turned on (README.md, "Telephony").
+if [ "${CW_SIP_ENABLED:-false}" = "true" ]; then
+  SIP_RTP_PORTS="${CW_SIP_RTP_PORTS:-51000-51999}"
+  export SIP_RTP_PORTS
+  envsubst < sip.yaml.tmpl > sip.yaml
+  mkdir -p sip-certs
+fi
 
 # worker.env: compose env_file with single-quoted literal values (no interpolation).
 line() {
@@ -55,6 +65,8 @@ REDIS_URL_ENCODED_PASSWORD="$(python3 -c 'import sys, urllib.parse; print(urllib
   line STRIPE_MODE "${CW_STRIPE_MODE:-fake}"
   line ARQ_POLL_DELAY_S "${CW_ARQ_POLL_DELAY_S:-1}"
   line RECORDINGS_ENABLED "${CW_RECORDINGS_ENABLED:-false}"
+  # 010: the drain cron removes SIP trunks of deleted numbers; empty keeps SIP in memory.
+  line LIVEKIT_SIP_HOST "${CW_LIVEKIT_SIP_HOST:-}"
   line REDIS_URL "redis://:${REDIS_URL_ENCODED_PASSWORD}@127.0.0.1:6379/0"
   line LIVEKIT_MODE live
   line LIVEKIT_URL "ws://127.0.0.1:7880"
@@ -104,4 +116,4 @@ mv worker.env.tmp worker.env
   done
 } > voice.env.tmp
 mv voice.env.tmp voice.env
-echo "rendered .env, worker.env, voice.env and livekit.yaml"
+echo "rendered .env, worker.env, voice.env and livekit.yaml${CW_SIP_ENABLED:+ (sip.yaml: $CW_SIP_ENABLED)}"

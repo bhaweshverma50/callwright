@@ -17,14 +17,16 @@ paths:
       summary: Callback URL to paste into the WhatsApp app configuration
       tags: [whatsapp]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Settings
           content:
             application/json:
               schema:
                 type: object
-                required: [callback_url, default_graph_api_version]
+                required: [callback_url, default_graph_api_version, telephony_enabled]
                 properties:
+                  telephony_enabled: {type: boolean, description: False until this deployment has a SIP service.}
                   callback_url: {type: string, format: uri, examples: ['https://api.callwright.example/v1/whatsapp/webhook']}
                   default_graph_api_version: {type: string, examples: ['v23.0']}
   /whatsapp/channels:
@@ -35,6 +37,7 @@ paths:
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Channels in this workspace (deleted excluded)
           content:
@@ -63,6 +66,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/WhatsAppChannelCreate'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '201':
           description: Created (`setup_incomplete` until verification, or `error` with detail)
           content:
@@ -80,7 +84,7 @@ paths:
             `whatsapp-number-mismatch` (detail names both numbers).
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/ValidationProblem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '502':
           description: '`whatsapp-unreachable`: the WhatsApp platform could not be reached; nothing is saved, retry later'
           content:
@@ -93,6 +97,7 @@ paths:
       operationId: getWhatsAppChannel
       tags: [whatsapp]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Channel
           content:
@@ -109,6 +114,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/WhatsAppChannelUpdate'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Updated
           content:
@@ -125,6 +131,11 @@ paths:
           content:
             application/problem+json:
               schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '502':
+          description: '`whatsapp-unreachable` or `routing-update-failed`; nothing changed'
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
     delete:
       operationId: deleteWhatsAppChannel
       tags: [whatsapp]
@@ -133,6 +144,7 @@ paths:
           in: query
           schema: {type: boolean, default: false}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '202':
           description: Draining
           content:
@@ -141,6 +153,11 @@ paths:
         '204':
           description: Deleted
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '502':
+          description: The dispatch rule could not be removed (`routing-update-failed`); nothing changed
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '409':
           description: '`channel-has-active-calls` with `active_call_count`'
           content:
@@ -153,11 +170,18 @@ paths:
       operationId: retryWhatsAppSetup
       tags: [whatsapp]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
-          description: Result of the retry
+          description: Result of the retry (`error` with WhatsApp's reason when the check fails again)
           content:
             application/json:
               schema: {$ref: '#/components/schemas/WhatsAppChannel'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '409':
+          description: Channel is draining
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /whatsapp/channels/{channel_id}/caller-routes:
     parameters:
       - $ref: '#/components/parameters/ChannelId'
@@ -169,6 +193,7 @@ paths:
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
         - {name: caller, in: query, description: Prefix search on caller number, schema: {type: string}}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Routes
           content:
@@ -184,6 +209,7 @@ paths:
                   page: {type: integer}
                   page_size: {type: integer}
                   total_pages: {type: integer}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     post:
       operationId: createCallerRoute
       tags: [whatsapp]
@@ -201,11 +227,13 @@ paths:
                   description: E.164; digits without "+" are accepted and normalised.
                 agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '201':
           description: Created
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CallerRoute'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: '`duplicate-caller-route` or `route-limit-reached` (1,000 per channel)'
           content:
@@ -237,16 +265,23 @@ paths:
               properties:
                 agent_id: {type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Updated
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CallerRoute'}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '422':
+          description: Agent not in workspace or not published
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
     delete:
       operationId: deleteCallerRoute
       tags: [whatsapp]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '204': {description: Deleted}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
   /whatsapp/webhook:
@@ -267,6 +302,9 @@ paths:
               schema: {type: string}
         '403':
           description: No channel has this verify token
+          content:
+            text/plain:
+              schema: {type: string}
     post:
       operationId: receiveWhatsAppWebhook
       summary: WhatsApp notifications (public, signed with the app secret)
@@ -388,19 +426,6 @@ components:
         agent_id: {type: string}
         agent_published: {type: boolean, description: False means the route is currently skipped.}
         created_at: {type: string, format: date-time}
-    ValidationProblem:
-      allOf:
-        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
-        - type: object
-          properties:
-            errors:
-              type: array
-              items:
-                type: object
-                required: [field, message]
-                properties:
-                  field: {type: string}
-                  message: {type: string}
     ActiveCallsProblem:
       allOf:
         - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'

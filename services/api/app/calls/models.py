@@ -169,6 +169,9 @@ class Call(Base):
     sentiment: Mapped[str | None] = mapped_column(String)
     analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     worker_job_id: Mapped[str | None] = mapped_column(String)
+    # 010: outbound ring timeout and the inbound routing outcome (migration s010_0001).
+    ring_timeout_s: Mapped[int | None] = mapped_column(Integer)
+    route_detail: Mapped[str | None] = mapped_column(String)
 
 
 PipelineStep = Literal[

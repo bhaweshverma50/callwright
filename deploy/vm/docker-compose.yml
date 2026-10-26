@@ -58,6 +58,25 @@ services:
     depends_on:
       - livekit
 
+  # LiveKit SIP (010 channels): carriers and WhatsApp send calls here and LiveKit dials out
+  # through it. NOT deployed yet: it only starts with the "telephony" profile
+  # (`docker compose --profile telephony up -d sip`) once sip.yaml is rendered
+  # (CW_SIP_ENABLED=true ./render-env.sh) and the firewall and DNS steps in README.md are done.
+  # Pin SIP_IMAGE in .env to a release from https://github.com/livekit/sip/releases.
+  sip:
+    image: ${SIP_IMAGE:-livekit/sip:v1.2.0}
+    profiles: ["telephony"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      SIP_CONFIG_FILE: /etc/sip.yaml
+    volumes:
+      - ./sip.yaml:/etc/sip.yaml:ro
+      - ./sip-certs:/certs:ro
+    depends_on:
+      - livekit
+      - redis
+
 volumes:
   caddy_data:
   caddy_config:

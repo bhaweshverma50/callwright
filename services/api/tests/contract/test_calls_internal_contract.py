@@ -118,15 +118,21 @@ class Router:
 async def test_sip_inbound_without_router_is_refused(app: FastAPI, runtime: Runtime) -> None:
     internal_api, _ = worker_modules()
     api, _, http = worker_client(app)
-    result = await api.claim(
-        internal_api.ClaimRequest(
-            job_id="AJ_sip0",
-            room_name="sip-room-0",
-            worker_id="AW",
-            dispatch_metadata={"channel": "sip_inbound", "route_ref": "r1"},
-            sip=internal_api.SipAttributes(caller_number="+15550001", trunk_phone_number="+15559999"),
+    # 010 registers real routers at startup; this checks 003's behaviour without one.
+    installed = dict(ports.registry.inbound_routers)
+    ports.registry.inbound_routers.clear()
+    try:
+        result = await api.claim(
+            internal_api.ClaimRequest(
+                job_id="AJ_sip0",
+                room_name="sip-room-0",
+                worker_id="AW",
+                dispatch_metadata={"channel": "sip_inbound", "route_ref": "r1"},
+                sip=internal_api.SipAttributes(caller_number="+15550001", trunk_phone_number="+15559999"),
+            )
         )
-    )
+    finally:
+        ports.registry.inbound_routers.update(installed)
     assert not result.admitted and result.refusal.disconnect_reason == "error"
     assert result.refusal.diagnostic == "no_inbound_router"
     await http.aclose()
@@ -136,6 +142,7 @@ async def test_sip_inbound_is_admitted_through_the_router(app: FastAPI, runtime:
     internal_api, _ = worker_modules()
     _, ws = await runtime.workspace()
     agent = runtime.versions.add_agent(ws)
+    installed = dict(ports.registry.inbound_routers)
     ports.register_inbound_router("sip_inbound", Router(InboundRoute(ws, agent.agent_id)))
     try:
         api, _, http = worker_client(app)
@@ -156,6 +163,7 @@ async def test_sip_inbound_is_admitted_through_the_router(app: FastAPI, runtime:
         await http.aclose()
     finally:
         ports.registry.inbound_routers.clear()
+        ports.registry.inbound_routers.update(installed)
 
 
 async def test_sip_outbound_without_dial_provider_is_refused(app: FastAPI, runtime: Runtime) -> None:

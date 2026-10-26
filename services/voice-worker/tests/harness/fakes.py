@@ -352,3 +352,58 @@ class FakeSanasEngine:
 
     def close(self) -> None:
         self.closed = True
+
+
+# 010: SIP participants for telephony tests ---------------------------------------------------
+
+
+class FakeSipDialer:
+    """``SipDialer`` that answers, rejects with a SIP status, times out or cannot reach the
+    trunk."""
+
+    def __init__(
+        self,
+        *,
+        answer: bool = False,
+        reject: int | None = None,
+        time_out: bool = False,
+        unreachable: bool = False,
+    ) -> None:
+        self.answer = answer
+        self.reject = reject
+        self.time_out = time_out
+        self.unreachable = unreachable
+        self.calls: list[dict[str, Any]] = []
+
+    async def call(self, **kwargs: Any) -> None:
+        from worker.telephony import SipDialError
+
+        self.calls.append(kwargs)
+        if self.time_out:
+            raise SipDialError(None, "ring timeout", timed_out=True)
+        if self.unreachable:
+            raise SipDialError(None, "connection refused")
+        if self.reject is not None:
+            raise SipDialError(self.reject, f"sip {self.reject}")
+
+
+class FakeSipRoom:
+    """Room with ``on``/``off`` and ``participant_disconnected`` (the SIP caller hanging up)."""
+
+    def __init__(self, identities: list[str]) -> None:
+        self.name = "call-room"
+        self.remote_participants: dict[str, Any] = {i: object() for i in identities}
+        self.handlers: dict[str, list[Any]] = {}
+
+    def on(self, event: str, handler: Any) -> None:
+        self.handlers.setdefault(event, []).append(handler)
+
+    def off(self, event: str, handler: Any) -> None:
+        self.handlers.get(event, []).remove(handler)
+
+    def disconnect(self, identity: str) -> None:
+        from types import SimpleNamespace
+
+        self.remote_participants.pop(identity, None)
+        for handler in list(self.handlers.get("participant_disconnected", [])):
+            handler(SimpleNamespace(identity=identity))

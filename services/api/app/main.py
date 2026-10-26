@@ -40,6 +40,7 @@ from app.core.health import router as health_router
 from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
+from app.core.sip import build_sip
 from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
@@ -51,6 +52,9 @@ from app.knowledge.router import router as knowledge_router
 from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
 from app.llms.router import router as llms_router
+from app.outbound.router import router as outbound_router
+from app.phone_numbers.install import install as install_channels
+from app.phone_numbers.router import router as phone_numbers_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
 from app.recordings.router import router as recordings_router
@@ -61,6 +65,9 @@ from app.usage.router import router as usage_router
 from app.voice_commands.router import router as voice_commands_router
 from app.voices.router import router as voices_router
 from app.webhooks_out.router import router as webhooks_out_router
+from app.whatsapp.graph_client import build_graph as build_whatsapp_graph
+from app.whatsapp.router import public_router as whatsapp_public_router
+from app.whatsapp.router import router as whatsapp_router
 from app.workspaces.router import router as workspaces_router
 
 logger = logging.getLogger(__name__)
@@ -166,9 +173,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.storage = build_store(settings)
         app.state.llm_client = LlmClient(settings)
         app.state.vm_waker = VmWaker(settings.wake_vm_project, settings.wake_vm_zone, settings.wake_vm_name)
+        # Channels (010): SIP trunks and dispatch rules, WhatsApp Cloud API, inbound routing.
+        app.state.sip = build_sip(settings)
+        app.state.whatsapp_graph = build_whatsapp_graph(settings)
+        install_channels(app.state)
         try:
             yield
         finally:
+            await app.state.whatsapp_graph.aclose()
+            await app.state.sip.aclose()
             await app.state.vm_waker.aclose()
             await app.state.webhook_http.aclose()
             await jobs.aclose()
@@ -228,6 +241,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         tools_router,
         knowledge_router,
         knowledge_internal_router,
+        phone_numbers_router,
+        outbound_router,
+        whatsapp_router,
+        whatsapp_public_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:

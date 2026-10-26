@@ -37,6 +37,7 @@ paths:
                   dynamic_variables: {customer_name: Asha, appointment_time: '3 pm'}
                   metadata: {crm_id: '8812'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '202':
           description: Call admitted and dialling started (also returned for an idempotent replay)
           content:
@@ -77,6 +78,7 @@ paths:
                 anyOf:
                   - $ref: '../../003-voice-runtime/contracts/sessions.yaml#/components/schemas/CallRefusedProblem'
                   - $ref: '#/components/schemas/PolicyBlockedProblem'
+                  - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
               examples:
                 dnc:
                   value:
@@ -97,6 +99,13 @@ paths:
                     timezone_source: number_region
                     recipient_local_time: '2026-10-16T21:30:00'
                     next_allowed_at: '2026-10-17T16:00:00Z'
+        '503':
+          description: >
+            `telephony-unavailable` (this deployment has no SIP service; nothing is created) or
+            `media-unavailable` (the room could not be created; the call is `failed` and not charged).
+          content:
+            application/problem+json:
+              schema: {$ref: '../../003-voice-runtime/contracts/sessions.yaml#/components/schemas/CallRefusedProblem'}
         '429':
           description: >
             `rate-limited` (more than 10 requests per second; `Retry-After` header) or
@@ -117,6 +126,7 @@ paths:
         - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
         - {name: number, in: query, description: Prefix search on the E.164 number, schema: {type: string}}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Entries, newest first
           content:
@@ -142,6 +152,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/DncEntryCreate'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '201':
           description: Created
           content:
@@ -168,6 +179,7 @@ paths:
       summary: Remove a number from the do-not-call list
       tags: [outbound-compliance]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '204':
           description: Removed; the number can be called again from now on
         '404':
@@ -200,6 +212,7 @@ paths:
                   pattern: '^[A-Z]{2}$'
                   description: ISO 3166-1 alpha-2 region for numbers without a country code.
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Import finished
           content:
@@ -207,6 +220,11 @@ paths:
               schema: {$ref: '#/components/schemas/DncImportResult'}
         '413':
           description: '`file-too-large` (over 10 MB or 100,000 rows)'
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '409':
+          description: '`dnc-limit-reached` (the import would take the list over 1,000,000 numbers)'
           content:
             application/problem+json:
               schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
@@ -221,6 +239,7 @@ paths:
       summary: Get the workspace calling-hour windows
       tags: [outbound-compliance]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Current windows (defaults 09:00 to 21:00 every day until changed)
           content:
@@ -236,6 +255,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/CallingHoursUpdate'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Saved; applies to requests made after this response
           content:
@@ -258,6 +278,7 @@ paths:
         - {name: to_number, in: query, schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}}
         - {name: since, in: query, schema: {type: string, format: date-time}}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Decisions, newest first
           content:
@@ -273,6 +294,7 @@ paths:
                   page: {type: integer}
                   page_size: {type: integer}
                   total_pages: {type: integer}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
 components:
   securitySchemes:
     bearerAuth:

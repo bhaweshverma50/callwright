@@ -3,12 +3,13 @@ import { handlers } from "./handlers";
 import { agentHandlers } from "./agents/handlers";
 import { callHandlers } from "./calls/handlers";
 import { toolHandlers } from "./tools";
+import { channelHandlers } from "./channels/handlers";
 import { enablePersistence } from "./db";
 
 /** Starts the in-browser mock API. Imported dynamically only when VITE_API_MOCKS=true. */
 export async function startMocks() {
   enablePersistence();
-  const worker = setupWorker(...handlers, ...agentHandlers, ...callHandlers, ...toolHandlers);
+  const worker = setupWorker(...handlers, ...agentHandlers, ...callHandlers, ...toolHandlers, ...channelHandlers);
   await worker.start({
     onUnhandledRequest: "bypass",
     quiet: true,

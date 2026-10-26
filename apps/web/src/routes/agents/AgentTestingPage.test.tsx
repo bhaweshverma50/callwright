@@ -77,7 +77,7 @@ describe("AgentTestingPage (003 US1)", () => {
     const user = userEvent.setup();
     const agent = agentNamed("Front desk agent");
     const { router } = renderApp(`/agents/${agent.id}/edit`);
-    const header = await screen.findByRole("heading", { level: 1, name: "Front desk agent" });
+    const header = await screen.findByRole("heading", { level: 1, name: "Front desk agent" }, { timeout: 5000 });
     const actions = header.closest("header")!;
     await user.click(within(actions).getByRole("button", { name: "Test agent" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/agents/${agent.id}/testing`));

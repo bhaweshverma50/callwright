@@ -5,6 +5,8 @@ import { Link } from "react-router";
 import { useAgents } from "../../api/agents";
 import { useHasCalls } from "../../api/calls";
 import { useMe } from "../../api/queries";
+import { usePhoneNumbers } from "../channels/hooks/usePhoneNumbers";
+import { useWhatsAppChannels } from "../channels/hooks/useWhatsAppChannels";
 import {
   Badge,
   Button,
@@ -32,9 +34,13 @@ interface SetupStep {
 
 /**
  * The three steps to a first real call, in order. This view shows until the first live call;
- * numbers (010) report nothing until channels ship.
+ * "Connect a number" is done once a phone number or WhatsApp channel has an agent (010).
  */
-export function setupSteps({ hasAgent = false, hasTestCall = false }: { hasAgent?: boolean; hasTestCall?: boolean } = {}): SetupStep[] {
+export function setupSteps({
+  hasAgent = false,
+  hasTestCall = false,
+  hasNumber = false,
+}: { hasAgent?: boolean; hasTestCall?: boolean; hasNumber?: boolean } = {}): SetupStep[] {
   return [
     {
       title: "Create an agent",
@@ -58,7 +64,7 @@ export function setupSteps({ hasAgent = false, hasTestCall = false }: { hasAgent
       action: "Connect a number",
       to: "/phone-numbers",
       icon: PhoneList,
-      done: false,
+      done: hasNumber,
     },
   ];
 }
@@ -88,7 +94,12 @@ export function DashboardPlaceholder() {
   const { data: me, isPending } = useMe();
   const agents = useAgents("", null, 1);
   const testCalls = useHasCalls("test");
-  const steps = setupSteps({ hasAgent: (agents.data?.total ?? 0) > 0, hasTestCall: testCalls.data === true });
+  const numbers = usePhoneNumbers();
+  const whatsapp = useWhatsAppChannels();
+  const hasNumber =
+    (numbers.data?.items ?? []).some((n) => n.status !== "draining" && (n.inbound_agent_id || n.outbound_agent_id)) ||
+    (whatsapp.data?.items ?? []).some((c) => c.status !== "draining" && c.inbound_agent_id);
+  const steps = setupSteps({ hasAgent: (agents.data?.total ?? 0) > 0, hasTestCall: testCalls.data === true, hasNumber });
   const done = steps.filter((s) => s.done).length;
 
   return (

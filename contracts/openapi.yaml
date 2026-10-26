@@ -19,6 +19,9 @@ tags:
 - name: knowledge
 - name: livekit-hooks
 - name: llms
+- name: outbound
+- name: outbound-compliance
+- name: phone-numbers
 - name: pricing
 - name: prompt_ai
 - name: sessions
@@ -27,6 +30,8 @@ tags:
 - name: usage
 - name: voices
 - name: webhooks
+- name: whatsapp
+- name: whatsapp-public
 - name: workspaces
 paths:
   /admin/pricing/versions:
@@ -1762,6 +1767,168 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 006-calls-analytics
+  /dnc-entries:
+    get:
+      operationId: listDncEntries
+      summary: List the workspace do-not-call list
+      tags:
+      - outbound-compliance
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: number
+        in: query
+        description: Prefix search on the E.164 number
+        schema:
+          type: string
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Entries, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DncEntry'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+                  total_pages:
+                    type: integer
+      x-spec: 010-channels
+    post:
+      operationId: createDncEntry
+      summary: Add one number to the do-not-call list
+      tags:
+      - outbound-compliance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DncEntryCreate'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DncEntry'
+        '409':
+          description: '`dnc-entry-exists` (the existing entry id is in `detail`) or `dnc-limit-reached`'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: '`invalid-number` (cannot be normalised to E.164)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /dnc-entries/import:
+    post:
+      operationId: importDncEntries
+      summary: Bulk import do-not-call numbers from CSV
+      description: 'UTF-8 CSV with a header row containing `number` and optionally `note`. Max 100,000
+        data rows and 10 MB. Valid numbers are normalised to E.164 and stored once; duplicates (in the
+        file or already listed) are skipped; invalid rows are reported and do not fail the import.
+
+        '
+      tags:
+      - outbound-compliance
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  contentMediaType: text/csv
+                default_region:
+                  type: string
+                  pattern: ^[A-Z]{2}$
+                  description: ISO 3166-1 alpha-2 region for numbers without a country code.
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Import finished
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DncImportResult'
+        '413':
+          description: '`file-too-large` (over 10 MB or 100,000 rows)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: '`dnc-limit-reached` (the import would take the list over 1,000,000 numbers)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: '`invalid-csv` (not UTF-8, or no `number` header)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /dnc-entries/{dnc_id}:
+    parameters:
+    - name: dnc_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^dnc_[0-9A-HJKMNP-TV-Z]{26}$
+    delete:
+      operationId: deleteDncEntry
+      summary: Remove a number from the do-not-call list
+      tags:
+      - outbound-compliance
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '204':
+          description: Removed; the number can be called again from now on
+        '404':
+          description: Unknown entry
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
   /health:
     get:
       operationId: getHealth
@@ -2468,6 +2635,484 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
       x-spec: 001-platform-foundation
+  /outbound-calling-hours:
+    get:
+      operationId: getCallingHours
+      summary: Get the workspace calling-hour windows
+      tags:
+      - outbound-compliance
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Current windows (defaults 09:00 to 21:00 every day until changed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallingHours'
+      x-spec: 010-channels
+    put:
+      operationId: putCallingHours
+      summary: Replace the workspace calling-hour windows
+      tags:
+      - outbound-compliance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallingHoursUpdate'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Saved; applies to requests made after this response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallingHours'
+        '422':
+          description: '`invalid-window` (bad time format, start not before end, or a missing weekday)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /outbound-calls:
+    post:
+      operationId: createOutboundCall
+      summary: Start an outbound call
+      tags:
+      - outbound
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        description: Same key and body within 24 h returns the original call; different body is refused.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutboundCallRequest'
+            examples:
+              reminder:
+                value:
+                  to_number: '+14155550199'
+                  from_number: '+14155550100'
+                  dynamic_variables:
+                    customer_name: Asha
+                    appointment_time: 3 pm
+                  metadata:
+                    crm_id: '8812'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '202':
+          description: Call admitted and dialling started (also returned for an idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundCallAccepted'
+        '400':
+          description: Missing Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '402':
+          description: '`insufficient-credit` (call record created, status failed)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '403':
+          description: '`email-unverified`'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: '`from-number-not-active` (provisioning, error or draining), `no-outbound-agent`,
+            `agent-not-published`, `idempotency-key-in-use`.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Validation (`invalid-number`, `same-number`, `invalid-timezone`, variables), `idempotency-key-reused`,
+            `unsupported-vendor`, `pricing-unavailable`, or a compliance block (`outbound-policy` with
+            `reason` `dnc_listed` or `outside_calling_hours`, schema `PolicyBlockedProblem`). A compliance
+            block creates no call record, is not billed, is logged as a policy decision and is not stored
+            against the Idempotency-Key.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/CallRefusedProblem'
+                - $ref: '#/components/schemas/PolicyBlockedProblem'
+                - $ref: '#/components/schemas/Problem'
+              examples:
+                dnc:
+                  value:
+                    type: https://docs.callwright.example/problems/outbound-policy
+                    title: Destination is on the do-not-call list
+                    status: 422
+                    reason: dnc_listed
+                    to_number: '+14155550199'
+                    dnc_entry_id: dnc_01JB2Z3Y4X5W6V7T8S9R0Q1P2N
+                hours:
+                  value:
+                    type: https://docs.callwright.example/problems/outbound-policy
+                    title: Outside calling hours for the recipient
+                    status: 422
+                    reason: outside_calling_hours
+                    to_number: '+14155550199'
+                    recipient_timezones:
+                    - America/Los_Angeles
+                    timezone_source: number_region
+                    recipient_local_time: '2026-10-16T21:30:00'
+                    next_allowed_at: '2026-10-17T16:00:00Z'
+        '503':
+          description: '`telephony-unavailable` (this deployment has no SIP service; nothing is created)
+            or `media-unavailable` (the room could not be created; the call is `failed` and not charged).
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '429':
+          description: '`rate-limited` (more than 10 requests per second; `Retry-After` header) or `concurrency-limit`
+            (call record created, status failed).
+
+            '
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+      x-spec: 010-channels
+  /outbound-policy-decisions:
+    get:
+      operationId: listOutboundPolicyDecisions
+      summary: List blocked outbound requests (policy decision log)
+      tags:
+      - outbound-compliance
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: reason
+        in: query
+        schema:
+          $ref: '#/components/schemas/OutboundBlockReason'
+      - name: to_number
+        in: query
+        schema:
+          $ref: '#/components/schemas/E164'
+      - name: since
+        in: query
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Decisions, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PolicyDecision'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+                  total_pages:
+                    type: integer
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 010-channels
+  /phone-numbers:
+    get:
+      operationId: listPhoneNumbers
+      tags:
+      - phone-numbers
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/PhoneNumberStatus'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Numbers in this workspace (deleted excluded), newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PhoneNumber'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+                  total_pages:
+                    type: integer
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 010-channels
+    post:
+      operationId: importPhoneNumber
+      summary: Import a bring-your-own SIP number and set up routing
+      tags:
+      - phone-numbers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneNumberImport'
+            examples:
+              basic:
+                value:
+                  e164: '+14155550100'
+                  label: Main Office Line
+                  termination_address: trunk.example-carrier.com:5060
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: 'Saved. `status` is `active` when routing setup succeeded, or `error` with `status_detail`
+            when the media platform call failed (retry later).
+
+            '
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumber'
+        '409':
+          description: '`number-already-registered` (any workspace) or `number-being-deleted`'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Validation failed (E.164, termination address, CIDR, agent not published)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /phone-numbers/sip-settings:
+    get:
+      operationId: getSipSettings
+      summary: Addresses to configure at the carrier
+      tags:
+      - phone-numbers
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Origination settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - origination_uri
+                - direct_uri_template
+                - transports
+                - telephony_enabled
+                properties:
+                  telephony_enabled:
+                    type: boolean
+                    description: 'False when this deployment has no SIP service yet: numbers can be saved
+                      and routed, but no call reaches them and outbound calls are refused.
+
+                      '
+                  origination_uri:
+                    type: string
+                    examples:
+                    - sip:abc123.sip.livekit.cloud
+                  direct_uri_template:
+                    type: string
+                    examples:
+                    - sip:{e164}@abc123.sip.livekit.cloud
+                  transports:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                      - udp
+                      - tcp
+                      - tls
+      x-spec: 010-channels
+  /phone-numbers/{number_id}:
+    parameters:
+    - $ref: '#/components/parameters/NumberId'
+    get:
+      operationId: getPhoneNumber
+      tags:
+      - phone-numbers
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumber'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 010-channels
+    patch:
+      operationId: updatePhoneNumber
+      summary: Edit a number; omitted fields are unchanged; null clears nullable fields
+      description: '`inbound_agent_id: null` detaches the inbound agent (calls then declined at the network
+        edge). Omitting `auth_password` keeps the stored password; `remove_auth_password: true` clears
+        it. Changes apply to new calls only.
+
+        '
+      tags:
+      - phone-numbers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneNumberUpdate'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Updated number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumber'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Number is `draining` (`number-draining`) or still `provisioning`
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation failed
+        '502':
+          description: Media platform update failed; nothing changed (`routing-update-failed`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+    delete:
+      operationId: deletePhoneNumber
+      tags:
+      - phone-numbers
+      parameters:
+      - name: when_idle
+        in: query
+        description: If calls are active, stop new calls now and delete after the last one ends.
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '202':
+          description: Number is draining; it will be deleted when idle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumber'
+        '204':
+          description: Deleted (no active calls)
+        '404':
+          $ref: '#/components/responses/Problem'
+        '502':
+          description: The dispatch rule could not be removed (`routing-update-failed`); nothing changed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: '`number-has-active-calls`; body includes `active_call_count`'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ActiveCallsProblem'
+      x-spec: 010-channels
+  /phone-numbers/{number_id}/retry-provisioning:
+    parameters:
+    - $ref: '#/components/parameters/NumberId'
+    post:
+      operationId: retryPhoneNumberProvisioning
+      tags:
+      - phone-numbers
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Result of the retry (`active` or `error` with detail)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumber'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Number is not in `error`
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
   /pricing/catalog:
     get:
       operationId: getPricingCatalog
@@ -3636,6 +4281,498 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 003-voice-runtime
+  /whatsapp/channels:
+    get:
+      operationId: listWhatsAppChannels
+      tags:
+      - whatsapp
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Channels in this workspace (deleted excluded)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WhatsAppChannel'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+                  total_pages:
+                    type: integer
+      x-spec: 010-channels
+    post:
+      operationId: createWhatsAppChannel
+      summary: Connect a WhatsApp Business number for voice
+      description: 'Checks the token and number with WhatsApp first; if that fails nothing is saved (422).
+        Then enables calling and creates routing; failures there save the channel in `error`.
+
+        '
+      tags:
+      - whatsapp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhatsAppChannelCreate'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Created (`setup_incomplete` until verification, or `error` with detail)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppChannel'
+        '409':
+          description: '`whatsapp-number-already-connected` or `verify-token-in-use`'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Validation (`errors` lists each failing field, for example meta_phone_number_id
+            "Digits only"), `whatsapp-token-rejected` (detail carries WhatsApp''s message), or `whatsapp-number-mismatch`
+            (detail names both numbers).
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '502':
+          description: '`whatsapp-unreachable`: the WhatsApp platform could not be reached; nothing is
+            saved, retry later'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /whatsapp/channels/{channel_id}:
+    parameters:
+    - $ref: '#/components/parameters/ChannelId'
+    get:
+      operationId: getWhatsAppChannel
+      tags:
+      - whatsapp
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Channel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppChannel'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 010-channels
+    patch:
+      operationId: updateWhatsAppChannel
+      summary: Edit a channel; omitted fields unchanged; empty or omitted access_token keeps the current
+        one
+      tags:
+      - whatsapp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhatsAppChannelUpdate'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppChannel'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Channel is draining, or verify token used by another channel
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Validation or WhatsApp rejected new credentials (nothing changed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '502':
+          description: '`whatsapp-unreachable` or `routing-update-failed`; nothing changed'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+    delete:
+      operationId: deleteWhatsAppChannel
+      tags:
+      - whatsapp
+      parameters:
+      - name: when_idle
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '202':
+          description: Draining
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppChannel'
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/Problem'
+        '502':
+          description: The dispatch rule could not be removed (`routing-update-failed`); nothing changed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: '`channel-has-active-calls` with `active_call_count`'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ActiveCallsProblem'
+      x-spec: 010-channels
+  /whatsapp/channels/{channel_id}/caller-routes:
+    parameters:
+    - $ref: '#/components/parameters/ChannelId'
+    get:
+      operationId: listCallerRoutes
+      tags:
+      - whatsapp
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: caller
+        in: query
+        description: Prefix search on caller number
+        schema:
+          type: string
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Routes
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CallerRoute'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+                  total_pages:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 010-channels
+    post:
+      operationId: createCallerRoute
+      tags:
+      - whatsapp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - caller_number
+              - agent_id
+              properties:
+                caller_number:
+                  type: string
+                  description: E.164; digits without "+" are accepted and normalised.
+                agent_id:
+                  type: string
+                  pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallerRoute'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: '`duplicate-caller-route` or `route-limit-reached` (1,000 per channel)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Invalid number, or agent not in workspace or not published
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /whatsapp/channels/{channel_id}/caller-routes/{route_id}:
+    parameters:
+    - $ref: '#/components/parameters/ChannelId'
+    - name: route_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^wcr_[0-9A-HJKMNP-TV-Z]{26}$
+    patch:
+      operationId: updateCallerRoute
+      tags:
+      - whatsapp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - agent_id
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallerRoute'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          description: Agent not in workspace or not published
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+    delete:
+      operationId: deleteCallerRoute
+      tags:
+      - whatsapp
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 010-channels
+  /whatsapp/channels/{channel_id}/retry-setup:
+    parameters:
+    - $ref: '#/components/parameters/ChannelId'
+    post:
+      operationId: retryWhatsAppSetup
+      tags:
+      - whatsapp
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Result of the retry (`error` with WhatsApp's reason when the check fails again)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppChannel'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Channel is draining
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 010-channels
+  /whatsapp/settings:
+    get:
+      operationId: getWhatsAppSettings
+      summary: Callback URL to paste into the WhatsApp app configuration
+      tags:
+      - whatsapp
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - callback_url
+                - default_graph_api_version
+                - telephony_enabled
+                properties:
+                  telephony_enabled:
+                    type: boolean
+                    description: False until this deployment has a SIP service.
+                  callback_url:
+                    type: string
+                    format: uri
+                    examples:
+                    - https://api.callwright.example/v1/whatsapp/webhook
+                  default_graph_api_version:
+                    type: string
+                    examples:
+                    - v23.0
+      x-spec: 010-channels
+  /whatsapp/webhook:
+    get:
+      operationId: verifyWhatsAppWebhook
+      summary: WhatsApp callback verification (public)
+      tags:
+      - whatsapp-public
+      security: []
+      parameters:
+      - name: hub.mode
+        in: query
+        required: true
+        schema:
+          type: string
+          const: subscribe
+      - name: hub.verify_token
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: hub.challenge
+        in: query
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+      responses:
+        '200':
+          description: Echo of `hub.challenge` when the verify token matches a channel
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: No channel has this verify token
+          content:
+            text/plain:
+              schema:
+                type: string
+      x-spec: 010-channels
+    post:
+      operationId: receiveWhatsAppWebhook
+      summary: WhatsApp notifications (public, signed with the app secret)
+      tags:
+      - whatsapp-public
+      security: []
+      parameters:
+      - name: X-Hub-Signature-256
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^sha256=[0-9a-f]{64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - object
+              - entry
+              properties:
+                object:
+                  type: string
+                  const: whatsapp_business_account
+                entry:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      changes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                              examples:
+                              - calls
+                              - messages
+                            value:
+                              type: object
+                              properties:
+                                metadata:
+                                  type: object
+                                  properties:
+                                    phone_number_id:
+                                      type: string
+                                    display_phone_number:
+                                      type: string
+                              additionalProperties: true
+      responses:
+        '200':
+          description: Accepted, or ignored for unknown numbers
+        '401':
+          description: Signature does not match the channel's app secret
+      x-spec: 010-channels
   /workspaces/current:
     patch:
       operationId: updateCurrentWorkspace
@@ -3693,6 +4830,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/CallId'
+    ChannelId:
+      name: channel_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^wa_[0-9A-HJKMNP-TV-Z]{26}$
     DeliveryHeader:
       name: Callwright-Delivery
       in: header
@@ -3763,6 +4907,13 @@ components:
       schema:
         type: string
         pattern: ^kb_[0-9A-HJKMNP-TV-Z]{26}$
+    NumberId:
+      name: number_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^num_[0-9A-HJKMNP-TV-Z]{26}$
     Page:
       name: page
       in: query
@@ -3889,6 +5040,16 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    ActiveCallsProblem:
+      allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        required:
+        - active_call_count
+        properties:
+          active_call_count:
+            type: integer
+            minimum: 1
     AgentConfig:
       type: object
       description: 'Plain, versioned agent configuration (data-model.md section 4). Ranges are enforced
@@ -4772,6 +5933,58 @@ components:
           type:
           - number
           - 'null'
+    CallerRoute:
+      type: object
+      required:
+      - id
+      - channel_id
+      - caller_number
+      - agent_id
+      - created_at
+      properties:
+        id:
+          type: string
+        channel_id:
+          type: string
+        caller_number:
+          $ref: '#/components/schemas/E164'
+        agent_id:
+          type: string
+        agent_published:
+          type: boolean
+          description: False means the route is currently skipped.
+        created_at:
+          type: string
+          format: date-time
+    CallingHours:
+      type: object
+      required:
+      - windows
+      - is_default
+      - updated_at
+      properties:
+        windows:
+          $ref: '#/components/schemas/WeeklyWindows'
+        is_default:
+          type: boolean
+          description: True while the workspace still uses 09:00 to 21:00 every day.
+        updated_by_user_id:
+          type:
+          - string
+          - 'null'
+        updated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    CallingHoursUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - windows
+      properties:
+        windows:
+          $ref: '#/components/schemas/WeeklyWindows'
     Catalog:
       type: object
       required:
@@ -5459,6 +6672,22 @@ components:
                 type: number
                 minimum: 0
                 maximum: 1
+    DayWindow:
+      description: Allowed calling time in recipient local time; null means no calls that day.
+      oneOf:
+      - type: 'null'
+      - type: object
+        additionalProperties: false
+        required:
+        - start
+        - end
+        properties:
+          start:
+            type: string
+            pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          end:
+            type: string
+            pattern: ^(([01]\d|2[0-3]):[0-5]\d|24:00)$
     DeliveryAttempt:
       type: object
       required:
@@ -5524,6 +6753,88 @@ components:
       - error
       - concurrency_limit
       - insufficient_credit
+    DncEntry:
+      type: object
+      required:
+      - id
+      - number
+      - source
+      - created_at
+      properties:
+        id:
+          type: string
+          pattern: ^dnc_[0-9A-HJKMNP-TV-Z]{26}$
+        number:
+          $ref: '#/components/schemas/E164'
+        note:
+          type:
+          - string
+          - 'null'
+        source:
+          type: string
+          enum:
+          - manual
+          - csv_import
+        created_by_user_id:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+    DncEntryCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - number
+      properties:
+        number:
+          type: string
+          maxLength: 32
+          description: E.164, or a national format with `default_region`; normalised to E.164.
+        default_region:
+          type: string
+          pattern: ^[A-Z]{2}$
+        note:
+          type: string
+          maxLength: 200
+    DncImportResult:
+      type: object
+      required:
+      - rows
+      - imported
+      - duplicates
+      - invalid_count
+      - invalid
+      properties:
+        rows:
+          type: integer
+          description: Data rows read
+        imported:
+          type: integer
+        duplicates:
+          type: integer
+          description: Already listed or repeated in the file
+        invalid_count:
+          type: integer
+        invalid:
+          type: array
+          maxItems: 1000
+          description: First 1,000 invalid rows.
+          items:
+            type: object
+            required:
+            - row
+            - value
+            - error
+            properties:
+              row:
+                type: integer
+                description: 1-based data row number (header excluded)
+              value:
+                type: string
+              error:
+                type: string
     Document:
       type: object
       required:
@@ -5924,6 +7235,66 @@ components:
               type: object
               properties: {}
               required: []
+    InboundWebhookReply:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - answer
+          - decline
+          default: answer
+        agent_id:
+          type: string
+          description: Must be in the same workspace and published, else ignored.
+        dynamic_variables:
+          type: object
+          maxProperties: 50
+          additionalProperties:
+            type: string
+            maxLength: 2000
+        metadata:
+          type: object
+          additionalProperties: true
+    InboundWebhookRequest:
+      type: object
+      required:
+      - event
+      - event_id
+      - call_id
+      - channel
+      - from_number
+      - to_number
+      properties:
+        event:
+          type: string
+          const: call_inbound
+        event_id:
+          type: string
+        call_id:
+          type: string
+        channel:
+          type: string
+          enum:
+          - sip_inbound
+          - whatsapp
+        from_number:
+          $ref: '#/components/schemas/E164'
+        to_number:
+          $ref: '#/components/schemas/E164'
+        phone_number_id:
+          type:
+          - string
+          - 'null'
+        whatsapp_channel_id:
+          type:
+          - string
+          - 'null'
+        agent_id:
+          type:
+          - string
+          - 'null'
+          description: Agent that will answer unless the reply overrides it.
     InterpretRequest:
       type: object
       required:
@@ -6474,6 +7845,107 @@ components:
       - live
       - test
       - simulation
+    OutboundBlockReason:
+      type: string
+      enum:
+      - dnc_listed
+      - outside_calling_hours
+    OutboundCallAccepted:
+      type: object
+      required:
+      - call_id
+      - status
+      - to_number
+      - from_number
+      - agent_id
+      - agent_version_id
+      - phone_number_id
+      properties:
+        call_id:
+          type: string
+          pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+        status:
+          type: string
+          enum:
+          - queued
+          - ringing
+          - in_progress
+          - ended
+          - processing
+          - completed
+          - failed
+          - no_answer
+          - busy
+          - voicemail
+        to_number:
+          $ref: '#/components/schemas/E164'
+        from_number:
+          $ref: '#/components/schemas/E164'
+        agent_id:
+          type: string
+        agent_version_id:
+          type: string
+        phone_number_id:
+          type: string
+        missing_variables:
+          type: array
+          items:
+            type: string
+        idempotent_replay:
+          type: boolean
+          description: True when this response replays an earlier request with the same key.
+        recipient_timezones:
+          type: array
+          items:
+            type: string
+          description: Zone(s) the calling-hour check used.
+        timezone_source:
+          type: string
+          enum:
+          - override
+          - number_region
+    OutboundCallRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - to_number
+      - from_number
+      properties:
+        to_number:
+          $ref: '#/components/schemas/E164'
+        from_number:
+          description: An active imported number in this workspace.
+          allOf:
+          - $ref: '#/components/schemas/E164'
+        agent_id:
+          type: string
+          pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+          description: Defaults to the from number's outbound agent.
+        dynamic_variables:
+          type: object
+          maxProperties: 50
+          propertyNames:
+            pattern: ^[A-Za-z_][A-Za-z0-9_]{0,63}$
+          additionalProperties:
+            type: string
+            maxLength: 2000
+        metadata:
+          type: object
+          maxProperties: 20
+          additionalProperties: true
+          description: Max 4 KB serialized; echoed in webhooks.
+        ring_timeout_s:
+          type: integer
+          minimum: 10
+          maximum: 60
+          default: 30
+        recipient_timezone:
+          type: string
+          maxLength: 64
+          description: 'IANA timezone name (for example `America/New_York`) used for the calling-hour
+            check instead of the zone derived from `to_number`. Unknown names are rejected with `invalid-timezone`.
+
+            '
     OutboundDial:
       type: object
       required:
@@ -6531,6 +8003,264 @@ components:
         total_pages:
           type: integer
           minimum: 0
+    PhoneNumber:
+      type: object
+      required:
+      - id
+      - e164
+      - label
+      - termination_address
+      - transport
+      - has_auth_password
+      - status
+      - active_call_count
+      - created_at
+      properties:
+        id:
+          type: string
+        e164:
+          $ref: '#/components/schemas/E164'
+        label:
+          type: string
+        termination_address:
+          type: string
+        transport:
+          $ref: '#/components/schemas/Transport'
+        auth_username:
+          type:
+          - string
+          - 'null'
+        has_auth_password:
+          type: boolean
+        inbound_allowed_cidrs:
+          type: array
+          items:
+            type: string
+        inbound_agent_id:
+          type:
+          - string
+          - 'null'
+        outbound_agent_id:
+          type:
+          - string
+          - 'null'
+        inbound_webhook_url:
+          type:
+          - string
+          - 'null'
+        direct_uri:
+          type: string
+        status:
+          $ref: '#/components/schemas/PhoneNumberStatus'
+        status_detail:
+          type:
+          - string
+          - 'null'
+        active_call_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    PhoneNumberImport:
+      type: object
+      additionalProperties: false
+      required:
+      - e164
+      - label
+      - termination_address
+      properties:
+        e164:
+          $ref: '#/components/schemas/E164'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        termination_address:
+          $ref: '#/components/schemas/TerminationAddress'
+        transport:
+          $ref: '#/components/schemas/Transport'
+        auth_username:
+          type: string
+          maxLength: 128
+        auth_password:
+          type: string
+          maxLength: 256
+          writeOnly: true
+        inbound_allowed_cidrs:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            examples:
+            - 203.0.113.0/24
+        inbound_agent_id:
+          type: string
+          pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+        outbound_agent_id:
+          type: string
+          pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+        inbound_webhook_url:
+          type: string
+          format: uri
+          maxLength: 2048
+    PhoneNumberStatus:
+      type: string
+      enum:
+      - provisioning
+      - active
+      - error
+      - draining
+    PhoneNumberUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        termination_address:
+          $ref: '#/components/schemas/TerminationAddress'
+        transport:
+          $ref: '#/components/schemas/Transport'
+        auth_username:
+          type:
+          - string
+          - 'null'
+          maxLength: 128
+        auth_password:
+          type: string
+          maxLength: 256
+          writeOnly: true
+        remove_auth_password:
+          type: boolean
+        inbound_allowed_cidrs:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+        inbound_agent_id:
+          type:
+          - string
+          - 'null'
+        outbound_agent_id:
+          type:
+          - string
+          - 'null'
+        inbound_webhook_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          maxLength: 2048
+    PolicyBlockedProblem:
+      description: 'Compliance block (type `outbound-policy`). No call record exists, nothing is billed,
+        and a policy decision is logged.
+
+        '
+      allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        required:
+        - reason
+        - to_number
+        properties:
+          reason:
+            $ref: '#/components/schemas/OutboundBlockReason'
+          to_number:
+            $ref: '#/components/schemas/E164'
+          dnc_entry_id:
+            type: string
+            pattern: ^dnc_[0-9A-HJKMNP-TV-Z]{26}$
+            description: '`dnc_listed` only.'
+          recipient_timezones:
+            type: array
+            items:
+              type: string
+            description: '`outside_calling_hours` only; empty when no zone could be derived.'
+          timezone_source:
+            type: string
+            enum:
+            - override
+            - number_region
+            - unknown
+          recipient_local_time:
+            type:
+            - string
+            - 'null'
+            description: Local wall-clock time (ISO 8601 without offset) in the first evaluated zone.
+          next_allowed_at:
+            type:
+            - string
+            - 'null'
+            format: date-time
+            description: Earliest UTC instant the request would pass; null when the zone is unknown.
+    PolicyDecision:
+      type: object
+      required:
+      - id
+      - decided_at
+      - reason
+      - to_number
+      - from_number
+      - requested_by
+      properties:
+        id:
+          type: integer
+        decided_at:
+          type: string
+          format: date-time
+        reason:
+          $ref: '#/components/schemas/OutboundBlockReason'
+        to_number:
+          $ref: '#/components/schemas/E164'
+        from_number:
+          $ref: '#/components/schemas/E164'
+        phone_number_id:
+          type:
+          - string
+          - 'null'
+        agent_id:
+          type:
+          - string
+          - 'null'
+        requested_by:
+          type: string
+          description: User id or API key id
+        dnc_entry_id:
+          type:
+          - string
+          - 'null'
+        dnc_number:
+          type:
+          - string
+          - 'null'
+        recipient_timezones:
+          type: array
+          items:
+            type: string
+        timezone_source:
+          type:
+          - string
+          - 'null'
+          enum:
+          - override
+          - number_region
+          - unknown
+          - null
+        recipient_local_time:
+          type:
+          - string
+          - 'null'
+        next_allowed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     PressDigitConfig:
       type: object
       additionalProperties: false
@@ -7386,6 +9116,17 @@ components:
           description: Informs the preview; not part of the agent config
         language:
           type: string
+    TerminationAddress:
+      type: string
+      maxLength: 260
+      description: 'host[:port] where host is a DNS name, IPv4, or bracketed IPv6. A leading `sip:` or
+        `sips:` is accepted and removed. No user part, path or parameters.
+
+        '
+      examples:
+      - trunk.example-carrier.com:5060
+      - 203.0.113.10
+      - '[2001:db8::10]:5061'
     TestRunResult:
       type: object
       required:
@@ -7814,6 +9555,14 @@ components:
           minimum: 5
           maximum: 120
           default: 30
+    Transport:
+      type: string
+      enum:
+      - auto
+      - udp
+      - tcp
+      - tls
+      default: auto
     TtsModel:
       type: object
       required:
@@ -8733,6 +10482,193 @@ components:
       - call_ended
       - call_analyzed
       - ping
+    WeeklyWindows:
+      type: object
+      additionalProperties: false
+      required:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+      - sat
+      - sun
+      properties:
+        mon:
+          $ref: '#/components/schemas/DayWindow'
+        tue:
+          $ref: '#/components/schemas/DayWindow'
+        wed:
+          $ref: '#/components/schemas/DayWindow'
+        thu:
+          $ref: '#/components/schemas/DayWindow'
+        fri:
+          $ref: '#/components/schemas/DayWindow'
+        sat:
+          $ref: '#/components/schemas/DayWindow'
+        sun:
+          $ref: '#/components/schemas/DayWindow'
+    WhatsAppChannel:
+      type: object
+      required:
+      - id
+      - meta_phone_number_id
+      - e164
+      - label
+      - graph_api_version
+      - status
+      - active_call_count
+      - created_at
+      properties:
+        id:
+          type: string
+        meta_phone_number_id:
+          type: string
+        e164:
+          $ref: '#/components/schemas/E164'
+        label:
+          type: string
+        access_token_last4:
+          type: string
+        verify_token_last4:
+          type: string
+        has_app_secret:
+          type: boolean
+        graph_api_version:
+          type: string
+        inbound_agent_id:
+          type:
+          - string
+          - 'null'
+        inbound_webhook_url:
+          type:
+          - string
+          - 'null'
+        caller_route_count:
+          type: integer
+        status:
+          $ref: '#/components/schemas/WhatsAppChannelStatus'
+        status_detail:
+          type:
+          - string
+          - 'null'
+        credentials_verified_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        calling_enabled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        webhook_verified_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_webhook_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        active_call_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    WhatsAppChannelCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - meta_phone_number_id
+      - e164
+      - label
+      - access_token
+      - verify_token
+      - app_secret
+      properties:
+        meta_phone_number_id:
+          type: string
+          pattern: ^\d{5,32}$
+        e164:
+          $ref: '#/components/schemas/E164'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          writeOnly: true
+        verify_token:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        app_secret:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          writeOnly: true
+        graph_api_version:
+          type: string
+          pattern: ^v?\d+\.\d+$
+        inbound_agent_id:
+          type: string
+          pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+        inbound_webhook_url:
+          type: string
+          format: uri
+          maxLength: 2048
+    WhatsAppChannelStatus:
+      type: string
+      enum:
+      - setup_incomplete
+      - active
+      - error
+      - draining
+    WhatsAppChannelUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        access_token:
+          type: string
+          maxLength: 1024
+          writeOnly: true
+        verify_token:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        app_secret:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          writeOnly: true
+        graph_api_version:
+          type: string
+          pattern: ^v?\d+\.\d+$
+        inbound_agent_id:
+          type:
+          - string
+          - 'null'
+        inbound_webhook_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          maxLength: 2048
     Window:
       type: object
       required:

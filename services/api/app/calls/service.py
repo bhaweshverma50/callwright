@@ -56,6 +56,7 @@ REFUSALS: dict[str, tuple[int, str]] = {
     "pricing_unavailable": (422, "error"),
     "insufficient_credit": (402, "insufficient_credit"),
     "concurrency_limit": (429, "concurrency_limit"),
+    "declined_by_webhook": (409, "error"),
 }
 _DETAILS = {
     "email_unverified": "Verify your email address before placing calls.",
@@ -65,6 +66,7 @@ _DETAILS = {
     "pricing_unavailable": "The agent's configuration is not fully priced.",
     "insufficient_credit": "Your balance is too low to start a call. Add funds to continue.",
     "concurrency_limit": "Concurrent call limit reached. Try again when a call ends.",
+    "declined_by_webhook": "The inbound webhook declined this call.",
 }
 
 
@@ -88,6 +90,11 @@ class AdmissionRequest:
     simulation_run_id: str | None = None
     room_name: str | None = None
     timezone: str | None = None
+    # 010: outbound ring timeout, routing outcome and an inbound decline by the operator's webhook.
+    ring_timeout_s: int | None = None
+    route_detail: str | None = None
+    declined: bool = False
+    call_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -274,6 +281,8 @@ async def admit_in_session(
         refused = refusal("email_unverified")
     if refused is None and snapshot is not None:
         refused = await _checks(session, request, snapshot, catalog)
+    if refused is None and request.declined:
+        refused = refusal("declined_by_webhook")
     if refused is None:
         await _lock_admissions(session, request.workspace_id)
         limit = int(
@@ -285,7 +294,7 @@ async def admit_in_session(
         )
         if await _active_calls(session, request.workspace_id) >= limit:
             refused = refusal("concurrency_limit")
-    call_id = new_id("call")
+    call_id = request.call_id or new_id("call")
     config: Mapping[str, Any] = snapshot.config if snapshot is not None else {}
     workspace_default = bool(
         (
@@ -341,6 +350,8 @@ async def admit_in_session(
         pipeline_status="not_started",
         pipeline_warnings=[],
         billable_seconds=0 if refused else None,
+        ring_timeout_s=request.ring_timeout_s,
+        route_detail=request.route_detail,
     )
     session.add(call)
     await session.flush()
@@ -583,6 +594,10 @@ async def claim(
             sip_call_id=sip.get("call_id"),
             idempotency_key=f"job:{request.job_id}",
             room_name=request.room_name,
+            metadata=dict(route.metadata),
+            route_detail=route.route_detail,
+            declined=route.declined,
+            call_id=route.call_id,
         ),
         catalog=catalog,
         now=now,
