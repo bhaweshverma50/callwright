@@ -5,7 +5,7 @@ import type { Flow, FlowGraph } from "../../../api/flows";
 import { TooltipProvider } from "../../../components";
 import { useFlow } from "../hooks/useFlow";
 import { defaultConfig } from "../model";
-import { FlowCanvas, type Selection } from "./FlowCanvas";
+import { FlowCanvas, reconcileNodes, type NodeInputs, type Selection } from "./FlowCanvas";
 
 const toastSpy = vi.hoisted(() => vi.fn());
 vi.mock("../../../components/Toast", async (orig) => ({ ...(await orig<object>()), toast: toastSpy }));
@@ -46,7 +46,6 @@ function Harness({ initial }: { initial: Selection }) {
         <FlowCanvas
           graph={draft.graph}
           setGraph={draft.setGraph}
-          checkpoint={draft.checkpoint}
           undo={draft.undo}
           redo={draft.redo}
           canUndo={draft.canUndo}
@@ -90,6 +89,48 @@ describe("canvas keyboard and toolbar (T100)", () => {
     render(<Harness initial={{ nodes: [], edges: [] }} />);
     for (const name of ["Auto-layout", "Fit to screen", "Zoom in", "Zoom out", "Undo", "Redo"])
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add Agent" })).toBeInTheDocument();
+  });
+
+  it("Add step opens a grouped, labelled list; clicking a step adds and selects it", () => {
+    render(<Harness initial={{ nodes: [], edges: [] }} />);
+    expect(screen.queryByRole("button", { name: "Add Agent" })).not.toBeInTheDocument();
+    act(() => void fireEvent.click(screen.getByRole("button", { name: "Add step" })));
+    for (const group of ["Conversation", "Logic and data", "Call control"]) expect(screen.getByRole("region", { name: group })).toBeInTheDocument();
+    for (const title of ["Agent", "Task", "Say", "Condition", "Extract", "API call", "Transfer", "End", "Start"])
+      expect(screen.getByRole("button", { name: `Add ${title}` })).toHaveAttribute("draggable", "true");
+    act(() => void fireEvent.click(screen.getByRole("button", { name: "Add Task" })));
+    expect(current!.graph.nodes).toHaveLength(4);
+    expect(current!.graph.nodes.at(-1)!.type).toBe("task");
+  });
+});
+
+describe("canvas node reconcile (smooth drags)", () => {
+  const base: NodeInputs = { nodes: graph.nodes, selected: [], locked: false, counts: {}, active: null, visited: new Set(), diff: undefined };
+
+  it("keeps every unchanged node object, so memoised cards skip re-rendering", () => {
+    const first = reconcileNodes([], base);
+    const moved = graph.nodes.map((n) => (n.id === "n_say00000" ? { ...n, position: { x: 640, y: 20 } } : n));
+    const next = reconcileNodes(first, { ...base, nodes: moved });
+    expect(next[0]).toBe(first[0]);
+    expect(next[1]).toBe(first[1]);
+    expect(next[2]).not.toBe(first[2]);
+    expect(next[2]!.position).toEqual({ x: 640, y: 20 });
+    expect(reconcileNodes(next, { ...base, nodes: moved })).toBe(next);
+  });
+
+  it("selection only replaces the nodes it touches and carries measured sizes over", () => {
+    const first = reconcileNodes([], base).map((n) => ({ ...n, measured: { width: 256, height: 100 } }));
+    const next = reconcileNodes(first, { ...base, selected: ["n_agent000"] });
+    expect(next[0]).toBe(first[0]);
+    expect(next[1]!.selected).toBe(true);
+    expect(next[1]!.measured).toEqual({ width: 256, height: 100 });
+    expect(next[1]!.data).toBe(first[1]!.data);
+  });
+
+  it("a node being dragged keeps its live position when the document changes underneath", () => {
+    const first = reconcileNodes([], base).map((n) => (n.id === "n_agent000" ? { ...n, dragging: true, position: { x: 333, y: 44 } } : n));
+    const next = reconcileNodes(first, { ...base, counts: { n_agent000: { errors: 1, warnings: 0 } } });
+    expect(next[1]!.position).toEqual({ x: 333, y: 44 });
+    expect(next[1]!.data.errors).toBe(1);
   });
 });

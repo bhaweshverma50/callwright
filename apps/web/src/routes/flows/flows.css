@@ -1,12 +1,14 @@
 /*
   Flow builder canvas (spec 004). React Flow's base styles plus the Callwright look: node cards
-  are work surfaces (12px radius, 1px line), selection lifts a card and rings it in cobalt (no
+  are work surfaces (14px radius, 1px line), selection lifts a card and rings it in cobalt (no
   side stripes), the active node of a test call pulses with the shared halo, and assistant
   proposals read as a diff (green new, red removed, cobalt changed).
 */
 @import "@xyflow/react/dist/base.css";
 
 .flow-canvas {
+  /* The palette menu sizes itself to the canvas height (100cqh). */
+  container-type: size;
   --fnode-tint: var(--accent);
   --dot: color-mix(in oklab, var(--border-strong) 70%, transparent);
   background:
@@ -23,7 +25,11 @@
   cursor: grabbing;
 }
 .flow-canvas .react-flow__node {
-  border-radius: 12px;
+  border-radius: 14px;
+  cursor: grab;
+}
+.flow-canvas .react-flow__node.dragging {
+  cursor: grabbing;
 }
 .flow-canvas .react-flow__node:focus-visible {
   outline: none;
@@ -86,10 +92,10 @@
 /* Node card -------------------------------------------------------------------------------- */
 .fnode {
   position: relative;
-  width: 248px;
-  border-radius: 12px;
+  width: 240px;
+  border-radius: 14px;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--fnode-tint) 9%, transparent), transparent 46px), var(--surface);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--fnode-tint) 10%, transparent), transparent 58px), var(--surface);
   box-shadow: var(--shadow-1);
   transition:
     box-shadow var(--state-duration) var(--ease-out-soft),
@@ -100,21 +106,71 @@
 .react-flow__node:hover .fnode {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
 }
-.fnode[data-selected] {
+.react-flow__node .fnode[data-selected] {
   border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
   box-shadow:
     0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent),
     var(--shadow-2);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+/* Picked up: a deeper shadow, and no transitions so the card tracks the pointer exactly. */
+.react-flow__node .fnode[data-dragging] {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--fnode-tint) 30%, transparent),
+    var(--shadow-pop);
+  transition: none;
+}
+.react-flow__node .fnode[data-selected][data-dragging] {
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 24%, transparent),
+    var(--shadow-pop);
+}
+.fnode-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 8px;
+}
+.fnode-type {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--fnode-tint) 70%, var(--text-2));
+}
+.fnode-title {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.fnode-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 14px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.fnode-summary-rows {
+  padding-bottom: 10px;
 }
 .fnode-chip {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   color: var(--fnode-tint);
   background: color-mix(in oklab, var(--fnode-tint) 14%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--fnode-tint) 26%, transparent);
@@ -125,8 +181,8 @@
   box-shadow: 0 6px 14px -6px rgb(122 60 255 / 0.6);
 }
 .fnode-chip svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
 }
 .fnode-badge {
   display: inline-flex;
@@ -166,15 +222,17 @@
 .fnode-outs {
   border-top: 1px solid var(--border);
   padding: 4px 0;
+  background: color-mix(in oklab, var(--surface-2) 45%, transparent);
+  border-radius: 0 0 13px 13px;
 }
 .fnode-out {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  height: 26px;
-  padding: 0 16px 0 12px;
-  font-size: 11.5px;
+  height: 30px;
+  padding: 0 18px 0 14px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--text-2);
 }
@@ -188,10 +246,10 @@
   color: var(--text-3);
 }
 
-/* Handles: 12px dots sitting exactly on the card edge. */
+/* Handles: 14px dots sitting exactly on the card edge. */
 .flow-canvas .fnode-handle {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   min-width: 0;
   min-height: 0;
   border-radius: 999px;
@@ -247,7 +305,7 @@
   content: "";
   position: absolute;
   inset: -1px;
-  border-radius: 12px;
+  border-radius: 14px;
   pointer-events: none;
   box-shadow: 0 0 0 0 var(--halo);
   animation: fnode-live var(--halo-pulse-duration) var(--ease-out-soft) infinite;
@@ -347,16 +405,16 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  max-width: 190px;
-  height: 24px;
-  padding: 0 9px 0 7px;
-  border-radius: 999px;
+  max-width: 200px;
+  min-height: 26px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 13px;
+  line-height: 1.25;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-2);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
-  white-space: nowrap;
   box-shadow: var(--shadow-1);
   pointer-events: all;
   cursor: pointer;
@@ -366,9 +424,49 @@
     box-shadow 160ms ease,
     transform 160ms ease;
 }
+/* At most two lines; a longer label ends in an ellipsis (the full text is in the title). */
+.fedge-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+/* Short connections: the text gets the room, the icon steps aside. */
+.fedge-pill[data-narrow] svg {
+  display: none;
+}
+.fedge-pill[data-narrow] {
+  padding-left: 9px;
+  padding-right: 9px;
+  text-align: center;
+}
+/* Very short connections: an icon-only dot, the text shows on hover. */
+.fedge-pill[data-compact] {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+}
+.fedge-pill[data-compact] .fedge-text {
+  display: none;
+}
+.fedge-pill[data-compact] svg {
+  display: block;
+}
+.fedge-pill[data-compact]:hover {
+  width: auto;
+  height: auto;
+  max-width: 220px;
+  padding: 4px 10px 4px 8px;
+  z-index: 10;
+}
+.fedge-pill[data-compact]:hover .fedge-text {
+  display: -webkit-box;
+}
 .fedge-pill svg {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
   color: var(--text-3);
 }
@@ -410,14 +508,60 @@
   color: var(--violet);
 }
 
-/* Palette tiles ------------------------------------------------------------------------------ */
-.palette-tile {
-  --fnode-tint: var(--accent);
+/* Palette and toolbar ------------------------------------------------------------------------ */
+.palette-trigger {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color 160ms ease,
+    box-shadow 200ms var(--ease-out-soft),
+    transform 200ms var(--ease-out-soft);
 }
-.palette-tile .fnode-chip {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+.palette-trigger:not(:disabled):hover,
+.palette-trigger[aria-expanded="true"] {
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+.palette-trigger-icon {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--violet));
+  box-shadow: 0 4px 10px -4px rgb(122 60 255 / 0.55);
+}
+/* Between the Add step button and the toolbar: it never covers the zoom and undo controls. */
+.palette-menu {
+  max-height: calc(100cqh - 136px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  scrollbar-width: thin;
+}
+.palette-item {
+  transition: background-color 140ms ease;
+}
+.palette-item:not(:disabled):hover,
+.palette-item:focus-visible {
+  background: color-mix(in oklab, var(--fnode-tint) 9%, var(--surface));
+}
+.palette-item .fnode-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+.palette-item .fnode-chip svg {
+  width: 16px;
+  height: 16px;
+}
+/* Settings panel header: a faint wash of the step's colour (accent for a connection). */
+.panel-head {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--fnode-tint, var(--accent)) 8%, transparent), transparent);
+}
+.canvas-toolbar {
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -426,7 +570,8 @@
     animation: none;
   }
   .fnode,
-  .fedge-pill {
+  .fedge-pill,
+  .palette-trigger {
     transition: none;
   }
 }

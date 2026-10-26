@@ -5,7 +5,14 @@ import { Link, useNavigate } from "react-router";
 import { useVoiceCatalog } from "../../api/agents";
 import { createFlowAgent } from "../../api/flows";
 import { problemMessage } from "../../api/problems";
-import { Button, Field, Input, Select, Skeleton, toast } from "../../components";
+import { Button, Field, Input, Select, Skeleton, cn, toast } from "../../components";
+
+/** What a new flow starts with (FR-003): one row each, the text column aligned when it wraps. */
+const STARTER = [
+  { name: "Start", does: "greets the caller" },
+  { name: "Conversation", does: "is your first step" },
+  { name: "End", does: "closes the call" },
+];
 
 /**
  * Create a flow agent (T020, FR-001): a name and a language. The agent gets that language's
@@ -90,13 +97,27 @@ export function NewFlowAgentPage() {
                 )
               }
             </Field>
-            <ol className="grid grid-cols-1 gap-2 rounded-panel border border-line bg-surface-2/50 p-3 text-[12.5px] text-fg-2 sm:grid-cols-3">
-              {["Start: greets the caller", "Conversation: your first step", "End: closes the call"].map((s, i) => (
-                <li key={s} className="flex items-center gap-2">
-                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface font-mono text-[11px] text-fg-3 shadow-1">
+            <ol aria-label="The canvas starts with" className="rounded-panel border border-line bg-surface-2/50 px-3 py-2.5">
+              {STARTER.map((step, i) => (
+                <li key={step.name} className="relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 py-1.5">
+                  {i < STARTER.length - 1 && (
+                    <span
+                      aria-hidden
+                      className="absolute left-[11px] top-[30px] h-[calc(100%-22px)] w-px bg-gradient-to-b from-line-strong to-line"
+                    />
+                  )}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "relative grid size-6 place-items-center rounded-full font-mono text-[11px] font-medium",
+                      i === 0 ? "grad-action text-white shadow-glow" : "bg-surface text-fg-2 shadow-1 ring-1 ring-line",
+                    )}
+                  >
                     {i + 1}
                   </span>
-                  {s}
+                  <p className="pt-0.5 text-[13px] leading-snug text-fg-2">
+                    <span className="font-medium text-fg">{step.name}</span> {step.does}
+                  </p>
                 </li>
               ))}
             </ol>

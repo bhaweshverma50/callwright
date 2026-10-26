@@ -24,11 +24,13 @@ export type CanvasNode = Node<NodeData>;
 const DIFF_LABEL: Record<DiffMark, string> = { added: "New", removed: "Removed", updated: "Changed" };
 
 /**
- * One node on the canvas: type chip, label, one-line summary and its handles. Nodes with one
- * outcome have a single handle on the right edge; nodes with several (categories, success and
- * failure, rule and otherwise) list them as rows, each with its handle on the card's edge.
+ * One node on the canvas: type chip, type and name, a one-line summary and its handles. Nodes
+ * with one outcome have a single handle on the right edge; nodes with several (categories,
+ * success and failure, rule and otherwise) list them as rows, each with its handle on the edge.
+ * Memoised: the canvas keeps a node's `data` object while nothing about it changes, so a drag
+ * re-renders no card (the dragged one only when it is picked up and put down).
  */
-function NodeCardImpl({ data, selected }: NodeProps<CanvasNode>) {
+function NodeCardImpl({ data, selected, dragging }: NodeProps<CanvasNode>) {
   const { node, summary, errors, warnings, active, visited, diff } = data;
   const meta = NODE_META[node.type];
   const handles = outHandles(node);
@@ -38,18 +40,19 @@ function NodeCardImpl({ data, selected }: NodeProps<CanvasNode>) {
       className="fnode"
       data-ntype={node.type}
       data-selected={selected || undefined}
+      data-dragging={dragging || undefined}
       data-active={active || undefined}
       data-visited={visited || undefined}
       data-diff={diff}
     >
       {node.type !== "start" && <Handle type="target" position={Position.Left} className="fnode-handle fnode-handle-in" />}
-      <div className="flex items-start gap-2.5 px-3 pb-2 pt-3">
+      <div className="fnode-head">
         <span className="fnode-chip" aria-hidden>
           {meta.icon}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-fg-3">{meta.title}</p>
-          <p className="truncate text-[13.5px] font-semibold leading-snug text-fg" title={node.label}>
+          <p className="fnode-type">{meta.title}</p>
+          <p className="fnode-title" title={node.label}>
             {node.label}
           </p>
         </div>
@@ -67,7 +70,7 @@ function NodeCardImpl({ data, selected }: NodeProps<CanvasNode>) {
           </span>
         ) : null}
       </div>
-      <p className={cn("truncate px-3 text-[12px] leading-relaxed text-fg-2", rows ? "pb-2" : "pb-3")} title={summary}>
+      <p className={cn("fnode-summary", rows && "fnode-summary-rows")} title={summary}>
         {summary}
       </p>
       {rows ? (
@@ -86,4 +89,8 @@ function NodeCardImpl({ data, selected }: NodeProps<CanvasNode>) {
   );
 }
 
-export const NodeCard = memo(NodeCardImpl);
+/** Re-render only for what the card draws: React Flow also passes the live position on every drag frame. */
+const sameCard = (a: NodeProps<CanvasNode>, b: NodeProps<CanvasNode>) =>
+  a.data === b.data && a.selected === b.selected && a.dragging === b.dragging && a.id === b.id;
+
+export const NodeCard = memo(NodeCardImpl, sameCard);
