@@ -11,7 +11,7 @@
  * plays on timers, so the panel works in the gallery and tests without LiveKit.
  */
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CircleAlert, CircleCheck, Mic, MicOff, Phone, PhoneCall, PhoneOff, TriangleAlert } from "lucide-react";
+import { Bot, CircleAlert, CircleCheck, Mic, MicOff, Phone, PhoneCall, PhoneOff, TriangleAlert, User } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { env } from "../lib/env";
@@ -309,7 +309,7 @@ export function WebCallPanel({
         </dl>
       </header>
 
-      <div className="grid gap-2 px-5 pt-4">
+      <div className="grid gap-2 px-5 pt-4 sm:grid-cols-2">
         <WaveRow
           label="Agent"
           status={agentStatus(s.phase, s.activity)}
@@ -331,7 +331,7 @@ export function WebCallPanel({
         />
       </div>
 
-      <div className="relative mx-5 my-4 h-72 min-h-0">
+      <div className="relative mx-5 my-4 h-[22rem] min-h-0">
         {s.phase === "error" && s.problem ? (
           <ProblemCallout problem={s.problem} />
         ) : s.turns.length === 0 ? (
@@ -497,17 +497,17 @@ function WaveRow({
   // Speaking: the wave follows the level. Quiet but connected: an even line with a soft sweep.
   const scale = active && !reduce ? 0.3 + 0.7 * Math.min(1, level * 1.4) : 1;
   return (
-    <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 rounded-control bg-surface-2 py-2 pl-3 pr-3">
+    <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 rounded-control bg-surface-2 py-2 pl-3 pr-3">
       <div className="flex min-w-0 flex-col leading-tight">
         <span className="text-[12.5px] font-medium text-fg">{label}</span>
         <span className={cn("text-[11.5px]", muted ? "text-warning-text" : active ? "text-accent-text" : "text-fg-3")}>{status}</span>
       </div>
       <div
         aria-hidden
-        className={cn("h-8 origin-center", !reduce && "transition-transform duration-150 ease-out")}
+        className={cn("h-7 origin-center", !reduce && "transition-transform duration-150 ease-out")}
         style={{ transform: `scaleY(${scale})` }}
       >
-        <Waveform bars={56} seed={seed} progress={active ? 1 : 0} live={active} height={32} flat={muted || idle} quiet={!active && !muted && !idle} />
+        <Waveform bars={36} seed={seed} progress={active ? 1 : 0} live={active} height={28} flat={muted || idle} quiet={!active && !muted && !idle} />
       </div>
     </div>
   );
@@ -567,27 +567,45 @@ const Transcript = memo(function Transcript({ turns, reduce }: { turns: CallTurn
       aria-label="Transcript"
       className="flex h-full flex-col gap-3 overflow-y-auto overscroll-contain pr-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
     >
-      {turns.map((t) => (
-        <motion.li
-          key={t.id}
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: EASE_OUT }}
-          className={cn("flex flex-col gap-1", t.who === "agent" ? "items-end text-right" : "items-start")}
-        >
-          <span className="text-[11.5px] font-medium text-fg-3">{t.who === "agent" ? "Agent" : "You"}</span>
-          <p
-            className={cn(
-              "max-w-[40ch] rounded-panel px-3 py-1.5 text-left text-[13px] leading-snug transition-colors duration-200",
-              t.who === "agent" ? "rounded-br-[4px] bg-accent-soft" : "rounded-bl-[4px] bg-surface-2",
-              t.final ? "text-fg" : "text-fg-2",
-            )}
+      {turns.map((t, i) => {
+        const agent = t.who === "agent";
+        // The speaker's name only when the speaker changes, so a run of turns reads as one voice.
+        const first = turns[i - 1]?.who !== t.who;
+        return (
+          <motion.li
+            key={t.id}
+            initial={reduce ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: EASE_OUT }}
+            className={cn("flex flex-col gap-1", agent ? "items-start" : "items-end", !first && "-mt-1.5")}
           >
-            {t.text}
-          </p>
-          {t.latency && <LatencyChip latency={t.latency} />}
-        </motion.li>
-      ))}
+            {first && (
+              <span className={cn("flex items-center gap-1.5 text-[11.5px] font-medium text-fg-3", !agent && "flex-row-reverse")}>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "grid size-5 place-items-center rounded-full [&_svg]:size-3",
+                    agent ? "grad-action text-white" : "bg-surface-2 text-fg-2",
+                  )}
+                >
+                  {agent ? <Bot /> : <User />}
+                </span>
+                {agent ? "Agent" : "You"}
+              </span>
+            )}
+            <p
+              className={cn(
+                "max-w-[min(46ch,82%)] rounded-panel px-3.5 py-2 text-[13.5px] leading-relaxed transition-colors duration-200",
+                agent ? "rounded-tl-[6px] bg-surface-2" : "rounded-tr-[6px] bg-accent-soft",
+                t.final ? "text-fg" : "text-fg-2",
+              )}
+            >
+              {t.text}
+            </p>
+            {t.latency && <LatencyChip latency={t.latency} />}
+          </motion.li>
+        );
+      })}
     </ol>
   );
 });

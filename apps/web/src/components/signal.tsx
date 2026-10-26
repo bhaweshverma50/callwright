@@ -108,9 +108,9 @@ export function Waveform({
 /** Pulsing on-air dot. Red is reserved for live and recording state. */
 export function OnAir({ label = "Live", className, onConsole }: { label?: ReactNode; className?: string; onConsole?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center gap-2 text-[12.5px] font-medium", onConsole ? "text-console-fg" : "text-fg", className)}>
+    <span className={cn("inline-flex items-center gap-3 text-[12.5px] font-medium", onConsole ? "text-console-fg" : "text-fg", className)}>
       <span className="relative grid size-2.5 place-items-center" aria-hidden>
-        <span className="on-air-pulse absolute inset-0 rounded-full bg-on-air animate-on-air [--halo-peak:0.7] [--halo-to:2.6]" />
+        <span className="on-air-pulse absolute inset-0 rounded-full bg-on-air animate-on-air [--halo-peak:0.6] [--halo-to:2.1]" />
         <span className="relative size-2.5 rounded-full bg-on-air" />
       </span>
       {label}
