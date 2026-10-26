@@ -359,7 +359,9 @@ export const callHandlers = [
       charged_usd: 0.0012,
     });
   }),
-  http.post(url("/voice-commands/stream-token"), () => problem(503, "stt_unavailable", "Record the clip instead.")),
+  http.post(url("/voice-commands/stream-token"), () =>
+    problem(503, "stt_not_configured", "Speech transcription is not configured on this server. Type the command instead."),
+  ),
   http.post(url("/voice-commands/interpret"), async ({ request }) => {
     const body = (await request.json()) as { transcript: string };
     if (/failed calls/.test(body.transcript))
