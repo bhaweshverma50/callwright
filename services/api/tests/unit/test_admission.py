@@ -139,6 +139,7 @@ async def test_auto_stt_language_without_a_model_is_refused(runtime: Runtime) ->
 async def test_flow_agents_wait_for_the_flow_runtime(runtime: Runtime) -> None:
     _, ws = await runtime.workspace()
     agent = runtime.versions.add_agent(ws, agent_type="flow")
+    ports.set_flow_runtime_available(False)  # a build without the 004 runtime
     admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)
     assert admission.refusal is not None and admission.refusal.code == "flow_runtime_unavailable"
     ports.set_flow_runtime_available(True)

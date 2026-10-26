@@ -507,13 +507,29 @@ async def resolve_for_snapshot(session: AsyncSession, tool_ids: Sequence[str]) -
     return [to_spec(found[t]) for t in tool_ids if t in found]
 
 
+def _header_lists(config: Mapping[str, Any]) -> list[list[Any]]:
+    """Header lists of the snapshot's tools, plus (004) the tools and webhook requests of every
+    compiled flow node."""
+    lists = [(spec.get("config") or {}).get("headers") or [] for spec in config.get("tools") or []]
+    raw_flow = config.get("flow")
+    flow: Mapping[str, Any] = raw_flow if isinstance(raw_flow, Mapping) else {}
+    raw_compiled = flow.get("compiled")
+    compiled: Mapping[str, Any] = raw_compiled if isinstance(raw_compiled, Mapping) else {}
+    for node in (compiled.get("nodes") or {}).values():
+        for spec in node.get("tools") or []:
+            lists.append((spec.get("config") or {}).get("headers") or [])
+        webhook = node.get("webhook") or {}
+        lists.append((webhook.get("request") or {}).get("headers") or [])
+    return lists
+
+
 def secret_refs(config: Mapping[str, Any]) -> list[str]:
     refs: list[str] = []
-    for spec in config.get("tools") or []:
-        for header in (spec.get("config") or {}).get("headers") or []:
+    for headers in _header_lists(config):
+        for header in headers:
             if header.get("secret") and header.get("secret_ref"):
                 refs.append(str(header["secret_ref"]))
-    return refs
+    return list(dict.fromkeys(refs))
 
 
 async def secrets_for_config(

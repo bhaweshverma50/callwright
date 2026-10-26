@@ -2,5 +2,6 @@
 001-platform-foundation
 002-agent-builder
 003-voice-runtime
+004-flow-agents
 005-tools-knowledge
 006-calls-analytics

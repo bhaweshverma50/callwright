@@ -15,6 +15,7 @@ tags:
 - name: call-events-internal
 - name: calls-internal
 - name: core
+- name: flows
 - name: internal
 - name: knowledge
 - name: livekit-hooks
@@ -467,6 +468,37 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 002-agent-builder
+  /agents/{agent_id}/flow:
+    parameters:
+    - name: agent_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+    get:
+      tags:
+      - flows
+      operationId: getFlowByAgent
+      responses:
+        '200':
+          description: The agent's flow
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flow'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Agent is not a flow agent (agent_not_flow)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 004-flow-agents
   /agents/{agent_id}/knowledge-bases:
     parameters:
     - name: agent_id
@@ -1590,6 +1622,32 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 006-calls-analytics
+  /calls/{call_id}/flow-transitions:
+    description: Served by the flows module under 006's /calls path (architecture section 5).
+    parameters:
+    - $ref: '#/components/parameters/CallIdPath'
+    get:
+      tags:
+      - flows
+      operationId: listCallFlowTransitions
+      summary: Ordered node moves of one call (empty for single-prompt agents)
+      responses:
+        '200':
+          description: Transitions in call order
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FlowTransition'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 004-flow-agents
   /calls/{call_id}/recording:
     get:
       operationId: getRecordingLink
@@ -1762,6 +1820,219 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 006-calls-analytics
+  /flows:
+    post:
+      tags:
+      - flows
+      operationId: createFlowAgent
+      summary: Create a flow agent and its flow with the starter graph
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFlowAgentRequest'
+      responses:
+        '201':
+          description: Agent and flow created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateFlowAgentResponse'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+      x-spec: 004-flow-agents
+  /flows/{flow_id}:
+    parameters:
+    - $ref: '#/components/parameters/FlowId'
+    get:
+      tags:
+      - flows
+      operationId: getFlow
+      responses:
+        '200':
+          description: Flow draft
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flow'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 004-flow-agents
+    put:
+      tags:
+      - flows
+      operationId: saveFlow
+      summary: Save the draft graph (drafts with errors are accepted)
+      description: 'Optionally carries changed flow-wide settings in `agent_settings`; graph, name and
+        settings are stored in one transaction or not at all (FR-046). The name also renames the agent
+        (FR-048).
+
+        '
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        description: Revision the client loaded, quoted, e.g. "7"
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveFlowRequest'
+      responses:
+        '200':
+          description: Saved
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flow'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          description: Revision conflict on the flow (flow_revision_conflict) or on the agent draft named
+            by agent_settings.expected_draft_revision (agent_draft_changed); nothing is stored
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/RevisionConflictProblem'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+      x-spec: 004-flow-agents
+  /flows/{flow_id}/assistant:
+    parameters:
+    - $ref: '#/components/parameters/FlowId'
+    post:
+      tags:
+      - flows
+      operationId: askFlowAssistant
+      summary: Ask the AI assistant for proposed graph operations (nothing is saved)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantRequest'
+      responses:
+        '200':
+          description: Proposal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantResponse'
+        '402':
+          description: Insufficient credit (insufficient_credit)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: base_revision is stale (flow_revision_conflict)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/RevisionConflictProblem'
+        '504':
+          description: Assistant timed out after 60 s (assistant_timeout); nothing charged
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 004-flow-agents
+  /flows/{flow_id}/compile:
+    parameters:
+    - $ref: '#/components/parameters/FlowId'
+    post:
+      tags:
+      - flows
+      operationId: compileFlowPreview
+      summary: Compile the saved draft without publishing
+      responses:
+        '200':
+          description: Compiled preview, or issues when errors exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompileResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 004-flow-agents
+  /flows/{flow_id}/publish:
+    parameters:
+    - $ref: '#/components/parameters/FlowId'
+    post:
+      tags:
+      - flows
+      operationId: publishFlow
+      summary: Validate, compile and create a new agent version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+      responses:
+        '201':
+          description: Version created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Draft revision differs from expected_revision (flow_revision_conflict)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/RevisionConflictProblem'
+        '422':
+          description: Flow has errors (flow_has_errors); issues listed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/FlowErrorsProblem'
+      x-spec: 004-flow-agents
+  /flows/{flow_id}/validate:
+    parameters:
+    - $ref: '#/components/parameters/FlowId'
+    post:
+      tags:
+      - flows
+      operationId: validateFlow
+      summary: Validate a graph (the saved draft when no body graph is given)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                graph:
+                  $ref: '#/components/schemas/FlowGraph'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowValidationResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 004-flow-agents
   /health:
     get:
       operationId: getHealth
@@ -3674,6 +3945,11 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
       x-spec: 001-platform-foundation
 components:
+  headers:
+    ETag:
+      description: Quoted flow revision, e.g. "7"
+      schema:
+        type: string
   parameters:
     AgentIdPath:
       name: agent_id
@@ -3726,6 +4002,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/WebhookEventName'
+    FlowId:
+      name: flow_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^flw_[0-9A-HJKMNP-TV-Z]{26}$
     FromNumber:
       name: from_number
       in: query
@@ -3884,6 +4167,12 @@ components:
             $ref: '#/components/schemas/Problem'
     ValidationFailed:
       description: Request failed validation; `errors` lists every problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationProblem:
+      description: Request body invalid
       content:
         application/problem+json:
           schema:
@@ -4170,6 +4459,38 @@ components:
           readOnly: true
           items:
             type: object
+    AgentConfigNode:
+      type: object
+      title: agent
+      required:
+      - instructions
+      - context_strategy
+      properties:
+        instructions:
+          type: string
+          maxLength: 16000
+        begin_message:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        context_strategy:
+          type: string
+          enum:
+          - inherit
+          - summarize
+          - reset
+          default: inherit
+        overrides:
+          $ref: '#/components/schemas/Overrides'
+        tool_ids:
+          type: array
+          items:
+            type: string
+            pattern: ^tool_
+        kb_search_enabled:
+          type: boolean
+          default: true
     AgentDetail:
       type: object
       required:
@@ -4273,6 +4594,23 @@ components:
           type: string
         deleted:
           type: boolean
+    AgentSettingsChange:
+      type: object
+      required:
+      - expected_draft_revision
+      - changes
+      additionalProperties: false
+      description: Changed flow-wide settings saved atomically with the graph (data-model section 9).
+        Only changed fields are sent; others keep their stored values.
+      properties:
+        expected_draft_revision:
+          type: integer
+          minimum: 1
+        changes:
+          type: object
+          minProperties: 1
+          description: Partial AgentConfig (002 agents.yaml AgentConfig), deep-merged into the draft.
+            start_speaker and begin_message are rejected for flow agents (the Start node owns them).
     AgentSummary:
       type: object
       required:
@@ -4359,6 +4697,78 @@ components:
         created_at:
           type: string
           format: date-time
+    AssistantRequest:
+      type: object
+      required:
+      - messages
+      - base_revision
+      additionalProperties: false
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required:
+            - role
+            - content
+            properties:
+              role:
+                type: string
+                enum:
+                - user
+                - assistant
+              content:
+                type: string
+                maxLength: 8000
+        base_revision:
+          type: integer
+          minimum: 1
+        graph:
+          $ref: '#/components/schemas/FlowGraph'
+    AssistantResponse:
+      type: object
+      required:
+      - message
+      - operations
+      - proposed_graph
+      - issues
+      - base_revision
+      - usage
+      properties:
+        message:
+          type: string
+        flow_name:
+          type:
+          - string
+          - 'null'
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operation'
+        proposed_graph:
+          $ref: '#/components/schemas/FlowGraph'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        base_revision:
+          type: integer
+        usage:
+          type: object
+          required:
+          - input_tokens
+          - output_tokens
+          - cost_usd
+          properties:
+            input_tokens:
+              type: integer
+            output_tokens:
+              type: integer
+            cost_usd:
+              type: string
+              description: Decimal as string
     BackgroundAudioSource:
       oneOf:
       - type: object
@@ -5048,6 +5458,97 @@ components:
               type: string
         runtime:
           $ref: '#/components/schemas/RuntimeConfig'
+    CompileResult:
+      type: object
+      required:
+      - ok
+      - issues
+      properties:
+        ok:
+          type: boolean
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        compiled:
+          oneOf:
+          - $ref: '#/components/schemas/CompiledFlow'
+          - type: 'null'
+    CompiledFlow:
+      type: object
+      description: Runnable form stored in AgentVersion.config.flow.compiled. Full shape in data-model.md
+        section 4; worker validates against compiled_schema.json.
+      required:
+      - schema_version
+      - flow_id
+      - graph_hash
+      - entry_node_id
+      - nodes
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        flow_id:
+          type: string
+        graph_hash:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        compiled_at:
+          type: string
+          format: date-time
+        entry_node_id:
+          type: string
+        persona_prompt:
+          type: string
+        builtin_variables:
+          type: array
+          items:
+            type: string
+        declared_variables:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              source_node_id:
+                type: string
+              type:
+                type: string
+        nodes:
+          type: object
+          additionalProperties:
+            type: object
+            required:
+            - type
+            - label
+            properties:
+              type:
+                $ref: '#/components/schemas/NodeType'
+              label:
+                type: string
+              transitions:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - edge_id
+                  - function_name
+                  - description
+                  - target_node_id
+                  - trigger
+                  properties:
+                    edge_id:
+                      type: string
+                    function_name:
+                      type: string
+                    description:
+                      type: string
+                    target_node_id:
+                      type: string
+                    trigger:
+                      $ref: '#/components/schemas/Trigger'
+            additionalProperties: true
     Component:
       type: string
       enum:
@@ -5067,6 +5568,36 @@ components:
           type:
           - string
           - 'null'
+    ConditionConfig:
+      type: object
+      title: condition
+      required:
+      - kind
+      properties:
+        kind:
+          type: string
+          enum:
+          - classify
+          - rule
+          default: classify
+        instructions:
+          type: string
+          maxLength: 4000
+        categories:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required:
+            - name
+            properties:
+              name:
+                type: string
+                pattern: ^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$
+                description: Unique ignoring case within the node (E_CATEGORY_NAME)
+              description:
+                type: string
+                maxLength: 300
     ConfigIssue:
       type: object
       required:
@@ -5256,6 +5787,39 @@ components:
             $ref: '#/components/schemas/SurchargeLine'
         catalog_version:
           type: string
+    CreateFlowAgentRequest:
+      type: object
+      required:
+      - name
+      - language
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        language:
+          type: string
+          examples:
+          - en-US
+          - en-GB
+          - hi
+    CreateFlowAgentResponse:
+      type: object
+      required:
+      - agent_id
+      - flow
+      properties:
+        agent_id:
+          type: string
+          pattern: ^agt_
+        flow:
+          $ref: '#/components/schemas/Flow'
+        warnings:
+          type: array
+          items:
+            type: string
+          description: e.g. language has no seeded defaults, en-US defaults used
     DashboardQuality:
       type: object
       required:
@@ -5657,6 +6221,77 @@ components:
       pattern: ^\+[1-9]\d{6,14}$
       examples:
       - '+14155550123'
+    Edge:
+      type: object
+      required:
+      - id
+      - source
+      - target
+      - trigger
+      - sort_order
+      properties:
+        id:
+          type: string
+          pattern: ^e_[a-z0-9]{8}$
+        source:
+          type: string
+          pattern: ^n_[a-z0-9]{8}$
+        target:
+          type: string
+          pattern: ^n_[a-z0-9]{8}$
+        trigger:
+          $ref: '#/components/schemas/Trigger'
+        label:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+          description: Required only for llm_condition edges; must contain a letter or digit. The transition
+            name is derived from it (data-model section 4).
+        condition:
+          type:
+          - string
+          - 'null'
+          maxLength: 1000
+        function_name:
+          type:
+          - string
+          - 'null'
+          pattern: ^route_to_[a-z0-9_]{1,48}$
+        category:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+        rule:
+          type:
+          - object
+          - 'null'
+          required:
+          - variable
+          - operator
+          properties:
+            variable:
+              type: string
+              maxLength: 120
+            operator:
+              type: string
+              enum:
+              - equals
+              - not_equals
+              - contains
+              - matches
+              - exists
+              - gt
+              - lt
+            value:
+              type:
+              - string
+              - 'null'
+              maxLength: 500
+        sort_order:
+          type: integer
+          minimum: 0
     EndCallConfig:
       type: object
       additionalProperties: false
@@ -5666,6 +6301,18 @@ components:
           - string
           - 'null'
           maxLength: 500
+    EndConfig:
+      type: object
+      title: end
+      properties:
+        message:
+          type: string
+          maxLength: 500
+          default: Thanks for calling. Goodbye.
+        reason:
+          type: string
+          pattern: ^[a-z_]{1,40}$
+          default: call_completed
     EvalStatus:
       type: string
       enum:
@@ -5777,6 +6424,38 @@ components:
               enum:
               - insufficient_credit
               - error
+    ExtractConfig:
+      type: object
+      title: extract_variable
+      required:
+      - fields
+      properties:
+        instructions:
+          type: string
+          maxLength: 4000
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items:
+            type: object
+            required:
+            - name
+            - type
+            - description
+            properties:
+              name:
+                type: string
+                pattern: ^[a-z][a-z0-9_]{0,39}$
+              type:
+                type: string
+                enum:
+                - string
+                - number
+                - boolean
+              description:
+                type: string
+                maxLength: 300
     FeatureFamily:
       type: string
       description: 'Prefix of the feature key before the first dot, with `eval` reported as `evaluations`
@@ -5819,6 +6498,147 @@ components:
           - not_in_catalog
         message:
           type: string
+    Flow:
+      type: object
+      required:
+      - id
+      - agent_id
+      - name
+      - graph
+      - revision
+      - last_validation
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          pattern: ^flw_
+        agent_id:
+          type: string
+          pattern: ^agt_
+        name:
+          type: string
+        graph:
+          $ref: '#/components/schemas/FlowGraph'
+        revision:
+          type: integer
+          minimum: 1
+        last_validation:
+          $ref: '#/components/schemas/FlowValidationResult'
+        last_published_version_id:
+          type:
+          - string
+          - 'null'
+          pattern: ^agv_
+        agent_draft_revision:
+          type: integer
+          minimum: 1
+          description: Revision of the 002 agent draft after this read or save; send it back as agent_settings.expected_draft_revision
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    FlowErrorsProblem:
+      allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        required:
+        - issues
+        properties:
+          issues:
+            type: array
+            items:
+              $ref: '#/components/schemas/ValidationIssue'
+    FlowGraph:
+      type: object
+      required:
+      - nodes
+      - edges
+      - viewport
+      additionalProperties: false
+      properties:
+        nodes:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Node'
+        edges:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Edge'
+        viewport:
+          type: object
+          required:
+          - x
+          - y
+          - zoom
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+            zoom:
+              type: number
+              minimum: 0.1
+              maximum: 4
+    FlowTransition:
+      type: object
+      required:
+      - seq
+      - from_node_id
+      - to_node_id
+      - trigger
+      - turn_index
+      - t_ms
+      properties:
+        seq:
+          type: integer
+        from_node_id:
+          type: string
+        from_label:
+          type: string
+        to_node_id:
+          type: string
+        to_label:
+          type: string
+        edge_id:
+          type:
+          - string
+          - 'null'
+        edge_label:
+          type:
+          - string
+          - 'null'
+        trigger:
+          type: string
+          enum:
+          - llm_condition
+          - category
+          - rule
+          - else
+          - always
+          - success
+          - failure
+          - fallback
+        function_name:
+          type:
+          - string
+          - 'null'
+        turn_index:
+          type: integer
+        t_ms:
+          type: integer
+          description: Milliseconds since call start
+        engine_ms:
+          type: integer
+        model_ms:
+          type:
+          - integer
+          - 'null'
     FlowTransitionEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -5837,6 +6657,26 @@ components:
             type: string
           label:
             type: string
+    FlowValidationResult:
+      type: object
+      required:
+      - errors
+      - warnings
+      - issues
+      properties:
+        errors:
+          type: integer
+          minimum: 0
+        warnings:
+          type: integer
+          minimum: 0
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        validated_at:
+          type: string
+          format: date-time
     HeaderSpec:
       type: object
       required:
@@ -6445,6 +7285,60 @@ components:
       examples:
       - '30.000000'
       - '-0.477000'
+    Node:
+      type: object
+      required:
+      - id
+      - type
+      - label
+      - position
+      - config
+      properties:
+        id:
+          type: string
+          pattern: ^n_[a-z0-9]{8}$
+        type:
+          $ref: '#/components/schemas/NodeType'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        position:
+          type: object
+          required:
+          - x
+          - y
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+        config:
+          description: Shape depends on type; drafts may hold incomplete configs, so only the type-specific
+            schema below is applied when validating for publish. Listed with anyOf because a draft config
+            can match several of them.
+          anyOf:
+          - $ref: '#/components/schemas/StartConfig'
+          - $ref: '#/components/schemas/AgentConfigNode'
+          - $ref: '#/components/schemas/TaskConfig'
+          - $ref: '#/components/schemas/ConditionConfig'
+          - $ref: '#/components/schemas/SayConfig'
+          - $ref: '#/components/schemas/ExtractConfig'
+          - $ref: '#/components/schemas/WebhookConfig'
+          - $ref: '#/components/schemas/TransferConfig'
+          - $ref: '#/components/schemas/EndConfig'
+    NodeType:
+      type: string
+      enum:
+      - start
+      - agent
+      - task
+      - condition
+      - say
+      - extract_variable
+      - webhook
+      - transfer
+      - end
     NoiseCancellationOption:
       type: object
       required:
@@ -6468,6 +7362,83 @@ components:
           type: boolean
         price_per_min_usd:
           $ref: '#/components/schemas/PricePerMin'
+    Operation:
+      oneOf:
+      - type: object
+        required:
+        - op
+        - node
+        properties:
+          op:
+            const: add_node
+          node:
+            $ref: '#/components/schemas/Node'
+      - type: object
+        required:
+        - op
+        - node_id
+        - changes
+        properties:
+          op:
+            const: update_node
+          node_id:
+            type: string
+          changes:
+            type: object
+            properties:
+              label:
+                type: string
+              config:
+                type: object
+      - type: object
+        required:
+        - op
+        - node_id
+        properties:
+          op:
+            const: remove_node
+          node_id:
+            type: string
+      - type: object
+        required:
+        - op
+        - edge
+        properties:
+          op:
+            const: add_edge
+          edge:
+            $ref: '#/components/schemas/Edge'
+      - type: object
+        required:
+        - op
+        - edge_id
+        - changes
+        properties:
+          op:
+            const: update_edge
+          edge_id:
+            type: string
+          changes:
+            type: object
+      - type: object
+        required:
+        - op
+        - edge_id
+        properties:
+          op:
+            const: remove_edge
+          edge_id:
+            type: string
+      - type: object
+        required:
+        - op
+        - name
+        properties:
+          op:
+            const: rename_flow
+          name:
+            type: string
+            maxLength: 120
     Origin:
       type: string
       enum:
@@ -6492,6 +7463,54 @@ components:
           type: integer
           minimum: 10
           maximum: 60
+    Overrides:
+      type: object
+      properties:
+        llm:
+          type:
+          - object
+          - 'null'
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            temperature:
+              type: number
+              minimum: 0
+              maximum: 2
+        tts:
+          type:
+          - object
+          - 'null'
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            voice_id:
+              type: string
+            speed:
+              type: number
+              minimum: 0.5
+              maximum: 2
+            stability:
+              type: number
+              minimum: 0
+              maximum: 1
+        stt:
+          type:
+          - object
+          - 'null'
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+        language:
+          type:
+          - string
+          - 'null'
     Page:
       type: object
       required:
@@ -6598,6 +7617,36 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+    PublishRequest:
+      type: object
+      required:
+      - expected_revision
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        release_notes:
+          type: string
+          maxLength: 2000
+    PublishResponse:
+      type: object
+      required:
+      - agent_version_id
+      - version_number
+      - graph_hash
+      - warnings
+      properties:
+        agent_version_id:
+          type: string
+          pattern: ^agv_
+        version_number:
+          type: integer
+        graph_hash:
+          type: string
+        warnings:
+          type: integer
+          minimum: 0
     QualitySummary:
       type: object
       required:
@@ -6778,6 +7827,15 @@ components:
           maxLength: 256
           examples:
           - data.slots[0].time
+    RevisionConflictProblem:
+      allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        required:
+        - current_revision
+        properties:
+          current_revision:
+            type: integer
     RuntimeConfig:
       type: object
       required:
@@ -6949,6 +8007,22 @@ components:
           type: string
         at_ms:
           type: integer
+    SaveFlowRequest:
+      type: object
+      required:
+      - name
+      - graph
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Flow and agent name (one name, FR-048)
+        graph:
+          $ref: '#/components/schemas/FlowGraph'
+        agent_settings:
+          $ref: '#/components/schemas/AgentSettingsChange'
     SaveResult:
       type: object
       required:
@@ -6973,6 +8047,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfigIssue'
+    SayConfig:
+      type: object
+      title: say
+      required:
+      - message
+      properties:
+        message:
+          type: string
+          maxLength: 1000
+        allow_interruptions:
+          type: boolean
+          default: true
     SearchResponse:
       type: object
       required:
@@ -7104,6 +8190,32 @@ components:
           description: The calling number, E.164 when available.
         participant_identity:
           type: string
+    StartConfig:
+      type: object
+      title: start
+      required:
+      - start_speaker
+      - greeting_type
+      properties:
+        start_speaker:
+          type: string
+          enum:
+          - agent
+          - user
+          default: agent
+        greeting_type:
+          type: string
+          enum:
+          - static
+          - generated
+          default: static
+          description: Used when start_speaker is agent; generated requires the Start edge to lead to
+            an agent or task node (E_GREETING_SOURCE)
+        greeting:
+          type: string
+          maxLength: 500
+          description: Required for agent plus static; optional for user (played before listening, empty
+            means silence)
     StatusEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -7297,6 +8409,73 @@ components:
         multiplier:
           type: number
           description: billed_minutes / duration_minutes, e.g. 1.13
+    TaskConfig:
+      type: object
+      title: task
+      required:
+      - instructions
+      - fields
+      - max_rounds
+      - context_strategy
+      properties:
+        instructions:
+          type: string
+          maxLength: 16000
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/TaskField'
+        max_rounds:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+        context_strategy:
+          type: string
+          enum:
+          - inherit
+          - summarize
+          - reset
+          default: inherit
+        overrides:
+          $ref: '#/components/schemas/Overrides'
+        tool_ids:
+          type: array
+          items:
+            type: string
+            pattern: ^tool_
+        kb_search_enabled:
+          type: boolean
+          default: true
+    TaskField:
+      type: object
+      required:
+      - name
+      - type
+      - description
+      - required
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,39}$
+        type:
+          type: string
+          enum:
+          - string
+          - number
+          - boolean
+          - enum
+        description:
+          type: string
+          maxLength: 300
+        required:
+          type: boolean
+        enum_values:
+          type: array
+          items:
+            type: string
     TemperatureRule:
       oneOf:
       - type: object
@@ -7755,6 +8934,14 @@ components:
           - 'null'
         offset_ms:
           type: integer
+    TransferConfig:
+      type: object
+      title: transfer
+      required:
+      - transfer
+      properties:
+        transfer:
+          $ref: '#/components/schemas/TransferSpec'
     TransferSpec:
       type: object
       additionalProperties: false
@@ -7814,6 +9001,16 @@ components:
           minimum: 5
           maximum: 120
           default: 30
+    Trigger:
+      type: string
+      enum:
+      - llm_condition
+      - category
+      - rule
+      - else
+      - always
+      - success
+      - failure
     TtsModel:
       type: object
       required:
@@ -8150,6 +9347,42 @@ components:
     UserId:
       type: string
       pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+    ValidationIssue:
+      type: object
+      required:
+      - severity
+      - code
+      - message
+      properties:
+        severity:
+          type: string
+          enum:
+          - error
+          - warning
+        code:
+          type: string
+          examples:
+          - E_START_COUNT
+          - E_DANGLING_EDGE
+          - W_UNREACHABLE
+          - E_INVALID_FIELD
+          - E_GREETING_SOURCE
+          - E_CATEGORY_NAME
+          - E_TRANSITION_NAME_EMPTY
+        message:
+          type: string
+        node_id:
+          type:
+          - string
+          - 'null'
+        edge_id:
+          type:
+          - string
+          - 'null'
+        field:
+          type:
+          - string
+          - 'null'
     VersionDetail:
       allOf:
       - $ref: '#/components/schemas/VersionSummary'
@@ -8665,6 +9898,19 @@ components:
           type: array
           items:
             type: string
+    WebhookConfig:
+      type: object
+      title: webhook
+      required:
+      - request
+      properties:
+        request:
+          $ref: '#/components/schemas/HttpRequestSpec'
+        mock_response:
+          type:
+          - string
+          - 'null'
+          maxLength: 16000
     WebhookDelivery:
       type: object
       required:

@@ -8,6 +8,7 @@ import httpx
 import jwt
 from fastapi import FastAPI
 
+from app.calls import ports
 from tests.conftest import Account
 from tests.contract.conftest import check
 from tests.runtime_support import Runtime, agent_config, idem, owner_sql, set_concurrency, start_web_call
@@ -172,6 +173,8 @@ async def test_422_variables_vendor_and_flow(
         body["type"].endswith("/unsupported-vendor")
         and body["diagnostic"] == "unsupported_vendor:stt/whisperco"
     )
+    # The refusal path stays for a worker build without the 004 runtime.
+    ports.set_flow_runtime_available(False)
     flow = runtime.versions.add_agent(account.workspace_id, agent_type="flow")
     refused = check(await start_web_call(client, account.headers, flow.agent_id))
     assert refused.status_code == 422 and refused.json()["type"].endswith("/flow-runtime-unavailable")

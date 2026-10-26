@@ -16,9 +16,22 @@ import httpx
 log = logging.getLogger(__name__)
 
 
+def _header_lists(config: Mapping[str, Any]) -> list[Any]:
+    lists = [(spec.get("config") or {}).get("headers") or [] for spec in config.get("tools") or []]
+    raw_flow = config.get("flow")
+    flow: Mapping[str, Any] = raw_flow if isinstance(raw_flow, Mapping) else {}
+    raw_compiled = flow.get("compiled")
+    compiled: Mapping[str, Any] = raw_compiled if isinstance(raw_compiled, Mapping) else {}
+    for node in (compiled.get("nodes") or {}).values():  # 004: node tools and webhook nodes
+        for spec in node.get("tools") or []:
+            lists.append((spec.get("config") or {}).get("headers") or [])
+        lists.append(((node.get("webhook") or {}).get("request") or {}).get("headers") or [])
+    return lists
+
+
 def needs_secrets(config: Mapping[str, Any]) -> bool:
-    for spec in config.get("tools") or []:
-        for header in (spec.get("config") or {}).get("headers") or []:
+    for headers in _header_lists(config):
+        for header in headers:
             if header.get("secret") and header.get("secret_ref"):
                 return True
     return False
