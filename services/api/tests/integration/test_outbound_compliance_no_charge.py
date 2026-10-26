@@ -79,7 +79,11 @@ async def test_unknown_zone_blocks_and_override_allows(
     assert problem["recipient_timezones"] == [] and problem["next_allowed_at"] is None
     assert "recipient_timezone" in problem["detail"]
     allowed = await channels.place(
-        client, account, to_number=global_number, from_number=number["e164"], recipient_timezone="Europe/Berlin"
+        client,
+        account,
+        to_number=global_number,
+        from_number=number["e164"],
+        recipient_timezone="Europe/Berlin",
     )
     assert allowed.status_code == 202, allowed.text
     assert allowed.json()["timezone_source"] == "override"

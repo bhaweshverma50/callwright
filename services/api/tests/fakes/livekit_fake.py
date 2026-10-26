@@ -29,6 +29,19 @@ def fresh_e164() -> str:
     return f"+1415{2 + n % 8}{(n // 8) % 1_000_000:06d}"
 
 
+def whatsapp_body(**overrides: Any) -> dict[str, Any]:
+    n = uuid.uuid4().int
+    return {
+        "meta_phone_number_id": str(100_000_000_000 + n % 10**11),
+        "e164": fresh_e164(),
+        "label": "Support WhatsApp",
+        "access_token": f"EAAG-token-{n % 10**8:08d}",
+        "verify_token": f"verify-{n % 10**10:010d}",
+        "app_secret": f"appsecret-{n % 10**8:08d}",
+        **overrides,
+    }
+
+
 @dataclass
 class Channels:
     app: FastAPI
@@ -78,6 +91,13 @@ class Channels:
     ) -> httpx.Response:
         headers = {**account.headers, "Idempotency-Key": key or f"key-{uuid.uuid4().hex}"}
         return await client.post("/v1/outbound-calls", json=body, headers=headers)
+
+    async def whatsapp(self, client: httpx.AsyncClient, account: Account, **body: Any) -> dict[str, Any]:
+        payload = whatsapp_body(**body)
+        response = await client.post("/v1/whatsapp/channels", json=payload, headers=account.headers)
+        assert response.status_code == 201, response.text
+        result: dict[str, Any] = response.json()
+        return result
 
     async def claim_inbound(
         self,

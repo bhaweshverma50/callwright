@@ -656,9 +656,11 @@ async def list_routes(
     async with deps.db.transaction(workspace_id=workspace_id) as s:
         await _load(s, channel_id)
         query = select(WhatsAppCallerRoute).where(WhatsAppCallerRoute.channel_id == channel_id)
-        if caller:
-            prefix = "+" + _digits(caller) if _digits(caller) else ""
-            query = query.where(WhatsAppCallerRoute.caller_e164.startswith(prefix, autoescape=True))
+        digits = _digits(caller)
+        if digits and (caller or "").strip().startswith("+"):
+            query = query.where(WhatsAppCallerRoute.caller_e164.startswith("+" + digits, autoescape=True))
+        elif digits:
+            query = query.where(WhatsAppCallerRoute.caller_e164.contains(digits, autoescape=True))
         total = int((await s.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
         rows = list(
             (

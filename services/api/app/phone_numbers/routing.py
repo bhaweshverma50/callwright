@@ -82,7 +82,7 @@ def parse_reply(body: bytes) -> dict[str, Any]:
     action = data.get("action", "answer")
     if action not in ("answer", "decline"):
         raise ValueError("invalid_reply")
-    variables = data.get("dynamic_variables") or {}
+    variables = data.get("dynamic_variables", {})
     if not isinstance(variables, dict) or len(variables) > MAX_VARIABLES:
         raise ValueError("invalid_reply")
     clean: dict[str, str] = {}
@@ -90,7 +90,7 @@ def parse_reply(body: bytes) -> dict[str, Any]:
         if not isinstance(name, str) or not NAME.match(name) or not isinstance(value, str | int | float):
             raise ValueError("invalid_reply")
         clean[name] = str(value)[:MAX_VALUE_CHARS]
-    metadata = data.get("metadata") or {}
+    metadata = data.get("metadata", {})
     if not isinstance(metadata, dict) or len(json.dumps(metadata, default=str).encode()) > 4096:
         raise ValueError("invalid_reply")
     agent_id = data.get("agent_id")
