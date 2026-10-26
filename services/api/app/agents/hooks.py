@@ -161,7 +161,9 @@ def registered(
     usage_checkers: list[UsageChecker] | None = None,
     duplicate_hooks: list[DuplicateHook] | None = None,
 ) -> Iterator[None]:
-    """Install hooks for the duration of a block (tests)."""
+    """Install hooks for the duration of a block (tests). A resolver given here temporarily
+    replaces one registered by a feature module (005 registers ``tools`` and ``knowledge``)."""
+    replaced = {block: _resolvers.pop(block) for block in resolvers or {} if block in _resolvers}
     for block, v in (validators or {}).items():
         register_validator(block, v)
     for block, r in (resolvers or {}).items():
@@ -179,6 +181,7 @@ def registered(
                 del _validators[block]
         for block in resolvers or {}:
             _resolvers.pop(block, None)
+        _resolvers.update(replaced)
         for u in usage_checkers or []:
             _usage_checkers.remove(u)
         for d in duplicate_hooks or []:

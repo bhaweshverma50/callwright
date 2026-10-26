@@ -15,12 +15,15 @@ tags:
 - name: call-events-internal
 - name: calls-internal
 - name: core
+- name: internal
+- name: knowledge
 - name: livekit-hooks
 - name: llms
 - name: pricing
 - name: prompt_ai
 - name: sessions
 - name: templates
+- name: tools
 - name: usage
 - name: voices
 - name: webhooks
@@ -464,6 +467,82 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 002-agent-builder
+  /agents/{agent_id}/knowledge-bases:
+    parameters:
+    - name: agent_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^agt_
+    get:
+      tags:
+      - knowledge
+      operationId: getAgentKnowledgeBases
+      responses:
+        '200':
+          description: KBs attached to the agent draft
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - agent_id
+                - knowledge_bases
+                properties:
+                  agent_id:
+                    type: string
+                  knowledge_bases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeBase'
+      x-spec: 005-tools-knowledge
+    put:
+      tags:
+      - knowledge
+      operationId: setAgentKnowledgeBases
+      description: Replaces the attached set on the agent draft (max 10, each attachable). The attach
+        dialog only sends this when the selection differs from the attached set (FR-047).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - kb_ids
+              properties:
+                kb_ids:
+                  type: array
+                  maxItems: 10
+                  uniqueItems: true
+                  items:
+                    type: string
+                    pattern: ^kb_
+      responses:
+        '200':
+          description: Updated set
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - agent_id
+                - knowledge_bases
+                properties:
+                  agent_id:
+                    type: string
+                  knowledge_bases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeBase'
+        '422':
+          description: Unknown id, KB not attachable (`knowledge_base_not_ready`) or too many
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 005-tools-knowledge
   /agents/{agent_id}/published-version:
     parameters:
     - $ref: '#/components/parameters/AgentIdPath'
@@ -515,6 +594,106 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 002-agent-builder
+  /agents/{agent_id}/tools:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      tags:
+      - tools
+      operationId: getAgentTools
+      responses:
+        '200':
+          description: Tools attached to the agent draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentToolSet'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+    put:
+      tags:
+      - tools
+      operationId: setAgentTools
+      description: Replaces the attached set on the agent draft (max 25, unique names).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - tool_ids
+              properties:
+                tool_ids:
+                  type: array
+                  maxItems: 25
+                  uniqueItems: true
+                  items:
+                    type: string
+                    pattern: ^tool_
+      responses:
+        '200':
+          description: Updated set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentToolSet'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          description: Unknown id, duplicate names (problem type `tool_name_conflict`) or too many tools
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 005-tools-knowledge
+  /agents/{agent_id}/tools/mock-coverage:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      tags:
+      - tools
+      operationId: getAgentToolMockCoverage
+      description: Attached HTTP tools (and flow webhook nodes, via 004) with no canned response; other
+        tool types have fixed simulated outcomes and are never listed.
+      responses:
+        '200':
+          description: Coverage
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - ready
+                - missing
+                properties:
+                  ready:
+                    type: boolean
+                  missing:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - source
+                      - name
+                      properties:
+                        source:
+                          type: string
+                          enum:
+                          - tool
+                          - flow_node
+                        tool_id:
+                          type: string
+                        node_id:
+                          type: string
+                        name:
+                          type: string
+                        tool_type:
+                          $ref: '#/components/schemas/ToolType'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
   /agents/{agent_id}/versions:
     parameters:
     - $ref: '#/components/parameters/AgentIdPath'
@@ -1166,6 +1345,511 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 003-voice-runtime
+  /internal/calls/{call_id}/tool-secrets:
+    parameters:
+    - name: call_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^call_
+    get:
+      tags:
+      - internal
+      operationId: getCallToolSecrets
+      security:
+      - serviceToken: []
+      description: 'Returns plaintext values for every `secret_ref` in the call''s AgentVersion snapshot.
+
+        Only for calls in `queued`, `ringing` or `in_progress`. Never logged. Callers without
+
+        the service token get 404, so the endpoint is not discoverable.
+
+        '
+      responses:
+        '200':
+          description: Secret map
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - secrets
+                properties:
+                  secrets:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Map of secret_ref to value
+        '403':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /internal/knowledge/search:
+    post:
+      tags:
+      - internal
+      operationId: internalKnowledgeSearch
+      security:
+      - serviceToken: []
+      description: 'Used by the voice worker''s kb_search tool. Workspace derived from call_id; kb_ids
+        must
+
+        belong to the call''s AgentVersion. Target p95 under 250 ms server time.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - call_id
+              - query
+              - kb_ids
+              properties:
+                call_id:
+                  type: string
+                  pattern: ^call_
+                query:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                kb_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: string
+                    pattern: ^kb_
+                top_k:
+                  type: integer
+                  minimum: 1
+                  maximum: 8
+                  default: 4
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /knowledge-bases:
+    get:
+      tags:
+      - knowledge
+      operationId: listKnowledgeBases
+      parameters:
+      - name: search
+        in: query
+        schema:
+          type: string
+          maxLength: 120
+      - name: attachable
+        in: query
+        description: Only KBs with at least one ready document
+        schema:
+          type: boolean
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of knowledge bases
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Page'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/KnowledgeBase'
+      x-spec: 005-tools-knowledge
+    post:
+      tags:
+      - knowledge
+      operationId: createKnowledgeBase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeBaseWrite'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeBase'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    get:
+      tags:
+      - knowledge
+      operationId: getKnowledgeBase
+      responses:
+        '200':
+          description: Knowledge base with derived counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeBase'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+    patch:
+      tags:
+      - knowledge
+      operationId: updateKnowledgeBase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeBaseWrite'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeBase'
+      x-spec: 005-tools-knowledge
+    delete:
+      tags:
+      - knowledge
+      operationId: deleteKnowledgeBase
+      description: 'Detaches the KB from every agent draft, then deletes its documents, chunks and stored
+
+        files. Published versions that reference it get no results from it afterwards.
+
+        '
+      parameters:
+      - name: confirm
+        in: query
+        description: Must be true when the KB is attached to any agent draft.
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - deleted
+                - detached_agent_ids
+                properties:
+                  deleted:
+                    type: boolean
+                  detached_agent_ids:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^agt_
+        '409':
+          description: Attached and confirm is false (problem type `knowledge_base_in_use`, lists agents)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}/documents:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    get:
+      tags:
+      - knowledge
+      operationId: listDocuments
+      parameters:
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/DocumentStatus'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of documents, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Page'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Document'
+      x-spec: 005-tools-knowledge
+    post:
+      tags:
+      - knowledge
+      operationId: uploadDocument
+      description: 'Multipart upload, PDF or DOCX by content, at most 20,971,520 bytes. Returns 202 with
+        the
+
+        document in status `uploaded`; ingestion runs in the background.
+
+        '
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+                display_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: Optional; defaults to the file name (FR-048).
+                replace_doc_id:
+                  type: string
+                  pattern: ^doc_
+                  description: Replace this document once the new one is ready.
+                acknowledge_duplicate:
+                  type: boolean
+                  default: false
+                  description: Proceed although the same content exists in another KB.
+      responses:
+        '202':
+          description: Accepted for ingestion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '409':
+          description: Same content already in this KB (`duplicate_document`) or unacknowledged cross-KB
+            duplicate (`duplicate_elsewhere`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: File larger than 20 MB (`file_too_large`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '415':
+          description: Not a PDF or DOCX (`unsupported_file_type`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Workspace storage or per-KB document quota exceeded (`quota_exceeded`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}/documents/check-duplicate:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    post:
+      tags:
+      - knowledge
+      operationId: checkDuplicateDocument
+      description: Called by the browser with a locally computed SHA-256 before uploading.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - file_name
+              - sha256
+              - file_size
+              properties:
+                file_name:
+                  type: string
+                  maxLength: 255
+                sha256:
+                  type: string
+                  pattern: ^[0-9a-f]{64}$
+                file_size:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Duplicate assessment
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - verdict
+                - matches
+                properties:
+                  verdict:
+                    type: string
+                    enum:
+                    - ok
+                    - blocked_same_kb
+                    - warn_other_kb
+                    - warn_same_name
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - kb_id
+                      - kb_name
+                      - doc_id
+                      - file_name
+                      - reason
+                      properties:
+                        kb_id:
+                          type: string
+                        kb_name:
+                          type: string
+                        doc_id:
+                          type: string
+                        file_name:
+                          type: string
+                        reason:
+                          type: string
+                          enum:
+                          - same_content
+                          - same_name
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}/documents/{doc_id}:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    - $ref: '#/components/parameters/DocId'
+    get:
+      tags:
+      - knowledge
+      operationId: getDocument
+      responses:
+        '200':
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+    delete:
+      tags:
+      - knowledge
+      operationId: deleteDocument
+      description: Removes chunks (search stops returning them at once), the stored file and the row.
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}/documents/{doc_id}/reprocess:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    - $ref: '#/components/parameters/DocId'
+    post:
+      tags:
+      - knowledge
+      operationId: reprocessDocument
+      description: Allowed only for `failed` documents; resets to `uploaded` and enqueues ingestion.
+      responses:
+        '202':
+          description: Re-queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '409':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}/documents/{doc_id}/url:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    - $ref: '#/components/parameters/DocId'
+    get:
+      tags:
+      - knowledge
+      operationId: getDocumentUrl
+      responses:
+        '200':
+          description: Signed URL valid for 10 minutes
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - url
+                - expires_at
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                  expires_at:
+                    type: string
+                    format: date-time
+      x-spec: 005-tools-knowledge
+  /knowledge-bases/{kb_id}/search:
+    parameters:
+    - $ref: '#/components/parameters/KbId'
+    post:
+      tags:
+      - knowledge
+      operationId: previewSearch
+      description: Same retrieval as during calls, for the KB page preview. Not billed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - query
+              properties:
+                query:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                top_k:
+                  type: integer
+                  minimum: 1
+                  maximum: 8
+                  default: 4
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '429':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
   /livekit/webhook:
     post:
       operationId: receiveLivekitWebhook
@@ -1605,6 +2289,279 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 002-agent-builder
+  /tools:
+    get:
+      tags:
+      - tools
+      operationId: listTools
+      parameters:
+      - name: type
+        in: query
+        schema:
+          $ref: '#/components/schemas/ToolType'
+      - name: search
+        in: query
+        schema:
+          type: string
+          maxLength: 100
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of tools
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Page'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Tool'
+        '401':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+    post:
+      tags:
+      - tools
+      operationId: createTool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /tools/presets:
+    get:
+      tags:
+      - tools
+      operationId: listToolPresets
+      description: 'Read-only platform presets that prefill the new-tool dialog (FR-043). Creating a tool
+
+        from a preset is an ordinary `POST /tools` with the (edited) `tool` body.
+
+        '
+      responses:
+        '200':
+          description: Presets
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ToolPreset'
+      x-spec: 005-tools-knowledge
+  /tools/test-run:
+    post:
+      tags:
+      - tools
+      operationId: testRunTool
+      description: 'Runs an HTTP tool (saved by `tool_id`, or unsaved by inline `tool`) with sample
+
+        arguments. Free; 30 per minute per workspace. Only `http` tools can be test-run.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tool_id:
+                  type: string
+                  pattern: ^tool_
+                tool:
+                  $ref: '#/components/schemas/ToolCreate'
+                arguments:
+                  type: object
+                  additionalProperties: true
+                  default: {}
+                dynamic_variables:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  default: {}
+              oneOf:
+              - required:
+                - tool_id
+              - required:
+                - tool
+      responses:
+        '200':
+          description: Result (also returned for upstream errors, with is_error true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRunResult'
+        '422':
+          $ref: '#/components/responses/Problem'
+        '429':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /tools/{tool_id}:
+    parameters:
+    - $ref: '#/components/parameters/ToolId'
+    get:
+      tags:
+      - tools
+      operationId: getTool
+      responses:
+        '200':
+          description: Tool (secrets masked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+    patch:
+      tags:
+      - tools
+      operationId: updateTool
+      description: 'Partial update. `type` cannot change. A secret header sent without `value` keeps the
+
+        stored secret.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+    delete:
+      tags:
+      - tools
+      operationId: deleteTool
+      parameters:
+      - name: force
+        in: query
+        description: Required when the tool is attached to agent drafts; detaches it first.
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - deleted
+                - detached_agent_ids
+                properties:
+                  deleted:
+                    type: boolean
+                  detached_agent_ids:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^agt_
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: Attached to agents and force is false (problem type `tool_in_use`, lists agents)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 005-tools-knowledge
+  /tools/{tool_id}/duplicate:
+    parameters:
+    - $ref: '#/components/parameters/ToolId'
+    post:
+      tags:
+      - tools
+      operationId: duplicateTool
+      description: Copies the tool including secrets (new secret rows); name gets a `_copy` suffix.
+      responses:
+        '201':
+          description: Copy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tool'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
+  /tools/{tool_id}/usages:
+    parameters:
+    - $ref: '#/components/parameters/ToolId'
+    get:
+      tags:
+      - tools
+      operationId: getToolUsages
+      responses:
+        '200':
+          description: Agents using the tool
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - agent_id
+                      - agent_name
+                      - in_draft
+                      - published_version_ids
+                      properties:
+                        agent_id:
+                          type: string
+                        agent_name:
+                          type: string
+                        in_draft:
+                          type: boolean
+                        published_version_ids:
+                          type: array
+                          items:
+                            type: string
+                            pattern: ^agv_
+                        flow_node_ids:
+                          type: array
+                          items:
+                            type: string
+                          description: Set by 004 for node-level attachment
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 005-tools-knowledge
   /usage:
     get:
       operationId: getUsage
@@ -2106,6 +3063,13 @@ components:
       schema:
         type: string
         pattern: ^whd_[0-9A-HJKMNP-TV-Z]{26}$
+    DocId:
+      name: doc_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^doc_[0-9A-HJKMNP-TV-Z]{26}$
     EventHeader:
       name: Callwright-Event
       in: header
@@ -2131,6 +3095,13 @@ components:
         type: string
         minLength: 8
         maxLength: 255
+    KbId:
+      name: kb_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^kb_[0-9A-HJKMNP-TV-Z]{26}$
     Page:
       name: page
       in: query
@@ -2154,6 +3125,13 @@ components:
         type: string
         examples:
         - t=1760600000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+    ToolId:
+      name: tool_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^tool_[0-9A-HJKMNP-TV-Z]{26}$
     VersionIdPath:
       name: version_id
       in: path
@@ -2587,6 +3565,18 @@ components:
         updated_at:
           type: string
           format: date-time
+    AgentToolSet:
+      type: object
+      required:
+      - agent_id
+      - tools
+      properties:
+        agent_id:
+          type: string
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tool'
     AgentType:
       type: string
       enum:
@@ -3131,6 +4121,83 @@ components:
       - succeeded
       - failed
       - blocked
+    Document:
+      type: object
+      required:
+      - id
+      - kb_id
+      - file_name
+      - file_type
+      - file_size
+      - sha256
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+          pattern: ^doc_
+        kb_id:
+          type: string
+        file_name:
+          type: string
+        display_name:
+          type: string
+          description: Defaults to file_name
+        file_type:
+          type: string
+          enum:
+          - pdf
+          - docx
+        file_size:
+          type: integer
+          maximum: 20971520
+        sha256:
+          type: string
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        error_code:
+          type:
+          - string
+          - 'null'
+          enum:
+          - no_extractable_text
+          - corrupt_file
+          - encrypted_file
+          - embedding_unavailable
+          - too_many_chunks
+          - internal
+          - null
+        error_message:
+          type:
+          - string
+          - 'null'
+        page_count:
+          type:
+          - integer
+          - 'null'
+        chunk_count:
+          type:
+          - integer
+          - 'null'
+        replaces_doc_id:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        processed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    DocumentStatus:
+      type: string
+      enum:
+      - uploaded
+      - processing
+      - ready
+      - failed
     DtmfEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -3187,6 +4254,15 @@ components:
       pattern: ^\+[1-9]\d{6,14}$
       examples:
       - '+14155550123'
+    EndCallConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
     EventBase:
       type: object
       required:
@@ -3305,6 +4381,156 @@ components:
             type: string
           label:
             type: string
+    HeaderSpec:
+      type: object
+      required:
+      - name
+      - secret
+      properties:
+        name:
+          type: string
+          pattern: ^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$
+        value:
+          type:
+          - string
+          - 'null'
+          maxLength: 4096
+          description: Write-only for secret headers (always null on read when secret is true).
+        secret:
+          type: boolean
+          default: false
+        secret_ref:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+        masked_value:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+          examples:
+          - '****1234'
+    HttpRequestSpec:
+      type: object
+      description: Shared with 004 webhook nodes; the tool form and the node form offer the same methods,
+        timeout range and options (FR-046). The URL must be absolute https (http only in development)
+        and is checked in the editor as it is typed.
+      required:
+      - url
+      properties:
+        method:
+          type: string
+          enum:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          default: POST
+        url:
+          type: string
+          maxLength: 2048
+        headers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/HeaderSpec'
+        body_template:
+          description: JSON value with {{var}} placeholders inside string values; null sends the arguments
+            (body for POST/PUT/PATCH, query for GET/DELETE).
+        timeout_ms:
+          type: integer
+          minimum: 1000
+          maximum: 30000
+          default: 8000
+        response_mappings:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ResponseMapping'
+        speak_during_execution:
+          type: boolean
+          default: true
+        execution_message:
+          type: string
+          maxLength: 300
+          default: One moment while I check that.
+    HttpToolConfig:
+      allOf:
+      - $ref: '#/components/schemas/HttpRequestSpec'
+      - type: object
+        properties:
+          parameters:
+            type: object
+            description: JSON Schema (Draft 2020-12) with type object.
+            default:
+              type: object
+              properties: {}
+              required: []
+    KnowledgeBase:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - status
+      - attachable
+      - document_count
+      - ready_count
+      - processing_count
+      - failed_count
+      - total_bytes
+      - agent_count
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          pattern: ^kb_
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+          - empty
+          - processing
+          - ready
+          - partial
+          - failed
+        attachable:
+          type: boolean
+        document_count:
+          type: integer
+        ready_count:
+          type: integer
+        processing_count:
+          type: integer
+        failed_count:
+          type: integer
+        total_bytes:
+          type: integer
+        agent_count:
+          type: integer
+          description: Agent drafts this KB is attached to
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    KnowledgeBaseWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
     Language:
       type: object
       required:
@@ -3598,6 +4824,25 @@ components:
           type: integer
           minimum: 10
           maximum: 60
+    Page:
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      - total_pages
+      properties:
+        items:
+          type: array
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
     PageMeta:
       type: object
       required:
@@ -3618,6 +4863,20 @@ components:
         total_pages:
           type: integer
           minimum: 0
+    PressDigitConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        delay_ms:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          default: 1000
+        cooldown_ms:
+          type: integer
+          minimum: 0
+          maximum: 60000
+          default: 5000
     PricePerMin:
       oneOf:
       - $ref: '#/components/schemas/MoneyUsd'
@@ -3768,6 +5027,20 @@ components:
             type: string
             enum:
             - signed_in
+    ResponseMapping:
+      type: object
+      required:
+      - variable_name
+      - json_path
+      properties:
+        variable_name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        json_path:
+          type: string
+          maxLength: 256
+          examples:
+          - data.slots[0].time
     RuntimeConfig:
       type: object
       required:
@@ -3963,6 +5236,63 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfigIssue'
+    SearchResponse:
+      type: object
+      required:
+      - results
+      - embedding_ms
+      - query_ms
+      - embedding_cache_hit
+      properties:
+        results:
+          type: array
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        embedding_ms:
+          type: integer
+        query_ms:
+          type: integer
+        embedding_cache_hit:
+          type: boolean
+    SearchResult:
+      type: object
+      required:
+      - chunk_id
+      - kb_id
+      - doc_id
+      - file_name
+      - content
+      - score
+      properties:
+        chunk_id:
+          type: string
+          description: Opaque
+        kb_id:
+          type: string
+        doc_id:
+          type: string
+        file_name:
+          type: string
+        page_from:
+          type:
+          - integer
+          - 'null'
+        page_to:
+          type:
+          - integer
+          - 'null'
+        heading:
+          type:
+          - string
+          - 'null'
+        content:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Cosine similarity
     Session:
       type: object
       required:
@@ -4249,6 +5579,106 @@ components:
           description: Informs the preview; not part of the agent config
         language:
           type: string
+    TestRunResult:
+      type: object
+      required:
+      - is_error
+      - duration_ms
+      properties:
+        is_error:
+          type: boolean
+        error_code:
+          type:
+          - string
+          - 'null'
+          enum:
+          - timeout
+          - http_status
+          - blocked_address
+          - invalid_arguments
+          - missing_variable
+          - response_too_large
+          - connection_error
+          - null
+        error_message:
+          type:
+          - string
+          - 'null'
+        request:
+          type: object
+          description: The request as sent, with secret header values masked.
+          properties:
+            method:
+              type: string
+            url:
+              type: string
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+            body: {}
+        http_status:
+          type:
+          - integer
+          - 'null'
+        duration_ms:
+          type: integer
+        response_body:
+          type:
+          - string
+          - 'null'
+          description: Truncated to 64 KB
+        mapped_variables:
+          type: object
+          additionalProperties: true
+        missing_paths:
+          type: array
+          items:
+            type: string
+        llm_payload:
+          type: string
+          description: Exactly what the agent would receive
+    Tool:
+      type: object
+      required:
+      - id
+      - type
+      - name
+      - description
+      - config
+      - mock_response
+      - usage_count
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          pattern: ^tool_
+        type:
+          $ref: '#/components/schemas/ToolType'
+        name:
+          $ref: '#/components/schemas/ToolName'
+        description:
+          type: string
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/EndCallConfig'
+          - $ref: '#/components/schemas/TransferSpec'
+          - $ref: '#/components/schemas/PressDigitConfig'
+          - $ref: '#/components/schemas/HttpToolConfig'
+        mock_response:
+          type:
+          - string
+          - 'null'
+        usage_count:
+          type: integer
+          description: Number of agents using the tool
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     ToolCallEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -4273,6 +5703,94 @@ components:
             type: boolean
           duration_ms:
             type: integer
+    ToolCreate:
+      type: object
+      required:
+      - type
+      - name
+      - description
+      - config
+      additionalProperties: false
+      description: Unknown or outdated fields are rejected with 422 naming the field (FR-045).
+      properties:
+        type:
+          $ref: '#/components/schemas/ToolType'
+        name:
+          $ref: '#/components/schemas/ToolName'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        mock_response:
+          type:
+          - string
+          - 'null'
+          maxLength: 16384
+          description: Only for type http; must be null or absent for other types (FR-044).
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/EndCallConfig'
+          - $ref: '#/components/schemas/TransferSpec'
+          - $ref: '#/components/schemas/PressDigitConfig'
+          - $ref: '#/components/schemas/HttpToolConfig'
+          description: Must match `type`.
+    ToolName:
+      type: string
+      pattern: ^[a-z][a-z0-9_]{0,63}$
+      description: Must not be `kb_search` and must not start with `route_to_`.
+    ToolPreset:
+      type: object
+      required:
+      - preset_id
+      - type
+      - title
+      - summary
+      - tool
+      properties:
+        preset_id:
+          type: string
+          examples:
+          - end_call_polite
+          - transfer_to_person
+          - press_digit_ivr
+          - http_check_availability
+        type:
+          $ref: '#/components/schemas/ToolType'
+        title:
+          type: string
+        summary:
+          type: string
+        tool:
+          $ref: '#/components/schemas/ToolCreate'
+    ToolType:
+      type: string
+      enum:
+      - end_call
+      - transfer_call
+      - press_digit
+      - http
+    ToolUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          $ref: '#/components/schemas/ToolName'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        mock_response:
+          type:
+          - string
+          - 'null'
+          maxLength: 16384
+          description: Only for http tools (FR-044).
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/EndCallConfig'
+          - $ref: '#/components/schemas/TransferSpec'
+          - $ref: '#/components/schemas/PressDigitConfig'
+          - $ref: '#/components/schemas/HttpToolConfig'
     Transaction:
       type: object
       required:
@@ -4336,6 +5854,65 @@ components:
             const: transcript_item
           item:
             $ref: '#/components/schemas/RuntimeTranscriptItem'
+    TransferSpec:
+      type: object
+      additionalProperties: false
+      description: Shared with 004 transfer nodes.
+      properties:
+        routing_type:
+          type: string
+          enum:
+          - static
+          - dynamic
+          default: static
+        number:
+          $ref: '#/components/schemas/E164'
+        routing_instructions:
+          type: string
+          maxLength: 2000
+        allowed_numbers:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/E164'
+          default: []
+        transfer_type:
+          type: string
+          enum:
+          - cold
+          - warm
+          default: cold
+        warm_transfer:
+          type:
+          - object
+          - 'null'
+          required:
+          - handoff_type
+          - briefing_message_type
+          - briefing_message
+          properties:
+            handoff_type:
+              type: string
+              enum:
+              - private
+              - public
+            briefing_message_type:
+              type: string
+              enum:
+              - static
+              - prompt
+            briefing_message:
+              type: string
+              maxLength: 1000
+        hold_message:
+          type: string
+          maxLength: 500
+          default: Please hold while I connect you.
+        ring_timeout_s:
+          type: integer
+          minimum: 5
+          maximum: 120
+          default: 30
     TtsModel:
       type: object
       required:

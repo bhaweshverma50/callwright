@@ -50,6 +50,7 @@ from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
 from app.sessions.router import router as sessions_router
 from app.templates.router import router as templates_router
+from app.tools.router import router as tools_router
 from app.usage.router import router as usage_router
 from app.voices.router import router as voices_router
 from app.webhooks_out.router import router as webhooks_out_router
@@ -212,6 +213,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         llms_router,
         voices_router,
         prompt_ai_router,
+        tools_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:
