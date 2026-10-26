@@ -1,0 +1,292 @@
+{
+  "builtin_variables": [
+    "call_id",
+    "direction",
+    "channel",
+    "from_number",
+    "to_number",
+    "timezone",
+    "current_time",
+    "current_date",
+    "current_datetime",
+    "agent_name"
+  ],
+  "compiled_at": "2026-10-26T12:00:00+00:00",
+  "declared_variables": [
+    {
+      "name": "task_result.name",
+      "source_node_id": "n_details1",
+      "type": "string"
+    },
+    {
+      "name": "task_result.day",
+      "source_node_id": "n_details1",
+      "type": "enum"
+    },
+    {
+      "name": "booking_ref",
+      "source_node_id": "n_book0001",
+      "type": "string"
+    },
+    {
+      "name": "topic",
+      "source_node_id": "n_extract1",
+      "type": "string"
+    }
+  ],
+  "entry_node_id": "n_start001",
+  "flow_id": "flw_01JA0FL0WG0LDEN000000000000",
+  "graph_hash": "99c56e7daeaeb12b6018bc860bac1e346e24f6779b8731d43e09601e08b49cf7",
+  "nodes": {
+    "n_book0001": {
+      "label": "Book slot",
+      "type": "webhook",
+      "webhook": {
+        "failure_edge_id": "e_bookno01",
+        "failure_target": "n_desk0001",
+        "mock_response": "{\"ref\": \"B-1\"}",
+        "request": {
+          "body_template": "{\"name\": \"{{task_result.name}}\"}",
+          "execution_message": "One moment while I book that.",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "secret": false,
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "response_mappings": [
+            {
+              "json_path": "$.ref",
+              "variable_name": "booking_ref"
+            }
+          ],
+          "speak_during_execution": true,
+          "timeout_ms": 8000,
+          "url": "https://api.example.com/book"
+        },
+        "success_edge_id": "e_bookok01",
+        "success_target": "n_booked01"
+      }
+    },
+    "n_booked01": {
+      "label": "Booked",
+      "say": {
+        "allow_interruptions": true,
+        "edge_id": "e_said0001",
+        "message": "You are booked. Your reference is {{booking_ref}}.",
+        "next": "n_end00001"
+      },
+      "type": "say"
+    },
+    "n_check001": {
+      "condition": {
+        "categories": [],
+        "else_edge_id": "e_else0001",
+        "else_target": "n_end00001",
+        "instructions": "",
+        "kind": "rule",
+        "rules": [
+          {
+            "edge_id": "e_rule0001",
+            "label": null,
+            "operator": "contains",
+            "target": "n_desk0001",
+            "value": "refund",
+            "variable": "topic"
+          }
+        ]
+      },
+      "label": "Check",
+      "type": "condition"
+    },
+    "n_desk0001": {
+      "label": "Front desk",
+      "transfer": {
+        "failure_edge_id": "e_deskno01",
+        "failure_target": "n_end00001",
+        "transfer": {
+          "hold_message": "Please hold.",
+          "number": "+14155550100",
+          "routing_type": "static",
+          "transfer_type": "cold"
+        }
+      },
+      "type": "transfer"
+    },
+    "n_details1": {
+      "begin_message": "Let me take a few details.",
+      "context_strategy": "summarize",
+      "instructions": "You are the receptionist of Harbour Clinic.\n\nCollect the caller's name and preferred day.",
+      "kb_search": {
+        "enabled": false,
+        "kb_ids": []
+      },
+      "label": "Collect details",
+      "language": "en-GB",
+      "llm": {
+        "model": "gpt-5.1",
+        "provider": "azure_openai",
+        "temperature": 1.0
+      },
+      "stt": {
+        "model": null,
+        "provider": "deepgram"
+      },
+      "task": {
+        "json_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "day": {
+              "description": "Preferred day",
+              "enum": [
+                "monday",
+                "tuesday"
+              ],
+              "type": "string"
+            },
+            "name": {
+              "description": "Full name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "day"
+          ],
+          "type": "object"
+        },
+        "max_rounds": 5,
+        "success_edge_id": "e_detok001",
+        "success_target": "n_book0001"
+      },
+      "tools": [],
+      "transitions": [],
+      "tts": {
+        "expressiveness": 0.9,
+        "model": "eleven_flash_v2_5",
+        "provider": "elevenlabs",
+        "speed": 1.0,
+        "voice_id": "EXAVITQu4vr4xnSDxMaL",
+        "volume": 1.0
+      },
+      "type": "task"
+    },
+    "n_end00001": {
+      "end": {
+        "message": "Thanks for calling. Goodbye.",
+        "reason": "call_completed"
+      },
+      "label": "End",
+      "type": "end"
+    },
+    "n_extract1": {
+      "extract": {
+        "edge_id": "e_extr0001",
+        "instructions": "",
+        "json_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "topic": {
+              "description": "What the caller asked about",
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "next": "n_check001"
+      },
+      "label": "Extract",
+      "type": "extract_variable"
+    },
+    "n_route001": {
+      "condition": {
+        "categories": [
+          {
+            "description": "Bills and payments",
+            "edge_id": "e_bill0001",
+            "name": "Billing",
+            "target": "n_desk0001"
+          },
+          {
+            "description": "Anything else",
+            "edge_id": "e_rest0001",
+            "name": "Other",
+            "target": "n_extract1"
+          }
+        ],
+        "else_edge_id": null,
+        "else_target": null,
+        "instructions": "",
+        "kind": "classify",
+        "rules": []
+      },
+      "label": "Route",
+      "type": "condition"
+    },
+    "n_start001": {
+      "label": "Start",
+      "start": {
+        "edge_id": "e_start001",
+        "greeting": "Thanks for calling the clinic. How can I help?",
+        "greeting_type": "static",
+        "next": "n_triage01",
+        "start_speaker": "agent"
+      },
+      "type": "start"
+    },
+    "n_triage01": {
+      "begin_message": null,
+      "context_strategy": "inherit",
+      "instructions": "You are the receptionist of Harbour Clinic.\n\nFind out whether the caller wants to book, has a billing question, or needs something else.",
+      "kb_search": {
+        "enabled": false,
+        "kb_ids": []
+      },
+      "label": "Triage",
+      "language": "en-GB",
+      "llm": {
+        "model": "gpt-5.1",
+        "provider": "azure_openai",
+        "temperature": 1.0
+      },
+      "stt": {
+        "model": null,
+        "provider": "deepgram"
+      },
+      "task": null,
+      "tools": [],
+      "transitions": [
+        {
+          "description": "Go to Collect details. Use when: The caller wants to book an appointment",
+          "edge_id": "e_book0001",
+          "function_name": "route_to_book_a_visit",
+          "label": "Book a visit",
+          "target_node_id": "n_details1",
+          "trigger": "llm_condition"
+        },
+        {
+          "description": "Go to Route. Use when: The caller asks about anything other than booking",
+          "edge_id": "e_other001",
+          "function_name": "route_to_something_else",
+          "label": "Something else",
+          "target_node_id": "n_route001",
+          "trigger": "llm_condition"
+        }
+      ],
+      "tts": {
+        "expressiveness": 0.9,
+        "model": "eleven_flash_v2_5",
+        "provider": "elevenlabs",
+        "speed": 1.0,
+        "voice_id": "EXAVITQu4vr4xnSDxMaL",
+        "volume": 1.0
+      },
+      "type": "agent"
+    }
+  },
+  "persona_prompt": "You are the receptionist of Harbour Clinic.",
+  "schema_version": 1
+}

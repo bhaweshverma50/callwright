@@ -46,6 +46,8 @@ from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_
 from app.dashboard.router import router as dashboard_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
+from app.flows.hooks import register as register_flows
+from app.flows.router import router as flows_router
 from app.knowledge.router import internal_router as knowledge_internal_router
 from app.knowledge.router import router as knowledge_router
 from app.livekit_hooks.router import router as livekit_hooks_router
@@ -157,6 +159,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.stripe = build_gateway(settings)
         # 002 supplies the agent versions 003 admits and claims calls with.
         register_agent_versions()
+        # 004: flow snapshot resolver and validator, duplicate and mock hooks; flows may run.
+        register_flows()
         # Voice runtime (003): media server, worker catalog, job queue, outbound webhook client.
         app.state.livekit = build_livekit(settings)
         app.state.adapter_catalog = load_catalog(settings.adapter_catalog_path)
@@ -228,6 +232,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         tools_router,
         knowledge_router,
         knowledge_internal_router,
+        flows_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:

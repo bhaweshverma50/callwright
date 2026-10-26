@@ -187,6 +187,10 @@ class Settings(BaseSettings):
     copilot_stt_provider: Literal["deepgram", "fake"] = "deepgram"
     deepgram_api_key: SecretStr | None = None
     recording_url_ttl_s: int = Field(default=600, ge=30, le=600)
+    # Flow assistant (004). Unset: OpenAI gpt-5-mini when OPENAI_API_KEY is set, else the
+    # prompt assistant's model (the fake planner answers without keys).
+    flow_assistant_model: str | None = None
+    flow_assistant_timeout_s: float = 60.0
 
     @field_validator("env", mode="before")
     @classmethod

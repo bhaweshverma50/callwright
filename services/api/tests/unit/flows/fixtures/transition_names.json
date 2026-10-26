@@ -1,0 +1,15 @@
+{
+  "description": "Shared vectors for the transition name derivation (data-model section 4). Python: app/flows/transitions.py; TypeScript: apps/web/src/routes/flows/panels/transitionName.ts.",
+  "vectors": [
+    {"label": "Route To Billing!", "name": "route_to_billing"},
+    {"label": "Route to billing", "name": "route_to_billing"},
+    {"label": "!!!", "name": null},
+    {"label": "", "name": null},
+    {"label": "Caller is done", "name": "route_to_caller_is_done"},
+    {"label": "  Billing   question?? ", "name": "route_to_billing_question"},
+    {"label": "route_to_route_to_x", "name": "route_to_route_to_x"},
+    {"label": "Größe & Preis", "name": "route_to_gr_e_preis"},
+    {"label": "123", "name": "route_to_123"},
+    {"label": "a very long label that keeps going well past the forty eight character limit", "name": "route_to_a_very_long_label_that_keeps_going_well_past_the"}
+  ]
+}
