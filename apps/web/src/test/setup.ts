@@ -4,6 +4,7 @@ import { MotionGlobalConfig } from "motion";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "../mocks/node";
 import { resetMockDb } from "../mocks/db";
+import { resetMockCalls } from "../mocks/calls/handlers";
 import { resetWakeForTests } from "../api/wakeGate";
 
 // Animations finish instantly in tests, so tickers and transitions show their final state.
@@ -38,6 +39,7 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   resetMockDb();
+  resetMockCalls();
   resetWakeForTests();
   localStorage.clear();
 });

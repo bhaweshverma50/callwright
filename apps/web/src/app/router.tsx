@@ -6,7 +6,6 @@ import { AuthGuard } from "./AuthGuard";
 import { RouteError } from "./RouteError";
 import { Shell } from "./Shell";
 import { AgentRedirect, FlowBuilderPlaceholder } from "../routes/agents/agentRedirect";
-import { DashboardPlaceholder } from "../routes/dashboard/DashboardPlaceholder";
 import { NotFound } from "../routes/NotFound";
 import { AreaPlaceholder, RecordPlaceholder } from "../routes/placeholders/AreaPlaceholder";
 import { Enterprise } from "../routes/public/Enterprise";
@@ -32,6 +31,9 @@ const AgentsListPage = lazy(() => import("../routes/agents/AgentsListPage").then
 const NewAgentTypePage = lazy(() => import("../routes/agents/NewAgentTypePage").then((m) => ({ default: m.NewAgentTypePage })));
 const TemplatesPage = lazy(() => import("../routes/agents/TemplatesPage").then((m) => ({ default: m.TemplatesPage })));
 const AgentEditorPage = lazy(() => import("../routes/agents/editor/AgentEditorPage").then((m) => ({ default: m.AgentEditorPage })));
+const CallHistoryPage = lazy(() => import("../routes/calls/CallHistoryPage").then((m) => ({ default: m.CallHistoryPage })));
+const ComparePage = lazy(() => import("../routes/calls/ComparePage").then((m) => ({ default: m.ComparePage })));
+const DashboardPage = lazy(() => import("../routes/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const AgentTestingPage = lazy(() => import("../routes/agents/AgentTestingPage").then((m) => ({ default: m.AgentTestingPage })));
 
 /** Agent builder (spec 002, T024) and browser test calls (003). Flow building (004) is a placeholder here. */
@@ -49,7 +51,6 @@ const agentRoutes: RouteObject[] = [
 
 /** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */
 const placeholderRoutes: RouteObject[] = [
-  { path: "calls", element: <AreaPlaceholder to="/calls" /> },
   { path: "phone-numbers", element: <AreaPlaceholder to="/phone-numbers" /> },
   { path: "knowledge-base", element: <AreaPlaceholder to="/knowledge-base" /> },
   { path: "datasets", element: <AreaPlaceholder to="/datasets" /> },
@@ -99,7 +100,9 @@ export const routes: RouteObject[] = [
                 errorElement: <RouteError inShell />,
                 children: [
                   { path: "app", element: <Navigate to="/dashboard" replace /> },
-                  { path: "dashboard", element: <DashboardPlaceholder /> },
+                  { path: "dashboard", element: <DashboardPage /> },
+                  { path: "calls", element: <CallHistoryPage /> },
+                  { path: "calls/:callId/compare", element: <ComparePage /> },
                   { path: BILLING_ITEM.to.slice(1), element: <BillingPage /> },
                   { path: "settings", element: <SettingsPage /> },
                   ...agentRoutes,

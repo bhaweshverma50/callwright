@@ -1,0 +1,72 @@
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { mockCallId, seedMockCalls } from "../../mocks/calls/handlers";
+import { renderApp, signInDemo } from "../../test/render";
+import { transcriptText } from "./Transcript";
+
+describe("CallDetailDrawer (006 US2)", () => {
+  it("renders the transcript with a failed tool, an interruption and n/a latency parts", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    renderApp(`/calls?call=${mockCallId(0)}`);
+    const drawer = await screen.findByRole("dialog");
+    expect(await within(drawer).findByText("Where is my order?")).toBeInTheDocument();
+    expect(within(drawer).getByText("Error")).toBeInTheDocument();
+    expect(within(drawer).getByText("3,004 ms")).toBeInTheDocument();
+    expect(within(drawer).getByText("Interrupted")).toBeInTheDocument();
+    expect(within(drawer).getByRole("img", { name: /voice first audio n\/a/ })).toBeInTheDocument();
+    expect(within(drawer).getByText("v3")).toBeInTheDocument();
+  });
+
+  it("hides the flow path when the call has no transitions", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    renderApp(`/calls?call=${mockCallId(0)}`);
+    const drawer = await screen.findByRole("dialog");
+    await within(drawer).findByText("Where is my order?");
+    expect(within(drawer).queryByRole("tab", { name: /Flow path/ })).not.toBeInTheDocument();
+  });
+
+  it("shows the retention message for a deleted recording, transcript still there", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    const user = userEvent.setup();
+    renderApp(`/calls?call=${mockCallId(4)}`);
+    const drawer = await screen.findByRole("dialog");
+    await user.click(await within(drawer).findByRole("button", { name: "Play recording" }));
+    expect(await within(drawer).findByText("Recording deleted under your retention policy")).toBeInTheDocument();
+    expect(within(drawer).getByText("Where is my order?")).toBeInTheDocument();
+  });
+
+  it("marks analysis as processing while post-call steps run", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    const user = userEvent.setup();
+    renderApp(`/calls?call=${mockCallId(3)}`);
+    const drawer = await screen.findByRole("dialog");
+    await user.click(await within(drawer).findByRole("tab", { name: "Analysis" }));
+    expect(within(drawer).getAllByText("Processing").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("shows the receipt with the 1.13x model surcharge", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    const user = userEvent.setup();
+    renderApp(`/calls?call=${mockCallId(0)}&tab=cost`);
+    const drawer = await screen.findByRole("dialog");
+    await user.click(await within(drawer).findByRole("tab", { name: "Cost" }));
+    expect(await within(drawer).findByText("1.13x")).toBeInTheDocument();
+    expect(within(drawer).getAllByText("$0.477").length).toBeGreaterThan(0);
+  });
+
+  it("copies plain text with bracketed tool lines", () => {
+    expect(
+      transcriptText([
+        { id: "a", type: "message", role: "user", text: "Hi", interrupted: false, offset_ms: 0 },
+        { id: "b", type: "tool_call", tool_name: "lookup", arguments: { id: "A1", n: 2 }, offset_ms: 0 },
+        { id: "c", type: "tool_result", tool_call_id: "b", tool_name: "lookup", output: "late", is_error: true, offset_ms: 0 },
+      ]),
+    ).toBe('Caller: Hi\n[Tool call: lookup({"id": "A1", "n": 2})]\n[Tool error: lookup -> late]');
+  });
+});
