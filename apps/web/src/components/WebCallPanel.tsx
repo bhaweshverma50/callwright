@@ -302,8 +302,8 @@ export function WebCallPanel({
             <dt>Cost</dt>
             <dd className="w-[60px] text-right font-mono text-[13px] text-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
             <InfoTip label="How the cost is estimated" side="bottom">
-              Estimated from the stack's per-minute price while the call runs. The exact charge is settled once the call is processed.
-              Billing starts when the call connects.
+              Estimated from the stack's per-minute price while the call runs. The exact charge is settled once the call is processed. Billing starts
+              when the call connects.
             </InfoTip>
           </div>
         </dl>
@@ -315,6 +315,7 @@ export function WebCallPanel({
           status={agentStatus(s.phase, s.activity)}
           level={s.levels.agent}
           active={onCall && s.activity === "speaking"}
+          idle={!onCall}
           seed={11}
           reduce={reduce}
         />
@@ -324,6 +325,7 @@ export function WebCallPanel({
           level={s.muted ? 0 : s.levels.caller}
           active={onCall && !s.muted && s.levels.caller > 0.08}
           muted={onCall && s.muted}
+          idle={!onCall}
           seed={5}
           reduce={reduce}
         />
@@ -414,12 +416,12 @@ function agentStatus(phase: CallPhase, activity: AgentActivity): string {
   if (phase === "live" || phase === "ending")
     return { joining: "Joining", listening: "Listening", thinking: "Thinking", speaking: "Speaking" }[activity];
   if (phase === "connecting") return "Joining";
-  return phase === "ended" ? "Left" : "Not connected";
+  return phase === "ended" ? "Off call" : "Not connected";
 }
 
 function callerStatus(phase: CallPhase, muted: boolean, level: number): string {
   if (phase === "live" || phase === "ending") return muted ? "Muted" : level > 0.08 ? "Speaking" : "Mic on";
-  return phase === "ended" ? "Left" : "Mic off";
+  return phase === "ended" ? "Off call" : "Mic off";
 }
 
 function Status({ phase, reason, reduce }: { phase: CallPhase; reason: EndReason | null; reduce: boolean }) {
@@ -479,6 +481,7 @@ function WaveRow({
   level,
   active,
   muted = false,
+  idle = false,
   seed,
   reduce,
 }: {
@@ -487,6 +490,7 @@ function WaveRow({
   level: number;
   active: boolean;
   muted?: boolean;
+  idle?: boolean;
   seed: number;
   reduce: boolean;
 }) {
@@ -502,7 +506,7 @@ function WaveRow({
         className={cn("h-8 origin-center", !reduce && "transition-transform duration-150 ease-out")}
         style={{ transform: `scaleY(${scale})` }}
       >
-        <Waveform bars={56} seed={seed} progress={active ? 1 : 0} live={active} height={32} flat={muted} />
+        <Waveform bars={56} seed={seed} progress={active ? 1 : 0} live={active} height={32} flat={muted || idle} />
       </div>
     </div>
   );

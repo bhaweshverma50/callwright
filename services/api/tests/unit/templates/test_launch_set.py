@@ -16,6 +16,8 @@ EXPECTED = [
     (5, "healthcare-triage-booking", "healthcare", "Symptom triage and booking", "inbound"),
     (6, "automotive-roadside-ev", "automotive", "Roadside and EV assistance", "inbound"),
     (7, "healthcare-previsit-checkin", "healthcare", "Pre-visit patient check-in", "outbound"),
+    (8, "banking-customer-line", "banking", "Bank customer line", "inbound"),
+    (9, "collections-return-call", "banking", "Collections return call", "inbound"),
 ]
 VARIABLES = {
     "banking-collections": ["company_name", "customer_name", "loan_type", "overdue_amount", "due_date"],
@@ -37,15 +39,23 @@ VARIABLES = {
         "appointment_time",
         "doctor_name",
     ],
+    "banking-customer-line": ["company_name", "branch_hours", "card_helpline"],
+    "collections-return-call": [
+        "company_name",
+        "customer_name",
+        "account_last_four",
+        "overdue_amount",
+        "due_date",
+    ],
 }
 SEEDS = sorted(load_seed(), key=lambda t: t["sort_order"])
 
 
-def test_exactly_seven_in_order() -> None:
+def test_launch_set_in_order() -> None:
     assert [(t["sort_order"], t["id"], t["category"], t["name"], t["direction"]) for t in SEEDS] == EXPECTED
     assert Counter(t["category"] for t in SEEDS) == {
         "automotive": 1,
-        "banking": 2,
+        "banking": 4,
         "ecommerce": 1,
         "healthcare": 2,
         "telecom": 1,

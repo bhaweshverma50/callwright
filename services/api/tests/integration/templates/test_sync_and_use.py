@@ -51,7 +51,7 @@ async def test_sync_upserts_and_deactivates(
         report = await sync(app.state.db)
         assert report.inserted == 0
     again = await sync(app.state.db)
-    assert again.unchanged == 7 and again.updated == 0
+    assert again.unchanged == 9 and again.updated == 0
 
 
 async def test_use_template_overlays_defaults(client: httpx.AsyncClient, account: Account) -> None:

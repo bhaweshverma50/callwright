@@ -127,8 +127,13 @@ export function createLiveDriver(): WebCallDriver {
       });
 
       await room.connect(session.server_url, session.participant_token);
-      await room.localParticipant.setMicrophoneEnabled(true);
-      await room.startAudio().catch(() => {});
+      // The call is live once the room is joined. Publishing the microphone negotiates with the
+      // server and can take seconds, so it runs alongside; a failure ends the call.
+      room.localParticipant.setMicrophoneEnabled(true).catch(() => {
+        finish("connection_lost");
+        void room.disconnect();
+      });
+      void room.startAudio().catch(() => {});
       const initial = agent()?.attributes["lk.agent.state"];
       listener.activity(initial ? (ACTIVITY[initial] ?? "listening") : "joining");
 

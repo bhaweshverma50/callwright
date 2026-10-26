@@ -13,7 +13,7 @@ MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\x00" * 64
 
 async def test_templates_200_401_404(client: httpx.AsyncClient, account: Account) -> None:
     listed = check(await client.get("/v1/templates", headers=account.headers))
-    assert listed.status_code == 200 and len(listed.json()["items"]) == 7
+    assert listed.status_code == 200 and len(listed.json()["items"]) == 9
     health = check(
         await client.get("/v1/templates?category=healthcare&search=triage", headers=account.headers)
     )
@@ -21,7 +21,7 @@ async def test_templates_200_401_404(client: httpx.AsyncClient, account: Account
     categories = check(await client.get("/v1/templates/categories", headers=account.headers))
     assert [(c["id"], c["count"]) for c in categories.json()["items"]] == [
         ("automotive", 1),
-        ("banking", 2),
+        ("banking", 4),
         ("ecommerce", 1),
         ("healthcare", 2),
         ("telecom", 1),
