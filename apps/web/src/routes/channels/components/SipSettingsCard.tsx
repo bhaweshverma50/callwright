@@ -35,6 +35,20 @@ export function SipSettingsCard() {
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
+      ) : sip.data && !sip.data.telephony_enabled ? (
+        <div className="flex flex-col gap-3 px-5 py-4">
+          {["Origination address", "Direct address"].map((label) => (
+            <div key={label} className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] font-medium text-fg-2">{label}</span>
+              <div className="flex h-9 items-center rounded-control border border-dashed border-line-strong bg-surface-2/50 px-3 text-[12.5px] text-fg-3">
+                Shown once telephony is switched on
+              </div>
+            </div>
+          ))}
+          <p className="text-[12px] leading-relaxed text-fg-3">
+            Import numbers now; you point your carrier at Callwright when the SIP service is enabled.
+          </p>
+        </div>
       ) : sip.data ? (
         <div className="divide-y divide-line">
           <AddressRow

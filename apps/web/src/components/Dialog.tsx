@@ -30,13 +30,13 @@ export function Dialog({ open, onOpenChange, title, description, icon, children,
           role={role}
           onPointerDownOutside={role === "alertdialog" ? (e) => e.preventDefault() : undefined}
           className={cn(
-            "fixed left-1/2 top-[14vh] z-50 w-[calc(100vw-32px)] -translate-x-1/2",
+            "fixed left-1/2 top-[14vh] z-50 flex max-h-[calc(100dvh-14vh-16px)] w-[calc(100vw-32px)] -translate-x-1/2 flex-col",
             "rounded-panel border border-line bg-surface shadow-pop focus:outline-none",
             "data-[state=open]:animate-pop-in data-[state=closed]:animate-[pop-in_140ms_ease-in_reverse]",
             widths[size],
           )}
         >
-          <div className="flex items-start justify-between gap-4 px-5 pb-1 pt-5">
+          <div className="flex shrink-0 items-start justify-between gap-4 px-5 pb-1 pt-5">
             <div className="flex items-start gap-3">
               {icon && (
                 <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-[18px]">
@@ -60,8 +60,9 @@ export function Dialog({ open, onOpenChange, title, description, icon, children,
               </RD.Close>
             )}
           </div>
-          {children && <div className="px-5 py-3 text-[13.5px] text-fg-2">{children}</div>}
-          {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">{footer}</div>}
+          {/* Tall content scrolls inside the dialog so the footer stays on screen. */}
+          {children && <div className="min-h-0 overflow-y-auto px-5 py-3 text-[13.5px] text-fg-2">{children}</div>}
+          {footer && <div className="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3.5">{footer}</div>}
         </RD.Content>
       </RD.Portal>
     </RD.Root>

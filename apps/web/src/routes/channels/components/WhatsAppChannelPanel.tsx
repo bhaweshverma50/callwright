@@ -259,7 +259,9 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
         title="Caller routes"
         description="Send specific callers to a specific agent, for example VIP customers to a dedicated agent."
         aside={
-          channel.caller_route_count ? <span className="font-mono text-[12px] text-fg-3 tnum">{channel.caller_route_count} / 1,000</span> : undefined
+          channel.caller_route_count ? (
+            <span className="shrink-0 whitespace-nowrap font-mono text-[12px] text-fg-3 tnum">{channel.caller_route_count} / 1,000</span>
+          ) : undefined
         }
       >
         <CallerRoutesTable channelId={channel.id} disabled={draining} />

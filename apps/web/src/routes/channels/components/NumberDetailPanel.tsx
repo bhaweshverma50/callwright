@@ -445,7 +445,7 @@ function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () 
         </form>
       </Section>
 
-      {number.direct_uri && (
+      {number.direct_uri && !telephonyOff && (
         <Section icon={<ArrowDownLeft />} title="Direct address" description="Dial this number straight into Callwright, bypassing the carrier.">
           <div className="flex items-center gap-2 rounded-control border border-line bg-surface-2/70 py-1 pl-3 pr-1">
             <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg">{number.direct_uri}</code>

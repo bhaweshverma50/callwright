@@ -65,7 +65,7 @@ export function ImportNumberDialog({
     const next: Errors = {};
     const numberErr = e164Error(e164);
     if (numberErr) next.e164 = numberErr;
-    if (!label.trim()) next.label = "Enter a label, for example Main office line.";
+    if (!label.trim()) next.label = "Enter a label.";
     const addressErr = terminationError(address);
     if (addressErr) next.termination_address = addressErr;
     const parsed = parseCidrs(cidrs);

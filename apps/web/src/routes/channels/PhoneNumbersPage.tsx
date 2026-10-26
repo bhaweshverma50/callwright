@@ -46,7 +46,7 @@ function AgentLine({ icon, label, name, empty }: { icon: ReactNode; label: strin
     <div className="flex min-w-0 items-center gap-2.5">
       <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-3 text-fg-2 [&_svg]:size-3.5">{icon}</span>
       <span className="w-[62px] shrink-0 text-[12px] text-fg-3">{label}</span>
-      <span className={cn("min-w-0 truncate text-[13px]", name ? "font-medium text-fg" : "italic text-fg-3")}>{name ?? empty}</span>
+      <span className={cn("min-w-0 truncate text-[13px]", name ? "font-medium text-fg" : "pr-0.5 italic text-fg-3")}>{name ?? empty}</span>
     </div>
   );
 }
@@ -79,9 +79,16 @@ function ChannelCard({
       transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
       className="flex min-w-0"
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
         aria-label={ariaLabel}
         className="group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border border-line bg-surface text-left shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow focus-visible:border-accent focus-visible:outline-none focus-visible:shadow-glow"
       >
@@ -103,7 +110,7 @@ function ChannelCard({
             aria-hidden
           />
         </div>
-      </button>
+      </div>
     </motion.div>
   );
 }
@@ -174,7 +181,7 @@ function WhatsAppCards({
   onOpen: (c: WhatsAppChannel) => void;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 2xl:grid-cols-3">
       <AnimatePresence>
         {channels.map((c) => (
           <ChannelCard
@@ -238,6 +245,44 @@ function Hero({
   );
 }
 
+const NEEDS = [
+  { icon: <PhoneCall aria-hidden />, title: "A number on a SIP trunk", detail: "From any provider that offers SIP trunking, in E.164 form." },
+  {
+    icon: <Network aria-hidden />,
+    title: "The trunk's termination address",
+    detail: "Host or IP and port, plus a username and password if it uses them.",
+  },
+  { icon: <Bot aria-hidden />, title: "A published agent", detail: "It answers inbound calls and talks on the calls you place." },
+];
+
+function NeedsPanel() {
+  return (
+    <section className="rounded-panel border border-line bg-surface shadow-1">
+      <header className="border-b border-line px-5 py-3.5">
+        <h2 className="text-[14px] font-semibold text-fg">What you need</h2>
+        <p className="text-[12.5px] text-fg-3">Have these ready before you import.</p>
+      </header>
+      <ol className="flex flex-col gap-4 px-5 py-4">
+        {NEEDS.map((n, i) => (
+          <motion.li
+            key={n.title}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 * i, duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-start gap-3"
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-4">{n.icon}</span>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[13.5px] font-medium text-fg">{n.title}</span>
+              <span className="text-[12.5px] leading-relaxed text-fg-3">{n.detail}</span>
+            </div>
+          </motion.li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function CardsSkeleton() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2" aria-busy="true" aria-label="Loading">
@@ -296,7 +341,7 @@ export function PhoneNumbersPage() {
         onValueChange={setTab}
         aria-label="Channels"
         items={[
-          { value: "numbers", label: "Phone numbers", icon: <PhoneCall aria-hidden />, count: numbers.data?.total },
+          { value: "numbers", label: "Numbers", icon: <PhoneCall aria-hidden />, count: numbers.data?.total },
           { value: "whatsapp", label: "WhatsApp", icon: <MessageCircle aria-hidden />, count: channels.data?.total },
           { value: "compliance", label: "Compliance", icon: <ShieldCheck aria-hidden /> },
         ]}
@@ -319,7 +364,8 @@ export function PhoneNumbersPage() {
                 flowLabel="How a call reaches your agent"
                 caption="Ringing, busy and unanswered calls are never charged. You pay for connected seconds only."
               />
-              <div className="max-w-[560px]">
+              <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-2">
+                <NeedsPanel />
                 <SipSettingsCard />
               </div>
             </div>

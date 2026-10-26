@@ -70,10 +70,10 @@ export function CallingHoursEditor() {
                       checked={!!w}
                       onCheckedChange={(on) => setDay(d, on ? { ...DEFAULT } : null)}
                     />
-                    <span className={cn("text-[12.5px]", w ? "text-fg-2" : "text-fg-3")}>{w ? "Calls" : "No calls"}</span>
+                    <span className={cn("w-[52px] text-[12.5px]", w ? "text-fg-2" : "text-fg-3")}>{w ? "Calls" : "No calls"}</span>
                   </div>
                   {w ? (
-                    <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1">
+                    <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1 sm:w-fit">
                       <div className="flex items-center gap-2">
                         <Select
                           size="sm"
@@ -106,7 +106,9 @@ export function CallingHoursEditor() {
                       {bad && <p className="text-[12px] text-danger-text">The start must be before the end.</p>}
                     </div>
                   ) : (
-                    <span className="col-span-2 text-[12.5px] text-fg-3 sm:col-span-1">Calls on {DAY_LABELS[d]} are blocked.</span>
+                    <span className="col-span-2 flex h-8 items-center rounded-control border border-dashed border-line px-3 text-[12.5px] text-fg-3 sm:col-span-1 sm:w-[268px]">
+                      Blocked all day
+                    </span>
                   )}
                 </li>
               );

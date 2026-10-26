@@ -179,8 +179,11 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
             <CircleCheck className="size-4 text-success-text" aria-hidden />
             Dialling <span className="font-mono">{result.to_number}</span>
           </p>
-          <div className="flex items-center gap-2 text-[12.5px] text-fg-2">
-            Call id <code className="font-mono text-fg">{result.call_id}</code>
+          <div className="flex min-w-0 items-center gap-2 text-[12.5px] text-fg-2">
+            <span className="shrink-0 whitespace-nowrap">Call id</span>
+            <code className="min-w-0 truncate font-mono text-fg" title={result.call_id}>
+              {result.call_id}
+            </code>
             <CopyButton value={result.call_id} label="Copy call id" />
           </div>
           <p className="text-[12.5px] text-fg-3">

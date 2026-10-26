@@ -201,15 +201,13 @@ function DecisionsPanel() {
                 </Badge>
               )}
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-mono text-[12.5px] text-fg">
-                  {d.from_number} to {d.to_number}
-                </span>
+                <span className="truncate font-mono text-[12.5px] text-fg">{d.to_number}</span>
                 <span className="truncate text-[12px] text-fg-3">
                   {d.reason === "outside_calling_hours" && d.recipient_local_time
                     ? `${d.recipient_local_time.slice(11, 16)} local in ${d.recipient_timezones?.[0] ?? "unknown zone"}`
                     : d.reason === "outside_calling_hours"
                       ? "No timezone known for the number"
-                      : "On the do-not-call list"}
+                      : `On the do-not-call list, from ${d.from_number}`}
                 </span>
               </div>
               <span className="shrink-0 text-[12px] text-fg-3">{relativeTime(d.decided_at)}</span>
