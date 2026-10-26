@@ -137,7 +137,9 @@ async def run_validators(make_context: Callable[[str], HookContext]) -> HookIssu
 async def run_snapshot_resolvers(make_context: Callable[[str], HookContext]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for block, fn in sorted(_resolvers.items()):
-        out[block] = await _maybe_await(fn(make_context(block)))
+        value = await _maybe_await(fn(make_context(block)))
+        if value is not None:  # None: nothing to add (for example no tools attached)
+            out[block] = value
     return out
 
 
@@ -161,7 +163,9 @@ def registered(
     usage_checkers: list[UsageChecker] | None = None,
     duplicate_hooks: list[DuplicateHook] | None = None,
 ) -> Iterator[None]:
-    """Install hooks for the duration of a block (tests)."""
+    """Install hooks for the duration of a block (tests). A resolver given here temporarily
+    replaces one registered by a feature module (005 registers ``tools`` and ``knowledge``)."""
+    replaced = {block: _resolvers.pop(block) for block in resolvers or {} if block in _resolvers}
     for block, v in (validators or {}).items():
         register_validator(block, v)
     for block, r in (resolvers or {}).items():
@@ -179,6 +183,7 @@ def registered(
                 del _validators[block]
         for block in resolvers or {}:
             _resolvers.pop(block, None)
+        _resolvers.update(replaced)
         for u in usage_checkers or []:
             _usage_checkers.remove(u)
         for d in duplicate_hooks or []:

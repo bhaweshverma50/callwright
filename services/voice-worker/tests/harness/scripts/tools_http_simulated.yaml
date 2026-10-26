@@ -1,0 +1,27 @@
+name: tools_http_simulated
+description: In a simulation an HTTP tool answers its canned response without any network request (005 T084).
+runtime: {simulation: true}
+config:
+  tools:
+    - tool_id: tool_slots
+      type: http
+      name: check_availability
+      description: Look up free slots
+      mock_response: '{"slots": ["09:30"]}'
+      config:
+        url: "https://api.example.invalid/slots"
+        method: POST
+        headers: []
+        body_template: null
+        timeout_ms: 2000
+        response_mappings: [{variable_name: next_slot, json_path: "slots[0]"}]
+        speak_during_execution: true
+        execution_message: "One moment."
+        parameters: {type: object, properties: {date: {type: string}}, required: [date]}
+fakes:
+  rules:
+    - {match: "tomorrow", reply: "We have 9:30 free.", tool: check_availability, tool_arguments: {date: "2026-10-27"}, tool_ms: 200}
+steps:
+  - say: "Do you have anything tomorrow?"
+  - expect_event: {type: tool_call, name: check_availability, mocked: true, is_error: false, output: '{"slots":["09:30"]}'}
+  - hangup: true

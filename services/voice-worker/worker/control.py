@@ -94,6 +94,7 @@ class RuntimeCallControl:
             output=activity.output,
             is_error=activity.is_error,
             duration_ms=activity.duration_ms,
+            extra=activity.extra or None,
         )
         at = self._recorder.offset_ms()
         call_item: dict[str, Any] = {

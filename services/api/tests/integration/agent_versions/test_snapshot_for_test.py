@@ -31,8 +31,15 @@ async def test_changed_resolved_tools_record_a_test_version(
     def tools(ctx: hooks.HookContext) -> list[dict[str, Any]]:
         return [{"tool_id": t, "url": tool_url["value"]} for t in ctx.config.get("tool_ids", [])]
 
+    # A real tool, so 005's missing-reference check does not block publishing.
+    created = await client.post(
+        "/v1/tools",
+        json={"type": "end_call", "name": "lookup", "description": "Look up", "config": {}},
+        headers=account.headers,
+    )
+    tool_id = created.json()["id"]
     with hooks.registered(resolvers={"tools": tools}):
-        agent = await create_ok(client, account, config={"prompt": "x", "tool_ids": ["tool_lookup"]})
+        agent = await create_ok(client, account, config={"prompt": "x", "tool_ids": [tool_id]})
         await client.put(
             f"/v1/agents/{agent['id']}/published-version",
             json={"version_id": agent["draft_version"]["id"]},
@@ -46,7 +53,7 @@ async def test_changed_resolved_tools_record_a_test_version(
     assert snap.id != agent["draft_version"]["id"] and snap.source == "test"
     assert snap.created_by is None and snap.version_number == 2
     assert again.id == snap.id, "an identical draft reuses the test snapshot"
-    assert snap.config["tools"] == [{"tool_id": "tool_lookup", "url": "https://tools.example.com/v2"}]
+    assert snap.config["tools"] == [{"tool_id": tool_id, "url": "https://tools.example.com/v2"}]
     detail = (await client.get(f"/v1/agents/{agent['id']}", headers=account.headers)).json()
     assert detail["published_version"]["id"] == agent["draft_version"]["id"]
     assert detail["draft_version"]["id"] == agent["draft_version"]["id"]

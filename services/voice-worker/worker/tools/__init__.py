@@ -74,6 +74,8 @@ class ToolActivity:
     output: str | None = None
     is_error: bool = False
     duration_ms: int | None = None
+    # 005 event fields (data-model section 7): tool_type, error_code, dispatch_overhead_ms, ...
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @runtime_checkable

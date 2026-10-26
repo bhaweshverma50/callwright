@@ -174,7 +174,11 @@ async def test_control_without_manager_rejects_overrides() -> None:
 
 
 def test_tool_provider_registration_and_null_default() -> None:
-    assert isinstance(get_tool_provider(), NullToolProvider)
+    from worker.tools.registry import PROVIDER
+
+    # 005 installs its provider once worker.tools.registry is imported (entry does that).
+    assert get_tool_provider() is PROVIDER
+    assert list(NullToolProvider().tools_for(None, None)) == []  # type: ignore[arg-type]
 
     class Provider:
         def tools_for(self, runtime: object, control: object) -> list[str]:
@@ -184,4 +188,4 @@ def test_tool_provider_registration_and_null_default() -> None:
     try:
         assert list(get_tool_provider().tools_for(None, None)) == ["end_call"]  # type: ignore[arg-type]
     finally:
-        register_tool_provider(NullToolProvider())
+        register_tool_provider(PROVIDER)

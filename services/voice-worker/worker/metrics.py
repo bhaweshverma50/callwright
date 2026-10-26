@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
@@ -469,8 +469,10 @@ class EventRecorder:
         output: str | None = None,
         is_error: bool | None = None,
         duration_ms: int | None = None,
+        extra: Mapping[str, Any] | None = None,
     ) -> Event:
-        body: dict[str, Any] = {"name": name}
+        """``extra`` carries 005's fields (tool_type, error_code, timings, kb, ...)."""
+        body: dict[str, Any] = {"name": name, **(extra or {})}
         for key, value in (
             ("ref", ref),
             ("arguments", arguments),

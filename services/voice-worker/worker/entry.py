@@ -74,6 +74,8 @@ from worker.pipeline import (
 from worker.settings import WorkerSettings, get_settings
 from worker.telephony import TelephonyUnavailable, dtmf_code, sip_attributes
 from worker.tools import ToolActivity
+from worker.tools import registry as tool_registry
+from worker.tools.transfer import DESTINATION_IDENTITY, LiveKitTransferBackend
 from worker.turn_detection import DigitAwareTurnDetector
 
 log = logging.getLogger("callwright.worker")
@@ -212,9 +214,14 @@ class LiveCall:
         await self.poster.flush(with_usage=False)
         await self._close_room()
 
-    async def _close_room(self) -> None:
+    async def _close_room(self, *, keep: bool = False) -> None:
+        """Delete the room, or only leave it when a warm transfer left caller and destination
+        talking in it (005)."""
         with contextlib.suppress(Exception):
-            await self.ctx.delete_room()
+            if keep:
+                await self.ctx.room.disconnect()
+            else:
+                await self.ctx.delete_room()
         self.ctx.shutdown(reason="call ended")
         self._ended.set()
 
@@ -256,7 +263,35 @@ class LiveCall:
             if diagnostic:
                 self.session_span.set_attribute("call.diagnostic", diagnostic)
             self.session_span.end()
-        await self._close_room()
+        await tool_registry.PROVIDER.release(self.call_id)
+        await self._close_room(keep=reason == "call_transfer" and self._destination_in_room())
+
+    def _destination_in_room(self) -> bool:
+        with contextlib.suppress(Exception):
+            participants = self.ctx.room.remote_participants.values()
+            return any(p.identity == DESTINATION_IDENTITY for p in participants)
+        return False
+
+    def _transfer_backend(self) -> LiveKitTransferBackend | None:
+        """Transfers (005) on SIP calls through the LiveKit server API."""
+        runtime = self.runtime
+        if runtime.channel not in ("sip_inbound", "sip_outbound"):
+            return None
+        settings = self.settings
+
+        def synthesize(text: str) -> Any:
+            assert self.components is not None
+            return self.components.tts.synthesize(text)
+
+        return LiveKitTransferBackend(
+            url=settings.livekit_url,
+            api_key=settings.livekit_api_key.get_secret_value(),
+            api_secret=settings.livekit_api_secret.get_secret_value(),
+            room_name=self.ctx.room.name,
+            caller_identity=lambda: self.caller_identity,
+            trunk_id=runtime.outbound_dial.sip_trunk_id if runtime.outbound_dial else None,
+            synthesize=synthesize,
+        )
 
     async def _on_control_end(self, reason: str) -> None:
         if self.control is not None:
@@ -485,6 +520,10 @@ class LiveCall:
             extra_instructions = VOICEMAIL_INSTRUCTION
         self._extra_tools = extra_tools
         self._extra_instructions = extra_instructions
+        # 005: one secret fetch and keep-alive clients for this call's tools.
+        await tool_registry.PROVIDER.prepare(
+            runtime, self.control, self.settings, transfer_backend=self._transfer_backend()
+        )
         try:
             self.components = build_components(
                 plan, self.registry, self.settings.vendor_credentials()

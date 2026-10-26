@@ -46,6 +46,8 @@ from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_
 from app.dashboard.router import router as dashboard_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
+from app.knowledge.router import internal_router as knowledge_internal_router
+from app.knowledge.router import router as knowledge_router
 from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
 from app.llms.router import router as llms_router
@@ -54,6 +56,7 @@ from app.prompt_ai.router import router as prompt_ai_router
 from app.recordings.router import router as recordings_router
 from app.sessions.router import router as sessions_router
 from app.templates.router import router as templates_router
+from app.tools.router import router as tools_router
 from app.usage.router import router as usage_router
 from app.voice_commands.router import router as voice_commands_router
 from app.voices.router import router as voices_router
@@ -222,6 +225,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         llms_router,
         voices_router,
         prompt_ai_router,
+        tools_router,
+        knowledge_router,
+        knowledge_internal_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:

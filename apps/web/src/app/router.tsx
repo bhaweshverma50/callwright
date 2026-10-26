@@ -18,6 +18,8 @@ import { Register } from "../routes/public/Register";
 import { ResetPassword } from "../routes/public/ResetPassword";
 import { VerifyEmail } from "../routes/public/VerifyEmail";
 import { SettingsPage } from "../routes/settings/SettingsPage";
+import "../routes/agents/tools";
+import { knowledgeRoutes } from "../routes/knowledge";
 
 /*
   The largest pages load on demand. Inside the shell and the public layout their Suspense boundary
@@ -52,7 +54,6 @@ const agentRoutes: RouteObject[] = [
 /** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */
 const placeholderRoutes: RouteObject[] = [
   { path: "phone-numbers", element: <AreaPlaceholder to="/phone-numbers" /> },
-  { path: "knowledge-base", element: <AreaPlaceholder to="/knowledge-base" /> },
   { path: "datasets", element: <AreaPlaceholder to="/datasets" /> },
   { path: "simulations", element: <AreaPlaceholder to="/simulations" /> },
   { path: "simulations/runs/:id", element: <RecordPlaceholder to="/simulations" prefix="srun" kind="simulation run" /> },
@@ -106,6 +107,7 @@ export const routes: RouteObject[] = [
                   { path: BILLING_ITEM.to.slice(1), element: <BillingPage /> },
                   { path: "settings", element: <SettingsPage /> },
                   ...agentRoutes,
+                  ...knowledgeRoutes,
                   ...placeholderRoutes,
                   { path: "*", element: <NotFound /> },
                 ],

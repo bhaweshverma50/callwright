@@ -1,0 +1,14 @@
+name: tools_end_call
+description: An attached end-call tool speaks its goodbye and hangs up with agent_hangup (005 T020).
+config:
+  tools:
+    - {tool_id: tool_end, type: end_call, name: end_call, description: End the call, config: {message: "Thanks for calling. Goodbye!"}}
+fakes:
+  rules:
+    - {match: "bye", reply: "", tool: end_call, tool_ms: 50}
+steps:
+  - say: "That is all, bye."
+  - silence_s: 3
+  - expect_tool: end_call
+  - expect_event: {type: tool_call, name: end_call, tool_type: end_call, is_error: false}
+  - expect_end_reason: agent_hangup

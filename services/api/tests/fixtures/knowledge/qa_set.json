@@ -1,0 +1,306 @@
+{
+ "sections": [
+  {
+   "heading": "Refunds",
+   "text": "Prepaid treatment plans can be refunded within 14 days of purchase. Refunds go back to the original card within five business days."
+  },
+  {
+   "heading": "Cancellation fee",
+   "text": "Appointments cancelled with less than 24 hours notice carry a 40 dollar cancellation fee. The fee is waived for medical emergencies."
+  },
+  {
+   "heading": "Opening hours",
+   "text": "The clinic opens at 8 in the morning and closes at 6 in the evening, Monday to Friday. Saturday hours are 9 to 1."
+  },
+  {
+   "heading": "Parking",
+   "text": "Free parking is available behind the building on Maple Street. The garage entrance is on Elm Lane and closes at 7 pm."
+  },
+  {
+   "heading": "Insurance",
+   "text": "We accept Delta Dental, Cigna and Aetna insurance plans. Bring your insurance card to every visit so we can bill your plan directly."
+  },
+  {
+   "heading": "Teeth whitening",
+   "text": "Professional teeth whitening costs 250 dollars per session. Results last about a year with good home care."
+  },
+  {
+   "heading": "Cleaning",
+   "text": "A routine cleaning costs 90 dollars and takes about 45 minutes. We recommend a cleaning every six months."
+  },
+  {
+   "heading": "Emergency care",
+   "text": "For dental emergencies after hours, call the on-call dentist line at 555 0199. Severe swelling or bleeding should go to the hospital emergency room."
+  },
+  {
+   "heading": "Children",
+   "text": "Children are seen from age two. A parent or guardian must stay with patients under sixteen during the visit."
+  },
+  {
+   "heading": "Payment methods",
+   "text": "We accept cash, debit cards, Visa and Mastercard. American Express is not accepted."
+  },
+  {
+   "heading": "Payment plans",
+   "text": "Treatments above 1000 dollars can be split into a 12 month payment plan with no interest."
+  },
+  {
+   "heading": "New patients",
+   "text": "New patients should arrive 15 minutes early to fill in the medical history form. Bring a photo ID."
+  },
+  {
+   "heading": "X-rays",
+   "text": "Digital x-rays are taken once a year. Pregnant patients should tell the hygienist before any x-ray."
+  },
+  {
+   "heading": "Braces",
+   "text": "Metal braces start at 4500 dollars. Clear aligners start at 5200 dollars and need a consultation first."
+  },
+  {
+   "heading": "Implants",
+   "text": "A single dental implant costs 3800 dollars including the crown. Healing takes three to six months."
+  },
+  {
+   "heading": "Root canal",
+   "text": "Root canal treatment costs 1100 dollars for a front tooth and 1400 dollars for a molar."
+  },
+  {
+   "heading": "Sedation",
+   "text": "Nitrous oxide sedation is available for anxious patients for 75 dollars. You can drive home after nitrous oxide."
+  },
+  {
+   "heading": "Wheelchair access",
+   "text": "The clinic is wheelchair accessible with a ramp at the front door and an elevator to the second floor."
+  },
+  {
+   "heading": "Languages",
+   "text": "Our staff speak English, Spanish and Mandarin. Interpreters for other languages can be booked in advance."
+  },
+  {
+   "heading": "Late arrival",
+   "text": "Patients more than 15 minutes late may need to reschedule. We will try to fit you in if the dentist is free."
+  },
+  {
+   "heading": "Records",
+   "text": "Copies of dental records are sent within 10 business days of a signed request. Records transfer is free."
+  },
+  {
+   "heading": "Night guards",
+   "text": "Custom night guards for teeth grinding cost 400 dollars and take two weeks to make."
+  },
+  {
+   "heading": "Fillings",
+   "text": "Tooth coloured fillings cost between 150 and 250 dollars depending on size."
+  },
+  {
+   "heading": "Covid precautions",
+   "text": "Masks are optional in the waiting room. Please reschedule if you have a fever or cough."
+  },
+  {
+   "heading": "Gift cards",
+   "text": "Gift cards are sold at reception in amounts from 25 to 500 dollars and never expire."
+  }
+ ],
+ "questions": [
+  {
+   "question": "How many days do I have to get a refund on a treatment plan?",
+   "expect": "within 14 days"
+  },
+  {
+   "question": "Where does my refund money go?",
+   "expect": "original card"
+  },
+  {
+   "question": "Is there a fee if I cancel my appointment late?",
+   "expect": "40 dollar"
+  },
+  {
+   "question": "Do you waive the cancellation fee for emergencies?",
+   "expect": "waived for medical emergencies"
+  },
+  {
+   "question": "What time does the clinic open on weekdays?",
+   "expect": "opens at 8"
+  },
+  {
+   "question": "Are you open on Saturday?",
+   "expect": "Saturday hours"
+  },
+  {
+   "question": "Is there free parking at the clinic?",
+   "expect": "Free parking"
+  },
+  {
+   "question": "Where is the garage entrance?",
+   "expect": "Elm Lane"
+  },
+  {
+   "question": "Which insurance plans do you accept?",
+   "expect": "Delta Dental"
+  },
+  {
+   "question": "Should I bring my insurance card?",
+   "expect": "insurance card"
+  },
+  {
+   "question": "How much does teeth whitening cost?",
+   "expect": "250 dollars"
+  },
+  {
+   "question": "How long do whitening results last?",
+   "expect": "about a year"
+  },
+  {
+   "question": "What is the price of a routine cleaning?",
+   "expect": "90 dollars"
+  },
+  {
+   "question": "How often should I get a cleaning?",
+   "expect": "every six months"
+  },
+  {
+   "question": "Who do I call for a dental emergency after hours?",
+   "expect": "on-call dentist"
+  },
+  {
+   "question": "What should I do about severe swelling?",
+   "expect": "hospital emergency room"
+  },
+  {
+   "question": "From what age do you see children?",
+   "expect": "age two"
+  },
+  {
+   "question": "Does a parent need to stay with a child patient?",
+   "expect": "parent or guardian"
+  },
+  {
+   "question": "Can I pay with American Express?",
+   "expect": "American Express is not accepted"
+  },
+  {
+   "question": "Do you take debit cards?",
+   "expect": "debit cards"
+  },
+  {
+   "question": "Can I split a big treatment into monthly payments?",
+   "expect": "12 month payment plan"
+  },
+  {
+   "question": "Is there interest on the payment plan?",
+   "expect": "no interest"
+  },
+  {
+   "question": "How early should a new patient arrive?",
+   "expect": "15 minutes early"
+  },
+  {
+   "question": "What ID do new patients need to bring?",
+   "expect": "photo ID"
+  },
+  {
+   "question": "How often are x-rays taken?",
+   "expect": "once a year"
+  },
+  {
+   "question": "I am pregnant, can I have an x-ray?",
+   "expect": "Pregnant patients"
+  },
+  {
+   "question": "How much do metal braces cost?",
+   "expect": "4500 dollars"
+  },
+  {
+   "question": "What is the price of clear aligners?",
+   "expect": "5200 dollars"
+  },
+  {
+   "question": "What does a dental implant cost?",
+   "expect": "3800 dollars"
+  },
+  {
+   "question": "How long does an implant take to heal?",
+   "expect": "three to six months"
+  },
+  {
+   "question": "How much is a root canal on a molar?",
+   "expect": "1400 dollars"
+  },
+  {
+   "question": "Root canal price for a front tooth?",
+   "expect": "1100 dollars"
+  },
+  {
+   "question": "Do you offer sedation for nervous patients?",
+   "expect": "Nitrous oxide"
+  },
+  {
+   "question": "Can I drive home after sedation?",
+   "expect": "drive home"
+  },
+  {
+   "question": "Is the clinic wheelchair accessible?",
+   "expect": "wheelchair accessible"
+  },
+  {
+   "question": "Is there an elevator?",
+   "expect": "elevator"
+  },
+  {
+   "question": "Does anyone speak Spanish?",
+   "expect": "Spanish"
+  },
+  {
+   "question": "Can I book an interpreter?",
+   "expect": "Interpreters"
+  },
+  {
+   "question": "What happens if I arrive late?",
+   "expect": "reschedule"
+  },
+  {
+   "question": "Will you still see me if I am late?",
+   "expect": "fit you in"
+  },
+  {
+   "question": "How do I get a copy of my dental records?",
+   "expect": "signed request"
+  },
+  {
+   "question": "Is there a charge to transfer records?",
+   "expect": "Records transfer is free"
+  },
+  {
+   "question": "How much is a night guard for grinding?",
+   "expect": "400 dollars"
+  },
+  {
+   "question": "How long does it take to make a night guard?",
+   "expect": "two weeks"
+  },
+  {
+   "question": "What do fillings cost?",
+   "expect": "150 and 250 dollars"
+  },
+  {
+   "question": "Do you do tooth coloured fillings?",
+   "expect": "Tooth coloured"
+  },
+  {
+   "question": "Do I need to wear a mask?",
+   "expect": "Masks are optional"
+  },
+  {
+   "question": "Should I come in with a fever?",
+   "expect": "fever or cough"
+  },
+  {
+   "question": "Do you sell gift cards?",
+   "expect": "Gift cards"
+  },
+  {
+   "question": "Do gift cards expire?",
+   "expect": "never expire"
+  }
+ ]
+}

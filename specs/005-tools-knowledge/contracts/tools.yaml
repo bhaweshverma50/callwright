@@ -123,6 +123,7 @@ paths:
                 properties:
                   deleted: {type: boolean}
                   detached_agent_ids: {type: array, items: {type: string, pattern: '^agt_'}}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: Attached to agents and force is false (problem type `tool_in_use`, lists agents)
           content:
@@ -142,6 +143,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Tool'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /tools/{tool_id}/usages:
     parameters:
@@ -169,6 +171,7 @@ paths:
                         in_draft: {type: boolean}
                         published_version_ids: {type: array, items: {type: string, pattern: '^agv_'}}
                         flow_node_ids: {type: array, items: {type: string}, description: Set by 004 for node-level attachment}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /tools/test-run:
     post:
@@ -212,6 +215,7 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/AgentToolSet'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     put:
       tags: [tools]
       operationId: setAgentTools
@@ -270,6 +274,7 @@ paths:
                         node_id: {type: string}
                         name: {type: string}
                         tool_type: {$ref: '#/components/schemas/ToolType'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /internal/calls/{call_id}/tool-secrets:
     parameters:
@@ -284,7 +289,8 @@ paths:
         - serviceToken: []
       description: |
         Returns plaintext values for every `secret_ref` in the call's AgentVersion snapshot.
-        Only for calls in `queued`, `ringing` or `in_progress`. Never logged.
+        Only for calls in `queued`, `ringing` or `in_progress`. Never logged. Callers without
+        the service token get 404, so the endpoint is not discoverable.
       responses:
         '200':
           description: Secret map
@@ -299,6 +305,7 @@ paths:
                     additionalProperties: {type: string}
                     description: Map of secret_ref to value
         '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
 components:

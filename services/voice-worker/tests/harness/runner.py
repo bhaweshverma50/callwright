@@ -66,6 +66,8 @@ from worker.pipeline import (
     plan_session,
 )
 from worker.tools import SegmentOverrides, ToolActivity
+from worker.tools.dtmf import PressDigitExecutor
+from worker.tools.registry import build_call_tools
 from worker.turn_detection import ends_with_digit_string
 
 HARNESS_DIR = Path(__file__).parent
@@ -145,6 +147,53 @@ def build_runtime(config: Mapping[str, Any], overrides: Mapping[str, Any]) -> Ru
     }
     raw.update({k: v for k, v in overrides.items() if k not in ("variables", "channel")})
     return RuntimeConfig.model_validate(raw)
+
+
+async def _no_sleep(seconds: float) -> None:
+    return None
+
+
+def tool_stubs(extra: Mapping[str, Any]) -> dict[str, Any]:
+    """In-process stubs for 005 tools, from the script's ``runtime``: ``http_stub`` ({status,
+    body, delay_ms}) answers HTTP tools and counts hits; ``kb_stub`` ({results, delay_ms})
+    answers the internal knowledge search. Nothing touches the network."""
+    import asyncio
+
+    import httpx
+
+    out: dict[str, Any] = {}
+
+    async def public(host: str, port: int) -> list[str]:
+        return ["93.184.216.34"]
+
+    def handler(stub: Mapping[str, Any], body: Any) -> Any:
+        async def respond(request: httpx.Request) -> httpx.Response:
+            stub_hits.append(str(request.url))
+            await asyncio.sleep(float(stub.get("delay_ms", 0)) / 1000)
+            return httpx.Response(int(stub.get("status", 200)), json=body)
+
+        return respond
+
+    http_stub = extra.get("http_stub")
+    if isinstance(http_stub, Mapping):
+        transport = httpx.MockTransport(handler(http_stub, http_stub.get("body", {})))
+        out["http_client"] = httpx.AsyncClient(transport=transport)
+        out["resolver"] = public
+    kb_stub = extra.get("kb_stub")
+    if isinstance(kb_stub, Mapping):
+        body = {
+            "results": list(kb_stub.get("results") or []),
+            "embedding_ms": 5,
+            "query_ms": 3,
+            "embedding_cache_hit": False,
+        }
+        transport = httpx.MockTransport(handler(kb_stub, body))
+        out["api_client"] = httpx.AsyncClient(transport=transport)
+        out["api_base_url"] = "http://api.harness/v1/internal"
+    return out
+
+
+stub_hits: list[str] = []
 
 
 # --------------------------------------------------------------------------------------------
@@ -251,6 +300,14 @@ class HarnessCall:
             self.plan, self.registry, self.runtime.controls, on_system_event=self.recorder.system
         )
         self.control = RuntimeCallControl(CALL_ID, self.recorder, self, overrides=self.overrides)
+        # 005: tools from the snapshot run through the real dispatch path (no telephony, no
+        # network: HTTP tools need a canned response under ``runtime.simulation``).
+        self.tools = build_call_tools(
+            self.runtime,
+            self.control,
+            press_digit=PressDigitExecutor(sleep=_no_sleep),
+            **tool_stubs(self.runtime.model_extra or {}),
+        )
         self.transform = PronunciationTransform(self.plan.pronunciation)
         behavior = self.plan.behavior
         self.inactivity = InactivityTimer(
@@ -675,14 +732,17 @@ class HarnessCall:
         if rule is not None and rule.tool:
             extra_s = rule.tool_ms / 1000.0 + llm.ttft_s  # tool run, then the follow-up generation
             self.tracker.component("tool", rule.tool_ms / 1000.0)
-            self.control.report_tool(
-                ToolActivity(
-                    rule.tool,
-                    arguments=rule.tool_arguments,
-                    output=rule.tool_output,
-                    duration_ms=round(rule.tool_ms),
+            if rule.tool in self.tools.by_name:
+                await self.tools.dispatch(rule.tool, rule.tool_arguments)
+            else:
+                self.control.report_tool(
+                    ToolActivity(
+                        rule.tool,
+                        arguments=rule.tool_arguments,
+                        output=rule.tool_output,
+                        duration_ms=round(rule.tool_ms),
+                    )
                 )
-            )
         if rule is not None and rule.transition:
             self.control.report_transition(rule.transition, label=rule.match or None)
         tts = self.tts

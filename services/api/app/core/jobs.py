@@ -67,6 +67,7 @@ def _functions() -> list[Any]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
+    from app.knowledge.jobs import ingest_document
     from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
 
     return [
@@ -77,6 +78,7 @@ def _functions() -> list[Any]:
         reap_stuck_calls,
         purge_webhook_deliveries,
         purge_analytics_audit,
+        ingest_document,
     ]
 
 
