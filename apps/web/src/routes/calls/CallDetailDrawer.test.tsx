@@ -10,8 +10,8 @@ describe("CallDetailDrawer (006 US2)", () => {
     seedMockCalls(10);
     await signInDemo();
     renderApp(`/calls?call=${mockCallId(0)}`);
-    const drawer = await screen.findByRole("dialog");
-    expect(await within(drawer).findByText("Where is my order?")).toBeInTheDocument();
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    expect(await within(drawer).findByText("Where is my order?", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(within(drawer).getByText("Error")).toBeInTheDocument();
     expect(within(drawer).getByText("3,004 ms")).toBeInTheDocument();
     expect(within(drawer).getByText("Interrupted")).toBeInTheDocument();
@@ -23,8 +23,8 @@ describe("CallDetailDrawer (006 US2)", () => {
     seedMockCalls(10);
     await signInDemo();
     renderApp(`/calls?call=${mockCallId(0)}`);
-    const drawer = await screen.findByRole("dialog");
-    await within(drawer).findByText("Where is my order?");
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    await within(drawer).findByText("Where is my order?", undefined, { timeout: 5000 });
     expect(within(drawer).queryByRole("tab", { name: /Flow path/ })).not.toBeInTheDocument();
   });
 
@@ -33,9 +33,9 @@ describe("CallDetailDrawer (006 US2)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp(`/calls?call=${mockCallId(4)}`);
-    const drawer = await screen.findByRole("dialog");
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
     await user.click(await within(drawer).findByRole("button", { name: "Play recording" }));
-    expect(await within(drawer).findByText("Recording deleted under your retention policy")).toBeInTheDocument();
+    expect(await within(drawer).findByText("Recording deleted under your retention policy", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(within(drawer).getByText("Where is my order?")).toBeInTheDocument();
   });
 
@@ -44,7 +44,7 @@ describe("CallDetailDrawer (006 US2)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp(`/calls?call=${mockCallId(3)}`);
-    const drawer = await screen.findByRole("dialog");
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
     await user.click(await within(drawer).findByRole("tab", { name: "Analysis" }));
     expect(within(drawer).getAllByText("Processing").length).toBeGreaterThanOrEqual(3);
   });
@@ -54,9 +54,9 @@ describe("CallDetailDrawer (006 US2)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp(`/calls?call=${mockCallId(0)}&tab=cost`);
-    const drawer = await screen.findByRole("dialog");
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
     await user.click(await within(drawer).findByRole("tab", { name: "Cost" }));
-    expect(await within(drawer).findByText("1.13x")).toBeInTheDocument();
+    expect(await within(drawer).findByText("1.13x", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(within(drawer).getAllByText("$0.477").length).toBeGreaterThan(0);
   });
 

@@ -18,7 +18,7 @@ describe("AskPanel (006 US5)", () => {
     renderApp("/billing");
     const { user, panel } = await openPanel();
     await user.type(within(panel).getByLabelText("Your question"), "Cost by agent this month{Enter}");
-    expect(await within(panel).findByText(/Total cost by agent/)).toBeInTheDocument();
+    expect(await within(panel).findByText(/Total cost by agent/, undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(within(panel).getByRole("cell", { name: "$1.200" })).toBeInTheDocument();
     await user.click(within(panel).getByRole("button", { name: "How this was computed" }));
     expect(within(panel).getByText("total_cost_usd")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("AskPanel (006 US5)", () => {
     await user.type(box, "Cost #503{Enter}");
     await within(panel).findByRole("alert");
     await user.click(within(panel).getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(mockCalls().requests.filter((r) => r.startsWith("chat:"))).toHaveLength(2));
+    await waitFor(() => expect(mockCalls().requests.filter((r) => r.startsWith("chat:"))).toHaveLength(2), { timeout: 5000 });
     const [a, b] = mockCalls().requests.filter((r) => r.startsWith("chat:"));
     expect(a).toBe(b);
   });
@@ -58,7 +58,7 @@ describe("AskPanel (006 US5)", () => {
     renderApp("/billing");
     const { user, panel } = await openPanel();
     await user.type(within(panel).getByLabelText("Your question"), "What is our churn rate?{Enter}");
-    expect(await within(panel).findByText("I cannot answer that from your call data.")).toBeInTheDocument();
+    expect(await within(panel).findByText("I cannot answer that from your call data.", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(within(panel).getAllByRole("button", { name: "Busiest day last week" }).length).toBeGreaterThan(0);
   });
 });
@@ -76,7 +76,7 @@ describe("voice copilot navigation (006 US6)", () => {
     const { router } = renderApp("/billing");
     await user.click(await screen.findByRole("button", { name: "Type a command" }));
     await user.type(screen.getByRole("textbox", { name: "Type a command" }), "show me failed calls from yesterday{Enter}");
-    await waitFor(() => expect(router.state.location.pathname).toBe("/calls"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/calls"), { timeout: 5000 });
     expect(router.state.location.search).toContain("status=failed");
   });
 

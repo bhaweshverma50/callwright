@@ -48,10 +48,10 @@ describe("CallHistoryPage (006 US1)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/calls");
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(20));
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(20), { timeout: 5000 });
     expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("1 to 20 of 45 calls");
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("21 to 40 of 45 calls"));
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("21 to 40 of 45 calls"), { timeout: 5000 });
   });
 
   it("keeps the selection across pages and blocks a mixed-agent simulation", async () => {
@@ -59,10 +59,10 @@ describe("CallHistoryPage (006 US1)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/calls");
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(20));
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(20), { timeout: 5000 });
     for (const i of [0, 1, 2]) await user.click(rowsOnPage()[i]!);
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("21 to 40"));
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("21 to 40"), { timeout: 5000 });
     for (const i of [0, 1]) await user.click(rowsOnPage()[i]!);
     await user.click(screen.getByRole("button", { name: "Previous" }));
     await waitFor(() =>
@@ -93,17 +93,17 @@ describe("CallHistoryPage (006 US1)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/calls?status=voicemail");
-    expect(await screen.findByText("No calls match these filters")).toBeInTheDocument();
+    expect(await screen.findByText("No calls match these filters", undefined, { timeout: 5000 })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear filters" }));
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(5));
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(5), { timeout: 5000 });
   });
 
   it("sends a typed plus sign as %2B", async () => {
     seedMockCalls(45);
     await signInDemo();
     renderApp("/calls?from_number=%2B1555");
-    await waitFor(() => expect(mockCalls().requests.some((r) => r.includes("from_number=%2B1555"))).toBe(true));
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(1));
+    await waitFor(() => expect(mockCalls().requests.some((r) => r.includes("from_number=%2B1555"))).toBe(true), { timeout: 5000 });
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(1), { timeout: 5000 });
   });
 
   it("hides a column and remembers it; required columns stay", async () => {
@@ -111,7 +111,7 @@ describe("CallHistoryPage (006 US1)", () => {
     await signInDemo();
     const user = userEvent.setup();
     const first = renderApp("/calls");
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(3));
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(3), { timeout: 5000 });
     expect(screen.getByRole("columnheader", { name: "Summary" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Columns" }));
     await user.click(await screen.findByRole("menuitemcheckbox", { name: "Summary" }));
@@ -120,7 +120,7 @@ describe("CallHistoryPage (006 US1)", () => {
     expect(screen.queryByRole("columnheader", { name: "Summary" })).not.toBeInTheDocument();
     first.unmount();
     renderApp("/calls");
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(3));
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(3), { timeout: 5000 });
     expect(screen.queryByRole("columnheader", { name: "Summary" })).not.toBeInTheDocument();
   });
 

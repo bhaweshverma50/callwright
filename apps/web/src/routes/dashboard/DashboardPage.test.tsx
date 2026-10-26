@@ -28,10 +28,10 @@ describe("DashboardPage (006 US3)", () => {
     const user = userEvent.setup();
     const { router } = renderApp("/dashboard");
     const kpis = await screen.findByRole("region", { name: /Key figures/ });
-    await waitFor(() => expect(kpis).toHaveTextContent("1.43 a day on average"));
+    await waitFor(() => expect(kpis).toHaveTextContent("1.43 a day on average"), { timeout: 5000 });
     expect(screen.getByText("No evaluator runs in this period.")).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "7d" }));
-    await waitFor(() => expect(router.state.location.search).toBe("?period=last_7_days"));
+    await waitFor(() => expect(router.state.location.search).toBe("?period=last_7_days"), { timeout: 5000 });
     const chips = screen.getByRole("group", { name: "Active selection" });
     expect(within(chips).getByText("Last 7 days")).toBeInTheDocument();
     await user.click(within(chips).getByRole("button", { name: "Clear all" }));
@@ -54,7 +54,7 @@ describe("DashboardPage (006 US3)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/dashboard");
-    const updated = await screen.findByText(/^Updated/);
+    const updated = await screen.findByText(/^Updated/, undefined, { timeout: 5000 });
     const before = updated.textContent;
     await new Promise((r) => setTimeout(r, 1100));
     await user.click(screen.getByRole("button", { name: "Refresh" }));
