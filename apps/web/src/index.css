@@ -310,6 +310,23 @@
     --border-angle: 360deg;
   }
 }
+/* An open, quiet line: a soft highlight sweeps along even bars (the delay steps per bar). */
+@keyframes bar-quiet {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleY(1);
+  }
+  12% {
+    opacity: 1;
+    transform: scaleY(1.7);
+  }
+  24% {
+    opacity: 0.35;
+    transform: scaleY(1);
+  }
+}
+
 @keyframes bar-breathe {
   0%,
   100% {
@@ -778,6 +795,10 @@
     transform-origin: left;
     transition: transform 200ms ease-out;
     pointer-events: none;
+  }
+  /* Back links lead with a 1rem chevron and a 0.25rem gap: underline the text only. */
+  .link-underline:has(> svg:first-child)::after {
+    inset-inline-start: 1.25rem;
   }
   .link-underline:hover::after,
   .link-underline:focus-visible::after {

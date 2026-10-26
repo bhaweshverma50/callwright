@@ -37,6 +37,8 @@ from worker.adapters.registry import (
 )
 from worker.audio import PronunciationTransform, scale_frame
 from worker.call_behavior import (
+    SILENCE_CHECK_INS,
+    SILENCE_GOODBYE,
     VAD_MIN_SILENCE_S,
     VOICEMAIL_INSTRUCTION,
     VOICEMAIL_TOOL_NAME,
@@ -388,7 +390,8 @@ class LiveCall:
                 self.tracker.begin_turn()
         elif ev.new_state == "speaking":
             if timer:
-                timer.activity()
+                if not timer.checking_in:  # its own silence check-ins do not reset the count
+                    timer.activity()
                 timer.busy_begin("agent")
             self.tracker.agent_audio_started(ev.created_at)
         elif ev.new_state in ("listening", "idle"):
@@ -653,7 +656,10 @@ class LiveCall:
 
         behavior = plan.behavior
         self.inactivity = InactivityTimer(
-            self.clock, behavior.end_on_silence_s, lambda: self._hang_up_soon("inactivity")
+            self.clock,
+            behavior.end_on_silence_s,
+            self._end_on_silence,
+            on_check_in=self._check_in_on_silence,
         )
         self.duration = DurationTimer(
             self.clock, behavior.max_duration_s, lambda: self._hang_up_soon("max_duration_reached")
@@ -750,6 +756,24 @@ class LiveCall:
                 close_on_disconnect=False,
             ),
         )
+
+    def _check_in_on_silence(self, stage: int) -> None:
+        if self.session is not None and self.control is not None and not self.control.ending:
+            self.session.generate_reply(instructions=SILENCE_CHECK_INS[stage])
+
+    def _end_on_silence(self) -> None:
+        """Say a short goodbye the caller cannot talk over, then hang up as ``inactivity``."""
+
+        async def run() -> None:
+            if self.session is not None:
+                with contextlib.suppress(Exception):
+                    handle = self.session.generate_reply(
+                        instructions=SILENCE_GOODBYE, allow_interruptions=False
+                    )
+                    await asyncio.wait_for(handle.wait_for_playout(), timeout=15)
+            self._hang_up_soon("inactivity")
+
+        self._spawn(run())
 
     def _report_machine(self) -> bool:
         if self.voicemail is None:

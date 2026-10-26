@@ -33,13 +33,28 @@ export interface WaveformProps {
   height?: number;
   /** Silence: every bar at the floor (the not-found view). */
   flat?: boolean;
+  /** An open line nobody is speaking on: even low bars with a soft highlight sweeping across. */
+  quiet?: boolean;
 }
 
 /** Voice waveform as SVG bars, scaled with transforms so animation stays on the compositor. */
-export function Waveform({ bars = 64, seed = 7, progress = 1, live = false, onConsole, className, height = 64, flat = false }: WaveformProps) {
+export function Waveform({
+  bars = 64,
+  seed = 7,
+  progress = 1,
+  live = false,
+  onConsole,
+  className,
+  height = 64,
+  flat = false,
+  quiet = false,
+}: WaveformProps) {
   const id = useId().replace(/:/g, "");
   const reduce = useReducedMotion();
-  const heights = useMemo(() => (flat ? Array.from({ length: bars }, () => 0.05) : waveHeights(bars, seed)), [bars, seed, flat]);
+  const heights = useMemo(
+    () => (flat ? Array.from({ length: bars }, () => 0.05) : quiet ? Array.from({ length: bars }, () => 0.16) : waveHeights(bars, seed)),
+    [bars, seed, flat, quiet],
+  );
   const gap = 2;
   const w = 3;
   const width = bars * (w + gap) - gap;
@@ -67,13 +82,21 @@ export function Waveform({ bars = 64, seed = 7, progress = 1, live = false, onCo
             rx={1.5}
             fill={played ? `url(#heat-${id})` : onConsole ? "var(--console-line)" : "var(--border-strong)"}
             style={
-              animateBars
-                ? {
-                    transformBox: "fill-box",
-                    transformOrigin: "center",
-                    animation: `bar-breathe ${700 + ((i * 137) % 600)}ms ease-in-out ${(i * 53) % 400}ms infinite`,
-                  }
-                : undefined
+              quiet
+                ? reduce
+                  ? { opacity: 0.55 }
+                  : {
+                      transformBox: "fill-box",
+                      transformOrigin: "center",
+                      animation: `bar-quiet 2600ms ease-in-out ${-2600 + i * 46}ms infinite`,
+                    }
+                : animateBars
+                  ? {
+                      transformBox: "fill-box",
+                      transformOrigin: "center",
+                      animation: `bar-breathe ${700 + ((i * 137) % 600)}ms ease-in-out ${(i * 53) % 400}ms infinite`,
+                    }
+                  : undefined
             }
           />
         );

@@ -494,7 +494,8 @@ function WaveRow({
   seed: number;
   reduce: boolean;
 }) {
-  const scale = reduce ? (active ? 1 : 0.35) : active ? 0.3 + 0.7 * Math.min(1, level * 1.4) : 0.22;
+  // Speaking: the wave follows the level. Quiet but connected: an even line with a soft sweep.
+  const scale = active && !reduce ? 0.3 + 0.7 * Math.min(1, level * 1.4) : 1;
   return (
     <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 rounded-control bg-surface-2 py-2 pl-3 pr-3">
       <div className="flex min-w-0 flex-col leading-tight">
@@ -506,7 +507,7 @@ function WaveRow({
         className={cn("h-8 origin-center", !reduce && "transition-transform duration-150 ease-out")}
         style={{ transform: `scaleY(${scale})` }}
       >
-        <Waveform bars={56} seed={seed} progress={active ? 1 : 0} live={active} height={32} flat={muted || idle} />
+        <Waveform bars={56} seed={seed} progress={active ? 1 : 0} live={active} height={32} flat={muted || idle} quiet={!active && !muted && !idle} />
       </div>
     </div>
   );

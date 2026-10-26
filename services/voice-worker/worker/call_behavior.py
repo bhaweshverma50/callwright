@@ -234,18 +234,57 @@ def behavior_from_config(
 # Timers (research R9)
 
 
+SILENCE_CHECK_INS = (
+    "The caller has gone quiet. In one short, friendly sentence in the language of the call, "
+    "check whether they are still there. Do not repeat what you said before.",
+    "The caller is still quiet. In one short sentence in the language of the call, say you can "
+    "wait a moment if they need it, and ask if they can hear you.",
+)
+SILENCE_GOODBYE = (
+    "The caller has not answered for a while. In one short sentence in the language of the call, "
+    "say you will end the call because you cannot hear them and that they are welcome to call "
+    "back. Then stop."
+)
+
+FIRST_CHECK_IN_S = 10.0
+"""Caller silence before the agent first checks the line (or a third of the window if shorter)."""
+
+
+def check_in_gaps(timeout_s: float) -> tuple[float, ...]:
+    """Silence gaps before each check-in and then the end: the first check-in after
+    ``FIRST_CHECK_IN_S`` (or a third of the window), the second halfway through the rest, the end
+    at ``timeout_s`` of caller silence (agent speech while checking in is not counted)."""
+    first = min(FIRST_CHECK_IN_S, timeout_s / 3)
+    rest = (timeout_s - first) / 2
+    return (first, rest, rest)
+
+
 class InactivityTimer:
     """Fires after ``timeout_s`` with neither party speaking and no pending work.
 
     Resets on caller speech start, agent speech start, keypad digit; is suspended while any work
     is pending (reply generation, tool run, either party speaking) and restarts when the last
     piece of work ends.
+
+    With ``on_check_in`` the silence is split by :func:`check_in_gaps`: the agent checks the line
+    twice (``on_check_in(0)``, ``on_check_in(1)``) before ``on_fire``. While checking in,
+    ``checking_in`` is true and the agent's own speech does not reset the countdown; only caller
+    activity does.
     """
 
-    def __init__(self, clock: Clock, timeout_s: float, on_fire: Callable[[], None]) -> None:
+    def __init__(
+        self,
+        clock: Clock,
+        timeout_s: float,
+        on_fire: Callable[[], None],
+        on_check_in: Callable[[int], None] | None = None,
+    ) -> None:
         self._clock = clock
         self._timeout = timeout_s
         self._on_fire = on_fire
+        self._on_check_in = on_check_in
+        self._gaps = check_in_gaps(timeout_s) if on_check_in is not None else (timeout_s,)
+        self._stage = 0
         self._handle: TimerHandle | None = None
         self._busy: set[str] = set()
         self._running = False
@@ -254,6 +293,10 @@ class InactivityTimer:
     @property
     def busy(self) -> frozenset[str]:
         return frozenset(self._busy)
+
+    @property
+    def checking_in(self) -> bool:
+        return self._stage > 0
 
     def start(self) -> None:
         self._running = True
@@ -265,6 +308,7 @@ class InactivityTimer:
 
     def activity(self) -> None:
         """A reset event (speech start, keypad digit)."""
+        self._stage = 0
         self._arm()
 
     def busy_begin(self, reason: str) -> None:
@@ -283,13 +327,20 @@ class InactivityTimer:
     def _arm(self) -> None:
         self._cancel()
         if self._running and not self._busy and not self.fired:
-            self._handle = self._clock.call_later(self._timeout, self._fire)
+            self._handle = self._clock.call_later(self._gaps[self._stage], self._fire)
 
     def _fire(self) -> None:
         self._handle = None
-        if self._running and not self._busy and not self.fired:
-            self.fired = True
-            self._on_fire()
+        if not self._running or self._busy or self.fired:
+            return
+        if self._stage < len(self._gaps) - 1 and self._on_check_in is not None:
+            stage = self._stage
+            self._stage += 1
+            self._arm()  # in case the check-in never speaks; its speech suspends this
+            self._on_check_in(stage)
+            return
+        self.fired = True
+        self._on_fire()
 
 
 class DurationTimer:

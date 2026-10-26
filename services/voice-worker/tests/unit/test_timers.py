@@ -98,3 +98,52 @@ def test_simultaneous_fire_first_writer_wins() -> None:
     run(clock, 30)
     assert inactivity.fired and duration.fired
     assert reasons == ["inactivity"]
+
+
+def test_silence_checks_in_twice_then_ends() -> None:
+    clock = VirtualClock()
+    events: list[tuple[str, float]] = []
+    timer = InactivityTimer(
+        clock,
+        30,
+        lambda: events.append(("end", clock.now())),
+        on_check_in=lambda stage: events.append((f"check-in {stage}", clock.now())),
+    )
+    timer.start()
+    run(clock, 10)
+    assert events == [("check-in 0", 10)] and timer.checking_in
+    # The check-in is spoken for 2 s: the agent is busy, and its speech does not reset the count.
+    timer.busy_begin("agent")
+    run(clock, 12)
+    timer.busy_end("agent")
+    run(clock, 22)
+    assert events[-1] == ("check-in 1", 22)
+    run(clock, 32)
+    assert events[-1] == ("end", 32) and timer.fired
+
+
+def test_caller_speech_after_a_check_in_starts_over() -> None:
+    clock = VirtualClock()
+    events: list[str] = []
+    timer = InactivityTimer(
+        clock,
+        30,
+        lambda: events.append("end"),
+        on_check_in=lambda s: events.append(f"check-in {s}"),
+    )
+    timer.start()
+    run(clock, 10)
+    timer.activity()  # the caller answers
+    assert not timer.checking_in
+    run(clock, 19.9)
+    assert events == ["check-in 0"]
+    run(clock, 20)
+    assert events == ["check-in 0", "check-in 0"]
+
+
+def test_short_silence_window_checks_in_at_a_third() -> None:
+    from worker.call_behavior import check_in_gaps
+
+    assert check_in_gaps(12) == (4.0, 4.0, 4.0)
+    assert check_in_gaps(30) == (10.0, 10.0, 10.0)
+    assert check_in_gaps(70) == (10.0, 30.0, 30.0)
