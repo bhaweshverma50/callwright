@@ -6,7 +6,7 @@ Last updated: 2026-10-26. Read this first when resuming.
 - `main` is pushed. Deployed 2026-10-26 (wave 3a live): Cloud Run API `316dbbb` (migrations through s006_0001 applied), VM jobs worker `31d6026`, VM voice worker `95a04c4`, VM LiveKit `v1.13.3`, web from `31d6026`. Web `df14244` (setup sequence until the first live call) is not deployed yet.
 - Live app: https://callwright-one.vercel.app (sign up with any email; auto-verified; $5 trial credit). Voice calls work from Test agent on the hosted site only (localhost has no LiveKit).
 - Specs 001 done, 002 done except the accessibility audit (T085), 003 live (105 of 118).
-- Wave 3b in progress (started 2026-10-26): `w3-flows` (spec 004) and `w3-channels` (spec 010) in worktrees next to the main clone; both migrations start from `s006_0001`, re-chain at merge.
+- Wave 3b: spec 010 channels merged 2026-10-26 (83 of 85; T067, T069 need a real SIP stack), not deployed; telephony is fake until `LIVEKIT_SIP_HOST` is set (see deploy/vm/README.md). Spec 004 flows still building in `../callwright-w3-flows`; its migration must be re-chained after `s010_0001`.
 - Wave 3a merged and deployed on 2026-10-26: spec 005 tools and knowledge (99 of 100 tasks; T092 quickstart run open) and spec 006 calls and analytics (95 of 95). Migrations chain s003_0002, s005_0001, s006_0001. Suites on the merge: API 1091, worker 385, web 145.
 
 ## Voice speed (done 2026-10-26, merged)
