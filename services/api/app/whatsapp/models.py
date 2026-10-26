@@ -8,6 +8,7 @@ from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+from app.phone_numbers.models import pg_enum
 
 
 class WhatsAppChannel(Base):
@@ -31,7 +32,10 @@ class WhatsAppChannel(Base):
     inbound_webhook_url: Mapped[str | None] = mapped_column(String)
     lk_inbound_trunk_id: Mapped[str | None] = mapped_column(String)
     lk_dispatch_rule_id: Mapped[str | None] = mapped_column(String)
-    status: Mapped[str] = mapped_column(String, default="setup_incomplete")
+    status: Mapped[str] = mapped_column(
+        pg_enum("whatsapp_channel_status", "setup_incomplete", "active", "error", "draining", "deleted"),
+        default="setup_incomplete",
+    )
     status_detail: Mapped[str | None] = mapped_column(String)
     credentials_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     calling_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -27,7 +27,7 @@ class InvalidValue(ValueError):
 
 def _possible(parsed: phonenumbers.PhoneNumber) -> bool:
     return bool(phonenumbers.is_possible_number(parsed)) and (
-        phonenumbers.region_code_for_number(parsed) is not None
+        phonenumbers.region_code_for_country_code(parsed.country_code) != "ZZ"
     )
 
 

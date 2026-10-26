@@ -10,8 +10,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.models import Agent
 from app.calls.models import Call
+from app.calls.ports import registry
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
@@ -49,15 +49,12 @@ def iso(value: datetime | None) -> str | None:
 
 
 async def agent_state(session: AsyncSession, agent_id: str) -> str:
-    """``published``, ``unpublished`` or ``missing`` (deleted or another workspace: RLS)."""
-    row = (
-        await session.execute(
-            select(Agent.pinned_version_id).where(Agent.id == agent_id, Agent.deleted_at.is_(None))
-        )
-    ).first()
-    if row is None:
+    """``published``, ``unpublished`` or ``missing`` (deleted or another workspace: RLS), through
+    003's agent versions port so channels and admission agree."""
+    port = registry.agent_versions
+    if not await port.agent_exists(session, agent_id):
         return "missing"
-    return "published" if row.pinned_version_id else "unpublished"
+    return "published" if await port.get_published(session, agent_id) is not None else "unpublished"
 
 
 async def require_published(session: AsyncSession, fields: dict[str, str | None]) -> None:

@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+from app.phone_numbers.models import pg_enum
 
 
 class DncEntry(Base):
@@ -19,7 +20,7 @@ class DncEntry(Base):
     workspace_id: Mapped[str] = mapped_column(String)
     e164: Mapped[str] = mapped_column(String)
     note: Mapped[str | None] = mapped_column(String(200))
-    source: Mapped[str] = mapped_column(String)
+    source: Mapped[str] = mapped_column(pg_enum("dnc_source", "manual", "csv_import"))
     import_batch_id: Mapped[str | None] = mapped_column(String)
     created_by_user_id: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -40,7 +41,9 @@ class OutboundPolicyDecision(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(String)
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    reason: Mapped[str] = mapped_column(String)
+    reason: Mapped[str] = mapped_column(
+        pg_enum("outbound_block_reason", "dnc_listed", "outside_calling_hours")
+    )
     to_number: Mapped[str] = mapped_column(String)
     from_number: Mapped[str] = mapped_column(String)
     phone_number_id: Mapped[str | None] = mapped_column(String)
@@ -50,6 +53,8 @@ class OutboundPolicyDecision(Base):
     dnc_entry_id: Mapped[str | None] = mapped_column(String)
     dnc_e164: Mapped[str | None] = mapped_column(String)
     recipient_timezones: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
-    timezone_source: Mapped[str | None] = mapped_column(String)
+    timezone_source: Mapped[str | None] = mapped_column(
+        pg_enum("timezone_source", "override", "number_region", "unknown")
+    )
     recipient_local_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     next_allowed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

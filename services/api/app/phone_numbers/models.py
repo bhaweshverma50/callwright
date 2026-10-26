@@ -6,12 +6,17 @@ from datetime import datetime
 from typing import Final
 
 from sqlalchemy import DateTime, Integer, String, func
-from sqlalchemy.dialects.postgresql import ARRAY, CIDR
+from sqlalchemy.dialects.postgresql import ARRAY, CIDR, ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
 
 ACTIVE_CALL_STATUSES: Final = ("queued", "ringing", "in_progress")
+
+
+def pg_enum(name: str, *values: str) -> ENUM:
+    """A Postgres enum created by the migration (never by the ORM)."""
+    return ENUM(*values, name=name, create_type=False)
 
 
 class PhoneNumber(Base):
@@ -23,7 +28,9 @@ class PhoneNumber(Base):
     label: Mapped[str] = mapped_column(String(100))
     termination_host: Mapped[str] = mapped_column(String)
     termination_port: Mapped[int | None] = mapped_column(Integer)
-    transport: Mapped[str] = mapped_column(String, default="auto")
+    transport: Mapped[str] = mapped_column(
+        pg_enum("sip_transport", "auto", "udp", "tcp", "tls"), default="auto"
+    )
     auth_username: Mapped[str | None] = mapped_column(String)
     # Name of the 001 secret holding the carrier password; never returned.
     auth_password_secret: Mapped[str | None] = mapped_column(String)
@@ -34,7 +41,10 @@ class PhoneNumber(Base):
     lk_inbound_trunk_id: Mapped[str | None] = mapped_column(String)
     lk_outbound_trunk_id: Mapped[str | None] = mapped_column(String)
     lk_dispatch_rule_id: Mapped[str | None] = mapped_column(String)
-    status: Mapped[str] = mapped_column(String, default="provisioning")
+    status: Mapped[str] = mapped_column(
+        pg_enum("channel_status", "provisioning", "active", "error", "draining", "deleted"),
+        default="provisioning",
+    )
     status_detail: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

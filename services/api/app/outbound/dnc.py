@@ -120,10 +120,11 @@ async def list_entries(
 ) -> dict[str, Any]:
     query = select(DncEntry)
     if number:
-        prefix = "".join(ch for ch in number if ch.isdigit() or ch == "+")
-        if prefix and not prefix.startswith("+"):
-            prefix = "+" + prefix
-        query = query.where(DncEntry.e164.startswith(prefix, autoescape=True))
+        digits = "".join(ch for ch in number if ch.isdigit())
+        if number.strip().startswith("+"):
+            query = query.where(DncEntry.e164.startswith("+" + digits, autoescape=True))
+        elif digits:
+            query = query.where(DncEntry.e164.contains(digits, autoescape=True))
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(

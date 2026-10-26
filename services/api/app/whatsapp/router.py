@@ -143,7 +143,9 @@ async def delete_caller_route(
 
 
 @public_router.get(
-    "/whatsapp/webhook", response_class=PlainTextResponse, responses={403: {"description": "Unknown verify token"}}
+    "/whatsapp/webhook",
+    response_class=PlainTextResponse,
+    responses={403: {"description": "Unknown verify token"}},
 )
 async def verify_whatsapp_webhook(
     request: Request,
