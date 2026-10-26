@@ -13,6 +13,7 @@ from worker.adapters.registry import AdapterRegistry, UnsupportedVendor
 from worker.audio import PronunciationEntry, PronunciationTransform
 from worker.flow import FlowRuntimeUnavailable, NullFlowRunner, register_flow_runner
 from worker.pipeline import (
+    VOICE_STYLE_INSTRUCTION,
     build_agent,
     build_components,
     build_session,
@@ -199,7 +200,7 @@ def test_single_prompt_agent_carries_plan_and_instructions() -> None:
     plan = plan_session(runtime, AdapterRegistry())
     agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
     assert agent.plan is plan
-    assert agent.instructions == plan.instructions
+    assert agent.instructions == f"{plan.instructions}\n\n{VOICE_STYLE_INSTRUCTION}"
 
 
 async def test_pronounce_meters_text_sent_to_tts() -> None:

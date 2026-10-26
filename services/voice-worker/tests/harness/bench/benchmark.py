@@ -172,6 +172,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--calls", type=int, help="live: number of calls (default: call set)")
     parser.add_argument("--concurrency", type=int, help="live: calls in parallel")
     parser.add_argument("--details", type=Path, help="live: write per-turn numbers (JSON)")
+    parser.add_argument(
+        "--vendors",
+        choices=["fake", "real"],
+        default="fake",
+        help="live: real vendor adapters (keys from the environment; no baseline gate)",
+    )
     args = parser.parse_args(argv)
     if args.mode == "live":
         return run_live_mode(args)
@@ -202,7 +208,10 @@ def run_live_mode(args: argparse.Namespace) -> int:
         api_secret=args.api_secret,
         calls=args.calls,
         concurrency=args.concurrency,
+        vendors=args.vendors,
     )
+    if args.vendors == "real":
+        baseline_path = None  # vendor latency varies; real runs report, the fake run gates
     report = asyncio.run(run_live(args.callset, options))
     callset = yaml.safe_load(args.callset.read_text())
     p50_budget = bool((callset.get("gate") or {}).get("p50", True))

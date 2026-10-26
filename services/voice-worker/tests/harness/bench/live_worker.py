@@ -1,8 +1,9 @@
-"""Job entry for the live benchmark: the production ``job_entry`` with fake vendors.
+"""Job entry for the live benchmark: the production ``job_entry`` with fake or real vendors.
 
-Runs in the agent server's job process. The fake vendor parameters (scripted transcripts,
-delay profile, seed) travel in the dispatch metadata under ``bench``, next to ``call_id``,
-exactly where the API puts ``call_id`` for a web call.
+Runs in the agent server's job process. The vendor parameters (fakes: scripted transcripts,
+delay profile, seed; real: the bench tool and slow-turn settings) travel in the dispatch
+metadata under ``bench``, next to ``call_id``, exactly where the API puts ``call_id`` for a
+web call.
 """
 
 from __future__ import annotations
@@ -15,5 +16,13 @@ from worker.entry import job_entry, parse_dispatch_metadata
 
 async def bench_job_entry(ctx: Any) -> None:
     metadata = parse_dispatch_metadata(getattr(ctx.job, "metadata", None))
-    params = LiveFakeParams.from_json(metadata.get("bench") or {})
-    await job_entry(ctx, live_registry(params))
+    bench = metadata.get("bench") or {}
+    if bench.get("vendors") == "real":
+        from tests.harness.bench.live_real import BenchToolProvider, RealBenchParams, real_registry
+        from worker.tools import register_tool_provider
+
+        params = RealBenchParams.from_json(bench)
+        register_tool_provider(BenchToolProvider(params.tool_delay_ms))
+        await job_entry(ctx, real_registry(params))
+        return
+    await job_entry(ctx, live_registry(LiveFakeParams.from_json(bench)))

@@ -96,6 +96,8 @@ mv worker.env.tmp worker.env
   line AZURE_OPENAI_ENDPOINT "$(secret_opt AZURE_OPENAI_ENDPOINT)"
   line AZURE_OPENAI_API_KEY "$(secret_opt AZURE_OPENAI_API_KEY)"
   line ELEVEN_API_KEY "$(secret_opt ELEVENLABS_API_KEY)"
+  # Priority processing cuts OpenAI time to first token by about 250 ms for twice the price.
+  line OPENAI_SERVICE_TIER "${CW_OPENAI_SERVICE_TIER:-priority}"
   for name in CARTESIA_API_KEY ASSEMBLYAI_API_KEY SARVAM_API_KEY FISHAUDIO_API_KEY \
     SANAS_API_KEY AI_COUSTICS_API_KEY; do
     line "$name" "$(secret_opt "$name")"

@@ -15,3 +15,11 @@ def temperature_kwargs(options: Mapping[str, Any]) -> dict[str, Any]:
     if temperature is None or float(temperature) == DEFAULT_TEMPERATURE:
         return {}
     return {"temperature": float(temperature)}
+
+
+def openai_kwargs(options: Mapping[str, Any], creds: Mapping[str, str]) -> dict[str, Any]:
+    """Keyword arguments shared by the OpenAI-hosted adapters (temperature, service tier)."""
+    kwargs = temperature_kwargs(options)
+    if creds.get("service_tier"):
+        kwargs["service_tier"] = creds["service_tier"]
+    return kwargs

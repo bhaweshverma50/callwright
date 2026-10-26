@@ -50,6 +50,9 @@ class WorkerSettings(BaseSettings):
     assemblyai_api_key: SecretStr = Field(SecretStr(""), alias="ASSEMBLYAI_API_KEY")
     sarvam_api_key: SecretStr = Field(SecretStr(""), alias="SARVAM_API_KEY")
     openai_api_key: SecretStr = Field(SecretStr(""), alias="OPENAI_API_KEY")
+    # OpenAI ``service_tier`` for agent replies (unset: the account default). ``priority`` cuts
+    # time to first token by about 200 to 300 ms for twice the token price.
+    openai_service_tier: str = Field("", alias="OPENAI_SERVICE_TIER")
     azure_openai_api_key: SecretStr = Field(SecretStr(""), alias="AZURE_OPENAI_API_KEY")
     azure_openai_endpoint: str = Field("", alias="AZURE_OPENAI_ENDPOINT")
     azure_openai_api_version: str = Field("", alias="AZURE_OPENAI_API_VERSION")
@@ -85,11 +88,15 @@ class WorkerSettings(BaseSettings):
         }
         if self.azure_openai_falls_back_to_openai():
             azure["fallback_openai_api_key"] = self.openai_api_key.get_secret_value()
+            azure["service_tier"] = self.openai_service_tier
         return {
             "deepgram": {"api_key": self.deepgram_api_key.get_secret_value()},
             "assemblyai": {"api_key": self.assemblyai_api_key.get_secret_value()},
             "sarvam": {"api_key": self.sarvam_api_key.get_secret_value()},
-            "openai": {"api_key": self.openai_api_key.get_secret_value()},
+            "openai": {
+                "api_key": self.openai_api_key.get_secret_value(),
+                "service_tier": self.openai_service_tier,
+            },
             "azure_openai": azure,
             "elevenlabs": {"api_key": self.eleven_api_key.get_secret_value()},
             "cartesia": {"api_key": self.cartesia_api_key.get_secret_value()},

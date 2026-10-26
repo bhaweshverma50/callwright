@@ -24,11 +24,12 @@ import json
 import logging
 import sys
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 from worker import telemetry
 from worker.adapters.registry import AdapterRegistry, Kind, UnsupportedLanguage, UnsupportedVendor
+from worker.audio import PronunciationTransform, scale_frame
 from worker.call_behavior import (
     VAD_MIN_SILENCE_S,
     VOICEMAIL_INSTRUCTION,
@@ -205,6 +206,9 @@ class LiveCall:
     async def _fail(self, diagnostic: str) -> None:
         """Before connection: the call never ran (``failed``, no billing)."""
         self.recorder.status("failed", disconnect_reason="error", diagnostic=diagnostic)
+        if self.session_span is not None:
+            self.session_span.set_attribute("call.diagnostic", diagnostic)
+            self.session_span.end()
         await self.poster.flush(with_usage=False)
         await self._close_room()
 
@@ -514,11 +518,19 @@ class LiveCall:
         self._wire(self.session, plan)
         self.poster.start()
 
+        # The session (agent track, STT socket, noise cancellation) and a fixed greeting's audio
+        # are ready while the caller is still joining, so the greeting plays as soon as the
+        # caller subscribes; agent audio output waits for that subscription.
+        greeting_audio = self._presynthesize_greeting(plan)
+        self.session_span = self._open_session_span(plan)
+        with telemetry.use_span(self.session_span):
+            await self._start_session()
         participant = await self._await_caller()
         if participant is None:
             return
         self.caller_identity = participant.identity
-        await self._connected(plan)
+        self.session.room_io.set_participant(participant.identity)
+        await self._connected(plan, greeting_audio)
         await self._ended.wait()
 
     async def run_safely(self) -> None:
@@ -553,7 +565,9 @@ class LiveCall:
             await self._fail("caller_never_joined")
             return None
 
-    async def _connected(self, plan: SessionPlan) -> None:
+    async def _connected(
+        self, plan: SessionPlan, greeting_audio: asyncio.Task[list[Any]] | None = None
+    ) -> None:
         assert self.components is not None and self.control is not None
         self.connected_at = time.monotonic()
         self.recorder.connected()
@@ -573,7 +587,24 @@ class LiveCall:
         if self.voicemail is not None:
             self.voicemail.answered()
 
-        self.session_span = telemetry.start_span(
+        assert self.inactivity and self.duration
+        self.inactivity.start()
+        self.duration.start()
+        with telemetry.use_span(self.session_span):
+            await self._start_background(plan)
+        if plan.start_speaker == "agent":
+            self.tracker.begin_turn(greeting=True)
+            if not plan.greeting:
+                self.session.generate_reply(instructions=GENERATED_GREETING_INSTRUCTION)
+                return
+            frames = await self._greeting_frames(greeting_audio)
+            if frames is None:
+                self.session.say(plan.greeting)
+            else:
+                self.session.say(plan.greeting, audio=_replay(frames))
+
+    def _open_session_span(self, plan: SessionPlan) -> Any:
+        return telemetry.start_span(
             "session",
             {
                 "call.channel": self.runtime.channel,
@@ -585,14 +616,40 @@ class LiveCall:
                 "turn_detection": plan.turn_detection,
             },
         )
-        # Session tasks inherit this context, so turn and tool spans nest under ``session``.
-        with telemetry.use_span(self.session_span):
-            await self._start_session(plan)
 
-    async def _start_session(self, plan: SessionPlan) -> None:
+    def _presynthesize_greeting(self, plan: SessionPlan) -> asyncio.Task[list[Any]] | None:
+        """Synthesise a fixed greeting in the background (pronunciation and gain applied, as
+        the TTS node would). None when the agent does not open with a fixed line."""
+        if plan.start_speaker != "agent" or not plan.greeting or self.components is None:
+            return None
+        text = PronunciationTransform(plan.pronunciation).apply(plan.greeting)
+        tts = self.components.tts
+
+        async def synthesize() -> list[Any]:
+            async with tts.synthesize(text) as stream:
+                frames = [ev.frame async for ev in stream]
+            self._on_tts_text(text)
+            if plan.tts_gain != 1.0:
+                frames = [scale_frame(f, plan.tts_gain) for f in frames]
+            return frames
+
+        return asyncio.ensure_future(synthesize())
+
+    async def _greeting_frames(self, task: asyncio.Task[list[Any]] | None) -> list[Any] | None:
+        """The pre-synthesised greeting, or None to fall back to live TTS."""
+        if task is None:
+            return None
+        try:
+            frames = await task
+        except Exception as exc:
+            log.warning("greeting pre-synthesis failed for %s: %s", self.call_id, exc)
+            return None
+        return frames or None
+
+    async def _start_session(self) -> None:
         from livekit.agents import room_io
 
-        assert self.components is not None and self.inactivity and self.duration
+        assert self.components is not None
         await self.session.start(
             agent=self.agent,
             room=self.ctx.room,
@@ -600,20 +657,9 @@ class LiveCall:
                 audio_input=room_io.AudioInputOptions(
                     noise_cancellation=self.components.nc, frame_size_ms=INPUT_FRAME_MS
                 ),
-                participant_identity=self.caller_identity or "",
                 close_on_disconnect=False,
             ),
         )
-        self.inactivity.start()
-        self.duration.start()
-        await self._start_background(plan)
-
-        if plan.start_speaker == "agent":
-            self.tracker.begin_turn(greeting=True)
-            if plan.greeting:
-                self.session.say(plan.greeting)
-            else:
-                self.session.generate_reply(instructions=GENERATED_GREETING_INSTRUCTION)
 
     def _report_machine(self) -> bool:
         if self.voicemail is None:
@@ -660,6 +706,11 @@ class LiveCall:
             self.recorder.warning(
                 "background_audio_unavailable", component="runtime", detail=str(exc)[:2000]
             )
+
+
+async def _replay(frames: list[Any]) -> AsyncIterator[Any]:
+    for frame in frames:
+        yield frame
 
 
 # --------------------------------------------------------------------------------------------

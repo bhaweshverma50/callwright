@@ -71,6 +71,13 @@ DEFAULT_CONTROLS: Mapping[str, tuple[float, float, float]] = {
     "tts.volume": (0.0, 2.0, 0.05),
 }
 
+# Appended to every single-prompt agent. Speech starts once the first sentence is complete, so
+# a short opening sentence is heard sooner; markup is read out literally by TTS.
+VOICE_STYLE_INSTRUCTION = (
+    "Your replies are spoken aloud on a live call. Start each reply with a short sentence, use "
+    "plain conversational sentences, and never use lists, markdown or emojis."
+)
+
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
 
 
@@ -401,8 +408,10 @@ def make_agent_class() -> type[Any]:
             extra_instructions: str = "",
             **kwargs: Any,
         ) -> None:
-            instructions = "\n\n".join(p for p in (plan.instructions, extra_instructions) if p)
-            super().__init__(instructions=instructions or " ", tools=list(tools), **kwargs)
+            instructions = "\n\n".join(
+                p for p in (plan.instructions, VOICE_STYLE_INSTRUCTION, extra_instructions) if p
+            )
+            super().__init__(instructions=instructions, tools=list(tools), **kwargs)
             self.plan = plan
             self._on_tts_text = on_tts_text
 

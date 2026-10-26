@@ -1,0 +1,30 @@
+# Real-vendor slow paths: a normal turn, a turn that needs a tool (check_availability sleeps
+# like a calendar lookup) and a turn whose LLM first token is held back (live_real.SlowTurnLLM),
+# to show the instant acknowledgement and the thinking backchannel at the caller.
+#   python -m tests.harness.bench.benchmark --mode live --vendors real \
+#     --callset tests/harness/bench/callset_real_slow.yaml --details /tmp/slow.json
+calls: 2
+seed: 20261018
+fixtures: fixtures/real_slow
+fixtures_source: elevenlabs
+gate: {p50: false}
+config_overrides:
+  prompt: >-
+    You are the friendly receptionist for Halcyon Dental in Bengaluru. You can book cleanings
+    and check-ups, and you tell callers the clinic opens at 9 am and closes at 6 pm, Monday to
+    Saturday. A cleaning costs 1,500 rupees and a check-up 800 rupees. Use check_availability
+    whenever the caller asks about free slots.
+  begin_message: "Hi, thanks for calling Halcyon Dental. How can I help you today?"
+  tts: {voice_id: EXAVITQu4vr4xnSDxMaL}
+profile: {}
+turns:
+  - "What time do you open tomorrow?"
+  - {say: "Can you check if you have any free slots on Friday?", quiet_s: 3.0}
+  - {say: "And what would a cleaning and a check-up cost together?", quiet_s: 3.0}
+live:
+  calls: 2
+  concurrency: 1
+  real:
+    tool_delay_ms: 1500
+    slow_marker: "cost together"
+    slow_delay_ms: 1500
