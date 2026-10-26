@@ -64,6 +64,7 @@ async def enqueue(job_name: str, *args: Any, **kwargs: Any) -> None:
 
 
 def _functions() -> list[Any]:
+    from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
     from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
@@ -75,10 +76,12 @@ def _functions() -> list[Any]:
         deliver_webhook,
         reap_stuck_calls,
         purge_webhook_deliveries,
+        purge_analytics_audit,
     ]
 
 
 def _crons() -> list[CronJob]:
+    from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls
     from app.webhooks_out.jobs import purge_webhook_deliveries
@@ -88,6 +91,7 @@ def _crons() -> list[CronJob]:
         # 003 R16: stuck calls every 15 s; deliveries older than 30 days once a day.
         cron(reap_stuck_calls, second={0, 15, 30, 45}, run_at_startup=False, unique=True),
         cron(purge_webhook_deliveries, hour={4}, minute={0}, run_at_startup=False),
+        cron(purge_analytics_audit, hour={4}, minute={30}, run_at_startup=False),
     ]
 
 

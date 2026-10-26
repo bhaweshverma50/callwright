@@ -143,16 +143,20 @@ async def compare_calls(
     with_call_id: Annotated[str | None, Query(pattern=r"^call_")] = None,
     with_simulation_run_id: Annotated[str | None, Query(pattern=r"^srun_")] = None,
 ) -> dict[str, Any]:
-    if (with_call_id is None) == (with_simulation_run_id is None):
-        raise validation_failed(
-            [
-                field_error(
-                    "/with_call_id", "required", "Give exactly one of with_call_id or with_simulation_run_id."
-                )
-            ]
-        )
     with tracer.start_as_current_span("calls.compare", attributes={"call_id": call_id}):
         async with _tx(request, principal) as session:
+            if await session.get(Call, call_id) is None:
+                raise ProblemError(404, "not_found", "Not found", "Call not found.")
+            if (with_call_id is None) == (with_simulation_run_id is None):
+                raise validation_failed(
+                    [
+                        field_error(
+                            "/with_call_id",
+                            "required",
+                            "Give exactly one of with_call_id or with_simulation_run_id.",
+                        )
+                    ]
+                )
             right_id = with_call_id
             if with_simulation_run_id is not None:
                 # 008 writes the run's output call with ``simulation_run_id``; resolve it directly.

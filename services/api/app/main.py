@@ -23,6 +23,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from app.agent_versions.router import router as agent_versions_router
 from app.agent_versions.runtime_port import register as register_agent_versions
 from app.agents.router import router as agents_router
+from app.analytics_chat.router import router as analytics_chat_router
 from app.auth.idp import build_idp
 from app.auth.router import router as auth_router
 from app.billing.router import router as billing_router
@@ -54,6 +55,7 @@ from app.recordings.router import router as recordings_router
 from app.sessions.router import router as sessions_router
 from app.templates.router import router as templates_router
 from app.usage.router import router as usage_router
+from app.voice_commands.router import router as voice_commands_router
 from app.voices.router import router as voices_router
 from app.webhooks_out.router import router as webhooks_out_router
 from app.workspaces.router import router as workspaces_router
@@ -209,6 +211,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         calls_read_router,
         recordings_router,
         dashboard_router,
+        analytics_chat_router,
+        voice_commands_router,
         call_events_router,
         webhooks_out_router,
         livekit_hooks_router,
