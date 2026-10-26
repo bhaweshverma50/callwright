@@ -31,11 +31,12 @@ async def validate_tool_ids(ctx: hooks.HookContext) -> hooks.HookIssues:
     return hooks.HookIssues(publish_blockers=blockers)
 
 
-async def resolve_tools(ctx: hooks.HookContext) -> list[dict[str, Any]]:
+async def resolve_tools(ctx: hooks.HookContext) -> list[dict[str, Any]] | None:
     ids = [t for t in ctx.config.get("tool_ids") or [] if isinstance(t, str)]
     if ctx.session is None or not ids:
-        return []
-    return [spec.model_dump(mode="json") for spec in await service.resolve_for_snapshot(ctx.session, ids)]
+        return None
+    specs = [spec.model_dump(mode="json") for spec in await service.resolve_for_snapshot(ctx.session, ids)]
+    return specs or None
 
 
 def register() -> None:

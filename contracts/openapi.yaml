@@ -496,6 +496,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/KnowledgeBase'
+        '404':
+          $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
     put:
       tags:
@@ -536,6 +538,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/KnowledgeBase'
+        '404':
+          $ref: '#/components/responses/Problem'
         '422':
           description: Unknown id, KB not attachable (`knowledge_base_not_ready`) or too many
           content:
@@ -1438,6 +1442,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchResponse'
+        '404':
+          $ref: '#/components/responses/Problem'
         '403':
           $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
@@ -1530,6 +1536,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KnowledgeBase'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
     delete:
       tags:
@@ -1565,6 +1577,8 @@ paths:
                     items:
                       type: string
                       pattern: ^agt_
+        '404':
+          $ref: '#/components/responses/Problem'
         '409':
           description: Attached and confirm is false (problem type `knowledge_base_in_use`, lists agents)
           content:
@@ -1600,6 +1614,8 @@ paths:
                       type: array
                       items:
                         $ref: '#/components/schemas/Document'
+        '404':
+          $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
     post:
       tags:
@@ -1643,6 +1659,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Document'
+        '404':
+          $ref: '#/components/responses/Problem'
         '409':
           description: Same content already in this KB (`duplicate_document`) or unacknowledged cross-KB
             duplicate (`duplicate_elsewhere`)
@@ -1739,6 +1757,8 @@ paths:
                           enum:
                           - same_content
                           - same_name
+        '404':
+          $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
   /knowledge-bases/{kb_id}/documents/{doc_id}:
     parameters:
@@ -1785,6 +1805,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Document'
+        '404':
+          $ref: '#/components/responses/Problem'
         '409':
           $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
@@ -1813,6 +1835,8 @@ paths:
                   expires_at:
                     type: string
                     format: date-time
+        '404':
+          $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
   /knowledge-bases/{kb_id}/search:
     parameters:
@@ -1847,6 +1871,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchResponse'
+        '404':
+          $ref: '#/components/responses/Problem'
         '429':
           $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge

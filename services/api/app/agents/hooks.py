@@ -137,7 +137,9 @@ async def run_validators(make_context: Callable[[str], HookContext]) -> HookIssu
 async def run_snapshot_resolvers(make_context: Callable[[str], HookContext]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for block, fn in sorted(_resolvers.items()):
-        out[block] = await _maybe_await(fn(make_context(block)))
+        value = await _maybe_await(fn(make_context(block)))
+        if value is not None:  # None: nothing to add (for example no tools attached)
+            out[block] = value
     return out
 
 

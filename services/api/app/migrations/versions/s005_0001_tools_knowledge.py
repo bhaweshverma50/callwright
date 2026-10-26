@@ -5,7 +5,8 @@
 * ``knowledge_bases``, ``kb_documents`` and ``kb_chunks`` with pgvector embeddings
   (``vector(1536)``) and an HNSW cosine index (m 16, ef_construction 64, research R14).
 * Same content may not be uploaded twice into one knowledge base (unique ``(kb_id, sha256)``).
-* RLS on every table, on ``app.workspace_id`` like every tenant table.
+* RLS on every table, on ``app.workspace_id`` like every tenant table; the ingestion job finds a
+  document's workspace through the security-definer ``kb_documents_workspace_for``.
 
 Revision ID: s005_0001
 Revises: s003_0002 (the integrator re-chains it at the wave 3 merge)
@@ -125,6 +126,16 @@ def upgrade() -> None:
           WITH CHECK (workspace_id = current_setting('app.workspace_id', true));
         GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO callwright_app;
         """)
+    # The ingestion job starts from a document id alone (no request workspace).
+    op.execute("""
+    CREATE FUNCTION kb_documents_workspace_for(p_doc_id text)
+    RETURNS text
+    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+      SELECT workspace_id FROM kb_documents WHERE id = p_doc_id
+    $$;
+    REVOKE ALL ON FUNCTION kb_documents_workspace_for(text) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION kb_documents_workspace_for(text) TO callwright_app;
+    """)
 
 
 def downgrade() -> None:
