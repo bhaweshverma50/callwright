@@ -12,7 +12,8 @@ describe("Channels page (T023, T082)", () => {
 
   it("uses the same name in the sidebar and the title, and starts with the import call to action", async () => {
     renderApp("/phone-numbers");
-    expect(await screen.findByRole("heading", { level: 1, name: "Channels" })).toBeInTheDocument();
+    // The first render also loads the lazy page chunk, which is slow on a busy machine.
+    expect(await screen.findByRole("heading", { level: 1, name: "Channels" }, { timeout: 10_000 })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Channels/ }).length).toBeGreaterThan(0);
     expect(await screen.findByRole("heading", { name: "Put an agent on a phone number" })).toBeInTheDocument();
     expect(screen.getByText("sip:sip.callwright.example")).toBeInTheDocument();
