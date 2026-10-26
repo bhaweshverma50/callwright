@@ -13,6 +13,7 @@ paths:
       operationId: createSttStreamCredential
       summary: Mint a short-lived, transcription-only credential for browser-direct streaming
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Credential (valid at most 60 seconds)
           headers:
@@ -45,6 +46,7 @@ paths:
               properties:
                 audio: { type: string, contentMediaType: audio/webm, description: "audio/webm or audio/ogg (opus)" }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Transcript
           content:
@@ -69,6 +71,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/InterpretRequest" }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Interpreted action, already validated against the route allowlist and the page's registered actions
           content:

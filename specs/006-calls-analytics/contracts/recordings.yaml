@@ -19,6 +19,7 @@ paths:
           description: inline for playback, attachment for download (filename call_<id>.<ext>).
           schema: { type: string, enum: [inline, attachment], default: inline }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Signed link
           headers:

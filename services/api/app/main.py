@@ -29,6 +29,7 @@ from app.billing.router import router as billing_router
 from app.billing.stripe_gateway import build_gateway
 from app.call_events.router import router as call_events_router
 from app.calls.catalog import load_catalog
+from app.calls.read_router import router as calls_read_router
 from app.calls.router import router as calls_router
 from app.core.auth import TokenVerifier
 from app.core.config import Settings, get_settings
@@ -48,6 +49,7 @@ from app.llms.client import LlmClient
 from app.llms.router import router as llms_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
+from app.recordings.router import router as recordings_router
 from app.sessions.router import router as sessions_router
 from app.templates.router import router as templates_router
 from app.usage.router import router as usage_router
@@ -203,6 +205,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         usage_router,
         sessions_router,
         calls_router,
+        calls_read_router,
+        recordings_router,
         call_events_router,
         webhooks_out_router,
         livekit_hooks_router,
