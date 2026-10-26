@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { seedMockCalls } from "../../mocks/calls/handlers";
 import { renderApp, signInDemo } from "../../test/render";
 import { rangeError, readSelection } from "./DashboardPage";
+import { setupSteps, toStepperSteps } from "./DashboardPlaceholder";
 
 describe("dashboard selection (FR-039, FR-040)", () => {
   it("applies a custom range only when both dates are valid and in order", () => {
@@ -12,6 +13,13 @@ describe("dashboard selection (FR-039, FR-040)", () => {
     expect(rangeError({ ...base, start: "2026-10-10", end: "2026-10-01" })).toBe("End date must be on or after start date.");
     expect(rangeError({ ...base, start: "2026-10-01", end: "2026-10-10" })).toBeNull();
     expect(readSelection(new URLSearchParams("period=bogus")).period).toBe("last_30_days");
+  });
+});
+
+describe("setup sequence", () => {
+  it("marks the agent step done once an agent exists and moves on to the test call", () => {
+    expect(toStepperSteps(setupSteps()).map((s) => s.status)).toEqual(["active", "pending", "pending"]);
+    expect(toStepperSteps(setupSteps({ hasAgent: true })).map((s) => s.status)).toEqual(["done", "active", "pending"]);
   });
 });
 

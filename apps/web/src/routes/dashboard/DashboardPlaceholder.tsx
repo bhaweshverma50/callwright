@@ -2,6 +2,7 @@ import { PhoneCall as PhoneCallDuo, PhoneList, Robot, type Icon as DuoIcon } fro
 import { Bot, Disc, Gauge, Mail, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
+import { useAgents } from "../../api/agents";
 import { useMe } from "../../api/queries";
 import {
   Badge,
@@ -29,10 +30,10 @@ interface SetupStep {
 }
 
 /**
- * The three steps to a first real call, in order. Each step's `done` comes from the feature that
- * owns it (002 agents, 003 test calls, 010 numbers); until those ship nothing reports done.
+ * The three steps to a first real call, in order. This view only shows before the first call, so
+ * the test call step is never done here; numbers (010) report nothing until channels ship.
  */
-export function setupSteps(): SetupStep[] {
+export function setupSteps({ hasAgent = false }: { hasAgent?: boolean } = {}): SetupStep[] {
   return [
     {
       title: "Create an agent",
@@ -40,7 +41,7 @@ export function setupSteps(): SetupStep[] {
       action: "Create an agent",
       to: "/agents/new",
       icon: Robot,
-      done: false,
+      done: hasAgent,
     },
     {
       title: "Make a test call",
@@ -84,7 +85,8 @@ export function toStepperSteps(steps: SetupStep[]): Step[] {
  */
 export function DashboardPlaceholder() {
   const { data: me, isPending } = useMe();
-  const steps = setupSteps();
+  const agents = useAgents("", null, 1);
+  const steps = setupSteps({ hasAgent: (agents.data?.total ?? 0) > 0 });
   const done = steps.filter((s) => s.done).length;
 
   return (
