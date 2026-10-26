@@ -5,7 +5,7 @@ import { BILLING_ITEM } from "./nav";
 import { AuthGuard } from "./AuthGuard";
 import { RouteError } from "./RouteError";
 import { Shell } from "./Shell";
-import { AgentRedirect, FlowBuilderPlaceholder } from "../routes/agents/agentRedirect";
+import { AgentRedirect } from "../routes/agents/agentRedirect";
 import { NotFound } from "../routes/NotFound";
 import { AreaPlaceholder, RecordPlaceholder } from "../routes/placeholders/AreaPlaceholder";
 import { Enterprise } from "../routes/public/Enterprise";
@@ -36,18 +36,20 @@ const AgentEditorPage = lazy(() => import("../routes/agents/editor/AgentEditorPa
 const CallHistoryPage = lazy(() => import("../routes/calls/CallHistoryPage").then((m) => ({ default: m.CallHistoryPage })));
 const ComparePage = lazy(() => import("../routes/calls/ComparePage").then((m) => ({ default: m.ComparePage })));
 const DashboardPage = lazy(() => import("../routes/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const NewFlowAgentPage = lazy(() => import("../routes/flows/NewFlowAgentPage").then((m) => ({ default: m.NewFlowAgentPage })));
+const FlowBuilderPage = lazy(() => import("../routes/flows/FlowBuilderPage").then((m) => ({ default: m.FlowBuilderPage })));
 const AgentTestingPage = lazy(() => import("../routes/agents/AgentTestingPage").then((m) => ({ default: m.AgentTestingPage })));
 
-/** Agent builder (spec 002, T024) and browser test calls (003). Flow building (004) is a placeholder here. */
+/** Agent builder (spec 002, T024), browser test calls (003) and the flow builder (004). */
 const agentRoutes: RouteObject[] = [
   { path: "agents", element: <AgentsListPage /> },
   { path: "agents/new", element: <NewAgentTypePage /> },
   { path: "agents/templates", element: <TemplatesPage /> },
   { path: "agents/new/single", element: <AgentEditorPage /> },
-  { path: "agents/new/flow", element: <FlowBuilderPlaceholder /> },
+  { path: "agents/new/flow", element: <NewFlowAgentPage /> },
   { path: "agents/:id", element: <AgentRedirect /> },
   { path: "agents/:id/edit", element: <AgentEditorPage /> },
-  { path: "agents/:id/flow", element: <FlowBuilderPlaceholder /> },
+  { path: "agents/:id/flow", element: <FlowBuilderPage /> },
   { path: "agents/:id/testing", element: <AgentTestingPage /> },
 ];
 

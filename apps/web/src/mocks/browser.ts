@@ -2,13 +2,14 @@ import { setupWorker } from "msw/browser";
 import { handlers } from "./handlers";
 import { agentHandlers } from "./agents/handlers";
 import { callHandlers } from "./calls/handlers";
+import { flowHandlers } from "./flows";
 import { toolHandlers } from "./tools";
 import { enablePersistence } from "./db";
 
 /** Starts the in-browser mock API. Imported dynamically only when VITE_API_MOCKS=true. */
 export async function startMocks() {
   enablePersistence();
-  const worker = setupWorker(...handlers, ...agentHandlers, ...callHandlers, ...toolHandlers);
+  const worker = setupWorker(...handlers, ...agentHandlers, ...callHandlers, ...toolHandlers, ...flowHandlers);
   await worker.start({
     onUnhandledRequest: "bypass",
     quiet: true,

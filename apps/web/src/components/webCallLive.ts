@@ -55,6 +55,9 @@ const ACTIVITY: Record<string, AgentActivity> = {
   speaking: "speaking",
 };
 
+/** DOM event carrying `{topic, payload}` for room data on topics the panel does not handle. */
+export const ROOM_DATA_EVENT = "cw:room-data";
+
 export function createLiveDriver(): WebCallDriver {
   return {
     simulated: false,
@@ -113,7 +116,8 @@ export function createLiveDriver(): WebCallDriver {
         if (p.isAgent && state) listener.activity(ACTIVITY[state] ?? "listening");
       });
       room.on(lk.RoomEvent.DataReceived, (payload, _p, _kind, topic) => {
-        if (topic !== LATENCY_TOPIC) return;
+        // Other topics (004's callwright.flow node announcements) go to whoever listens.
+        if (topic !== LATENCY_TOPIC) return void window.dispatchEvent(new CustomEvent(ROOM_DATA_EVENT, { detail: { topic, payload } }));
         const m = parseLatencyMessage(payload);
         if (m) listener.latency(m.turnId, m.latency);
       });

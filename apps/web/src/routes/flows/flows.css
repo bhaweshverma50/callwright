@@ -1,0 +1,432 @@
+/*
+  Flow builder canvas (spec 004). React Flow's base styles plus the Callwright look: node cards
+  are work surfaces (12px radius, 1px line), selection lifts a card and rings it in cobalt (no
+  side stripes), the active node of a test call pulses with the shared halo, and assistant
+  proposals read as a diff (green new, red removed, cobalt changed).
+*/
+@import "@xyflow/react/dist/base.css";
+
+.flow-canvas {
+  --fnode-tint: var(--accent);
+  --dot: color-mix(in oklab, var(--border-strong) 70%, transparent);
+  background:
+    radial-gradient(120% 90% at 0% 0%, var(--glow-a), transparent 55%), radial-gradient(90% 80% at 100% 100%, var(--glow-b), transparent 60%),
+    var(--surface-2);
+}
+.flow-canvas .react-flow__background {
+  opacity: 0.9;
+}
+.flow-canvas .react-flow__pane {
+  cursor: grab;
+}
+.flow-canvas .react-flow__pane.dragging {
+  cursor: grabbing;
+}
+.flow-canvas .react-flow__node {
+  border-radius: 12px;
+}
+.flow-canvas .react-flow__node:focus-visible {
+  outline: none;
+}
+.flow-canvas .react-flow__node:focus-visible .fnode {
+  box-shadow:
+    0 0 0 2px var(--ring),
+    var(--shadow-2);
+}
+.flow-canvas .react-flow__selection {
+  border: 1px solid color-mix(in oklab, var(--accent) 70%, transparent);
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  border-radius: 8px;
+}
+
+/* Node type tints ------------------------------------------------------------------------- */
+[data-ntype="start"] {
+  --fnode-tint: var(--violet);
+}
+[data-ntype="agent"] {
+  --fnode-tint: var(--accent);
+}
+[data-ntype="task"] {
+  --fnode-tint: #6d4cf0;
+}
+[data-ntype="condition"] {
+  --fnode-tint: #d9822b;
+}
+[data-ntype="say"] {
+  --fnode-tint: var(--heat-2);
+}
+[data-ntype="extract_variable"] {
+  --fnode-tint: #0f8f8a;
+}
+[data-ntype="webhook"] {
+  --fnode-tint: #2b7fd9;
+}
+[data-ntype="transfer"] {
+  --fnode-tint: #c2481b;
+}
+[data-ntype="end"] {
+  --fnode-tint: var(--text-2);
+}
+:root[data-theme="dark"] [data-ntype="task"] {
+  --fnode-tint: #9b85ff;
+}
+:root[data-theme="dark"] [data-ntype="condition"] {
+  --fnode-tint: #f2a65a;
+}
+:root[data-theme="dark"] [data-ntype="extract_variable"] {
+  --fnode-tint: #3cc7bf;
+}
+:root[data-theme="dark"] [data-ntype="webhook"] {
+  --fnode-tint: #6fb1ff;
+}
+:root[data-theme="dark"] [data-ntype="transfer"] {
+  --fnode-tint: #ff8a5c;
+}
+
+/* Node card -------------------------------------------------------------------------------- */
+.fnode {
+  position: relative;
+  width: 248px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--fnode-tint) 9%, transparent), transparent 46px), var(--surface);
+  box-shadow: var(--shadow-1);
+  transition:
+    box-shadow var(--state-duration) var(--ease-out-soft),
+    border-color 200ms ease,
+    transform var(--state-duration) var(--ease-out-soft),
+    opacity 200ms ease;
+}
+.react-flow__node:hover .fnode {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-2);
+}
+.fnode[data-selected] {
+  border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent),
+    var(--shadow-2);
+  transform: translateY(-1px);
+}
+.fnode-chip {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--fnode-tint);
+  background: color-mix(in oklab, var(--fnode-tint) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--fnode-tint) 26%, transparent);
+}
+[data-ntype="start"] .fnode-chip {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--violet));
+  box-shadow: 0 6px 14px -6px rgb(122 60 255 / 0.6);
+}
+.fnode-chip svg {
+  width: 16px;
+  height: 16px;
+}
+.fnode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+.fnode-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.fnode-badge-error {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+.fnode-badge-warning {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+.fnode-diff {
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+/* Outcome rows, each with its handle on the card's right edge. */
+.fnode-outs {
+  border-top: 1px solid var(--border);
+  padding: 4px 0;
+}
+.fnode-out {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 26px;
+  padding: 0 16px 0 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.fnode-out[data-tone="success"] {
+  color: var(--success-text);
+}
+.fnode-out[data-tone="danger"] {
+  color: var(--danger-text);
+}
+.fnode-out[data-tone="neutral"] {
+  color: var(--text-3);
+}
+
+/* Handles: 12px dots sitting exactly on the card edge. */
+.flow-canvas .fnode-handle {
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+  background: var(--border-strong);
+  box-shadow: 0 0 0 1px var(--border-strong);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+.flow-canvas .fnode-handle.react-flow__handle-left {
+  left: -1px;
+  transform: translate(-50%, -50%);
+}
+.flow-canvas .fnode-handle.react-flow__handle-right {
+  right: -1px;
+  transform: translate(50%, -50%);
+}
+.flow-canvas .fnode-handle:hover,
+.flow-canvas .fnode-handle.connectingfrom,
+.flow-canvas .fnode-handle.valid {
+  background: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 0 5px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+.fnode[data-selected] .fnode-handle,
+.react-flow__node:hover .fnode-handle {
+  background: color-mix(in oklab, var(--fnode-tint) 70%, var(--border-strong));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--fnode-tint) 70%, var(--border-strong));
+}
+.fnode-out[data-tone="success"] .fnode-handle {
+  background: var(--success);
+  box-shadow: 0 0 0 1px var(--success);
+}
+.fnode-out[data-tone="danger"] .fnode-handle {
+  background: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+/* Live test call: the active node pulses, visited nodes keep a soft tint. */
+.fnode[data-visited] {
+  border-color: color-mix(in oklab, var(--violet) 35%, var(--border));
+}
+.fnode[data-active] {
+  border-color: color-mix(in oklab, var(--violet) 70%, var(--border));
+  box-shadow:
+    0 0 0 3px var(--halo-soft),
+    var(--shadow-2);
+}
+.fnode[data-active]::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 var(--halo);
+  animation: fnode-live var(--halo-pulse-duration) var(--ease-out-soft) infinite;
+}
+@keyframes fnode-live {
+  0% {
+    box-shadow: 0 0 0 0 var(--halo);
+  }
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+/* Assistant proposal diff. */
+.fnode[data-diff="added"] {
+  border-color: color-mix(in oklab, var(--success) 70%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--success) 20%, transparent),
+    var(--shadow-2);
+}
+.fnode[data-diff="added"] .fnode-diff {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+.fnode[data-diff="removed"] {
+  opacity: 0.55;
+  border-style: dashed;
+  border-color: var(--danger);
+}
+.fnode[data-diff="removed"] .fnode-diff {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+.fnode[data-diff="removed"] p {
+  text-decoration: line-through;
+}
+.fnode[data-diff="updated"] {
+  border-color: color-mix(in oklab, var(--accent) 70%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent),
+    var(--shadow-1);
+}
+.fnode[data-diff="updated"] .fnode-diff {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Edges ------------------------------------------------------------------------------------- */
+.flow-canvas .fedge {
+  stroke: color-mix(in oklab, var(--text-3) 55%, transparent);
+  stroke-width: 1.6;
+  transition:
+    stroke 200ms ease,
+    stroke-width 200ms ease;
+}
+.flow-canvas .react-flow__edge:hover .fedge {
+  stroke: var(--text-2);
+}
+.flow-canvas .fedge[data-state="selected"] {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.flow-canvas .fedge[data-state="error"] {
+  stroke: var(--danger);
+}
+.flow-canvas .fedge[data-state="traversed"] {
+  stroke: var(--violet);
+  stroke-width: 2.2;
+  stroke-dasharray: 6 5;
+  animation: flow 1.2s linear infinite;
+}
+.flow-canvas .fedge[data-state="added"] {
+  stroke: var(--success);
+  stroke-width: 2.2;
+}
+.flow-canvas .fedge[data-state="removed"] {
+  stroke: var(--danger);
+  stroke-dasharray: 5 5;
+  opacity: 0.7;
+}
+.flow-canvas .fedge[data-state="updated"] {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.flow-canvas .react-flow__connectionline path,
+.flow-canvas .react-flow__connection-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+.flow-canvas .react-flow__arrowhead polyline {
+  fill: currentColor;
+}
+
+.fedge-pill {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 190px;
+  height: 24px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: var(--shadow-1);
+  pointer-events: all;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+.fedge-pill svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+.fedge-pill:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-2);
+}
+.fedge-pill[data-state="selected"] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
+}
+.fedge-pill[data-state="selected"] svg {
+  color: var(--accent-text);
+}
+.fedge-pill[data-missing],
+.fedge-pill[data-state="error"] {
+  border-color: color-mix(in oklab, var(--warning) 55%, var(--border));
+  color: var(--warning-text);
+  background: var(--warning-soft);
+}
+.fedge-pill[data-state="error"] svg {
+  color: var(--danger-text);
+}
+.fedge-pill[data-state="added"] {
+  border-color: var(--success);
+  color: var(--success-text);
+  background: var(--success-soft);
+}
+.fedge-pill[data-state="removed"] {
+  border-color: var(--danger);
+  color: var(--danger-text);
+  text-decoration: line-through;
+}
+.fedge-pill[data-state="traversed"] {
+  border-color: color-mix(in oklab, var(--violet) 55%, var(--border));
+  color: var(--violet);
+}
+
+/* Palette tiles ------------------------------------------------------------------------------ */
+.palette-tile {
+  --fnode-tint: var(--accent);
+}
+.palette-tile .fnode-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fnode[data-active]::after,
+  .flow-canvas .fedge[data-state="traversed"] {
+    animation: none;
+  }
+  .fnode,
+  .fedge-pill {
+    transition: none;
+  }
+}

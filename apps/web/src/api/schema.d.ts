@@ -4339,7 +4339,7 @@ export interface components {
                 x: number;
                 y: number;
             };
-            /** @description Shape depends on type; drafts may hold incomplete configs, so only the type-specific schema below is applied when validating for publish. */
+            /** @description Shape depends on type; drafts may hold incomplete configs, so only the type-specific schema below is applied when validating for publish. Listed with anyOf because a draft config can match several of them. */
             config: components["schemas"]["StartConfig"] | components["schemas"]["AgentConfigNode"] | components["schemas"]["TaskConfig"] | components["schemas"]["ConditionConfig"] | components["schemas"]["SayConfig"] | components["schemas"]["ExtractConfig"] | components["schemas"]["WebhookConfig"] | components["schemas"]["TransferConfig"] | components["schemas"]["EndConfig"];
         };
         /** start */
