@@ -20,6 +20,7 @@ paths:
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
         - {name: status, in: query, schema: {$ref: '#/components/schemas/PhoneNumberStatus'}}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Numbers in this workspace (deleted excluded), newest first
           content:
@@ -35,6 +36,7 @@ paths:
                   page: {type: integer}
                   page_size: {type: integer}
                   total_pages: {type: integer}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
     post:
       operationId: importPhoneNumber
       summary: Import a bring-your-own SIP number and set up routing
@@ -51,6 +53,7 @@ paths:
                   label: Main Office Line
                   termination_address: trunk.example-carrier.com:5060
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '201':
           description: >
             Saved. `status` is `active` when routing setup succeeded, or `error` with
@@ -67,21 +70,27 @@ paths:
           description: Validation failed (E.164, termination address, CIDR, agent not published)
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/ValidationProblem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
   /phone-numbers/sip-settings:
     get:
       operationId: getSipSettings
       summary: Addresses to configure at the carrier
       tags: [phone-numbers]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Origination settings
           content:
             application/json:
               schema:
                 type: object
-                required: [origination_uri, direct_uri_template, transports]
+                required: [origination_uri, direct_uri_template, transports, telephony_enabled]
                 properties:
+                  telephony_enabled:
+                    type: boolean
+                    description: >
+                      False when this deployment has no SIP service yet: numbers can be saved and
+                      routed, but no call reaches them and outbound calls are refused.
                   origination_uri:
                     type: string
                     examples: ['sip:abc123.sip.livekit.cloud']
@@ -98,6 +107,7 @@ paths:
       operationId: getPhoneNumber
       tags: [phone-numbers]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Number
           content:
@@ -118,6 +128,7 @@ paths:
           application/json:
             schema: {$ref: '#/components/schemas/PhoneNumberUpdate'}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Updated number
           content:
@@ -125,14 +136,14 @@ paths:
               schema: {$ref: '#/components/schemas/PhoneNumber'}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
-          description: Number is `draining`
+          description: Number is `draining` (`number-draining`) or still `provisioning`
           content:
             application/problem+json:
               schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '422':
           content:
             application/problem+json:
-              schema: {$ref: '#/components/schemas/ValidationProblem'}
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
           description: Validation failed
         '502':
           description: Media platform update failed; nothing changed (`routing-update-failed`)
@@ -148,6 +159,7 @@ paths:
           description: If calls are active, stop new calls now and delete after the last one ends.
           schema: {type: boolean, default: false}
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '202':
           description: Number is draining; it will be deleted when idle
           content:
@@ -156,6 +168,11 @@ paths:
         '204':
           description: Deleted (no active calls)
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '502':
+          description: The dispatch rule could not be removed (`routing-update-failed`); nothing changed
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
         '409':
           description: '`number-has-active-calls`; body includes `active_call_count`'
           content:
@@ -168,11 +185,13 @@ paths:
       operationId: retryPhoneNumberProvisioning
       tags: [phone-numbers]
       responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '200':
           description: Result of the retry (`active` or `error` with detail)
           content:
             application/json:
               schema: {$ref: '#/components/schemas/PhoneNumber'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
           description: Number is not in `error`
           content:
@@ -321,19 +340,6 @@ components:
         metadata:
           type: object
           additionalProperties: true
-    ValidationProblem:
-      allOf:
-        - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
-        - type: object
-          properties:
-            errors:
-              type: array
-              items:
-                type: object
-                required: [field, message]
-                properties:
-                  field: {type: string}
-                  message: {type: string}
     ActiveCallsProblem:
       allOf:
         - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'

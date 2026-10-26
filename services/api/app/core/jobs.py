@@ -41,12 +41,16 @@ async def startup(ctx: dict[str, Any]) -> None:
     # Voice runtime (003): jobs enqueue follow-ups on the worker's own pool.
     ctx["jobs"] = ArqJobQueue(pool=ctx["redis"])
     ctx["livekit"] = build_livekit(settings)
+    # Channels (010): the drain cron removes SIP objects of deleted numbers and channels.
+    from app.core.sip import build_sip
+
+    ctx["sip"] = build_sip(settings)
     ctx["adapter_catalog"] = load_catalog(settings.adapter_catalog_path)
     ctx["http"] = httpx.AsyncClient(follow_redirects=False)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
-    for key in ("http", "livekit"):
+    for key in ("http", "livekit", "sip"):
         client = ctx.get(key)
         if client is not None:
             await client.aclose()
@@ -68,9 +72,11 @@ def _functions() -> list[Any]:
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
     from app.knowledge.jobs import ingest_document
+    from app.phone_numbers.jobs import drain_channels
     from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
 
     return [
+        drain_channels,
         reconcile_balances,
         run_pipeline,
         start_recording,
@@ -86,6 +92,7 @@ def _crons() -> list[CronJob]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls
+    from app.phone_numbers.jobs import drain_channels
     from app.webhooks_out.jobs import purge_webhook_deliveries
 
     return [
@@ -94,6 +101,8 @@ def _crons() -> list[CronJob]:
         cron(reap_stuck_calls, second={0, 15, 30, 45}, run_at_startup=False, unique=True),
         cron(purge_webhook_deliveries, hour={4}, minute={0}, run_at_startup=False),
         cron(purge_analytics_audit, hour={4}, minute={30}, run_at_startup=False),
+        # 010 R8: draining numbers and WhatsApp channels are removed once idle (every 30 s).
+        cron(drain_channels, second={5, 35}, run_at_startup=False, unique=True),
     ]
 
 

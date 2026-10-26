@@ -4,3 +4,4 @@
 003-voice-runtime
 005-tools-knowledge
 006-calls-analytics
+010-channels

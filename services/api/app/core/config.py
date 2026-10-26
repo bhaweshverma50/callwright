@@ -187,6 +187,24 @@ class Settings(BaseSettings):
     copilot_stt_provider: Literal["deepgram", "fake"] = "deepgram"
     deepgram_api_key: SecretStr | None = None
     recording_url_ttl_s: int = Field(default=600, ge=30, le=600)
+    # --- 010 channels -----------------------------------------------------------------------
+    # LIVEKIT_SIP_HOST is the address carriers send calls to (the self-hosted livekit-sip
+    # service or a LiveKit Cloud project SIP host). SIP_MODE=auto talks to LiveKit's SIP API
+    # only when that host is set and LIVEKIT_MODE=live; otherwise trunks and dispatch rules are
+    # kept in memory (tests, offline development, deployments without telephony).
+    livekit_sip_host: str | None = None
+    sip_mode: Literal["auto", "live", "fake"] = "auto"
+    sip_api_timeout_s: float = Field(5.0, gt=0, le=30)
+    # WhatsApp Cloud API. WHATSAPP_GRAPH_MODE=auto calls Meta only when telephony is live.
+    whatsapp_graph_base_url: str = "https://graph.facebook.com"
+    whatsapp_graph_api_version: str = Field("v23.0", pattern=r"^v?\d+\.\d+$")
+    whatsapp_graph_mode: Literal["auto", "live", "fake"] = "auto"
+    whatsapp_graph_timeout_s: float = Field(10.0, gt=0, le=30)
+    # Outbound calls: per-workspace token bucket before admission (research R7).
+    outbound_rate_per_second: float = Field(10.0, gt=0)
+    outbound_rate_burst: int = Field(20, ge=1)
+    # The call_inbound request to an operator's endpoint during the ring phase (R13).
+    inbound_webhook_timeout_s: float = Field(3.0, gt=0, le=10)
 
     @field_validator("env", mode="before")
     @classmethod
@@ -288,6 +306,19 @@ class Settings(BaseSettings):
     def livekit_client_url(self) -> str:
         """WebSocket URL handed to browsers (defaults to the server URL)."""
         return self.livekit_public_url or self.livekit_url
+
+    @property
+    def sip_live(self) -> bool:
+        """True when trunks and dispatch rules go to LiveKit's SIP API (010)."""
+        if self.sip_mode == "auto":
+            return self.livekit_mode == "live" and bool(self.livekit_sip_host)
+        return self.sip_mode == "live"
+
+    @property
+    def whatsapp_graph_live(self) -> bool:
+        if self.whatsapp_graph_mode == "auto":
+            return self.sip_live
+        return self.whatsapp_graph_mode == "live"
 
 
 @lru_cache(maxsize=1)

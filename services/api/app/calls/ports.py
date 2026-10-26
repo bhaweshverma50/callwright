@@ -70,6 +70,12 @@ class InboundRoute:
     variables: Mapping[str, str] = field(default_factory=dict)
     phone_number_id: str | None = None
     whatsapp_channel_id: str | None = None
+    # 010: reply metadata from the inbound webhook, the routing outcome for ``calls.route_detail``
+    # and a decline by that webhook (admitted as a failed, never billed call).
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    route_detail: str | None = None
+    declined: bool = False
+    call_id: str | None = None  # the id already sent to the inbound webhook, if any
 
 
 class InboundRouter(Protocol):
