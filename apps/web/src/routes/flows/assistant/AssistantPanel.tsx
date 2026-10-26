@@ -185,12 +185,18 @@ export function AssistantPanel({
                 submit();
               }
             }}
-            className="resize-none pr-12"
+            className="block resize-none pr-12"
           />
+          {/* The textarea is a block (no inline baseline gap under it), so the button sits 8px in
+              from both the bottom and the right edge; pr-12 keeps text clear of it. Disabled reads
+              as a plain grey disc rather than a faded gradient. */}
           <IconButton
             label="Send"
             type="submit"
-            className="grad-action absolute bottom-2 right-2 size-8 rounded-full text-white hover:text-white disabled:opacity-40"
+            className={cn(
+              "grad-action absolute bottom-2 right-2 size-8 rounded-full text-white shadow-[0_6px_14px_-6px_rgb(91_60_244/0.7)] hover:text-white hover:brightness-110",
+              "disabled:bg-none disabled:bg-surface-3 disabled:text-fg-3 disabled:shadow-none disabled:hover:brightness-100",
+            )}
             disabled={!text.trim() || busy}
           >
             <ArrowUp className="size-4" aria-hidden />
