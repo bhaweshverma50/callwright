@@ -3,7 +3,7 @@ import { FlowArrow } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, CircleAlert, History, ListChecks, Play, RefreshCw, Rocket, Save, Settings2, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { agentKeys, useAgent, useLlmCatalog, useVoiceCatalog, type AgentDetail, type LlmCatalog, type VoiceCatalog } from "../../api/agents";
 import { isApiError } from "../../api/errors";
@@ -13,6 +13,7 @@ import {
   useFlowByAgent,
   type ConfigByNode,
   type Flow,
+  type FlowEdge,
   type FlowNode,
   type StartConfig,
   type ValidationIssue,
@@ -50,6 +51,7 @@ export function FlowBuilderPage() {
   const flow = useFlowByAgent(valid ? id : undefined);
   const llm = useLlmCatalog();
   const voice = useVoiceCatalog();
+  const catalogs = useMemo(() => (llm.data && voice.data ? { llm: llm.data, voice: voice.data } : null), [llm.data, voice.data]);
   if (!valid) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
   const failed = agent.error ?? flow.error;
   if (failed) {
@@ -60,8 +62,8 @@ export function FlowBuilderPage() {
       </EmptyState>
     );
   }
-  if (!agent.data || !flow.data || !llm.data || !voice.data) return <BuilderSkeleton />;
-  return <Builder key={flow.data.id} agent={agent.data} initial={flow.data} catalogs={{ llm: llm.data, voice: voice.data }} />;
+  if (!agent.data || !flow.data || !catalogs) return <BuilderSkeleton />;
+  return <Builder key={flow.data.id} agent={agent.data} initial={flow.data} catalogs={catalogs} />;
 }
 
 type SideTab = "assistant" | "test" | "problems";
@@ -152,52 +154,83 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
   const startNode = draft.graph.nodes.find((n) => n.type === "start") as FlowNode<"start"> | undefined;
   const variables = useMemo(() => variableNames(draft.graph.nodes), [draft.graph.nodes]);
 
+  // Stable handlers for the canvas and the memoised side panels: a canvas drag or pan must not
+  // hand them new props (that re-rendered every form on every frame of a drag).
+  const { setGraph, undo } = draft;
+  const graphRef = useRef(draft.graph);
+  graphRef.current = draft.graph;
+  const llmCatalog = catalogs.llm;
+  const modelLabel = useCallback(
+    (provider: string, model: string) => llmCatalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model)?.label ?? model,
+    [llmCatalog],
+  );
+  const closePanel = useCallback(() => setSelection(EMPTY_SELECTION), []);
+  const selectEdge = useCallback((edgeId: string) => setSelection({ nodes: [], edges: [edgeId] }), []);
+  const deleteNode = useCallback(
+    (node: FlowNode) => {
+      setGraph((g) => removeItems(g, new Set([node.id]), new Set()));
+      setSelection(EMPTY_SELECTION);
+      toast({ title: `Deleted ${node.label}`, action: { label: "Undo", onClick: undo } });
+    },
+    [setGraph, undo],
+  );
+  const duplicateNode = useCallback(
+    (node: FlowNode) => {
+      const { graph, created } = duplicateNodes(graphRef.current, [node.id]);
+      setGraph(graph);
+      setSelection({ nodes: created, edges: [] });
+    },
+    [setGraph],
+  );
+  const deleteEdge = useCallback(
+    (edge: FlowEdge) => {
+      setGraph((g) => removeItems(g, new Set(), new Set([edge.id])));
+      setSelection(EMPTY_SELECTION);
+      toast({ title: "Deleted the connection", action: { label: "Undo", onClick: undo } });
+    },
+    [setGraph, undo],
+  );
+  // Fit once on mount for new canvases (and always on phones); read once, never per render.
+  const [fitOnMount] = useState(
+    () => window.innerWidth < 640 || (initial.graph.viewport.zoom === 1 && initial.graph.viewport.x === 0 && initial.graph.viewport.y === 0),
+  );
+
   const pick = (i: ValidationIssue) => {
     if (i.node_id && draft.graph.nodes.some((n) => n.id === i.node_id)) setSelection({ nodes: [i.node_id], edges: [] });
     else if (i.edge_id && draft.graph.edges.some((e) => e.id === i.edge_id)) setSelection({ nodes: [], edges: [i.edge_id] });
   };
 
-  const openSettings = (s: SettingsSection) => setParams((p) => (p.set("configure", s), p), { replace: true });
+  const openSettings = useCallback((s: SettingsSection) => setParams((p) => (p.set("configure", s), p), { replace: true }), [setParams]);
+  const createTool = useCallback(() => openSettings("functions"), [openSettings]);
   const closeSettings = () => setParams((p) => (p.delete("configure"), p), { replace: true });
   const versionNumber = detail.published_version?.version_number;
 
   const sidePanel = selectedNode ? (
     <NodePanel
       node={selectedNode}
-      graph={draft.graph}
-      setGraph={draft.setGraph}
+      nodes={draft.graph.nodes}
+      edges={draft.graph.edges}
+      setGraph={setGraph}
       issues={issues}
       catalogs={catalogs}
       allowHttp={allowHttp}
       locked={locked}
-      onClose={() => setSelection(EMPTY_SELECTION)}
-      onDelete={() => {
-        draft.setGraph((g) => removeItems(g, new Set([selectedNode.id]), new Set()));
-        setSelection(EMPTY_SELECTION);
-        toast({ title: `Deleted ${selectedNode.label}`, action: { label: "Undo", onClick: draft.undo } });
-      }}
-      onDuplicate={() => {
-        const { graph, created } = duplicateNodes(draft.graph, [selectedNode.id]);
-        draft.setGraph(graph);
-        setSelection({ nodes: created, edges: [] });
-      }}
-      onSelectEdge={(edgeId) => setSelection({ nodes: [], edges: [edgeId] })}
-      onCreateTool={() => openSettings("functions")}
+      onClose={closePanel}
+      onDelete={deleteNode}
+      onDuplicate={duplicateNode}
+      onSelectEdge={selectEdge}
+      onCreateTool={createTool}
     />
   ) : selectedEdge ? (
     <EdgePanel
       edge={selectedEdge}
-      graph={draft.graph}
-      setGraph={draft.setGraph}
+      nodes={draft.graph.nodes}
+      setGraph={setGraph}
       issues={issues}
       variables={variables}
       locked={locked}
-      onClose={() => setSelection(EMPTY_SELECTION)}
-      onDelete={() => {
-        draft.setGraph((g) => removeItems(g, new Set(), new Set([selectedEdge.id])));
-        setSelection(EMPTY_SELECTION);
-        toast({ title: "Deleted the connection", action: { label: "Undo", onClick: draft.undo } });
-      }}
+      onClose={closePanel}
+      onDelete={deleteEdge}
     />
   ) : (
     <Tabs
@@ -316,8 +349,8 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
         <div className="relative h-[62dvh] min-h-[420px] min-w-0 lg:h-auto lg:flex-1">
           <FlowCanvas
             graph={shownGraph}
-            setGraph={draft.setGraph}
-            checkpoint={draft.checkpoint}
+            setGraph={setGraph}
+            onViewport={draft.setViewport}
             undo={draft.undo}
             redo={draft.redo}
             canUndo={draft.canUndo}
@@ -330,12 +363,8 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
             diff={diff}
             locked={locked}
             onLockedAttempt={lockedNotice}
-            modelLabel={(provider, model) =>
-              catalogs.llm.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model)?.label ?? model
-            }
-            fitOnMount={
-              window.innerWidth < 640 || (initial.graph.viewport.zoom === 1 && initial.graph.viewport.x === 0 && initial.graph.viewport.y === 0)
-            }
+            modelLabel={modelLabel}
+            fitOnMount={fitOnMount}
             fitSignal={fitSignal}
           />
           <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center sm:top-4 sm:pl-[76px]">

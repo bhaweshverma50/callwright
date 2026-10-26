@@ -2,7 +2,8 @@ import { useCallback, useRef, useState } from "react";
 
 /**
  * Undo and redo over whole graph snapshots (FR-005: at least 50 steps). `set` records the state
- * before a change; `checkpoint` records once at a drag's start, so a whole move is one step.
+ * before a change. A drag moves nodes on the canvas only and writes the document once when it
+ * ends, so a whole move is one step.
  * History lives in refs (not inside state updaters) so StrictMode's double calls stay harmless.
  */
 export function useUndoRedo<T>(initial: T, limit = 50) {
@@ -30,11 +31,6 @@ export function useUndoRedo<T>(initial: T, limit = 50) {
     [limit, show],
   );
 
-  const checkpoint = useCallback(() => {
-    past.current = [...past.current.slice(-(limit - 1)), current.current];
-    future.current = [];
-  }, [limit]);
-
   const undo = useCallback(() => {
     const last = past.current.at(-1);
     if (last === undefined) return;
@@ -60,5 +56,5 @@ export function useUndoRedo<T>(initial: T, limit = 50) {
     [show],
   );
 
-  return { present, set, checkpoint, undo, redo, reset, canUndo: past.current.length > 0, canRedo: future.current.length > 0 };
+  return { present, set, undo, redo, reset, canUndo: past.current.length > 0, canRedo: future.current.length > 0 };
 }

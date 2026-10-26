@@ -4,23 +4,25 @@ import {
   MarkerType,
   ReactFlow,
   ReactFlowProvider,
+  applyNodeChanges,
   useReactFlow,
   type Connection,
   type EdgeChange,
   type NodeChange,
+  type OnNodeDrag,
   type Viewport,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, type DragEvent } from "react";
-import type { FlowGraph, NodeType, ValidationIssue } from "../../../api/flows";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import type { FlowGraph, FlowNode, NodeType, ValidationIssue } from "../../../api/flows";
 import { toast } from "../../../components";
 import { canConnect, duplicateNodes, makeNode, newEdge, removeItems } from "../model";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { Palette } from "./Palette";
 import { DRAG_TYPE } from "./nodeMeta";
-import { TransitionEdge, type CanvasEdge } from "./edges/TransitionEdge";
-import { fitOptions, autoLayout, type Sizes } from "./layout";
+import { TransitionEdge, type CanvasEdge, type EdgeData } from "./edges/TransitionEdge";
+import { NODE_HEIGHT, NODE_WIDTH, fitOptions, autoLayout, type Sizes } from "./layout";
 import { nodeTypes } from "./nodes";
-import type { CanvasNode, DiffMark } from "./nodes/NodeCard";
+import type { CanvasNode, DiffMark, NodeData } from "./nodes/NodeCard";
 import { nodeSummary } from "./nodes/NodeSummary";
 
 export interface Selection {
@@ -32,7 +34,8 @@ export const EMPTY_SELECTION: Selection = { nodes: [], edges: [] };
 export interface CanvasProps {
   graph: FlowGraph;
   setGraph: (next: FlowGraph | ((g: FlowGraph) => FlowGraph), record?: boolean) => void;
-  checkpoint: () => void;
+  /** The viewport after every pan, zoom or fit, kept for the next save (FR-006). */
+  onViewport?: (viewport: Viewport) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -61,12 +64,82 @@ function isTyping(target: EventTarget | null) {
   return el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.closest("[role=dialog]") !== null;
 }
 
-const TYPES = { transition: TransitionEdge };
+/** Stable outside the component, so React Flow never sees a new edge type map (xyflow warns and remounts). */
+const EDGE_TYPES = { transition: TransitionEdge };
+const EMPTY_VISITED = new Set<string>();
+
+export interface NodeInputs {
+  nodes: FlowNode[];
+  selected: string[];
+  locked: boolean;
+  counts: Record<string, { errors: number; warnings: number }>;
+  active: string | null;
+  visited: Set<string>;
+  diff: Record<string, DiffMark> | undefined;
+  modelLabel?: (provider: string, model: string) => string;
+}
+
+function sameData(a: NodeData, b: NodeData) {
+  return (
+    a.node === b.node &&
+    a.summary === b.summary &&
+    a.errors === b.errors &&
+    a.warnings === b.warnings &&
+    a.active === b.active &&
+    a.visited === b.visited &&
+    a.diff === b.diff
+  );
+}
+
+/**
+ * Brings the canvas nodes in line with the document. Nodes whose step, flags and position did not
+ * change keep their object (so React Flow and the memoised cards skip them), measured sizes are
+ * carried over (so handles are not re-measured), and a node being dragged keeps its live position.
+ */
+export function reconcileNodes(current: CanvasNode[], input: NodeInputs): CanvasNode[] {
+  const byId = new Map(current.map((n) => [n.id, n]));
+  const selected = new Set(input.selected);
+  let changed = current.length !== input.nodes.length;
+  const out = input.nodes.map((n, i) => {
+    const old = byId.get(n.id);
+    const c = input.counts[n.id];
+    const fresh: NodeData = {
+      node: n,
+      summary: old?.data.node === n ? old.data.summary : nodeSummary(n, input.modelLabel),
+      errors: c?.errors ?? 0,
+      warnings: c?.warnings ?? 0,
+      active: input.active === n.id,
+      visited: input.visited.has(n.id),
+      diff: input.diff?.[n.id],
+    };
+    const data = old && sameData(old.data, fresh) ? old.data : fresh;
+    const isSelected = selected.has(n.id);
+    const position = old?.dragging ? old.position : n.position;
+    if (
+      old &&
+      old.data === data &&
+      old.selected === isSelected &&
+      old.draggable === !input.locked &&
+      old.position.x === position.x &&
+      old.position.y === position.y
+    ) {
+      if (current[i] !== old) changed = true;
+      return old;
+    }
+    changed = true;
+    return { ...old, id: n.id, type: n.type, position, selected: isSelected, draggable: !input.locked, data } as CanvasNode;
+  });
+  return changed ? out : current;
+}
 
 function Canvas(props: CanvasProps) {
-  const { graph, setGraph, checkpoint, selection, onSelect, issues, locked, onLockedAttempt } = props;
+  const { graph, setGraph, onViewport, selection, onSelect, issues, locked = false, onLockedAttempt, modelLabel, undo, redo } = props;
   const flow = useReactFlow<CanvasNode, CanvasEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
+  // Callbacks read the latest graph through a ref, so they keep one identity and React Flow
+  // never re-renders its internals because a handler changed.
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
 
   const counts = useMemo(() => {
     const nodes: Record<string, { errors: number; warnings: number }> = {};
@@ -82,52 +155,69 @@ function Canvas(props: CanvasProps) {
     return { nodes, edges };
   }, [issues]);
 
+  const visited = props.visited ?? EMPTY_VISITED;
   const traversed = useMemo(() => {
     const set = new Set<string>();
-    if (!props.visited?.size) return set;
-    for (const e of graph.edges) if (props.visited.has(e.source) && props.visited.has(e.target)) set.add(e.id);
+    if (!visited.size) return set;
+    for (const e of graph.edges) if (visited.has(e.source) && visited.has(e.target)) set.add(e.id);
     return set;
-  }, [graph.edges, props.visited]);
+  }, [graph.edges, visited]);
 
-  const nodes: CanvasNode[] = useMemo(() => {
-    const selected = new Set(selection.nodes);
-    return graph.nodes.map((n) => ({
-      id: n.id,
-      type: n.type,
-      position: n.position,
-      selected: selected.has(n.id),
-      draggable: !locked,
-      data: {
-        node: n,
-        summary: nodeSummary(n, props.modelLabel),
-        errors: counts.nodes[n.id]?.errors ?? 0,
-        warnings: counts.nodes[n.id]?.warnings ?? 0,
-        active: props.activeNodeId === n.id,
-        visited: props.visited?.has(n.id) ?? false,
-        diff: props.diff?.nodes[n.id],
-      },
-    }));
-  }, [graph.nodes, selection.nodes, locked, counts, props.activeNodeId, props.visited, props.diff, props.modelLabel]);
+  // Nodes live in local state while they move: a drag only touches this state (applyNodeChanges),
+  // and the document is updated once, on drag stop. Everything else flows from the document.
+  const inputs: NodeInputs = useMemo(
+    () => ({
+      nodes: graph.nodes,
+      selected: selection.nodes,
+      locked,
+      counts: counts.nodes,
+      active: props.activeNodeId ?? null,
+      visited,
+      diff: props.diff?.nodes,
+      modelLabel,
+    }),
+    [graph.nodes, selection.nodes, locked, counts.nodes, props.activeNodeId, visited, props.diff?.nodes, modelLabel],
+  );
+  const [nodes, setNodes] = useState<CanvasNode[]>(() => reconcileNodes([], inputs));
+  const [synced, setSynced] = useState(inputs);
+  if (synced !== inputs) {
+    setSynced(inputs);
+    setNodes((cur) => reconcileNodes(cur, inputs));
+  }
 
+  const edgeCache = useRef(new Map<string, CanvasEdge>());
   const edges: CanvasEdge[] = useMemo(() => {
     const selected = new Set(selection.edges);
-    return graph.edges.map((e) => {
+    const next = new Map<string, CanvasEdge>();
+    const out = graph.edges.map((e) => {
       const errors = counts.edges[e.id] ?? 0;
       const diff = props.diff?.edges[e.id];
       const isSelected = selected.has(e.id);
+      const isTraversed = traversed.has(e.id);
+      const old = edgeCache.current.get(e.id);
+      const d = old?.data;
+      if (old && d && d.edge === e && d.errors === errors && d.diff === diff && d.traversed === isTraversed && old.selected === isSelected) {
+        next.set(e.id, old);
+        return old;
+      }
       const color = diff === "added" ? "var(--success)" : diff === "removed" ? "var(--danger)" : isSelected ? "var(--accent)" : "var(--text-3)";
-      return {
+      const data: EdgeData = { edge: e, errors, traversed: isTraversed, diff };
+      const edge: CanvasEdge = {
         id: e.id,
         source: e.source,
         target: e.target,
         sourceHandle: handleFor(e),
-        type: "transition" as const,
+        type: "transition",
         selected: isSelected,
         markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
-        data: { edge: e, errors, traversed: traversed.has(e.id), diff },
+        data,
       };
+      next.set(e.id, edge);
+      return edge;
     });
-  }, [graph.edges, selection.edges, counts, traversed, props.diff]);
+    edgeCache.current = next;
+    return out;
+  }, [graph.edges, selection.edges, counts.edges, traversed, props.diff?.edges]);
 
   // Selection arrives as separate node and edge changes; merge them into the latest selection.
   const current = useRef(selection);
@@ -141,64 +231,114 @@ function Canvas(props: CanvasProps) {
         else set.delete(c.id);
       }
       const next = { ...current.current, [kind]: [...set] };
+      if (next[kind].length === current.current[kind].length && next[kind].every((id, i) => current.current[kind][i] === id)) return;
       current.current = next;
       onSelect(next);
     },
     [onSelect],
   );
 
+  // Picking up a step that is not selected makes React Flow clear the selection first (so the
+  // old selection does not move along). That would close or switch the settings panel mid-drag,
+  // so a batch that only deselects waits a microtask: if a drag started in the same tick (React
+  // Flow calls onNodeDragStart right after), it is dropped and the panel keeps what it shows.
+  const pending = useRef<{ nodes: string[]; edges: string[] } | null>(null);
+  const dragStarting = useRef(false);
+  const select = useCallback(
+    (kind: "nodes" | "edges", changes: { id: string; selected: boolean }[]) => {
+      if (!changes.length) return;
+      if (changes.some((c) => c.selected)) return applySelect(kind, changes);
+      if (!pending.current) {
+        pending.current = { nodes: [], edges: [] };
+        dragStarting.current = false;
+        queueMicrotask(() => {
+          const p = pending.current;
+          pending.current = null;
+          if (!p || dragStarting.current) return;
+          applySelect(
+            "nodes",
+            p.nodes.map((id) => ({ id, selected: false })),
+          );
+          applySelect(
+            "edges",
+            p.edges.map((id) => ({ id, selected: false })),
+          );
+        });
+      }
+      pending.current[kind].push(...changes.map((c) => c.id));
+    },
+    [applySelect],
+  );
+  const onNodeDragStart = useCallback(() => {
+    dragStarting.current = true;
+  }, []);
+
   const onNodesChange = useCallback(
     (changes: NodeChange<CanvasNode>[]) => {
-      applySelect(
-        "nodes",
-        changes.flatMap((c) => (c.type === "select" ? [{ id: c.id, selected: c.selected }] : [])),
-      );
-      const moved = new Map<string, { x: number; y: number }>();
-      for (const c of changes) if (c.type === "position" && c.position) moved.set(c.id, c.position);
-      if (moved.size && !locked) {
-        setGraph(
-          (g) => ({
-            ...g,
-            nodes: g.nodes.map((n) => {
-              const p = moved.get(n.id);
-              return p ? { ...n, position: { x: Math.round(p.x), y: Math.round(p.y) } } : n;
-            }),
-          }),
-          false,
-        );
+      const selects: { id: string; selected: boolean }[] = [];
+      const local: NodeChange<CanvasNode>[] = [];
+      for (const c of changes) {
+        if (c.type === "select") selects.push({ id: c.id, selected: c.selected });
+        else if (c.type === "position" || c.type === "dimensions") local.push(c);
       }
+      if (local.length) setNodes((ns) => applyNodeChanges(local, ns));
+      select("nodes", selects);
     },
-    [applySelect, locked, setGraph],
+    [select],
+  );
+
+  /** One write to the document per drag, recorded as one undo step. */
+  const onNodeDragStop: OnNodeDrag<CanvasNode> = useCallback(
+    (_e, _node, dragged) => {
+      // React Flow quietly unselected its copy of the kept selection when the drag began; hand
+      // it fresh objects so its selection matches the panel again.
+      setNodes((ns) => (ns.some((n) => n.selected) ? ns.map((n) => (n.selected ? { ...n } : n)) : ns));
+      if (locked) return;
+      const moved = new Map(dragged.map((n) => [n.id, { x: Math.round(n.position.x), y: Math.round(n.position.y) }]));
+      setGraph((g) => {
+        let any = false;
+        const nodes = g.nodes.map((n) => {
+          const p = moved.get(n.id);
+          if (!p || (p.x === n.position.x && p.y === n.position.y)) return n;
+          any = true;
+          return { ...n, position: p };
+        });
+        return any ? { ...g, nodes } : g;
+      });
+    },
+    [locked, setGraph],
   );
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange<CanvasEdge>[]) =>
-      applySelect(
+      select(
         "edges",
         changes.flatMap((c) => (c.type === "select" ? [{ id: c.id, selected: c.selected }] : [])),
       ),
-    [applySelect],
+    [select],
   );
 
   const isValidConnection = useCallback(
     (c: Connection | CanvasEdge) => {
-      const source = graph.nodes.find((n) => n.id === c.source);
-      return !locked && !!source && canConnect(graph, source, c.sourceHandle ?? null, c.target);
+      const g = graphRef.current;
+      const source = g.nodes.find((n) => n.id === c.source);
+      return !locked && !!source && canConnect(g, source, c.sourceHandle ?? null, c.target);
     },
-    [graph, locked],
+    [locked],
   );
 
   const onConnect = useCallback(
     (c: Connection) => {
       if (locked) return onLockedAttempt?.();
-      const source = graph.nodes.find((n) => n.id === c.source);
-      if (!source || !canConnect(graph, source, c.sourceHandle ?? null, c.target)) return;
-      const edge = newEdge(graph, source, c.sourceHandle ?? null, c.target);
+      const g = graphRef.current;
+      const source = g.nodes.find((n) => n.id === c.source);
+      if (!source || !canConnect(g, source, c.sourceHandle ?? null, c.target)) return;
+      const edge = newEdge(g, source, c.sourceHandle ?? null, c.target);
       if (!edge) return;
-      setGraph((g) => ({ ...g, edges: [...g.edges, edge] }));
+      setGraph((x) => ({ ...x, edges: [...x.edges, edge] }));
       onSelect({ nodes: [], edges: [edge.id] });
     },
-    [graph, locked, onLockedAttempt, onSelect, setGraph],
+    [locked, onLockedAttempt, onSelect, setGraph],
   );
 
   const addNode = useCallback(
@@ -207,12 +347,15 @@ function Canvas(props: CanvasProps) {
       const box = wrapper.current?.getBoundingClientRect();
       const at =
         position ??
-        flow.screenToFlowPosition({ x: (box?.left ?? 0) + (box?.width ?? 800) / 2 - 124, y: (box?.top ?? 0) + (box?.height ?? 600) / 2 - 52 });
-      const node = makeNode(type, { x: Math.round(at.x), y: Math.round(at.y) }, new Set(graph.nodes.map((n) => n.id)));
+        flow.screenToFlowPosition({
+          x: (box?.left ?? 0) + (box?.width ?? 800) / 2 - NODE_WIDTH / 2,
+          y: (box?.top ?? 0) + (box?.height ?? 600) / 2 - NODE_HEIGHT / 2,
+        });
+      const node = makeNode(type, { x: Math.round(at.x), y: Math.round(at.y) }, new Set(graphRef.current.nodes.map((n) => n.id)));
       setGraph((g) => ({ ...g, nodes: [...g.nodes, node] }));
       onSelect({ nodes: [node.id], edges: [] });
     },
-    [flow, graph.nodes, locked, onLockedAttempt, onSelect, setGraph],
+    [flow, locked, onLockedAttempt, onSelect, setGraph],
   );
 
   const onDrop = useCallback(
@@ -221,16 +364,17 @@ function Canvas(props: CanvasProps) {
       if (!type) return;
       e.preventDefault();
       const p = flow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      addNode(type, { x: p.x - 124, y: p.y - 40 });
+      addNode(type, { x: p.x - NODE_WIDTH / 2, y: p.y - 40 });
     },
     [addNode, flow],
   );
 
   const deleteSelection = useCallback(() => {
     if (locked) return onLockedAttempt?.();
-    if (!selection.nodes.length && !selection.edges.length) return;
-    const before = graph;
-    const after = removeItems(graph, new Set(selection.nodes), new Set(selection.edges));
+    const sel = current.current;
+    if (!sel.nodes.length && !sel.edges.length) return;
+    const before = graphRef.current;
+    const after = removeItems(before, new Set(sel.nodes), new Set(sel.edges));
     if (after.nodes.length === before.nodes.length && after.edges.length === before.edges.length) return;
     setGraph(after);
     onSelect(EMPTY_SELECTION);
@@ -241,62 +385,80 @@ function Canvas(props: CanvasProps) {
         ? `Deleted ${removedNodes} step${removedNodes === 1 ? "" : "s"}`
         : `Deleted ${removedEdges} connection${removedEdges === 1 ? "" : "s"}`,
       description: removedNodes && removedEdges ? `and ${removedEdges} connection${removedEdges === 1 ? "" : "s"}` : undefined,
-      action: { label: "Undo", onClick: props.undo },
+      action: { label: "Undo", onClick: undo },
     });
-  }, [graph, locked, onLockedAttempt, onSelect, props.undo, selection, setGraph]);
+  }, [locked, onLockedAttempt, onSelect, undo, setGraph]);
 
   const duplicate = useCallback(() => {
     if (locked) return onLockedAttempt?.();
-    if (!selection.nodes.length) return;
-    const { graph: next, created } = duplicateNodes(graph, selection.nodes);
+    const sel = current.current;
+    if (!sel.nodes.length) return;
+    const { graph: next, created } = duplicateNodes(graphRef.current, sel.nodes);
     if (!created.length) return;
     setGraph(next);
     onSelect({ nodes: created, edges: [] });
-  }, [graph, locked, onLockedAttempt, onSelect, selection.nodes, setGraph]);
+  }, [locked, onLockedAttempt, onSelect, setGraph]);
 
   /** Keep the viewport in the draft after programmatic fits and zooms (FR-006). */
-  const remember = useCallback(() => {
-    const vp = flow.getViewport();
-    setGraph((g) => ({ ...g, viewport: { x: Math.round(vp.x), y: Math.round(vp.y), zoom: Number(vp.zoom.toFixed(3)) } }), false);
-  }, [flow, setGraph]);
+  const keepViewport = useCallback(
+    (vp: Viewport) => onViewport?.({ x: Math.round(vp.x), y: Math.round(vp.y), zoom: Number(vp.zoom.toFixed(3)) }),
+    [onViewport],
+  );
+  const remember = useCallback(() => keepViewport(flow.getViewport()), [flow, keepViewport]);
+  const onMoveEnd = useCallback((_: unknown, vp: Viewport) => keepViewport(vp), [keepViewport]);
 
   const layout = useCallback(() => {
     if (locked) return onLockedAttempt?.();
     const sizes: Sizes = {};
-    for (const n of flow.getNodes()) sizes[n.id] = n.measured?.width ? { width: n.measured.width, height: n.measured.height ?? 104 } : undefined;
+    for (const n of flow.getNodes())
+      sizes[n.id] = n.measured?.width ? { width: n.measured.width, height: n.measured.height ?? NODE_HEIGHT } : undefined;
     setGraph((g) => autoLayout(g, sizes));
     window.setTimeout(() => void flow.fitView({ ...fitOptions(), duration: 360 }).then(remember), 40);
   }, [flow, locked, onLockedAttempt, remember, setGraph]);
 
   // Keyboard: Delete or Backspace removes the selection (never while typing), undo and redo.
+  const keys = useRef({ deleteSelection, duplicate, locked, onLockedAttempt, undo, redo });
+  keys.current = { deleteSelection, duplicate, locked, onLockedAttempt, undo, redo };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target)) return;
+      const k = keys.current;
       const mod = e.metaKey || e.ctrlKey;
       if ((e.key === "Delete" || e.key === "Backspace") && !mod) {
-        if (!selection.nodes.length && !selection.edges.length) return;
+        if (!current.current.nodes.length && !current.current.edges.length) return;
         e.preventDefault();
-        deleteSelection();
+        k.deleteSelection();
       } else if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        if (locked) return onLockedAttempt?.();
-        if (e.shiftKey) props.redo();
-        else props.undo();
+        if (k.locked) return k.onLockedAttempt?.();
+        if (e.shiftKey) k.redo();
+        else k.undo();
       } else if (mod && e.key.toLowerCase() === "y") {
         e.preventDefault();
-        if (!locked) props.redo();
+        if (!k.locked) k.redo();
       } else if (mod && e.key.toLowerCase() === "d") {
         e.preventDefault();
-        duplicate();
+        k.duplicate();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelection, duplicate, locked, onLockedAttempt, props, selection]);
+  }, []);
 
   useEffect(() => {
     if (props.fitSignal) void flow.fitView({ ...fitOptions(), duration: 360 }).then(remember);
   }, [flow, props.fitSignal, remember]);
+
+  const onPaneClick = useCallback(() => onSelect(EMPTY_SELECTION), [onSelect]);
+  const fitOnMount = props.fitOnMount;
+  const onInit = useCallback(() => {
+    if (fitOnMount) window.setTimeout(remember, 50);
+  }, [fitOnMount, remember]);
+  const onUndo = useCallback(() => (locked ? onLockedAttempt?.() : undo()), [locked, onLockedAttempt, undo]);
+  const onRedo = useCallback(() => (locked ? onLockedAttempt?.() : redo()), [locked, onLockedAttempt, redo]);
+  // React Flow reads these once; keeping them stable avoids needless store updates.
+  const [defaultViewport] = useState(graph.viewport);
+  const [fitViewOptions] = useState(() => fitOptions());
 
   return (
     <div ref={wrapper} className="flow-canvas relative h-full w-full" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
@@ -304,45 +466,48 @@ function Canvas(props: CanvasProps) {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        edgeTypes={TYPES}
+        edgeTypes={EDGE_TYPES}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
-        onNodeDragStart={() => checkpoint()}
-        onPaneClick={() => onSelect(EMPTY_SELECTION)}
-        onMoveEnd={(_, vp: Viewport) =>
-          setGraph((g) => ({ ...g, viewport: { x: Math.round(vp.x), y: Math.round(vp.y), zoom: Number(vp.zoom.toFixed(3)) } }), false)
-        }
-        defaultViewport={graph.viewport}
-        fitView={props.fitOnMount}
-        fitViewOptions={fitOptions()}
-        onInit={() => props.fitOnMount && window.setTimeout(remember, 50)}
+        onPaneClick={onPaneClick}
+        onMoveEnd={onMoveEnd}
+        defaultViewport={defaultViewport}
+        fitView={fitOnMount}
+        fitViewOptions={fitViewOptions}
+        onInit={onInit}
         minZoom={0.15}
         maxZoom={2}
         deleteKeyCode={null}
-        multiSelectionKeyCode={["Meta", "Shift", "Control"]}
+        multiSelectionKeyCode={MULTI_KEYS}
         selectionKeyCode="Shift"
+        selectNodesOnDrag={false}
         nodesConnectable={!locked}
         elementsSelectable
         connectionRadius={28}
-        proOptions={{ hideAttribution: true }}
+        proOptions={PRO_OPTIONS}
         aria-label="Flow canvas"
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} color="var(--dot)" />
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1.3} color="var(--dot)" />
       </ReactFlow>
       <Palette onAdd={addNode} disabled={locked} />
       <CanvasToolbar
         onLayout={layout}
         onViewChanged={remember}
-        onUndo={() => (locked ? onLockedAttempt?.() : props.undo())}
-        onRedo={() => (locked ? onLockedAttempt?.() : props.redo())}
+        onUndo={onUndo}
+        onRedo={onRedo}
         canUndo={props.canUndo && !locked}
         canRedo={props.canRedo && !locked}
       />
     </div>
   );
 }
+
+const MULTI_KEYS = ["Meta", "Shift", "Control"];
+const PRO_OPTIONS = { hideAttribution: true };
 
 function handleFor(e: FlowGraph["edges"][number]): string {
   switch (e.trigger) {
@@ -358,11 +523,15 @@ function handleFor(e: FlowGraph["edges"][number]): string {
   }
 }
 
-/** The flow canvas (T027, T101): connect, select, multi-select, delete, duplicate, pan, zoom. */
-export function FlowCanvas(props: CanvasProps) {
+/**
+ * The flow canvas (T027, T101): connect, select, multi-select, delete, duplicate, pan, zoom.
+ * Memoised: the builder re-renders for many reasons (typing in a panel, a tab change) that leave
+ * the canvas props as they were.
+ */
+export const FlowCanvas = memo(function FlowCanvas(props: CanvasProps) {
   return (
     <ReactFlowProvider>
       <Canvas {...props} />
     </ReactFlowProvider>
   );
-}
+});

@@ -17,12 +17,12 @@ function stable(v: unknown): string {
 }
 
 /** Without positions or viewport: what makes a change worth saving. */
-function content(graph: FlowGraph): string {
+function content(graph: Pick<FlowGraph, "nodes" | "edges">): string {
   return stable({ nodes: graph.nodes, edges: graph.edges });
 }
 
 /** With positions but without the viewport: panning alone is not an unsaved change. */
-function layout(graph: FlowGraph): string {
+function layout(graph: Pick<FlowGraph, "nodes" | "edges">): string {
   return stable({ nodes: graph.nodes, edges: graph.edges });
 }
 
@@ -30,6 +30,10 @@ function layout(graph: FlowGraph): string {
  * The builder's draft (T021): the graph with undo and redo, the one name of flow and agent, the
  * flow-wide settings changed since loading, and a save that sends graph, name and settings in
  * one request with the loaded revisions (`If-Match` and `expected_draft_revision`).
+ *
+ * The viewport is kept out of React state: the canvas reports it after every pan, zoom or fit
+ * (and many times a second while a drag auto-pans), and none of that should re-render the
+ * builder. Saves send the latest one (FR-006).
  */
 export function useFlow(initial: Flow) {
   const history = useUndoRedo<FlowGraph>(initial.graph);
@@ -38,10 +42,17 @@ export function useFlow(initial: Flow) {
   const [saving, setSaving] = useState(false);
   const savedContent = useRef(content(initial.graph));
   const savedLayout = useRef(layout(initial.graph));
+  const viewport = useRef(initial.graph.viewport);
+  const setViewport = useCallback((vp: FlowGraph["viewport"]) => {
+    viewport.current = vp;
+  }, []);
 
   const graph = history.present;
-  const graphDirty = useMemo(() => layout(graph) !== savedLayout.current, [graph]);
-  const meaningful = useMemo(() => content(graph) !== savedContent.current, [graph]);
+  // Serialising the graph is the costly part of a dirty check; do it only when steps or
+  // connections change (never for a pan or zoom, which only replaces the viewport).
+  const { nodes, edges } = graph;
+  const graphDirty = useMemo(() => layout({ nodes, edges }) !== savedLayout.current, [nodes, edges]);
+  const meaningful = useMemo(() => content({ nodes, edges }) !== savedContent.current, [nodes, edges]);
   const nameDirty = name.trim() !== base.name;
   const dirty = graphDirty || nameDirty;
 
@@ -54,7 +65,7 @@ export function useFlow(initial: Flow) {
           settings && Object.keys(settings.changes).length
             ? { expected_draft_revision: settings.draftRevision, changes: settings.changes }
             : undefined;
-        const saved = await saveFlow(base, name.trim(), graph, change);
+        const saved = await saveFlow(base, name.trim(), { ...graph, viewport: viewport.current }, change);
         savedContent.current = content(saved.graph);
         savedLayout.current = layout(saved.graph);
         setBase(saved);
@@ -88,7 +99,7 @@ export function useFlow(initial: Flow) {
     base,
     graph,
     setGraph: history.set,
-    checkpoint: history.checkpoint,
+    setViewport,
     undo: history.undo,
     redo: history.redo,
     canUndo: history.canUndo,
