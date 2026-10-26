@@ -23,7 +23,8 @@ export interface TabsProps {
   "aria-label"?: string;
 }
 
-/** Underline tabs with a sliding cobalt marker. Arrow keys move between tabs (Radix roving focus). */
+/** Underline tabs with a sliding cobalt marker. Arrow keys move between tabs (Radix roving focus).
+ * The marker sits inside its tab: the list scrolls sideways, which clips anything below it. */
 export function Tabs({ value, onValueChange, items, children, className, ...aria }: TabsProps) {
   const layoutId = useId();
   return (
@@ -35,7 +36,7 @@ export function Tabs({ value, onValueChange, items, children, className, ...aria
             value={t.value}
             disabled={t.disabled}
             className={cn(
-              "relative -mb-px flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[13.5px] text-fg-2 transition-colors [&_svg]:size-4",
+              "relative flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[13.5px] text-fg-2 transition-colors [&_svg]:size-4",
               "hover:text-fg data-[state=active]:font-medium data-[state=active]:text-fg",
               "disabled:cursor-not-allowed disabled:text-fg-3",
               focusRing,
@@ -54,7 +55,7 @@ export function Tabs({ value, onValueChange, items, children, className, ...aria
               <motion.span
                 layoutId={layoutId}
                 aria-hidden
-                className="grad-action absolute inset-x-0 -bottom-px h-0.5 rounded-full"
+                className="grad-action absolute inset-x-0 bottom-0 h-0.5 rounded-full"
                 transition={{ type: "spring", stiffness: 500, damping: 40 }}
               />
             )}

@@ -762,16 +762,31 @@
   }
 
   /* Animated underline for text links. */
+  /* Drawn on its own layer: a background underline is clipped by the link's rounded corners. */
   .link-underline {
-    background-image: linear-gradient(currentColor, currentColor);
-    background-size: 0% 1px;
-    background-position: 0 100%;
-    background-repeat: no-repeat;
-    transition: background-size 200ms ease-out;
+    position: relative;
   }
-  .link-underline:hover,
-  .link-underline:focus-visible {
-    background-size: 100% 1px;
+  .link-underline::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 1px;
+    border-radius: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 200ms ease-out;
+    pointer-events: none;
+  }
+  .link-underline:hover::after,
+  .link-underline:focus-visible::after {
+    transform: scaleX(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .link-underline::after {
+      transition: none;
+    }
   }
 
   /* Hover lift with a cobalt glow for interactive cards. */
