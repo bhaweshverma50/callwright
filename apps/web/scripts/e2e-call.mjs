@@ -42,7 +42,7 @@ await page.goto(`${WEB}/agents/${agent.id}/testing`);
 await page.getByRole("button", { name: "Start test call" }).click();
 const t0 = Date.now();
 let last = "";
-for (let i = 0; i < 70; i++) {
+for (let i = 0; i < Number(process.env.TICKS ?? 70); i++) {
   await page.waitForTimeout(500);
   const panel = (await page.getByLabel("Test call").innerText()).replace(/\s+/g, " ").slice(0, 260);
   if (panel !== last) console.log(`${((Date.now() - t0) / 1000).toFixed(1)}s`, panel);
@@ -50,5 +50,15 @@ for (let i = 0; i < 70; i++) {
   if (/Call again|Try again/.test(panel)) break;
 }
 await page.screenshot({ path: `${outDir}/panel.png` });
+if (process.env.AFTER) {
+  // Hang up, give post-call processing a moment, then capture the pages that show the call.
+  await page.getByRole("button", { name: "End call" }).click().catch(() => {});
+  await page.waitForTimeout(12_000);
+  for (const path of process.env.AFTER.split(",")) {
+    await page.goto(`${WEB}${path}`);
+    await page.waitForTimeout(4_000);
+    await page.screenshot({ path: `${outDir}/${path.replace(/\W+/g, "_")}.png`, fullPage: true });
+  }
+}
 console.log("agent", agent.id);
 await browser.close();

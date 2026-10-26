@@ -36,6 +36,7 @@ dependencies = [
     "tiktoken>=0.14.0",
     "jsonschema>=4.26.0",
     "pgvector>=0.5.1",
+    "tzdata>=2026.5",
 ]
 
 [dependency-groups]

@@ -72,3 +72,13 @@ def test_unknown_period_and_timezone() -> None:
         resolve_period("last_year", None, None, "UTC", today=TODAY)
     with pytest.raises(ProblemError):
         resolve_period("last_7_days", None, None, "Nowhere/Land", today=TODAY)
+
+
+def test_legacy_zone_alias_resolves() -> None:
+    """Browsers in India report Asia/Calcutta; slim Linux images only ship Asia/Kolkata, so the
+    tzdata package must supply the alias."""
+    from app.dashboard.periods import zone
+
+    assert zone("Asia/Calcutta").utcoffset(datetime(2026, 1, 1)) == zone("Asia/Kolkata").utcoffset(
+        datetime(2026, 1, 1)
+    )
