@@ -4873,7 +4873,23 @@ export interface components {
         MetricName: "call_count" | "total_duration_s" | "avg_duration_s" | "total_cost_usd" | "avg_cost_usd" | "median_turn_latency_ms" | "p95_turn_latency_ms" | "evaluator_pass_rate" | "evaluator_run_count" | "positive_sentiment_share" | "negative_sentiment_share";
         /** @enum {string} */
         Dimension: "day" | "week" | "month" | "hour_of_day" | "weekday" | "agent" | "channel" | "status" | "disconnect_reason" | "sentiment" | "evaluator";
+        AnalyticsPeriod: {
+            /** @enum {string} */
+            preset: "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "last_n_days" | "between";
+            n_days?: number;
+            /** Format: date */
+            start_date?: string;
+            /** Format: date */
+            end_date?: string;
+        };
+        /** @enum {string} */
+        Origin: "live" | "test" | "simulation";
         MetricQuery: {
+            /**
+             * @default metrics
+             * @enum {string}
+             */
+            kind: "metrics";
             metrics: components["schemas"]["MetricName"][];
             group_by?: components["schemas"]["Dimension"][];
             filters?: {
@@ -4884,21 +4900,55 @@ export interface components {
                 sentiments?: ("positive" | "neutral" | "negative" | "unknown")[];
                 evaluator_names?: string[];
             };
-            period: {
-                /** @enum {string} */
-                preset: "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "last_n_days" | "between";
-                n_days?: number;
-                /** Format: date */
-                start_date?: string;
-                /** Format: date */
-                end_date?: string;
-            };
+            period: components["schemas"]["AnalyticsPeriod"];
             order_by?: {
                 key?: string;
                 /** @enum {string} */
                 direction?: "asc" | "desc";
             };
             /** @default 50 */
+            limit: number;
+            /**
+             * @description Call origins counted; live only unless the user asks to include test calls.
+             * @default [
+             *       "live"
+             *     ]
+             */
+            origins: components["schemas"]["Origin"][];
+        };
+        /**
+         * @description Specific or recent calls (the last call, the last N, the most expensive, longest or slowest,
+         *     one by ID), newest first by default. Rows carry call_id, started_at, agent_name, origin,
+         *     channel, status, duration_s, cost_usd and avg_latency_ms.
+         */
+        CallQuery: {
+            /** @enum {string} */
+            kind: "calls";
+            call_id?: string;
+            /**
+             * @default recent
+             * @enum {string}
+             */
+            order: "recent" | "cost" | "duration" | "latency";
+            /**
+             * @default desc
+             * @enum {string}
+             */
+            direction: "asc" | "desc";
+            period?: components["schemas"]["AnalyticsPeriod"];
+            filters?: {
+                agent_ids?: string[];
+                channels?: ("web" | "sip_inbound" | "sip_outbound" | "whatsapp")[];
+                statuses?: string[];
+            };
+            /**
+             * @default [
+             *       "live",
+             *       "test"
+             *     ]
+             */
+            origins: components["schemas"]["Origin"][];
+            /** @default 5 */
             limit: number;
         };
         ChatAnswer: {
@@ -4921,21 +4971,27 @@ export interface components {
                 columns: {
                     key?: string;
                     label?: string;
-                    /** @enum {string} */
-                    type?: "string" | "integer" | "number" | "usd" | "seconds" | "ms" | "ratio" | "date";
+                    /**
+                     * @description call: a call ID the client links to /calls?call=<id>; datetime: an ISO timestamp.
+                     * @enum {string}
+                     */
+                    type?: "string" | "integer" | "number" | "usd" | "seconds" | "ms" | "ratio" | "date" | "datetime" | "call";
                 }[];
                 rows: {
                     [key: string]: unknown;
                 }[];
             } | null;
             truncated: boolean;
-            computed_with: components["schemas"]["MetricQuery"][];
+            computed_with: (components["schemas"]["MetricQuery"] | components["schemas"]["CallQuery"])[];
+            /**
+             * @description Follow-up questions the client offers as one-tap chips: example questions on a decline,
+             *     "including test calls" when an aggregate left test calls out.
+             */
+            suggestions?: string[];
             charged_usd?: number | null;
         };
         /** @enum {string} */
         Channel: "web" | "sip_inbound" | "sip_outbound" | "whatsapp";
-        /** @enum {string} */
-        Origin: "live" | "test" | "simulation";
         /** @enum {string} */
         CallStatus: "queued" | "ringing" | "in_progress" | "ended" | "processing" | "completed" | "failed" | "no_answer" | "busy" | "voicemail";
         /** @enum {string} */

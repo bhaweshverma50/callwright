@@ -255,8 +255,12 @@ def test_views_follow_the_workspace_setting(seeded_calls: SeededCalls) -> None:
     with psycopg.connect(f"postgresql://callwright_app:callwright_app@{PG}/{TEST_DB}") as conn:
         conn.execute("set role cw_analytics_reader")
         conn.execute("select set_config('app.workspace_id', %s, false)", (seeded_calls.a.workspace_id,))
-        a = conn.execute("select count(*), count(distinct workspace_id) from analytics.calls_v").fetchone()
+        a = conn.execute(
+            "select count(*), count(distinct workspace_id) from analytics.calls_v where origin = 'live'"
+        ).fetchone()
         assert a is not None and a[0] == 42 and a[1] == 1
+        everything = conn.execute("select count(*) from analytics.calls_v").fetchone()
+        assert everything == (47,)
         conn.execute("select set_config('app.workspace_id', %s, false)", (seeded_calls.b.workspace_id,))
         assert conn.execute("select count(*) from analytics.calls_v").fetchone() == (0,)
 
@@ -267,3 +271,107 @@ def test_charge_amount_is_recorded(seeded_calls: SeededCalls) -> None:
         (seeded_calls.a.workspace_id,),
     )
     assert rows and all(Decimal(r[0]) >= 0 for r in rows)
+
+
+# Call lookups (the last call, the most expensive call, a call by id) and test-call handling ------
+
+
+async def _answer(client: httpx.AsyncClient, headers: dict[str, str], question: str) -> dict[str, Any]:
+    body, key = _ask(question)
+    r = await client.post("/v1/analytics/chat", json=body, headers={**headers, **key})
+    assert r.status_code == 200, r.text
+    answer: dict[str, Any] = r.json()
+    return answer
+
+
+async def test_last_call_finds_the_latest_test_or_live_call(
+    client: httpx.AsyncClient, seeded_calls: SeededCalls
+) -> None:
+    answer = await _answer(client, seeded_calls.a.headers, "what is cost for my last call")
+    assert answer["outcome"] == "answered", answer
+    latest = owner_sql(
+        """select id, origin, cost_total_usd from calls where workspace_id = %s and origin in ('live', 'test')
+           order by created_at desc limit 1""",
+        (seeded_calls.a.workspace_id,),
+    )[0]
+    rows = answer["table"]["rows"]
+    assert [r["call_id"] for r in rows] == [latest[0]]
+    assert rows[0]["origin"] == latest[1]
+    types = {c["key"]: c["type"] for c in answer["table"]["columns"]}
+    assert types["call_id"] == "call" and types["cost_usd"] == "usd" and types["started_at"] == "datetime"
+    assert answer["computed_with"][0]["kind"] == "calls"
+
+
+async def test_latest_test_call_when_only_test_calls_exist(
+    client: httpx.AsyncClient, seeded_calls: SeededCalls
+) -> None:
+    answer = await _answer(client, seeded_calls.a.headers, "my last test call")
+    latest_test = owner_sql(
+        "select id from calls where workspace_id = %s and origin = 'test' order by created_at desc limit 1",
+        (seeded_calls.a.workspace_id,),
+    )[0][0]
+    assert [r["call_id"] for r in answer["table"]["rows"]] == [latest_test]
+    assert "test" in answer["content"].lower()
+
+
+async def test_most_expensive_call(client: httpx.AsyncClient, seeded_calls: SeededCalls) -> None:
+    answer = await _answer(
+        client, seeded_calls.a.headers, "which was the most expensive call in the last 90 days"
+    )
+    top = owner_sql(
+        """select id from calls where workspace_id = %s and origin in ('live', 'test')
+             and cost_total_usd is not null order by cost_total_usd desc limit 1""",
+        (seeded_calls.a.workspace_id,),
+    )[0][0]
+    assert answer["table"]["rows"][0]["call_id"] == top
+
+
+async def test_call_by_id_is_workspace_scoped(client: httpx.AsyncClient, seeded_calls: SeededCalls) -> None:
+    call_id = seeded_calls.data.reference_call_id
+    mine = await _answer(client, seeded_calls.a.headers, f"how much did {call_id} cost")
+    assert [r["call_id"] for r in mine["table"]["rows"]] == [call_id]
+    theirs = await _answer(client, seeded_calls.b.headers, f"how much did {call_id} cost")
+    assert theirs["table"] is None or theirs["table"]["rows"] == []
+    assert call_id not in theirs["content"]
+
+
+async def test_other_workspace_has_no_last_call(client: httpx.AsyncClient, seeded_calls: SeededCalls) -> None:
+    answer = await _answer(client, seeded_calls.b.headers, "what is cost for my last call")
+    assert answer["table"] is None or answer["table"]["rows"] == []
+    assert "no calls" in answer["content"].lower() or "couldn't find" in answer["content"].lower()
+
+
+async def test_aggregates_say_when_test_calls_were_left_out(
+    client: httpx.AsyncClient, seeded_calls: SeededCalls
+) -> None:
+    ws = seeded_calls.a.workspace_id
+    live_only = await _answer(client, seeded_calls.a.headers, "How many calls in the last 90 days?")
+    assert live_only["table"]["rows"][0]["call_count"] == 42
+    assert "3 test calls" in live_only["content"]
+    assert any("including test calls" in s for s in live_only["suggestions"])
+    with_tests = await _answer(
+        client, seeded_calls.a.headers, "How many calls in the last 90 days, including test calls?"
+    )
+    expected = owner_sql(
+        "select count(*) from calls where workspace_id = %s and origin in ('live', 'test')", (ws,)
+    )[0][0]
+    assert with_tests["table"]["rows"][0]["call_count"] == expected == 45
+    assert with_tests["computed_with"][0]["origins"] == ["live", "test"]
+
+
+async def test_declines_offer_example_questions(client: httpx.AsyncClient, seeded_calls: SeededCalls) -> None:
+    answer = await _answer(client, seeded_calls.a.headers, "What is our churn rate?")
+    assert answer["outcome"] == "declined"
+    assert 2 <= len(answer["suggestions"]) <= 3
+    assert "I could not work out" not in answer["content"]
+
+
+async def test_scripted_call_lookup_with_foreign_agent_is_declined(
+    client: httpx.AsyncClient, seeded_calls: SeededCalls, scripted: list[Plan]
+) -> None:
+    scripted.append(
+        Plan(queries=[{"kind": "calls", "filters": {"agent_ids": ["agt_NOTMINE000000000000000000"]}}])
+    )
+    body, headers = _ask("my last call")
+    r = await client.post("/v1/analytics/chat", json=body, headers={**seeded_calls.a.headers, **headers})
+    assert r.status_code == 200 and r.json()["outcome"] == "declined"
