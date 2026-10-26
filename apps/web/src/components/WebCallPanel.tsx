@@ -302,8 +302,8 @@ export function WebCallPanel({
             <dt>Cost</dt>
             <dd className="w-[60px] text-right font-mono text-[13px] text-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
             <InfoTip label="How the cost is estimated" side="bottom">
-              Estimated from the stack's per-minute price while the call runs. The exact charge, split by link of the chain, is in call history once
-              the call is processed. Billing starts when the call connects.
+              Estimated from the stack's per-minute price while the call runs. The exact charge is settled once the call is processed.
+              Billing starts when the call connects.
             </InfoTip>
           </div>
         </dl>
@@ -404,7 +404,7 @@ function footerHint(s: State, elapsed: number, cost: bigint): string {
     case "ending":
       return s.muted ? "Muted: the agent cannot hear you." : "Talk as the caller. The agent hears your microphone.";
     case "ended":
-      return `Ended after ${mss(elapsed)}, about ${formatUsd(cost, { places: 4 })}. The call is in call history with its transcript and latency.`;
+      return `Ended after ${mss(elapsed)}, about ${formatUsd(cost, { places: 4 })}.`;
     case "error":
       return s.problem?.kind === "connection" ? "The call was not connected, so it was not charged." : "Fix the cause above, then try again.";
   }

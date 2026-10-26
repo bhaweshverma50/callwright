@@ -77,7 +77,7 @@ export function AgentTestingPage() {
       </Link>
       <PageHeader
         title={`Test ${detail.name}`}
-        description="Call the agent from your browser. Each answer shows its latency by link of the chain; the call is charged like any other and lands in call history."
+        description="Call the agent from your browser. Each answer shows its latency by link of the chain; the call is charged like any other call."
         actions={
           <Button asChild icon={<Settings2 aria-hidden />}>
             <Link to={editPath}>Edit agent</Link>

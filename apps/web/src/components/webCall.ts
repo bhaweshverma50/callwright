@@ -118,7 +118,7 @@ export function problemFromError(e: unknown): CallProblem {
     return {
       kind: "refused",
       title: "Not enough credit",
-      detail: "Add funds to keep making test calls. The refused attempt is in call history and was not charged.",
+      detail: "Add funds to keep making test calls. The refused attempt was not charged.",
       action: { label: "Add funds", href: "/billing" },
     };
   if (e.status === 403 || type.endsWith("/email-unverified"))

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from worker.adapters.llm import temperature_kwargs
+from worker.adapters.llm import openai_kwargs, temperature_kwargs
 from worker.adapters.registry import VendorSpec
 
 DEFAULT_API_VERSION = "2024-10-21"
@@ -22,7 +22,7 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     model = spec.model or "gpt-5.1"
     fallback = creds.get("fallback_openai_api_key")
     if fallback:
-        return openai.LLM(model=model, api_key=fallback, **temperature_kwargs(spec.options))
+        return openai.LLM(model=model, api_key=fallback, **openai_kwargs(spec.options, creds))
     return openai.LLM.with_azure(
         model=model,
         azure_endpoint=creds.get("endpoint") or "https://callwright.openai.azure.com",
