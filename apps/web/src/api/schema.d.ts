@@ -10249,7 +10249,11 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Transcription vendor unavailable; the client falls back to /voice-commands/transcribe */
+            /**
+             * @description Problem code stt_unavailable: the vendor failed; the client records the clip and calls
+             *     /voice-commands/transcribe. Problem code stt_not_configured: no vendor key on this
+             *     server; the client offers typing instead of recording.
+             */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -10290,6 +10294,15 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Clip too large or too long */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Transcription failed (stt_unavailable) or is not configured on this server (stt_not_configured) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
