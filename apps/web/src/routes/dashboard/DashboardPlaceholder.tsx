@@ -3,6 +3,7 @@ import { Bot, Disc, Gauge, Mail, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import { useAgents } from "../../api/agents";
+import { useHasCalls } from "../../api/calls";
 import { useMe } from "../../api/queries";
 import {
   Badge,
@@ -30,10 +31,10 @@ interface SetupStep {
 }
 
 /**
- * The three steps to a first real call, in order. This view only shows before the first call, so
- * the test call step is never done here; numbers (010) report nothing until channels ship.
+ * The three steps to a first real call, in order. This view shows until the first live call;
+ * numbers (010) report nothing until channels ship.
  */
-export function setupSteps({ hasAgent = false }: { hasAgent?: boolean } = {}): SetupStep[] {
+export function setupSteps({ hasAgent = false, hasTestCall = false }: { hasAgent?: boolean; hasTestCall?: boolean } = {}): SetupStep[] {
   return [
     {
       title: "Create an agent",
@@ -49,7 +50,7 @@ export function setupSteps({ hasAgent = false }: { hasAgent?: boolean } = {}): S
       action: "Make a test call",
       to: "/agents",
       icon: PhoneCallDuo,
-      done: false,
+      done: hasTestCall,
     },
     {
       title: "Connect a number",
@@ -86,7 +87,8 @@ export function toStepperSteps(steps: SetupStep[]): Step[] {
 export function DashboardPlaceholder() {
   const { data: me, isPending } = useMe();
   const agents = useAgents("", null, 1);
-  const steps = setupSteps({ hasAgent: (agents.data?.total ?? 0) > 0 });
+  const testCalls = useHasCalls("test");
+  const steps = setupSteps({ hasAgent: (agents.data?.total ?? 0) > 0, hasTestCall: testCalls.data === true });
   const done = steps.filter((s) => s.done).length;
 
   return (

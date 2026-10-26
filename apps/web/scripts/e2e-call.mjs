@@ -52,7 +52,10 @@ for (let i = 0; i < Number(process.env.TICKS ?? 70); i++) {
 await page.screenshot({ path: `${outDir}/panel.png` });
 if (process.env.AFTER) {
   // Hang up, give post-call processing a moment, then capture the pages that show the call.
-  await page.getByRole("button", { name: "End call" }).click().catch(() => {});
+  await page
+    .getByRole("button", { name: "End call" })
+    .click()
+    .catch(() => {});
   await page.waitForTimeout(12_000);
   for (const path of process.env.AFTER.split(",")) {
     await page.goto(`${WEB}${path}`);
@@ -61,4 +64,11 @@ if (process.env.AFTER) {
   }
 }
 console.log("agent", agent.id);
+if (process.env.AFTER) {
+  const get = async (path) => (await fetch(API + path, { headers: { authorization: `Bearer ${token}` } })).json();
+  const calls = await get("/calls?page_size=1");
+  const call = calls.items?.[0];
+  console.log("call", JSON.stringify(call).slice(0, 600));
+  if (call) console.log("turn-latencies", JSON.stringify(await get(`/calls/${call.call_id}/turn-latencies`)).slice(0, 600));
+}
 await browser.close();

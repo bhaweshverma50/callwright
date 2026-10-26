@@ -20,6 +20,7 @@ describe("setup sequence", () => {
   it("marks the agent step done once an agent exists and moves on to the test call", () => {
     expect(toStepperSteps(setupSteps()).map((s) => s.status)).toEqual(["active", "pending", "pending"]);
     expect(toStepperSteps(setupSteps({ hasAgent: true })).map((s) => s.status)).toEqual(["done", "active", "pending"]);
+    expect(toStepperSteps(setupSteps({ hasAgent: true, hasTestCall: true })).map((s) => s.status)).toEqual(["done", "done", "active"]);
   });
 });
 

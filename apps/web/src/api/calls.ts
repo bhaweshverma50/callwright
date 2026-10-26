@@ -66,12 +66,13 @@ export function useCalls(search: URLSearchParams) {
   });
 }
 
-/** Whether the workspace has any call at all (the dashboard shows the setup sequence until then). */
-export function useHasCalls() {
+/** Whether the workspace has a call of these origins. The dashboard counts live calls only
+ * (FR-022), so it shows the setup sequence until the first live call; test calls tick a step. */
+export function useHasCalls(origin = "live") {
   return useQuery({
-    queryKey: callKeys.any,
+    queryKey: [...callKeys.any, origin],
     queryFn: async () => {
-      const page = (await unwrap(api.GET("/calls", { params: { query: { page_size: 1, origin: "live,test,simulation" } } }))) as CallPage;
+      const page = (await unwrap(api.GET("/calls", { params: { query: { page_size: 1, origin } } }))) as CallPage;
       return page.total > 0;
     },
     staleTime: 60_000,
