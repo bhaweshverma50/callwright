@@ -48,9 +48,8 @@ from app.llms.client import LlmClient, ModelRef
 
 MAX_QUERIES = 3
 DECLINE_TEXT = (
-    "I can answer questions about your calls: a specific call (your last call, the most expensive "
-    "one, or a call by ID) with its cost, duration, status and latency, and totals or trends of "
-    "calls, cost, duration, latency and sentiment by agent, channel or day."
+    "I can answer questions about specific calls (your last call, the most expensive one, a call "
+    "by ID) and about totals and trends of calls, cost, duration, latency and sentiment."
 )
 DECLINE_EXAMPLES = (
     "What did my last call cost?",
@@ -465,9 +464,10 @@ def calls_content(query: CallQuery, rows: list[dict[str, Any]], tz: str) -> str:
             else ""
         )
         lead = "That call" if query.call_id else f"Your {subject} call"
-        kind = ORIGIN_WORDS.get(str(r.get("origin")), "")
+        origin = str(r.get("origin"))
+        kind = "" if origin == "live" else f"a {ORIGIN_WORDS.get(origin, origin)} call "
         return (
-            f"{lead} was a {kind} call with {r.get('agent_name')} on {_when(r.get('started_at'), tz)}: "
+            f"{lead} was {kind}with {r.get('agent_name')} on {_when(r.get('started_at'), tz)}: "
             f"cost {cost}, duration {_fmt(r.get('duration_s'), 'seconds')}, status {str(r.get('status')).replace('_', ' ')}{latency}."
         )
     total = sum(float(r.get("cost_usd") or 0) for r in rows)

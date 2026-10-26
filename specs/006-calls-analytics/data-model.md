@@ -107,9 +107,13 @@ pass, fail and not-applicable counts, average score, calls evaluated, headline f
 All `WITH (security_invoker = true)`; role `cw_analytics_reader` has `SELECT` on these only.
 
 - `analytics.calls_v`: `call_id, workspace_id, agent_id, agent_name, channel, status,
-  disconnect_reason, sentiment, started_at, duration_s, cost_usd` where `origin = 'live'`.
-  No numbers, no transcript, no summary.
-- `analytics.turn_latency_v`: `workspace_id, call_id, agent_id, occurred_at, e2e_ms`.
+  disconnect_reason, sentiment, started_at, duration_s, cost_usd, origin, avg_latency_ms,
+  ended_at`, every origin (migration s006_0002). No numbers, no transcript, no summary.
+- `analytics.turn_latency_v`: `workspace_id, call_id, agent_id, occurred_at, e2e_ms, origin`.
+- The compiler always binds an origin filter: `MetricQuery.origins` defaults to `["live"]`
+  (aggregates match the dashboard), `CallQuery.origins` to `["live", "test"]` (so "my last call"
+  finds the call the owner just tested). When a live-only aggregate left test calls out, the
+  answer says how many and offers a follow-up that includes them.
 - `analytics.evaluator_verdicts_v`: `workspace_id, call_id, agent_id, evaluator_name, verdict,
   score, started_at` (current run per call and evaluator). Created by 006 as an empty-returning
   stub; 007's migration replaces it with the real definition.

@@ -58,9 +58,22 @@ describe("AskPanel (006 US5)", () => {
     renderApp("/billing");
     const { user, panel } = await openPanel();
     await user.type(within(panel).getByLabelText("Your question"), "What is our churn rate?{Enter}");
-    expect(await within(panel).findByText("I cannot answer that from your call data.", undefined, { timeout: 5000 })).toBeInTheDocument();
-    expect(within(panel).getAllByRole("button", { name: "Busiest day last week" }).length).toBeGreaterThan(0);
-  });
+    expect(await within(panel).findByText(/I can't answer that one/, undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(within(panel).queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: "What did my last call cost?" }));
+    expect(await within(panel).findByText(/Your last call was a test call/, undefined, { timeout: 5000 })).toBeInTheDocument();
+  }, 20_000);
+
+  it("answers about the last call with a link to it", async () => {
+    await signInDemo();
+    renderApp("/billing");
+    const { user, panel } = await openPanel();
+    await user.type(within(panel).getByLabelText("Your question"), "What is the cost of my last call?{Enter}");
+    const link = await within(panel).findByRole("link", { name: /Open the call with/ }, { timeout: 5000 });
+    expect(link.getAttribute("href")).toMatch(/^\/calls\?call=call_/);
+    expect(within(panel).getByText("Test call")).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: /Show my last 5 calls/ })).toBeInTheDocument();
+  }, 20_000);
 });
 
 describe("voice copilot navigation (006 US6)", () => {

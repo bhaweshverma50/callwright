@@ -280,12 +280,58 @@ export const callHandlers = [
     if (/churn/i.test(q))
       return json({
         outcome: "declined",
-        content: "I cannot answer that from your call data.",
+        content: "I can't answer that one from your call data. I can answer questions about specific calls and totals or trends of your calls.",
         chart: null,
         table: null,
         truncated: false,
         computed_with: [],
+        suggestions: ["What did my last call cost?", "How many calls this week?", "Cost by agent this month"],
       });
+    if (/last call/i.test(q)) {
+      const latest = store.calls[0] ?? {
+        call_id: mockCallId(0),
+        started_at: new Date(Date.UTC(2026, 9, 16, 12)).toISOString(),
+        agent: { ...MOCK_AGENTS[0]!, deleted: false },
+      };
+      return json({
+        outcome: "answered",
+        content: latest
+          ? `Your last call was a test call with ${latest.agent.name}: cost $0.100, duration 2:31, status completed.`
+          : "I couldn't find any live or test calls. Make a test call from an agent's page and ask again.",
+        chart: null,
+        table: {
+          columns: [
+            { key: "call_id", label: "Call", type: "call" },
+            { key: "started_at", label: "Started", type: "datetime" },
+            { key: "agent_name", label: "Agent", type: "string" },
+            { key: "origin", label: "Type", type: "string" },
+            { key: "status", label: "Status", type: "string" },
+            { key: "duration_s", label: "Duration", type: "seconds" },
+            { key: "cost_usd", label: "Cost", type: "usd" },
+            { key: "avg_latency_ms", label: "Avg latency", type: "ms" },
+          ],
+          rows: latest
+            ? [
+                {
+                  call_id: latest.call_id,
+                  started_at: latest.started_at,
+                  agent_name: latest.agent.name,
+                  origin: "test",
+                  channel: "web",
+                  status: "completed",
+                  duration_s: 151,
+                  cost_usd: 0.1,
+                  avg_latency_ms: 812,
+                },
+              ]
+            : [],
+        },
+        truncated: false,
+        computed_with: [{ kind: "calls", order: "recent", direction: "desc", origins: ["live", "test"], limit: 1 }],
+        suggestions: ["Show my last 5 calls", "What was my most expensive call this month?"],
+        charged_usd: 0.0012,
+      });
+    }
     return json({
       outcome: "answered",
       content: "Total cost by agent: Order desk $1.200, Clinic scheduler $0.800.",
