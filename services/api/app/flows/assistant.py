@@ -45,7 +45,7 @@ from app.pricing.engine import fmt6
 tracer = trace.get_tracer("app.flows")
 SYSTEM_PROMPT = Path(__file__).with_name("assistant_prompt.md").read_text(encoding="utf-8")
 MAX_OUTPUT_TOKENS = 6000
-NODE_W, NODE_H = 240, 96
+NODE_W, NODE_H = 248, 136  # card size with outcome rows (data model assumes at least 240 x 96)
 RANKSEP = 120
 STEP_Y = 40
 EDGE_CHANGE_KEYS = ("label", "condition", "target", "category", "rule", "trigger")
