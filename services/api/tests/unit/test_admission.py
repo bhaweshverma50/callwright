@@ -136,14 +136,25 @@ async def test_auto_stt_language_without_a_model_is_refused(runtime: Runtime) ->
     assert admission.refusal.diagnostic == "stt_language_unsupported:assemblyai/ja"
 
 
+COMPILED_FLOW = {"compiled": {"schema_version": 1}}
+
+
 async def test_flow_agents_wait_for_the_flow_runtime(runtime: Runtime) -> None:
     _, ws = await runtime.workspace()
-    agent = runtime.versions.add_agent(ws, agent_type="flow")
+    agent = runtime.versions.add_agent(ws, agent_config(flow=COMPILED_FLOW), agent_type="flow")
     ports.set_flow_runtime_available(False)  # a build without the 004 runtime
     admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)
     assert admission.refusal is not None and admission.refusal.code == "flow_runtime_unavailable"
     ports.set_flow_runtime_available(True)
     assert (await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)).admitted
+
+
+async def test_flow_agent_without_a_compiled_flow_is_refused(runtime: Runtime) -> None:
+    _, ws = await runtime.workspace()
+    agent = runtime.versions.add_agent(ws, agent_type="flow")
+    admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)
+    assert admission.refusal is not None and admission.refusal.code == "flow_not_compiled"
+    assert admission.refusal.status == 409
 
 
 async def test_concurrency_limit(runtime: Runtime) -> None:

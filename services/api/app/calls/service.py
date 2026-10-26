@@ -52,6 +52,7 @@ REFUSALS: dict[str, tuple[int, str]] = {
     "email_unverified": (403, "error"),
     "agent_not_published": (409, "error"),
     "flow_runtime_unavailable": (422, "error"),
+    "flow_not_compiled": (409, "error"),
     "unsupported_vendor": (422, "error"),
     "pricing_unavailable": (422, "error"),
     "insufficient_credit": (402, "insufficient_credit"),
@@ -62,6 +63,7 @@ _DETAILS = {
     "email_unverified": "Verify your email address before placing calls.",
     "agent_not_published": "This agent has no published version.",
     "flow_runtime_unavailable": "Flow agents cannot run calls yet.",
+    "flow_not_compiled": "This flow has no compiled graph. Fix the problems the flow builder lists.",
     "unsupported_vendor": "The agent uses a speech or language vendor the platform does not support.",
     "pricing_unavailable": "The agent's configuration is not fully priced.",
     "insufficient_credit": "Your balance is too low to start a call. Add funds to continue.",
@@ -216,11 +218,20 @@ def _replayed_refusal(call: Call) -> Refusal:
     return Refusal(code, status, call.disconnect_reason or "error", diagnostic, _DETAILS[code])
 
 
+def _has_compiled_flow(config: Mapping[str, Any]) -> bool:
+    flow = config.get("flow")
+    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
+    return isinstance(compiled, Mapping) and compiled.get("schema_version") == 1
+
+
 async def _checks(
     session: AsyncSession, request: AdmissionRequest, snapshot: AgentSnapshot, catalog: AdapterCatalog
 ) -> Refusal | None:
     if snapshot.agent_type == "flow" and not registry.flow_runtime_available:
         return refusal("flow_runtime_unavailable")
+    if snapshot.agent_type == "flow" and not _has_compiled_flow(snapshot.config):
+        # The worker would fail the call with the same code after the caller joined (004).
+        return refusal("flow_not_compiled")
     components = comp.resolve(snapshot.config, catalog)
     diagnostic = comp.unsupported(components, catalog)
     if diagnostic is not None:

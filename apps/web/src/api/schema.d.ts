@@ -8300,7 +8300,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["Problem"];
-            /** @description `agent-not-published` (version=published with none pinned) or `idempotency-key-in-use` (same key, request still running). */
+            /** @description `agent-not-published` (version=published with none pinned), `flow-not-compiled` (a flow agent whose graph has no compiled flow, 004) or `idempotency-key-in-use` (same key, request still running). */
             409: {
                 headers: {
                     [name: string]: unknown;

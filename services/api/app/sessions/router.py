@@ -1,7 +1,7 @@
 """POST /v1/sessions/web-call (contracts/sessions.yaml, 003 T031, T052).
 
 Refusals map to problems with the refused call's id: 402 ``insufficient_credit``, 403
-``email_unverified``, 409 ``agent_not_published``, 422 ``unsupported_vendor``,
+``email_unverified``, 409 ``agent_not_published`` and ``flow_not_compiled``, 422 ``unsupported_vendor``,
 ``pricing_unavailable`` and ``flow_runtime_unavailable``, 429 ``concurrency_limit``. The whole
 response, success or problem, is replayed for a repeated ``Idempotency-Key``.
 """

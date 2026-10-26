@@ -20,7 +20,11 @@ const post = async (path, body, token) => {
 };
 const reg = await post("/auth/register", { email, password });
 const token = reg.access_token ?? reg.session?.access_token;
-const agent = await post("/agents", { name: "E2E agent", type: "single_prompt", template_id: template }, token);
+// "flow" creates a flow agent the way the web app does (POST /flows makes the agent and its graph).
+const agent =
+  template === "flow"
+    ? { id: (await post("/flows", { name: "E2E flow agent", language: "en-US" }, token)).agent_id }
+    : await post("/agents", { name: "E2E agent", type: "single_prompt", template_id: template }, token);
 
 const browser = await chromium.launch({
   args: [

@@ -7,6 +7,8 @@ import { api, unwrap } from "../api/client";
 import type { Latency } from "./signal";
 import { LATENCY_TOPIC, type AgentActivity, type MicCheck, type WebCallDriver } from "./webCall";
 
+const AGENT_JOIN_TIMEOUT_MS = 20_000;
+
 /** Confirms microphone access without creating anything server side (FR-047). */
 export async function checkMicrophone(): Promise<MicCheck> {
   const md = typeof navigator === "undefined" ? undefined : navigator.mediaDevices;
@@ -72,12 +74,13 @@ export function createLiveDriver(): WebCallDriver {
       const audioEls: HTMLMediaElement[] = [];
       const segments = new Map<string, string>();
       let hungUp = false;
-      const timer: { level?: ReturnType<typeof setInterval> } = {};
+      const timer: { level?: ReturnType<typeof setInterval>; agentJoin?: ReturnType<typeof setTimeout> } = {};
 
       const finish = (reason: "user_hangup" | "agent_hangup" | "connection_lost") => {
         if (hungUp) return;
         hungUp = true;
         if (timer.level) clearInterval(timer.level);
+        if (timer.agentJoin) clearTimeout(timer.agentJoin);
         audioEls.forEach((el) => el.remove());
         room.unregisterTextStreamHandler("lk.transcription");
         listener.ended(reason);
@@ -140,6 +143,16 @@ export function createLiveDriver(): WebCallDriver {
       void room.startAudio().catch(() => {});
       const initial = agent()?.attributes["lk.agent.state"];
       listener.activity(initial ? (ACTIVITY[initial] ?? "listening") : "joining");
+
+      // The agent normally joins before the caller. A call the worker refused or failed leaves an
+      // empty room, so give up instead of waiting for an agent that never comes.
+      if (!agent()) {
+        timer.agentJoin = setTimeout(() => {
+          if (agent()) return;
+          finish("connection_lost");
+          void room.disconnect();
+        }, AGENT_JOIN_TIMEOUT_MS);
+      }
 
       timer.level = setInterval(() => {
         listener.levels({ caller: room.localParticipant.audioLevel, agent: agent()?.audioLevel ?? 0 });

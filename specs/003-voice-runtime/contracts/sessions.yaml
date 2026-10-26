@@ -66,8 +66,9 @@ paths:
           $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'
         '409':
           description: >
-            `agent-not-published` (version=published with none pinned) or
-            `idempotency-key-in-use` (same key, request still running).
+            `agent-not-published` (version=published with none pinned), `flow-not-compiled`
+            (a flow agent whose graph has no compiled flow, 004) or `idempotency-key-in-use`
+            (same key, request still running).
           content:
             application/problem+json:
               schema:
