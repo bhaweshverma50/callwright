@@ -135,3 +135,80 @@ It enables docker and containerd at boot, checks that every compose service has
 
 Copy the new files with the existing scp step: `docker-compose.yml`, `render-env.sh`,
 `idle-shutdown.sh`, `install-idle.sh` and `systemd/`.
+
+## Telephony: phone numbers and WhatsApp (spec 010, not deployed)
+
+The API ships phone numbers, outbound calls and WhatsApp channels, but this VM runs no SIP
+service yet. Until it does, `LIVEKIT_SIP_HOST` is unset: the API keeps SIP trunks and dispatch
+rules in memory (`SIP_MODE=auto`), WhatsApp setup does not call Meta (`WHATSAPP_GRAPH_MODE=auto`),
+`GET /v1/phone-numbers/sip-settings` answers `telephony_enabled: false` (the Channels page shows
+a notice) and `POST /v1/outbound-calls` answers 503 `telephony_unavailable`. Numbers can still be
+imported, labelled and given agents; nothing reaches them.
+
+What `docker-compose.yml` already has: a `sip` service (`livekit/sip`, host network, health on
+127.0.0.1:8192) in the `telephony` profile, so `docker compose up -d` never starts it.
+`sip.yaml.tmpl` is its configuration; `render-env.sh` renders `sip.yaml` only with
+`CW_SIP_ENABLED=true` and writes `LIVEKIT_SIP_HOST` into `worker.env` from `CW_LIVEKIT_SIP_HOST`.
+
+### Turn it on
+
+1. **SIP trunk provider.** Any carrier with BYO SIP trunking: Twilio Elastic SIP Trunking, Telnyx,
+   Plivo, Vonage, or an Indian carrier with SIP (Tata Tele, Airtel IQ; Indian DIDs need KYC and
+   cannot be used for outbound to Indian mobiles from a foreign trunk). Buy a number, create a
+   trunk with **origination** URI `sip:sip.bhawesh.dev` (inbound to us) and **termination**
+   (outbound from us) with digest credentials. In Callwright, "Import number" takes the number,
+   the termination host (for example `example.pstn.twilio.com`) and those credentials.
+2. **DNS.** Cloudflare `sip` A 34.180.13.164, DNS only (SIP and RTP cannot be proxied).
+3. **TLS certificate for `sip.bhawesh.dev`** (WhatsApp only connects over TLS). Add a
+   `sip.bhawesh.dev { respond 404 }` block to the Caddyfile so Caddy obtains and renews it, then
+   copy `fullchain.pem` and `privkey.pem` from the `caddy_data` volume
+   (`certificates/acme-v02.api.letsencrypt.org-directory/sip.bhawesh.dev/`) into
+   `/opt/callwright/sip-certs/` (repeat after renewal, or mount the volume read-only).
+4. **Firewall** (add to `callwright-rtc-public` or a new `callwright-rtc-sip` rule):
+   udp 5060 and tcp 5060 (SIP), tcp 5061 (SIP over TLS), udp 51000-51999 (RTP media,
+   `CW_SIP_RTP_PORTS`). Restrict 5060 to the carrier's published signalling ranges where it
+   publishes them; per-number source ranges can also be set on each number
+   (`inbound_allowed_cidrs`).
+5. **Render and start** (pin the image to a release from https://github.com/livekit/sip/releases):
+
+   ```bash
+   cd /opt/callwright && CW_SIP_ENABLED=true CW_LIVEKIT_SIP_HOST=sip.bhawesh.dev \
+     CW_SIP_IMAGE=livekit/sip:<version> ./render-env.sh
+   sudo docker compose --profile telephony up -d sip && sudo docker compose up -d worker
+   curl -s localhost:8192   # health
+   ```
+
+6. **API (Cloud Run).** Set `LIVEKIT_SIP_HOST=sip.bhawesh.dev` on the API service and redeploy.
+   With `LIVEKIT_MODE=live` this switches trunks, dispatch rules and WhatsApp to the real APIs.
+   Numbers and WhatsApp channels saved while it was off point at in-memory trunk ids: delete
+   them and import or connect them again so real trunks are created.
+7. **Keep the VM on.** A carrier cannot wake a stopped VM, so inbound calls fail while it is
+   off. Touch `/opt/callwright/keep-awake` (or disable `callwright-idle.timer`) once real
+   numbers are live.
+8. **Verify:** `lk sip inbound list`, `lk sip outbound list`, `lk sip dispatch list` show one
+   inbound and one outbound trunk per number and one dispatch rule per number with an inbound
+   agent; call the number; place an outbound call from the number's detail panel.
+
+### WhatsApp Business Calling
+
+Needs steps 2 to 7 above (TLS on 5061 is mandatory) and, per number, in Meta: a verified
+business, a WhatsApp Business number with the Calling API enabled for the app, a system user
+access token with `whatsapp_business_management` and `whatsapp_business_messaging`, and the app
+secret. In Callwright, "Connect WhatsApp" takes the phone number ID, the number, the token, a
+verify token you choose and the app secret; Callwright enables Calling with SIP delivery to
+`sip.bhawesh.dev:5061` and reads the SIP password Meta will use. Then in the Meta app's webhook
+settings paste the callback URL shown in the dialog (`https://<api>/v1/whatsapp/webhook`) with
+the same verify token and subscribe to the `calls` field. The channel turns `active` when Meta's
+verification request arrives.
+
+### Cost
+
+* VM always on: e2-medium in asia-south1 is about USD 25 to 30 a month (today it is usually off),
+  plus the static IP.
+* Numbers and minutes are billed by the carrier to its account, never by Callwright: for
+  example Twilio US local numbers about USD 1.15 a month and Elastic SIP Trunking about
+  USD 0.004 to 0.01 a minute; Indian DIDs and minutes vary by carrier.
+* WhatsApp: Meta charges per its Calling pricing (user-initiated calls have been free;
+  business-initiated calls are billed per minute by country). Check Meta's current price list.
+* Callwright bills only connected seconds (from `in_progress`); ringing, busy, no-answer,
+  declined and blocked calls cost nothing.

@@ -1,0 +1,22 @@
+# Rendered to sip.yaml by render-env.sh when CW_SIP_ENABLED=true (010 channels). The SIP service
+# registers with LiveKit through Redis and the local server; carriers reach it on 5060 (UDP/TCP)
+# and WhatsApp on 5061 (TLS, SRTP). Media uses UDP ${SIP_RTP_PORTS}.
+api_key: ${LIVEKIT_API_KEY}
+api_secret: ${LIVEKIT_API_SECRET}
+ws_url: ws://127.0.0.1:7880
+redis:
+  address: 127.0.0.1:6379
+  password: ${REDIS_PASSWORD}
+sip_port: 5060
+rtp_port: ${SIP_RTP_PORTS}
+use_external_ip: true
+health_port: 8192
+logging:
+  level: info
+# TLS for WhatsApp (Meta only connects over TLS) and carriers that offer it. The certificate must
+# match LIVEKIT_SIP_HOST; copy it into ./sip-certs (see README.md, "Telephony").
+tls:
+  port: 5061
+  certs:
+    - cert_file: /certs/fullchain.pem
+      key_file: /certs/privkey.pem
