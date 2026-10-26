@@ -29,7 +29,9 @@ def test_worker_fixture_is_current(path: Path) -> None:
     config = default_config("flow", "en-US")
     config["prompt"] = "You are the receptionist of Harbour Clinic."
     name = path.name.removesuffix(".graph.json")
-    compiled = compile_flow(f"flw_01JA0FL0W{name.upper()[:8]:0<8}".ljust(30, "0")[:30], graph, config, {}, compiled_at=AT)
+    compiled = compile_flow(
+        f"flw_01JA0FL0W{name.upper()[:8]:0<8}".ljust(30, "0")[:30], graph, config, {}, compiled_at=AT
+    )
     target = FLOWS / f"{name}.compiled.json"
     text = json.dumps({"config": {**config, "flow": {"compiled": compiled}}}, indent=2, sort_keys=True) + "\n"
     if os.environ.get("UPDATE_GOLDEN") or not target.exists():

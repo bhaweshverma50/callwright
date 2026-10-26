@@ -15,7 +15,7 @@ import { defineConfig, devices } from "@playwright/test";
 const external = process.env.E2E_BASE_URL;
 const port = Number(process.env.E2E_PORT ?? 5180);
 const realBase = process.env.E2E_REAL_BASE_URL;
-const REAL_SPECS = /(signup|topup|quickstart)\.spec\.ts$/;
+const REAL_SPECS = /(signup|topup|quickstart|flow-build-publish)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "tests/e2e",

@@ -87,4 +87,5 @@ def register() -> None:
     agent_hooks.register_validator("flow", validate_flow)
     agent_hooks.register_duplicate_hook(duplicate_flow)
     tools.register_flow_mock_hook(service.webhook_nodes_without_mock)
+    tools.register_flow_usage_hook(service.tool_node_usages)
     PURPOSE_REPLIES["flow_assistant"] = assistant_fake.reply

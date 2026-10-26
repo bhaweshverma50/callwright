@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
 from app.agents import service as agents
+from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
@@ -404,6 +405,11 @@ async def usages(session: AsyncSession, tool_id: str) -> list[Usage]:
     ]
 
 
+async def agent_names(session: AsyncSession, agent_ids: Sequence[str]) -> dict[str, str]:
+    rows = await session.execute(select(Agent.id, Agent.name).where(Agent.id.in_(list(agent_ids))))
+    return {str(r[0]): str(r[1]) for r in rows}
+
+
 async def usage_counts(session: AsyncSession, tool_ids: Sequence[str]) -> dict[str, int]:
     if not tool_ids:
         return {}
@@ -550,6 +556,23 @@ FlowMockHook = Callable[[AsyncSession, str], Awaitable[list[dict[str, str]]]]
 _flow_mock_hook: FlowMockHook | None = None
 
 
+FlowUsageHook = Callable[[AsyncSession, str], Awaitable[list[dict[str, Any]]]]
+_flow_usage_hook: FlowUsageHook | None = None
+
+
+def register_flow_usage_hook(fn: FlowUsageHook | None) -> None:
+    """004: ``fn(session, tool_id)`` returns ``[{agent_id, flow_id, node_ids}]`` for flow nodes."""
+    global _flow_usage_hook
+    _flow_usage_hook = fn
+
+
+async def flow_node_usages(session: AsyncSession, tool_id: str) -> dict[str, list[str]]:
+    """Node ids per agent that attach ``tool_id`` in a flow draft (empty without 004)."""
+    if _flow_usage_hook is None:
+        return {}
+    return {str(u["agent_id"]): list(u["node_ids"]) for u in await _flow_usage_hook(session, tool_id)}
+
+
 def register_flow_mock_hook(fn: FlowMockHook | None) -> None:
     """004: ``fn(session, agent_id)`` returns ``[{node_id, name}]`` webhook nodes lacking a mock."""
     global _flow_mock_hook
@@ -575,11 +598,13 @@ __all__ = [
     "create_tool",
     "delete_tool",
     "duplicate_tool",
+    "flow_node_usages",
     "get_tool",
     "key_wrapper",
     "list_tools",
     "mock_coverage",
     "register_flow_mock_hook",
+    "register_flow_usage_hook",
     "resolve_for_snapshot",
     "secrets_for_config",
     "set_agent_tools",

@@ -178,17 +178,31 @@ async def get_tool_usages(tool_id: ToolId, request: Request, principal: CurrentP
     async with _tx(request, principal) as session:
         await service.get_tool(session, tool_id)
         found = await service.usages(session, tool_id)
-    return {
-        "items": [
-            {
-                "agent_id": u.agent_id,
-                "agent_name": u.agent_name,
-                "in_draft": u.in_draft,
-                "published_version_ids": u.published_version_ids,
-            }
-            for u in found
-        ]
-    }
+        nodes = await service.flow_node_usages(session, tool_id)
+        names = {u.agent_id for u in found}
+        extra = [a for a in nodes if a not in names]
+        named = {a: n for a, n in (await service.agent_names(session, extra)).items()} if extra else {}
+    items: list[dict[str, Any]] = [
+        {
+            "agent_id": u.agent_id,
+            "agent_name": u.agent_name,
+            "in_draft": u.in_draft,
+            "published_version_ids": u.published_version_ids,
+            **({"flow_node_ids": nodes[u.agent_id]} if u.agent_id in nodes else {}),
+        }
+        for u in found
+    ]
+    items += [
+        {
+            "agent_id": a,
+            "agent_name": named.get(a, a),
+            "in_draft": True,
+            "published_version_ids": [],
+            "flow_node_ids": nodes[a],
+        }
+        for a in extra
+    ]
+    return {"items": items}
 
 
 async def _tool_set(session: Any, agent_id: str, tools: list[Any]) -> dict[str, Any]:

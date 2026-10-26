@@ -117,3 +117,25 @@ async def test_mock_coverage_and_tool_usages(
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
         usages = await service.tool_node_usages(session, tool_id)
     assert usages == [{"agent_id": flow["agent_id"], "flow_id": flow["id"], "node_ids": ["n_triage01"]}]
+
+
+async def test_tool_usages_list_flow_nodes(client: httpx.AsyncClient, account: Account) -> None:
+    flow = (await create_flow(client, account))["flow"]
+    tool = await client.post(
+        "/v1/tools",
+        json={"type": "end_call", "name": "wrap_up", "description": "End the call", "config": {}},
+        headers=account.headers,
+    )
+    g = clinic()
+    g["nodes"][1]["config"]["tool_ids"] = [tool.json()["id"]]
+    assert (await save(client, account, flow, g)).status_code == 200
+    usages = (await client.get(f"/v1/tools/{tool.json()['id']}/usages", headers=account.headers)).json()
+    assert usages["items"] == [
+        {
+            "agent_id": flow["agent_id"],
+            "agent_name": "Clinic intake",
+            "in_draft": True,
+            "published_version_ids": [],
+            "flow_node_ids": ["n_triage01"],
+        }
+    ]
