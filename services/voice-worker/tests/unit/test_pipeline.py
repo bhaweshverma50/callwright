@@ -11,7 +11,12 @@ import pytest
 from tests.unit.conftest import make_runtime
 from worker.adapters.registry import AdapterRegistry, UnsupportedVendor
 from worker.audio import PronunciationEntry, PronunciationTransform
-from worker.flow import FlowRuntimeUnavailable, NullFlowRunner, register_flow_runner
+from worker.flow import (
+    FlowRuntimeUnavailable,
+    NullFlowRunner,
+    get_flow_runner,
+    register_flow_runner,
+)
 from worker.pipeline import (
     VOICE_STYLE_INSTRUCTION,
     build_agent,
@@ -172,10 +177,22 @@ def test_tts_gain_only_without_native_volume() -> None:
 def test_flow_agent_without_004_is_refused() -> None:
     runtime = make_runtime({"type": "flow"})
     plan = plan_session(runtime, AdapterRegistry())
+    previous = get_flow_runner()
     register_flow_runner(NullFlowRunner())
+    try:
+        with pytest.raises(FlowRuntimeUnavailable) as exc:
+            build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+    finally:
+        register_flow_runner(previous)
+    assert exc.value.diagnostic == "flow-runtime-unavailable"
+
+
+def test_flow_agent_without_a_compiled_flow_fails_with_a_diagnostic() -> None:
+    runtime = make_runtime({"type": "flow"})
+    plan = plan_session(runtime, AdapterRegistry())
     with pytest.raises(FlowRuntimeUnavailable) as exc:
         build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
-    assert exc.value.diagnostic == "flow-runtime-unavailable"
+    assert exc.value.diagnostic == "flow_not_compiled"
 
 
 def test_flow_runner_port_builds_the_entry_agent() -> None:
@@ -185,14 +202,16 @@ def test_flow_runner_port_builds_the_entry_agent() -> None:
     class Runner:
         available = True
 
-        def build_agent(self, runtime: Any, control: Any, tools: Any) -> str:
+        def build_agent(self, runtime: Any, control: Any, tools: Any, **options: Any) -> str:
+            assert options["plan"] is plan
             return "flow-entry-agent"
 
+    previous = get_flow_runner()
     register_flow_runner(Runner())
     try:
         assert build_agent(plan, runtime, control=None) == "flow-entry-agent"  # type: ignore[arg-type]
     finally:
-        register_flow_runner(NullFlowRunner())
+        register_flow_runner(previous)
 
 
 def test_single_prompt_agent_carries_plan_and_instructions() -> None:

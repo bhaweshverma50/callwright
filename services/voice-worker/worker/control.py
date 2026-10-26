@@ -8,7 +8,7 @@ control logic (first writer wins on hang-up, event reporting, override staging).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 from worker import telemetry
@@ -121,9 +121,14 @@ class RuntimeCallControl:
             self._recorder.transcript_item(result)
 
     def report_transition(
-        self, to_node_id: str, *, from_node_id: str | None = None, label: str | None = None
+        self,
+        to_node_id: str,
+        *,
+        from_node_id: str | None = None,
+        label: str | None = None,
+        details: Mapping[str, Any] | None = None,
     ) -> None:
-        self._recorder.flow_transition(to_node_id, from_node_id, label)
+        self._recorder.flow_transition(to_node_id, from_node_id, label, details)
         item: dict[str, Any] = {"type": "flow_transition", "to_node_id": to_node_id}
         if from_node_id:
             item["from_node_id"] = from_node_id

@@ -52,7 +52,7 @@ Offline harness, no telephony:
 
 ```bash
 cd services/voice-worker
-uv run pytest tests/harness -k flow_triage_support -q
+uv run pytest tests/harness/test_flow_scenarios.py -k flow_triage_support -q
 ```
 
 Scenario `tests/harness/scenarios/flow_triage_support.yaml` publishes Start, Triage (agent),
@@ -86,8 +86,8 @@ again, Approve, Save: the draft validates; the workspace usage report (001) show
 
 ```bash
 cd services/voice-worker
-uv run python -m tests.harness.bench.bench_flow_engine --runs 500       # engine overhead
-uv run python -m tests.harness.bench.bench_flow_turn_latency --set default
+uv run python -m tests.harness.bench.bench_flow_engine            # engine overhead, 500 runs
+uv run python -m tests.harness.bench.bench_flow_turn_latency      # flow turns against single prompt
 ```
 
 Pass criteria: engine overhead per move p95 at most 150 ms; flow agent turns on the default
@@ -124,3 +124,16 @@ Browser checks:
 7. Make an unsaved edit and start a test call: the save prompt appears first.
 8. Ask the assistant to insert a node between two nodes: the new node does not overlap and the
    other nodes stay where they were.
+
+## Results (2026-10-26, branch w3-flows, local stack on API 8103 and web 5183)
+
+| Section | How it was run | Result |
+|---|---|---|
+| 1 Create | `tests/integration/flows/test_create_flow_agent.py`, contract tests, browser at `/agents/new/flow` | Pass: 201, three nodes and two edges, 0 errors, en-GB STT and TTS defaults; unknown language falls back to en-US with a warning |
+| 2 Save | `test_save_revision.py`, browser save and conflict dialog | Pass: 200 then 412 `flow_revision_conflict` with `current_revision` 2; reload restores graph, positions and viewport |
+| 3 Publish | `test_publish.py`, `test_validation.py`, browser publish dialog | Pass: `E_START_COUNT` and `W_UNREACHABLE` shown and selectable; 422 `flow_has_errors`; 201 with the compiled flow in the version; layout-only change keeps `graph_hash` (`test_compiler.py`) |
+| 4 Runtime | `tests/harness/test_flow_scenarios.py` (real AgentSession in text mode, rule-driven fake model) | Pass: start, triage, route, support line, end with triggers always, llm_condition, category, always and `agent_hangup`; rule else, task max rounds, webhook failure, transfer fallback and the 200-move guard pass too. The read projection is covered by `test_flow_transitions_contract.py`. A live call with node highlighting needs LiveKit and was not run locally |
+| 5 Overrides | `flow_overrides_context` scenario and `tests/unit/flow/test_opening.py` | Pass: the reset node's model requests carry no earlier caller turns; the Spanish node builds its own LLM (openai/gpt-5-mini) and STT (es) |
+| 6 Assistant | `test_assistant.py`, `ProposalBar.test.tsx`, browser | Pass with the deterministic planner (no model key here): one added node, one removed and two added connections, decline leaves the graph unchanged, approve is one undo step, one `flow_assistant` charge, nothing charged on timeout |
+| 7 Benchmarks | `bench_flow_engine`, `bench_flow_turn_latency` (results in `tests/harness/bench/results/`) | Pass: engine p95 0.02 ms per move; with a 350 ms model first token, turns without a move p50 355 ms against 357 ms single prompt, moves into a node with an entry line p50 358 ms. Real vendors were not available |
+| 8 Walkthrough deltas | the curl above against the dev API, `test_save_with_agent_settings.py`, browser QA | Pass: 200 with `agent_draft_revision` 2 and other settings unchanged, then 412 `agent_draft_changed`; transition name preview, keyboard delete with Undo, transfer and max-rounds field errors, category handles, `?configure=call-behavior` and assistant placement checked in the browser |

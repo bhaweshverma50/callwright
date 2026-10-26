@@ -206,6 +206,11 @@ class Settings(BaseSettings):
     # The call_inbound request to an operator's endpoint during the ring phase (R13).
     inbound_webhook_timeout_s: float = Field(3.0, gt=0, le=10)
 
+    # Flow assistant (004). Unset: OpenAI gpt-5-mini when OPENAI_API_KEY is set, else the
+    # prompt assistant's model (the fake planner answers without keys).
+    flow_assistant_model: str | None = None
+    flow_assistant_timeout_s: float = 60.0
+
     @field_validator("env", mode="before")
     @classmethod
     def _env_alias(cls, value: Any) -> Any:

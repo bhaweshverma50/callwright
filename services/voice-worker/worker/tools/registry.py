@@ -518,6 +518,10 @@ class CallwrightToolProvider:
     def tools_for(self, runtime: RuntimeConfig, control: CallControl) -> Sequence[Any]:
         return self._for(runtime, control).function_tools()
 
+    def call_tools(self, runtime: RuntimeConfig, control: CallControl) -> CallTools:
+        """The call's tools, from which 004 builds each flow node's own tool set."""
+        return self._for(runtime, control)
+
     def filler_policy(self, runtime: RuntimeConfig, control: CallControl) -> FillerPolicy:
         return self._for(runtime, control).fillers
 

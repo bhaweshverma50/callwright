@@ -1,0 +1,15 @@
+# US4: per-node language and model, reset and summarize context strategies.
+name: flow_overrides_context
+flow: overrides_context
+llm:
+  rules:
+    - {match: spanish, tool: route_to_spanish}
+    - {match: finished, tool: route_to_wrap_up}
+caller:
+  - "My account number is 4471. Can we speak Spanish?"
+  - "Gracias, I'm finished"
+expect:
+  path: [n_start000, n_triage00, n_spanish0, n_summary0]
+  triggers: [always, llm_condition, llm_condition]
+  agent_says: ["Hola, le ayudo en español.", "Let me wrap up."]
+  reset_hides: "4471"

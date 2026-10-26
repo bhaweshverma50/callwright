@@ -1,0 +1,109 @@
+{
+  "nodes": [
+    {
+      "id": "n_start000",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start_speaker": "agent",
+        "greeting_type": "static",
+        "greeting": "Hello, let's get you booked."
+      }
+    },
+    {
+      "id": "n_task0000",
+      "type": "task",
+      "label": "Collect details",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "Collect name and email.",
+        "begin_message": null,
+        "fields": [
+          {
+            "name": "name",
+            "type": "string",
+            "description": "Full name",
+            "required": true
+          },
+          {
+            "name": "email",
+            "type": "string",
+            "description": "Email",
+            "required": true
+          }
+        ],
+        "max_rounds": 3,
+        "context_strategy": "inherit",
+        "overrides": {
+          "llm": null,
+          "tts": null,
+          "stt": null,
+          "language": null
+        },
+        "tool_ids": [],
+        "kb_search_enabled": false
+      }
+    },
+    {
+      "id": "n_thanks00",
+      "type": "say",
+      "label": "Thanks",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "message": "Thanks {{task_result.name}}.",
+        "allow_interruptions": true
+      }
+    },
+    {
+      "id": "n_end00000",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "message": "Thanks for calling. Goodbye.",
+        "reason": "call_completed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_start000",
+      "source": "n_start000",
+      "target": "n_task0000",
+      "trigger": "always",
+      "sort_order": 0
+    },
+    {
+      "id": "e_success0",
+      "source": "n_task0000",
+      "target": "n_thanks00",
+      "trigger": "success",
+      "sort_order": 0
+    },
+    {
+      "id": "e_thanks00",
+      "source": "n_thanks00",
+      "target": "n_end00000",
+      "trigger": "always",
+      "sort_order": 0
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

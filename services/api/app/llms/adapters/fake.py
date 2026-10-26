@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 
 from app.llms.adapters.base import ChatMessage, Completion, ModelError, ModelTimeout, estimate_tokens
 
@@ -75,6 +76,10 @@ def assistant_reply(messages: list[ChatMessage], system: str | None) -> str:
     )
 
 
+# Deterministic replies other features register for their own ``purpose`` (004 flow assistant).
+PURPOSE_REPLIES: dict[str, Callable[[list[ChatMessage], str | None], str]] = {}
+
+
 class FakeAdapter:
     name = "fake"
 
@@ -99,6 +104,8 @@ class FakeAdapter:
             raise ModelError("fake error")
         if purpose == "prompt_assistant":
             text = assistant_reply(messages, system)
+        elif purpose in PURPOSE_REPLIES:
+            text = PURPOSE_REPLIES[purpose](messages, system)
         else:
             text = json.dumps({"reply": f"(fake) {last[:200]}"}) if json_mode else f"(fake) {last[:200]}"
         prompt_text = (system or "") + "".join(m.content for m in messages)

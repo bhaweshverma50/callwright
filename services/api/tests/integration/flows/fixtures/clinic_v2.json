@@ -1,0 +1,40 @@
+{
+  "nodes": [
+    {"id": "n_start001", "type": "start", "label": "Start", "position": {"x": 0, "y": 0},
+     "config": {"start_speaker": "agent", "greeting_type": "static", "greeting": "Thanks for calling the clinic. How can I help?"}},
+    {"id": "n_triage01", "type": "agent", "label": "Triage", "position": {"x": 320, "y": 0},
+     "config": {"instructions": "Find out whether the caller wants to book, has a billing question, or needs something else.", "begin_message": null, "context_strategy": "inherit", "overrides": {"llm": null, "tts": null, "stt": null, "language": null}, "tool_ids": [], "kb_search_enabled": true}},
+    {"id": "n_details1", "type": "task", "label": "Collect details", "position": {"x": 640, "y": -160},
+     "config": {"instructions": "Collect the caller's name and preferred day.", "begin_message": "Let me take a few details.", "fields": [{"name": "name", "type": "string", "description": "Full name", "required": true}, {"name": "day", "type": "enum", "description": "Preferred day", "required": true, "enum_values": ["monday", "tuesday"]}], "max_rounds": 5, "context_strategy": "summarize", "overrides": {"llm": null, "tts": null, "stt": null, "language": null}, "tool_ids": [], "kb_search_enabled": false}},
+    {"id": "n_book0001", "type": "webhook", "label": "Book slot", "position": {"x": 960, "y": -160},
+     "config": {"request": {"method": "POST", "url": "https://api.example.com/book", "headers": [{"name": "Content-Type", "value": "application/json", "secret": false}], "body_template": "{\"name\": \"{{task_result.name}}\"}", "timeout_ms": 8000, "response_mappings": [{"variable_name": "booking_ref", "json_path": "$.ref"}], "speak_during_execution": true, "execution_message": "One moment while I book that."}, "mock_response": "{\"ref\": \"B-1\"}"}},
+    {"id": "n_booked01", "type": "say", "label": "Booked", "position": {"x": 1280, "y": -160},
+     "config": {"message": "You are booked. Your reference is {{booking_ref}}.", "allow_interruptions": true}},
+    {"id": "n_route001", "type": "condition", "label": "Route", "position": {"x": 640, "y": 160},
+     "config": {"kind": "classify", "instructions": "", "categories": [{"name": "Billing", "description": "Bills and payments"}, {"name": "Other", "description": "Anything else"}]}},
+    {"id": "n_desk0001", "type": "transfer", "label": "Front desk", "position": {"x": 960, "y": 160},
+     "config": {"transfer": {"routing_type": "static", "number": "+14155550100", "transfer_type": "cold", "hold_message": "Please hold."}}},
+    {"id": "n_extract1", "type": "extract_variable", "label": "Extract", "position": {"x": 960, "y": 320},
+     "config": {"instructions": "", "fields": [{"name": "topic", "type": "string", "description": "What the caller asked about"}]}},
+    {"id": "n_check001", "type": "condition", "label": "Check", "position": {"x": 1280, "y": 320},
+     "config": {"kind": "rule", "instructions": "", "categories": []}},
+    {"id": "n_end00001", "type": "end", "label": "End", "position": {"x": 1600, "y": 0},
+     "config": {"message": "Thanks for calling. Goodbye.", "reason": "call_completed"}}
+  ],
+  "edges": [
+    {"id": "e_start001", "source": "n_start001", "target": "n_triage01", "trigger": "always", "sort_order": 0},
+    {"id": "e_book0001", "source": "n_triage01", "target": "n_details1", "trigger": "llm_condition", "label": "Book a visit", "condition": "The caller wants to book an appointment", "sort_order": 0},
+    {"id": "e_other001", "source": "n_triage01", "target": "n_route001", "trigger": "llm_condition", "label": "Something else", "condition": "The caller asks about anything other than booking", "sort_order": 1},
+    {"id": "e_detok001", "source": "n_details1", "target": "n_book0001", "trigger": "success", "sort_order": 0},
+    {"id": "e_bookok01", "source": "n_book0001", "target": "n_booked01", "trigger": "success", "sort_order": 0},
+    {"id": "e_bookno01", "source": "n_book0001", "target": "n_desk0001", "trigger": "failure", "sort_order": 1},
+    {"id": "e_said0001", "source": "n_booked01", "target": "n_end00001", "trigger": "always", "sort_order": 0},
+    {"id": "e_bill0001", "source": "n_route001", "target": "n_desk0001", "trigger": "category", "category": "Billing", "sort_order": 0},
+    {"id": "e_rest0001", "source": "n_route001", "target": "n_extract1", "trigger": "category", "category": "Other", "sort_order": 1},
+    {"id": "e_extr0001", "source": "n_extract1", "target": "n_check001", "trigger": "always", "sort_order": 0},
+    {"id": "e_rule0001", "source": "n_check001", "target": "n_desk0001", "trigger": "rule", "rule": {"variable": "topic", "operator": "contains", "value": "refund"}, "sort_order": 0},
+    {"id": "e_else0001", "source": "n_check001", "target": "n_end00001", "trigger": "else", "sort_order": 1},
+    {"id": "e_deskno01", "source": "n_desk0001", "target": "n_end00001", "trigger": "failure", "sort_order": 0}
+  ],
+  "viewport": {"x": 0, "y": 0, "zoom": 1}
+}

@@ -1,0 +1,102 @@
+{
+  "nodes": [
+    {
+      "id": "n_start000",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start_speaker": "agent",
+        "greeting_type": "static",
+        "greeting": "Thanks for calling. How can I help?"
+      }
+    },
+    {
+      "id": "n_triage00",
+      "type": "agent",
+      "label": "Triage",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "Help.",
+        "begin_message": "Back with me. What else can I do?",
+        "context_strategy": "inherit",
+        "overrides": {
+          "llm": null,
+          "tts": null,
+          "stt": null,
+          "language": null
+        },
+        "tool_ids": [],
+        "kb_search_enabled": true
+      }
+    },
+    {
+      "id": "n_xfer0000",
+      "type": "transfer",
+      "label": "Front desk",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "transfer": {
+          "routing_type": "static",
+          "number": "+14155550100",
+          "transfer_type": "cold",
+          "hold_message": "Please hold."
+        }
+      }
+    },
+    {
+      "id": "n_end00000",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "message": "Thanks for calling. Goodbye.",
+        "reason": "call_completed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_start000",
+      "source": "n_start000",
+      "target": "n_triage00",
+      "trigger": "always",
+      "sort_order": 0
+    },
+    {
+      "id": "e_triage00",
+      "source": "n_triage00",
+      "target": "n_xfer0000",
+      "trigger": "llm_condition",
+      "sort_order": 0,
+      "label": "Wants a person",
+      "condition": "The caller asks for a person"
+    },
+    {
+      "id": "e_done0000",
+      "source": "n_triage00",
+      "target": "n_end00000",
+      "trigger": "llm_condition",
+      "sort_order": 1,
+      "label": "Done",
+      "condition": "The caller is done"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

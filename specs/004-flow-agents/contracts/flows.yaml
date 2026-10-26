@@ -416,8 +416,9 @@ components:
             y: {type: number}
         config:
           description: Shape depends on type; drafts may hold incomplete configs, so only the
-            type-specific schema below is applied when validating for publish.
-          oneOf:
+            type-specific schema below is applied when validating for publish. Listed with
+            anyOf because a draft config can match several of them.
+          anyOf:
             - $ref: '#/components/schemas/StartConfig'
             - $ref: '#/components/schemas/AgentConfigNode'
             - $ref: '#/components/schemas/TaskConfig'
@@ -764,8 +765,6 @@ components:
           properties:
             op: {const: rename_flow}
             name: {type: string, maxLength: 120}
-      discriminator:
-        propertyName: op
     AssistantResponse:
       type: object
       required: [message, operations, proposed_graph, issues, base_revision, usage]

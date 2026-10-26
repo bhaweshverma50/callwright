@@ -1,0 +1,217 @@
+{
+  "config": {
+    "advanced": {
+      "analysis_model": null,
+      "background_audio": {
+        "enabled": false,
+        "source": null,
+        "volume": 0.8
+      },
+      "dtmf": {
+        "digits": 10,
+        "enabled": false,
+        "termination_key": "#",
+        "timeout_ms": 2500
+      },
+      "pronunciation": [],
+      "recording": "inherit",
+      "voicemail_detection": {
+        "action": "hang_up",
+        "enabled": false,
+        "message": null
+      },
+      "webhook_timeout_ms": 3000,
+      "webhook_url": null
+    },
+    "begin_message": "Hi, thanks for calling. How can I help you today?",
+    "call_behavior": {
+      "end_on_silence_s": 30,
+      "interruption_sensitivity": 0.9,
+      "max_duration_s": 600,
+      "responsiveness": 0.8,
+      "ring_duration_ms": 5000
+    },
+    "dynamic_variables": [],
+    "evals": null,
+    "flow": {
+      "compiled": {
+        "builtin_variables": [
+          "call_id",
+          "direction",
+          "channel",
+          "from_number",
+          "to_number",
+          "timezone",
+          "current_time",
+          "current_date",
+          "current_datetime",
+          "agent_name"
+        ],
+        "compiled_at": "2026-10-26T12:00:00+00:00",
+        "declared_variables": [
+          {
+            "name": "age",
+            "source_node_id": "n_extract0",
+            "type": "number"
+          }
+        ],
+        "entry_node_id": "n_start000",
+        "flow_id": "flw_01JA0FL0WRULE_ELS000000000",
+        "graph_hash": "193553237332acc396b22e44f9276cf00d6c9a7ee432e13b6cfcba51b0396cec",
+        "nodes": {
+          "n_adult000": {
+            "label": "Adult",
+            "say": {
+              "allow_interruptions": true,
+              "edge_id": "e_adult000",
+              "message": "Thanks, you can continue.",
+              "next": "n_end00000"
+            },
+            "type": "say"
+          },
+          "n_end00000": {
+            "end": {
+              "message": "Thanks for calling. Goodbye.",
+              "reason": "call_completed"
+            },
+            "label": "End",
+            "type": "end"
+          },
+          "n_extract0": {
+            "extract": {
+              "edge_id": "e_extr0000",
+              "instructions": "",
+              "json_schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "age": {
+                    "description": "Caller age",
+                    "type": "number"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "next": "n_rule0000"
+            },
+            "label": "Extract",
+            "type": "extract_variable"
+          },
+          "n_minor000": {
+            "label": "Minor",
+            "say": {
+              "allow_interruptions": true,
+              "edge_id": "e_minor000",
+              "message": "Please ask a parent to call.",
+              "next": "n_end00000"
+            },
+            "type": "say"
+          },
+          "n_rule0000": {
+            "condition": {
+              "categories": [],
+              "else_edge_id": "e_else0000",
+              "else_target": "n_minor000",
+              "instructions": "",
+              "kind": "rule",
+              "rules": [
+                {
+                  "edge_id": "e_rule0000",
+                  "label": null,
+                  "operator": "gt",
+                  "target": "n_adult000",
+                  "value": "17",
+                  "variable": "age"
+                }
+              ]
+            },
+            "label": "Adult?",
+            "type": "condition"
+          },
+          "n_start000": {
+            "label": "Start",
+            "start": {
+              "edge_id": "e_start000",
+              "greeting": "Thanks for calling. How can I help?",
+              "greeting_type": "static",
+              "next": "n_triage00",
+              "start_speaker": "agent"
+            },
+            "type": "start"
+          },
+          "n_triage00": {
+            "begin_message": null,
+            "context_strategy": "inherit",
+            "instructions": "You are the receptionist of Harbour Clinic.\n\nAsk the caller's age.",
+            "kb_search": {
+              "enabled": false,
+              "kb_ids": []
+            },
+            "label": "Triage",
+            "language": "en-US",
+            "llm": {
+              "model": "gpt-5.1",
+              "provider": "azure_openai",
+              "temperature": 1.0
+            },
+            "stt": {
+              "model": null,
+              "provider": "deepgram"
+            },
+            "task": null,
+            "tools": [],
+            "transitions": [
+              {
+                "description": "Go to Extract. Use when: The caller said their age",
+                "edge_id": "e_triage00",
+                "function_name": "route_to_gave_age",
+                "label": "Gave age",
+                "target_node_id": "n_extract0",
+                "trigger": "llm_condition"
+              }
+            ],
+            "tts": {
+              "expressiveness": 0.9,
+              "model": "eleven_flash_v2_5",
+              "provider": "elevenlabs",
+              "speed": 1.0,
+              "voice_id": "EXAVITQu4vr4xnSDxMaL",
+              "volume": 1.0
+            },
+            "type": "agent"
+          }
+        },
+        "persona_prompt": "You are the receptionist of Harbour Clinic.",
+        "schema_version": 1
+      }
+    },
+    "kb_ids": [],
+    "language": "en-US",
+    "llm": {
+      "model": "gpt-5.1",
+      "provider": "azure_openai",
+      "temperature": 1.0
+    },
+    "noise_cancellation": {
+      "model": "vi",
+      "provider": "sanas"
+    },
+    "prompt": "You are the receptionist of Harbour Clinic.",
+    "schema_version": 1,
+    "start_speaker": "agent",
+    "stt": {
+      "model": null,
+      "provider": "deepgram"
+    },
+    "tool_ids": [],
+    "tts": {
+      "expressiveness": 0.9,
+      "model": "eleven_flash_v2_5",
+      "provider": "elevenlabs",
+      "speed": 1.0,
+      "voice_id": "EXAVITQu4vr4xnSDxMaL",
+      "volume": 1.0
+    },
+    "type": "flow"
+  }
+}

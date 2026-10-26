@@ -1,0 +1,407 @@
+{
+  "$defs": {
+    "CompiledNode": {
+      "additionalProperties": true,
+      "properties": {
+        "begin_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Begin Message"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Condition"
+        },
+        "context_strategy": {
+          "anyOf": [
+            {
+              "enum": [
+                "inherit",
+                "summarize",
+                "reset"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Strategy"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "extract": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extract"
+        },
+        "instructions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instructions"
+        },
+        "kb_search": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kb Search"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        },
+        "llm": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm"
+        },
+        "say": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Say"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "stt": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stt"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task"
+        },
+        "tools": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tools"
+        },
+        "transfer": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transfer"
+        },
+        "transitions": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/CompiledTransition"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transitions"
+        },
+        "tts": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tts"
+        },
+        "type": {
+          "enum": [
+            "start",
+            "agent",
+            "task",
+            "condition",
+            "say",
+            "extract_variable",
+            "webhook",
+            "transfer",
+            "end"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "webhook": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Webhook"
+        }
+      },
+      "required": [
+        "type",
+        "label"
+      ],
+      "title": "CompiledNode",
+      "type": "object"
+    },
+    "CompiledTransition": {
+      "additionalProperties": true,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "edge_id": {
+          "title": "Edge Id",
+          "type": "string"
+        },
+        "function_name": {
+          "title": "Function Name",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "target_node_id": {
+          "title": "Target Node Id",
+          "type": "string"
+        },
+        "trigger": {
+          "const": "llm_condition",
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "edge_id",
+        "function_name",
+        "description",
+        "target_node_id",
+        "trigger"
+      ],
+      "title": "CompiledTransition",
+      "type": "object"
+    },
+    "DeclaredVariable": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "source_node_id": {
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source_node_id",
+        "type"
+      ],
+      "title": "DeclaredVariable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "properties": {
+    "builtin_variables": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Builtin Variables",
+      "type": "array"
+    },
+    "compiled_at": {
+      "title": "Compiled At",
+      "type": "string"
+    },
+    "declared_variables": {
+      "items": {
+        "$ref": "#/$defs/DeclaredVariable"
+      },
+      "title": "Declared Variables",
+      "type": "array"
+    },
+    "entry_node_id": {
+      "title": "Entry Node Id",
+      "type": "string"
+    },
+    "flow_id": {
+      "title": "Flow Id",
+      "type": "string"
+    },
+    "graph_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Graph Hash",
+      "type": "string"
+    },
+    "nodes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CompiledNode"
+      },
+      "title": "Nodes",
+      "type": "object"
+    },
+    "persona_prompt": {
+      "title": "Persona Prompt",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "flow_id",
+    "graph_hash",
+    "compiled_at",
+    "entry_node_id",
+    "persona_prompt",
+    "builtin_variables",
+    "declared_variables",
+    "nodes"
+  ],
+  "title": "CompiledFlow",
+  "type": "object"
+}

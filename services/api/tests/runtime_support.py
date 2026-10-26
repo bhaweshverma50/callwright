@@ -524,6 +524,7 @@ def dispatch_metadata(runtime: Runtime, call_id: str) -> dict[str, Any]:
 @pytest_asyncio.fixture
 async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     previous_port = ports.registry.agent_versions
+    previous_flow_runtime = ports.registry.flow_runtime_available
     previous_jobs = getattr(app.state, "jobs", None)
     versions = FakeAgentVersions(materialize=True)
     queue = RecordingQueue()
@@ -532,5 +533,5 @@ async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     async with httpx.AsyncClient() as http:
         yield Runtime(app, versions, queue, http)
     ports.set_agent_versions(previous_port)
-    ports.set_flow_runtime_available(False)
+    ports.set_flow_runtime_available(previous_flow_runtime)
     app.state.jobs = previous_jobs

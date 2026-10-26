@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
 from app.agents import service as agents
+from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
@@ -404,6 +405,11 @@ async def usages(session: AsyncSession, tool_id: str) -> list[Usage]:
     ]
 
 
+async def agent_names(session: AsyncSession, agent_ids: Sequence[str]) -> dict[str, str]:
+    rows = await session.execute(select(Agent.id, Agent.name).where(Agent.id.in_(list(agent_ids))))
+    return {str(r[0]): str(r[1]) for r in rows}
+
+
 async def usage_counts(session: AsyncSession, tool_ids: Sequence[str]) -> dict[str, int]:
     if not tool_ids:
         return {}
@@ -507,13 +513,29 @@ async def resolve_for_snapshot(session: AsyncSession, tool_ids: Sequence[str]) -
     return [to_spec(found[t]) for t in tool_ids if t in found]
 
 
+def _header_lists(config: Mapping[str, Any]) -> list[list[Any]]:
+    """Header lists of the snapshot's tools, plus (004) the tools and webhook requests of every
+    compiled flow node."""
+    lists = [(spec.get("config") or {}).get("headers") or [] for spec in config.get("tools") or []]
+    raw_flow = config.get("flow")
+    flow: Mapping[str, Any] = raw_flow if isinstance(raw_flow, Mapping) else {}
+    raw_compiled = flow.get("compiled")
+    compiled: Mapping[str, Any] = raw_compiled if isinstance(raw_compiled, Mapping) else {}
+    for node in (compiled.get("nodes") or {}).values():
+        for spec in node.get("tools") or []:
+            lists.append((spec.get("config") or {}).get("headers") or [])
+        webhook = node.get("webhook") or {}
+        lists.append((webhook.get("request") or {}).get("headers") or [])
+    return lists
+
+
 def secret_refs(config: Mapping[str, Any]) -> list[str]:
     refs: list[str] = []
-    for spec in config.get("tools") or []:
-        for header in (spec.get("config") or {}).get("headers") or []:
+    for headers in _header_lists(config):
+        for header in headers:
             if header.get("secret") and header.get("secret_ref"):
                 refs.append(str(header["secret_ref"]))
-    return refs
+    return list(dict.fromkeys(refs))
 
 
 async def secrets_for_config(
@@ -532,6 +554,23 @@ async def secrets_for_config(
 
 FlowMockHook = Callable[[AsyncSession, str], Awaitable[list[dict[str, str]]]]
 _flow_mock_hook: FlowMockHook | None = None
+
+
+FlowUsageHook = Callable[[AsyncSession, str], Awaitable[list[dict[str, Any]]]]
+_flow_usage_hook: FlowUsageHook | None = None
+
+
+def register_flow_usage_hook(fn: FlowUsageHook | None) -> None:
+    """004: ``fn(session, tool_id)`` returns ``[{agent_id, flow_id, node_ids}]`` for flow nodes."""
+    global _flow_usage_hook
+    _flow_usage_hook = fn
+
+
+async def flow_node_usages(session: AsyncSession, tool_id: str) -> dict[str, list[str]]:
+    """Node ids per agent that attach ``tool_id`` in a flow draft (empty without 004)."""
+    if _flow_usage_hook is None:
+        return {}
+    return {str(u["agent_id"]): list(u["node_ids"]) for u in await _flow_usage_hook(session, tool_id)}
 
 
 def register_flow_mock_hook(fn: FlowMockHook | None) -> None:
@@ -559,11 +598,13 @@ __all__ = [
     "create_tool",
     "delete_tool",
     "duplicate_tool",
+    "flow_node_usages",
     "get_tool",
     "key_wrapper",
     "list_tools",
     "mock_coverage",
     "register_flow_mock_hook",
+    "register_flow_usage_hook",
     "resolve_for_snapshot",
     "secrets_for_config",
     "set_agent_tools",

@@ -1,0 +1,12 @@
+# Research R11: an answer outside the categories follows the first category as "fallback".
+name: flow_classify_fallback
+flow: triage_support
+llm:
+  rules:
+    - {match: question, tool: route_to_knows_the_need}
+caller:
+  - "I have a question"
+expect:
+  path: [n_start000, n_triage00, n_route000, n_sales000, n_end00000]
+  triggers: [always, llm_condition, fallback, always]
+  end_reason: agent_hangup

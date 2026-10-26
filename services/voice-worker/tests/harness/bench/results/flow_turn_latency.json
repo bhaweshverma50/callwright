@@ -1,0 +1,15 @@
+{
+  "ttft_ms": 350.0,
+  "baseline": {
+    "p50_ms": 356.5,
+    "p95_ms": 356.9
+  },
+  "flow_no_move": {
+    "p50_ms": 355.1,
+    "p95_ms": 357.1
+  },
+  "flow_move_entry_line": {
+    "p50_ms": 358.1,
+    "p95_ms": 360.9
+  }
+}

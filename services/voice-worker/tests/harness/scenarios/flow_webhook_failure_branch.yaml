@@ -1,0 +1,13 @@
+# US3 scenario 6: a failing request follows the failure connection (simulation without a mock).
+name: flow_webhook_failure_branch
+flow: webhook_failure
+runtime: {simulation: true}
+llm:
+  rules:
+    - {match: order, tool: route_to_order_status}
+caller:
+  - "Where is my order?"
+expect:
+  path: [n_start000, n_triage00, n_hook0000, n_sorry000, n_end00000]
+  triggers: [always, llm_condition, failure, always]
+  end_reason: agent_hangup
