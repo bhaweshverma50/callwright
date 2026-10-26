@@ -3,7 +3,7 @@
 Last updated: 2026-10-26. Read this first when resuming.
 
 ## Where things stand
-- `main` is pushed. Deployed 2026-10-26 (wave 3a live): Cloud Run API `316dbbb` (migrations through s006_0001 applied), VM jobs worker `31d6026`, VM voice worker `95a04c4`, VM LiveKit `v1.13.3`, web from `31d6026`. Web `df14244` (setup sequence until the first live call) is not deployed yet.
+- `main` is pushed and deployed (2026-10-26, wave 3 live): Cloud Run API `7ef3756` (migrations through s006_0002), VM jobs worker `7ef3756`, VM voice worker `cf4bea6`, VM LiveKit `v1.13.3`, web from `7ef3756`. Verified on the hosted app with scripted calls: silence check-ins end the call as inactivity, a flow agent call, and the assistant answering "what did my last call cost?".
 - Live app: https://callwright-one.vercel.app (sign up with any email; auto-verified; $5 trial credit). Voice calls work from Test agent on the hosted site only (localhost has no LiveKit).
 - Specs 001 done, 002 done except the accessibility audit (T085), 003 live (105 of 118).
 - Wave 3 complete 2026-10-26: specs 004 (114/114), 005 (99/100), 006 (95/95), 010 (83/85). 701 of 964 tasks. Follow-up fixes merged: flow builder performance and layout, Ask assistant call lookups and push-to-talk, compact dock, silence check-ins (worker), version compare, tabs, call panel layout. Migrations chain s006_0001, s010_0001, s004_0001, s006_0002. Suites: API 1430, worker 468, web 201. Telephony stays fake until `LIVEKIT_SIP_HOST` is set (deploy/vm/README.md). Deleting an agent attached to a number is refused (409 agent_in_use).

@@ -73,6 +73,11 @@ if (process.env.AFTER) {
   const calls = await get("/calls?page_size=1");
   const call = calls.items?.[0];
   console.log("call", JSON.stringify(call).slice(0, 600));
+  if (process.env.ASK) {
+    await new Promise((r) => setTimeout(r, 15_000)); // post-call pricing
+    const answer = await post("/analytics/chat", { messages: [{ role: "user", content: process.env.ASK }], timezone: "Asia/Kolkata" }, token);
+    console.log("ask", answer.outcome, "|", answer.content);
+  }
   if (call) console.log("turn-latencies", JSON.stringify(await get(`/calls/${call.call_id}/turn-latencies`)).slice(0, 600));
 }
 await browser.close();
