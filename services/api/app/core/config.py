@@ -178,6 +178,15 @@ class Settings(BaseSettings):
     azure_openai_api_key: SecretStr | None = None
     azure_openai_api_version: str = "2025-04-01-preview"
     anthropic_api_key: SecretStr | None = None
+    # Calls and analytics (006). Model references use the gateway format above; without a key
+    # for the provider the module's deterministic planner answers (tests, offline dev).
+    analytics_chat_model: str = "openai/gpt-5-mini"
+    analytics_chat_rate_limit_per_min: int = 20
+    voice_command_model: str = "openai/gpt-5-mini"
+    voice_command_rate_limit_per_min: int = 30
+    copilot_stt_provider: Literal["deepgram", "fake"] = "deepgram"
+    deepgram_api_key: SecretStr | None = None
+    recording_url_ttl_s: int = Field(default=600, ge=30, le=600)
 
     @field_validator("env", mode="before")
     @classmethod
@@ -217,6 +226,7 @@ class Settings(BaseSettings):
             "openai_api_key",
             "azure_openai_api_key",
             "anthropic_api_key",
+            "deepgram_api_key",
         ):
             value = getattr(self, name)
             if isinstance(value, SecretStr) and value.get_secret_value().startswith("enc:"):

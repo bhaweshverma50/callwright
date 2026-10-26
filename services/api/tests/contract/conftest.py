@@ -61,3 +61,6 @@ def check(response: httpx.Response) -> httpx.Response:
             f"{exc!r} / {exc.__cause__!r}\nbody: {response.text[:500]}"
         )
     return response
+
+
+from tests.calls_support import seeded_calls  # noqa: E402, F401  (006 seeded call history)

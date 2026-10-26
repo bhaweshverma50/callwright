@@ -24,6 +24,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ChatRequest" }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Answer (outcome answered or declined)
           content:
@@ -54,6 +55,7 @@ paths:
       operationId: getAnalyticsCatalog
       summary: Metrics, groupings, filters and periods the assistant can use
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Catalog
           content:

@@ -18,6 +18,7 @@ paths:
         - $ref: "#/components/parameters/AgentIds"
         - $ref: "#/components/parameters/Tz"
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Stats for the window
           content:
@@ -38,6 +39,7 @@ paths:
           description: Include the previous window of equal length.
           schema: { type: boolean, default: true }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Per-evaluator pass rates
           content:
@@ -52,6 +54,7 @@ paths:
         - $ref: "#/components/parameters/AgentIds"
         - $ref: "#/components/parameters/Tz"
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Agent health
           content:

@@ -23,12 +23,14 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from app.agent_versions.router import router as agent_versions_router
 from app.agent_versions.runtime_port import register as register_agent_versions
 from app.agents.router import router as agents_router
+from app.analytics_chat.router import router as analytics_chat_router
 from app.auth.idp import build_idp
 from app.auth.router import router as auth_router
 from app.billing.router import router as billing_router
 from app.billing.stripe_gateway import build_gateway
 from app.call_events.router import router as call_events_router
 from app.calls.catalog import load_catalog
+from app.calls.read_router import router as calls_read_router
 from app.calls.router import router as calls_router
 from app.core.auth import TokenVerifier
 from app.core.config import Settings, get_settings
@@ -41,6 +43,7 @@ from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
+from app.dashboard.router import router as dashboard_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
 from app.livekit_hooks.router import router as livekit_hooks_router
@@ -48,9 +51,11 @@ from app.llms.client import LlmClient
 from app.llms.router import router as llms_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
+from app.recordings.router import router as recordings_router
 from app.sessions.router import router as sessions_router
 from app.templates.router import router as templates_router
 from app.usage.router import router as usage_router
+from app.voice_commands.router import router as voice_commands_router
 from app.voices.router import router as voices_router
 from app.webhooks_out.router import router as webhooks_out_router
 from app.workspaces.router import router as workspaces_router
@@ -203,6 +208,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         usage_router,
         sessions_router,
         calls_router,
+        calls_read_router,
+        recordings_router,
+        dashboard_router,
+        analytics_chat_router,
+        voice_commands_router,
         call_events_router,
         webhooks_out_router,
         livekit_hooks_router,

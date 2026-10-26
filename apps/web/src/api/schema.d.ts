@@ -5032,9 +5032,13 @@ export interface components {
             /** @enum {string} */
             processing_state: "pending" | "done";
         };
-        CallTranscriptItem: {
+        CallTranscriptItem: components["schemas"]["TranscriptMessage"] | components["schemas"]["TranscriptToolCall"] | components["schemas"]["TranscriptToolResult"];
+        TranscriptMessage: {
             id: string;
-            /** @constant */
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
             type: "message";
             /** @enum {string} */
             role: "user" | "agent";
@@ -5043,9 +5047,13 @@ export interface components {
             stt_confidence?: number | null;
             offset_ms: number;
             turn_index?: number | null;
-        } | {
+        };
+        TranscriptToolCall: {
             id: string;
-            /** @constant */
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
             type: "tool_call";
             tool_name: string;
             arguments: {
@@ -5053,9 +5061,13 @@ export interface components {
             };
             offset_ms: number;
             turn_index?: number | null;
-        } | {
+        };
+        TranscriptToolResult: {
             id: string;
-            /** @constant */
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
             type: "tool_result";
             tool_call_id: string;
             tool_name: string;
@@ -9702,6 +9714,7 @@ export interface operations {
                     "application/json": components["schemas"]["ChatAnswer"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description Balance at or below zero (problem type insufficient_credit) */
             402: {
                 headers: {
@@ -9769,6 +9782,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listCalls: {
@@ -9826,6 +9840,7 @@ export interface operations {
                     "application/json": components["schemas"]["CallPage"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             422: components["responses"]["Problem"];
         };
     };
@@ -9870,6 +9885,7 @@ export interface operations {
                     "text/csv": string;
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description More than 10,000 matching rows (export_too_large) or invalid filters */
             422: {
                 headers: {
@@ -9901,6 +9917,7 @@ export interface operations {
                     "application/json": components["schemas"]["CallDetail"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
         };
     };
@@ -9927,6 +9944,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
         };
     };
@@ -9954,6 +9972,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
         };
     };
@@ -9980,6 +9999,7 @@ export interface operations {
                     "application/json": components["schemas"]["CallComparison"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["Problem"];
             422: components["responses"]["Problem"];
         };
@@ -10012,6 +10032,7 @@ export interface operations {
                     "application/json": components["schemas"]["DashboardStats"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             422: components["responses"]["Problem"];
         };
     };
@@ -10045,6 +10066,7 @@ export interface operations {
                     "application/json": components["schemas"]["DashboardQuality"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             422: components["responses"]["Problem"];
         };
     };
@@ -10071,6 +10093,7 @@ export interface operations {
                     "application/json": components["schemas"]["AgentHealth"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
         };
     };
     getRecordingLink: {
@@ -10097,6 +10120,7 @@ export interface operations {
                     "application/json": components["schemas"]["RecordingLink"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description Call not found, or the call has no recording (problem type not_recorded) */
             404: {
                 headers: {
@@ -10145,6 +10169,7 @@ export interface operations {
                     "application/json": components["schemas"]["StreamCredential"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description More than 30 credentials per user per minute */
             429: {
                 headers: {
@@ -10192,6 +10217,7 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description Clip too large or too long */
             413: {
                 headers: {
@@ -10225,6 +10251,7 @@ export interface operations {
                     "application/json": components["schemas"]["InterpretResult"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
             /** @description Invalid request */
             422: {
                 headers: {

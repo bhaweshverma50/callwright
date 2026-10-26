@@ -56,6 +56,7 @@ paths:
           description: Comma-separated values of live, test, simulation. Default live,test.
           schema: { type: string, default: "live,test" }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: A page of calls
           content:
@@ -92,6 +93,7 @@ paths:
           description: Comma-separated column keys in display order; defaults to all list columns.
           schema: { type: string }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: CSV file named calls-<date>.csv
           content:
@@ -108,6 +110,7 @@ paths:
       summary: Call detail without transcript
       parameters: [{ $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }]
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Call detail
           content:
@@ -120,6 +123,7 @@ paths:
       summary: Ordered transcript items including tool calls and tool results
       parameters: [{ $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }]
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Transcript
           content:
@@ -139,6 +143,7 @@ paths:
       summary: Measured latency per agent turn, in milliseconds
       parameters: [{ $ref: "../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath" }]
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Turn latencies
           content:
@@ -163,6 +168,7 @@ paths:
         - { name: with_call_id, in: query, schema: { type: string, pattern: "^call_" } }
         - { name: with_simulation_run_id, in: query, schema: { type: string, pattern: "^srun_" } }
       responses:
+        "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
         "200":
           description: Comparison
           content:
@@ -330,38 +336,49 @@ components:
             processing_state: { type: string, enum: [pending, done] }
     CallTranscriptItem:
       oneOf:
-        - type: object
-          required: [id, type, role, text, interrupted, offset_ms]
-          properties:
-            id: { type: string }
-            type: { const: message }
-            role: { type: string, enum: [user, agent] }
-            text: { type: string }
-            interrupted: { type: boolean }
-            stt_confidence: { type: [number, "null"], minimum: 0, maximum: 1 }
-            offset_ms: { type: integer }
-            turn_index: { type: [integer, "null"] }
-        - type: object
-          required: [id, type, tool_name, arguments, offset_ms]
-          properties:
-            id: { type: string }
-            type: { const: tool_call }
-            tool_name: { type: string }
-            arguments: { type: object, additionalProperties: true }
-            offset_ms: { type: integer }
-            turn_index: { type: [integer, "null"] }
-        - type: object
-          required: [id, type, tool_call_id, tool_name, output, is_error, offset_ms]
-          properties:
-            id: { type: string }
-            type: { const: tool_result }
-            tool_call_id: { type: string }
-            tool_name: { type: string }
-            output: { type: string }
-            is_error: { type: boolean }
-            duration_ms: { type: [integer, "null"] }
-            offset_ms: { type: integer }
-      discriminator: { propertyName: type }
+        - $ref: "#/components/schemas/TranscriptMessage"
+        - $ref: "#/components/schemas/TranscriptToolCall"
+        - $ref: "#/components/schemas/TranscriptToolResult"
+      discriminator:
+        propertyName: type
+        mapping:
+          message: "#/components/schemas/TranscriptMessage"
+          tool_call: "#/components/schemas/TranscriptToolCall"
+          tool_result: "#/components/schemas/TranscriptToolResult"
+    TranscriptMessage:
+      type: object
+      required: [id, type, role, text, interrupted, offset_ms]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [message] }
+        role: { type: string, enum: [user, agent] }
+        text: { type: string }
+        interrupted: { type: boolean }
+        stt_confidence: { type: [number, "null"], minimum: 0, maximum: 1 }
+        offset_ms: { type: integer }
+        turn_index: { type: [integer, "null"] }
+    TranscriptToolCall:
+      type: object
+      required: [id, type, tool_name, arguments, offset_ms]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [tool_call] }
+        tool_name: { type: string }
+        arguments: { type: object, additionalProperties: true }
+        offset_ms: { type: integer }
+        turn_index: { type: [integer, "null"] }
+    TranscriptToolResult:
+      type: object
+      required: [id, type, tool_call_id, tool_name, output, is_error, offset_ms]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [tool_result] }
+        tool_call_id: { type: string }
+        tool_name: { type: string }
+        output: { type: string }
+        is_error: { type: boolean }
+        duration_ms: { type: [integer, "null"] }
+        offset_ms: { type: integer }
     TurnLatency:
       type: object
       required: [turn_index]

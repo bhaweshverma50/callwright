@@ -677,6 +677,107 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 002-agent-builder
+  /analytics/catalog:
+    get:
+      operationId: getAnalyticsCatalog
+      summary: Metrics, groupings, filters and periods the assistant can use
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - metrics
+                - group_by
+                - filters
+                - periods
+                - suggested_questions
+                properties:
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          $ref: '#/components/schemas/MetricName'
+                        label:
+                          type: string
+                        unit:
+                          type: string
+                          enum:
+                          - count
+                          - seconds
+                          - usd
+                          - ms
+                          - ratio
+                  group_by:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dimension'
+                  filters:
+                    type: array
+                    items:
+                      type: string
+                  periods:
+                    type: array
+                    items:
+                      type: string
+                  suggested_questions:
+                    type: array
+                    items:
+                      type: string
+      x-spec: 006-calls-analytics
+  /analytics/chat:
+    post:
+      operationId: askAnalytics
+      summary: Ask a question about the workspace's data (charged as feature analytics_chat)
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        description: Same key returns the stored answer and is charged at most once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Answer (outcome answered or declined)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAnswer'
+        '402':
+          description: Balance at or below zero (problem type insufficient_credit)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: More than 20 questions per user per minute
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Model provider unavailable; not charged (problem type assistant_unavailable)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 006-calls-analytics
   /auth/password-reset:
     post:
       operationId: requestPasswordReset
@@ -1064,6 +1165,420 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 001-platform-foundation
+  /calls:
+    get:
+      operationId: listCalls
+      summary: List calls with sort, filters and pagination
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - name: page_size
+        in: query
+        description: The UI offers 10, 20, 50 and 100.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - started_at
+          - duration_s
+          - cost_usd
+          - latency_avg_ms
+          default: started_at
+      - name: order
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+      - name: call_id
+        in: query
+        description: Exact ID or prefix (minimum 8 characters).
+        schema:
+          type: string
+          minLength: 8
+      - name: agent_id
+        in: query
+        description: Comma-separated agt_ IDs
+        schema:
+          type: string
+      - name: status
+        in: query
+        description: Comma-separated CallStatus values
+        schema:
+          type: string
+      - name: channel
+        in: query
+        description: Comma-separated Channel values
+        schema:
+          type: string
+      - name: disconnect_reason
+        in: query
+        description: Comma-separated DisconnectReason values
+        schema:
+          type: string
+      - name: sentiment
+        in: query
+        description: Comma-separated Sentiment values
+        schema:
+          type: string
+      - $ref: '#/components/parameters/FromNumber'
+      - $ref: '#/components/parameters/ToNumber'
+      - name: started_after
+        in: query
+        description: Instant filter for API clients; the UI sends start_date, end_date and tz instead.
+        schema:
+          type: string
+          format: date-time
+      - name: started_before
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - $ref: '#/components/parameters/StartDate'
+      - $ref: '#/components/parameters/EndDate'
+      - $ref: '#/components/parameters/Tz'
+      - name: label
+        in: query
+        description: Comma-separated values of good, bad, unannotated (viewer's own label).
+        schema:
+          type: string
+      - name: eval_status
+        in: query
+        description: Comma-separated EvalStatus values.
+        schema:
+          type: string
+      - name: origin
+        in: query
+        description: Comma-separated values of live, test, simulation. Default live,test.
+        schema:
+          type: string
+          default: live,test
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: A page of calls
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallPage'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
+  /calls/export:
+    get:
+      operationId: exportCalls
+      summary: CSV export of the filtered and sorted call list (FR-035)
+      description: 'Accepts the same sort and filter parameters as listCalls (except page and page_size)
+        plus `columns`. At most 10,000 rows; transcript text is never included.
+
+        '
+      parameters:
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - started_at
+          - duration_s
+          - cost_usd
+          - latency_avg_ms
+          default: started_at
+      - name: order
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+      - name: agent_id
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+      - name: channel
+        in: query
+        schema:
+          type: string
+      - name: disconnect_reason
+        in: query
+        schema:
+          type: string
+      - name: sentiment
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/FromNumber'
+      - $ref: '#/components/parameters/ToNumber'
+      - $ref: '#/components/parameters/StartDate'
+      - $ref: '#/components/parameters/EndDate'
+      - $ref: '#/components/parameters/Tz'
+      - name: label
+        in: query
+        schema:
+          type: string
+      - name: eval_status
+        in: query
+        schema:
+          type: string
+      - name: origin
+        in: query
+        schema:
+          type: string
+          default: live,test
+      - name: columns
+        in: query
+        description: Comma-separated column keys in display order; defaults to all list columns.
+        schema:
+          type: string
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: CSV file named calls-<date>.csv
+          content:
+            text/csv:
+              schema:
+                type: string
+        '422':
+          description: More than 10,000 matching rows (export_too_large) or invalid filters
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 006-calls-analytics
+  /calls/{call_id}:
+    get:
+      operationId: getCall
+      summary: Call detail without transcript
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Call detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallDetail'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
+  /calls/{call_id}/compare:
+    get:
+      operationId: compareCalls
+      summary: Compare a call with another call or a simulation run's output call
+      description: Exactly one of `with_call_id` or `with_simulation_run_id` is required.
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      - name: with_call_id
+        in: query
+        schema:
+          type: string
+          pattern: ^call_
+      - name: with_simulation_run_id
+        in: query
+        schema:
+          type: string
+          pattern: ^srun_
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Comparison
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallComparison'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
+  /calls/{call_id}/recording:
+    get:
+      operationId: getRecordingLink
+      summary: Get a signed recording link valid for at most 10 minutes
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      - name: disposition
+        in: query
+        description: inline for playback, attachment for download (filename call_<id>.<ext>).
+        schema:
+          type: string
+          enum:
+          - inline
+          - attachment
+          default: inline
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Signed link
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingLink'
+        '404':
+          description: Call not found, or the call has no recording (problem type not_recorded)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Recording still being finalised (problem type recording_processing)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '410':
+          description: Recording deleted under the workspace retention policy (problem type recording_deleted)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 006-calls-analytics
+  /calls/{call_id}/transcript:
+    get:
+      operationId: getCallTranscript
+      summary: Ordered transcript items including tool calls and tool results
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - call_id
+                - items
+                properties:
+                  call_id:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CallTranscriptItem'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
+  /calls/{call_id}/turn-latencies:
+    get:
+      operationId: getCallTurnLatencies
+      summary: Measured latency per agent turn, in milliseconds
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Turn latencies
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - call_id
+                - summary
+                - turns
+                properties:
+                  call_id:
+                    type: string
+                  summary:
+                    $ref: '#/components/schemas/LatencySummary'
+                  turns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TurnLatency'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
+  /dashboard/agent-health:
+    get:
+      operationId: getAgentHealth
+      summary: Headline evaluators, last 30 days vs the prior 30 days
+      parameters:
+      - $ref: '#/components/parameters/AgentIds'
+      - $ref: '#/components/parameters/Tz'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Agent health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentHealth'
+      x-spec: 006-calls-analytics
+  /dashboard/quality:
+    get:
+      operationId: getDashboardQuality
+      parameters:
+      - $ref: '#/components/parameters/Period'
+      - $ref: '#/components/parameters/StartDate'
+      - $ref: '#/components/parameters/EndDate'
+      - $ref: '#/components/parameters/AgentIds'
+      - $ref: '#/components/parameters/Tz'
+      - name: compare
+        in: query
+        description: Include the previous window of equal length.
+        schema:
+          type: boolean
+          default: true
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Per-evaluator pass rates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardQuality'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      parameters:
+      - $ref: '#/components/parameters/Period'
+      - $ref: '#/components/parameters/StartDate'
+      - $ref: '#/components/parameters/EndDate'
+      - $ref: '#/components/parameters/AgentIds'
+      - $ref: '#/components/parameters/Tz'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Stats for the window
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 006-calls-analytics
   /health:
     get:
       operationId: getHealth
@@ -1638,6 +2153,102 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
       x-spec: 001-platform-foundation
+  /voice-commands/interpret:
+    post:
+      operationId: interpretVoiceCommand
+      summary: Interpret a transcript into exactly one action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterpretRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Interpreted action, already validated against the route allowlist and the page's
+            registered actions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterpretResult'
+        '422':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 006-calls-analytics
+  /voice-commands/stream-token:
+    post:
+      operationId: createSttStreamCredential
+      summary: Mint a short-lived, transcription-only credential for browser-direct streaming
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Credential (valid at most 60 seconds)
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamCredential'
+        '429':
+          description: More than 30 credentials per user per minute
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Transcription vendor unavailable; the client falls back to /voice-commands/transcribe
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 006-calls-analytics
+  /voice-commands/transcribe:
+    post:
+      operationId: transcribeVoiceCommand
+      summary: Fallback transcription of a recorded clip (max 30 seconds, 2 MB)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - audio
+              properties:
+                audio:
+                  type: string
+                  contentMediaType: audio/webm
+                  description: audio/webm or audio/ogg (opus)
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - transcript
+                properties:
+                  transcript:
+                    type: string
+        '413':
+          description: Clip too large or too long
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 006-calls-analytics
   /voices/ambient-audio:
     get:
       operationId: listAmbientAudio
@@ -2087,6 +2698,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/AgentId'
+    AgentIds:
+      name: agent_ids
+      in: query
+      description: Comma-separated agt_ IDs; empty means all agents.
+      schema:
+        type: string
     CallIdPath:
       name: call_id
       in: path
@@ -2106,12 +2723,30 @@ components:
       schema:
         type: string
         pattern: ^whd_[0-9A-HJKMNP-TV-Z]{26}$
+    EndDate:
+      name: end_date
+      in: query
+      description: Inclusive calendar date in tz; must be on or after start_date.
+      schema:
+        type: string
+        format: date
     EventHeader:
       name: Callwright-Event
       in: header
       required: true
       schema:
         $ref: '#/components/schemas/WebhookEventName'
+    FromNumber:
+      name: from_number
+      in: query
+      description: 'Percent-encoded by the client (a leading plus is sent as %2B). The server keeps digits
+        only (spaces, dashes, brackets and the plus are ignored) and matches numbers whose digits start
+        with them.
+
+        '
+      schema:
+        type: string
+        maxLength: 32
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -2146,6 +2781,18 @@ components:
         minimum: 1
         maximum: 100
         default: 20
+    Period:
+      name: period
+      in: query
+      schema:
+        type: string
+        enum:
+        - all_time
+        - last_7_days
+        - last_30_days
+        - last_90_days
+        - custom
+        default: last_30_days
     SignatureHeader:
       name: Callwright-Signature
       in: header
@@ -2154,6 +2801,29 @@ components:
         type: string
         examples:
         - t=1760600000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+    StartDate:
+      name: start_date
+      in: query
+      description: Inclusive calendar date in tz.
+      schema:
+        type: string
+        format: date
+    ToNumber:
+      name: to_number
+      in: query
+      description: Same encoding and matching as from_number.
+      schema:
+        type: string
+        maxLength: 32
+    Tz:
+      name: tz
+      in: query
+      description: IANA timezone used to resolve start_date and end_date.
+      schema:
+        type: string
+        default: UTC
+        examples:
+        - Asia/Kolkata
     VersionIdPath:
       name: version_id
       in: path
@@ -2545,9 +3215,60 @@ components:
         updated_at:
           type: string
           format: date-time
+    AgentHealth:
+      type: object
+      required:
+      - window
+      - prior_window
+      - items
+      properties:
+        window:
+          $ref: '#/components/schemas/Window'
+        prior_window:
+          $ref: '#/components/schemas/Window'
+        items:
+          type: array
+          maxItems: 4
+          items:
+            type: object
+            required:
+            - evaluator_id
+            - display_name
+            properties:
+              evaluator_id:
+                type: string
+              display_name:
+                type: string
+              pass_rate:
+                type:
+                - number
+                - 'null'
+              prior_pass_rate:
+                type:
+                - number
+                - 'null'
+              delta_pp:
+                type:
+                - number
+                - 'null'
+                description: Change in percentage points
+                one decimal: null
     AgentId:
       type: string
       pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+    AgentRef:
+      type: object
+      required:
+      - id
+      - name
+      - deleted
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        deleted:
+          type: boolean
     AgentSummary:
       type: object
       required:
@@ -2666,6 +3387,143 @@ components:
       - llm_input_tokens
       - llm_output_tokens
       - tts_chars
+    CallComparison:
+      type: object
+      required:
+      - left
+      - right
+      - right_kind
+      - alignment
+      - flow_diff
+      - verdict_diffs
+      properties:
+        left:
+          $ref: '#/components/schemas/CallDetail'
+        right:
+          $ref: '#/components/schemas/CallDetail'
+        right_kind:
+          type: string
+          enum:
+          - call
+          - simulation
+        simulation_run_id:
+          type:
+          - string
+          - 'null'
+        alignment:
+          type: array
+          items:
+            type: object
+            properties:
+              turn_index:
+                type: integer
+              left_item_ids:
+                type: array
+                items:
+                  type: string
+              right_item_ids:
+                type: array
+                items:
+                  type: string
+        flow_diff:
+          type: array
+          items:
+            type: object
+            properties:
+              sequence:
+                type: integer
+              left_node_id:
+                type:
+                - string
+                - 'null'
+              right_node_id:
+                type:
+                - string
+                - 'null'
+              differs:
+                type: boolean
+        verdict_diffs:
+          type: array
+          items:
+            type: object
+            properties:
+              evaluator_id:
+                type: string
+              evaluator_name:
+                type: string
+              left:
+                $ref: '#/components/schemas/CallVerdictSide'
+              right:
+                $ref: '#/components/schemas/CallVerdictSide'
+              score_delta:
+                type:
+                - number
+                - 'null'
+              right_rationale:
+                type:
+                - string
+                - 'null'
+    CallCostLine:
+      type: object
+      required:
+      - component
+      - rate_per_min_usd
+      - billed_minutes
+      - cost_usd
+      properties:
+        component:
+          type: string
+          enum:
+          - stt
+          - llm
+          - tts
+          - nc
+          - platform
+        provider:
+          type:
+          - string
+          - 'null'
+        model:
+          type:
+          - string
+          - 'null'
+        rate_per_min_usd:
+          type: number
+        billed_minutes:
+          type: number
+        cost_usd:
+          type: number
+    CallDetail:
+      allOf:
+      - $ref: '#/components/schemas/CallListItem'
+      - type: object
+        required:
+        - agent_version_id
+        - latency
+        - processing_state
+        properties:
+          agent_version_id:
+            type: string
+          agent_version_label:
+            type:
+            - string
+            - 'null'
+          ended_at:
+            type:
+            - string
+            - 'null'
+            format: date-time
+          latency:
+            $ref: '#/components/schemas/LatencySummary'
+          cost:
+            oneOf:
+            - $ref: '#/components/schemas/CostView'
+            - type: 'null'
+          processing_state:
+            type: string
+            enum:
+            - pending
+            - done
     CallEvent:
       oneOf:
       - $ref: '#/components/schemas/StatusEvent'
@@ -2691,6 +3549,93 @@ components:
     CallId:
       type: string
       pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+    CallListItem:
+      type: object
+      required:
+      - call_id
+      - started_at
+      - agent
+      - channel
+      - origin
+      - status
+      - duration_s
+      - has_recording
+      - quality
+      properties:
+        call_id:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        agent:
+          $ref: '#/components/schemas/AgentRef'
+        from_number:
+          type:
+          - string
+          - 'null'
+        to_number:
+          type:
+          - string
+          - 'null'
+        channel:
+          $ref: '#/components/schemas/Channel'
+        origin:
+          $ref: '#/components/schemas/Origin'
+        disconnect_reason:
+          oneOf:
+          - $ref: '#/components/schemas/DisconnectReason'
+          - type: 'null'
+        duration_s:
+          type: integer
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/CallStatus'
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        latency_avg_ms:
+          type:
+          - integer
+          - 'null'
+        has_recording:
+          type: boolean
+        summary:
+          type:
+          - string
+          - 'null'
+        sentiment:
+          oneOf:
+          - $ref: '#/components/schemas/Sentiment'
+          - type: 'null'
+        analysis_values:
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+        quality:
+          $ref: '#/components/schemas/QualitySummary'
+    CallPage:
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      - total_pages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallListItem'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
     CallRecordingState:
       type: object
       description: 'Recording state of one call, returned by 006''s recording URL endpoints through `calls.service.recording_state()`.
@@ -2751,6 +3696,30 @@ components:
             - error
           diagnostic:
             type: string
+    CallStatus:
+      type: string
+      enum:
+      - queued
+      - ringing
+      - in_progress
+      - ended
+      - processing
+      - completed
+      - failed
+      - no_answer
+      - busy
+      - voicemail
+    CallTranscriptItem:
+      oneOf:
+      - $ref: '#/components/schemas/TranscriptMessage'
+      - $ref: '#/components/schemas/TranscriptToolCall'
+      - $ref: '#/components/schemas/TranscriptToolResult'
+      discriminator:
+        propertyName: type
+        mapping:
+          message: '#/components/schemas/TranscriptMessage'
+          tool_call: '#/components/schemas/TranscriptToolCall'
+          tool_result: '#/components/schemas/TranscriptToolResult'
     CallUsageMeters:
       type: object
       required:
@@ -2771,6 +3740,22 @@ components:
           type: integer
           minimum: 0
           default: 0
+    CallVerdictSide:
+      type: object
+      properties:
+        verdict:
+          type:
+          - string
+          - 'null'
+          enum:
+          - pass
+          - fail
+          - not_applicable
+          - null
+        score:
+          type:
+          - number
+          - 'null'
     Catalog:
       type: object
       required:
@@ -2869,6 +3854,135 @@ components:
           description: Previous value (absent for add)
         new:
           description: New value (absent for remove)
+    Channel:
+      type: string
+      enum:
+      - web
+      - sip_inbound
+      - sip_outbound
+      - whatsapp
+    ChatAnswer:
+      type: object
+      required:
+      - outcome
+      - content
+      - computed_with
+      - truncated
+      properties:
+        outcome:
+          type: string
+          enum:
+          - answered
+          - declined
+        content:
+          type: string
+        chart:
+          type:
+          - object
+          - 'null'
+          required:
+          - chart_type
+          - x_key
+          - series
+          - data
+          properties:
+            chart_type:
+              type: string
+              enum:
+              - bar
+              - line
+              - area
+              - pie
+            x_key:
+              type: string
+            series:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  label:
+                    type: string
+            data:
+              type: array
+              maxItems: 100
+              items:
+                type: object
+                additionalProperties: true
+        table:
+          type:
+          - object
+          - 'null'
+          required:
+          - columns
+          - rows
+          properties:
+            columns:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  label:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                    - string
+                    - integer
+                    - number
+                    - usd
+                    - seconds
+                    - ms
+                    - ratio
+                    - date
+            rows:
+              type: array
+              maxItems: 100
+              items:
+                type: object
+                additionalProperties: true
+        truncated:
+          type: boolean
+        computed_with:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricQuery'
+        charged_usd:
+          type:
+          - number
+          - 'null'
+    ChatRequest:
+      type: object
+      required:
+      - messages
+      - timezone
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: Full conversation, oldest first; the last item must be from the user.
+          items:
+            type: object
+            required:
+            - role
+            - content
+            properties:
+              role:
+                type: string
+                enum:
+                - user
+                - assistant
+              content:
+                type: string
+                maxLength: 2000
+        timezone:
+          type: string
+          examples:
+          - Asia/Kolkata
     ClaimRequest:
       type: object
       additionalProperties: false
@@ -3092,6 +4206,243 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeterUsage'
+    CostView:
+      type: object
+      required:
+      - header
+      - lines
+      - surcharges
+      - catalog_version
+      properties:
+        header:
+          type: object
+          required:
+          - duration_s
+          - billed_minutes
+          - avg_rate_per_min_usd
+          - total_usd
+          properties:
+            duration_s:
+              type: integer
+            billed_minutes:
+              type: number
+            avg_rate_per_min_usd:
+              type: number
+            total_usd:
+              type: number
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallCostLine'
+        surcharges:
+          type: array
+          items:
+            $ref: '#/components/schemas/SurchargeLine'
+        catalog_version:
+          type: string
+    DashboardQuality:
+      type: object
+      required:
+      - window
+      - total_calls_evaluated
+      - per_evaluator
+      properties:
+        window:
+          $ref: '#/components/schemas/Window'
+        prior_window:
+          oneOf:
+          - $ref: '#/components/schemas/Window'
+          - type: 'null'
+        total_calls_evaluated:
+          type: integer
+        per_evaluator:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluatorStat'
+        per_evaluator_prior:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluatorStat'
+    DashboardStats:
+      type: object
+      required:
+      - window
+      - bucket
+      - kpis
+      - sparklines
+      - series
+      - disconnect_reasons
+      - sentiment
+      - channels
+      - leaderboard
+      - distribution
+      properties:
+        window:
+          $ref: '#/components/schemas/Window'
+        bucket:
+          type: string
+          enum:
+          - day
+          - week
+        kpis:
+          type: object
+          required:
+          - total_calls
+          - daily_avg_calls
+          - total_duration_s
+          - total_cost_usd
+          - cost_per_call_usd
+          - avg_duration_s
+          properties:
+            total_calls:
+              type: integer
+            daily_avg_calls:
+              type: number
+            total_duration_s:
+              type: integer
+            peak_day:
+              type:
+              - object
+              - 'null'
+              properties:
+                date:
+                  type: string
+                  format: date
+                total_calls:
+                  type: integer
+            total_cost_usd:
+              type: number
+            cost_per_call_usd:
+              type: number
+            avg_duration_s:
+              type: number
+            median_turn_latency_ms:
+              type:
+              - integer
+              - 'null'
+            p95_turn_latency_ms:
+              type:
+              - integer
+              - 'null'
+        sparklines:
+          type: object
+          properties:
+            calls:
+              type: array
+              items:
+                type: integer
+            duration_s:
+              type: array
+              items:
+                type: integer
+            cost_usd:
+              type: array
+              items:
+                type: number
+            avg_duration_s:
+              type: array
+              items:
+                type: number
+        series:
+          type: array
+          items:
+            type: object
+            required:
+            - bucket_start
+            - total_calls
+            - total_duration_s
+            - avg_duration_s
+            properties:
+              bucket_start:
+                type: string
+                format: date
+              total_calls:
+                type: integer
+              total_duration_s:
+                type: integer
+              avg_duration_s:
+                type: number
+        disconnect_reasons:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Keys are DisconnectReason values from the calls contract.
+        sentiment:
+          type: object
+          required:
+          - positive
+          - neutral
+          - negative
+          - unknown
+          properties:
+            positive:
+              type: integer
+            neutral:
+              type: integer
+            negative:
+              type: integer
+            unknown:
+              type: integer
+        channels:
+          type: object
+          required:
+          - web
+          - sip_inbound
+          - sip_outbound
+          - whatsapp
+          properties:
+            web:
+              type: integer
+            sip_inbound:
+              type: integer
+            sip_outbound:
+              type: integer
+            whatsapp:
+              type: integer
+        leaderboard:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required:
+            - agent_id
+            - agent_name
+            - total_calls
+            - positive_calls
+            - negative_calls
+            properties:
+              agent_id:
+                type: string
+              agent_name:
+                type: string
+              total_calls:
+                type: integer
+              positive_calls:
+                type: integer
+              negative_calls:
+                type: integer
+        distribution:
+          type: array
+          maxItems: 11
+          items:
+            type: object
+            required:
+            - agent_id
+            - agent_name
+            - total_calls
+            - share
+            properties:
+              agent_id:
+                type: string
+                description: agt_ ID, or the literal others
+              agent_name:
+                type: string
+              total_calls:
+                type: integer
+              share:
+                type: number
+                minimum: 0
+                maximum: 1
     DeliveryAttempt:
       type: object
       required:
@@ -3131,6 +4482,32 @@ components:
       - succeeded
       - failed
       - blocked
+    Dimension:
+      type: string
+      enum:
+      - day
+      - week
+      - month
+      - hour_of_day
+      - weekday
+      - agent
+      - channel
+      - status
+      - disconnect_reason
+      - sentiment
+      - evaluator
+    DisconnectReason:
+      type: string
+      enum:
+      - user_hangup
+      - agent_hangup
+      - call_transfer
+      - voicemail_reached
+      - inactivity
+      - max_duration_reached
+      - error
+      - concurrency_limit
+      - insufficient_credit
     DtmfEvent:
       allOf:
       - $ref: '#/components/schemas/EventBase'
@@ -3187,6 +4564,59 @@ components:
       pattern: ^\+[1-9]\d{6,14}$
       examples:
       - '+14155550123'
+    EvalStatus:
+      type: string
+      enum:
+      - not_evaluated
+      - running
+      - passed
+      - failed
+      - error
+    EvaluatorStat:
+      type: object
+      required:
+      - evaluator_id
+      - evaluator_name
+      - display_name
+      - scope
+      - pass_count
+      - fail_count
+      - not_applicable_count
+      - total_runs
+      - calls_evaluated
+      properties:
+        evaluator_id:
+          type: string
+        evaluator_name:
+          type: string
+        display_name:
+          type: string
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+        pass_rate:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+        avg_score:
+          type:
+          - number
+          - 'null'
+        pass_count:
+          type: integer
+        fail_count:
+          type: integer
+        not_applicable_count:
+          type: integer
+        total_runs:
+          type: integer
+        calls_evaluated:
+          type: integer
     EventBase:
       type: object
       required:
@@ -3305,6 +4735,80 @@ components:
             type: string
           label:
             type: string
+    InterpretRequest:
+      type: object
+      required:
+      - transcript
+      - visual_state
+      properties:
+        transcript:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        visual_state:
+          $ref: '#/components/schemas/VisualState'
+        conversation_history:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+                enum:
+                - user
+                - copilot
+              content:
+                type: string
+                maxLength: 1000
+    InterpretResult:
+      type: object
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          enum:
+          - navigate
+          - route_to_copilot
+          - ui_action
+          - answer
+          - decline
+        target:
+          type:
+          - string
+          - 'null'
+          description: 'navigate: an allowlisted route (for example /calls). route_to_copilot: analytics_chat,
+
+            prompt_builder or flow_builder. ui_action: a key from visual_state.available_actions.
+
+            '
+        params:
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+          description: For navigate to /calls, filter params (status, channel, agent_id, date_range of
+            today, yesterday, this_week, last_7_days).
+        query:
+          type:
+          - string
+          - 'null'
+          description: Prefilled question for route_to_copilot
+        speak:
+          type:
+          - string
+          - 'null'
+          maxLength: 280
+        highlight_element:
+          type:
+          - string
+          - 'null'
+          description: A key from visual_state.highlightable_elements
+        fallback_suggestion:
+          type:
+          - string
+          - 'null'
     Language:
       type: object
       required:
@@ -3348,6 +4852,25 @@ components:
               type: string
             voice_id:
               type: string
+    LatencySummary:
+      type: object
+      required:
+      - turns_measured
+      properties:
+        avg_ms:
+          type:
+          - integer
+          - 'null'
+        p50_ms:
+          type:
+          - integer
+          - 'null'
+        p95_ms:
+          type:
+          - integer
+          - 'null'
+        turns_measured:
+          type: integer
     LivekitWebhookEvent:
       type: object
       required:
@@ -3538,6 +5061,119 @@ components:
         included:
           type: string
           description: bundle_per_min times duration_minutes, decimal string
+    MetricName:
+      type: string
+      enum:
+      - call_count
+      - total_duration_s
+      - avg_duration_s
+      - total_cost_usd
+      - avg_cost_usd
+      - median_turn_latency_ms
+      - p95_turn_latency_ms
+      - evaluator_pass_rate
+      - evaluator_run_count
+      - positive_sentiment_share
+      - negative_sentiment_share
+    MetricQuery:
+      type: object
+      required:
+      - metrics
+      - period
+      additionalProperties: false
+      properties:
+        metrics:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/MetricName'
+        group_by:
+          type: array
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/Dimension'
+        filters:
+          type: object
+          additionalProperties: false
+          properties:
+            agent_ids:
+              type: array
+              items:
+                type: string
+                pattern: ^agt_
+            channels:
+              type: array
+              items:
+                type: string
+                enum:
+                - web
+                - sip_inbound
+                - sip_outbound
+                - whatsapp
+            statuses:
+              type: array
+              items:
+                type: string
+            disconnect_reasons:
+              type: array
+              items:
+                type: string
+            sentiments:
+              type: array
+              items:
+                type: string
+                enum:
+                - positive
+                - neutral
+                - negative
+                - unknown
+            evaluator_names:
+              type: array
+              items:
+                type: string
+        period:
+          type: object
+          required:
+          - preset
+          additionalProperties: false
+          properties:
+            preset:
+              type: string
+              enum:
+              - today
+              - yesterday
+              - this_week
+              - last_week
+              - this_month
+              - last_month
+              - last_n_days
+              - between
+            n_days:
+              type: integer
+              minimum: 1
+              maximum: 365
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+        order_by:
+          type: object
+          properties:
+            key:
+              type: string
+            direction:
+              type: string
+              enum:
+              - asc
+              - desc
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
     ModelRef:
       type: object
       required:
@@ -3580,6 +5216,12 @@ components:
           type: boolean
         price_per_min_usd:
           $ref: '#/components/schemas/PricePerMin'
+    Origin:
+      type: string
+      enum:
+      - live
+      - test
+      - simulation
     OutboundDial:
       type: object
       required:
@@ -3671,6 +5313,30 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+    QualitySummary:
+      type: object
+      required:
+      - eval_status
+      - pass_count
+      - fail_count
+      - label
+      properties:
+        eval_status:
+          $ref: '#/components/schemas/EvalStatus'
+        pass_count:
+          type: integer
+          minimum: 0
+        fail_count:
+          type: integer
+          minimum: 0
+        label:
+          type:
+          - string
+          - 'null'
+          enum:
+          - good
+          - bad
+          - null
     Quote:
       type: object
       required:
@@ -3757,6 +5423,51 @@ components:
           type: string
           format: date-time
           description: Price with the catalog version in effect at this instant (default now)
+    RecordingLink:
+      type: object
+      required:
+      - url
+      - expires_at
+      - content_type
+      - filename
+      properties:
+        url:
+          type: string
+          format: uri
+        expires_at:
+          type: string
+          format: date-time
+        content_type:
+          type: string
+          examples:
+          - audio/ogg
+          - audio/mpeg
+        filename:
+          type: string
+          examples:
+          - call_01JABCDEFGHJKMNPQRSTVWXYZ0.ogg
+        duration_s:
+          type:
+          - integer
+          - 'null'
+    RegisteredAction:
+      type: object
+      required:
+      - key
+      - label
+      properties:
+        key:
+          type: string
+          examples:
+          - save_flow
+          - filter_calls
+        label:
+          type: string
+        params_schema:
+          type:
+          - object
+          - 'null'
+          description: JSON Schema for the action's params.
     RegisteredSession:
       allOf:
       - $ref: '#/components/schemas/Session'
@@ -3963,6 +5674,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfigIssue'
+    Sentiment:
+      type: string
+      enum:
+      - positive
+      - neutral
+      - negative
+      - unknown
     Session:
       type: object
       required:
@@ -4064,6 +5782,46 @@ components:
             type: string
           sip_status_code:
             type: integer
+    StreamCredential:
+      type: object
+      required:
+      - provider
+      - stream_url
+      - auth_scheme
+      - token
+      - expires_at
+      - encoding
+      - language
+      properties:
+        provider:
+          type: string
+          examples:
+          - deepgram
+        stream_url:
+          type: string
+          format: uri
+        auth_scheme:
+          type: string
+          enum:
+          - websocket_subprotocol_token
+          - query_token
+          - bearer
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        encoding:
+          type: string
+          examples:
+          - webm_opus
+        sample_rate_hz:
+          type:
+          - integer
+          - 'null'
+        language:
+          type: string
+          default: en
     SttModel:
       type: object
       required:
@@ -4160,6 +5918,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SttModel'
+    SurchargeLine:
+      type: object
+      required:
+      - component
+      - label
+      - surcharge_usd
+      - multiplier
+      properties:
+        component:
+          type: string
+          enum:
+          - llm
+          - tts
+        label:
+          type: string
+          examples:
+          - Model token surcharge
+          - Speech character surcharge
+        surcharge_usd:
+          type: number
+        multiplier:
+          type: number
+          description: billed_minutes / duration_minutes, e.g. 1.13
     TemperatureRule:
       oneOf:
       - type: object
@@ -4336,6 +6117,100 @@ components:
             const: transcript_item
           item:
             $ref: '#/components/schemas/RuntimeTranscriptItem'
+    TranscriptMessage:
+      type: object
+      required:
+      - id
+      - type
+      - role
+      - text
+      - interrupted
+      - offset_ms
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - message
+        role:
+          type: string
+          enum:
+          - user
+          - agent
+        text:
+          type: string
+        interrupted:
+          type: boolean
+        stt_confidence:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+        offset_ms:
+          type: integer
+        turn_index:
+          type:
+          - integer
+          - 'null'
+    TranscriptToolCall:
+      type: object
+      required:
+      - id
+      - type
+      - tool_name
+      - arguments
+      - offset_ms
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - tool_call
+        tool_name:
+          type: string
+        arguments:
+          type: object
+          additionalProperties: true
+        offset_ms:
+          type: integer
+        turn_index:
+          type:
+          - integer
+          - 'null'
+    TranscriptToolResult:
+      type: object
+      required:
+      - id
+      - type
+      - tool_call_id
+      - tool_name
+      - output
+      - is_error
+      - offset_ms
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - tool_result
+        tool_call_id:
+          type: string
+        tool_name:
+          type: string
+        output:
+          type: string
+        is_error:
+          type: boolean
+        duration_ms:
+          type:
+          - integer
+          - 'null'
+        offset_ms:
+          type: integer
     TtsModel:
       type: object
       required:
@@ -4467,6 +6342,29 @@ components:
             - 'null'
           interrupted:
             type: boolean
+    TurnLatency:
+      type: object
+      required:
+      - turn_index
+      properties:
+        turn_index:
+          type: integer
+        stt_final_ms:
+          type:
+          - integer
+          - 'null'
+        llm_ttft_ms:
+          type:
+          - integer
+          - 'null'
+        tts_ttfb_ms:
+          type:
+          - integer
+          - 'null'
+        e2e_ms:
+          type:
+          - integer
+          - 'null'
     UsageDetail:
       type: object
       required:
@@ -4772,6 +6670,55 @@ components:
           description: True for the version matching the saved draft
         has_publish_blockers:
           type: boolean
+    VisualState:
+      type: object
+      required:
+      - current_route
+      - current_datetime
+      - timezone
+      - available_actions
+      properties:
+        current_route:
+          type: string
+          examples:
+          - /dashboard
+        page_title:
+          type: string
+        current_datetime:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        available_actions:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/RegisteredAction'
+        highlightable_elements:
+          type: array
+          items:
+            type: string
+        visible_entities:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum:
+                - agent
+                - flow
+                - call
+                - evaluator
+              id:
+                type: string
+              name:
+                type: string
+        open_panels:
+          type: array
+          items:
+            type: string
     Voice:
       type: object
       required:
@@ -5183,6 +7130,18 @@ components:
       - call_ended
       - call_analyzed
       - ping
+    Window:
+      type: object
+      required:
+      - from
+      - to
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
     Workspace:
       type: object
       required:
