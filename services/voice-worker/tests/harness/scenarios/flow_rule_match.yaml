@@ -1,0 +1,13 @@
+name: flow_rule_match
+flow: rule_else
+llm:
+  rules:
+    - {match: years, tool: route_to_gave_age}
+  extract:
+    "42 years": {age: 42}
+caller:
+  - "I am 42 years old"
+expect:
+  path: [n_start000, n_triage00, n_extract0, n_rule0000, n_adult000, n_end00000]
+  triggers: [always, llm_condition, always, rule, always]
+  end_reason: agent_hangup

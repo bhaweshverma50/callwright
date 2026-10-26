@@ -1,0 +1,128 @@
+{
+  "nodes": [
+    {
+      "id": "n_start000",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start_speaker": "agent",
+        "greeting_type": "static",
+        "greeting": "Thanks for calling. How can I help?"
+      }
+    },
+    {
+      "id": "n_triage00",
+      "type": "agent",
+      "label": "Triage",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "Help.",
+        "begin_message": null,
+        "context_strategy": "inherit",
+        "overrides": {
+          "llm": null,
+          "tts": null,
+          "stt": null,
+          "language": null
+        },
+        "tool_ids": [],
+        "kb_search_enabled": true
+      }
+    },
+    {
+      "id": "n_extrA000",
+      "type": "extract_variable",
+      "label": "A",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "",
+        "fields": [
+          {
+            "name": "a",
+            "type": "string",
+            "description": "a"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_extrB000",
+      "type": "extract_variable",
+      "label": "B",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "",
+        "fields": [
+          {
+            "name": "b",
+            "type": "string",
+            "description": "b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_end00000",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "message": "Thanks for calling. Goodbye.",
+        "reason": "call_completed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_start000",
+      "source": "n_start000",
+      "target": "n_triage00",
+      "trigger": "always",
+      "sort_order": 0
+    },
+    {
+      "id": "e_triage00",
+      "source": "n_triage00",
+      "target": "n_extrA000",
+      "trigger": "llm_condition",
+      "sort_order": 0,
+      "label": "Loop",
+      "condition": "Always"
+    },
+    {
+      "id": "e_ab000000",
+      "source": "n_extrA000",
+      "target": "n_extrB000",
+      "trigger": "always",
+      "sort_order": 0
+    },
+    {
+      "id": "e_ba000000",
+      "source": "n_extrB000",
+      "target": "n_extrA000",
+      "trigger": "always",
+      "sort_order": 0
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

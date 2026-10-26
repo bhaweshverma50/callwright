@@ -1,0 +1,195 @@
+{
+  "config": {
+    "advanced": {
+      "analysis_model": null,
+      "background_audio": {
+        "enabled": false,
+        "source": null,
+        "volume": 0.8
+      },
+      "dtmf": {
+        "digits": 10,
+        "enabled": false,
+        "termination_key": "#",
+        "timeout_ms": 2500
+      },
+      "pronunciation": [],
+      "recording": "inherit",
+      "voicemail_detection": {
+        "action": "hang_up",
+        "enabled": false,
+        "message": null
+      },
+      "webhook_timeout_ms": 3000,
+      "webhook_url": null
+    },
+    "begin_message": "Hi, thanks for calling. How can I help you today?",
+    "call_behavior": {
+      "end_on_silence_s": 30,
+      "interruption_sensitivity": 0.9,
+      "max_duration_s": 600,
+      "responsiveness": 0.8,
+      "ring_duration_ms": 5000
+    },
+    "dynamic_variables": [],
+    "evals": null,
+    "flow": {
+      "compiled": {
+        "builtin_variables": [
+          "call_id",
+          "direction",
+          "channel",
+          "from_number",
+          "to_number",
+          "timezone",
+          "current_time",
+          "current_date",
+          "current_datetime",
+          "agent_name"
+        ],
+        "compiled_at": "2026-10-26T12:00:00+00:00",
+        "declared_variables": [],
+        "entry_node_id": "n_start000",
+        "flow_id": "flw_01JA0FL0WTRIAGE_S000000000",
+        "graph_hash": "3c36a7410cd6eddc90040980ad3ea2b9203bcddfe15c7e3d202e7c5de019f9a0",
+        "nodes": {
+          "n_end00000": {
+            "end": {
+              "message": "Thanks for calling. Goodbye.",
+              "reason": "call_completed"
+            },
+            "label": "End",
+            "type": "end"
+          },
+          "n_route000": {
+            "condition": {
+              "categories": [
+                {
+                  "description": "buying",
+                  "edge_id": "e_cat00000",
+                  "name": "Sales",
+                  "target": "n_sales000"
+                },
+                {
+                  "description": "help with a product",
+                  "edge_id": "e_cat00001",
+                  "name": "Support",
+                  "target": "n_suppline"
+                }
+              ],
+              "else_edge_id": null,
+              "else_target": null,
+              "instructions": "",
+              "kind": "classify",
+              "rules": []
+            },
+            "label": "Route",
+            "type": "condition"
+          },
+          "n_sales000": {
+            "label": "Sales line",
+            "say": {
+              "allow_interruptions": true,
+              "edge_id": "e_salend00",
+              "message": "Our sales team will call you back.",
+              "next": "n_end00000"
+            },
+            "type": "say"
+          },
+          "n_start000": {
+            "label": "Start",
+            "start": {
+              "edge_id": "e_start000",
+              "greeting": "Thanks for calling. How can I help?",
+              "greeting_type": "static",
+              "next": "n_triage00",
+              "start_speaker": "agent"
+            },
+            "type": "start"
+          },
+          "n_suppline": {
+            "label": "Support line",
+            "say": {
+              "allow_interruptions": true,
+              "edge_id": "e_supend00",
+              "message": "Connecting you with support guidance now.",
+              "next": "n_end00000"
+            },
+            "type": "say"
+          },
+          "n_triage00": {
+            "begin_message": null,
+            "context_strategy": "inherit",
+            "instructions": "You are the receptionist of Harbour Clinic.\n\nFind out what the caller needs.",
+            "kb_search": {
+              "enabled": false,
+              "kb_ids": []
+            },
+            "label": "Triage",
+            "language": "en-US",
+            "llm": {
+              "model": "gpt-5.1",
+              "provider": "azure_openai",
+              "temperature": 1.0
+            },
+            "stt": {
+              "model": null,
+              "provider": "deepgram"
+            },
+            "task": null,
+            "tools": [],
+            "transitions": [
+              {
+                "description": "Go to Route. Use when: The caller has said what they need",
+                "edge_id": "e_triage00",
+                "function_name": "route_to_knows_the_need",
+                "label": "Knows the need",
+                "target_node_id": "n_route000",
+                "trigger": "llm_condition"
+              }
+            ],
+            "tts": {
+              "expressiveness": 0.9,
+              "model": "eleven_flash_v2_5",
+              "provider": "elevenlabs",
+              "speed": 1.0,
+              "voice_id": "EXAVITQu4vr4xnSDxMaL",
+              "volume": 1.0
+            },
+            "type": "agent"
+          }
+        },
+        "persona_prompt": "You are the receptionist of Harbour Clinic.",
+        "schema_version": 1
+      }
+    },
+    "kb_ids": [],
+    "language": "en-US",
+    "llm": {
+      "model": "gpt-5.1",
+      "provider": "azure_openai",
+      "temperature": 1.0
+    },
+    "noise_cancellation": {
+      "model": "vi",
+      "provider": "sanas"
+    },
+    "prompt": "You are the receptionist of Harbour Clinic.",
+    "schema_version": 1,
+    "start_speaker": "agent",
+    "stt": {
+      "model": null,
+      "provider": "deepgram"
+    },
+    "tool_ids": [],
+    "tts": {
+      "expressiveness": 0.9,
+      "model": "eleven_flash_v2_5",
+      "provider": "elevenlabs",
+      "speed": 1.0,
+      "voice_id": "EXAVITQu4vr4xnSDxMaL",
+      "volume": 1.0
+    },
+    "type": "flow"
+  }
+}

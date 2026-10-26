@@ -1,0 +1,12 @@
+name: flow_task_complete
+flow: task_max_rounds
+llm:
+  rules:
+    - {match: "@", tool: complete_task, args: {name: Priya, email: priya@example.com}}
+caller:
+  - "I'm Priya, priya@example.com"
+expect:
+  path: [n_start000, n_task0000, n_thanks00, n_end00000]
+  triggers: [always, success, always]
+  agent_says: ["Thanks Priya."]
+  end_reason: agent_hangup

@@ -1,0 +1,184 @@
+{
+  "config": {
+    "advanced": {
+      "analysis_model": null,
+      "background_audio": {
+        "enabled": false,
+        "source": null,
+        "volume": 0.8
+      },
+      "dtmf": {
+        "digits": 10,
+        "enabled": false,
+        "termination_key": "#",
+        "timeout_ms": 2500
+      },
+      "pronunciation": [],
+      "recording": "inherit",
+      "voicemail_detection": {
+        "action": "hang_up",
+        "enabled": false,
+        "message": null
+      },
+      "webhook_timeout_ms": 3000,
+      "webhook_url": null
+    },
+    "begin_message": "Hi, thanks for calling. How can I help you today?",
+    "call_behavior": {
+      "end_on_silence_s": 30,
+      "interruption_sensitivity": 0.9,
+      "max_duration_s": 600,
+      "responsiveness": 0.8,
+      "ring_duration_ms": 5000
+    },
+    "dynamic_variables": [],
+    "evals": null,
+    "flow": {
+      "compiled": {
+        "builtin_variables": [
+          "call_id",
+          "direction",
+          "channel",
+          "from_number",
+          "to_number",
+          "timezone",
+          "current_time",
+          "current_date",
+          "current_datetime",
+          "agent_name"
+        ],
+        "compiled_at": "2026-10-26T12:00:00+00:00",
+        "declared_variables": [
+          {
+            "name": "task_result.name",
+            "source_node_id": "n_task0000",
+            "type": "string"
+          },
+          {
+            "name": "task_result.email",
+            "source_node_id": "n_task0000",
+            "type": "string"
+          }
+        ],
+        "entry_node_id": "n_start000",
+        "flow_id": "flw_01JA0FL0WTASK_MAX000000000",
+        "graph_hash": "c3f0573f00a6db5bd8fa0cd8955bbe2fcede3fdfad8b9fddd4bba46c457b9045",
+        "nodes": {
+          "n_end00000": {
+            "end": {
+              "message": "Thanks for calling. Goodbye.",
+              "reason": "call_completed"
+            },
+            "label": "End",
+            "type": "end"
+          },
+          "n_start000": {
+            "label": "Start",
+            "start": {
+              "edge_id": "e_start000",
+              "greeting": "Hello, let's get you booked.",
+              "greeting_type": "static",
+              "next": "n_task0000",
+              "start_speaker": "agent"
+            },
+            "type": "start"
+          },
+          "n_task0000": {
+            "begin_message": null,
+            "context_strategy": "inherit",
+            "instructions": "You are the receptionist of Harbour Clinic.\n\nCollect name and email.",
+            "kb_search": {
+              "enabled": false,
+              "kb_ids": []
+            },
+            "label": "Collect details",
+            "language": "en-US",
+            "llm": {
+              "model": "gpt-5.1",
+              "provider": "azure_openai",
+              "temperature": 1.0
+            },
+            "stt": {
+              "model": null,
+              "provider": "deepgram"
+            },
+            "task": {
+              "json_schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "email": {
+                    "description": "Email",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Full name",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "email"
+                ],
+                "type": "object"
+              },
+              "max_rounds": 3,
+              "success_edge_id": "e_success0",
+              "success_target": "n_thanks00"
+            },
+            "tools": [],
+            "transitions": [],
+            "tts": {
+              "expressiveness": 0.9,
+              "model": "eleven_flash_v2_5",
+              "provider": "elevenlabs",
+              "speed": 1.0,
+              "voice_id": "EXAVITQu4vr4xnSDxMaL",
+              "volume": 1.0
+            },
+            "type": "task"
+          },
+          "n_thanks00": {
+            "label": "Thanks",
+            "say": {
+              "allow_interruptions": true,
+              "edge_id": "e_thanks00",
+              "message": "Thanks {{task_result.name}}.",
+              "next": "n_end00000"
+            },
+            "type": "say"
+          }
+        },
+        "persona_prompt": "You are the receptionist of Harbour Clinic.",
+        "schema_version": 1
+      }
+    },
+    "kb_ids": [],
+    "language": "en-US",
+    "llm": {
+      "model": "gpt-5.1",
+      "provider": "azure_openai",
+      "temperature": 1.0
+    },
+    "noise_cancellation": {
+      "model": "vi",
+      "provider": "sanas"
+    },
+    "prompt": "You are the receptionist of Harbour Clinic.",
+    "schema_version": 1,
+    "start_speaker": "agent",
+    "stt": {
+      "model": null,
+      "provider": "deepgram"
+    },
+    "tool_ids": [],
+    "tts": {
+      "expressiveness": 0.9,
+      "model": "eleven_flash_v2_5",
+      "provider": "elevenlabs",
+      "speed": 1.0,
+      "voice_id": "EXAVITQu4vr4xnSDxMaL",
+      "volume": 1.0
+    },
+    "type": "flow"
+  }
+}

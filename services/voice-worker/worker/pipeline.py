@@ -273,6 +273,13 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
     background, warnings = resolve_background_audio(config, runtime.background_audio_url)
     is_flow = runtime.agent_type == "flow" or config.get("type") == "flow"
     agent_type: Literal["single_prompt", "flow"] = "flow" if is_flow else "single_prompt"
+    if is_flow:
+        # 004: the Start node (and Say nodes right after it) is the opening of a flow call.
+        from worker.flow.runtime import call_opening
+
+        opening = call_opening(config, variables)
+        if opening is not None:
+            start_speaker, greeting = opening.start_speaker, opening.greeting
     return SessionPlan(
         language=language,
         stt=stt,
@@ -490,6 +497,7 @@ def build_agent(
     on_tts_text: TtsTextHook | None = None,
     extra_tools: Sequence[Any] = (),
     extra_instructions: str = "",
+    flow_components: Any = None,
     **agent_kwargs: Any,
 ) -> Any:
     """The entry agent: tools from 005's provider, flows from 004's runner (FR-024).
@@ -503,7 +511,17 @@ def build_agent(
     fillers = policy_for(runtime, control) if callable(policy_for) else None
     tools += list(extra_tools)
     if plan.agent_type == "flow":
-        return (flow_runner or get_flow_runner()).build_agent(runtime, control, tools)
+        # Flow nodes carry their own tools (compiled from 005's snapshot); only worker-internal
+        # tools such as voicemail detection are added to every node.
+        return (flow_runner or get_flow_runner()).build_agent(
+            runtime,
+            control,
+            list(extra_tools),
+            plan=plan,
+            on_tts_text=on_tts_text,
+            extra_instructions=extra_instructions,
+            components=flow_components,
+        )
     agent_cls = make_agent_class()
     return agent_cls(
         plan,

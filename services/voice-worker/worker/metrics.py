@@ -120,6 +120,10 @@ class TurnRecord:
     interrupted: bool = False
     text: str = ""
     played_text: str = ""
+    # Flow agents (004): executor time for a node move, and the model time of a node entered
+    # without an entry line.
+    engine_ms: int | None = None
+    transition_llm_ms: int | None = None
 
 
 class LatencyTracker:
@@ -406,19 +410,21 @@ class EventRecorder:
 
     def turn(self, record: TurnRecord) -> Event:
         telemetry.record_turn(record)
-        return self._emit(
-            "turn",
-            {
-                "turn_index": record.turn_index,
-                "stt_final_ms": record.stt_final_ms,
-                "eou_delay_ms": record.eou_delay_ms,
-                "llm_ttft_ms": record.llm_ttft_ms,
-                "tts_ttfb_ms": record.tts_ttfb_ms,
-                "e2e_ms": record.e2e_ms,
-                "tool_ms": record.tool_ms,
-                "interrupted": record.interrupted,
-            },
-        )
+        body: dict[str, Any] = {
+            "turn_index": record.turn_index,
+            "stt_final_ms": record.stt_final_ms,
+            "eou_delay_ms": record.eou_delay_ms,
+            "llm_ttft_ms": record.llm_ttft_ms,
+            "tts_ttfb_ms": record.tts_ttfb_ms,
+            "e2e_ms": record.e2e_ms,
+            "tool_ms": record.tool_ms,
+            "interrupted": record.interrupted,
+        }
+        for key in ("engine_ms", "transition_llm_ms"):
+            value = getattr(record, key)
+            if value is not None:
+                body[key] = value
+        return self._emit("turn", body)
 
     def transcript_item(self, item: dict[str, Any]) -> Event:
         return self._emit("transcript_item", {"item": item})
@@ -485,9 +491,17 @@ class EventRecorder:
         return self._emit("tool_call", body)
 
     def flow_transition(
-        self, to_node_id: str, from_node_id: str | None, label: str | None
+        self,
+        to_node_id: str,
+        from_node_id: str | None,
+        label: str | None,
+        details: Mapping[str, Any] | None = None,
     ) -> Event:
-        body: dict[str, Any] = {"to_node_id": to_node_id, "from_node_id": from_node_id}
+        body: dict[str, Any] = {
+            **(details or {}),
+            "to_node_id": to_node_id,
+            "from_node_id": from_node_id,
+        }
         if label:
             body["label"] = label
         return self._emit("flow_transition", body)

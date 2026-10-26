@@ -1,0 +1,12 @@
+# Data model 8: 200 moves between non-conversational nodes end the call with "error".
+name: flow_loop_guard
+flow: loop_guard
+llm:
+  rules:
+    - {match: loop, tool: route_to_loop}
+caller:
+  - "loop please"
+expect:
+  moves: 200
+  end_reason: error
+  diagnostic: flow_transition_limit

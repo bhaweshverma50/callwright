@@ -1,0 +1,142 @@
+{
+  "nodes": [
+    {
+      "id": "n_start000",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start_speaker": "agent",
+        "greeting_type": "static",
+        "greeting": "Thanks for calling. How can I help?"
+      }
+    },
+    {
+      "id": "n_triage00",
+      "type": "agent",
+      "label": "Triage",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "Find out the topic.",
+        "begin_message": null,
+        "context_strategy": "inherit",
+        "overrides": {
+          "llm": null,
+          "tts": null,
+          "stt": null,
+          "language": null
+        },
+        "tool_ids": [],
+        "kb_search_enabled": true
+      }
+    },
+    {
+      "id": "n_spanish0",
+      "type": "agent",
+      "label": "Spanish desk",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "Help in Spanish.",
+        "begin_message": "Hola, le ayudo en espa\u00f1ol.",
+        "context_strategy": "reset",
+        "overrides": {
+          "llm": {
+            "provider": "openai",
+            "model": "gpt-5-mini",
+            "temperature": null
+          },
+          "tts": null,
+          "stt": null,
+          "language": "es"
+        },
+        "tool_ids": [],
+        "kb_search_enabled": true
+      }
+    },
+    {
+      "id": "n_summary0",
+      "type": "agent",
+      "label": "Summary desk",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "instructions": "Wrap up.",
+        "begin_message": "Let me wrap up.",
+        "context_strategy": "summarize",
+        "overrides": {
+          "llm": null,
+          "tts": null,
+          "stt": null,
+          "language": null
+        },
+        "tool_ids": [],
+        "kb_search_enabled": true
+      }
+    },
+    {
+      "id": "n_end00000",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "message": "Thanks for calling. Goodbye.",
+        "reason": "call_completed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_start000",
+      "source": "n_start000",
+      "target": "n_triage00",
+      "trigger": "always",
+      "sort_order": 0
+    },
+    {
+      "id": "e_spanish0",
+      "source": "n_triage00",
+      "target": "n_spanish0",
+      "trigger": "llm_condition",
+      "sort_order": 0,
+      "label": "Spanish",
+      "condition": "The caller wants Spanish"
+    },
+    {
+      "id": "e_wrap0000",
+      "source": "n_spanish0",
+      "target": "n_summary0",
+      "trigger": "llm_condition",
+      "sort_order": 0,
+      "label": "Wrap up",
+      "condition": "The caller is finished"
+    },
+    {
+      "id": "e_end00000",
+      "source": "n_summary0",
+      "target": "n_end00000",
+      "trigger": "llm_condition",
+      "sort_order": 0,
+      "label": "Done",
+      "condition": "Done"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict, runtime_checkable
 
@@ -101,8 +101,15 @@ class CallControl(Protocol):
     def report_tool(self, activity: ToolActivity) -> None: ...
 
     def report_transition(
-        self, to_node_id: str, *, from_node_id: str | None = None, label: str | None = None
-    ) -> None: ...
+        self,
+        to_node_id: str,
+        *,
+        from_node_id: str | None = None,
+        label: str | None = None,
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Record a flow move; ``details`` carries 004's payload (labels, trigger, timing)."""
+        ...
 
     async def apply_overrides(self, overrides: SegmentOverrides) -> OverrideResult: ...
 

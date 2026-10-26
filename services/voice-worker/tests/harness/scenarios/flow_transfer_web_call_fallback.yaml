@@ -1,0 +1,16 @@
+# Edge case: a transfer on a web call is not possible; with no failure connection the agent
+# says so and the call returns to the last conversational node.
+name: flow_transfer_web_call_fallback
+flow: transfer_fallback
+llm:
+  rules:
+    - {match: person, tool: route_to_wants_a_person}
+    - {match: done, tool: route_to_done}
+caller:
+  - "Can I talk to a person?"
+  - "Ok I'm done"
+expect:
+  path: [n_start000, n_triage00, n_xfer0000, n_triage00, n_end00000]
+  triggers: [always, llm_condition, fallback, llm_condition]
+  agent_says: ["I'm not able to transfer you right now, but I can keep helping you here."]
+  end_reason: agent_hangup

@@ -28,7 +28,13 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 from worker import telemetry
-from worker.adapters.registry import AdapterRegistry, Kind, UnsupportedLanguage, UnsupportedVendor
+from worker.adapters.registry import (
+    AdapterRegistry,
+    Kind,
+    UnsupportedLanguage,
+    UnsupportedVendor,
+    VendorSpec,
+)
 from worker.audio import PronunciationTransform, scale_frame
 from worker.call_behavior import (
     VAD_MIN_SILENCE_S,
@@ -43,6 +49,7 @@ from worker.call_behavior import (
 )
 from worker.control import RuntimeCallControl
 from worker.flow import FlowRuntimeUnavailable
+from worker.flow.runtime import FlowComponents
 from worker.internal_api import (
     ClaimRequest,
     InternalApiClient,
@@ -535,6 +542,7 @@ class LiveCall:
                 on_tts_text=self._on_tts_text,
                 extra_tools=extra_tools,
                 extra_instructions=extra_instructions,
+                flow_components=self._flow_components(),
             )
         except FlowRuntimeUnavailable as exc:
             await self._fail(exc.diagnostic)
@@ -641,6 +649,20 @@ class LiveCall:
             frames = await self._greeting_frames(greeting_audio)
             audio = {} if frames is None else {"audio": _replay(frames)}
             self.session.say(plan.greeting, allow_interruptions=False, **audio)
+
+    def _flow_components(self) -> FlowComponents:
+        """How 004's node agents build their own LLM, TTS and STT, and report flow timings."""
+        creds = self.settings.vendor_credentials()
+
+        def build(spec: VendorSpec) -> Any:
+            return self.registry.build(spec, creds.get(spec.provider, {}))
+
+        def timing(key: str, ms: int) -> None:
+            turn = self.tracker.current
+            if turn is not None:
+                setattr(turn, key, ms)
+
+        return FlowComponents(self.registry, build, timing)
 
     def _open_session_span(self, plan: SessionPlan) -> Any:
         return telemetry.start_span(
