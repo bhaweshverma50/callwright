@@ -302,8 +302,8 @@ export function WebCallPanel({
             <dt>Cost</dt>
             <dd className="w-[60px] text-right font-mono text-[13px] text-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
             <InfoTip label="How the cost is estimated" side="bottom">
-              Estimated from the stack's per-minute price while the call runs. The exact charge is settled once the call is processed.
-              Billing starts when the call connects.
+              Estimated from the stack's per-minute price while the call runs. The exact charge is settled once the call is processed. Billing starts
+              when the call connects.
             </InfoTip>
           </div>
         </dl>

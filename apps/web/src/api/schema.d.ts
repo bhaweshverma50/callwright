@@ -1379,7 +1379,8 @@ export interface paths {
         };
         /**
          * @description Returns plaintext values for every `secret_ref` in the call's AgentVersion snapshot.
-         *     Only for calls in `queued`, `ringing` or `in_progress`. Never logged.
+         *     Only for calls in `queued`, `ringing` or `in_progress`. Never logged. Callers without
+         *     the service token get 404, so the endpoint is not discoverable.
          */
         get: operations["getCallToolSecrets"];
         put?: never;
@@ -8899,6 +8900,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
             /** @description Attached and confirm is false (problem type `knowledge_base_in_use`, lists agents) */
             409: {
                 headers: {
@@ -8934,6 +8936,9 @@ export interface operations {
                     "application/json": components["schemas"]["KnowledgeBase"];
                 };
             };
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
         };
     };
     listDocuments: {
@@ -8962,6 +8967,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     uploadDocument: {
@@ -8999,6 +9005,7 @@ export interface operations {
                     "application/json": components["schemas"]["Document"];
                 };
             };
+            404: components["responses"]["Problem"];
             /** @description Same content already in this KB (`duplicate_document`) or unacknowledged cross-KB duplicate (`duplicate_elsewhere`) */
             409: {
                 headers: {
@@ -9076,6 +9083,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     getDocument: {
@@ -9145,6 +9153,7 @@ export interface operations {
                     "application/json": components["schemas"]["Document"];
                 };
             };
+            404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
         };
     };
@@ -9174,6 +9183,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     previewSearch: {
@@ -9204,6 +9214,7 @@ export interface operations {
                     "application/json": components["schemas"]["SearchResponse"];
                 };
             };
+            404: components["responses"]["Problem"];
             429: components["responses"]["Problem"];
         };
     };
@@ -9230,6 +9241,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     setAgentKnowledgeBases: {
@@ -9261,6 +9273,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
             /** @description Unknown id, KB not attachable (`knowledge_base_not_ready`) or too many */
             422: {
                 headers: {
@@ -9301,6 +9314,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
         };
     };
     listTools: {
@@ -9427,6 +9441,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
             /** @description Attached to agents and force is false (problem type `tool_in_use`, lists agents) */
             409: {
                 headers: {
@@ -9486,6 +9501,7 @@ export interface operations {
                     "application/json": components["schemas"]["Tool"];
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     getToolUsages: {
@@ -9517,6 +9533,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     testRunTool: {
@@ -9576,6 +9593,7 @@ export interface operations {
                     "application/json": components["schemas"]["AgentToolSet"];
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     setAgentTools: {
@@ -9646,6 +9664,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["Problem"];
         };
     };
     getCallToolSecrets: {
@@ -9674,6 +9693,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
         };
     };
