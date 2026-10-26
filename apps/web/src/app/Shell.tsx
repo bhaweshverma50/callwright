@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { Drawer, PageTransition, PanelLoader, cn } from "../components";
+import { CopilotDock } from "./assistant/CopilotDock";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -87,6 +88,7 @@ export function Shell() {
           </PageTransition>
         </main>
       </div>
+      <CopilotDock />
     </div>
   );
 }

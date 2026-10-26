@@ -15,6 +15,8 @@ import {
 } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
 import { Button, Input, PageHeader, PanelLoader, Segmented, cn, focusRing } from "../../components";
+import { openAsk } from "../../app/assistant/bus";
+import { useRegisterVoiceActions } from "../../app/copilot/actionRegistry";
 import { FormAlert } from "../public/FormAlert";
 import { viewerTimeZone } from "../calls/filters";
 import { CallsChart, DurationTrend, TalkTimeChart } from "./charts/ActivityCharts";
@@ -200,6 +202,11 @@ function Dashboard() {
     await qc.invalidateQueries({ queryKey: callKeys.dashboard });
     setRefreshing(false);
   };
+
+  useRegisterVoiceActions([
+    { key: "refresh_dashboard", label: "Refresh the dashboard", run: () => void refresh() },
+    { key: "ask_analytics", label: "Ask analytics", run: () => openAsk() },
+  ]);
 
   const updated = Math.max(stats.dataUpdatedAt, quality.dataUpdatedAt, health.dataUpdatedAt);
   const isDefault = draft.period === DEFAULT_PERIOD && draft.agents.length === 0;

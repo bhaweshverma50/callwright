@@ -8,6 +8,7 @@ import { downloadCallsCsv, useAgentOptions, useCalls, type CallListItem } from "
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { Button, EmptyState, MenuContent, PageHeader, Pagination, Select, Skeleton, cn, focusRing, toast } from "../../components";
+import { useRegisterVoiceActions } from "../../app/copilot/actionRegistry";
 import { FormAlert } from "../public/FormAlert";
 import { CallDetailDrawer, StatusBadge, type DrawerTab } from "./CallDetailDrawer";
 import { DebouncedInput, FilterButton, FilterChips } from "./CallFilters";
@@ -15,6 +16,7 @@ import { CHANNEL_ICONS, COLUMNS, EXPORT_KEYS, useColumnVisibility, type CallColu
 import {
   CHANNEL_LABELS,
   PAGE_SIZES,
+  STATUS_LABELS,
   emptyFilters,
   filterChips,
   parseListState,
@@ -207,6 +209,24 @@ export function CallHistoryPage() {
     p.delete("tab");
     setParams(p);
   };
+  // Voice copilot (T083): "show only failed WhatsApp calls" filters this list in place.
+  useRegisterVoiceActions([
+    {
+      key: "filter_calls",
+      label: "Filter calls",
+      params_schema: {
+        type: "object",
+        properties: {
+          status: { type: "array", items: { type: "string", enum: Object.keys(STATUS_LABELS) } },
+          channel: { type: "array", items: { type: "string", enum: Object.keys(CHANNEL_LABELS) } },
+          sentiment: { type: "array", items: { type: "string", enum: ["positive", "neutral", "negative", "unknown"] } },
+        },
+        additionalProperties: false,
+      },
+      run: (p) => setFilters({ ...state.filters, ...(p as Partial<CallFilters>) }),
+    },
+    { key: "export_calls", label: "Export calls", run: () => void exportCsv() },
+  ]);
   const callId = params.get("call");
   const tab = (params.get("tab") as DrawerTab | null) ?? "transcript";
 

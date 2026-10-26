@@ -250,6 +250,16 @@ def template_content(query: MetricQuery, rows: list[dict[str, Any]]) -> str:
     top = rows[0]
     if query.limit == 1:
         return f"{top.get(key)} had the highest {m.label.lower()}: {_fmt(top.get(metric), m.unit)}."
+    if query.group_by[0] in TIME_DIMENSIONS and len(rows) > 4:
+        peak = max(rows, key=lambda r: float(r.get(metric) or 0))
+        label = DIMENSION_LABELS[query.group_by[0]].lower()
+        if m.unit in ("count", "seconds", "usd"):
+            total = sum(float(r.get(metric) or 0) for r in rows)
+            return (
+                f"{m.label} by {label}: {_fmt(total, m.unit)} in total over {len(rows)} {label}s, "
+                f"highest on {peak.get(key)} with {_fmt(peak.get(metric), m.unit)}."
+            )
+        return f"{m.label} by {label} across {len(rows)} {label}s, highest on {peak.get(key)} at {_fmt(peak.get(metric), m.unit)}."
     parts = ", ".join(f"{r.get(key)} {_fmt(r.get(metric), m.unit)}" for r in rows[:4])
     more = f", and {len(rows) - 4} more" if len(rows) > 4 else ""
     return f"{m.label} by {DIMENSION_LABELS[query.group_by[0]].lower()}: {parts}{more}."

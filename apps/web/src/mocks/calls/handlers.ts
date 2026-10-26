@@ -261,6 +261,65 @@ export const callHandlers = [
       verdict_diffs: [],
     });
   }),
+  http.get(url("/analytics/catalog"), () =>
+    json({
+      metrics: [{ name: "call_count", label: "Calls", unit: "count" }],
+      group_by: ["day", "agent"],
+      filters: ["agent_ids"],
+      periods: ["this_month"],
+      suggested_questions: ["Cost by agent this month", "Busiest day last week"],
+    }),
+  ),
+  http.post(url("/analytics/chat"), async ({ request }) => {
+    const body = (await request.json()) as { messages: { content: string }[] };
+    const q = body.messages.at(-1)?.content ?? "";
+    store.requests.push(`chat:${request.headers.get("Idempotency-Key")}`);
+    if (q.includes("#402")) return problem(402, "insufficient_credit", "Add funds to ask about your data.");
+    if (q.includes("#429")) return problem(429, "rate_limited", "Too many questions.");
+    if (q.includes("#503")) return problem(503, "assistant_unavailable", "The assistant could not answer right now.");
+    if (/churn/i.test(q))
+      return json({
+        outcome: "declined",
+        content: "I cannot answer that from your call data.",
+        chart: null,
+        table: null,
+        truncated: false,
+        computed_with: [],
+      });
+    return json({
+      outcome: "answered",
+      content: "Total cost by agent: Order desk $1.200, Clinic scheduler $0.800.",
+      chart: {
+        chart_type: "bar",
+        x_key: "agent_name",
+        series: [{ key: "total_cost_usd", label: "Total cost" }],
+        data: [
+          { agent_name: "Order desk", total_cost_usd: 1.2 },
+          { agent_name: "Clinic scheduler", total_cost_usd: 0.8 },
+        ],
+      },
+      table: {
+        columns: [
+          { key: "agent_name", label: "Agent", type: "string" },
+          { key: "total_cost_usd", label: "Total cost", type: "usd" },
+        ],
+        rows: [
+          { agent_name: "Order desk", total_cost_usd: 1.2 },
+          { agent_name: "Clinic scheduler", total_cost_usd: 0.8 },
+        ],
+      },
+      truncated: false,
+      computed_with: [{ metrics: ["total_cost_usd"], group_by: ["agent"], period: { preset: "this_month" } }],
+      charged_usd: 0.0012,
+    });
+  }),
+  http.post(url("/voice-commands/stream-token"), () => problem(503, "stt_unavailable", "Record the clip instead.")),
+  http.post(url("/voice-commands/interpret"), async ({ request }) => {
+    const body = (await request.json()) as { transcript: string };
+    if (/failed calls/.test(body.transcript))
+      return json({ action: "navigate", target: "/calls", params: { status: ["failed"], date_range: "yesterday" }, speak: null });
+    return json({ action: "decline", speak: "I can't do that here.", fallback_suggestion: "Try going to billing." });
+  }),
   http.get(url("/dashboard/stats"), () => json(mockStats(store.calls.length))),
   http.get(url("/dashboard/quality"), () =>
     json({ window: mockStats(0).window, prior_window: mockStats(0).window, total_calls_evaluated: 0, per_evaluator: [], per_evaluator_prior: [] }),
