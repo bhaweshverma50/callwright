@@ -211,6 +211,18 @@ class Settings(BaseSettings):
     flow_assistant_model: str | None = None
     flow_assistant_timeout_s: float = 60.0
 
+    # Quality and evaluations (007). EVAL_JUDGE_MODELS lists the models every judge_model setting
+    # may pick (comma separated or a JSON list; the first entry is the default judge).
+    # EVAL_JUDGE_MODEL, when set, is the default and is added to the list if missing. Without a
+    # key for the provider the deterministic fake judge answers (tests, offline dev).
+    eval_judge_models: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["openai/gpt-5-mini"])
+    eval_judge_model: str | None = None
+    eval_concurrency: int = Field(4, ge=1, le=32)
+    eval_timeout_s: float = Field(60.0, gt=0, le=600)
+    # Judge scores at or above the cutoff pass (pinned in each built-in judge's version).
+    eval_judge_pass_cutoff: float = Field(0.5, ge=0, le=1)
+    calibration_min_sample: int = Field(5, ge=1, le=100)
+
     @field_validator("env", mode="before")
     @classmethod
     def _env_alias(cls, value: Any) -> Any:
@@ -228,6 +240,28 @@ class Settings(BaseSettings):
                 return json.loads(raw)
             return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
         return value
+
+    @field_validator("eval_judge_models", mode="before")
+    @classmethod
+    def _split_judge_models(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                return json.loads(raw)
+            return [m.strip() for m in raw.split(",") if m.strip()]
+        return value
+
+    @property
+    def judge_models(self) -> list[str]:
+        """Allowed judge models, the default first (FR-036)."""
+        models = [m for m in self.eval_judge_models if m]
+        if self.eval_judge_model:
+            models = [self.eval_judge_model, *(m for m in models if m != self.eval_judge_model)]
+        return models or ["openai/gpt-5-mini"]
+
+    @property
+    def default_judge_model(self) -> str:
+        return self.judge_models[0]
 
     @model_validator(mode="after")
     def _check(self) -> Settings:
