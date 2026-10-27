@@ -172,6 +172,18 @@ class LatencyTracker:
         self._pending_eos = at
         self._pending_anchor = None
 
+    def transcript_final(self, at: float) -> None:
+        """Fallback end of caller speech: the final transcript time, used only when voice
+        activity detection never reported the utterance (short or quiet speech on 8 kHz phone
+        audio), so the turn still gets a latency (slightly low: the transcript lands after the
+        speech ends)."""
+        turn = self._open_reply()
+        if turn is not None:
+            if turn.user_end_of_speech_at is None:
+                turn.user_end_of_speech_at = at
+        elif self._pending_eos is None and self._pending_anchor is None:
+            self._pending_eos = at
+
     def speech_end_observed(self, at: float) -> None:
         """Precise end of caller speech for the turn being committed (from ``EOUMetrics``)."""
         turn = self._open_reply()

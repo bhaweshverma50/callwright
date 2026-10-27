@@ -169,9 +169,9 @@ function Message({ item, latency }: { item: Extract<TranscriptItem, { type: "mes
           <span className="font-mono text-[11px] text-fg-3 tnum">{mss(item.offset_ms / 1000)}</span>
           {agent && latency && <TurnLatencyChip turn={latency} />}
           {!agent && item.stt_confidence != null && (
-            <Tooltip content="How sure speech recognition was of these words">
+            <Tooltip content="Speech recognition confidence for these words (about 85% is normal on phone audio)">
               <span tabIndex={0} className={cn("rounded-inline font-mono text-[11px] text-fg-3 tnum", focusRing)}>
-                {Math.round(item.stt_confidence * 100)}% heard
+                {Math.round(item.stt_confidence * 100)}% sure
               </span>
             </Tooltip>
           )}

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import importlib
 import json
 import logging
 import sys
@@ -37,6 +38,7 @@ from worker.adapters.registry import (
 )
 from worker.audio import PronunciationTransform, scale_frame
 from worker.call_behavior import (
+    GOODBYE_HANGUP_DELAY_S,
     SILENCE_CHECK_INS,
     SILENCE_GOODBYE,
     VAD_MIN_SILENCE_S,
@@ -48,6 +50,7 @@ from worker.call_behavior import (
     FlushReason,
     InactivityTimer,
     VoicemailHandler,
+    ends_with_goodbye,
 )
 from worker.control import RuntimeCallControl
 from worker.flow import FlowRuntimeUnavailable
@@ -180,6 +183,7 @@ class LiveCall:
         self._tasks: set[asyncio.Task[Any]] = set()
         self._extra_tools: list[Any] = []
         self._extra_instructions = ""
+        self._goodbye_timer: asyncio.TimerHandle | None = None
 
     # helpers ---------------------------------------------------------------
 
@@ -366,6 +370,7 @@ class LiveCall:
 
     def _on_user_state(self, ev: Any) -> None:
         if ev.new_state == "speaking":
+            self._cancel_goodbye()
             self.tracker.user_speech_started()
             if self.inactivity:
                 self.inactivity.activity()
@@ -405,6 +410,8 @@ class LiveCall:
         text = getattr(item, "text_content", None) or ""
         offset = self.recorder.offset_ms()
         if role == "user":
+            self._cancel_goodbye()
+            self.tracker.transcript_final(time.time())
             self.recorder.message(
                 "user",
                 text,
@@ -420,14 +427,20 @@ class LiveCall:
                 turn.text = turn.played_text = text
                 self.recorder.turn(turn)
                 self._publish_latency(turn)
+            # The item arrives once playout ends: start the line at the turn's first audio.
+            started = offset
+            if offset is not None and turn is not None and turn.agent_first_audio_at is not None:
+                started = max(0, offset - round((time.time() - turn.agent_first_audio_at) * 1000))
             self.recorder.message(
                 "agent",
                 text,
-                started_ms=offset,
+                started_ms=started,
                 ended_ms=offset,
                 turn_index=turn.turn_index if turn else None,
                 interrupted=turn.interrupted if turn else False,
             )
+            if not (turn and turn.interrupted) and ends_with_goodbye(text):
+                self._schedule_goodbye()
 
     def _publish_latency(self, turn: TurnRecord) -> None:
         """Send the turn's latency split to the room (``cw.turn_latency``) for the browser panel.
@@ -460,6 +473,23 @@ class LiveCall:
         )
         if not recoverable:
             self._hang_up_soon("error", diagnostic)
+
+    def _schedule_goodbye(self) -> None:
+        """The agent said goodbye: hang up shortly after unless end_call already did or the
+        caller starts speaking (``_cancel_goodbye``). No reply from the caller is needed."""
+        self._cancel_goodbye()
+
+        def hang_up() -> None:
+            self._goodbye_timer = None
+            if self.control is not None and not self.control.ending:
+                self._spawn(self.control.hang_up("agent_hangup"))
+
+        self._goodbye_timer = asyncio.get_running_loop().call_later(GOODBYE_HANGUP_DELAY_S, hang_up)
+
+    def _cancel_goodbye(self) -> None:
+        if self._goodbye_timer is not None:
+            self._goodbye_timer.cancel()
+            self._goodbye_timer = None
 
     def _on_participant_left(self, participant: Any) -> None:
         if participant.identity == self.caller_identity:
@@ -881,6 +911,15 @@ somewhere inside a frame, so 50 ms frames add about 25 ms on average before VAD 
 hear the end of speech; 20 ms halves the framing cost for a few more frames per second (R4)."""
 
 
+WARM_IMPORTS = (
+    "livekit.plugins.deepgram",
+    "livekit.plugins.elevenlabs",
+    "livekit.plugins.openai",
+    "httpx",
+    "anyio",
+)
+
+
 def prewarm(proc: Any) -> None:
     """Load Silero VAD once per process (R1); the turn-detector model loads with its plugin.
 
@@ -891,6 +930,11 @@ def prewarm(proc: Any) -> None:
     if not telemetry.enabled():
         telemetry.configure_tracing(get_settings().otel_exporter)
     proc.userdata["vad"] = silero.VAD.load(min_silence_duration=VAD_MIN_SILENCE_S)
+    # Vendor plugins otherwise load on first use, blocking the event loop for 2 to 3 s at the
+    # start of a call (before the greeting on inbound and web calls).
+    for module in WARM_IMPORTS:
+        with contextlib.suppress(ImportError):
+            importlib.import_module(module)
 
 
 def create_server(

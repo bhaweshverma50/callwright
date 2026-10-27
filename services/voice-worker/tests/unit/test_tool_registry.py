@@ -4,6 +4,7 @@ events, kb_search injection and the per-node switch for 004."""
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any
 
 from tests.unit.tool_support import http_spec, make, tool
@@ -115,3 +116,39 @@ def test_fillers_cover_lookup_tools_only() -> None:
         "check_availability": "One moment while I check that.",
         "kb_search": "One moment, let me check that.",
     }
+
+
+def test_every_agent_gets_a_built_in_end_call() -> None:
+    h = make([http_spec()])
+    assert [s["name"] for s in h.tools.schemas()] == ["check_availability", "end_call"]
+    # An agent's own end_call (any name) replaces the built-in one.
+    own = make([tool("end_call", "hang_up")])
+    assert [s["name"] for s in own.tools.schemas()] == ["hang_up"]
+
+
+async def test_end_call_waits_for_the_goodbye_to_play_before_hanging_up() -> None:
+    h = make([])
+    order: list[str] = []
+
+    class RunCtx:
+        session = None  # no LiveKit session: keeps the harness context, adds the playout wait
+
+    class Played:
+        async def wait_for_playout(self) -> None:
+            order.append("played")
+
+    original = h.tools._context
+
+    def context(run_ctx: object) -> object:
+        return replace(original(None), wait_for_playout=Played().wait_for_playout)
+
+    h.tools._context = context  # type: ignore[method-assign]
+    backend_end = h.backend.end
+
+    async def end(reason: str, diagnostic: str | None) -> None:
+        order.append(f"ended:{reason}")
+        await backend_end(reason, diagnostic)
+
+    h.backend.end = end  # type: ignore[method-assign]
+    await h.tools.dispatch("end_call", {}, RunCtx())
+    assert order == ["played", "ended:agent_hangup"]

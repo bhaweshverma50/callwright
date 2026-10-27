@@ -9,7 +9,7 @@ export function EndCallForm({ config, onChange }: { config: EndCallConfig; onCha
     <FormSection
       title="Goodbye"
       icon={<MessageSquareQuote aria-hidden />}
-      description="Spoken just before the agent hangs up. Leave it empty to hang up straight after the agent's last reply."
+      description="Usually left empty: the agent says its own goodbye, then hangs up. A line here is spoken after that goodbye."
     >
       <Field label="Goodbye line" hint={`${message.length} / 500`}>
         {({ id, describedBy }) => (

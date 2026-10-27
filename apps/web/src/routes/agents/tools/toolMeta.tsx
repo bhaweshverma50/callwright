@@ -68,7 +68,7 @@ export function ToolTile({ type, size = "md", className }: { type: ToolType; siz
 }
 
 export const DEFAULT_CONFIGS: ConfigByType = {
-  end_call: { message: "Thanks for calling. Goodbye!" },
+  end_call: { message: null },
   transfer_call: {
     routing_type: "static",
     number: "",

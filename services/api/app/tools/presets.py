@@ -10,12 +10,14 @@ PRESETS: tuple[dict[str, Any], ...] = (
         "preset_id": "end_call_polite",
         "type": "end_call",
         "title": "End the call",
-        "summary": "Says a short goodbye, then hangs up when the caller is done.",
+        "summary": "Hangs up once the agent has said goodbye and the caller is done.",
         "tool": {
             "type": "end_call",
             "name": "end_call",
-            "description": "End the call when the caller is done",
-            "config": {"message": "Thanks for calling. Goodbye!"},
+            "description": "Hang up once you have said goodbye or the caller is done",
+            # Empty: the agent says its own goodbye in the reply that hangs up; a fixed line here
+            # would make the caller hear a second goodbye.
+            "config": {"message": ""},
         },
     },
     {

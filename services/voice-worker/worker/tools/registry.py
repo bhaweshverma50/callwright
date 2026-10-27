@@ -274,7 +274,9 @@ class CallTools:
                 await handle
 
         # A shallow copy: the variable stores and secrets stay shared with the call.
-        return replace(self.ctx, say=say)
+        return replace(
+            self.ctx, say=say, wait_for_playout=getattr(run_ctx, "wait_for_playout", None)
+        )
 
     async def _run(
         self, spec: ToolSpecView, args: Mapping[str, Any], ctx: ToolContext
@@ -412,6 +414,17 @@ def is_simulation(runtime: RuntimeConfig) -> bool:
     return bool(extra.get("simulation") or runtime.config.get("simulation"))
 
 
+BUILTIN_END_CALL = ToolSpecView(
+    tool_id=None,
+    type="end_call",
+    name="end_call",
+    description=(
+        "Hang up the call. Call it in the same reply as your goodbye, or right away when the "
+        "caller says goodbye or thanks you after your goodbye. Never speak after calling it."
+    ),
+)
+
+
 def build_call_tools(
     runtime: RuntimeConfig,
     control: CallControl,
@@ -429,6 +442,9 @@ def build_call_tools(
     """Pure assembly (no I/O): the caller owns the clients unless they end up in ``clients``."""
     config = runtime.config
     specs = specs_from(config)
+    # Every single-prompt agent can hang up, even when its tools do not list end_call.
+    if not any(s.type == "end_call" or s.name == BUILTIN_END_CALL.name for s in specs):
+        specs.append(BUILTIN_END_CALL)
     kb = kb_spec(config)
     clients: list[httpx.AsyncClient] = []
     simulation = is_simulation(runtime)

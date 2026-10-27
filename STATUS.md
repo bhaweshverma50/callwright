@@ -1,6 +1,6 @@
 # Status and resume point
 
-Last updated: 2026-10-26. Read this first when resuming.
+Last updated: 2026-10-27. Read this first when resuming.
 
 ## Where things stand
 - `main` is pushed and deployed (2026-10-26, wave 3 live): Cloud Run API `7ef3756` (migrations through s006_0002), VM jobs worker `7ef3756`, VM voice worker `cf4bea6`, VM LiveKit `v1.13.3`, web from `7ef3756`. Verified on the hosted app with scripted calls: silence check-ins end the call as inactivity, a flow agent call, and the assistant answering "what did my last call cost?".
@@ -29,6 +29,20 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Calls ended after one reply with the timer stuck at 0:00. Cause: LiveKit server 1.8.4 on the VM is too old for livekit-client 2.22; once the agent joined before the caller, the browser's publish negotiation timed out, the client did a full reconnect (leave and rejoin), and the worker treated the leave as a hang-up. Fixed by LiveKit 1.13.3 (verified with a scripted hosted call) and by marking the call live once the room is joined.
 - `apps/web/scripts/e2e-call.mjs` places a real browser test call with a fake microphone (`API=... WEB=... node scripts/e2e-call.mjs caller.wav out-dir [template]`); defaults target the local stack.
 - Follow-up: the worker hangs up as soon as the caller's participant leaves; a short rejoin grace would survive network blips but must not bill the grace seconds.
+
+## Telephony lab (2026-10-27, not deployed)
+- Real SIP without a carrier: Asterisk `lab-pbx` service on the VM (deploy/vm/lab-pbx, compose profile `lab`) stands in for the phone company. Softphones `phone1`/`phone2` register on 5080 and call Callwright numbers through livekit-sip; Callwright's outbound calls ring them (last digit picks the phone). No public phone network, no per-minute cost, idle shutdown kept.
+- Verified locally with the real images in one network namespace: inbound opens a `call-in-` room with the SIP participant; outbound rings a registered phone with the number as caller id and returns 486 busy / 480 unavailable. Not yet verified: RTP across the VM's public IP and a voice agent answering (needs the deploy).
+- Fixed on the way: the compose `sip` service mounted its config where livekit/sip v1.2.0 never reads it (the entrypoint forces `--config=/sip/config.yaml`), so it would not have started. SIP over TLS is now only configured once certificates exist.
+- `render-env.sh` and `deploy.sh` now keep `LIVEKIT_SIP_HOST` (and the lab flag) across renders and deploys instead of silently dropping them.
+- To turn on: deploy/vm/README.md, "Lab mode" (DNS `sip`, firewall rule `callwright-lab-pbx`, render with `CW_LIVEKIT_SIP_HOST=sip.bhawesh.dev CW_LAB_PBX=true`, API deploy with `LIVEKIT_SIP_HOST`, import `+919000000100` with termination `127.0.0.1:5080`). Then T067 (SIPp scenarios) and T069 (channels quickstart run) can be done against it.
+
+## Call fixes from the first lab SIP call (2026-10-27, not deployed)
+- Agent never hung up: single-prompt agents had no end_call tool unless one was attached. Now every single-prompt agent gets a built-in `end_call` (unless it has its own), a prompt line to call it in the goodbye reply without waiting for the caller, and a worker safety net that hangs up 2 s after a reply ending in a goodbye (cancelled if the caller speaks). end_call waits for the goodbye to finish playing before hanging up (it used to cut it off). The preset's spoken goodbye line is now empty by default (it doubled the goodbye).
+- Agent transcript lines start at the turn's first audio (they were stamped when playout ended). Turns whose caller speech voice detection missed now get a latency from the final transcript time instead of "n/a".
+- Vendor plugins are imported in prewarm (a 2.6 s event-loop stall at call start). "85% heard" reads "85% sure" (it is STT confidence).
+- Dashboard: sparkline dot was stretched into an oval and the line stopped short (pathLength with a non-scaling stroke); copilot dock mic is now a soft secondary button with a divider before "Ask about your data".
+- Sentiment shows "Unknown" because post-call analysis is spec 007 (not built; pipeline step `analyze` is skipped).
 
 ## Next, in order
 1. Place a hosted test call to confirm the faster greeting and answers (last measured live: greeting 2.1 s, answer 2.7 s). Note: `worker-hint` prints the HEAD tag; pin `CW_API_IMAGE` and `CW_VOICE_IMAGE` to tags that were actually built.

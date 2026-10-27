@@ -1,7 +1,10 @@
-"""End-call tool (005 T026): speak the configured goodbye, then hang up with ``agent_hangup``."""
+"""End-call tool (005 T026): let the reply that called it finish playing, speak the configured
+goodbye (if any), then hang up with ``agent_hangup``. Hanging up stops speech at once, so without
+the wait the agent's own goodbye in that reply would be cut off."""
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Mapping
 from typing import Any
 
@@ -12,6 +15,9 @@ class EndCallExecutor:
     async def execute(
         self, spec: ToolSpecView, arguments: Mapping[str, Any], ctx: ToolContext
     ) -> ToolResult:
+        if ctx.wait_for_playout is not None:
+            with contextlib.suppress(Exception):
+                await ctx.wait_for_playout()
         message = str(spec.config.get("message") or "").strip()
         if message:
             await ctx.speak(message)

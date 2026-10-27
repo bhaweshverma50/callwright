@@ -7,6 +7,7 @@ Everything here runs on a :class:`Clock` so the offline harness drives it with a
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -232,6 +233,21 @@ def behavior_from_config(
 
 # --------------------------------------------------------------------------------------------
 # Timers (research R9)
+
+
+# Agent goodbye: when the agent's reply closes the call but it did not call end_call, the worker
+# hangs up this long after that reply finished playing, unless the caller starts speaking.
+GOODBYE_HANGUP_DELAY_S = 2.0
+_GOODBYE = re.compile(
+    r"\b(good[\s-]?bye|bye(\s+now)?|take care"
+    r"|have an? (good|great|nice|lovely|wonderful) (day|evening|night|afternoon|weekend|one))\W*$",
+    re.IGNORECASE,
+)
+
+
+def ends_with_goodbye(text: str) -> bool:
+    """True when the agent's reply ends the conversation ("..., have a good day, goodbye.")."""
+    return bool(_GOODBYE.search(text.strip()))
 
 
 SILENCE_CHECK_INS = (

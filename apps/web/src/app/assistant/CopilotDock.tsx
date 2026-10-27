@@ -30,6 +30,7 @@ export function CopilotDock({ placement = "dock" }: { placement?: "dock" | "bar"
       )}
     >
       <VoiceCopilot placement={placement} spaceToTalk={!bar} />
+      <span aria-hidden className="mx-1 h-5 w-px bg-line" />
       <AskPanel placement={placement} />
     </motion.div>
   );

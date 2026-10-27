@@ -51,6 +51,8 @@ class ToolContext:
     mapped_variables: dict[str, Any] = field(default_factory=dict)
     secrets: dict[str, str] = field(default_factory=dict)
     say: Say | None = None
+    # Waits until the reply that called the tool has finished playing (LiveKit RunContext).
+    wait_for_playout: Callable[[], Awaitable[None]] | None = None
     # True when this reply already spoke (text or a filler) before the tool ran.
     reply_spoke: Callable[[], bool] = lambda: False
     turn_index: Callable[[], int | None] = lambda: None

@@ -564,8 +564,9 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
             onClick={() => (listening ? void stop() : busy ? undefined : void start("toggle"))}
             className={cn(
               size,
-              "relative grid cursor-pointer place-items-center rounded-full text-white transition-[transform,background-color] duration-150 hover:scale-[1.04] active:scale-95",
-              listening ? "bg-on-air" : "grad-action",
+              "relative grid cursor-pointer place-items-center rounded-full transition-[transform,background-color,color] duration-150 hover:scale-[1.04] active:scale-95",
+              // Secondary until it is live: "Ask about your data" is the dock's one gradient action.
+              listening ? "bg-on-air text-white" : "bg-accent-soft text-accent-text hover:bg-accent hover:text-white",
               focusRing,
             )}
           >

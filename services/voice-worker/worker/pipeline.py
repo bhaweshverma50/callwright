@@ -78,6 +78,14 @@ VOICE_STYLE_INSTRUCTION = (
     "plain conversational sentences, and never use lists, markdown or emojis."
 )
 
+# Appended to every single-prompt agent, which always has an end_call tool (tools/registry.py).
+ENDING_INSTRUCTION = (
+    "When the conversation is over, say one short goodbye and call end_call in that same reply. "
+    "Do not wait for the caller to say goodbye back. If the caller speaks again after your "
+    "goodbye only to thank you or say goodbye, call end_call without speaking. Never repeat a "
+    "summary you already gave."
+)
+
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
 
 
@@ -456,7 +464,14 @@ def make_agent_class() -> type[Any]:
             **kwargs: Any,
         ) -> None:
             instructions = "\n\n".join(
-                p for p in (plan.instructions, VOICE_STYLE_INSTRUCTION, extra_instructions) if p
+                p
+                for p in (
+                    plan.instructions,
+                    VOICE_STYLE_INSTRUCTION,
+                    ENDING_INSTRUCTION,
+                    extra_instructions,
+                )
+                if p
             )
             super().__init__(instructions=instructions, tools=list(tools), **kwargs)
             self.plan = plan

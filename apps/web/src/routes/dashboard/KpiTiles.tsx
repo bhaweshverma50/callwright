@@ -5,7 +5,10 @@ import type { DashboardStats } from "../../api/calls";
 import { Skeleton, Ticker, cn } from "../../components";
 import { mss, talkTime, usd } from "../calls/format";
 
-/** A small area sparkline drawn as one SVG path; the latest point gets a dot. */
+/** A small area sparkline drawn as one SVG path; the latest point gets a dot.
+ * The SVG stretches (preserveAspectRatio="none"), so the dot is an HTML element (an SVG circle
+ * would turn into an oval) and the draw-in is a clip, not pathLength (with a non-scaling stroke
+ * the dash is measured in screen pixels and the line stops short). */
 export function Sparkline({ values, className }: { values: number[]; className?: string }) {
   const id = useId().replace(/:/g, "");
   if (values.length < 2) return <div className={cn("h-9", className)} />;
@@ -19,32 +22,45 @@ export function Sparkline({ values, className }: { values: number[]; className?:
   const area = `${line} L${w},${h} L0,${h} Z`;
   const last = pts[pts.length - 1]!;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={cn("h-9 w-full overflow-visible", className)} aria-hidden>
-      <defs>
-        <linearGradient id={`fill-${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="var(--heat-1)" stopOpacity="0.28" />
-          <stop offset="1" stopColor="var(--heat-1)" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id={`line-${id}`} x1="0" x2={w} y1="0" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="var(--heat-1)" />
-          <stop offset="0.7" stopColor="var(--heat-2)" />
-          <stop offset="1" stopColor="var(--heat-3)" />
-        </linearGradient>
-      </defs>
-      <motion.path d={area} fill={`url(#fill-${id})`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} />
-      <motion.path
-        d={line}
-        fill="none"
-        stroke={`url(#line-${id})`}
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-        strokeLinejoin="round"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
+    <div className={cn("relative h-9 w-full", className)} aria-hidden>
+      <motion.svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        className="size-full overflow-visible"
+        initial={{ clipPath: "inset(-4px 100% -4px 0)" }}
+        animate={{ clipPath: "inset(-4px 0% -4px 0)" }}
         transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <defs>
+          <linearGradient id={`fill-${id}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="var(--heat-1)" stopOpacity="0.28" />
+            <stop offset="1" stopColor="var(--heat-1)" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`line-${id}`} x1="0" x2={w} y1="0" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="var(--heat-1)" />
+            <stop offset="0.7" stopColor="var(--heat-2)" />
+            <stop offset="1" stopColor="var(--heat-3)" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#fill-${id})`} />
+        <path
+          d={line}
+          fill="none"
+          stroke={`url(#line-${id})`}
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </motion.svg>
+      <motion.span
+        className="absolute size-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-surface bg-[var(--heat-3)]"
+        style={{ left: `${(last[0] / w) * 100}%`, top: `${(last[1] / h) * 100}%` }}
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.75, duration: 0.25 }}
       />
-      <circle cx={last[0]} cy={last[1]} r="2.5" fill="var(--heat-2)" stroke="var(--surface)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-    </svg>
+    </div>
   );
 }
 

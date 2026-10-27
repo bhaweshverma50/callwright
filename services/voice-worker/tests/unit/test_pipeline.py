@@ -18,6 +18,7 @@ from worker.flow import (
     register_flow_runner,
 )
 from worker.pipeline import (
+    ENDING_INSTRUCTION,
     VOICE_STYLE_INSTRUCTION,
     build_agent,
     build_components,
@@ -219,7 +220,10 @@ def test_single_prompt_agent_carries_plan_and_instructions() -> None:
     plan = plan_session(runtime, AdapterRegistry())
     agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
     assert agent.plan is plan
-    assert agent.instructions == f"{plan.instructions}\n\n{VOICE_STYLE_INSTRUCTION}"
+    assert (
+        agent.instructions
+        == f"{plan.instructions}\n\n{VOICE_STYLE_INSTRUCTION}\n\n{ENDING_INSTRUCTION}"
+    )
 
 
 async def test_pronounce_meters_text_sent_to_tts() -> None:
@@ -264,7 +268,7 @@ async def test_voicemail_tool_is_added_with_its_instruction() -> None:
         extra_tools=[tool],
         extra_instructions=VOICEMAIL_INSTRUCTION,
     )
-    assert [t.info.name for t in agent.tools] == [VOICEMAIL_TOOL_NAME]
+    assert [t.info.name for t in agent.tools] == ["end_call", VOICEMAIL_TOOL_NAME]
     assert agent.instructions.endswith(VOICEMAIL_INSTRUCTION)
     assert await tool() == "answering machine noted"
     assert reports == [True]
