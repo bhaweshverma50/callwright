@@ -8,7 +8,7 @@ const TEMPLATES: { type: CustomType; title: string; body: string; example: strin
     type: "phrase_check",
     title: "Required or forbidden phrase",
     body: "Checks what the agent or caller said for a phrase or pattern: a disclosure that must be read, a promise that must never be made.",
-    example: "Forbid \"guaranteed approval\" in agent turns",
+    example: 'Forbid "guaranteed approval" in agent turns',
     icon: TextSearch,
     free: true,
   },
@@ -44,7 +44,10 @@ export function CustomCheckTemplatePicker({ onPick }: { onPick: (type: CustomTyp
               focusRing,
             )}
           >
-            <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[radial-gradient(closest-side,var(--glow-b),transparent)]" />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[radial-gradient(closest-side,var(--glow-b),transparent)]"
+            />
             <span className="flex items-center justify-between">
               <span className="grad-action grid size-10 place-items-center rounded-control text-white shadow-[0_8px_20px_-10px_rgb(51_70_232/0.8)] [&_svg]:size-5">
                 <Icon aria-hidden />

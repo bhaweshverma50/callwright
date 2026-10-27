@@ -89,7 +89,9 @@ describe("AddVariableDialog (007 T090, US1 scenarios 7 and 8)", () => {
     await user.type(input, "Tuesday{Enter}");
     expect(save).toBeEnabled();
     await user.click(save);
-    await waitFor(() => expect(qualityStore().variables.find((v) => v.name === "preferred_day" && v.agent_id === AGENT)?.choices).toEqual(["Monday", "Tuesday"]));
+    await waitFor(() =>
+      expect(qualityStore().variables.find((v) => v.name === "preferred_day" && v.agent_id === AGENT)?.choices).toEqual(["Monday", "Tuesday"]),
+    );
   });
 
   it("shows a name conflict from the server on the name field", async () => {

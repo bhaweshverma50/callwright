@@ -251,11 +251,7 @@ export function useReviewQueue(strategy: ReviewStrategy, agentId: string | null)
   return useQuery({
     queryKey: qualityKeys.queue(strategy, agentId ?? ""),
     queryFn: async () =>
-      (
-        await unwrap(
-          api.GET("/review/queue", { params: { query: { strategy, ...(agentId && { agent_id: agentId }) } } }),
-        )
-      ).items as QueueItem[],
+      (await unwrap(api.GET("/review/queue", { params: { query: { strategy, ...(agentId && { agent_id: agentId }) } } }))).items as QueueItem[],
     placeholderData: keepPreviousData,
   });
 }

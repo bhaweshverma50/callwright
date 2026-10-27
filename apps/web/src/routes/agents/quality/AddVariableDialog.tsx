@@ -25,15 +25,13 @@ const MAX_CHOICES = 20;
 export function variableFormErrors(v: { name: string; type: VariableType; description: string; choices: string[] }) {
   return {
     name: v.name ? null : NAME_RULE,
-    description: !v.description.trim() ? "Describe what to capture." : v.description.length > MAX_DESCRIPTION ? "Keep it under 500 characters." : null,
+    description: !v.description.trim()
+      ? "Describe what to capture."
+      : v.description.length > MAX_DESCRIPTION
+        ? "Keep it under 500 characters."
+        : null,
     choices:
-      v.type !== "choice"
-        ? null
-        : v.choices.length < 2
-          ? "Add at least 2 choices."
-          : v.choices.length > MAX_CHOICES
-            ? "Up to 20 choices."
-            : null,
+      v.type !== "choice" ? null : v.choices.length < 2 ? "Add at least 2 choices." : v.choices.length > MAX_CHOICES ? "Up to 20 choices." : null,
   };
 }
 

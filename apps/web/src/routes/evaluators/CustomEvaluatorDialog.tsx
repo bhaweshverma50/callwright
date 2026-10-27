@@ -59,8 +59,24 @@ export function CustomEvaluatorDialog({
       open={open}
       onOpenChange={close}
       size="lg"
-      icon={step === "phrase_check" ? <TextSearch aria-hidden /> : step === "llm_judge_custom" ? <MessageCircleQuestion aria-hidden /> : <ShieldPlus aria-hidden />}
-      title={editing ? `Edit ${editing.display_name}` : step === null ? "Add custom check" : step === "phrase_check" ? "Required or forbidden phrase" : "Custom judge question"}
+      icon={
+        step === "phrase_check" ? (
+          <TextSearch aria-hidden />
+        ) : step === "llm_judge_custom" ? (
+          <MessageCircleQuestion aria-hidden />
+        ) : (
+          <ShieldPlus aria-hidden />
+        )
+      }
+      title={
+        editing
+          ? `Edit ${editing.display_name}`
+          : step === null
+            ? "Add custom check"
+            : step === "phrase_check"
+              ? "Required or forbidden phrase"
+              : "Custom judge question"
+      }
       description={
         editing
           ? `Changing the definition creates version ${editing.current_version + 1}. Results already produced keep version ${editing.current_version}.`
@@ -72,11 +88,23 @@ export function CustomEvaluatorDialog({
       {open && (
         <AnimatePresence mode="wait" initial={false}>
           {step === null ? (
-            <motion.div key="pick" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}>
+            <motion.div
+              key="pick"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.18 }}
+            >
               <CustomCheckTemplatePicker onPick={setType} />
             </motion.div>
           ) : (
-            <motion.div key={step} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18 }}>
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.18 }}
+            >
               <CheckForm
                 type={step}
                 existing={editing}
@@ -101,7 +129,11 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
   const [result, setResult] = useState<TrialResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const options = (calls.data?.items ?? []).map((c) => ({ value: c.call_id, label: `${c.agent.name}, ${when(c.started_at)}`, meta: c.call_id.slice(-6) }));
+  const options = (calls.data?.items ?? []).map((c) => ({
+    value: c.call_id,
+    label: `${c.agent.name}, ${when(c.started_at)}`,
+    meta: c.call_id.slice(-6),
+  }));
   const chosen = callId ?? options[0]?.value;
   const run = async () => {
     if (!chosen) return;
@@ -111,7 +143,11 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
       setResult(await trialCustomEvaluator({ evaluator_type: type, config, call_id: chosen }, newIdempotencyKey()));
     } catch (e) {
       setResult(null);
-      setError(isApiError(e) && e.status === 422 ? (e.problem.errors?.[0]?.message ?? e.problem.detail ?? "Check the fields above.") : problemMessage(e, "call"));
+      setError(
+        isApiError(e) && e.status === 422
+          ? (e.problem.errors?.[0]?.message ?? e.problem.detail ?? "Check the fields above.")
+          : problemMessage(e, "call"),
+      );
     } finally {
       setBusy(false);
     }
@@ -154,10 +190,14 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
             <span className="flex items-center gap-2">
               <Badge tone={VERDICT_TONES[result.verdict]}>{VERDICT_LABELS[result.verdict]}</Badge>
               {result.score != null && <span className="font-mono text-[12px] text-fg-3 tnum">score {result.score}</span>}
-              {result.charged_usd ? <span className="ml-auto font-mono text-[11.5px] text-fg-3">charged ${result.charged_usd.toFixed(4)}</span> : null}
+              {result.charged_usd ? (
+                <span className="ml-auto font-mono text-[11.5px] text-fg-3">charged ${result.charged_usd.toFixed(4)}</span>
+              ) : null}
             </span>
             <p className="text-[13px] leading-relaxed text-fg">{result.rationale}</p>
-            {result.evidence?.quote && <blockquote className="rounded-inline bg-surface-2 px-2.5 py-1.5 text-[12.5px] italic text-fg-2">{result.evidence.quote}</blockquote>}
+            {result.evidence?.quote && (
+              <blockquote className="rounded-inline bg-surface-2 px-2.5 py-1.5 text-[12.5px] italic text-fg-2">{result.evidence.quote}</blockquote>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -185,13 +225,20 @@ function CheckForm({
   const [description, setDescription] = useState(existing?.description ?? "");
   const [phrase, setPhrase] = useState<Phrase>({ ...PHRASE_DEFAULT, ...((existing?.config as PhraseCheckConfig | undefined) ?? {}) });
   const initialJudge = existing?.config as JudgeQuestionConfig | undefined;
-  const [judge, setJudge] = useState<Judge>({ question: initialJudge?.question ?? "", pass_when: initialJudge?.pass_when ?? "yes", judge_model: initialJudge?.judge_model ?? "" });
+  const [judge, setJudge] = useState<Judge>({
+    question: initialJudge?.question ?? "",
+    pass_when: initialJudge?.pass_when ?? "yes",
+    judge_model: initialJudge?.judge_model ?? "",
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const machine = existing ? existing.name : toVariableName(displayName);
   const judgeModel = judge.judge_model || defaultModel;
-  const config: CustomConfig = type === "phrase_check" ? phrase : { question: judge.question.trim(), pass_when: judge.pass_when, ...(judgeModel && { judge_model: judgeModel }) };
+  const config: CustomConfig =
+    type === "phrase_check"
+      ? phrase
+      : { question: judge.question.trim(), pass_when: judge.pass_when, ...(judgeModel && { judge_model: judgeModel }) };
   const filled = type === "phrase_check" ? phrase.pattern.trim().length > 0 : judge.question.trim().length > 0;
   const ready = Boolean(displayName.trim() && machine && filled);
 
@@ -261,13 +308,25 @@ function CheckForm({
           )}
         </Field>
         <Field label="Description" hint="Optional. What the check is for.">
-          {(ids) => <Input id={ids.id} aria-describedby={ids.describedBy} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} />}
+          {(ids) => (
+            <Input
+              id={ids.id}
+              aria-describedby={ids.describedBy}
+              maxLength={500}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          )}
         </Field>
       </div>
 
       {type === "phrase_check" ? (
         <div className="flex flex-col gap-4">
-          <Field label="Phrase or pattern" error={errors.pattern ?? null} hint={phrase.is_regex ? "Linear-time patterns only: no backreferences or lookarounds." : "Matched as plain text."}>
+          <Field
+            label="Phrase or pattern"
+            error={errors.pattern ?? null}
+            hint={phrase.is_regex ? "Linear-time patterns only: no backreferences or lookarounds." : "Matched as plain text."}
+          >
             {(ids) => (
               <Input
                 id={ids.id}
@@ -331,7 +390,11 @@ function CheckForm({
               <span className="text-[13px] font-medium text-fg">Case sensitive</span>
               <span className="text-[12.5px] text-fg-3">Off matches "Guaranteed" and "guaranteed" alike.</span>
             </span>
-            <SwitchControl aria-label="Case sensitive" checked={phrase.case_sensitive} onCheckedChange={(case_sensitive) => setPhrase({ ...phrase, case_sensitive })} />
+            <SwitchControl
+              aria-label="Case sensitive"
+              checked={phrase.case_sensitive}
+              onCheckedChange={(case_sensitive) => setPhrase({ ...phrase, case_sensitive })}
+            />
           </label>
         </div>
       ) : (

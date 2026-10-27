@@ -25,7 +25,15 @@ function modelLabel(config: AgentConfig): { label: string; own: boolean } {
  * fields are extracted on top, in this order. Variables are per agent, not per version, so
  * changes apply to calls that end from now on without publishing.
  */
-export function AnalysisVariablesEditor({ agentId, config, showModelLink = true }: { agentId: string; config: AgentConfig; showModelLink?: boolean }) {
+export function AnalysisVariablesEditor({
+  agentId,
+  config,
+  showModelLink = true,
+}: {
+  agentId: string;
+  config: AgentConfig;
+  showModelLink?: boolean;
+}) {
   const qc = useQueryClient();
   const vars = useAnalysisVariables(agentId);
   const [editing, setEditing] = useState<{ open: boolean; variable: AnalysisVariable | null }>({ open: false, variable: null });
@@ -168,7 +176,12 @@ export function AnalysisVariablesEditor({ agentId, config, showModelLink = true 
           </AnimatePresence>
         </ol>
       )}
-      <AddVariableDialog agentId={agentId} open={editing.open} existing={editing.variable} onOpenChange={(open) => setEditing((s) => ({ ...s, open }))} />
+      <AddVariableDialog
+        agentId={agentId}
+        open={editing.open}
+        existing={editing.variable}
+        onOpenChange={(open) => setEditing((s) => ({ ...s, open }))}
+      />
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(o) => !o && setRemoving(null)}

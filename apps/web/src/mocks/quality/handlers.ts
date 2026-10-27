@@ -39,7 +39,14 @@ const url = (path: string) => `${env.apiBaseUrl}${path}`;
 const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
 function problem(status: number, code: string, title: string, detail?: string, errors?: { pointer: string; code: string; message: string }[]) {
   return HttpResponse.json(
-    { type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title, status, code, ...(detail && { detail }), ...(errors && { errors }) } as JsonBodyType,
+    {
+      type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`,
+      title,
+      status,
+      code,
+      ...(detail && { detail }),
+      ...(errors && { errors }),
+    } as JsonBodyType,
     { status, headers: { "content-type": "application/problem+json" } },
   );
 }
@@ -279,12 +286,16 @@ function judgeRationale(name: string, failed: boolean): { score: number; rationa
     ],
   };
   const row = table[name] ?? ["The call met this check.", "", "The call did not meet this check.", ""];
-  return failed
-    ? { score: 0.22, rationale: row[2], quote: row[3], turns: [3] }
-    : { score: 0.86, rationale: row[0], quote: row[1], turns: [2] };
+  return failed ? { score: 0.22, rationale: row[2], quote: row[3], turns: [3] } : { score: 0.86, rationale: row[0], quote: row[1], turns: [2] };
 }
 
-function buildRun(call: CallListItem, e: Evaluator, settings: Record<string, unknown>, trigger: EvaluatorRun["trigger"], createdAt: string): EvaluatorRun {
+function buildRun(
+  call: CallListItem,
+  e: Evaluator,
+  settings: Record<string, unknown>,
+  trigger: EvaluatorRun["trigger"],
+  createdAt: string,
+): EvaluatorRun {
   const i = indexOf(call.call_id);
   const flow = agentType(call.agent.id) === "flow";
   const failed = fails(e.name, i, flow);
@@ -322,7 +333,14 @@ function buildRun(call: CallListItem, e: Evaluator, settings: Record<string, unk
   if (e.kind === "custom") {
     const pass = i % 5 !== 3;
     return finish(
-      [{ verdict: pass ? "pass" : "fail", score: pass ? 1 : 0, rationale: pass ? "No agent turn matched the pattern." : 'Turn 3: "approval is guaranteed".', evidence: { turn_indices: pass ? [] : [3] } }],
+      [
+        {
+          verdict: pass ? "pass" : "fail",
+          score: pass ? 1 : 0,
+          rationale: pass ? "No agent turn matched the pattern." : 'Turn 3: "approval is guaranteed".',
+          evidence: { turn_indices: pass ? [] : [3] },
+        },
+      ],
       pass ? "No agent turn matched the pattern." : 'The agent said "approval is guaranteed" in turn 3.',
       pass ? 1 : 0,
     );
@@ -397,7 +415,11 @@ function buildRun(call: CallListItem, e: Evaluator, settings: Record<string, unk
           score: bad ? 0 : 1,
           flow_node_id: n.id,
           flow_node_label: n.label,
-          rationale: bad ? `The call ended on ${n.label} mid-flow.` : k === 3 ? `${n.label} is an end node.` : `The conversation moved on from ${n.label}.`,
+          rationale: bad
+            ? `The call ended on ${n.label} mid-flow.`
+            : k === 3
+              ? `${n.label} is an end node.`
+              : `The conversation moved on from ${n.label}.`,
         };
       });
       return finish(items, failed ? "The call ended on Collect details without an end or transfer." : "No node was a dead end.", failed ? 0.75 : 1);
@@ -414,7 +436,11 @@ function buildRun(call: CallListItem, e: Evaluator, settings: Record<string, unk
           rationale: `Visited ${visits} ${visits === 1 ? "time" : "times"} (limit ${max}).`,
         };
       });
-      return finish(items, failed ? `Collect details was visited ${max + 2} times, over the limit of ${max}.` : "No node was revisited past the limit.", null);
+      return finish(
+        items,
+        failed ? `Collect details was visited ${max + 2} times, over the limit of ${max}.` : "No node was revisited past the limit.",
+        null,
+      );
     }
     case "process_reward": {
       const scores = [1, 1, failed ? -1 : 0, 1];
@@ -422,15 +448,32 @@ function buildRun(call: CallListItem, e: Evaluator, settings: Record<string, unk
         turn_index: t + 1,
         verdict: s === -1 ? "fail" : "pass",
         score: s,
-        rationale: s === 1 ? "Moved the caller closer to their goal." : s === 0 ? "Neutral: confirmed details already given." : "Asked again for the order number the caller had already given.",
+        rationale:
+          s === 1
+            ? "Moved the caller closer to their goal."
+            : s === 0
+              ? "Neutral: confirmed details already given."
+              : "Asked again for the order number the caller had already given.",
       }));
-      return finish(items, failed ? "Turn 3 was a step back." : "Every turn kept the call moving.", scores.reduce((a, b) => a + b, 0) / scores.length);
+      return finish(
+        items,
+        failed ? "Turn 3 was a step back." : "Every turn kept the call moving.",
+        scores.reduce((a, b) => a + b, 0) / scores.length,
+      );
     }
     case "anomaly_detection":
-      return finish([{ verdict: "not_applicable", score: null, rationale: "Insufficient data, 12 comparable calls of 30 needed." }], "Insufficient data, 12 comparable calls of 30 needed.", null);
+      return finish(
+        [{ verdict: "not_applicable", score: null, rationale: "Insufficient data, 12 comparable calls of 30 needed." }],
+        "Insufficient data, 12 comparable calls of 30 needed.",
+        null,
+      );
     default: {
       const r = judgeRationale(e.name, failed);
-      return finish([{ verdict: failed ? "fail" : "pass", score: r.score, rationale: r.rationale, evidence: { turn_indices: r.turns, quote: r.quote ?? null } }], r.rationale, r.score);
+      return finish(
+        [{ verdict: failed ? "fail" : "pass", score: r.score, rationale: r.rationale, evidence: { turn_indices: r.turns, quote: r.quote ?? null } }],
+        r.rationale,
+        r.score,
+      );
     }
   }
 }
@@ -502,10 +545,26 @@ function seedLabels(viewerUser: { id: string; display_name: string }) {
     const humanGood = intent?.verdict === "fail" ? i % 3 === 0 : i % 4 !== 1;
     const at = new Date(Date.parse(c.started_at) + 3_600_000).toISOString();
     const list: Annotation[] = [
-      { id: nextId("ann"), call_id: c.call_id, user: viewerUser, label: humanGood ? "good" : "bad", note: i % 6 === 0 ? "Caller sounded satisfied at the end." : null, created_at: at, updated_at: at },
+      {
+        id: nextId("ann"),
+        call_id: c.call_id,
+        user: viewerUser,
+        label: humanGood ? "good" : "bad",
+        note: i % 6 === 0 ? "Caller sounded satisfied at the end." : null,
+        created_at: at,
+        updated_at: at,
+      },
     ];
     if (i % 8 === 0) {
-      list.push({ id: nextId("ann"), call_id: c.call_id, user: TEAMMATE, label: i % 16 === 0 ? (humanGood ? "bad" : "good") : humanGood ? "good" : "bad", note: "Checked against the recording.", created_at: at, updated_at: at });
+      list.push({
+        id: nextId("ann"),
+        call_id: c.call_id,
+        user: TEAMMATE,
+        label: i % 16 === 0 ? (humanGood ? "bad" : "good") : humanGood ? "good" : "bad",
+        note: "Checked against the recording.",
+        created_at: at,
+        updated_at: at,
+      });
     }
     q.annotations[c.call_id] = list;
   }
@@ -542,8 +601,15 @@ function buildAnalysis(call: CallListItem): CallAnalysis {
   if (call.status === "processing") return { call_id: call.call_id, status: "running", values: [] };
   if (call.status !== "completed" && call.status !== "voicemail") return { call_id: call.call_id, status: "skipped", skip_reason: null, values: [] };
   const vars = liveVariables(call.agent.id);
-  const values: NonNullable<CallAnalysis["values"]> = vars.map((v) => ({ variable_id: v.id, name: v.name, type: v.type, value: valueFor(v, i), status: "current" }));
-  if (i > 30 && agentType(call.agent.id) === "single_prompt") values.push({ variable_id: null, name: "order_status", type: "string", value: "shipped", status: "renamed" });
+  const values: NonNullable<CallAnalysis["values"]> = vars.map((v) => ({
+    variable_id: v.id,
+    name: v.name,
+    type: v.type,
+    value: valueFor(v, i),
+    status: "current",
+  }));
+  if (i > 30 && agentType(call.agent.id) === "single_prompt")
+    values.push({ variable_id: null, name: "order_status", type: "string", value: "shipped", status: "renamed" });
   const sentiment = i % 7 === 3 ? "negative" : i % 5 === 0 ? "neutral" : "positive";
   return {
     call_id: call.call_id,
@@ -714,7 +780,8 @@ function validateCustom(type: string, config: CustomConfig | undefined): Respons
   const judge = config as JudgeQuestionConfig;
   if (!judge.question || judge.question.trim().length < 5) return invalid("/config/question", "Write a yes or no question of at least 5 characters.");
   if (judge.question.length > 1000) return invalid("/config/question", "Keep the question under 1,000 characters.");
-  if (judge.judge_model && !JUDGE_MODELS.some((m) => m.model_id === judge.judge_model)) return invalid("/config/judge_model", "Choose one of the listed judge models");
+  if (judge.judge_model && !JUDGE_MODELS.some((m) => m.model_id === judge.judge_model))
+    return invalid("/config/judge_model", "Choose one of the listed judge models");
   return null;
 }
 
@@ -731,7 +798,9 @@ function trial(type: string, config: CustomConfig): TrialResult {
     const c = config as PhraseCheckConfig;
     const flags = c.case_sensitive ? "" : "i";
     const re = c.is_regex ? new RegExp(c.pattern, flags) : new RegExp(c.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags);
-    const turns = TRANSCRIPT_TURNS.map((t, idx) => ({ ...t, idx })).filter((t) => c.target === "both" || (c.target === "user" ? t.role === "user" : t.role === "agent"));
+    const turns = TRANSCRIPT_TURNS.map((t, idx) => ({ ...t, idx })).filter(
+      (t) => c.target === "both" || (c.target === "user" ? t.role === "user" : t.role === "agent"),
+    );
     const hit = turns.find((t) => re.test(t.text));
     const pass = c.mode === "forbidden" ? !hit : Boolean(hit);
     return {
@@ -739,7 +808,10 @@ function trial(type: string, config: CustomConfig): TrialResult {
       score: pass ? 1 : 0,
       rationale: hit
         ? `Turn ${hit.idx + 1} matched: "${hit.text}". ${c.mode === "forbidden" ? "The phrase is forbidden." : "The phrase was required and found."}`
-        : `No ${c.target === "both" ? "" : c.target === "user" ? "caller " : "agent "}turn matched. ${c.mode === "forbidden" ? "Nothing forbidden was said." : "The required phrase was never said."}`.replace("  ", " "),
+        : `No ${c.target === "both" ? "" : c.target === "user" ? "caller " : "agent "}turn matched. ${c.mode === "forbidden" ? "Nothing forbidden was said." : "The required phrase was never said."}`.replace(
+            "  ",
+            " ",
+          ),
       evidence: { turn_indices: hit ? [hit.idx + 1] : [], quote: hit?.text ?? null },
       charged_usd: null,
     };
@@ -770,8 +842,10 @@ setQualitySummarizer((call, request) => {
 // Handlers ------------------------------------------------------------------------------------
 
 const variableError = (body: Partial<AnalysisVariable>, agentId: string, selfId?: string): Response | null => {
-  if (body.name !== undefined && !MACHINE_NAME_RE.test(body.name)) return invalid("/name", "Use lowercase letters, digits and underscores, starting with a letter");
-  if (body.description !== undefined && (!body.description.trim() || body.description.length > 500)) return invalid("/description", "Describe what to capture in 1 to 500 characters.");
+  if (body.name !== undefined && !MACHINE_NAME_RE.test(body.name))
+    return invalid("/name", "Use lowercase letters, digits and underscores, starting with a letter");
+  if (body.description !== undefined && (!body.description.trim() || body.description.length > 500))
+    return invalid("/description", "Describe what to capture in 1 to 500 characters.");
   const type = body.type;
   if (type && type !== "choice" && body.choices) return invalid("/choices", "Choices apply only to the fixed set type.");
   if (type === "choice") {
@@ -819,7 +893,8 @@ export const qualityHandlers = [
   http.put(url("/agents/:id/analysis-variables/order"), async ({ params, request }) => {
     const { variable_ids } = (await request.json()) as { variable_ids: string[] };
     const live = liveVariables(String(params.id));
-    if (variable_ids.length !== live.length || !live.every((v) => variable_ids.includes(v.id))) return invalid("/variable_ids", "List every variable exactly once.");
+    if (variable_ids.length !== live.length || !live.every((v) => variable_ids.includes(v.id)))
+      return invalid("/variable_ids", "List every variable exactly once.");
     variable_ids.forEach((id, pos) => {
       const v = q.variables.find((x) => x.id === id);
       if (v) v.position = pos;
@@ -831,7 +906,11 @@ export const qualityHandlers = [
     if (!v) return problem(404, "not_found", "Not found", "No variable with that id.");
     const body = (await request.json()) as Partial<AnalysisVariable>;
     const merged = { ...v, ...body };
-    const err = variableError({ ...body, type: merged.type, choices: body.type && body.type !== "choice" && !("choices" in body) ? null : merged.choices }, v.agent_id, v.id);
+    const err = variableError(
+      { ...body, type: merged.type, choices: body.type && body.type !== "choice" && !("choices" in body) ? null : merged.choices },
+      v.agent_id,
+      v.id,
+    );
     if (err) return err;
     Object.assign(v, body, { choices: merged.type === "choice" ? merged.choices : null, updated_at: nowIso() });
     const { deleted_at, ...out } = v;
@@ -851,7 +930,8 @@ export const qualityHandlers = [
   http.post(url("/calls/:id/analysis/rerun"), ({ params }) => {
     const call = findCall(String(params.id));
     if (!call) return problem(404, "not_found", "Not found", "No call with that id.");
-    if (call.status !== "completed" && call.status !== "voicemail") return problem(409, "call_not_completed", "Not finished", "Analysis can run once the call has finished processing.");
+    if (call.status !== "completed" && call.status !== "voicemail")
+      return problem(409, "call_not_completed", "Not finished", "Analysis can run once the call has finished processing.");
     const pending = { call_id: call.call_id, status: "running" as const, values: [], _at: Date.now() + 1500 };
     q.analysis[call.call_id] = pending;
     return json({ call_id: call.call_id, status: "running", values: [] }, 202);
@@ -880,15 +960,29 @@ export const qualityHandlers = [
     return json(q.trials[key]);
   }),
   http.post(url("/evaluators"), async ({ request }) => {
-    const body = (await request.json()) as { name?: string; display_name: string; description?: string | null; evaluator_type: "phrase_check" | "llm_judge_custom"; config: CustomConfig };
+    const body = (await request.json()) as {
+      name?: string;
+      display_name: string;
+      description?: string | null;
+      evaluator_type: "phrase_check" | "llm_judge_custom";
+      config: CustomConfig;
+    };
     const name = body.name ?? toVariableName(body.display_name ?? "");
     if (!name) return invalid("/display_name", "Use a name with at least one letter.");
     const err = validateCustom(body.evaluator_type, body.config);
     if (err) return err;
-    if (q.customs.some((c) => !c.deleted_at && c.name === name)) return problem(409, "name_taken", "Name in use", `You already have a custom check named ${name}`);
-    if (q.customs.filter((c) => !c.deleted_at).length >= 50) return problem(409, "limit_reached", "Limit reached", "A workspace can have up to 50 custom checks.");
+    if (q.customs.some((c) => !c.deleted_at && c.name === name))
+      return problem(409, "name_taken", "Name in use", `You already have a custom check named ${name}`);
+    if (q.customs.filter((c) => !c.deleted_at).length >= 50)
+      return problem(409, "limit_reached", "Limit reached", "A workspace can have up to 50 custom checks.");
     const judge = body.evaluator_type === "llm_judge_custom";
-    const config = judge ? { judge_model: DEFAULT_JUDGE, ...(body.config as JudgeQuestionConfig) } : { ...(body.config as PhraseCheckConfig), is_regex: (body.config as PhraseCheckConfig).is_regex ?? false, case_sensitive: (body.config as PhraseCheckConfig).case_sensitive ?? false };
+    const config = judge
+      ? { judge_model: DEFAULT_JUDGE, ...(body.config as JudgeQuestionConfig) }
+      : {
+          ...(body.config as PhraseCheckConfig),
+          is_regex: (body.config as PhraseCheckConfig).is_regex ?? false,
+          case_sensitive: (body.config as PhraseCheckConfig).case_sensitive ?? false,
+        };
     const row: Evaluator & { versions: CustomVersion[] } = {
       id: nextId("evl"),
       kind: "custom",
@@ -906,7 +1000,14 @@ export const qualityHandlers = [
       enabled_by_default: false,
       config,
       deleted_at: null,
-      versions: [{ version: 1, judge_model: judge ? (config as JudgeQuestionConfig).judge_model! : null, definition: config as Record<string, unknown>, created_at: nowIso() }],
+      versions: [
+        {
+          version: 1,
+          judge_model: judge ? (config as JudgeQuestionConfig).judge_model! : null,
+          definition: config as Record<string, unknown>,
+          created_at: nowIso(),
+        },
+      ],
     };
     q.customs.push(row);
     const { versions, ...out } = row;
@@ -917,7 +1018,10 @@ export const qualityHandlers = [
     const e = evaluatorById(String(params.id));
     if (!e) return problem(404, "not_found", "Not found", "No check with that id.");
     const custom = q.customs.find((c) => c.id === e.id);
-    return json({ ...e, versions: custom?.versions ?? [{ version: e.current_version, judge_model: null, definition: {}, created_at: "2026-10-16T09:00:00Z" }] });
+    return json({
+      ...e,
+      versions: custom?.versions ?? [{ version: e.current_version, judge_model: null, definition: {}, created_at: "2026-10-16T09:00:00Z" }],
+    });
   }),
   http.patch(url("/evaluators/:id"), async ({ params, request }) => {
     if (BUILTINS.some((b) => b.id === params.id)) return problem(403, "forbidden", "Built-in", "Built-in checks cannot be edited.");
@@ -930,7 +1034,12 @@ export const qualityHandlers = [
       if (JSON.stringify(body.config) !== JSON.stringify(c.config)) {
         c.current_version += 1;
         c.config = body.config;
-        c.versions.push({ version: c.current_version, judge_model: (body.config as JudgeQuestionConfig).judge_model ?? null, definition: body.config as Record<string, unknown>, created_at: nowIso() });
+        c.versions.push({
+          version: c.current_version,
+          judge_model: (body.config as JudgeQuestionConfig).judge_model ?? null,
+          definition: body.config as Record<string, unknown>,
+          created_at: nowIso(),
+        });
       }
     }
     if (body.display_name !== undefined) c.display_name = body.display_name;
@@ -975,11 +1084,18 @@ export const qualityHandlers = [
     const prev = rows[e.id];
     let position = prev?.headline_position ?? null;
     if (body.is_headline && !prev?.is_headline) {
-      const taken = Object.entries(rows).filter(([id, r]) => id !== e.id && r.is_headline).map(([, r]) => r.headline_position);
+      const taken = Object.entries(rows)
+        .filter(([id, r]) => id !== e.id && r.is_headline)
+        .map(([, r]) => r.headline_position);
       if (taken.length >= 4) return problem(409, "headline_limit", "Too many headline checks", "Up to 4 headline checks per agent");
       position = [1, 2, 3, 4].find((p) => !taken.includes(p)) ?? null;
     }
-    rows[e.id] = { enabled: body.enabled, overrides: body.overrides ?? {}, is_headline: Boolean(body.is_headline), headline_position: body.is_headline ? position : null };
+    rows[e.id] = {
+      enabled: body.enabled,
+      overrides: body.overrides ?? {},
+      is_headline: Boolean(body.is_headline),
+      headline_position: body.is_headline ? position : null,
+    };
     return json(settingFor(agentId, e));
   }),
 
@@ -1002,8 +1118,12 @@ export const qualityHandlers = [
   http.post(url("/calls/:id/evaluations/rerun"), async ({ params, request }) => {
     const call = findCall(String(params.id));
     if (!call) return problem(404, "not_found", "Not found", "No call with that id.");
-    if (call.status !== "completed" && call.status !== "voicemail") return problem(409, "call_not_completed", "Not finished", "Checks can run once the call has finished processing.");
-    if ((q.activeUntil[call.call_id] ?? 0) > Date.now() || runsOf(call).some((r) => !r.superseded_at && (r.status === "running" || r.status === "pending"))) {
+    if (call.status !== "completed" && call.status !== "voicemail")
+      return problem(409, "call_not_completed", "Not finished", "Checks can run once the call has finished processing.");
+    if (
+      (q.activeUntil[call.call_id] ?? 0) > Date.now() ||
+      runsOf(call).some((r) => !r.superseded_at && (r.status === "running" || r.status === "pending"))
+    ) {
       return problem(409, "checks_running", "Checks are already running", "Checks are already running");
     }
     const body = (await request.json().catch(() => ({}))) as { evaluator_ids?: string[] };
@@ -1014,7 +1134,17 @@ export const qualityHandlers = [
     const runs = runsOf(call).map((r) => (!r.superseded_at && ids.has(r.evaluator_id) ? { ...r, superseded_at: stamp } : r));
     const fresh: PendingRun[] = enabled.map(({ e, settings }) => {
       const final = buildRun(call, e, settings, "rerun", stamp);
-      return { ...final, status: "running", verdict: null, score: null, rationale: null, items: [], completed_at: null, _final: { ...final, completed_at: new Date(at).toISOString() }, _at: at };
+      return {
+        ...final,
+        status: "running",
+        verdict: null,
+        score: null,
+        rationale: null,
+        items: [],
+        completed_at: null,
+        _final: { ...final, completed_at: new Date(at).toISOString() },
+        _at: at,
+      };
     });
     q.runs[call.call_id] = [...fresh, ...runs];
     q.activeUntil[call.call_id] = at;
@@ -1071,7 +1201,11 @@ export const qualityHandlers = [
   http.get(url("/calibration/evaluators"), ({ request }) => {
     const sp = new URL(request.url).searchParams;
     const scope = sp.get("version_scope") === "all" ? "all" : "current";
-    const rows = calibrationRows(request, sp.get("agent_id")).map((r) => ({ ...r, version_scope: scope, evaluator_version: scope === "current" ? r.evaluator_version : null }));
+    const rows = calibrationRows(request, sp.get("agent_id")).map((r) => ({
+      ...r,
+      version_scope: scope,
+      evaluator_version: scope === "current" ? r.evaluator_version : null,
+    }));
     return json({ min_sample_for_signal: 5, items: rows });
   }),
   http.get(url("/calibration/summary"), ({ request }) => {
@@ -1090,6 +1224,11 @@ export const qualityHandlers = [
       if (label === "conflict") conflicting++;
       else if (current(runsOf(c)).some((r) => r.verdict === "pass" || r.verdict === "fail")) evaluated++;
     }
-    return json({ annotated_calls: annotated, annotated_and_evaluated_calls: evaluated, conflicting_label_calls: conflicting, min_sample_for_signal: 5 });
+    return json({
+      annotated_calls: annotated,
+      annotated_and_evaluated_calls: evaluated,
+      conflicting_label_calls: conflicting,
+      min_sample_for_signal: 5,
+    });
   }),
 ];

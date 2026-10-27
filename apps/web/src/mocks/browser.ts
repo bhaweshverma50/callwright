@@ -11,7 +11,15 @@ import { enablePersistence } from "./db";
 /** Starts the in-browser mock API. Imported dynamically only when VITE_API_MOCKS=true. */
 export async function startMocks() {
   enablePersistence();
-  const worker = setupWorker(...handlers, ...agentHandlers, ...callHandlers, ...toolHandlers, ...channelHandlers, ...flowHandlers, ...qualityHandlers);
+  const worker = setupWorker(
+    ...handlers,
+    ...agentHandlers,
+    ...callHandlers,
+    ...toolHandlers,
+    ...channelHandlers,
+    ...flowHandlers,
+    ...qualityHandlers,
+  );
   await worker.start({
     onUnhandledRequest: "bypass",
     quiet: true,

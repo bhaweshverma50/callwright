@@ -88,7 +88,14 @@ export const BUILTINS: Evaluator[] = [
       int("window_days", "Comparison window", 1, 365, 30, "Compare with calls from the last {default} days by default."),
       int("min_sample_size", "Minimum comparable calls", 5, 500, 30, "Below this many calls the check reads insufficient data. Default {default}."),
       int("knn_k", "Nearest neighbours", 1, 50, 10, "How many similar calls the distance is averaged over. Default {default}."),
-      int("backfill_per_run", "Backfill per run", 0, 20, 5, "Older calls prepared per run when there are too few. 0 turns backfill off. Default {default}."),
+      int(
+        "backfill_per_run",
+        "Backfill per run",
+        0,
+        20,
+        5,
+        "Older calls prepared per run when there are too few. 0 turns backfill off. Default {default}.",
+      ),
     ],
   ),
   builtin(
@@ -173,17 +180,9 @@ export const BUILTINS: Evaluator[] = [
     [judgeModel],
     { min: -1, max: 1 },
   ),
-  builtin(
-    "stuck_loop_detector",
-    "Stuck loops",
-    "The conversation kept coming back to the same node.",
-    "call",
-    "free",
-    "class",
-    FLOW,
-    true,
-    [int("max_visits_per_node", "Visits allowed per node", 2, 10, 3, "Fails when a node is visited more than this. Default {default}.")],
-  ),
+  builtin("stuck_loop_detector", "Stuck loops", "The conversation kept coming back to the same node.", "call", "free", "class", FLOW, true, [
+    int("max_visits_per_node", "Visits allowed per node", 2, 10, 3, "Fails when a node is visited more than this. Default {default}."),
+  ]),
   builtin(
     "tool_call_correctness",
     "Tool call correctness",

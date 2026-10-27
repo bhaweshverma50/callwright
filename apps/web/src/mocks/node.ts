@@ -7,4 +7,12 @@ import { toolHandlers } from "./tools";
 import { channelHandlers } from "./channels/handlers";
 import { qualityHandlers } from "./quality/handlers";
 
-export const server = setupServer(...handlers, ...agentHandlers, ...callHandlers, ...toolHandlers, ...channelHandlers, ...flowHandlers, ...qualityHandlers);
+export const server = setupServer(
+  ...handlers,
+  ...agentHandlers,
+  ...callHandlers,
+  ...toolHandlers,
+  ...channelHandlers,
+  ...flowHandlers,
+  ...qualityHandlers,
+);

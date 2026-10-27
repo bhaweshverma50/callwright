@@ -126,8 +126,22 @@ function SettingField({
   if (field.type === "int" || field.type === "number") {
     control = <NumberStepper id={id} field={field} value={value} invalid={Boolean(error)} describedBy={helpId} onChange={onChange} />;
   } else if (field.type === "select") {
-    const opts = optionsFor(field, models).map((o) => ({ value: o, label: displayValue(field, o, models), meta: field.options_source === "judge_models" ? o : undefined }));
-    control = <Select id={id} value={textOf(value)} onValueChange={onChange} options={opts} invalid={Boolean(error)} describedBy={helpId} className="w-full sm:w-64" />;
+    const opts = optionsFor(field, models).map((o) => ({
+      value: o,
+      label: displayValue(field, o, models),
+      meta: field.options_source === "judge_models" ? o : undefined,
+    }));
+    control = (
+      <Select
+        id={id}
+        value={textOf(value)}
+        onValueChange={onChange}
+        options={opts}
+        invalid={Boolean(error)}
+        describedBy={helpId}
+        className="w-full sm:w-64"
+      />
+    );
   } else if (field.type === "bool") {
     control = <SwitchControl id={id} checked={value === true} onCheckedChange={onChange} describedBy={helpId} />;
   } else if (field.type === "text_long") {
@@ -208,7 +222,9 @@ export function EvaluatorCard({
     setCardError(null);
     try {
       const next = await putEvalSetting(agentId, setting.evaluator_id, body);
-      qc.setQueryData<AgentEvalSetting[]>(qualityKeys.settings(agentId), (list) => list?.map((s) => (s.evaluator_id === next.evaluator_id ? next : s)));
+      qc.setQueryData<AgentEvalSetting[]>(qualityKeys.settings(agentId), (list) =>
+        list?.map((s) => (s.evaluator_id === next.evaluator_id ? next : s)),
+      );
       if (kind === "save") setServerErrors({});
       return true;
     } catch (e) {
@@ -244,7 +260,10 @@ export function EvaluatorCard({
       data-testid={`check-${setting.name}`}
     >
       {setting.enabled && (
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(120%_100%_at_0%_0%,var(--glow-a),transparent_70%)]" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(120%_100%_at_0%_0%,var(--glow-a),transparent_70%)]"
+        />
       )}
       <div className="relative flex items-start gap-3 px-4 py-3.5">
         <span
@@ -293,7 +312,9 @@ export function EvaluatorCard({
               </IconButton>
             </>
           )}
-          <Tooltip content={setting.is_headline ? "Headline check on the dashboard" : headlineFull ? HEADLINE_LIMIT_MESSAGE : "Show on the dashboard"}>
+          <Tooltip
+            content={setting.is_headline ? "Headline check on the dashboard" : headlineFull ? HEADLINE_LIMIT_MESSAGE : "Show on the dashboard"}
+          >
             <button
               type="button"
               aria-pressed={setting.is_headline}
@@ -306,7 +327,12 @@ export function EvaluatorCard({
                 focusRing,
               )}
             >
-              <motion.span key={String(setting.is_headline)} initial={{ scale: 0.6, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 500, damping: 20 }}>
+              <motion.span
+                key={String(setting.is_headline)}
+                initial={{ scale: 0.6, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 20 }}
+              >
                 <Star className="size-4" fill={setting.is_headline ? "currentColor" : "none"} aria-hidden />
               </motion.span>
             </button>

@@ -122,7 +122,9 @@ describe("EvaluatorCard (007 T085, US2 scenarios 10, 11, 13 and 14)", () => {
     renderCatalog();
     for (const name of ["audio_silence", "tool_call_correctness"]) {
       await user.click(within(await card(name)).getByRole("button", { name: /^Headline check/ }));
-      await waitFor(async () => expect(within(await card(name)).getByRole("button", { name: /^Headline check/ })).toHaveAttribute("aria-pressed", "true"));
+      await waitFor(async () =>
+        expect(within(await card(name)).getByRole("button", { name: /^Headline check/ })).toHaveAttribute("aria-pressed", "true"),
+      );
     }
     const kb = await card("kb_relevance");
     await user.click(within(kb).getByRole("button", { name: /^Headline check/ }));
