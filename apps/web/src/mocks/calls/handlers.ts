@@ -29,6 +29,14 @@ let store: Store = { calls: [], requests: [] };
 
 export const mockCalls = () => store;
 
+/** 007 fills the list's quality cell (evaluation status, counts, the viewer's label). */
+type QualityOf = (call: CallListItem, request: Request) => CallListItem["quality"];
+let qualityOf: QualityOf | null = null;
+export function setQualitySummarizer(fn: QualityOf) {
+  qualityOf = fn;
+}
+const withQuality = (c: CallListItem, request: Request): CallListItem => (qualityOf ? { ...c, quality: qualityOf(c, request) } : c);
+
 export function resetMockCalls() {
   store = { calls: [], requests: [] };
 }
@@ -67,6 +75,10 @@ export function seedMockCalls(count = 45) {
 }
 
 function matches(c: CallListItem, q: URLSearchParams): boolean {
+  const labels = q.get("label")?.split(",").filter(Boolean) ?? [];
+  if (labels.length && !labels.includes(c.quality.label ?? "unannotated")) return false;
+  const evals = q.get("eval_status")?.split(",").filter(Boolean) ?? [];
+  if (evals.length && !evals.includes(c.quality.eval_status)) return false;
   const list = (k: string) => q.get(k)?.split(",").filter(Boolean) ?? [];
   const origins = list("origin").length ? list("origin") : ["live", "test"];
   if (!origins.includes(c.origin)) return false;
@@ -204,7 +216,7 @@ export const callHandlers = [
   http.get(url("/calls"), ({ request }) => {
     const q = new URL(request.url).searchParams;
     store.requests.push(new URL(request.url).search);
-    const rows = store.calls.filter((c) => matches(c, q));
+    const rows = store.calls.map((c) => withQuality(c, request)).filter((c) => matches(c, q));
     const page = Number(q.get("page") ?? 1);
     const size = Number(q.get("page_size") ?? 20);
     return json({
@@ -222,9 +234,9 @@ export const callHandlers = [
         headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="calls-2026-10-16.csv"' },
       }),
   ),
-  http.get(url("/calls/:id"), ({ params }) => {
+  http.get(url("/calls/:id"), ({ params, request }) => {
     const c = find(String(params.id));
-    return c ? json(detail(c)) : problem(404, "not_found", "No call with that id exists in this workspace.");
+    return c ? json(detail(withQuality(c, request))) : problem(404, "not_found", "No call with that id exists in this workspace.");
   }),
   http.get(url("/calls/:id/transcript"), ({ params }) =>
     find(String(params.id)) ? json({ call_id: params.id, items: TRANSCRIPT }) : problem(404, "not_found", "No call."),

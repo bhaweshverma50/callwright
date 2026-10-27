@@ -377,6 +377,77 @@ paths:
                           label:
                             type: string
       x-spec: 002-agent-builder
+  /agents/{agent_id}/analysis-variables:
+    parameters:
+    - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      operationId: listAnalysisVariables
+      responses:
+        '200':
+          description: Active variables in order
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnalysisVariable'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+    post:
+      operationId: createAnalysisVariable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisVariableInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisVariable'
+        '409':
+          description: Name already used on this agent, or 25-variable limit reached
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /agents/{agent_id}/analysis-variables/order:
+    put:
+      operationId: reorderAnalysisVariables
+      parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - variable_ids
+              properties:
+                variable_ids:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^var_
+      responses:
+        '204':
+          description: Reordered
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
   /agents/{agent_id}/draft:
     parameters:
     - $ref: '#/components/parameters/AgentIdPath'
@@ -474,6 +545,85 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 002-agent-builder
+  /agents/{agent_id}/eval-settings:
+    get:
+      operationId: listAgentEvalSettings
+      parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+      responses:
+        '200':
+          description: Every evaluator applicable to the agent type with its effective settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AgentEvalSetting'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /agents/{agent_id}/eval-settings/{evaluator_id}:
+    put:
+      operationId: putAgentEvalSetting
+      description: 'Replaces the whole setting. The quality tab sends this both when the on/off switch
+        is flipped (with the saved overrides) and on "Save settings" (with every field value). Overrides
+        are validated against the settings schema (type, min, max, options; unknown keys rejected).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+      - name: evaluator_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^evl_
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+                overrides:
+                  type: object
+                  additionalProperties: true
+                  description: Validated against the evaluator's settings_schema
+                is_headline:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentEvalSetting'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          description: More than 4 headline evaluators ("Up to 4 headline checks per agent")
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Field errors, for example sample_rate_pct 150 gives errors[{field "overrides.sample_rate_pct",
+            message "Enter a whole number from 1 to 100"}]; evaluator not applicable to the agent type
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 007-quality-evals
   /agents/{agent_id}/flow:
     parameters:
     - name: agent_id
@@ -898,6 +1048,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 002-agent-builder
+  /analysis-variables/{variable_id}:
+    parameters:
+    - name: variable_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^var_
+    patch:
+      operationId: updateAnalysisVariable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name:
+                  $ref: '#/components/schemas/VariableName'
+                type:
+                  $ref: '#/components/schemas/VariableType'
+                description:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                choices:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisVariable'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+    delete:
+      operationId: deleteAnalysisVariable
+      description: Soft delete. Stops future extraction; past call values are kept.
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
   /analytics/catalog:
     get:
       operationId: getAnalyticsCatalog
@@ -1386,6 +1593,69 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 001-platform-foundation
+  /calibration/evaluators:
+    get:
+      operationId: listCalibrationRows
+      parameters:
+      - $ref: '#/components/parameters/AgentId'
+      - $ref: '#/components/parameters/CalibrationLookbackDays'
+      - name: version_scope
+        in: query
+        schema:
+          type: string
+          enum:
+          - current
+          - all
+          default: current
+      responses:
+        '200':
+          description: One row per evaluator (and per flow node for evaluators whose items name a flow
+            node) with at least one pair
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - min_sample_for_signal
+                - items
+                properties:
+                  min_sample_for_signal:
+                    type: integer
+                    const: 5
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalibrationRow'
+      x-spec: 007-quality-evals
+  /calibration/summary:
+    get:
+      operationId: getCalibrationSummary
+      parameters:
+      - $ref: '#/components/parameters/AgentId'
+      - $ref: '#/components/parameters/CalibrationLookbackDays'
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - annotated_calls
+                - annotated_and_evaluated_calls
+                - conflicting_label_calls
+                - min_sample_for_signal
+                properties:
+                  annotated_calls:
+                    type: integer
+                  annotated_and_evaluated_calls:
+                    type: integer
+                  conflicting_label_calls:
+                    type: integer
+                  min_sample_for_signal:
+                    type: integer
+                    const: 5
+      x-spec: 007-quality-evals
   /calls:
     get:
       operationId: listCalls
@@ -1597,6 +1867,121 @@ paths:
         '404':
           $ref: '#/components/responses/Problem'
       x-spec: 006-calls-analytics
+  /calls/{call_id}/analysis:
+    get:
+      operationId: getCallAnalysis
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      responses:
+        '200':
+          description: Analysis for the call
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallAnalysis'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /calls/{call_id}/analysis/rerun:
+    post:
+      operationId: rerunCallAnalysis
+      description: Re-run summary, sentiment and variable extraction with the agent's current variables.
+        Charged as post_call_analysis.
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallAnalysis'
+        '402':
+          description: Balance at or below zero
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Call not completed yet, or analysis already running
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 007-quality-evals
+  /calls/{call_id}/annotations:
+    get:
+      operationId: listCallAnnotations
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      responses:
+        '200':
+          description: All labels on the call, the viewer's first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - mine
+                properties:
+                  mine:
+                    oneOf:
+                    - $ref: '#/components/schemas/Annotation'
+                    - type: 'null'
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Annotation'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /calls/{call_id}/annotations/me:
+    parameters:
+    - $ref: '#/components/parameters/CallIdPath'
+    put:
+      operationId: putMyAnnotation
+      description: Create or replace the viewer's label on the call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - label
+              properties:
+                label:
+                  type: string
+                  enum:
+                  - good
+                  - bad
+                note:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Annotation'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+    delete:
+      operationId: deleteMyAnnotation
+      responses:
+        '204':
+          description: Removed (idempotent)
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
   /calls/{call_id}/compare:
     get:
       operationId: compareCalls
@@ -1628,6 +2013,71 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 006-calls-analytics
+  /calls/{call_id}/evaluations:
+    get:
+      operationId: getCallEvaluations
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      - name: include_history
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Current runs (and superseded runs when include_history is true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallEvaluations'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /calls/{call_id}/evaluations/rerun:
+    post:
+      operationId: rerunCallEvaluations
+      parameters:
+      - $ref: '#/components/parameters/CallIdPath'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                evaluator_ids:
+                  type: array
+                  description: Subset of enabled evaluators; omit for all enabled.
+                  items:
+                    type: string
+                    pattern: ^evl_
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - run_group_id
+                - runs
+                properties:
+                  run_group_id:
+                    type: string
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EvaluatorRun'
+        '409':
+          description: Call not completed, or checks already running ("Checks are already running")
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
   /calls/{call_id}/flow-transitions:
     description: Served by the flows module under 006's /calls path (architecture section 5).
     parameters:
@@ -1988,6 +2438,310 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 010-channels
+  /evals/verdict-diff:
+    get:
+      operationId: getVerdictDiff
+      summary: Verdict differences between two calls of the workspace (used by the compare view)
+      parameters:
+      - name: base_call_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^call_
+      - name: other_call_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^call_
+      responses:
+        '200':
+          description: One row per evaluator present on either call
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - evaluator_id
+                      - evaluator_name
+                      properties:
+                        evaluator_id:
+                          type: string
+                        evaluator_name:
+                          type: string
+                        display_name:
+                          type: string
+                        base:
+                          $ref: '#/components/schemas/EvalVerdictSide'
+                        other:
+                          $ref: '#/components/schemas/EvalVerdictSide'
+                        score_delta:
+                          type:
+                          - number
+                          - 'null'
+                        other_rationale:
+                          type:
+                          - string
+                          - 'null'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /evaluators:
+    get:
+      operationId: listEvaluators
+      parameters:
+      - name: kind
+        in: query
+        schema:
+          type: string
+          enum:
+          - builtin
+          - custom
+      - name: agent_type
+        in: query
+        schema:
+          type: string
+          enum:
+          - single_prompt
+          - flow
+      - name: include_deleted
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Evaluator'
+      x-spec: 007-quality-evals
+    post:
+      operationId: createCustomEvaluator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomEvaluatorInput'
+      responses:
+        '201':
+          description: Created at version 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluator'
+        '409':
+          description: Name in use ("You already have a custom check named ...") or 50-evaluator limit
+            reached
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Field errors (pattern invalid, question too short, judge model not in the list)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 007-quality-evals
+  /evaluators/judge-models:
+    get:
+      operationId: listJudgeModels
+      summary: Models allowed for every judge_model setting and for custom judges (FR-036)
+      responses:
+        '200':
+          description: Allowed judge models; exactly one has is_default true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - model_id
+                      - display_name
+                      - is_default
+                      properties:
+                        model_id:
+                          type: string
+                        display_name:
+                          type: string
+                        is_default:
+                          type: boolean
+      x-spec: 007-quality-evals
+  /evaluators/trial:
+    post:
+      operationId: trialCustomEvaluator
+      summary: Try an unsaved custom definition on one call (judge trials are charged)
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - evaluator_type
+              - config
+              - call_id
+              properties:
+                evaluator_type:
+                  type: string
+                  enum:
+                  - phrase_check
+                  - llm_judge_custom
+                config:
+                  $ref: '#/components/schemas/CustomConfig'
+                call_id:
+                  type: string
+                  pattern: ^call_
+      responses:
+        '200':
+          description: Trial result (not stored as a run)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - verdict
+                - rationale
+                properties:
+                  verdict:
+                    type: string
+                    enum:
+                    - pass
+                    - fail
+                    - not_applicable
+                  score:
+                    type:
+                    - number
+                    - 'null'
+                  rationale:
+                    type: string
+                  evidence:
+                    type: object
+                    properties:
+                      turn_indices:
+                        type: array
+                        items:
+                          type: integer
+                      quote:
+                        type:
+                        - string
+                        - 'null'
+                  charged_usd:
+                    type:
+                    - number
+                    - 'null'
+        '402':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /evaluators/{evaluator_id}:
+    parameters:
+    - name: evaluator_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^evl_
+    get:
+      operationId: getEvaluator
+      responses:
+        '200':
+          description: Evaluator with all versions
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Evaluator'
+                - type: object
+                  properties:
+                    versions:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/EvaluatorVersion'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+    patch:
+      operationId: updateCustomEvaluator
+      description: Custom only. A change to `config` creates a new version; display_name and description
+        edits do not.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                display_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                description:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+                config:
+                  $ref: '#/components/schemas/CustomConfig'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluator'
+        '403':
+          description: Built-in evaluators cannot be edited
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+    delete:
+      operationId: deleteCustomEvaluator
+      description: Soft delete; past results and versions are kept and the name can be reused.
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
   /flows:
     post:
       tags:
@@ -3623,6 +4377,77 @@ paths:
         '503':
           $ref: '#/components/responses/Problem'
       x-spec: 003-voice-runtime
+  /review/queue:
+    get:
+      operationId: getReviewQueue
+      parameters:
+      - name: strategy
+        in: query
+        schema:
+          type: string
+          enum:
+          - random
+          - failed
+          - disagreement
+          default: disagreement
+      - $ref: '#/components/parameters/AgentId'
+      - $ref: '#/components/parameters/ReviewLookbackDays'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      responses:
+        '200':
+          description: Queue items in strategy order
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - strategy
+                - items
+                properties:
+                  strategy:
+                    type: string
+                    enum:
+                    - random
+                    - failed
+                    - disagreement
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QueueItem'
+        '422':
+          $ref: '#/components/responses/Problem'
+      x-spec: 007-quality-evals
+  /review/queue/summary:
+    get:
+      operationId: getReviewQueueSummary
+      parameters:
+      - $ref: '#/components/parameters/AgentId'
+      - $ref: '#/components/parameters/ReviewLookbackDays'
+      responses:
+        '200':
+          description: Counts per strategy for the same scope
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - random
+                - failed
+                - disagreement
+                properties:
+                  random:
+                    type: integer
+                  failed:
+                    type: integer
+                  disagreement:
+                    type: integer
+      x-spec: 007-quality-evals
   /sessions/web-call:
     post:
       operationId: createWebCall
@@ -5168,6 +5993,12 @@ components:
       schema:
         type: string
   parameters:
+    AgentId:
+      name: agent_id
+      in: query
+      schema:
+        type: string
+        pattern: ^agt_
     AgentIdPath:
       name: agent_id
       in: path
@@ -5180,6 +6011,14 @@ components:
       description: Comma-separated agt_ IDs; empty means all agents.
       schema:
         type: string
+    CalibrationLookbackDays:
+      name: lookback_days
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 365
+        default: 90
     CallIdPath:
       name: call_id
       in: path
@@ -5304,6 +6143,14 @@ components:
         - last_90_days
         - custom
         default: last_30_days
+    ReviewLookbackDays:
+      name: lookback_days
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 90
+        default: 30
     SignatureHeader:
       name: Callwright-Signature
       in: header
@@ -5781,6 +6628,92 @@ components:
         updated_at:
           type: string
           format: date-time
+    AgentEvalSetting:
+      type: object
+      required:
+      - evaluator_id
+      - name
+      - display_name
+      - scope
+      - cost_class
+      - output_kind
+      - kind
+      - enabled
+      - enabled_by_default
+      - is_overridden
+      - is_headline
+      - effective_settings
+      - settings_schema
+      - current_version
+      properties:
+        evaluator_id:
+          type: string
+        name:
+          type: string
+        display_name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        kind:
+          type: string
+          enum:
+          - builtin
+          - custom
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+        cost_class:
+          type: string
+          enum:
+          - free
+          - llm_judge
+        output_kind:
+          type: string
+          enum:
+          - class
+          - anomaly
+          - audio_quality
+          - process_reward
+        enabled:
+          type: boolean
+        enabled_by_default:
+          type: boolean
+        is_overridden:
+          type: boolean
+        adjusted_fields:
+          type: array
+          items:
+            type: string
+          description: Override keys clamped into a newer version's range
+        is_headline:
+          type: boolean
+        headline_position:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 4
+        overrides:
+          type: object
+          additionalProperties: true
+        effective_settings:
+          type: object
+          additionalProperties: true
+        settings_schema:
+          type: object
+          additionalProperties: true
+        current_version:
+          type: integer
+        est_cost_per_call_usd:
+          type:
+          - number
+          - 'null'
+          description: Shown for llm_judge evaluators
     AgentHealth:
       type: object
       required:
@@ -5938,6 +6871,61 @@ components:
         created_at:
           type: string
           format: date-time
+    AnalysisVariable:
+      allOf:
+      - $ref: '#/components/schemas/AnalysisVariableInput'
+      - type: object
+        required:
+        - id
+        - agent_id
+        - position
+        - created_at
+        - updated_at
+        properties:
+          id:
+            type: string
+            pattern: ^var_
+          agent_id:
+            type: string
+          position:
+            type: integer
+          created_at:
+            type: string
+            format: date-time
+          updated_at:
+            type: string
+            format: date-time
+    AnalysisVariableInput:
+      type: object
+      required:
+      - name
+      - type
+      - description
+      description: 'choices is required for type choice and must be null or omitted for boolean, string
+        and number (422 otherwise). Names are validated, never rewritten; the web form normalises typed
+        text to snake_case before sending.
+
+        '
+      properties:
+        name:
+          $ref: '#/components/schemas/VariableName'
+        type:
+          $ref: '#/components/schemas/VariableType'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 500
+        choices:
+          type:
+          - array
+          - 'null'
+          minItems: 2
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
     AnalyticsPeriod:
       type: object
       required:
@@ -5965,6 +6953,47 @@ components:
         end_date:
           type: string
           format: date
+    Annotation:
+      type: object
+      required:
+      - id
+      - call_id
+      - user
+      - label
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          pattern: ^ann_
+        call_id:
+          type: string
+        user:
+          type: object
+          required:
+          - id
+          - display_name
+          properties:
+            id:
+              type: string
+              pattern: ^usr_
+            display_name:
+              type: string
+        label:
+          type: string
+          enum:
+          - good
+          - bad
+        note:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     AssistantRequest:
       type: object
       required:
@@ -6081,6 +7110,197 @@ components:
       - llm_input_tokens
       - llm_output_tokens
       - tts_chars
+    CalibrationRow:
+      type: object
+      required:
+      - evaluator_id
+      - evaluator_name
+      - display_name
+      - scope
+      - cost_class
+      - version_scope
+      - both_pass
+      - both_fail
+      - over_eager
+      - missed
+      - n
+      - under_min_sample
+      - reading
+      properties:
+        evaluator_id:
+          type: string
+          pattern: ^evl_
+        evaluator_name:
+          type: string
+        display_name:
+          type: string
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+        cost_class:
+          type: string
+          enum:
+          - free
+          - llm_judge
+        evaluator_version:
+          type:
+          - integer
+          - 'null'
+          description: Set when version_scope is current
+        version_scope:
+          type: string
+          enum:
+          - current
+          - all
+        flow_node_id:
+          type:
+          - string
+          - 'null'
+        flow_node_label:
+          type:
+          - string
+          - 'null'
+        both_pass:
+          type: integer
+          description: Evaluator pass
+          human good: null
+        both_fail:
+          type: integer
+          description: Evaluator fail
+          human bad: null
+        over_eager:
+          type: integer
+          description: Evaluator fail
+          human good: null
+        missed:
+          type: integer
+          description: Evaluator pass
+          human bad: null
+        n:
+          type: integer
+        agreement_rate:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+        agreement_ci:
+          type:
+          - object
+          - 'null'
+          description: Wilson 95% interval
+          properties:
+            low:
+              type: number
+            high:
+              type: number
+        under_min_sample:
+          type: boolean
+        reading:
+          type: string
+          enum:
+          - insufficient
+          - strong
+          - over_eager
+          - misses
+          - partial
+          - low
+        current_threshold:
+          type:
+          - number
+          - 'null'
+        best_threshold:
+          type:
+          - number
+          - 'null'
+        best_threshold_agreement:
+          type:
+          - number
+          - 'null'
+    CallAnalysis:
+      type: object
+      required:
+      - call_id
+      - status
+      properties:
+        call_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - running
+          - completed
+          - skipped
+          - error
+        skip_reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - insufficient_credit
+          - null
+        error:
+          type:
+          - string
+          - 'null'
+        model:
+          type:
+          - string
+          - 'null'
+        summary:
+          type:
+          - string
+          - 'null'
+          maxLength: 600
+        sentiment:
+          type:
+          - string
+          - 'null'
+          enum:
+          - positive
+          - neutral
+          - negative
+          - unknown
+          - null
+        values:
+          type: array
+          items:
+            type: object
+            required:
+            - name
+            - type
+            - value
+            properties:
+              variable_id:
+                type:
+                - string
+                - 'null'
+              name:
+                type: string
+              type:
+                $ref: '#/components/schemas/VariableType'
+              value:
+                type:
+                - boolean
+                - string
+                - number
+                - 'null'
+                description: null means not found
+              status:
+                type: string
+                enum:
+                - current
+                - renamed
+                - deleted
+        analyzed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     CallComparison:
       type: object
       required:
@@ -6218,6 +7438,37 @@ components:
             enum:
             - pending
             - done
+    CallEvaluations:
+      type: object
+      required:
+      - call_id
+      - eval_status
+      - pass_count
+      - fail_count
+      - runs
+      properties:
+        call_id:
+          type: string
+        eval_status:
+          type: string
+          enum:
+          - not_evaluated
+          - running
+          - passed
+          - failed
+          - error
+        pass_count:
+          type: integer
+        fail_count:
+          type: integer
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluatorRun'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluatorRun'
     CallEvent:
       oneOf:
       - $ref: '#/components/schemas/StatusEvent'
@@ -7230,6 +8481,39 @@ components:
           items:
             type: string
           description: e.g. language has no seeded defaults, en-US defaults used
+    CustomConfig:
+      oneOf:
+      - $ref: '#/components/schemas/PhraseCheckConfig'
+      - $ref: '#/components/schemas/JudgeQuestionConfig'
+    CustomEvaluatorInput:
+      type: object
+      required:
+      - display_name
+      - evaluator_type
+      - config
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+          description: Derived from display_name when omitted (lowercase
+          non-alphanumerics to underscores: null
+          leading letter enforced): null
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        evaluator_type:
+          type: string
+          enum:
+          - phrase_check
+          - llm_judge_custom
+        config:
+          $ref: '#/components/schemas/CustomConfig'
     DashboardQuality:
       type: object
       required:
@@ -7847,6 +9131,224 @@ components:
       - passed
       - failed
       - error
+    EvalVerdictSide:
+      type: object
+      properties:
+        verdict:
+          oneOf:
+          - $ref: '#/components/schemas/Verdict'
+          - type: 'null'
+        score:
+          type:
+          - number
+          - 'null'
+        evaluator_version:
+          type:
+          - integer
+          - 'null'
+    Evaluator:
+      type: object
+      required:
+      - id
+      - kind
+      - evaluator_type
+      - name
+      - display_name
+      - scope
+      - cost_class
+      - output_kind
+      - agent_types
+      - settings_schema
+      - score_range
+      - current_version
+      - enabled_by_default
+      properties:
+        id:
+          type: string
+          pattern: ^evl_
+        kind:
+          type: string
+          enum:
+          - builtin
+          - custom
+        evaluator_type:
+          type: string
+          description: Built-in name, or phrase_check or llm_judge_custom.
+          examples:
+          - anomaly_detection
+          - factual_consistency
+          - flow_completion
+          - intent_fulfillment
+          - kb_relevance
+          - audio_silence
+          - node_dead_end
+          - process_reward
+          - stuck_loop_detector
+          - tool_call_correctness
+          - transition_correctness
+          - latency_slo
+          - phrase_check
+          - llm_judge_custom
+        name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        display_name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+          description: Built-ins use call or turn; flow_node is reserved
+        cost_class:
+          type: string
+          enum:
+          - free
+          - llm_judge
+        output_kind:
+          type: string
+          enum:
+          - class
+          - anomaly
+          - audio_quality
+          - process_reward
+        agent_types:
+          type: array
+          items:
+            type: string
+            enum:
+            - single_prompt
+            - flow
+        settings_schema:
+          type: object
+          properties:
+            fields:
+              type: array
+              items:
+                $ref: '#/components/schemas/SettingsField'
+        score_range:
+          type: object
+          properties:
+            min:
+              type: number
+            max:
+              type: number
+        current_version:
+          type: integer
+          minimum: 1
+        enabled_by_default:
+          type: boolean
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/CustomConfig'
+          - type: 'null'
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    EvaluatorRun:
+      type: object
+      required:
+      - id
+      - evaluator_id
+      - evaluator_name
+      - evaluator_version
+      - status
+      - trigger
+      - created_at
+      properties:
+        id:
+          type: string
+          pattern: ^evr_
+        evaluator_id:
+          type: string
+        evaluator_name:
+          type: string
+        evaluator_display_name:
+          type: string
+        evaluator_version:
+          type: integer
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+        trigger:
+          type: string
+          enum:
+          - pipeline
+          - rerun
+          - dataset
+          - simulation
+        status:
+          type: string
+          enum:
+          - pending
+          - running
+          - completed
+          - skipped
+          - error
+        skip_reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - insufficient_credit
+          - not_applicable_agent_type
+          - evaluator_disabled
+          - not_sampled
+          - null
+        error:
+          type:
+          - string
+          - 'null'
+        verdict:
+          oneOf:
+          - $ref: '#/components/schemas/Verdict'
+          - type: 'null'
+        score:
+          type:
+          - number
+          - 'null'
+        rationale:
+          type:
+          - string
+          - 'null'
+        settings_snapshot:
+          type: object
+          additionalProperties: true
+        judge_model:
+          type:
+          - string
+          - 'null'
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultItem'
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        superseded_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     EvaluatorStat:
       type: object
       required:
@@ -7892,6 +9394,24 @@ components:
           type: integer
         calls_evaluated:
           type: integer
+    EvaluatorVersion:
+      type: object
+      required:
+      - version
+      - created_at
+      properties:
+        version:
+          type: integer
+        judge_model:
+          type:
+          - string
+          - 'null'
+        definition:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
     EventBase:
       type: object
       required:
@@ -8424,6 +9944,25 @@ components:
           type:
           - string
           - 'null'
+    JudgeQuestionConfig:
+      type: object
+      required:
+      - question
+      - pass_when
+      additionalProperties: false
+      properties:
+        question:
+          type: string
+          minLength: 5
+          maxLength: 1000
+        pass_when:
+          type: string
+          enum:
+          - 'yes'
+          - 'no'
+        judge_model:
+          type: string
+          description: One of GET /evaluators/judge-models; defaults to the default judge model
     KnowledgeBase:
       type: object
       required:
@@ -9380,6 +10919,35 @@ components:
           - 'null'
           format: uri
           maxLength: 2048
+    PhraseCheckConfig:
+      type: object
+      required:
+      - pattern
+      - mode
+      - target
+      additionalProperties: false
+      properties:
+        pattern:
+          type: string
+          minLength: 1
+          maxLength: 500
+        mode:
+          type: string
+          enum:
+          - required
+          - forbidden
+        target:
+          type: string
+          enum:
+          - agent
+          - user
+          - both
+        is_regex:
+          type: boolean
+          default: false
+        case_sensitive:
+          type: boolean
+          default: false
     PolicyBlockedProblem:
       description: 'Compliance block (type `outbound-policy`). No call record exists, nothing is billed,
         and a policy decision is logged.
@@ -9605,6 +11173,46 @@ components:
           - good
           - bad
           - null
+    QueueItem:
+      type: object
+      required:
+      - call_id
+      - agent_id
+      - agent_name
+      - ended_at
+      - duration_s
+      - eval_count
+      - pass_count
+      - fail_count
+      properties:
+        call_id:
+          type: string
+        agent_id:
+          type: string
+        agent_name:
+          type: string
+        ended_at:
+          type: string
+          format: date-time
+        duration_s:
+          type: integer
+        sentiment:
+          type:
+          - string
+          - 'null'
+          enum:
+          - positive
+          - neutral
+          - negative
+          - unknown
+          - null
+        eval_count:
+          type: integer
+          description: Current completed runs with verdict pass or fail
+        pass_count:
+          type: integer
+        fail_count:
+          type: integer
     Quote:
       type: object
       required:
@@ -9761,6 +11369,53 @@ components:
           maxLength: 256
           examples:
           - data.slots[0].time
+    ResultItem:
+      type: object
+      required:
+      - verdict
+      - rationale
+      properties:
+        turn_index:
+          type:
+          - integer
+          - 'null'
+        flow_node_id:
+          type:
+          - string
+          - 'null'
+        flow_node_label:
+          type:
+          - string
+          - 'null'
+        start_ms:
+          type:
+          - integer
+          - 'null'
+          description: audio_silence silence start offset
+        duration_ms:
+          type:
+          - integer
+          - 'null'
+          description: audio_silence silence length
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+        score:
+          type:
+          - number
+          - 'null'
+        rationale:
+          type: string
+        evidence:
+          type: object
+          properties:
+            turn_indices:
+              type: array
+              items:
+                type: integer
+            quote:
+              type:
+              - string
+              - 'null'
     RevisionConflictProblem:
       allOf:
       - $ref: '#/components/schemas/Problem'
@@ -10076,6 +11731,45 @@ components:
         expires_in:
           type: integer
           description: Seconds until the access token expires
+    SettingsField:
+      type: object
+      required:
+      - key
+      - label
+      - type
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+          - select
+          - number
+          - int
+          - bool
+          - text
+          - text_long
+          description: int renders as a whole-number stepper; judge_model fields are always select
+        options:
+          type: array
+          items:
+            type: string
+          description: For select; judge model fields are filled from the judge model list at read time
+        options_source:
+          type: string
+          enum:
+          - judge_models
+        min:
+          type: number
+        max:
+          type: number
+        step:
+          type: number
+        default: {}
+        helper:
+          type: string
     SigningSecretMasked:
       type: object
       required:
@@ -11336,6 +13030,24 @@ components:
           type:
           - string
           - 'null'
+    VariableName:
+      type: string
+      pattern: ^[a-z][a-z0-9_]{0,63}$
+      examples:
+      - appointment_booked
+    VariableType:
+      type: string
+      enum:
+      - boolean
+      - string
+      - number
+      - choice
+    Verdict:
+      type: string
+      enum:
+      - pass
+      - fail
+      - not_applicable
     VersionDetail:
       allOf:
       - $ref: '#/components/schemas/VersionSummary'

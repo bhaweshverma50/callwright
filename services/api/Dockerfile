@@ -25,6 +25,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 FROM ${PYTHON_IMAGE} AS runtime
+# 007: PyAV (recording decode for the long-silences check) and google-re2 (custom phrase
+# patterns) install as manylinux wheels that bundle FFmpeg and RE2, so no system packages are needed.
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

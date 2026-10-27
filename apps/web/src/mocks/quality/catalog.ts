@@ -1,0 +1,222 @@
+/**
+ * The 12 built-in checks of spec 007 (data-model.md "Built-in catalog"), as the mock API serves
+ * them. Display order is alphabetical by display name; the UI sorts again.
+ */
+import type { Evaluator, JudgeModel, SettingsField } from "../../api/quality";
+
+export const JUDGE_MODELS: JudgeModel[] = [{ model_id: "openai/gpt-5-mini", display_name: "GPT-5 mini", is_default: true }];
+export const DEFAULT_JUDGE = JUDGE_MODELS[0]!.model_id;
+
+const judgeModel: SettingsField = {
+  key: "judge_model",
+  label: "Judge model",
+  type: "select",
+  options_source: "judge_models",
+  options: JUDGE_MODELS.map((m) => m.model_id),
+  default: DEFAULT_JUDGE,
+  helper: "The model that reads the call and scores it. Default {default}.",
+};
+
+const int = (key: string, label: string, min: number, max: number, def: number, helper: string): SettingsField => ({
+  key,
+  label,
+  type: "int",
+  min,
+  max,
+  step: 1,
+  default: def,
+  helper,
+});
+
+const ALL = ["single_prompt", "flow"] as Evaluator["agent_types"];
+const FLOW = ["flow"] as Evaluator["agent_types"];
+const at = "2026-10-16T09:00:00Z";
+
+function builtin(
+  name: string,
+  display_name: string,
+  description: string,
+  scope: "call" | "turn",
+  cost_class: "free" | "llm_judge",
+  output_kind: Evaluator["output_kind"],
+  agent_types: Evaluator["agent_types"],
+  enabled_by_default: boolean,
+  fields: SettingsField[],
+  score_range = { min: 0, max: 1 },
+): Evaluator {
+  return {
+    id: `evl_builtin_${name}`,
+    kind: "builtin",
+    evaluator_type: name,
+    name,
+    display_name,
+    description,
+    scope,
+    cost_class,
+    output_kind,
+    agent_types,
+    settings_schema: { fields },
+    score_range,
+    current_version: name === "intent_fulfillment" ? 2 : 1,
+    enabled_by_default,
+    config: null,
+    deleted_at: null,
+  };
+}
+
+export const BUILTINS: Evaluator[] = [
+  builtin(
+    "anomaly_detection",
+    "Anomaly detection",
+    "Flags calls that look unlike this agent's recent calls, without needing labels.",
+    "call",
+    "free",
+    "anomaly",
+    ALL,
+    false,
+    [
+      {
+        key: "threshold",
+        label: "Distance threshold",
+        type: "number",
+        min: 0,
+        max: 1,
+        step: 0.05,
+        default: 0.7,
+        helper: "Calls further than this from their nearest neighbours are flagged. Default {default}.",
+      },
+      int("window_days", "Comparison window", 1, 365, 30, "Compare with calls from the last {default} days by default."),
+      int("min_sample_size", "Minimum comparable calls", 5, 500, 30, "Below this many calls the check reads insufficient data. Default {default}."),
+      int("knn_k", "Nearest neighbours", 1, 50, 10, "How many similar calls the distance is averaged over. Default {default}."),
+      int(
+        "backfill_per_run",
+        "Backfill per run",
+        0,
+        20,
+        5,
+        "Older calls prepared per run when there are too few. 0 turns backfill off. Default {default}.",
+      ),
+    ],
+  ),
+  builtin(
+    "factual_consistency",
+    "Factual consistency",
+    "Replies stay grounded in what the knowledge base returned during the call.",
+    "call",
+    "llm_judge",
+    "class",
+    ALL,
+    false,
+    [judgeModel],
+  ),
+  builtin("flow_completion", "Flow completion", "The call reached an end or transfer node.", "call", "free", "class", FLOW, true, []),
+  builtin(
+    "intent_fulfillment",
+    "Intent fulfillment",
+    "The call achieved the goal set by the agent's instructions.",
+    "call",
+    "llm_judge",
+    "class",
+    ALL,
+    false,
+    [judgeModel, int("sample_rate_pct", "Sample rate", 1, 100, 100, "Percent of live calls judged. Default {default}%.")],
+  ),
+  builtin(
+    "kb_relevance",
+    "Knowledge retrieval relevance",
+    "Knowledge base searches returned content that answered the caller's question.",
+    "call",
+    "llm_judge",
+    "class",
+    ALL,
+    false,
+    [judgeModel],
+  ),
+  builtin(
+    "audio_silence",
+    "Long silences",
+    "Listens to the call recording, not the transcript, for long stretches of dead air.",
+    "call",
+    "free",
+    "audio_quality",
+    ALL,
+    true,
+    [
+      int("max_acceptable_silence_ms", "Maximum silence", 500, 60_000, 3_000, "Fails when any silence lasts longer than this. Default {default} ms."),
+      {
+        key: "silence_threshold_db",
+        label: "Silence level",
+        type: "number",
+        min: -80,
+        max: -10,
+        step: 1,
+        default: -40,
+        helper: "Quieter than this, in dB below the call's average level, counts as silence. Default {default} dB.",
+      },
+      int("min_silence_ms", "Shortest silence counted", 200, 10_000, 1_000, "Pauses shorter than this are ignored. Default {default} ms."),
+    ],
+    { min: 0, max: 60_000 },
+  ),
+  builtin(
+    "node_dead_end",
+    "Node dead ends",
+    "For each node visited, the conversation moved on, or ended there on purpose.",
+    "call",
+    "free",
+    "class",
+    FLOW,
+    true,
+    [],
+  ),
+  builtin(
+    "process_reward",
+    "Per-turn progress",
+    "Scores each agent turn: -1 a step back, 0 neutral, +1 progress toward the goal.",
+    "turn",
+    "llm_judge",
+    "process_reward",
+    ALL,
+    false,
+    [judgeModel],
+    { min: -1, max: 1 },
+  ),
+  builtin("stuck_loop_detector", "Stuck loops", "The conversation kept coming back to the same node.", "call", "free", "class", FLOW, true, [
+    int("max_visits_per_node", "Visits allowed per node", 2, 10, 3, "Fails when a node is visited more than this. Default {default}."),
+  ]),
+  builtin(
+    "tool_call_correctness",
+    "Tool call correctness",
+    "The agent picked the right tools with the right inputs.",
+    "call",
+    "llm_judge",
+    "class",
+    ALL,
+    false,
+    [judgeModel],
+  ),
+  builtin(
+    "transition_correctness",
+    "Transition correctness",
+    "Each transition took the right path out of its node.",
+    "call",
+    "llm_judge",
+    "class",
+    FLOW,
+    false,
+    [judgeModel],
+  ),
+  builtin(
+    "latency_slo",
+    "Turn latency",
+    "Turns where the agent took longer than the threshold to start answering.",
+    "turn",
+    "free",
+    "class",
+    ALL,
+    true,
+    [int("threshold_ms", "Latency threshold", 100, 30_000, 3_000, "Turns slower than this fail. Default {default} ms.")],
+    { min: 0, max: 30_000 },
+  ),
+];
+
+export const builtinCreatedAt = at;

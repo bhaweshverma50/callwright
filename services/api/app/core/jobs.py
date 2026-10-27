@@ -47,6 +47,10 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["sip"] = build_sip(settings)
     ctx["adapter_catalog"] = load_catalog(settings.adapter_catalog_path)
     ctx["http"] = httpx.AsyncClient(follow_redirects=False)
+    # Quality and evaluations (007): the pipeline's analyze and evaluate steps run here.
+    from app.evals.install import install as install_quality
+
+    await install_quality(settings, None, queue=ctx["jobs"], sync=False)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -71,6 +75,7 @@ def _functions() -> list[Any]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
+    from app.evals.install import job_functions as quality_jobs
     from app.knowledge.jobs import ingest_document
     from app.phone_numbers.jobs import drain_channels
     from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
@@ -85,6 +90,7 @@ def _functions() -> list[Any]:
         purge_webhook_deliveries,
         purge_analytics_audit,
         ingest_document,
+        *quality_jobs(),
     ]
 
 

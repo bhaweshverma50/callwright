@@ -18,16 +18,18 @@ import { useCall, useFlowTransitions, useTranscript, useTurnLatencies, type Call
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, CopyButton, Drawer, EmptyState, OnAir, Skeleton, TabPanel, Tabs, TruncatedText } from "../../components";
 import { useMediaQuery } from "../../lib/useMediaQuery";
-import { AnalysisTable } from "./AnalysisTable";
 import { CostHeader, CostPanel } from "./CostBreakdown";
 import { CHANNEL_LABELS, ORIGIN_LABELS, REASON_LABELS, STATUS_LABELS } from "./filters";
 import { FlowPath } from "./FlowPath";
 import { mss, phone, STATUS_TONES, usd, whenLong } from "./format";
+import { CallAnalysisPanel } from "./quality/CallAnalysisPanel";
+import { QualityChecks } from "./quality/QualityChecks";
+import { YourReview } from "./quality/YourReview";
 import { LatencyPanel } from "./LatencyPanel";
 import { RecordingPlayer } from "./RecordingPlayer";
 import { Transcript } from "./Transcript";
 
-export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "flow";
+export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
 function Fact({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
   return (
@@ -93,19 +95,17 @@ function Header({ call }: { call: CallDetail }) {
   );
 }
 
-function QualityEmpty() {
-  return (
-    <div className="flex items-start gap-3 rounded-panel border border-dashed border-line-strong px-4 py-3.5">
-      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
-      <div>
-        <p className="text-[13px] font-medium text-fg">Quality checks appear here</p>
-        <p className="text-[12.5px] text-fg-3">Turn on evaluators for this agent to score its calls and add your own review.</p>
-      </div>
-    </div>
-  );
-}
-
-function Body({ callId, tab, onTab }: { callId: string; tab: DrawerTab; onTab: (t: DrawerTab) => void }) {
+function Body({
+  callId,
+  tab,
+  onTab,
+  onLabelled,
+}: {
+  callId: string;
+  tab: DrawerTab;
+  onTab: (t: DrawerTab) => void;
+  onLabelled?: (label: "good" | "bad" | null) => void;
+}) {
   const call = useCall(callId);
   const wide = useMediaQuery("(min-width: 640px)");
   const live = call.data?.status === "in_progress";
@@ -138,6 +138,12 @@ function Body({ callId, tab, onTab }: { callId: string; tab: DrawerTab; onTab: (
     { value: "latency", label: "Latency", icon: icons ? <ChartNoAxesColumn aria-hidden /> : undefined },
     { value: "cost", label: "Cost", icon: icons ? <Receipt aria-hidden /> : undefined },
     { value: "analysis", label: "Analysis", icon: icons ? <ClipboardText aria-hidden /> : undefined },
+    {
+      value: "quality",
+      label: "Quality",
+      icon: icons ? <ShieldCheck aria-hidden /> : undefined,
+      ...(c.quality.fail_count ? { alerts: c.quality.fail_count } : {}),
+    },
     ...(flowItems.length
       ? [{ value: "flow", label: "Flow path", icon: icons ? <GitBranch aria-hidden /> : undefined, count: flowItems.length }]
       : []),
@@ -171,9 +177,12 @@ function Body({ callId, tab, onTab }: { callId: string; tab: DrawerTab; onTab: (
           )}
         </TabPanel>
         <TabPanel value="analysis">
-          <div className="flex flex-col gap-6">
-            <AnalysisTable call={c} />
-            <QualityEmpty />
+          <CallAnalysisPanel call={c} />
+        </TabPanel>
+        <TabPanel value="quality">
+          <div className="flex flex-col gap-5">
+            <YourReview callId={c.call_id} onLabelled={onLabelled} />
+            <QualityChecks callId={c.call_id} canRerun={c.status === "completed" || c.status === "voicemail"} />
           </div>
         </TabPanel>
         {flowItems.length > 0 && (
@@ -195,11 +204,16 @@ export function CallDetailDrawer({
   tab,
   onTab,
   onClose,
+  onLabelled,
+  footer,
 }: {
   callId: string | null;
   tab: DrawerTab;
   onTab: (t: DrawerTab) => void;
   onClose: () => void;
+  /** 007: called after the viewer labels the call (the review queue offers the next call). */
+  onLabelled?: (label: "good" | "bad" | null) => void;
+  footer?: ReactNode;
 }) {
   const [lastId, setLastId] = useState(callId);
   if (callId && callId !== lastId) setLastId(callId);
@@ -210,6 +224,7 @@ export function CallDetailDrawer({
       open={Boolean(callId)}
       onOpenChange={(o) => !o && onClose()}
       width="xl"
+      footer={footer}
       title={call.data ? `Call with ${call.data.agent.name}` : "Call"}
       meta={call.data ? whenLong(call.data.started_at) : undefined}
       actions={
@@ -222,7 +237,7 @@ export function CallDetailDrawer({
         ) : null
       }
     >
-      {shown && <Body callId={shown} tab={tab} onTab={onTab} />}
+      {shown && <Body callId={shown} tab={tab} onTab={onTab} onLabelled={onLabelled} />}
     </Drawer>
   );
 }

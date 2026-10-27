@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "../mocks/node";
 import { resetMockDb } from "../mocks/db";
 import { resetMockCalls } from "../mocks/calls/handlers";
+import { resetQualityMocks } from "../mocks/quality/handlers";
 import { resetWakeForTests } from "../api/wakeGate";
 
 // Animations finish instantly in tests, so tickers and transitions show their final state.
@@ -40,6 +41,7 @@ afterEach(() => {
   server.resetHandlers();
   resetMockDb();
   resetMockCalls();
+  resetQualityMocks();
   resetWakeForTests();
   localStorage.clear();
 });

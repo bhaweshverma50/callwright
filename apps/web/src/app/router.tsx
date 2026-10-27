@@ -20,6 +20,7 @@ import { ResetPassword } from "../routes/public/ResetPassword";
 import { VerifyEmail } from "../routes/public/VerifyEmail";
 import { SettingsPage } from "../routes/settings/SettingsPage";
 import "../routes/agents/tools";
+import "../routes/agents/quality";
 import { knowledgeRoutes } from "../routes/knowledge";
 
 /*
@@ -40,6 +41,8 @@ const DashboardPage = lazy(() => import("../routes/dashboard/DashboardPage").the
 const PhoneNumbersPage = lazy(() => import("../routes/channels/PhoneNumbersPage").then((m) => ({ default: m.PhoneNumbersPage })));
 const NewFlowAgentPage = lazy(() => import("../routes/flows/NewFlowAgentPage").then((m) => ({ default: m.NewFlowAgentPage })));
 const FlowBuilderPage = lazy(() => import("../routes/flows/FlowBuilderPage").then((m) => ({ default: m.FlowBuilderPage })));
+const ReviewPage = lazy(() => import("../routes/review/ReviewPage").then((m) => ({ default: m.ReviewPage })));
+const CalibrationPage = lazy(() => import("../routes/calibration/CalibrationPage").then((m) => ({ default: m.CalibrationPage })));
 const AgentTestingPage = lazy(() => import("../routes/agents/AgentTestingPage").then((m) => ({ default: m.AgentTestingPage })));
 
 /** Agent builder (spec 002, T024), browser test calls (003) and the flow builder (004). */
@@ -60,8 +63,6 @@ const placeholderRoutes: RouteObject[] = [
   { path: "datasets", element: <AreaPlaceholder to="/datasets" /> },
   { path: "simulations", element: <AreaPlaceholder to="/simulations" /> },
   { path: "simulations/runs/:id", element: <RecordPlaceholder to="/simulations" prefix="srun" kind="simulation run" /> },
-  { path: "review", element: <AreaPlaceholder to="/review" /> },
-  { path: "calibration", element: <AreaPlaceholder to="/calibration" /> },
   { path: "issues", element: <AreaPlaceholder to="/issues" /> },
   { path: "issues/:id", element: <RecordPlaceholder to="/issues" prefix="iss" kind="issue" /> },
 ];
@@ -112,6 +113,8 @@ export const routes: RouteObject[] = [
                   { path: BILLING_ITEM.to.slice(1), element: <BillingPage /> },
                   { path: "settings", element: <SettingsPage /> },
                   { path: "phone-numbers", element: <PhoneNumbersPage /> },
+                  { path: "review", element: <ReviewPage /> },
+                  { path: "calibration", element: <CalibrationPage /> },
                   ...agentRoutes,
                   ...knowledgeRoutes,
                   ...placeholderRoutes,
