@@ -44,7 +44,7 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Dashboard: sparkline dot was stretched into an oval and the line stopped short (pathLength with a non-scaling stroke); copilot dock mic is now a soft secondary button with a divider before "Ask about your data".
 - Sentiment shows "Unknown" because post-call analysis is spec 007 (not built; pipeline step `analyze` is skipped).
 
-## Homepage playground, test checkout, UI polish (2026-10-27, not yet committed or deployed)
+## Homepage playground, test checkout, UI polish (2026-10-27, committed 51ccbe6, not deployed)
 - Homepage playground: visitors call a demo agent from the browser (clinic, roadside, loan) and see each reply's latency and the running cost. Public `GET /v1/public/demo` and `POST /v1/public/demo-calls`, 3 calls per IP per hour, 2 minutes per call, charged to the demo workspace (created: `ws_01M5YB54ZTTDHJSVXQCB9D21FF`, ids in `deploy/cloudrun/deploy.sh`). Details: docs/OPERATIONS.md section 5.
 - Test checkout: "Add funds" opens `/checkout/{session}` in the web app with Stripe-style test cards for success and every decline. Section 6.
 - `useWebCall` hook extracted from `WebCallPanel` (shared with the playground); flow builder nodes and canvas restyled solid and crisp; dashboard sparkline dot and draw-in fixed; copilot dock mic is secondary; VM rollouts prune old images.
@@ -52,8 +52,11 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Deploy: commit, then `deploy.sh ... build api` and the Vercel deploy (no VM or voice change).
 
 ## Wave 4 (started 2026-10-27)
-- 4a, spec 007 quality and evals: one agent building in worktree `../callwright-w4-quality` (branch `w4-quality`, test DB `callwright_test_w4q`, Redis db 14). Merge, re-chain its `s007_*` migrations after `s006_0002`, run every suite, push, deploy (it adds migrations, so `deploy.sh ... build migrate api`).
-- 4b, spec 008 testing and simulation, starts after 007 merges (it uses 007's judge and evaluations).
+- 4a, spec 007 quality and evals: merged into main 2026-10-27 (merge 2aecc70, 90/90 tasks). Post-call summary, sentiment and analysis variables for every call, quality checks with verdicts and reasons, labels, calibration, custom checks, review queue; Quality tabs in the call drawer and agent editor, Review and Calibration pages. Migration `s007_0001` (after `s006_0002`). New optional settings `EVAL_JUDGE_MODELS` (default `openai/gpt-5-mini`), `EVAL_JUDGE_MODEL`, `EVAL_CONCURRENCY=4`, `EVAL_TIMEOUT_S=60`, `EVAL_JUDGE_PASS_CUTOFF=0.5`, `CALIBRATION_MIN_SAMPLE=5`; no new secrets. The migrate role also syncs the built-in evaluator catalog.
+- Suites on the merge: API 1688, web 251, worker 480, contracts and generated types up to date.
+- Not deployed yet: `deploy.sh ... build migrate api`, then the VM worker rollout (new jobs `evaluate_call`, `rerun_analysis`), then Vercel. Voice worker unchanged.
+- Open: the `evals` key in agent config (002) is superseded by per-agent evaluator settings and can be removed; judges run without a pinned temperature (the LLM client has no parameter); judge quality is untested against real models.
+- 4b, spec 008 testing and simulation, starts next (it uses 007's judge and evaluations).
 
 ## Next, in order
 1. Place a hosted test call to confirm the faster greeting and answers (last measured live: greeting 2.1 s, answer 2.7 s). Note: `worker-hint` prints the HEAD tag; pin `CW_API_IMAGE` and `CW_VOICE_IMAGE` to tags that were actually built.
