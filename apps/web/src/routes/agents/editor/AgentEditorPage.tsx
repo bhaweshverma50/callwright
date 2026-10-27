@@ -255,7 +255,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
 
       <WorkLayout
         main={
-          <Tabs value={tab} onValueChange={setTab} items={tabs} aria-label="Agent settings">
+          <Tabs value={tab} onValueChange={setTab} items={tabs} density="compact" aria-label="Agent settings">
             <TabPanel value="basics">
               <BasicSection draft={draft} catalogs={catalogs} onOpenAssistant={() => setAssistant(true)} />
             </TabPanel>
