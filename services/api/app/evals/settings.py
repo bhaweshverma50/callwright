@@ -117,7 +117,7 @@ def effective(
             if hi is not None and clamped > hi:
                 clamped = hi
             if kind == "int":
-                clamped = int(round(clamped))
+                clamped = round(clamped)
             if clamped != value and key in stored:
                 adjusted.append(key)
             value = clamped

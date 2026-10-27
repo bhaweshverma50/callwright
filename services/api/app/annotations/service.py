@@ -72,8 +72,8 @@ async def put_mine(
     now = datetime.now(UTC)
     await session.execute(
         text(
-            "insert into annotations (id, workspace_id, call_id, user_id, user_display_name, label, note, created_at, "
-            "updated_at) values (:id, :ws, :call, :user, :name, :label, :note, :now, :now) "
+            "insert into annotations (id, workspace_id, call_id, user_id, user_display_name, label, note, "
+            "created_at, updated_at) values (:id, :ws, :call, :user, :name, :label, :note, :now, :now) "
             "on conflict (call_id, user_id) do update set label = excluded.label, note = excluded.note, "
             "user_display_name = excluded.user_display_name, updated_at = excluded.updated_at"
         ),

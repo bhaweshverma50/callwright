@@ -77,14 +77,16 @@ async def sync_builtins(db: Database, settings: Settings) -> None:
             evl = builtin_id(ev.name)
             await session.execute(
                 text(
-                    "insert into evaluators (id, workspace_id, kind, evaluator_type, name, display_name, description, "
-                    "scope, cost_class, output_kind, agent_types, settings_schema, score_range, current_version, "
-                    "enabled_by_default) values (:id, null, 'builtin', :name, :name, :display, :description, :scope, "
-                    ":cost, :kind, :types, cast(:schema as jsonb), cast(:range as jsonb), :version, :default_on) "
+                    "insert into evaluators (id, workspace_id, kind, evaluator_type, name, display_name, "
+                    "description, scope, cost_class, output_kind, agent_types, settings_schema, score_range, "
+                    "current_version, enabled_by_default) values (:id, null, 'builtin', :name, :name, "
+                    ":display, :description, :scope, :cost, :kind, :types, cast(:schema as jsonb), "
+                    "cast(:range as jsonb), :version, :default_on) "
                     "on conflict (id) do update set display_name = excluded.display_name, "
-                    "description = excluded.description, scope = excluded.scope, cost_class = excluded.cost_class, "
-                    "output_kind = excluded.output_kind, agent_types = excluded.agent_types, "
-                    "settings_schema = excluded.settings_schema, score_range = excluded.score_range, "
+                    "description = excluded.description, scope = excluded.scope, "
+                    "cost_class = excluded.cost_class, output_kind = excluded.output_kind, "
+                    "agent_types = excluded.agent_types, settings_schema = excluded.settings_schema, "
+                    "score_range = excluded.score_range, "
                     "current_version = greatest(evaluators.current_version, excluded.current_version), "
                     "enabled_by_default = excluded.enabled_by_default, updated_at = now()"
                 ),
@@ -106,8 +108,9 @@ async def sync_builtins(db: Database, settings: Settings) -> None:
             spec = definition(ev, settings)
             await session.execute(
                 text(
-                    "insert into evaluator_versions (evaluator_id, version, workspace_id, definition, judge_model) "
-                    "values (:id, :version, null, cast(:definition as jsonb), :judge) on conflict do nothing"
+                    "insert into evaluator_versions (evaluator_id, version, workspace_id, definition, "
+                    "judge_model) values (:id, :version, null, cast(:definition as jsonb), :judge) "
+                    "on conflict do nothing"
                 ),
                 {
                     "id": evl,

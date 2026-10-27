@@ -74,7 +74,10 @@ def check_phrase(ctx: EvalContext, config: Mapping[str, Any]) -> EvalOutcome:
         message, matched = hit
         evidence = {"turn_indices": [message.index], "quote": quote(message.text)}
         if mode == "forbidden":
-            rationale = f'Forbidden phrase "{matched}" said by the {who} on line {message.index}: "{quote(message.text)}"'
+            rationale = (
+                f'Forbidden phrase "{matched}" said by the {who} on line {message.index}: '
+                f'"{quote(message.text)}"'
+            )
             item = ItemResult("fail", 0.0, rationale, evidence=evidence)
         else:
             rationale = f'Required phrase found on line {message.index}: "{quote(message.text)}"'

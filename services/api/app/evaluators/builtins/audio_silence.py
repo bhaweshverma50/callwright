@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
+from app.evals.scoring import Verdict
 from app.evaluators.audio import RecordingUnavailable, Silence, find_silences
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, SettingsField
 
@@ -25,9 +26,12 @@ def silence_outcome(silences: list[Silence], settings: Mapping[str, Any]) -> Eva
         return EvalOutcome([item], rationale=rationale)
     top = longest[0]
     listed = "; ".join(f"{s.duration_ms:,} ms at {clock(s.start_ms)}" for s in longest)
-    verdict = "fail" if top.duration_ms > limit else "pass"
+    verdict: Verdict = "fail" if top.duration_ms > limit else "pass"
     side = "over" if verdict == "fail" else "within"
-    rationale = f"Longest silence {top.duration_ms:,} ms at {clock(top.start_ms)} is {side} the {limit:,} ms limit. Longest: {listed}."
+    rationale = (
+        f"Longest silence {top.duration_ms:,} ms at {clock(top.start_ms)} is {side} the "
+        f"{limit:,} ms limit. Longest: {listed}."
+    )
     item = ItemResult(
         verdict,
         float(top.duration_ms),
@@ -66,7 +70,9 @@ class AudioSilence(Evaluator):
             min=-80,
             max=-10,
             step=1,
-            helper="Quieter than the call's average level by this much counts as silence. Default: {default} dB.",
+            helper=(
+                "Quieter than the call's average level by this much counts as silence. Default: {default} dB."
+            ),
         ),
         SettingsField(
             "min_silence_ms",

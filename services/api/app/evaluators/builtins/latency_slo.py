@@ -11,7 +11,10 @@ from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, 
 class LatencySlo(Evaluator):
     name = "latency_slo"
     display_name = "Turn latency"
-    description = "Flags agent turns that took longer than the threshold from the end of the caller's speech to the first agent audio."
+    description = (
+        "Flags agent turns that took longer than the threshold from the end of the caller's "
+        "speech to the first agent audio."
+    )
     scope = "turn"
     enabled_by_default = True
     score_range = (0.0, 30_000.0)
@@ -40,13 +43,19 @@ class LatencySlo(Evaluator):
                 ItemResult(
                     "fail" if slow else "pass",
                     float(t.e2e_ms),
-                    f"Turn {t.turn_index} answered in {t.e2e_ms:,} ms ({'over' if slow else 'within'} {limit:,} ms).",
+                    (
+                        f"Turn {t.turn_index} answered in {t.e2e_ms:,} ms ({'over' if slow else 'within'} "
+                        f"{limit:,} ms)."
+                    ),
                     turn_index=t.turn_index,
                 )
             )
         slow_items = [i for i in items if i.verdict == "fail"]
         rationale = (
-            f"{len(slow_items)} of {len(items)} turns were slower than {limit:,} ms; slowest {max(i.score or 0 for i in slow_items):,.0f} ms."
+            (
+                f"{len(slow_items)} of {len(items)} turns were slower than {limit:,} ms; slowest "
+                f"{max(i.score or 0 for i in slow_items):,.0f} ms."
+            )
             if slow_items
             else f"All {len(items)} turns answered within {limit:,} ms."
         )

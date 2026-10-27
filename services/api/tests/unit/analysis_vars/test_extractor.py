@@ -49,6 +49,7 @@ def test_system_prompt_lists_variables_and_marks_call_as_data() -> None:
         (DAY, "tuesday", "Tuesday"),
         (DAY, "Saturday", None),  # never a value outside the set
         (NUM, 3, 3),
+        (NUM, 2.0, 2),
         (NUM, "4", 4),
         (NUM, "2.5", 2.5),
         (NUM, "two", None),

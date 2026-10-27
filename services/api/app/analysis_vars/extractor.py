@@ -53,7 +53,7 @@ def output_schema(variables: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """JSON Schema of the reply, built from the active variables (data-model ``call_analyses``)."""
     props: dict[str, Any] = {}
     for v in variables:
-        base: dict[str, Any] = {
+        base: Any = {
             "boolean": {"type": "boolean"},
             "number": {"type": "number"},
             "string": {"type": "string", "maxLength": 500},
@@ -97,7 +97,9 @@ def coerce(variable: Mapping[str, Any], raw: Any) -> Any:
         if isinstance(raw, bool):
             return None
         if isinstance(raw, int | float):
-            return raw if math.isfinite(raw) else None
+            if not math.isfinite(raw):
+                return None
+            return int(raw) if isinstance(raw, float) and raw.is_integer() else raw
         text = str(raw).strip().replace(",", ".")
         if not _NUMBER.match(text):
             return None

@@ -167,7 +167,10 @@ async def test_agent_built_published_called_and_charged(
     assert {line["component"] for line in breakdown["lines"]} >= {"stt", "llm", "tts"}
     # 007: post-call analysis (and any model-judge check) is a separate feature charge.
     features = owner_sql(
-        "select coalesce(sum(billable_cost_usd), 0) from usage_events where ref_id = %s and feature_key <> 'calls'",
+        (
+            "select coalesce(sum(billable_cost_usd), 0) from usage_events where ref_id = %s and "
+            "feature_key <> 'calls'"
+        ),
         (call_id,),
     )[0][0]
     assert await _balance(client, account) == balance_before - cost_total - features

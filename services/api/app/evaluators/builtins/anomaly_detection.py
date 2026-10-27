@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
+from app.evals.scoring import Verdict
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, SettingsField
 
 
@@ -27,7 +28,10 @@ class AnomalyDetection(Evaluator):
             min=0,
             max=1,
             step=0.05,
-            helper="Calls whose mean distance to their nearest neighbours is above this are flagged. Default: {default}.",
+            helper=(
+                "Calls whose mean distance to their nearest neighbours is above this are flagged. "
+                "Default: {default}."
+            ),
         ),
         SettingsField(
             "window_days",
@@ -67,7 +71,9 @@ class AnomalyDetection(Evaluator):
             min=0,
             max=20,
             step=1,
-            helper="Older calls prepared for comparison on each run; 0 turns backfill off. Default: {default}.",
+            helper=(
+                "Older calls prepared for comparison on each run; 0 turns backfill off. Default: {default}."
+            ),
         ),
     )
 
@@ -84,11 +90,12 @@ class AnomalyDetection(Evaluator):
         distances = list(found.distances)
         score = sum(distances) / len(distances)
         threshold = float(settings["threshold"])
-        verdict = "fail" if score > threshold else "pass"
+        verdict: Verdict = "fail" if score > threshold else "pass"
         side = "above" if verdict == "fail" else "within"
         rationale = (
             f"Mean distance {score:.2f} to the {len(distances)} nearest calls is {side} the "
-            f"{threshold:.2f} threshold ({found.comparable} comparable calls in {settings['window_days']} days)."
+            f"{threshold:.2f} threshold ({found.comparable} comparable calls in "
+            f"{settings['window_days']} days)."
         )
         item = ItemResult(verdict, round(score, 4), rationale, evidence={"neighbours": len(distances)})
         return EvalOutcome([item], rationale=rationale)

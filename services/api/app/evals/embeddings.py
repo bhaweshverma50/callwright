@@ -91,8 +91,8 @@ async def store(
     vector = (await embedder.embed([source]))[0]
     await session.execute(
         text(
-            "insert into call_embeddings (call_id, workspace_id, agent_id, ended_at, embedding, model, source_sha256) "
-            "values (:id, :ws, :agent, :ended, cast(:vec as vector), :model, :sha) "
+            "insert into call_embeddings (call_id, workspace_id, agent_id, ended_at, embedding, model, "
+            "source_sha256) values (:id, :ws, :agent, :ended, cast(:vec as vector), :model, :sha) "
             "on conflict (call_id) do update set embedding = excluded.embedding, model = excluded.model, "
             "source_sha256 = excluded.source_sha256, ended_at = excluded.ended_at"
         ),

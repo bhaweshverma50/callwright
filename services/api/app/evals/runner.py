@@ -112,8 +112,9 @@ async def start_group(
     inserted = (
         await session.execute(
             text(
-                "insert into evaluator_run_groups (run_group_id, workspace_id, call_id, trigger, idempotency_key, "
-                "created_by) values (:g, :ws, :call, :trigger, :key, :user) on conflict do nothing returning run_group_id"
+                "insert into evaluator_run_groups (run_group_id, workspace_id, call_id, trigger, "
+                "idempotency_key, created_by) values (:g, :ws, :call, :trigger, :key, :user) "
+                "on conflict do nothing returning run_group_id"
             ),
             {
                 "g": group_id,
@@ -413,7 +414,8 @@ async def execute_group(
         open_runs = (
             await session.execute(
                 text(
-                    "select count(*) from evaluator_runs where run_group_id = :g and status in ('pending', 'running')"
+                    "select count(*) from evaluator_runs where run_group_id = :g and status in "
+                    "('pending', 'running')"
                 ),
                 {"g": run_group_id},
             )

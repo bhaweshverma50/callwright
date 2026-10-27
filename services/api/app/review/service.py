@@ -20,22 +20,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 Strategy = Literal["random", "failed", "disagreement"]
 
 _BASE = """
-with cur as (
-  select distinct on (r.call_id, r.evaluator_id) r.call_id, r.status, r.verdict
-    from evaluator_runs r
-   where r.superseded_at is null and r.created_at >= :since
-   order by r.call_id, r.evaluator_id, r.created_at desc
-), agg as (
-  select call_id,
-         count(*) filter (where status = 'completed' and verdict = 'pass') as p,
-         count(*) filter (where status = 'completed' and verdict = 'fail') as f
-    from cur group by call_id
-), scope as (
+with scope as (
   select c.id, c.agent_id, a.name as agent_name, c.ended_at, coalesce(c.billable_seconds, 0) as duration_s,
          c.sentiment, coalesce(agg.p, 0) as p, coalesce(agg.f, 0) as f
     from calls c
     join agents a on a.id = c.agent_id
-    left join agg on agg.call_id = c.id
+    left join lateral (
+      select count(*) filter (where cur.verdict = 'pass') as p,
+             count(*) filter (where cur.verdict = 'fail') as f
+        from (
+          select distinct on (r.evaluator_id) r.status, r.verdict
+            from evaluator_runs r
+           where r.call_id = c.id and r.workspace_id = c.workspace_id and r.superseded_at is null
+           order by r.evaluator_id, r.created_at desc
+        ) cur
+       where cur.status = 'completed'
+    ) agg on true
    where c.origin = 'live' and c.status in ('completed', 'voicemail') and c.ended_at >= :since
      {agent}
      and not exists (select 1 from annotations n where n.call_id = c.id and n.user_id = :uid)

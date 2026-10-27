@@ -79,7 +79,7 @@ async def list_evaluators(
     if kind:
         query = query.where(EvaluatorRow.kind == kind)
     if agent_type:
-        query = query.where(EvaluatorRow.agent_types.any(agent_type))
+        query = query.where(EvaluatorRow.agent_types.contains([agent_type]))
     if not include_deleted:
         query = query.where(EvaluatorRow.deleted_at.is_(None))
     rows = list((await session.execute(query)).scalars())

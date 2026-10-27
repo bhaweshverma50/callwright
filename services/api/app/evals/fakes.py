@@ -82,13 +82,13 @@ def judge_reply(messages: list[ChatMessage], system: str | None) -> str:
         turns = []
         for t in wanted:
             text = texts.get(t, "").lower()
-            score = -1 if ("sorry" in text and "cannot" in text) else (1 if len(text) > 25 else 0)
-            reason = "Moves the call forward." if score == 1 else "Holds the call in place."
+            turn_score = -1 if ("sorry" in text and "cannot" in text) else (1 if len(text) > 25 else 0)
+            reason = "Moves the call forward." if turn_score == 1 else "Holds the call in place."
             turns.append(
                 {
                     "turn": t,
-                    "score": score,
-                    "rationale": reason if score >= 0 else "Refuses without a way forward.",
+                    "score": turn_score,
+                    "rationale": reason if turn_score >= 0 else "Refuses without a way forward.",
                 }
             )
         return json.dumps({"turns": turns})

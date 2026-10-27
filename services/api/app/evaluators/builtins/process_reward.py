@@ -59,7 +59,10 @@ class ProcessReward(Evaluator):
         ]
         regressions = [i for i in items if i.verdict == "fail"]
         rationale = (
-            f"{len(regressions)} of {len(items)} agent turns went backwards; first at turn {regressions[0].turn_index}: {regressions[0].rationale}"
+            (
+                f"{len(regressions)} of {len(items)} agent turns went backwards; first at turn "
+                f"{regressions[0].turn_index}: {regressions[0].rationale}"
+            )
             if regressions
             else f"No agent turn went backwards across {len(items)} turns."
         )

@@ -27,7 +27,7 @@ from app.core.config import Settings
 from app.core.db import Database
 from app.main import create_app
 
-pytest_plugins = ("tests.runtime_support",)
+pytest_plugins = ("tests.runtime_support", "tests.quality_support")
 
 API_DIR = Path(__file__).resolve().parents[1]
 PG = os.environ.get("TEST_PG", "localhost:55432")

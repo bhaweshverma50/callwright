@@ -57,7 +57,7 @@ def decode_levels(data: bytes) -> npt.NDArray[np.float64]:
 
     channels: list[list[npt.NDArray[np.float64]]] = []
     try:
-        with av.open(io.BytesIO(data)) as container:
+        with av.open(io.BytesIO(data), mode="r") as container:
             streams = list(container.streams.audio)
             if not streams:
                 raise RecordingUnavailable("the recording has no audio")

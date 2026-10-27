@@ -40,9 +40,7 @@ async def list_variables(request: Request, principal: CurrentPrincipal, agent_id
     return {"items": [service.variable_view(v) for v in rows]}
 
 
-@router.post(
-    "/agents/{agent_id}/analysis-variables", status_code=201, responses=problem_responses(409, 422)
-)
+@router.post("/agents/{agent_id}/analysis-variables", status_code=201, responses=problem_responses(409, 422))
 async def create_variable(
     request: Request, principal: CurrentPrincipal, agent_id: AgentId, body: VariableInput
 ) -> dict[str, Any]:

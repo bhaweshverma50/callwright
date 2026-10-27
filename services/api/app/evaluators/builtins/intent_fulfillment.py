@@ -40,7 +40,9 @@ class IntentFulfillment(Evaluator):
             min=1,
             max=100,
             step=1,
-            helper="Share of live calls judged automatically; manual re-runs always judge. Default: {default}%.",
+            helper=(
+                "Share of live calls judged automatically; manual re-runs always judge. Default: {default}%."
+            ),
         ),
     )
 

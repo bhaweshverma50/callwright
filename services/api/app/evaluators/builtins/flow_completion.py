@@ -45,7 +45,10 @@ class FlowCompletion(Evaluator):
             item = ItemResult(
                 "fail",
                 0.0,
-                f'The call stopped on "{label}" ({kind or "unknown"} node) without reaching an end or transfer node.',
+                (
+                    f'The call stopped on "{label}" ({kind or "unknown"} node) without reaching an end or '
+                    "transfer node."
+                ),
                 flow_node_id=node,
                 flow_node_label=label,
             )

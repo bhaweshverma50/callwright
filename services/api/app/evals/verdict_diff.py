@@ -17,7 +17,7 @@ async def diffs(
 ) -> list[tuple[VerdictDiff, str, dict[str, int | None]]]:
     """(diff, display name, {left version, right version}) per evaluator, ordered by display name."""
     sql = (
-        "select cur.call_id, cur.evaluator_id, cur.evaluator_version, cur.verdict, cur.score, cur.rationale, "
+        "select cur.call_id, cur.evaluator_id, cur.evaluator_version, cur.verdict, cur.score, cur.rationale, "  # noqa: S608
         "e.name, e.display_name from ("
         + LATEST_CURRENT.format(where="and r.call_id = any(:ids) and r.status = 'completed'")
         + ") cur join evaluators e on e.id = cur.evaluator_id"

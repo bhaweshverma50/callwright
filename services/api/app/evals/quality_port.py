@@ -33,7 +33,7 @@ class QualityPort:
         rows = (
             await session.execute(
                 text(
-                    "select cur.call_id, cur.status, cur.verdict from ("
+                    "select cur.call_id, cur.status, cur.verdict from ("  # noqa: S608
                     + LATEST_CURRENT.format(where="and r.call_id = any(:ids)")
                     + ") cur"
                 ),
@@ -111,13 +111,13 @@ class QualityPort:
     ) -> tuple[list[EvaluatorStat], int]:
         agent_filter = "and c.agent_id = any(:agents)" if agent_ids else ""
         cur = (
-            "select distinct on (r.call_id, r.evaluator_id) r.call_id, r.evaluator_id, r.status, r.verdict, r.score "
-            "from evaluator_runs r join calls c on c.id = r.call_id where r.superseded_at is null "
+            "select distinct on (r.call_id, r.evaluator_id) r.call_id, r.evaluator_id, r.status, r.verdict, "  # noqa: S608
+            "r.score from evaluator_runs r join calls c on c.id = r.call_id where r.superseded_at is null "
             f"and c.origin = 'live' and c.created_at >= :start and c.created_at < :end {agent_filter} "
             "order by r.call_id, r.evaluator_id, r.created_at desc"
         )
         sql = (
-            "select e.id, e.name, e.display_name, e.scope, "
+            "select e.id, e.name, e.display_name, e.scope, "  # noqa: S608
             "count(*) filter (where cur.status = 'completed' and cur.verdict = 'pass'), "
             "count(*) filter (where cur.status = 'completed' and cur.verdict = 'fail'), "
             "count(*) filter (where cur.status = 'completed' and cur.verdict = 'not_applicable'), "
@@ -137,7 +137,7 @@ class QualityPort:
         headline = set((await session.execute(headline_query)).scalars())
         total = (
             await session.execute(
-                text(f"select count(distinct cur.call_id) from ({cur}) cur where cur.status = 'completed'"),
+                text(f"select count(distinct cur.call_id) from ({cur}) cur where cur.status = 'completed'"),  # noqa: S608
                 params,
             )
         ).scalar_one()

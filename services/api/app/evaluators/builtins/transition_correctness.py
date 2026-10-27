@@ -105,7 +105,10 @@ class TransitionCorrectness(Evaluator):
             )
         failed = [i for i in items if i.verdict == "fail"]
         rationale = (
-            f'{len(failed)} of {len(items)} transitions took the wrong edge; first at "{failed[0].flow_node_label}": {failed[0].rationale}'
+            (
+                f"{len(failed)} of {len(items)} transitions took the wrong edge; first at "
+                f'"{failed[0].flow_node_label}": {failed[0].rationale}'
+            )
             if failed
             else f"Every judged transition took a right edge ({len(items)} transitions)."
         )

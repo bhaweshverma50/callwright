@@ -44,7 +44,7 @@ async def resolved_labels(session: AsyncSession, agent: str, params: dict[str, A
     rows = (
         await session.execute(
             text(
-                "select n.call_id, n.label from annotations n join calls c on c.id = n.call_id "
+                "select n.call_id, n.label from annotations n join calls c on c.id = n.call_id "  # noqa: S608
                 f"where c.origin = 'live' and c.ended_at >= :since {agent}"
             ),
             params,
