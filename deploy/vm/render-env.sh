@@ -27,16 +27,48 @@ PREV_VOICE_IMAGE="$(sed -n 's/^VOICE_IMAGE=//p' .env 2>/dev/null || true)"
 VOICE_IMAGE="${CW_VOICE_IMAGE:-${PREV_VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}}"
 PREV_SIP_IMAGE="$(sed -n 's/^SIP_IMAGE=//p' .env 2>/dev/null || true)"
 SIP_IMAGE="${CW_SIP_IMAGE:-${PREV_SIP_IMAGE:-livekit/sip:v1.2.0}}"
-printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\nVOICE_IMAGE=%s\nSIP_IMAGE=%s\n' \
-  "$REDIS_PASSWORD" "$API_IMAGE" "$VOICE_IMAGE" "$SIP_IMAGE" > .env
+# Telephony (010) is sticky like the images: CW_LIVEKIT_SIP_HOST turns livekit-sip on (set it
+# empty to turn it off) and CW_LAB_PBX=true|false the lab PBX; later renders keep both.
+PREV_SIP_HOST="$(sed -n 's/^LIVEKIT_SIP_HOST=//p' .env 2>/dev/null || true)"
+LIVEKIT_SIP_HOST="${CW_LIVEKIT_SIP_HOST-$PREV_SIP_HOST}"
+PREV_LAB_PBX="$(sed -n 's/^LAB_PBX=//p' .env 2>/dev/null || true)"
+LAB_PBX="${CW_LAB_PBX:-${PREV_LAB_PBX:-false}}"
+PROFILES=""
+[ -n "$LIVEKIT_SIP_HOST" ] && PROFILES="telephony"
+[ "$LAB_PBX" = "true" ] && PROFILES="${PROFILES:+$PROFILES,}lab"
+if [ "$LAB_PBX" = "true" ] && [ -z "$LIVEKIT_SIP_HOST" ]; then
+  echo "CW_LAB_PBX=true needs CW_LIVEKIT_SIP_HOST (the lab PBX talks to livekit-sip)" >&2
+  exit 1
+fi
+# COMPOSE_PROFILES makes a plain `docker compose up -d` include sip and lab-pbx.
+printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\nVOICE_IMAGE=%s\nSIP_IMAGE=%s\nLIVEKIT_SIP_HOST=%s\nLAB_PBX=%s\nCOMPOSE_PROFILES=%s\n' \
+  "$REDIS_PASSWORD" "$API_IMAGE" "$VOICE_IMAGE" "$SIP_IMAGE" "$LIVEKIT_SIP_HOST" "$LAB_PBX" "$PROFILES" > .env
 export REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET
 envsubst < livekit.yaml.tmpl > livekit.yaml
-# Telephony (010): sip.yaml only when the SIP service is being turned on (README.md, "Telephony").
-if [ "${CW_SIP_ENABLED:-false}" = "true" ]; then
+# Telephony (010): sip.yaml only when the SIP service is on (README.md, "Telephony"). TLS (5061,
+# WhatsApp) only once its certificate is in sip-certs/.
+if [ -n "$LIVEKIT_SIP_HOST" ]; then
   SIP_RTP_PORTS="${CW_SIP_RTP_PORTS:-51000-51999}"
   export SIP_RTP_PORTS
   envsubst < sip.yaml.tmpl > sip.yaml
   mkdir -p sip-certs
+  if [ -f sip-certs/fullchain.pem ]; then
+    cat sip-tls.yaml.tmpl >> sip.yaml
+  else
+    echo "sip.yaml: no sip-certs/fullchain.pem, SIP over TLS (5061) stays off" >&2
+  fi
+fi
+# Lab PBX: the softphone password is made once and kept in lab-pbx/phone-password.
+if [ "$LAB_PBX" = "true" ]; then
+  [ -s lab-pbx/phone-password ] || openssl rand -hex 16 > lab-pbx/phone-password
+  LAB_PHONE_PASSWORD="$(cat lab-pbx/phone-password)"
+  LAB_PUBLIC_IP="${CW_LAB_PUBLIC_IP:-34.180.13.164}"
+  LAB_CALLER_PREFIX="${CW_LAB_CALLER_PREFIX:-+91900000000}"
+  export LAB_PHONE_PASSWORD LAB_PUBLIC_IP LAB_CALLER_PREFIX
+  envsubst '${LAB_PHONE_PASSWORD} ${LAB_PUBLIC_IP} ${LAB_CALLER_PREFIX}' \
+    < lab-pbx/pjsip.conf.tmpl > lab-pbx/pjsip.conf
+  # Asterisk runs as its own user inside the container and must read the mounted file.
+  chmod 644 lab-pbx/pjsip.conf
 fi
 
 # worker.env: compose env_file with single-quoted literal values (no interpolation).
@@ -66,7 +98,7 @@ REDIS_URL_ENCODED_PASSWORD="$(python3 -c 'import sys, urllib.parse; print(urllib
   line ARQ_POLL_DELAY_S "${CW_ARQ_POLL_DELAY_S:-1}"
   line RECORDINGS_ENABLED "${CW_RECORDINGS_ENABLED:-false}"
   # 010: the drain cron removes SIP trunks of deleted numbers; empty keeps SIP in memory.
-  line LIVEKIT_SIP_HOST "${CW_LIVEKIT_SIP_HOST:-}"
+  line LIVEKIT_SIP_HOST "$LIVEKIT_SIP_HOST"
   line REDIS_URL "redis://:${REDIS_URL_ENCODED_PASSWORD}@127.0.0.1:6379/0"
   line LIVEKIT_MODE live
   line LIVEKIT_URL "ws://127.0.0.1:7880"
@@ -116,4 +148,4 @@ mv worker.env.tmp worker.env
   done
 } > voice.env.tmp
 mv voice.env.tmp voice.env
-echo "rendered .env, worker.env, voice.env and livekit.yaml${CW_SIP_ENABLED:+ (sip.yaml: $CW_SIP_ENABLED)}"
+echo "rendered .env, worker.env, voice.env and livekit.yaml${LIVEKIT_SIP_HOST:+, sip.yaml ($LIVEKIT_SIP_HOST)}${PROFILES:+; profiles: $PROFILES}"

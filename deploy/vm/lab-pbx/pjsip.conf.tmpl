@@ -1,0 +1,96 @@
+; Lab PBX (rendered to pjsip.conf by render-env.sh when CW_LAB_PBX=true). Stands in for a phone
+; carrier: softphones register here on port 5080 and call Callwright numbers through livekit-sip
+; (127.0.0.1:5060), and Callwright's outbound calls ring them. Nothing reaches a real phone network.
+
+[global]
+type=global
+user_agent=callwright-lab
+endpoint_identifier_order=ip,username
+
+; Softphones on the internet see the public address; livekit-sip on this host sees local ones.
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5080
+local_net=127.0.0.0/8
+local_net=10.0.0.0/8
+local_net=172.16.0.0/12
+external_media_address=${LAB_PUBLIC_IP}
+external_signaling_address=${LAB_PUBLIC_IP}
+
+[transport-tcp]
+type=transport
+protocol=tcp
+bind=0.0.0.0:5080
+local_net=127.0.0.0/8
+local_net=10.0.0.0/8
+local_net=172.16.0.0/12
+external_media_address=${LAB_PUBLIC_IP}
+external_signaling_address=${LAB_PUBLIC_IP}
+
+; livekit-sip on the same host, recognised by address (no password). rewrite_contact and
+; rtp_symmetric answer to where it really sends from, not the public address it announces.
+[livekit]
+type=endpoint
+transport=transport-udp
+context=from-callwright
+disallow=all
+allow=ulaw,alaw
+aors=livekit
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+
+[livekit]
+type=aor
+contact=sip:127.0.0.1:5060
+
+[livekit]
+type=identify
+endpoint=livekit
+match=127.0.0.1
+
+; Softphones (Linphone, Zoiper, MicroSIP): user phone1 or phone2, domain <LAB host>:5080,
+; password from lab-pbx/phone-password on the VM. Behind home NAT, hence the NAT options.
+[phone](!)
+type=endpoint
+transport=transport-udp
+context=from-phones
+disallow=all
+allow=ulaw,alaw
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+
+[phone-auth](!)
+type=auth
+auth_type=userpass
+password=${LAB_PHONE_PASSWORD}
+
+[phone-aor](!)
+type=aor
+max_contacts=1
+remove_existing=yes
+qualify_frequency=30
+
+[phone1](phone)
+auth=phone1
+aors=phone1
+callerid="Phone 1" <${LAB_CALLER_PREFIX}1>
+
+[phone1](phone-auth)
+username=phone1
+
+[phone1](phone-aor)
+
+[phone2](phone)
+auth=phone2
+aors=phone2
+callerid="Phone 2" <${LAB_CALLER_PREFIX}2>
+
+[phone2](phone-auth)
+username=phone2
+
+[phone2](phone-aor)

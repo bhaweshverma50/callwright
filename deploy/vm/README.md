@@ -136,7 +136,7 @@ It enables docker and containerd at boot, checks that every compose service has
 Copy the new files with the existing scp step: `docker-compose.yml`, `render-env.sh`,
 `idle-shutdown.sh`, `install-idle.sh` and `systemd/`.
 
-## Telephony: phone numbers and WhatsApp (spec 010, not deployed)
+## Telephony: phone numbers and WhatsApp (spec 010)
 
 The API ships phone numbers, outbound calls and WhatsApp channels, but this VM runs no SIP
 service yet. Until it does, `LIVEKIT_SIP_HOST` is unset: the API keeps SIP trunks and dispatch
@@ -145,12 +145,98 @@ rules in memory (`SIP_MODE=auto`), WhatsApp setup does not call Meta (`WHATSAPP_
 a notice) and `POST /v1/outbound-calls` answers 503 `telephony_unavailable`. Numbers can still be
 imported, labelled and given agents; nothing reaches them.
 
-What `docker-compose.yml` already has: a `sip` service (`livekit/sip`, host network, health on
-127.0.0.1:8192) in the `telephony` profile, so `docker compose up -d` never starts it.
-`sip.yaml.tmpl` is its configuration; `render-env.sh` renders `sip.yaml` only with
-`CW_SIP_ENABLED=true` and writes `LIVEKIT_SIP_HOST` into `worker.env` from `CW_LIVEKIT_SIP_HOST`.
+What `docker-compose.yml` has: a `sip` service (`livekit/sip`, host network, health on
+127.0.0.1:8192) in the `telephony` profile and a `lab-pbx` service (Asterisk) in the `lab`
+profile. `render-env.sh` turns them on and remembers the choice in `.env` (`LIVEKIT_SIP_HOST`,
+`LAB_PBX` and `COMPOSE_PROFILES`), so later renders and a plain `docker compose up -d` keep them:
 
-### Turn it on
+* `CW_LIVEKIT_SIP_HOST=sip.bhawesh.dev` renders `sip.yaml` from `sip.yaml.tmpl` (plus
+  `sip-tls.yaml.tmpl` once `sip-certs/fullchain.pem` exists), adds the `telephony` profile and
+  writes `LIVEKIT_SIP_HOST` into `worker.env`. `CW_LIVEKIT_SIP_HOST=` (empty) turns it off.
+* `CW_LAB_PBX=true` (needs the SIP host) renders `lab-pbx/pjsip.conf` and adds the `lab` profile.
+  `CW_LAB_PBX=false` turns it off.
+
+The API on Cloud Run needs `LIVEKIT_SIP_HOST` as well. `deploy/cloudrun/deploy.sh` keeps whatever
+the running service has unless you pass `LIVEKIT_SIP_HOST=...` (or `LIVEKIT_SIP_HOST=` to turn it
+off).
+
+### Lab mode: real SIP calls without a phone number
+
+For demos. Asterisk on the VM (`lab-pbx/`) stands in for the carrier: free softphone apps
+register to it and call Callwright numbers over real SIP (signalling, RTP media, DTMF), and
+Callwright's outbound calls ring them. Nothing reaches the public phone network, so there is no
+carrier account, no KYC and no per-minute cost, and the VM keeps its idle shutdown.
+
+```
+softphone --SIP 5080--> Asterisk (lab-pbx) --127.0.0.1:5060--> livekit-sip --> LiveKit room + voice agent
+```
+
+* Softphones: users `phone1` and `phone2`, caller ids `+919000000001` and `+919000000002`
+  (`CW_LAB_CALLER_PREFIX`). One password for both, made on the first render and kept in
+  `/opt/callwright/lab-pbx/phone-password`.
+* A softphone dialling any number reaches the Callwright number with that E.164.
+* Callwright dialling a number rings the softphone named by its last digit:
+  `+919000000001` rings `phone1`. Not registered gives 480, a busy phone 486.
+* Tested on a laptop with the same images in one network namespace (LiveKit 1.13.3,
+  livekit/sip v1.2.0, Asterisk 20.6): softphone to number opens a `call-in-` room with the SIP
+  participant; outbound rings a registered phone with the number as caller id and returns
+  486/480 as above. Media across the public IP is checked on the VM (step 6 below).
+
+Turn it on:
+
+1. **DNS.** Cloudflare `sip` A 34.180.13.164, DNS only (SIP and RTP cannot be proxied).
+2. **Firewall** (only the lab ports; 5060 stays closed until a carrier needs it):
+
+   ```bash
+   gcloud compute firewall-rules create callwright-lab-pbx --network default --direction INGRESS \
+     --target-tags callwright-rtc --source-ranges 0.0.0.0/0 \
+     --allow udp:5080,tcp:5080,udp:52000-52199,udp:51000-51999 \
+     --account bhaweshverma50@gmail.com --project callwright-dev
+   ```
+
+   udp 51000-51999 is livekit-sip's media range: Asterisk learns livekit-sip's real local
+   address from the first RTP packets (`strictrtp`, `rtp_symmetric`), and the open range covers
+   the first packets that go to the public address it announces.
+3. **Copy and render on the VM** (start it first; touch `keep-awake` while working):
+
+   ```bash
+   ACCOUNT=bhaweshverma50@gmail.com; PROJECT=callwright-dev; ZONE=asia-south1-a
+   gcloud compute scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh \
+     deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx \
+     callwright-rtc:/opt/callwright/ --zone $ZONE --account $ACCOUNT --project $PROJECT
+   gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
+     "cd /opt/callwright && CW_LIVEKIT_SIP_HOST=sip.bhawesh.dev CW_LAB_PBX=true ./render-env.sh \
+      && sudo docker compose build lab-pbx && sudo docker compose up -d \
+      && curl -s localhost:8192; sudo docker compose exec lab-pbx asterisk -rx 'pjsip show endpoints'"
+   ```
+
+   `scp --recurse` of `lab-pbx` copies the templates only; `pjsip.conf` and `phone-password` are
+   made on the VM and never leave it.
+4. **API.** `LIVEKIT_SIP_HOST=sip.bhawesh.dev deploy/cloudrun/deploy.sh callwright-dev
+   bhaweshverma50@gmail.com api`. Numbers imported while SIP was off point at in-memory trunks:
+   delete and import them again.
+5. **Import a number in Callwright** (Phone numbers, Import): number `+919000000100` (any E.164
+   not used by a softphone), termination address `127.0.0.1:5080`, transport UDP, no
+   credentials, inbound and outbound agents of your choice. Optionally allow inbound only from
+   `127.0.0.1/32`.
+6. **Softphone** (Linphone, Zoiper or MicroSIP; on a phone or a laptop): SIP account, username
+   `phone1`, domain `sip.bhawesh.dev:5080`, transport UDP, password from
+   `sudo cat /opt/callwright/lab-pbx/phone-password`. Codec G.711 (PCMU/PCMA).
+   * Inbound: dial `+919000000100`; the inbound agent answers.
+   * Outbound: place an outbound call from the number to `+919000000001`; the softphone rings.
+   * One-way or no audio means RTP is blocked: check the firewall rule and
+     `sudo docker compose logs lab-pbx sip`.
+
+The VM still powers off when idle. A softphone cannot wake it: open the web app first (any API
+request starts the VM and shows "Starting the call servers"), then call. Calls in progress keep it
+up (the idle check counts LiveKit rooms with participants).
+
+Security: only `phone1` and `phone2` (32-hex password) and livekit-sip on 127.0.0.1 are accepted;
+the dialplan has no route anywhere except livekit-sip and the two softphones, so a guessed
+password cannot place paid calls. To rotate the password delete `lab-pbx/phone-password` and
+render again.
+
+### Real phone numbers (carrier)
 
 1. **SIP trunk provider.** Any carrier with BYO SIP trunking: Twilio Elastic SIP Trunking, Telnyx,
    Plivo, Vonage, or an Indian carrier with SIP (Tata Tele, Airtel IQ; Indian DIDs need KYC and
@@ -169,16 +255,17 @@ What `docker-compose.yml` already has: a `sip` service (`livekit/sip`, host netw
    `CW_SIP_RTP_PORTS`). Restrict 5060 to the carrier's published signalling ranges where it
    publishes them; per-number source ranges can also be set on each number
    (`inbound_allowed_cidrs`).
-5. **Render and start** (pin the image to a release from https://github.com/livekit/sip/releases):
+5. **Render and start** (pin the image to a release from https://github.com/livekit/sip/releases;
+   the lab PBX can stay on next to a carrier):
 
    ```bash
-   cd /opt/callwright && CW_SIP_ENABLED=true CW_LIVEKIT_SIP_HOST=sip.bhawesh.dev \
+   cd /opt/callwright && CW_LIVEKIT_SIP_HOST=sip.bhawesh.dev \
      CW_SIP_IMAGE=livekit/sip:<version> ./render-env.sh
-   sudo docker compose --profile telephony up -d sip && sudo docker compose up -d worker
+   sudo docker compose up -d
    curl -s localhost:8192   # health
    ```
 
-6. **API (Cloud Run).** Set `LIVEKIT_SIP_HOST=sip.bhawesh.dev` on the API service and redeploy.
+6. **API (Cloud Run).** `LIVEKIT_SIP_HOST=sip.bhawesh.dev deploy/cloudrun/deploy.sh ... api`.
    With `LIVEKIT_MODE=live` this switches trunks, dispatch rules and WhatsApp to the real APIs.
    Numbers and WhatsApp channels saved while it was off point at in-memory trunk ids: delete
    them and import or connect them again so real trunks are created.

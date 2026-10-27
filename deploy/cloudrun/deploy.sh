@@ -198,6 +198,15 @@ step_api() {
   # once an egress service and a recordings bucket exist).
   env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
   [ -n "$url" ] && env+="@API_BASE_URL=$url"
+  # 010 telephony: LIVEKIT_SIP_HOST=sip.bhawesh.dev turns SIP on, LIVEKIT_SIP_HOST= (empty) turns
+  # it off, unset keeps what the running service has (--set-env-vars would otherwise drop it).
+  if [ -z "${LIVEKIT_SIP_HOST+set}" ] && [ "${DRY_RUN:-0}" != "1" ]; then
+    LIVEKIT_SIP_HOST="$(gc run services describe callwright-api --region "$REGION" --format json 2>/dev/null \
+      | python3 -c 'import json, sys
+env = json.load(sys.stdin)["spec"]["template"]["spec"]["containers"][0].get("env", [])
+print(next((e.get("value", "") for e in env if e["name"] == "LIVEKIT_SIP_HOST"), ""))' 2>/dev/null || true)"
+  fi
+  [ -n "${LIVEKIT_SIP_HOST:-}" ] && env+="@LIVEKIT_SIP_HOST=$LIVEKIT_SIP_HOST"
   gc run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-account "$SA" \
     --allow-unauthenticated --port 8080 --cpu 1 --memory 512Mi --concurrency 40 \
     --min-instances 0 --max-instances 3 --timeout 60s --cpu-boost \

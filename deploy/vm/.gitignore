@@ -3,3 +3,5 @@ livekit.yaml
 worker.env
 sip.yaml
 sip-certs/
+lab-pbx/pjsip.conf
+lab-pbx/phone-password

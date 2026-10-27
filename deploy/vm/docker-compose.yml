@@ -58,24 +58,39 @@ services:
     depends_on:
       - livekit
 
-  # LiveKit SIP (010 channels): carriers and WhatsApp send calls here and LiveKit dials out
-  # through it. NOT deployed yet: it only starts with the "telephony" profile
-  # (`docker compose --profile telephony up -d sip`) once sip.yaml is rendered
-  # (CW_SIP_ENABLED=true ./render-env.sh) and the firewall and DNS steps in README.md are done.
+  # LiveKit SIP (010 channels): carriers, WhatsApp and the lab PBX send calls here and LiveKit
+  # dials out through it. Only in the "telephony" profile, which render-env.sh adds to
+  # COMPOSE_PROFILES in .env once CW_LIVEKIT_SIP_HOST is set (README.md, "Telephony").
   # Pin SIP_IMAGE in .env to a release from https://github.com/livekit/sip/releases.
   sip:
     image: ${SIP_IMAGE:-livekit/sip:v1.2.0}
     profiles: ["telephony"]
     restart: unless-stopped
     network_mode: host
-    environment:
-      SIP_CONFIG_FILE: /etc/sip.yaml
+    # The image's entrypoint passes --config=/sip/config.yaml, which beats SIP_CONFIG_FILE.
     volumes:
-      - ./sip.yaml:/etc/sip.yaml:ro
+      - ./sip.yaml:/sip/config.yaml:ro
       - ./sip-certs:/certs:ro
     depends_on:
       - livekit
       - redis
+
+  # Lab PBX (Asterisk, deploy/vm/lab-pbx): a stand-in carrier for demos without a phone number.
+  # Softphones register on 5080 and call Callwright numbers; Callwright's outbound calls ring
+  # them. "lab" profile, added by render-env.sh with CW_LAB_PBX=true. Media on UDP 52000-52199.
+  lab-pbx:
+    build: ./lab-pbx
+    image: callwright-lab-pbx
+    profiles: ["lab"]
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./lab-pbx/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./lab-pbx/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./lab-pbx/rtp.conf:/etc/asterisk/rtp.conf:ro
+      - ./lab-pbx/modules.conf:/etc/asterisk/modules.conf:ro
+    depends_on:
+      - sip
 
 volumes:
   caddy_data:

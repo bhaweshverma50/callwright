@@ -1,0 +1,8 @@
+# Appended to sip.yaml by render-env.sh when sip-certs/fullchain.pem exists.
+# TLS for WhatsApp (Meta only connects over TLS) and carriers that offer it. The certificate must
+# match LIVEKIT_SIP_HOST; copy it into ./sip-certs (see README.md, "Telephony").
+tls:
+  port: 5061
+  certs:
+    - cert_file: /certs/fullchain.pem
+      key_file: /certs/privkey.pem
