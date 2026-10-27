@@ -219,10 +219,14 @@ JobFn = Callable[..., Any]
 
 
 def job_functions() -> dict[str, JobFn]:
+    from app.analysis_vars.jobs import rerun_analysis
     from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
+    from app.evals.jobs import evaluate_call
     from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
 
     return {
+        "evaluate_call": evaluate_call,
+        "rerun_analysis": rerun_analysis,
         "run_pipeline": run_pipeline,
         "start_recording": start_recording,
         "deliver_webhook": deliver_webhook,

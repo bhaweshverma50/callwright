@@ -2,7 +2,8 @@
 # Container entrypoint: picks the role from the first argument, else $ROLE (default api).
 #   api      uvicorn on $PORT behind the Cloud Run proxy (X-Forwarded-Proto/For honoured)
 #   worker   arq worker plus a minimal HTTP health server on $PORT
-#   migrate  alembic upgrade head, then the agent templates sync; exits
+#   migrate  alembic upgrade head, the agent templates sync and the built-in evaluator catalog
+#            sync (007); exits
 # Any other argument list runs as a plain command, for example
 #   docker run --rm callwright-api python -m app.dev.make_admin ops@example.com
 set -eu
@@ -25,7 +26,8 @@ case "$role" in
     ;;
   migrate)
     alembic upgrade head
-    exec python -m app.templates.jobs sync
+    python -m app.templates.jobs sync
+    exec python -m app.evaluators.registry sync
     ;;
   *)
     exec "$role" "$@"

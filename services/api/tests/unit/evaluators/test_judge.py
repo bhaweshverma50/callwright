@@ -17,7 +17,9 @@ MESSAGES = [
 ]
 
 
-def reply(score: float, rationale: str = "The agent booked it on line 2.", turns: list[int] | None = None) -> str:
+def reply(
+    score: float, rationale: str = "The agent booked it on line 2.", turns: list[int] | None = None
+) -> str:
     return json.dumps(
         {"verdict_hint": "pass", "score": score, "rationale": rationale, "evidence_turns": turns or [2]}
     )
@@ -82,7 +84,9 @@ async def test_preamble_marks_call_as_data() -> None:
 
 
 def test_turn_reply_needs_every_turn() -> None:
-    body = {"turns": [{"turn": 0, "score": 1, "rationale": "greets"}, {"turn": 2, "score": -3, "rationale": "x"}]}
+    body = {
+        "turns": [{"turn": 0, "score": 1, "rationale": "greets"}, {"turn": 2, "score": -3, "rationale": "x"}]
+    }
     parsed = parse_turn_reply(json.dumps(body), [0, 2])
     assert parsed is not None and [t.score for t in parsed] == [1, -1]
     assert parse_turn_reply(json.dumps(body), [0, 2, 4]) is None

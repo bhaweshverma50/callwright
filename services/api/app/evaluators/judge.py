@@ -106,7 +106,9 @@ def neutralise(text: str) -> str:
     return _DELIMITER.sub("[call data]", text)[:MAX_TEXT]
 
 
-def render_call(messages: Sequence[Message], tools: Sequence[ToolEvent] = (), extra: str | None = None) -> str:
+def render_call(
+    messages: Sequence[Message], tools: Sequence[ToolEvent] = (), extra: str | None = None
+) -> str:
     """The data block: numbered lines, tool events after the line they followed."""
     by_position: dict[int, list[ToolEvent]] = {}
     for tool in tools:
@@ -117,7 +119,9 @@ def render_call(messages: Sequence[Message], tools: Sequence[ToolEvent] = (), ex
         for t in by_position.get(position, []):
             args = json.dumps(dict(t.arguments or {}), sort_keys=True)[:400]
             outcome = "error" if t.is_error else "result"
-            lines.append(f"  (tool {t.name} {neutralise(args)} -> {outcome}: {neutralise(t.output or '')[:600]})")
+            lines.append(
+                f"  (tool {t.name} {neutralise(args)} -> {outcome}: {neutralise(t.output or '')[:600]})"
+            )
 
     tool_lines(-1)
     for m in messages:
@@ -130,7 +134,7 @@ def render_call(messages: Sequence[Message], tools: Sequence[ToolEvent] = (), ex
     return f"<call_data>\n{body}\n</call_data>"
 
 
-def _json_object(text: str) -> dict[str, Any] | None:
+def json_object(text: str) -> dict[str, Any] | None:
     raw = text.strip()
     if raw.startswith("```"):
         raw = raw.strip("`")
@@ -149,7 +153,7 @@ def parse_call_reply(
     text: str, valid_turns: set[int], cutoff: float, messages: Sequence[Message] = ()
 ) -> CallJudgement | None:
     """The judgement, or None when the reply is unusable (not JSON, no score, empty rationale)."""
-    data = _json_object(text)
+    data = json_object(text)
     if data is None:
         return None
     try:
@@ -179,7 +183,7 @@ def parse_call_reply(
 
 
 def parse_turn_reply(text: str, wanted: Sequence[int]) -> list[TurnJudgement] | None:
-    data = _json_object(text)
+    data = json_object(text)
     entries = data.get("turns") if data else None
     if not isinstance(entries, list):
         return None

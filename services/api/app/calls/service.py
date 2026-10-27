@@ -672,3 +672,22 @@ def recording_state(
 async def config_for(session: AsyncSession, call: Call) -> Mapping[str, Any] | None:
     snapshot = await _snapshot(session, call)
     return snapshot.config if snapshot is not None else None
+
+
+async def set_analysis(
+    session: AsyncSession,
+    call_id: str,
+    *,
+    summary: str | None,
+    sentiment: str | None,
+    values: Mapping[str, Any] | None,
+) -> None:
+    """Write post-call analysis onto the call (007 research R11): the owner module performs the
+    write; 007 keeps its own metadata (model, variable snapshot, cost) in ``call_analyses``."""
+    call = await session.get(Call, call_id)
+    if call is None:
+        raise not_found("call")
+    call.summary = summary
+    call.sentiment = sentiment
+    call.analysis = dict(values) if values is not None else None
+    await session.flush()

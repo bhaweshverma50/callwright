@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import statistics
 from collections.abc import Awaitable, Callable, Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -70,6 +71,13 @@ Outcome = Literal["done", "skipped"]
 # 007 registers ``async def handler(call_id, session) -> None`` for analyze and evaluate.
 ExternalHandler = Callable[[str, AsyncSession], Awaitable[None]]
 _external: dict[str, ExternalHandler] = {}
+# Jobs an external handler wants enqueued once its step commits (007 enqueues evaluate_call).
+_step_deferred: ContextVar[Deferred | None] = ContextVar("pipeline_step_deferred", default=None)
+
+
+def step_deferred() -> Deferred | None:
+    """The running ``analyze``/``evaluate`` step's post-commit job list (None outside a step)."""
+    return _step_deferred.get()
 
 
 def register_step_handler(step: str, handler: ExternalHandler | None) -> None:
@@ -174,7 +182,11 @@ def _external_step(name: str) -> StepHandler:
         handler = _external.get(name)
         if handler is None or ctx.call.connected_at is None:
             return "skipped"
-        await handler(ctx.call.id, ctx.session)
+        token = _step_deferred.set(ctx.deferred)
+        try:
+            await handler(ctx.call.id, ctx.session)
+        finally:
+            _step_deferred.reset(token)
         return "done"
 
     return run

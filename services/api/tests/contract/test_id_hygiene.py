@@ -23,6 +23,8 @@ PREFIX_FOR_PARAM = {
     "agent_id": "agt",
     "version_id": "agv",
     "workspace_id": "ws",
+    "evaluator_id": "evl",
+    "variable_id": "var",
 }
 WELL_FORMED_ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 

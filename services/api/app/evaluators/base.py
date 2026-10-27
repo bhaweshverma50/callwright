@@ -154,7 +154,7 @@ class EvalOutcome:
         return cls([ItemResult("not_applicable", None, reason)], rationale=f"Not applicable: {reason}")
 
 
-class Unavailable(Exception):  # noqa: N818 (domain term)
+class Unavailable(Exception):
     """The evaluator could not run (provider failure, timeout); the runner retries once."""
 
 
@@ -172,7 +172,12 @@ class SettingsField:
     helper: str | None = None
 
     def as_json(self) -> dict[str, Any]:
-        out: dict[str, Any] = {"key": self.key, "label": self.label, "type": self.type, "default": self.default}
+        out: dict[str, Any] = {
+            "key": self.key,
+            "label": self.label,
+            "type": self.type,
+            "default": self.default,
+        }
         for name in ("min", "max", "step", "options_source", "helper"):
             value = getattr(self, name)
             if value is not None:

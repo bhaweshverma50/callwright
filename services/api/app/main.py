@@ -23,11 +23,14 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from app.agent_versions.router import router as agent_versions_router
 from app.agent_versions.runtime_port import register as register_agent_versions
 from app.agents.router import router as agents_router
+from app.analysis_vars.router import router as analysis_vars_router
 from app.analytics_chat.router import router as analytics_chat_router
+from app.annotations.router import router as annotations_router
 from app.auth.idp import build_idp
 from app.auth.router import router as auth_router
 from app.billing.router import router as billing_router
 from app.billing.stripe_gateway import build_gateway
+from app.calibration.router import router as calibration_router
 from app.call_events.router import router as call_events_router
 from app.calls.catalog import load_catalog
 from app.calls.read_router import router as calls_read_router
@@ -47,6 +50,9 @@ from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_
 from app.dashboard.router import router as dashboard_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
+from app.evals.install import install as install_quality
+from app.evals.router import router as evals_router
+from app.evaluators.router import router as evaluators_router
 from app.flows.hooks import register as register_flows
 from app.flows.router import router as flows_router
 from app.knowledge.router import internal_router as knowledge_internal_router
@@ -60,6 +66,7 @@ from app.phone_numbers.router import router as phone_numbers_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
 from app.recordings.router import router as recordings_router
+from app.review.router import router as review_router
 from app.sessions.router import router as sessions_router
 from app.templates.router import router as templates_router
 from app.tools.router import router as tools_router
@@ -181,6 +188,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.sip = build_sip(settings)
         app.state.whatsapp_graph = build_whatsapp_graph(settings)
         install_channels(app.state)
+        # Quality and evaluations (007): post-call analysis and evaluator pipeline handlers, the
+        # 006 quality port and the built-in evaluator catalog.
+        await install_quality(settings, db, queue=jobs)
         try:
             yield
         finally:
@@ -250,6 +260,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         whatsapp_router,
         whatsapp_public_router,
         flows_router,
+        analysis_vars_router,
+        evaluators_router,
+        evals_router,
+        annotations_router,
+        review_router,
+        calibration_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:

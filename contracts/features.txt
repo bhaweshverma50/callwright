@@ -5,4 +5,5 @@
 004-flow-agents
 005-tools-knowledge
 006-calls-analytics
+007-quality-evals
 010-channels

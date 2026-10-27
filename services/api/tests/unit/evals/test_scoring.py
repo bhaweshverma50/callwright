@@ -62,9 +62,7 @@ class TestRunVerdict:
 
 
 class TestJudgeCutoff:
-    @pytest.mark.parametrize(
-        ("score", "expected"), [(0.5, P), (0.49, F), (1.0, P), (0.0, F), (0.5000001, P)]
-    )
+    @pytest.mark.parametrize(("score", "expected"), [(0.5, P), (0.49, F), (1.0, P), (0.0, F), (0.5000001, P)])
     def test_score_at_cutoff_passes(self, score: float, expected: str) -> None:
         assert judge_item_verdict(score, 0.5) == expected
 

@@ -98,9 +98,9 @@ async def test_web_call_flow(
         "select step, status from call_pipeline_steps where call_id = %s order by step", (call_id,)
     )
     assert dict(steps) == {
-        "analyze": "skipped",
+        "analyze": "done",  # 007 post-call analysis
         "complete": "done",
-        "evaluate": "skipped",
+        "evaluate": "done",  # 007 evaluator run group created
         "finalize_transcript": "done",
         "notify_analyzed": "skipped",
         "price_and_charge": "done",
