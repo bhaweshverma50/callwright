@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Coins, Minus, Pencil, Plus, RotateCcw, Star, Trash2 } from "lucide-react";
+import { ChevronDown, CircleDollarSign, Minus, Pencil, Plus, RotateCcw, Star, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useMemo, useState } from "react";
 import { isApiError } from "../../../api/errors";
@@ -164,7 +164,7 @@ function SettingField({
             {error}
           </p>
         ) : (
-          <p id={helpId} className="max-w-[40ch] text-[12.5px] leading-relaxed text-fg-3 sm:text-right">
+          <p id={helpId} className="max-w-[56ch] text-[12.5px] leading-relaxed text-fg-3 sm:text-right">
             {adjusted && <span className="font-medium text-warning-text">Adjusted to fit this version's range. </span>}
             {helper}
           </p>
@@ -279,7 +279,7 @@ export function EvaluatorCard({
             <h3 className="text-[13.5px] font-semibold text-fg">{setting.display_name}</h3>
             <Badge>{SCOPE_LABELS[setting.scope]}</Badge>
             {judge ? (
-              <Badge tone="warning" icon={<Coins aria-hidden />}>
+              <Badge tone="warning" icon={<CircleDollarSign aria-hidden />}>
                 {COST_LABELS.llm_judge}
               </Badge>
             ) : (

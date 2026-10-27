@@ -540,9 +540,9 @@ function seedLabels(viewerUser: { id: string; display_name: string }) {
   for (const c of mockCalls().calls) {
     const i = indexOf(c.call_id);
     if (c.status !== "completed" || i < 18) continue;
-    const runs = current(runsOf(c));
-    const intent = runs.find((r) => r.evaluator_name === "intent_fulfillment" || r.evaluator_name === "flow_completion");
-    const humanGood = intent?.verdict === "fail" ? i % 3 === 0 : i % 4 !== 1;
+    // People mostly agree with the checks: a clean call is usually good, a call failing several is usually bad.
+    const fails = current(runsOf(c)).filter((r) => r.verdict === "fail").length;
+    const humanGood = fails >= 2 ? i % 5 === 2 : i % 6 !== 1;
     const at = new Date(Date.parse(c.started_at) + 3_600_000).toISOString();
     const list: Annotation[] = [
       {
@@ -807,7 +807,7 @@ function trial(type: string, config: CustomConfig): TrialResult {
       verdict: pass ? "pass" : "fail",
       score: pass ? 1 : 0,
       rationale: hit
-        ? `Turn ${hit.idx + 1} matched: "${hit.text}". ${c.mode === "forbidden" ? "The phrase is forbidden." : "The phrase was required and found."}`
+        ? `Turn ${hit.idx + 1} matched: "${hit.text.replace(/[.!?]$/, "")}". ${c.mode === "forbidden" ? "The phrase is forbidden." : "The phrase was required and found."}`
         : `No ${c.target === "both" ? "" : c.target === "user" ? "caller " : "agent "}turn matched. ${c.mode === "forbidden" ? "Nothing forbidden was said." : "The required phrase was never said."}`.replace(
             "  ",
             " ",

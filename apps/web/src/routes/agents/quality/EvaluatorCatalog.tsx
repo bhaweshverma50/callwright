@@ -1,6 +1,6 @@
 import { ShieldCheck } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Coins, Plus, Star, Trash2 } from "lucide-react";
+import { CircleDollarSign, Plus, Star, Trash2 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { problemMessage } from "../../../api/problems";
 import { deleteCustomEvaluator, qualityKeys, useEvalSettings, useEvaluators, useJudgeModels, type Evaluator } from "../../../api/quality";
@@ -69,7 +69,7 @@ export function EvaluatorCatalog({ agentId }: { agentId: string }) {
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-b border-line bg-surface-2/40 px-5 py-2.5">
         <Stat icon={<ShieldCheck weight="duotone" />} value={`${on}/${items.length}`} label="on" />
         <Stat icon={<Star />} value={`${headline}/${HEADLINE_LIMIT}`} label="headline on the dashboard" />
-        <Stat icon={<Coins />} value={String(judgesOn)} label={judgesOn === 1 ? "model judge on" : "model judges on"} />
+        <Stat icon={<CircleDollarSign />} value={String(judgesOn)} label={judgesOn === 1 ? "model judge on" : "model judges on"} />
       </div>
       <div className="p-4">
         {settings.isPending ? (

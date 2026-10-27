@@ -1,4 +1,4 @@
-import { ArrowRight, Coins, MessageCircleQuestion, TextSearch } from "lucide-react";
+import { ArrowRight, CircleDollarSign, MessageCircleQuestion, TextSearch } from "lucide-react";
 import { motion } from "motion/react";
 import type { CustomType } from "../../api/quality";
 import { Badge, cn, focusRing } from "../../components";
@@ -48,19 +48,19 @@ export function CustomCheckTemplatePicker({ onPick }: { onPick: (type: CustomTyp
               aria-hidden
               className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[radial-gradient(closest-side,var(--glow-b),transparent)]"
             />
-            <span className="flex items-center justify-between">
+            <span className="flex w-full items-center justify-between">
               <span className="grad-action grid size-10 place-items-center rounded-control text-white shadow-[0_8px_20px_-10px_rgb(51_70_232/0.8)] [&_svg]:size-5">
                 <Icon aria-hidden />
               </span>
               {t.free ? (
                 <Badge tone="success">Free</Badge>
               ) : (
-                <Badge tone="warning" icon={<Coins aria-hidden />}>
+                <Badge tone="warning" icon={<CircleDollarSign aria-hidden />}>
                   Costs credit per call
                 </Badge>
               )}
             </span>
-            <span className="flex flex-col gap-1">
+            <span className="flex w-full flex-col gap-1">
               <span className="text-[14px] font-semibold text-fg">{t.title}</span>
               <span className="text-[12.5px] leading-relaxed text-fg-2">{t.body}</span>
             </span>

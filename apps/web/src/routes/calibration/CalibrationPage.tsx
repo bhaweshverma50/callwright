@@ -164,7 +164,9 @@ function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; ind
           <div className="flex items-center gap-4">
             <AgreementRing rate={row.agreement_rate} low={row.agreement_ci?.low} high={row.agreement_ci?.high} />
             <div className="flex min-w-0 flex-col gap-1">
-              <Badge tone={reading.tone}>{reading.label}</Badge>
+              <Badge tone={reading.tone} className="w-fit">
+                {reading.label}
+              </Badge>
               <span className="text-[12.5px] leading-relaxed text-fg-2">{reading.body}</span>
               {row.agreement_ci?.low != null && row.agreement_ci.high != null && (
                 <span className="font-mono text-[11.5px] text-fg-3 tnum">

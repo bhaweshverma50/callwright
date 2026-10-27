@@ -75,7 +75,7 @@ function QueueCard({ item, index, onOpen }: { item: QueueItem; index: number; on
           focusRing,
         )}
       >
-        <span className="flex items-start justify-between gap-3">
+        <span className="flex w-full items-start justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="grad-action grid size-8 shrink-0 place-items-center rounded-control text-white [&_svg]:size-4">
               <Bot aria-hidden />
@@ -93,7 +93,7 @@ function QueueCard({ item, index, onOpen }: { item: QueueItem; index: number; on
           <SentimentBadge value={item.sentiment ?? "unknown"} />
         </span>
         <SplitBar pass={item.pass_count} fail={item.fail_count} />
-        <span className="flex items-center justify-between gap-2">
+        <span className="flex w-full items-center justify-between gap-2">
           <span
             className={cn(
               "inline-flex items-center gap-1.5 text-[12.5px] font-medium",
@@ -210,7 +210,7 @@ export function ReviewPage() {
                   className="pointer-events-none absolute -right-8 -top-12 size-36 rounded-full bg-[radial-gradient(closest-side,var(--glow-b),transparent)]"
                 />
               )}
-              <span className="flex items-center justify-between gap-2">
+              <span className="flex w-full items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-[13.5px] font-semibold text-fg">
                   <span
                     className={cn(

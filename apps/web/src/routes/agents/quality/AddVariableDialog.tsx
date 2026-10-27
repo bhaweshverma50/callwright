@@ -228,7 +228,7 @@ function VariableForm({ agentId, existing, onDone }: { agentId: string; existing
                     </Button>
                   </div>
                   {choices.length > 0 && (
-                    <ul className="flex flex-wrap gap-1.5" aria-label="Choices">
+                    <ul className="flex flex-wrap gap-1.5" aria-label="Added choices">
                       <AnimatePresence initial={false}>
                         {choices.map((c) => (
                           <motion.li
