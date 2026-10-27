@@ -11,9 +11,8 @@
   container-type: size;
   --fnode-tint: var(--accent);
   --dot: color-mix(in oklab, var(--border-strong) 70%, transparent);
-  background:
-    radial-gradient(120% 90% at 0% 0%, var(--glow-a), transparent 55%), radial-gradient(90% 80% at 100% 100%, var(--glow-b), transparent 60%),
-    var(--surface-2);
+  /* Plain dotted ground: glows behind the cards blurred their edges. */
+  background: var(--surface-2);
 }
 .flow-canvas .react-flow__background {
   opacity: 0.9;
@@ -94,9 +93,12 @@
   position: relative;
   width: 240px;
   border-radius: 14px;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--fnode-tint) 10%, transparent), transparent 58px), var(--surface);
-  box-shadow: var(--shadow-1);
+  /* Solid card, crisp edge: the type colour lives only in the chip and the type label. */
+  border: 1px solid color-mix(in oklab, var(--border-strong) 85%, var(--border));
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgb(16 18 48 / 0.06),
+    0 2px 6px -2px rgb(16 18 48 / 0.06);
   transition:
     box-shadow var(--state-duration) var(--ease-out-soft),
     border-color 200ms ease,
@@ -134,12 +136,10 @@
   padding: 14px 14px 8px;
 }
 .fnode-type {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in oklab, var(--fnode-tint) 70%, var(--text-2));
+  color: color-mix(in oklab, var(--fnode-tint) 75%, var(--text-2));
 }
 .fnode-title {
   margin-top: 2px;
@@ -172,13 +172,11 @@
   height: 34px;
   border-radius: 10px;
   color: var(--fnode-tint);
-  background: color-mix(in oklab, var(--fnode-tint) 14%, var(--surface));
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--fnode-tint) 26%, transparent);
+  background: color-mix(in oklab, var(--fnode-tint) 12%, var(--surface));
 }
 [data-ntype="start"] .fnode-chip {
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--violet));
-  box-shadow: 0 6px 14px -6px rgb(122 60 255 / 0.6);
+  background: var(--accent);
 }
 .fnode-chip svg {
   width: 17px;
@@ -222,7 +220,7 @@
 .fnode-outs {
   border-top: 1px solid var(--border);
   padding: 4px 0;
-  background: color-mix(in oklab, var(--surface-2) 45%, transparent);
+  background: var(--surface-2);
   border-radius: 0 0 13px 13px;
 }
 .fnode-out {
@@ -554,9 +552,9 @@
   width: 16px;
   height: 16px;
 }
-/* Settings panel header: a faint wash of the step's colour (accent for a connection). */
+/* Settings panel header: a solid surface; the step's colour is in its chip. */
 .panel-head {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--fnode-tint, var(--accent)) 8%, transparent), transparent);
+  background: var(--surface);
 }
 .canvas-toolbar {
   border: 1px solid var(--border);

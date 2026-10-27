@@ -126,6 +126,46 @@ function addDays(date: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Test checkout sessions (mirror of services/api/app/dev/router.py TEST_CARDS). */
+const TEST_CARDS = [
+  { number: "4242424242424242", brand: "visa", label: "Payment succeeds", outcome: "succeeded" },
+  { number: "5555555555554444", brand: "mastercard", label: "Payment succeeds", outcome: "succeeded" },
+  { number: "4000000000000002", brand: "visa", label: "Card declined", outcome: "card_declined" },
+  { number: "4000000000009995", brand: "visa", label: "Insufficient funds", outcome: "insufficient_funds" },
+  { number: "4000000000000069", brand: "visa", label: "Expired card", outcome: "expired_card" },
+  { number: "4000000000000127", brand: "visa", label: "Incorrect CVC", outcome: "incorrect_cvc" },
+  { number: "4000000000000119", brand: "visa", label: "Processing error", outcome: "processing_error" },
+];
+const DECLINES: Record<string, string> = {
+  card_declined: "Your card was declined.",
+  insufficient_funds: "Your card has insufficient funds.",
+  expired_card: "Your card has expired.",
+  incorrect_cvc: "Your card's security code is incorrect.",
+  processing_error: "An error occurred while processing your card. Try again in a little bit.",
+};
+type MockCheckout = { workspace_id: string; amount: string; status: "pending" | "completed" };
+// Checkout is a full page load away from Billing, so sessions live in localStorage like the mock db.
+const CHECKOUTS_KEY = "cw.mock.checkouts";
+const checkouts = {
+  all(): Record<string, MockCheckout> {
+    try {
+      return JSON.parse(globalThis.localStorage?.getItem(CHECKOUTS_KEY) ?? "{}") as Record<string, MockCheckout>;
+    } catch {
+      return {};
+    }
+  },
+  get(id: string): MockCheckout | undefined {
+    return this.all()[id];
+  },
+  set(id: string, value: MockCheckout) {
+    try {
+      globalThis.localStorage?.setItem(CHECKOUTS_KEY, JSON.stringify({ ...this.all(), [id]: value }));
+    } catch {
+      /* private mode: the session is lost on reload */
+    }
+  },
+};
+
 export const handlers = [
   http.get(url("/health"), () => json({ status: "ok", version: "mock" })),
 
@@ -280,14 +320,51 @@ export const handlers = [
     const { amount_usd = "" } = (await request.json()) as { amount_usd?: string };
     const check = checkTopUpAmount(String(amount_usd));
     if (!check.ok) return validation([{ pointer: "/amount_usd", code: "out_of_range", message: check.reason }]);
-    db().pending.push({ workspace_id: user.workspace_id, amount: check.normalized, credit_at: Date.now() + 3000 });
-    save();
     await delay(400);
     const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5180";
-    return json<CheckoutSession>(
-      { checkout_url: `${origin}/billing?checkout=success`, expires_at: new Date(Date.now() + 30 * 60_000).toISOString() },
-      201,
-    );
+    const id = `cs_test_fake_mock${Date.now().toString(36)}`;
+    checkouts.set(id, { workspace_id: user.workspace_id, amount: check.normalized, status: "pending" });
+    return json<CheckoutSession>({ checkout_url: `${origin}/checkout/${id}`, expires_at: new Date(Date.now() + 30 * 60_000).toISOString() }, 201);
+  }),
+
+  // --- test checkout (the API's /dev/fake-checkout in STRIPE_MODE=fake) ----
+  http.get(url("/dev/fake-checkout/:id"), ({ params }) => {
+    const c = checkouts.get(String(params.id));
+    if (!c) return json({ type: "about:blank", title: "Not found", status: 404, code: "not_found" }, 404);
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5180";
+    return json({
+      id: params.id,
+      amount_usd: Number(c.amount).toFixed(2),
+      status: c.status,
+      workspace_name: "Halcyon Dental Group",
+      success_url: `${origin}/billing?checkout=success`,
+      cancel_url: `${origin}/billing?checkout=canceled`,
+      test_cards: TEST_CARDS,
+    });
+  }),
+
+  http.post(url("/dev/fake-checkout/:id/pay"), async ({ params, request }) => {
+    const c = checkouts.get(String(params.id));
+    if (!c) return json({ type: "about:blank", title: "Not found", status: 404, code: "not_found" }, 404);
+    const { card_number = "" } = (await request.json()) as { card_number?: string };
+    await delay(900);
+    const outcome = TEST_CARDS.find((t) => t.number === card_number)?.outcome ?? "card_declined";
+    if (outcome !== "succeeded") {
+      const detail = `${DECLINES[outcome]}${TEST_CARDS.some((t) => t.number === card_number) ? "" : " This is a test checkout: use one of the test cards."}`;
+      return json({ type: "about:blank", title: "Payment declined", status: 402, code: outcome, detail }, 402);
+    }
+    if (c.status === "pending") {
+      checkouts.set(String(params.id), { ...c, status: "completed" });
+      db().pending.push({ workspace_id: c.workspace_id, amount: c.amount, credit_at: Date.now() + 1500 });
+      save();
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5180";
+    return json({ status: "paid", redirect_url: `${origin}/billing?checkout=success` });
+  }),
+
+  http.post(url("/dev/fake-checkout/:id/cancel"), () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5180";
+    return json({ status: "canceled", redirect_url: `${origin}/billing?checkout=canceled` });
   }),
 
   http.get(url("/billing/transactions"), async ({ request }) => {
@@ -325,6 +402,9 @@ export const handlers = [
     const { workspace_id: _ws, ...rest } = t;
     return json<Transaction>(rest);
   }),
+
+  // --- home page playground (the call itself uses the scripted mock driver) ---
+  http.get(url("/public/demo"), () => json({ agents: ["clinic", "roadside", "loan"] })),
 
   // --- pricing -------------------------------------------------------------
   http.get(url("/pricing/catalog"), () =>

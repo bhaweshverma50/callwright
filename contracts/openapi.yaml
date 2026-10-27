@@ -15,6 +15,7 @@ tags:
 - name: call-events-internal
 - name: calls-internal
 - name: core
+- name: demo
 - name: flows
 - name: internal
 - name: knowledge
@@ -3557,6 +3558,71 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 002-agent-builder
+  /public/demo:
+    get:
+      operationId: getDemo
+      summary: Demo scenarios that can be called
+      description: 'Scenario keys in display order; empty when the playground is off. Reads configuration
+        only, so a page view never wakes the realtime servers.
+
+        '
+      tags:
+      - demo
+      security: []
+      responses:
+        '200':
+          description: The switched-on scenarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoInfo'
+      x-spec: 003-voice-runtime
+  /public/demo-calls:
+    post:
+      operationId: startDemoCall
+      summary: Start a browser call to a demo agent
+      description: 'Admits a browser call to the published version of the scenario''s agent and returns
+        a join credential, like `POST /sessions/web-call`. A sleeping realtime server answers 503 `waking_up`
+        with Retry-After; retry after that delay.
+
+        '
+      tags:
+      - demo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoCallRequest'
+      responses:
+        '201':
+          description: Call admitted and room ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebCallSession'
+        '402':
+          description: The demo workspace is out of credit
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The demo agent is not published or its flow is not compiled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallRefusedProblem'
+        '422':
+          $ref: '#/components/responses/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Problem'
+      x-spec: 003-voice-runtime
   /sessions/web-call:
     post:
       operationId: createWebCall
@@ -7422,6 +7488,24 @@ components:
       - succeeded
       - failed
       - blocked
+    DemoCallRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - agent
+      properties:
+        agent:
+          type: string
+          pattern: ^[a-z0-9_-]{1,32}$
+    DemoInfo:
+      type: object
+      required:
+      - agents
+      properties:
+        agents:
+          type: array
+          items:
+            type: string
     Dimension:
       type: string
       enum:

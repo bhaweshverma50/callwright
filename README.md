@@ -43,3 +43,5 @@ workspace starts with $5.00 of trial credit. Top-ups in fake mode open
 Other commands: `make db-reset` (drop and re-migrate the dev schema),
 `uv run --directory services/api python -m app.billing.jobs reconcile --now` (ledger check),
 `uv run --directory services/api python -m app.usage.seed_demo --workspace ws_...` (demo usage).
+
+Operations reference (hosting, deploys, telephony lab, homepage playground, test checkout): `docs/OPERATIONS.md`. Current state: `STATUS.md`.

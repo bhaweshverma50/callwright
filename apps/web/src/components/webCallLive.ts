@@ -61,13 +61,22 @@ const ACTIVITY: Record<string, AgentActivity> = {
 export const ROOM_DATA_EVENT = "cw:room-data";
 
 export function createLiveDriver(): WebCallDriver {
+  return liveDriver(async (req, idempotencyKey) => {
+    const body = { ...req, version: req.version ?? "draft" };
+    return unwrap(api.POST("/sessions/web-call", { params: { header: { "Idempotency-Key": idempotencyKey } }, body }));
+  });
+}
+
+/** The home page playground: no account, the demo agent of one scenario (`POST /v1/public/demo-calls`). */
+export function createDemoDriver(scenario: string): WebCallDriver {
+  return liveDriver(async () => unwrap(api.POST("/public/demo-calls", { body: { agent: scenario } })));
+}
+
+function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDriver {
   return {
     simulated: false,
     checkMicrophone,
-    async createSession(req, idempotencyKey) {
-      const body = { ...req, version: req.version ?? "draft" };
-      return unwrap(api.POST("/sessions/web-call", { params: { header: { "Idempotency-Key": idempotencyKey } }, body }));
-    },
+    createSession,
     async connect(session, listener) {
       const lk = await import("livekit-client");
       const room = new lk.Room({ adaptiveStream: true, dynacast: true });

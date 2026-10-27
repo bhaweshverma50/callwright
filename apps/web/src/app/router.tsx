@@ -14,6 +14,7 @@ import { Home } from "../routes/public/Home";
 import { Privacy, Terms } from "../routes/public/Legal";
 import { Login } from "../routes/public/Login";
 import { PublicLayout } from "../routes/public/PublicLayout";
+import { TestCheckout } from "../routes/checkout/TestCheckout";
 import { Register } from "../routes/public/Register";
 import { ResetPassword } from "../routes/public/ResetPassword";
 import { VerifyEmail } from "../routes/public/VerifyEmail";
@@ -85,6 +86,8 @@ export const routes: RouteObject[] = [
       { path: "verify-email", element: <VerifyEmail /> },
       { path: "forgot-password", element: <ForgotPassword /> },
       { path: "reset-password", element: <ResetPassword /> },
+      // Where "Add funds" lands in STRIPE_MODE=fake (test cards decide the outcome).
+      { path: "checkout/:sessionId", element: <TestCheckout /> },
       {
         path: "dev/components",
         element: (

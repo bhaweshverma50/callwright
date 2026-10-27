@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, homepage playground
+  version: 0.1.0
+  description: >
+    Fragment owned by 003-voice-runtime. Assembled into contracts/openapi.yaml. Lets visitors of
+    the public home page call one of a few demo agents from the browser without an account.
+    The agents are published agents of one demo workspace (DEMO_WORKSPACE_ID, DEMO_AGENTS);
+    calls are charged to that workspace and each visitor IP gets DEMO_CALLS_PER_HOUR calls.
+servers:
+  - url: https://api.callwright.example/v1
+paths:
+  /public/demo:
+    get:
+      operationId: getDemo
+      summary: Demo scenarios that can be called
+      description: >
+        Scenario keys in display order; empty when the playground is off. Reads configuration
+        only, so a page view never wakes the realtime servers.
+      tags: [demo]
+      security: []
+      responses:
+        '200':
+          description: The switched-on scenarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoInfo'
+  /public/demo-calls:
+    post:
+      operationId: startDemoCall
+      summary: Start a browser call to a demo agent
+      description: >
+        Admits a browser call to the published version of the scenario's agent and returns a
+        join credential, like `POST /sessions/web-call`. A sleeping realtime server answers 503
+        `waking_up` with Retry-After; retry after that delay.
+      tags: [demo]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoCallRequest'
+      responses:
+        '201':
+          description: Call admitted and room ready
+          content:
+            application/json:
+              schema:
+                $ref: './sessions.yaml#/components/schemas/WebCallSession'
+        '402':
+          description: The demo workspace is out of credit
+          content:
+            application/problem+json:
+              schema:
+                $ref: './sessions.yaml#/components/schemas/CallRefusedProblem'
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '409':
+          description: The demo agent is not published or its flow is not compiled
+          content:
+            application/problem+json:
+              schema:
+                $ref: './sessions.yaml#/components/schemas/CallRefusedProblem'
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/TooManyRequests'}
+        '503': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+components:
+  schemas:
+    DemoInfo:
+      type: object
+      required: [agents]
+      properties:
+        agents:
+          type: array
+          items: {type: string}
+    DemoCallRequest:
+      type: object
+      additionalProperties: false
+      required: [agent]
+      properties:
+        agent:
+          type: string
+          pattern: '^[a-z0-9_-]{1,32}$'

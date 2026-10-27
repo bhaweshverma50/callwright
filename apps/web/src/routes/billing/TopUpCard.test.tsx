@@ -52,7 +52,7 @@ describe("TopUpCard (T101, US2.5, US2.6)", () => {
     expect(add).toHaveTextContent("Add funds $100.00");
     await user.click(add);
     await waitFor(() => expect(go).toHaveBeenCalledTimes(1));
-    expect(go.mock.calls[0]![0]).toMatch(/\/billing\?checkout=success$/);
+    expect(go.mock.calls[0]![0]).toMatch(/\/checkout\/cs_test_fake_mock\w+$/);
   });
 
   it("accepts the $5 minimum and the $10,000 maximum", async () => {

@@ -33,8 +33,8 @@ async def test_abandoned_checkout_writes_nothing(
 ) -> None:
     session_id = await start_checkout(client, account, "100.00")
     canceled = await client.post(f"/v1/dev/fake-checkout/{session_id}/cancel")
-    assert canceled.status_code == 303
-    assert canceled.headers["location"].endswith("/billing?checkout=canceled")
+    assert canceled.status_code == 200
+    assert canceled.json()["redirect_url"].endswith("/billing?checkout=canceled")
     assert await transaction_types(client, account) == ["trial_grant"]
     assert await _status(app, account, session_id) == "pending"
 

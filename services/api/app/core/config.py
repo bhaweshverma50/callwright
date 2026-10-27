@@ -187,6 +187,15 @@ class Settings(BaseSettings):
     copilot_stt_provider: Literal["deepgram", "fake"] = "deepgram"
     deepgram_api_key: SecretStr | None = None
     recording_url_ttl_s: int = Field(default=600, ge=30, le=600)
+    # --- Homepage playground ---------------------------------------------------------------
+    # Visitors call published agents of one demo workspace from the home page without an
+    # account (app/demo). DEMO_AGENTS maps scenario keys to agent ids, for example
+    # "clinic=agt_...,roadside=agt_..."; with DEMO_WORKSPACE_ID unset the playground is off.
+    # Calls are charged to the demo workspace, so its balance caps total spend; each visitor
+    # IP gets DEMO_CALLS_PER_HOUR calls.
+    demo_workspace_id: str | None = None
+    demo_agents: str = ""
+    demo_calls_per_hour: int = Field(3, ge=1, le=100)
     # --- 010 channels -----------------------------------------------------------------------
     # LIVEKIT_SIP_HOST is the address carriers send calls to (the self-hosted livekit-sip
     # service or a LiveKit Cloud project SIP host). SIP_MODE=auto talks to LiveKit's SIP API
@@ -311,6 +320,14 @@ class Settings(BaseSettings):
     def livekit_client_url(self) -> str:
         """WebSocket URL handed to browsers (defaults to the server URL)."""
         return self.livekit_public_url or self.livekit_url
+
+    @property
+    def demo_agent_ids(self) -> dict[str, str]:
+        """Scenario key to agent id, in DEMO_AGENTS order; empty when the playground is off."""
+        if not self.demo_workspace_id:
+            return {}
+        pairs = (part.split("=", 1) for part in self.demo_agents.split(",") if "=" in part)
+        return {key.strip(): value.strip() for key, value in pairs if key.strip() and value.strip()}
 
     @property
     def sip_live(self) -> bool:

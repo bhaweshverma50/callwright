@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { RotateCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { WAKE_EXPECTED_MS, resetWake, useWakeState } from "../api/wakeGate";
+import { WAKE_EXPECTED_MS, inlineWake, resetWake, useWakeState } from "../api/wakeGate";
 import { Button, LogoLoader } from "../components";
 
 /**
@@ -20,7 +20,7 @@ export function WakeOverlay() {
     return () => clearInterval(id);
   }, [wake.status]);
 
-  if (wake.status === "idle") return null;
+  if (wake.status === "idle" || inlineWake.active) return null;
 
   if (wake.status === "failed") {
     return (

@@ -12,7 +12,7 @@
  */
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Bot, CircleAlert, CircleCheck, Mic, MicOff, Phone, PhoneCall, PhoneOff, TriangleAlert, User } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 import { env } from "../lib/env";
 import { formatUsd } from "../lib/money";
@@ -21,18 +21,11 @@ import { Badge } from "./Badge";
 import { Button, IconButton } from "./Button";
 import { cn } from "./cn";
 import { EASE_OUT } from "./motion";
-import { LatencyChip, OnAir, Waveform, type Latency } from "./signal";
+import { LatencyChip, OnAir, Waveform } from "./signal";
 import { InfoTip } from "./TruncatedText";
 import {
-  CONNECTION_FAILED,
-  MIC_DENIED,
-  MIC_UNAVAILABLE,
   createMockDriver,
-  problemFromError,
   type AgentActivity,
-  type CallConnection,
-  type CallLevels,
-  type CallListener,
   type CallProblem,
   type CallTurn,
   type EndReason,
@@ -40,14 +33,9 @@ import {
   type WebCallDriver,
 } from "./webCall";
 import { createLiveDriver } from "./webCallLive";
+import { useWebCall, type CallPhase, type CallSummary, type WebCallState } from "./useWebCall";
 
-export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
-
-export interface CallSummary {
-  callId: string | null;
-  durationMs: number;
-  reason: EndReason;
-}
+export type { CallPhase, CallSummary } from "./useWebCall";
 
 export interface WebCallPanelProps {
   agentId: string;
@@ -65,101 +53,10 @@ export interface WebCallPanelProps {
   className?: string;
 }
 
-interface State {
-  phase: CallPhase;
-  activity: AgentActivity;
-  turns: CallTurn[];
-  levels: CallLevels;
-  muted: boolean;
-  callId: string | null;
-  startedAt: number | null;
-  endedAt: number | null;
-  endReason: EndReason | null;
-  problem: CallProblem | null;
-}
-
-type Action =
-  | { type: "checking" }
-  | { type: "requesting" }
-  | { type: "connecting"; callId: string }
-  | { type: "live"; at: number }
-  | { type: "activity"; activity: AgentActivity }
-  | { type: "turn"; turn: CallTurn }
-  | { type: "latency"; turnId: string | null; latency: Latency }
-  | { type: "levels"; levels: CallLevels }
-  | { type: "muted"; muted: boolean }
-  | { type: "ending" }
-  | { type: "ended"; reason: EndReason; at: number }
-  | { type: "fail"; problem: CallProblem }
-  | { type: "reset" };
-
-const SILENT: CallLevels = { caller: 0, agent: 0 };
-
-const INITIAL: State = {
-  phase: "idle",
-  activity: "joining",
-  turns: [],
-  levels: SILENT,
-  muted: false,
-  callId: null,
-  startedAt: null,
-  endedAt: null,
-  endReason: null,
-  problem: null,
-};
-
-function reducer(s: State, a: Action): State {
-  switch (a.type) {
-    case "checking":
-      return { ...INITIAL, phase: "checking" };
-    case "requesting":
-      return { ...s, phase: "requesting" };
-    case "connecting":
-      return { ...s, phase: "connecting", callId: a.callId };
-    case "live":
-      return s.phase === "connecting" ? { ...s, phase: "live", startedAt: a.at } : s;
-    case "activity":
-      return { ...s, activity: a.activity };
-    case "turn": {
-      const i = s.turns.findIndex((t) => t.id === a.turn.id);
-      if (i < 0) return { ...s, turns: [...s.turns, a.turn] };
-      const turns = s.turns.slice();
-      const prev = turns[i]!;
-      turns[i] = { ...prev, ...a.turn, latency: a.turn.latency ?? prev.latency };
-      return { ...s, turns };
-    }
-    case "latency": {
-      let i = a.turnId ? s.turns.findIndex((t) => t.id === a.turnId) : -1;
-      if (i < 0) i = s.turns.findLastIndex((t) => t.who === "agent");
-      if (i < 0) return s;
-      const turns = s.turns.slice();
-      turns[i] = { ...turns[i]!, latency: a.latency };
-      return { ...s, turns };
-    }
-    case "levels":
-      return s.phase === "live" || s.phase === "ending" ? { ...s, levels: a.levels } : s;
-    case "muted":
-      return { ...s, muted: a.muted };
-    case "ending":
-      return { ...s, phase: "ending" };
-    case "ended":
-      if (s.phase === "ended") return s;
-      return { ...s, phase: "ended", endReason: a.reason, endedAt: a.at, levels: SILENT, muted: false };
-    case "fail":
-      return { ...s, phase: "error", problem: a.problem, levels: SILENT };
-    case "reset":
-      return INITIAL;
-  }
-}
-
 const mss = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
-
-function newIdempotencyKey(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `wc-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
-}
 
 export function WebCallPanel({
   agentId,
@@ -173,111 +70,12 @@ export function WebCallPanel({
   className,
 }: WebCallPanelProps) {
   const driver = useMemo(() => driverProp ?? (mode === "mock" ? createMockDriver(mockOptions) : createLiveDriver()), [driverProp, mode, mockOptions]);
-  const [s, dispatch] = useReducer(reducer, INITIAL);
-  const reduce = useReducedMotion() ?? false;
-  const run = useRef(0);
-  const conn = useRef<CallConnection | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const onEndedRef = useRef(onEnded);
-  onEndedRef.current = onEnded;
-
-  // Clock for duration and cost while the call runs.
-  useEffect(() => {
-    if (s.phase !== "live" && s.phase !== "ending") return;
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [s.phase]);
-
-  // Report the end once.
-  const reported = useRef<number | null>(null);
-  useEffect(() => {
-    if (s.phase !== "ended" || s.endReason === null || reported.current === s.endedAt) return;
-    reported.current = s.endedAt;
-    onEndedRef.current?.({ callId: s.callId, durationMs: s.startedAt && s.endedAt ? s.endedAt - s.startedAt : 0, reason: s.endReason });
-  }, [s.phase, s.endReason, s.endedAt, s.startedAt, s.callId]);
-
-  // Leaving the page hangs up (US1.5: closing the tab ends the call server side as user_hangup).
-  useEffect(
-    () => () => {
-      run.current += 1;
-      void conn.current?.hangUp().catch(() => {});
-      conn.current = null;
-    },
-    [],
+  const request = useMemo(
+    () => ({ agent_id: agentId, ...(version && { version }), ...(variables && { dynamic_variables: variables }) }),
+    [agentId, version, variables],
   );
-
-  const start = useCallback(async () => {
-    const id = ++run.current;
-    const stale = () => id !== run.current;
-    dispatch({ type: "checking" });
-    const mic = await driver.checkMicrophone().catch(() => "unavailable" as const);
-    if (stale()) return;
-    if (mic !== "granted") {
-      dispatch({ type: "fail", problem: mic === "denied" ? MIC_DENIED : MIC_UNAVAILABLE });
-      return;
-    }
-    dispatch({ type: "requesting" });
-    let session;
-    try {
-      session = await driver.createSession(
-        { agent_id: agentId, ...(version && { version }), ...(variables && { dynamic_variables: variables }) },
-        newIdempotencyKey(),
-      );
-    } catch (e) {
-      if (!stale()) dispatch({ type: "fail", problem: problemFromError(e) });
-      return;
-    }
-    if (stale()) return;
-    dispatch({ type: "connecting", callId: session.call_id });
-    const listener: CallListener = {
-      activity: (activity) => !stale() && dispatch({ type: "activity", activity }),
-      turn: (turn) => !stale() && dispatch({ type: "turn", turn }),
-      latency: (turnId, latency) => !stale() && dispatch({ type: "latency", turnId, latency }),
-      levels: (levels) => !stale() && dispatch({ type: "levels", levels }),
-      ended: (reason) => {
-        if (stale()) return;
-        conn.current = null;
-        dispatch({ type: "ended", reason, at: Date.now() });
-      },
-    };
-    let c: CallConnection;
-    try {
-      c = await driver.connect(session, listener);
-    } catch {
-      if (!stale()) dispatch({ type: "fail", problem: CONNECTION_FAILED });
-      return;
-    }
-    if (stale()) {
-      void c.hangUp().catch(() => {});
-      return;
-    }
-    conn.current = c;
-    dispatch({ type: "live", at: Date.now() });
-  }, [driver, agentId, version, variables]);
-
-  const cancel = useCallback(() => {
-    run.current += 1;
-    dispatch({ type: "reset" });
-  }, []);
-
-  const end = useCallback(async () => {
-    const c = conn.current;
-    dispatch({ type: "ending" });
-    try {
-      await c?.hangUp();
-    } finally {
-      dispatch({ type: "ended", reason: "user_hangup", at: Date.now() });
-    }
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    const next = !s.muted;
-    dispatch({ type: "muted", muted: next });
-    void conn.current?.setMuted(next).catch(() => dispatch({ type: "muted", muted: !next }));
-  }, [s.muted]);
-
-  const elapsed = s.startedAt ? (s.endedAt ?? now) - s.startedAt : 0;
+  const { state: s, start, cancel, end, toggleMute, elapsed } = useWebCall(driver, request, onEnded);
+  const reduce = useReducedMotion() ?? false;
   const costMicros = (perMinuteMicros * BigInt(Math.max(0, Math.round(elapsed)))) / 60_000n;
   const onCall = s.phase === "live" || s.phase === "ending";
   const lastFinal = [...s.turns].reverse().find((t) => t.final);
@@ -392,7 +190,7 @@ export function WebCallPanel({
   );
 }
 
-function footerHint(s: State, elapsed: number, cost: bigint): string {
+function footerHint(s: WebCallState, elapsed: number, cost: bigint): string {
   switch (s.phase) {
     case "idle":
       return "Your microphone is checked first. Nothing is charged until the call connects.";

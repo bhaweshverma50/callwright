@@ -46,6 +46,23 @@ export const wakeStore = {
   },
 };
 
+/**
+ * Components that show the wait themselves (the home page playground) claim it while mounted,
+ * and the full-page WakeOverlay stays out of the way.
+ */
+let inlineClaims = 0;
+export const inlineWake = {
+  claim(): () => void {
+    inlineClaims += 1;
+    return () => {
+      inlineClaims -= 1;
+    };
+  },
+  get active(): boolean {
+    return inlineClaims > 0;
+  },
+};
+
 export function useWakeState(): WakeState {
   return useSyncExternalStore(wakeStore.subscribe, wakeStore.get, wakeStore.get);
 }

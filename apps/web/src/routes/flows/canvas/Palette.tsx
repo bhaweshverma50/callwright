@@ -84,7 +84,7 @@ export const Palette = memo(function Palette({ onAdd, disabled }: { onAdd: (type
               <div className="grid grid-cols-1 gap-x-1 sm:grid-cols-3">
                 {PALETTE_GROUPS.map((group) => (
                   <section key={group.title} aria-label={group.title} className="py-1 sm:py-0.5">
-                    <h3 className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-fg-3">{group.title}</h3>
+                    <h3 className="px-2.5 pb-1 pt-1.5 text-[12px] font-medium text-fg-3">{group.title}</h3>
                     <ul className="flex flex-col">
                       {group.types.map((type) => {
                         const meta = NODE_META[type];

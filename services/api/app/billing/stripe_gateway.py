@@ -1,9 +1,9 @@
 """Payment provider adapter (T053): hosted checkout sessions and webhook signature checks.
 
-* ``FakeStripeGateway`` (``STRIPE_MODE=fake``): no network. Checkout URLs point at the API's dev
-  page ``/v1/dev/fake-checkout/{id}``, which signs a ``checkout.session.completed`` event with
-  the configured webhook secret and feeds it through the same verification path as real
-  webhooks.
+* ``FakeStripeGateway`` (``STRIPE_MODE=fake``): no network. Checkout URLs point at the web app's
+  test checkout page ``/checkout/{id}`` (API: ``/v1/dev/fake-checkout/{id}``). Paying with a
+  test card signs a ``checkout.session.completed`` event with the configured webhook secret and
+  feeds it through the same verification path as real webhooks.
 * ``LiveStripeGateway`` (``STRIPE_MODE=live``): Stripe REST API over ``httpx`` (form encoded,
   ``Idempotency-Key`` forwarded).
 
@@ -119,7 +119,7 @@ class FakeStripeGateway(_Verifier):
 
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
-        self._api_base = settings.api_base_url.rstrip("/")
+        self._web_base = settings.web_base_url.rstrip("/")
 
     async def create_checkout_session(
         self,
@@ -133,7 +133,7 @@ class FakeStripeGateway(_Verifier):
         session_id = f"cs_test_fake_{ULID()}"
         return CreatedCheckout(
             id=session_id,
-            url=f"{self._api_base}/v1/dev/fake-checkout/{session_id}",
+            url=f"{self._web_base}/checkout/{session_id}",
             expires_at=datetime.now(UTC) + timedelta(hours=24),
         )
 

@@ -12,13 +12,12 @@ import logging
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Protocol
 
 from app.calls import service as calls
 from app.calls.catalog import AdapterCatalog
 from app.calls.effects import Deferred, dispatch
 from app.calls.models import Call
-from app.core.auth import Principal
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
@@ -27,6 +26,17 @@ from app.core.queue import JobQueue
 from app.sessions.schemas import WebCallRequest, WebCallSession
 
 logger = logging.getLogger(__name__)
+
+
+class WebCaller(Protocol):
+    """Who places the call: a signed-in member (``Principal``) or the homepage playground,
+    which has a workspace but no user."""
+
+    @property
+    def workspace_id(self) -> str: ...
+
+    @property
+    def user_id(self) -> str | None: ...
 
 
 def room_name(call_id: str) -> str:
@@ -53,7 +63,7 @@ def media_unavailable(call_id: str) -> ProblemError:
 
 
 async def start_web_call(
-    deps: WebCallDeps, principal: Principal, body: WebCallRequest, *, now: datetime | None = None
+    deps: WebCallDeps, principal: WebCaller, body: WebCallRequest, *, now: datetime | None = None
 ) -> dict[str, Any]:
     now = now or datetime.now(UTC)
     admission = await calls.admit(
@@ -95,7 +105,7 @@ async def start_web_call(
         row = await session.get(Call, call.id)
         assert row is not None
         row.room_name = room
-    identity = f"web-{principal.user_id}-{secrets.token_hex(3)}"
+    identity = f"web-{principal.user_id or 'demo'}-{secrets.token_hex(3)}"
     token = deps.livekit.join_token(room=room, identity=identity, name="You", ttl_s=JOIN_TOKEN_TTL_S)
     assert admission.snapshot is not None
     session_body = WebCallSession(

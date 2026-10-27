@@ -6,7 +6,7 @@ import { catalogV1 } from "../../lib/catalogSeed";
 import { formatUsd, toMicros } from "../../lib/money";
 import { providerLabel } from "../../lib/providers";
 import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
-import { LiveCall } from "./LiveCall";
+import { Playground } from "./playground/Playground";
 
 const PARTS = ["stt", "llm", "tts", "nc", "platform"] as const;
 type Part = (typeof PARTS)[number];
@@ -78,7 +78,7 @@ export function Home() {
               </p>
             </RevealItem>
           </Reveal>
-          <LiveCall />
+          <Playground />
         </div>
       </section>
 

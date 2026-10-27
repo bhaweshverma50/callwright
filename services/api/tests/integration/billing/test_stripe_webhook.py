@@ -86,15 +86,48 @@ async def test_completion_for_unknown_session_is_ignored(client: httpx.AsyncClie
     assert response.json()["outcome"] == "unknown_session"
 
 
+CARD = {"exp_month": 12, "exp_year": 2099, "cvc": "123", "name": "Ada Lovelace"}
+
+
 async def test_fake_checkout_pay_page_credits(
     client: httpx.AsyncClient, app: FastAPI, account: Account
 ) -> None:
     session_id = await start_checkout(client, account, "25.00")
-    page = await client.get(f"/v1/dev/fake-checkout/{session_id}")
-    assert page.status_code == 200 and "$25.00" in page.text
-    paid = await client.post(f"/v1/dev/fake-checkout/{session_id}/pay")
-    assert paid.status_code == 303
-    assert paid.headers["location"].endswith("/billing?checkout=success")
-    again = await client.post(f"/v1/dev/fake-checkout/{session_id}/pay")
-    assert again.status_code == 303
+    page = (await client.get(f"/v1/dev/fake-checkout/{session_id}")).json()
+    assert page["amount_usd"] == "25.00" and page["status"] == "pending"
+    assert page["workspace_name"] and page["test_cards"][0]["number"] == "4242424242424242"
+    paid = await client.post(
+        f"/v1/dev/fake-checkout/{session_id}/pay", json={**CARD, "card_number": "4242 4242 4242 4242"}
+    )
+    assert paid.status_code == 200, paid.text
+    assert paid.json()["redirect_url"].endswith("/billing?checkout=success")
+    again = await client.post(
+        f"/v1/dev/fake-checkout/{session_id}/pay", json={**CARD, "card_number": "5555555555554444"}
+    )
+    assert again.status_code == 200
     assert await balance(client, account) == "30.000000"
+
+
+async def test_fake_checkout_test_cards_decline_without_credit(
+    client: httpx.AsyncClient, app: FastAPI, account: Account
+) -> None:
+    session_id = await start_checkout(client, account, "25.00")
+    url = f"/v1/dev/fake-checkout/{session_id}/pay"
+    for number, code in (
+        ("4000000000000002", "card_declined"),
+        ("4000000000009995", "insufficient_funds"),
+        ("4000000000000069", "expired_card"),
+        ("4000000000000127", "incorrect_cvc"),
+        ("4000000000000119", "processing_error"),
+    ):
+        declined = await client.post(url, json={**CARD, "card_number": number})
+        assert declined.status_code == 402 and declined.json()["code"] == code, declined.text
+    real = await client.post(url, json={**CARD, "card_number": "4111111111111111"})
+    assert real.status_code == 402 and "test cards" in real.json()["detail"]
+    invalid = await client.post(
+        url, json={**CARD, "card_number": "4242424242424241", "exp_year": 2001, "cvc": "1", "name": " "}
+    )
+    assert invalid.status_code == 422
+    pointers = {e["pointer"] for e in invalid.json()["errors"]}
+    assert pointers == {"/card_number", "/exp_year", "/cvc", "/name"}
+    assert await balance(client, account) == "5.000000"

@@ -44,6 +44,11 @@ VM_ZONE="${VM_ZONE:-asia-south1-a}"
 VM_STARTER_ROLE="callwrightVmStarter"
 WEB_ORIGIN="${WEB_ORIGIN:-https://callwright-one.vercel.app}"
 LIVEKIT_URL="${LIVEKIT_URL:-wss://rtc.bhawesh.dev}"
+# Homepage playground (app/demo): published agents in the demo workspace (playground@bhawesh.dev,
+# credentials in ~/.config/callwright/demo-account.json). DEMO_WORKSPACE_ID= (empty) turns it off.
+DEMO_WORKSPACE_ID="${DEMO_WORKSPACE_ID-ws_01M5YB54ZTTDHJSVXQCB9D21FF}"
+DEMO_AGENTS="${DEMO_AGENTS-clinic=agt_01M5YB55MNVTVK1MHD4E70V21K,roadside=agt_01M5YB56PF56Z0RA344HA05DXP,loan=agt_01M5YB57R9YATWAP5HXC8XJ82W}"
+DEMO_CALLS_PER_HOUR="${DEMO_CALLS_PER_HOUR:-3}"
 
 # Secrets the API needs (Secret Manager name = env var name).
 API_SECRETS=(DATABASE_URL DATABASE_ADMIN_URL REDIS_URL AUTH_JWT_SECRET SECRETS_MASTER_KEY SERVICE_TOKEN
@@ -207,6 +212,9 @@ env = json.load(sys.stdin)["spec"]["template"]["spec"]["containers"][0].get("env
 print(next((e.get("value", "") for e in env if e["name"] == "LIVEKIT_SIP_HOST"), ""))' 2>/dev/null || true)"
   fi
   [ -n "${LIVEKIT_SIP_HOST:-}" ] && env+="@LIVEKIT_SIP_HOST=$LIVEKIT_SIP_HOST"
+  if [ -n "$DEMO_WORKSPACE_ID" ]; then
+    env+="@DEMO_WORKSPACE_ID=$DEMO_WORKSPACE_ID@DEMO_AGENTS=$DEMO_AGENTS@DEMO_CALLS_PER_HOUR=$DEMO_CALLS_PER_HOUR"
+  fi
   gc run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-account "$SA" \
     --allow-unauthenticated --port 8080 --cpu 1 --memory 512Mi --concurrency 40 \
     --min-instances 0 --max-instances 3 --timeout 60s --cpu-boost \
@@ -228,13 +236,15 @@ The VM sleeps when idle: start it first if it is off (any API request wakes it t
   gcloud compute instances start $VM_NAME --zone $VM_ZONE --account $ACCOUNT --project $PROJECT
 
 1. Copy the compose files (only when deploy/vm changed):
-  $scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl $VM_NAME:/opt/callwright/
+  $scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx $VM_NAME:/opt/callwright/
 
 2. Pin both images and render .env, worker.env and voice.env from Secret Manager:
   $ssh 'cd /opt/callwright && CW_API_IMAGE=$IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh'
 
-3. Pull and restart the workers (and LiveKit once when livekit.yaml.tmpl changed, with no call running):
-  $ssh 'cd /opt/callwright && sudo docker compose pull worker voice && sudo docker compose up -d worker voice'
+3. Pull and restart the workers, then delete the images no container uses (the 19 GB disk fills
+   up after a few deploys; old tags stay in Artifact Registry). Restart LiveKit once when
+   livekit.yaml.tmpl changed, with no call running:
+  $ssh 'cd /opt/callwright && sudo docker compose pull worker voice && sudo docker compose up -d worker voice && sudo docker image prune -af'
   $ssh 'cd /opt/callwright && sudo docker compose restart livekit'
 
 4. Check them:

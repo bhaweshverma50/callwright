@@ -45,6 +45,7 @@ from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
 from app.dashboard.router import router as dashboard_router
+from app.demo.router import router as demo_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
 from app.flows.hooks import register as register_flows
@@ -250,6 +251,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         whatsapp_router,
         whatsapp_public_router,
         flows_router,
+        demo_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:

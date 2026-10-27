@@ -15,6 +15,10 @@ DNS: Cloudflare record `rtc` A 34.180.13.164, DNS only (not proxied: the proxy b
 Update: copy files with `gcloud compute scp ... --account bhaweshverma50@gmail.com --project callwright-dev`,
 then on the VM `cd /opt/callwright && ./render-env.sh && sudo docker compose up -d`.
 
+Disk: the boot disk is 19 GB and each voice worker image is about 2 GB, so every rollout ends
+with `sudo docker image prune -af` (it keeps the images of running containers; old tags can be
+pulled again from Artifact Registry). It filled up once on 2026-10-27 after 6 voice rollouts.
+
 ## Voice worker
 
 Service `voice` in `docker-compose.yml` runs the voice worker image
@@ -69,7 +73,8 @@ gcloud compute scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/v
   --zone $ZONE --account $ACCOUNT --project $PROJECT
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "cd /opt/callwright && CW_API_IMAGE=$API_IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh \
-   && sudo docker compose pull worker voice && sudo docker compose up -d worker voice"
+   && sudo docker compose pull worker voice && sudo docker compose up -d worker voice \
+   && sudo docker image prune -af"
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "curl -s -o /dev/null -w 'voice %{http_code}\n' localhost:8190; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice"
 ```
@@ -101,7 +106,7 @@ One-time VM setup for pulling the image (the VM service account needs
 sudo gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
 ```
 
-After a new image is pushed: `cd /opt/callwright && sudo docker compose pull worker && sudo docker compose up -d worker`
+After a new image is pushed: `cd /opt/callwright && sudo docker compose pull worker && sudo docker compose up -d worker && sudo docker image prune -af`
 (or follow "Roll out a new voice worker image" below, which pins and rolls both workers).
 Health: `curl -s localhost:8191` answers `{"status":"ok","role":"worker"}`.
 
