@@ -190,7 +190,7 @@ batch-vs-batch baseline.
 - [x] T086 [P] RLS test: every 008 table and endpoint denies cross-workspace access, including internal endpoints with a mismatched run in services/api/tests/integration/test_rls_008.py
 - [x] T087 [P] Retention hook: purge persona briefs and simulated transcripts with the base call; mark dataset items unavailable in services/api/app/simulator/jobs.py
 - [x] T088 [P] OpenTelemetry spans for runs carrying `simulation_run_id` and `call_id` in services/voice-worker/worker/textsim/runner.py
-- [ ] T089 Run quickstart.md end to end and fix drift
+- [x] T089 Run quickstart.md end to end and fix drift
 
 ---
 

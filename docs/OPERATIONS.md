@@ -210,3 +210,29 @@ as in production. The mock web API (`vite --mode mock`) mirrors the same cards.
   `pnpm gen:api:check`.
 - Hosted call diagnostics: hosted DB reads are blocked for Claude; use Cloud Run logs and
   `sudo docker compose logs voice worker sip lab-pbx` on the VM.
+
+## 9. Testing and simulation (spec 008)
+
+- Test cases, test runs, simulations (replay and persona), batches with scorecards and datasets.
+  API modules `test_cases`, `test_runs`, `simulator`, `datasets`; migration `s008_0001`.
+- Simulated conversations run in the voice worker image as a second process,
+  `WORKER_ROLE=textsim` (compose service `textsim` on the VM, health on 127.0.0.1:8192). It
+  consumes the arq queue `arq:textsim` (jobs `run_single_turn`, `run_simulation`) on the VM Redis
+  and talks only to the internal API (`/v1/internal/test-runs/...`, `/v1/internal/simulation-runs/...`,
+  `/v1/internal/calls/{id}/events`, knowledge search). Tools never reach customer systems: HTTP
+  tools and webhook nodes answer with their mock response, the recorded output (replay) or a
+  generated stand-in, and each answer is labelled.
+- The API's jobs worker gates the runner: `dispatch_simulation` and `dispatch_test_case` take a
+  slot of the per-workspace semaphore (`sim:sem:{workspace_id}`, `SIM_MAX_CONCURRENCY`, default
+  10), `judge_result` judges test case replies, `sweep_simulations` (every minute) fails runs and
+  test cases whose runner went silent, `purge_simulation_data` (daily) clears persona briefs and
+  simulated transcripts once the base call's transcript is gone.
+- A simulated call is a `calls` row with `origin = simulation`: it goes through finalize,
+  analysis and 007's evaluators, never through call pricing, call charges, customer webhooks,
+  the mid-call credit guard or the concurrent-call limit, and Call History hides it unless the
+  origin filter includes it. Runs are billed as feature charges `testing.run`, `testing.generate`,
+  `simulation.replay`, `simulation.persona`, `simulation.persona_extraction`,
+  `simulation.tool_synth`, once per run.
+- Settings (all optional): API `SIMULATOR_MODEL` (default `openai/gpt-5-mini`),
+  `TESTCASE_GENERATOR_MODEL`, `SIM_MAX_CONCURRENCY`, `SIM_TIMEOUT_S`; text runner `REDIS_URL`
+  (rendered into `voice.env`), `TEXTSIM_MAX_JOBS`, `TEXTSIM_JOB_TIMEOUT_S`. No new secrets.

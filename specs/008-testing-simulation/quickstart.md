@@ -1,21 +1,26 @@
 # Quickstart: Testing and Simulation
 
-Validates the feature end to end on a local stack. Assumes 001-007 are running locally
-(`docker compose up` for Postgres, Redis and object storage; API on `:8000`; jobs worker;
-voice-worker), a signed-in JWT in `$TOKEN`, and an LLM provider key configured for the
-workspace. All IDs below are examples.
+Validates the feature end to end on a local stack: Postgres and Redis from `docker compose up -d`,
+the API on `:8100`, the jobs worker, and the voice worker's text runner (`WORKER_ROLE=textsim`). No
+vendor keys are needed: without them the API's judges and drafts and the runner's agent, persona
+caller and tool stand-ins answer from deterministic offline scripts (so offline verdicts are not
+meaningful, only the plumbing is). A signed-in JWT in `$TOKEN`; all IDs below are examples.
 
 ## 0. Start the text runner and seed data
 
 ```bash
-cd services/api && alembic upgrade head
-python -m app.dev.seed --agent single_prompt --calls 12   # dev seed from 006/007 fixtures
-cd ../voice-worker && python -m worker.textsim.entry       # text-mode runner (queue: textsim)
-export API=http://localhost:8000/v1 AGENT=agt_01J...
-H='-H "Authorization: Bearer '$TOKEN'" -H "Content-Type: application/json"'
+make up && make migrate
+make api                                   # :8100
+make worker                                # arq jobs worker (dispatch, judges, pipeline, sweeper)
+cd services/voice-worker && WORKER_ROLE=textsim REDIS_URL=redis://localhost:56379/0 \
+  CALLWRIGHT_INTERNAL_API_URL=http://localhost:8100/v1/internal uv run python -m worker.textsim.entry
+export API=http://localhost:8100/v1 AGENT=agt_01J...
 ```
 
-Make sure every tool on the agent has a `mock_response` except one, to see the pre-flight
+Create and publish an agent with a prompt, switch on the "Intent fulfillment" check in its Quality
+tab, and give it a few completed calls (place test calls, or for a local run insert completed
+`calls` rows with a `transcript` as the owner, the way `services/api/tests/sim_support.py`
+`seed_live_call` does). Give every HTTP tool a `mock_response` except one, to see the pre-flight
 warning.
 
 ## 1. Test cases (US1)
@@ -64,7 +69,7 @@ SRUN=$(curl -s -X POST $API/simulation-runs -H "Authorization: Bearer $TOKEN" -H
 curl -s $API/simulation-runs/$SRUN/comparison -H "Authorization: Bearer $TOKEN" | jq '.verdicts, .diverged_at_turn'
 ```
 
-Open `http://localhost:5173/simulations/runs/$SRUN`: two transcripts side by side, tool calls
+Open `http://localhost:5180/simulations/runs/$SRUN`: two transcripts side by side, tool calls
 badged mock / recorded / generated, the verdict table with a change column.
 
 Resend the same POST with the same `Idempotency-Key`: the same run id comes back and only one
@@ -117,7 +122,8 @@ shows 20 and "Generate 20 test cases".
 ## 6. Automated checks
 
 ```bash
-cd services/api && pytest tests/unit/test_scorecard.py tests/unit/test_sim_charges.py tests/contract -k "test_cases or test_runs or simulator or datasets"
-cd ../voice-worker && pytest tests/harness -k textsim
-cd ../../apps/web && pnpm test -- simulations datasets testing
+cd services/api && uv run pytest tests/unit/test_scorecard.py tests/unit/test_sim_charges.py \
+  tests/contract -k "test_cases or test_runs or simulator or datasets"
+cd ../voice-worker && uv run pytest tests/harness -k textsim
+cd ../../apps/web && pnpm exec vitest run src/routes/simulations src/routes/datasets src/routes/agents/testing
 ```
