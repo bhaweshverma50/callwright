@@ -281,6 +281,19 @@ def upgrade() -> None:
       LIMIT 500
     $$;
 
+    -- Test cases a runner never answered (sweeper cron): unfinished results of runs started
+    -- (or queued) more than p_s seconds ago.
+    CREATE FUNCTION test_results_stale(p_s integer)
+    RETURNS TABLE (test_run_id text, test_case_id text, workspace_id text)
+    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+      SELECT r.test_run_id, r.test_case_id, r.workspace_id FROM test_results r
+      JOIN test_runs t ON t.id = r.test_run_id
+      WHERE t.status IN ('queued', 'running') AND r.state IN ('pending', 'running', 'judging')
+        AND coalesce(t.started_at, t.created_at) < now() - make_interval(secs => p_s)
+      ORDER BY t.created_at
+      LIMIT 500
+    $$;
+
     -- Retention (research R13): simulated transcripts and persona briefs follow the base call.
     CREATE FUNCTION simulation_data_purge()
     RETURNS bigint
@@ -303,6 +316,7 @@ def upgrade() -> None:
         "test_runs_workspace_for(text)",
         "simulation_runs_workspace_for(text)",
         "simulation_runs_stale(integer, integer)",
+        "test_results_stale(integer)",
         "simulation_data_purge()",
     ):
         op.execute(f"REVOKE ALL ON FUNCTION {fn} FROM PUBLIC")

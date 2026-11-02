@@ -7,17 +7,18 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+import pytest_asyncio
 
 from app.core.ids import new_id
 from tests.agent_helpers import create_ok
 from tests.conftest import Account
-from tests.runtime_support import SERVICE_HEADERS, owner_sql
+from tests.runtime_support import SERVICE_HEADERS, RecordingQueue, job_functions, owner_sql
 
 PROMPT = "You book cleaning appointments for Bright Smiles dental clinic."
 
@@ -341,3 +342,109 @@ class FakeTextRunner:
 
 def snapshot_copy(config: Mapping[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(dict(config))
+
+
+# Job environment ------------------------------------------------------------------------------
+
+
+@dataclass
+class TextsimRecorder:
+    """Stands in for the ``arq:textsim`` queue: records what the API dispatched."""
+
+    jobs: list[tuple[str, tuple[Any, ...]]] = field(default_factory=list)
+
+    async def enqueue(self, name: str, *args: Any, job_id: str | None = None) -> None:
+        self.jobs.append((name, tuple(args)))
+
+
+TextsimHandler = Callable[[str, tuple[Any, ...]], Awaitable[Any]]
+
+
+@dataclass
+class SimEnv:
+    app: Any
+    client: httpx.AsyncClient
+    queue: Any
+    textsim: TextsimRecorder
+    runner: FakeTextRunner
+    llm: Any
+
+    def ctx(self) -> dict[str, Any]:
+        state = self.app.state
+        return {
+            "db": state.db,
+            "settings": state.settings,
+            "jobs": self.queue,
+            "redis": state.redis,
+            "textsim": self.textsim,
+            "adapter_catalog": state.adapter_catalog,
+            "livekit": state.livekit,
+            "http": None,
+        }
+
+    async def run_api_jobs(self, *, include_deferred: bool = True) -> int:
+        functions = {**job_functions(), **{f.__name__: f for f in sim_job_functions()}}
+        ran = 0
+        for _ in range(50):
+            runnable = [j for j in self.queue.jobs if include_deferred or not j.defer_by_s]
+            if not runnable:
+                break
+            for job in runnable:
+                self.queue.jobs.remove(job)
+                if job.name in functions:
+                    await functions[job.name](self.ctx(), *job.args)
+                    ran += 1
+        return ran
+
+    async def drain(self, handler: TextsimHandler | None = None, *, rounds: int = 30) -> None:
+        """Run API jobs and text runner jobs until both queues are empty."""
+        for _ in range(rounds):
+            await self.run_api_jobs()
+            if not self.textsim.jobs:
+                if not self.queue.jobs:
+                    return
+                continue
+            pending, self.textsim.jobs = self.textsim.jobs, []
+            for name, args in pending:
+                if handler is not None:
+                    await handler(name, args)
+                elif name == "run_single_turn":
+                    await self.runner.single_turn(*args)
+                else:
+                    await self.runner.simulation(*args)
+
+
+def sim_job_functions() -> list[Any]:
+    from app.simulator.install import job_functions as functions
+
+    return functions()
+
+
+@pytest_asyncio.fixture
+async def sim_env(app: Any, client: httpx.AsyncClient) -> AsyncIterator[SimEnv]:
+    from app.evals import install as quality_install
+    from app.evals import runtime as quality_runtime
+    from app.llms.adapters.base import ChatMessage
+    from app.llms.adapters.fake import PURPOSE_REPLIES
+    from tests.fakes.fake_llm import FakeLlm
+    from tests.unit.evaluators.helpers import offline_llm
+
+    previous = getattr(app.state, "jobs", None)
+    queue = RecordingQueue()
+    app.state.jobs = queue
+    quality = offline_llm()
+
+    def responder(system: str, user: str, purpose: str | None) -> str:
+        if purpose in ("test_case_judge", "persona_extraction", "test_case_generation"):
+            return PURPOSE_REPLIES[purpose]([ChatMessage("user", user)], system)
+        assert quality.responder is not None
+        return quality.responder(system, user, purpose)
+
+    llm = FakeLlm(responder=responder)
+    quality_runtime.install(app.state.settings, llm=llm, queue=queue)
+    quality_install.install_handlers()
+    env = SimEnv(app, client, queue, TextsimRecorder(), FakeTextRunner(client), llm)
+    yield env
+    quality_runtime.install(app.state.settings, queue=previous)
+    quality_install.install_handlers()
+    app.state.jobs = previous

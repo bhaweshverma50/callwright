@@ -184,6 +184,25 @@ async def sweep_simulations(ctx: dict[str, Any]) -> int:
     for run_id, workspace_id in rows:
         await _fail(db, workspace_id, run_id, "The simulation runner stopped answering.")
         await dispatch.release(redis, workspace_id, run_id)
+    return len(rows) + await sweep_test_cases(db, redis)
+
+
+async def sweep_test_cases(db: Database, redis: Any) -> int:
+    """Test cases whose runner or judge never answered become ``error`` so their run finishes."""
+    from app.test_runs import service as test_runs
+    from app.test_runs.jobs import holder
+
+    async with db.transaction() as session:
+        rows = (
+            await session.execute(
+                text("select test_run_id, test_case_id, workspace_id from test_results_stale(:s)"),
+                {"s": STALE_RUN_S * 2},
+            )
+        ).all()
+    for run_id, case_id, workspace_id in rows:
+        async with db.transaction(workspace_id=workspace_id) as session:
+            await test_runs.fail_case(session, run_id, case_id, "The test runner stopped answering.")
+        await dispatch.release(redis, workspace_id, holder(run_id, case_id))
     return len(rows)
 
 
