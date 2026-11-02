@@ -235,3 +235,14 @@ async def test_judge_error_is_retried_once_then_error(
 
 def _load(text: str) -> Any:
     return json.loads(text)
+
+
+async def test_finished_call_without_an_analysis_is_not_run_instead_of_pending_forever(
+    client: httpx.AsyncClient, account: Account, runtime: Runtime, quality: FakeLlm
+) -> None:
+    # An older call, or one whose analyze step failed: the pipeline finished but no analysis row.
+    call = await scripted_call(runtime, account.workspace_id)
+    owner_sql("delete from call_analyses where call_id = %s", (call.call_id,))
+    owner_sql("update calls set summary = null where id = %s", (call.call_id,))
+    got = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=account.headers)).json()
+    assert got["status"] == "skipped" and got["skip_reason"] == "not_run"

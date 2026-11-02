@@ -172,10 +172,10 @@ components:
       properties:
         call_id: { type: string }
         status: { type: string, enum: [pending, running, completed, skipped, error] }
-        skip_reason: { type: [string, "null"], enum: [insufficient_credit, too_short, null] }
+        skip_reason: { type: [string, "null"], enum: [insufficient_credit, too_short, not_run, null] }
         error: { type: [string, "null"] }
         model: { type: [string, "null"] }
-        summary: { type: [string, "null"], maxLength: 600 }
+        summary: { type: [string, "null"], maxLength: 1200 }
         sentiment: { type: [string, "null"], enum: [positive, neutral, negative, unknown, null] }
         values:
           type: array

@@ -77,16 +77,19 @@ async def delete_variable(request: Request, principal: CurrentPrincipal, variabl
 def analysis_view(call: Call, row: CallAnalysis | None, current: dict[str, Any]) -> dict[str, Any]:
     """``current`` maps active variable ids to their names (for renamed and deleted labels)."""
     if row is None:
-        # Calls analysed before 007 existed, or not reached by the pipeline yet.
+        # Calls analysed before 007 existed, or not reached by the pipeline yet. Once the pipeline
+        # has finished without an analysis (older calls, or an analyze step that failed), report
+        # "not_run" so the page offers a re-run instead of polling a pending state forever.
         done = call.summary is not None
+        finished = call.status in DONE_STATES and call.pipeline_status not in ("not_started", "running")
         values = [
             {"variable_id": None, "name": k, "type": _type_of(v), "value": v, "status": "current"}
             for k, v in (call.analysis or {}).items()
         ]
         return {
             "call_id": call.id,
-            "status": "completed" if done else "pending",
-            "skip_reason": None,
+            "status": "completed" if done else ("skipped" if finished else "pending"),
+            "skip_reason": None if done or not finished else "not_run",
             "error": None,
             "model": None,
             "summary": call.summary,

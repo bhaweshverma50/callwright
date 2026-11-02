@@ -3,6 +3,7 @@ import type { CallDetail, Sentiment } from "../../api/calls";
 import { Badge, Skeleton } from "../../components";
 import { SENTIMENT_LABELS } from "./filters";
 import { SENTIMENT_TONES } from "./format";
+import { SummaryText } from "./quality/SummaryText";
 
 const SENTIMENT_ICONS = { positive: Smile, neutral: Meh, negative: Frown, unknown: CircleHelp } as const;
 
@@ -42,7 +43,13 @@ export function AnalysisTable({ call }: { call: CallDetail }) {
         <h3 id="summary-h" className="text-[12.5px] text-fg-3">
           Summary
         </h3>
-        {pending ? <Processing /> : <p className="text-[13.5px] leading-relaxed text-fg">{call.summary ?? "No summary for this call."}</p>}
+        {pending ? (
+          <Processing />
+        ) : call.summary ? (
+          <SummaryText text={call.summary} />
+        ) : (
+          <p className="text-[13.5px] text-fg-3">No summary for this call.</p>
+        )}
       </section>
       <section aria-labelledby="sentiment-h" className="flex items-center justify-between gap-3">
         <h3 id="sentiment-h" className="text-[12.5px] text-fg-3">

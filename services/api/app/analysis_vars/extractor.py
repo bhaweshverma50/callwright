@@ -22,14 +22,21 @@ from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
 
 PURPOSE = "call_analysis"
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")
-SUMMARY_MAX = 600
+SUMMARY_MAX = 1200
 _NUMBER = re.compile(r"^-?\d+(?:[.,]\d+)?$")
 _TRUE = {"true", "yes", "y", "1"}
 _FALSE = {"false", "no", "n", "0"}
 
 INSTRUCTIONS = (
-    "Read the call and fill in the analysis. Write a summary of at most 600 characters: why the "
-    "caller called and how it ended. Rate the CALLER's sentiment as positive, neutral or "
+    "Read the call and fill in the analysis. Write the summary as plain text (no markdown), at "
+    "most 1200 characters. First line: one sentence saying why the caller called and how the call "
+    "ended. Then add a short line for each of these that the call actually contains, in this "
+    "order, starting with the label: 'Details:' the facts the caller gave or confirmed (names, "
+    "dates, times, amounts, reference numbers, addresses); 'Actions:' what the agent did (lookups, "
+    "bookings, transfers, messages sent, disclosures given); 'Outcome:' what was agreed or "
+    "resolved, or why it was not; 'Next step:' any follow-up either side promised. Use only facts "
+    "from the call and never guess; leave out a line the call gives nothing for. Rate the "
+    "CALLER's sentiment as positive, neutral or "
     "negative. For every variable below, extract the value the call actually contains, using "
     "its description; use null when the call does not contain it. Boolean variables take true "
     "or false, number variables a number, choice variables exactly one of their choices, string "
@@ -119,7 +126,9 @@ def coerce(variable: Mapping[str, Any], raw: Any) -> Any:
 def resolve(
     data: Mapping[str, Any], variables: Sequence[Mapping[str, Any]], caller_spoke: bool
 ) -> tuple[str, str, dict[str, Any]]:
-    summary = " ".join(str(data.get("summary") or "").split())[:SUMMARY_MAX]
+    # Keep the summary's lines (first line plus labelled lines); tidy spaces inside each line.
+    lines = [" ".join(line.split()) for line in str(data.get("summary") or "").splitlines()]
+    summary = "\n".join(line for line in lines if line)[:SUMMARY_MAX]
     sentiment = str(data.get("sentiment") or "").strip().lower()
     if not caller_spoke or sentiment not in SENTIMENTS:
         sentiment = "unknown"

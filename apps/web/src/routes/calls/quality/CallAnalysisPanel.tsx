@@ -8,6 +8,7 @@ import { problemMessage } from "../../../api/problems";
 import { qualityKeys, rerunAnalysis, useCallAnalysis, type AnalysisValue } from "../../../api/quality";
 import { Button, Skeleton, ThinkingIndicator, toast } from "../../../components";
 import { AnalysisTable, SentimentBadge } from "../AnalysisTable";
+import { SummaryText } from "./SummaryText";
 
 function show(v: AnalysisValue): string {
   if (v.value === null || v.value === undefined || v.value === "") return "not found";
@@ -77,12 +78,16 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
               ? "Analysis skipped: insufficient credit. Re-run it after a top-up."
               : a.skip_reason === "too_short"
                 ? "Not analysed: the call was too short to summarise. Re-run the analysis to force it."
-                : "No analysis for this call: it never connected or had nothing to analyse."}
+                : a.skip_reason === "not_run"
+                  ? "This call has not been analysed. Run the analysis to get a summary and sentiment."
+                  : "No analysis for this call: it never connected or had nothing to analyse."}
           </p>
         ) : a.status === "error" ? (
           <p className="text-[13px] text-danger-text">Analysis failed{a.error ? `: ${a.error}` : ""}. Try re-running it.</p>
+        ) : a.summary ? (
+          <SummaryText text={a.summary} />
         ) : (
-          <p className="text-[13.5px] leading-relaxed text-fg">{a.summary ?? "No summary for this call."}</p>
+          <p className="text-[13.5px] text-fg-3">No summary for this call.</p>
         )}
       </section>
       <section aria-labelledby="sentiment-h" className="flex items-center justify-between gap-3">

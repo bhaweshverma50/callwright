@@ -5429,7 +5429,7 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "running" | "completed" | "skipped" | "error";
             /** @enum {string|null} */
-            skip_reason?: "insufficient_credit" | "too_short" | null;
+            skip_reason?: "insufficient_credit" | "too_short" | "not_run" | null;
             error?: string | null;
             model?: string | null;
             summary?: string | null;

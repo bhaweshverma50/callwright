@@ -75,8 +75,8 @@ def test_unknown_sentiment_when_caller_silent() -> None:
 
 
 def test_invalid_sentiment_and_long_summary() -> None:
-    summary, sentiment, _ = resolve({"summary": "x" * 900, "sentiment": "ecstatic"}, [], caller_spoke=True)
-    assert len(summary) == 600 and sentiment == "unknown"
+    summary, sentiment, _ = resolve({"summary": "x" * 1500, "sentiment": "ecstatic"}, [], caller_spoke=True)
+    assert len(summary) == 1200 and sentiment == "unknown"
 
 
 def test_model_for_prefers_analysis_model() -> None:
@@ -129,3 +129,19 @@ async def test_offline_fake_books_tuesday() -> None:
     )
     assert result.values == {"appointment_booked": True, "preferred_day": "Tuesday"}
     assert result.sentiment in ("positive", "neutral") and result.summary
+
+
+def test_summary_keeps_its_labelled_lines_and_the_longer_limit() -> None:
+    raw = (
+        "Jordan called about a missed  instalment and agreed to pay on Friday.\n\n"
+        "Details:   $240 due on the 15th; reference LN-2231.\n"
+        "Outcome: promise to pay the full amount on Friday.\n"
+    )
+    summary, _, _ = resolve({"summary": raw, "sentiment": "neutral", "values": {}}, [], True)
+    assert summary.split("\n") == [
+        "Jordan called about a missed instalment and agreed to pay on Friday.",
+        "Details: $240 due on the 15th; reference LN-2231.",
+        "Outcome: promise to pay the full amount on Friday.",
+    ]
+    long, _, _ = resolve({"summary": "x" * 2000, "sentiment": "neutral", "values": {}}, [], True)
+    assert len(long) == 1200
