@@ -380,7 +380,9 @@ function SaveBar({
           </AnimatePresence>
           {status}
         </span>
-        <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+        {/* Nothing to save: the bar only reports the state. Buttons stop short of the assistant dock's
+            corner (sm:mr-52) so they stay clickable before the dock is moved. */}
+        <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:mr-52 sm:w-auto">
           {!isNew && dirty && (
             <Input
               inputSize="md"
@@ -392,21 +394,23 @@ function SaveBar({
               onChange={(e) => onNote(e.target.value)}
             />
           )}
-          {!isNew && (
-            <Button variant="ghost" icon={<Undo2 aria-hidden />} disabled={!dirty || disabled} onClick={onDiscard}>
+          {!isNew && dirty && (
+            <Button variant="ghost" icon={<Undo2 aria-hidden />} disabled={disabled} onClick={onDiscard}>
               Discard
             </Button>
           )}
-          <Button
-            variant="primary"
-            icon={<Save aria-hidden />}
-            pending={saving}
-            disabled={disabled || (!dirty && !isNew)}
-            onClick={onSave}
-            aria-describedby={checking ? "save-checking" : undefined}
-          >
-            {isNew ? "Create agent" : "Save"}
-          </Button>
+          {(isNew || dirty) && (
+            <Button
+              variant="primary"
+              icon={<Save aria-hidden />}
+              pending={saving}
+              disabled={disabled || (!dirty && !isNew)}
+              onClick={onSave}
+              aria-describedby={checking ? "save-checking" : undefined}
+            >
+              {isNew ? "Create agent" : "Save"}
+            </Button>
+          )}
           {checking && (
             <span id="save-checking" className="sr-only">
               Checking the configuration
