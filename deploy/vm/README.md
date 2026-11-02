@@ -76,7 +76,7 @@ gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PRO
    && sudo docker compose pull worker voice textsim && sudo docker compose up -d worker voice textsim \
    && sudo docker image prune -af"
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
-  "curl -s -o /dev/null -w 'voice %{http_code}\n' localhost:8190; curl -s -o /dev/null -w 'textsim %{http_code}\n' localhost:8192; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice textsim"
+  "curl -s -o /dev/null -w 'voice %{http_code}\n' localhost:8190; curl -s -o /dev/null -w 'textsim %{http_code}\n' localhost:8193; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice textsim"
 ```
 
 The first roll-out also changes `livekit.yaml.tmpl` (a loopback ICE candidate so the voice worker's

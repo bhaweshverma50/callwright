@@ -216,7 +216,7 @@ as in production. The mock web API (`vite --mode mock`) mirrors the same cards.
 - Test cases, test runs, simulations (replay and persona), batches with scorecards and datasets.
   API modules `test_cases`, `test_runs`, `simulator`, `datasets`; migration `s008_0001`.
 - Simulated conversations run in the voice worker image as a second process,
-  `WORKER_ROLE=textsim` (compose service `textsim` on the VM, health on 127.0.0.1:8192). It
+  `WORKER_ROLE=textsim` (compose service `textsim` on the VM, health on 127.0.0.1:8193). It
   consumes the arq queue `arq:textsim` (jobs `run_single_turn`, `run_simulation`) on the VM Redis
   and talks only to the internal API (`/v1/internal/test-runs/...`, `/v1/internal/simulation-runs/...`,
   `/v1/internal/calls/{id}/events`, knowledge search). Tools never reach customer systems: HTTP

@@ -62,7 +62,7 @@ services:
   # of queue arq:textsim on the local Redis (REDIS_URL in voice.env). It needs no LiveKit, only
   # Redis, the internal API and the LLM vendor keys from voice.env; without a key for a model's
   # provider it runs that model on deterministic offline scripts. Simulations are not latency
-  # sensitive, so OpenAI priority processing is off here. Health on 127.0.0.1:8192.
+  # sensitive, so OpenAI priority processing is off here. Health on 127.0.0.1:8193 (8192 is livekit-sip).
   textsim:
     image: ${VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}
     restart: unless-stopped
@@ -70,7 +70,7 @@ services:
     env_file: voice.env
     environment:
       WORKER_ROLE: textsim
-      WORKER_HEALTH_PORT: "8192"
+      WORKER_HEALTH_PORT: "8193"
       TEXTSIM_MAX_JOBS: "${TEXTSIM_MAX_JOBS:-10}"
       OPENAI_SERVICE_TIER: ""
     stop_grace_period: 30s
