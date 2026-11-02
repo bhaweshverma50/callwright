@@ -44,6 +44,11 @@ const FlowBuilderPage = lazy(() => import("../routes/flows/FlowBuilderPage").the
 const ReviewPage = lazy(() => import("../routes/review/ReviewPage").then((m) => ({ default: m.ReviewPage })));
 const CalibrationPage = lazy(() => import("../routes/calibration/CalibrationPage").then((m) => ({ default: m.CalibrationPage })));
 const AgentTestingPage = lazy(() => import("../routes/agents/AgentTestingPage").then((m) => ({ default: m.AgentTestingPage })));
+const SimulationsPage = lazy(() => import("../routes/simulations/SimulationsPage").then((m) => ({ default: m.SimulationsPage })));
+const ExperimentPage = lazy(() => import("../routes/simulations/ExperimentPage").then((m) => ({ default: m.ExperimentPage })));
+const RunComparePage = lazy(() => import("../routes/simulations/RunComparePage").then((m) => ({ default: m.RunComparePage })));
+const DatasetsPage = lazy(() => import("../routes/datasets/DatasetsPage").then((m) => ({ default: m.DatasetsPage })));
+const DatasetPage = lazy(() => import("../routes/datasets/DatasetPage").then((m) => ({ default: m.DatasetPage })));
 
 /** Agent builder (spec 002, T024), browser test calls (003) and the flow builder (004). */
 const agentRoutes: RouteObject[] = [
@@ -58,11 +63,17 @@ const agentRoutes: RouteObject[] = [
   { path: "agents/:id/testing", element: <AgentTestingPage /> },
 ];
 
+/** Testing and simulation (spec 008): batches, individual runs, comparisons and datasets. */
+const simulationRoutes: RouteObject[] = [
+  { path: "simulations", element: <SimulationsPage /> },
+  { path: "simulations/runs/:runId", element: <RunComparePage /> },
+  { path: "simulations/:experimentId", element: <ExperimentPage /> },
+  { path: "datasets", element: <DatasetsPage /> },
+  { path: "datasets/:datasetId", element: <DatasetPage /> },
+];
+
 /** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */
 const placeholderRoutes: RouteObject[] = [
-  { path: "datasets", element: <AreaPlaceholder to="/datasets" /> },
-  { path: "simulations", element: <AreaPlaceholder to="/simulations" /> },
-  { path: "simulations/runs/:id", element: <RecordPlaceholder to="/simulations" prefix="srun" kind="simulation run" /> },
   { path: "issues", element: <AreaPlaceholder to="/issues" /> },
   { path: "issues/:id", element: <RecordPlaceholder to="/issues" prefix="iss" kind="issue" /> },
 ];
@@ -117,6 +128,7 @@ export const routes: RouteObject[] = [
                   { path: "calibration", element: <CalibrationPage /> },
                   ...agentRoutes,
                   ...knowledgeRoutes,
+                  ...simulationRoutes,
                   ...placeholderRoutes,
                   { path: "*", element: <NotFound /> },
                 ],

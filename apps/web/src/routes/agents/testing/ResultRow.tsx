@@ -92,7 +92,7 @@ export function ResultRow({
                     <span className="flex flex-wrap items-center gap-2">
                       <Wrench className="size-3.5 text-fg-3" aria-hidden />
                       <span className="font-mono text-[12.5px] text-fg">{t.name}</span>
-                      <AnswerSourceBadge source={t.answer_source} />
+                      {t.answer_source && <AnswerSourceBadge source={t.answer_source} />}
                     </span>
                     <span className="break-all font-mono text-[12px] text-fg-3">{JSON.stringify(t.arguments)}</span>
                     {t.output && <span className="break-all font-mono text-[12px] text-fg-2">{t.output}</span>}

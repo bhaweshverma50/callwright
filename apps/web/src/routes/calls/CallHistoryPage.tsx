@@ -27,7 +27,9 @@ import {
   type ListState,
 } from "./filters";
 import { mss, usd, when } from "./format";
-import { MAX_SELECTION, checkSimulation, handOffToSimulation, useCallSelection } from "./selection";
+import { MAX_SELECTION, checkSimulation, useCallSelection } from "./selection";
+import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
+import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 
 function Checkbox({ checked, onChange, label, mixed }: { checked: boolean; mixed?: boolean; onChange: () => void; label: string }) {
   return (
@@ -181,6 +183,7 @@ export function CallHistoryPage() {
   const { hidden, toggle: toggleColumn, visible } = useColumnVisibility();
   const { selection, toggle, togglePage, clear, limitHit } = useCallSelection();
   const [simError, setSimError] = useState<string | null>(null);
+  const [simulating, setSimulating] = useState<{ agentId: string; callIds: string[] } | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const agentName = useCallback(
@@ -241,9 +244,10 @@ export function CallHistoryPage() {
       setSimError(check.reason);
       return;
     }
-    handOffToSimulation(selection, check.agentId);
-    navigate("/simulations?from=calls");
+    setSimError(null);
+    setSimulating({ agentId: check.agentId, callIds: [...selection.keys()] });
   };
+  const oneAgent = checkSimulation(selection);
 
   const exportCsv = async () => {
     setExporting(true);
@@ -390,6 +394,7 @@ export function CallHistoryPage() {
                   >
                     Clear
                   </Button>
+                  {oneAgent.ok && <AddToDatasetMenu agentId={oneAgent.agentId} callIds={[...selection.keys()]} compact />}
                   <Button variant="primary" size="sm" icon={<FlaskConical aria-hidden />} onClick={runSimulation}>
                     Run simulation
                   </Button>
@@ -526,6 +531,16 @@ export function CallHistoryPage() {
           </div>
         )}
       </section>
+
+      {simulating && (
+        <StartSimulationDialog
+          open
+          onOpenChange={(o) => !o && setSimulating(null)}
+          agentId={simulating.agentId}
+          agentName={agentName(simulating.agentId)}
+          baseCallIds={simulating.callIds}
+        />
+      )}
 
       <CallDetailDrawer
         callId={callId}

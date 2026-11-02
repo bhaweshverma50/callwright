@@ -1,6 +1,7 @@
 import { ClipboardText, PhoneX } from "@phosphor-icons/react";
 import {
   ArrowLeftRight,
+  FlaskConical,
   ChartNoAxesColumn,
   GitBranch,
   Hash,
@@ -28,6 +29,8 @@ import { YourReview } from "./quality/YourReview";
 import { LatencyPanel } from "./LatencyPanel";
 import { RecordingPlayer } from "./RecordingPlayer";
 import { Transcript } from "./Transcript";
+import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
+import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -219,25 +222,50 @@ export function CallDetailDrawer({
   if (callId && callId !== lastId) setLastId(callId);
   const shown = callId ?? lastId;
   const call = useCall(shown);
+  const [simulating, setSimulating] = useState(false);
+  const c = call.data;
+  // 008: only completed live calls can be replayed or kept in a dataset.
+  const simulatable = Boolean(c && c.origin !== "simulation" && c.status === "completed");
   return (
-    <Drawer
-      open={Boolean(callId)}
-      onOpenChange={(o) => !o && onClose()}
-      width="xl"
-      footer={footer}
-      title={call.data ? `Call with ${call.data.agent.name}` : "Call"}
-      meta={call.data ? whenLong(call.data.started_at) : undefined}
-      actions={
-        shown ? (
-          <Button asChild size="sm" variant="secondary" icon={<ArrowLeftRight aria-hidden />}>
-            <Link to={`/calls/${shown}/compare`} aria-label="Compare with another call">
-              <span className="hidden sm:inline">Compare</span>
-            </Link>
-          </Button>
-        ) : null
-      }
-    >
-      {shown && <Body callId={shown} tab={tab} onTab={onTab} onLabelled={onLabelled} />}
-    </Drawer>
+    <>
+      <Drawer
+        open={Boolean(callId)}
+        onOpenChange={(o) => !o && onClose()}
+        width="xl"
+        footer={footer}
+        title={call.data ? `Call with ${call.data.agent.name}` : "Call"}
+        meta={call.data ? whenLong(call.data.started_at) : undefined}
+        actions={
+          shown ? (
+            <>
+              {simulatable && c && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={<FlaskConical aria-hidden />}
+                    aria-label="Simulate this call"
+                    onClick={() => setSimulating(true)}
+                  >
+                    <span className="hidden sm:inline">Simulate</span>
+                  </Button>
+                  <AddToDatasetMenu agentId={c.agent.id} callIds={[c.call_id]} compact />
+                </>
+              )}
+              <Button asChild size="sm" variant="secondary" icon={<ArrowLeftRight aria-hidden />}>
+                <Link to={`/calls/${shown}/compare`} aria-label="Compare with another call">
+                  <span className="hidden sm:inline">Compare</span>
+                </Link>
+              </Button>
+            </>
+          ) : null
+        }
+      >
+        {shown && <Body callId={shown} tab={tab} onTab={onTab} onLabelled={onLabelled} />}
+      </Drawer>
+      {simulating && c && (
+        <StartSimulationDialog open onOpenChange={setSimulating} agentId={c.agent.id} agentName={c.agent.name} baseCallIds={[c.call_id]} />
+      )}
+    </>
   );
 }

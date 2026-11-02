@@ -1,12 +1,11 @@
 /**
  * Cross-page call selection for "Run simulation" (FR-006): up to 200 calls, kept while paging,
- * from a single agent. The hand-off to simulations (spec 008) goes through session storage so a
- * 200-call selection never has to fit in an address.
+ * from a single agent. The selection opens the 008 start dialog in place (one call starts an
+ * individual run, 2 to 100 a batch).
  */
 import { useCallback, useState } from "react";
 
 export const MAX_SELECTION = 200;
-export const HANDOFF_KEY = "cw.simulation.from-calls";
 
 export type Selection = ReadonlyMap<string, string>; // call id -> agent id
 
@@ -61,12 +60,4 @@ export function useCallSelection() {
   }, []);
 
   return { selection, toggle, togglePage, clear, limitHit };
-}
-
-export function handOffToSimulation(selection: Selection, agentId: string): void {
-  try {
-    sessionStorage.setItem(HANDOFF_KEY, JSON.stringify({ agent_id: agentId, call_ids: [...selection.keys()], at: Date.now() }));
-  } catch {
-    /* storage blocked: the simulation page asks for calls again */
-  }
 }
