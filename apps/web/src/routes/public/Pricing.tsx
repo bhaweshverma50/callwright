@@ -33,10 +33,7 @@ export function Pricing() {
         <PricingCalculator />
       </div>
 
-      <section
-        aria-labelledby="parts"
-        className="mt-24 grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
-      >
+      <section aria-labelledby="parts" className="mt-24 grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <h2 id="parts" className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
           What a minute is made of
         </h2>
