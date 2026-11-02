@@ -7,6 +7,7 @@ import { toolHandlers } from "./tools";
 import { channelHandlers } from "./channels/handlers";
 import { qualityHandlers } from "./quality/handlers";
 import { simHandlers } from "./sim/handlers";
+import { issueHandlers } from "./issues/handlers";
 
 export const server = setupServer(
   ...handlers,
@@ -17,4 +18,5 @@ export const server = setupServer(
   ...flowHandlers,
   ...qualityHandlers,
   ...simHandlers,
+  ...issueHandlers,
 );

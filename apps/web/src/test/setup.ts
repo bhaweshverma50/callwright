@@ -7,6 +7,7 @@ import { resetMockDb } from "../mocks/db";
 import { resetMockCalls } from "../mocks/calls/handlers";
 import { resetQualityMocks } from "../mocks/quality/handlers";
 import { resetSimMocks } from "../mocks/sim/store";
+import { resetIssueMocks } from "../mocks/issues/store";
 import { resetWakeForTests } from "../api/wakeGate";
 
 // Animations finish instantly in tests, so tickers and transitions show their final state.
@@ -44,6 +45,7 @@ afterEach(() => {
   resetMockCalls();
   resetQualityMocks();
   resetSimMocks();
+  resetIssueMocks();
   resetWakeForTests();
   localStorage.clear();
 });
