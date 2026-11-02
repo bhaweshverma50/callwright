@@ -22,6 +22,14 @@ export function summaryHeadline(text: string): string {
   return tidySummary(text).split("\n")[0]?.trim() ?? "";
 }
 
+/** The Outcome line of a structured summary, if it has one. */
+export function summaryOutcome(text: string): string | null {
+  const line = tidySummary(text)
+    .split("\n")
+    .find((l) => l.trim().startsWith("Outcome:"));
+  return line ? cap(line.trim().slice("Outcome:".length).trim()) : null;
+}
+
 /** Facts in a Details or Actions line are separated by semicolons; one per bullet. */
 const items = (value: string) =>
   value

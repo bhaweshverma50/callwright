@@ -31,6 +31,7 @@ import { RecordingPlayer } from "./RecordingPlayer";
 import { Transcript } from "./Transcript";
 import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
+import { summaryHeadline, summaryOutcome } from "./quality/SummaryText";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -155,6 +156,7 @@ function Body({
   return (
     <div className="flex flex-col gap-5">
       <Header call={c} />
+      {c.summary && <SummaryCard summary={c.summary} onOpen={() => onTab("analysis")} />}
       <RecordingPlayer callId={c.call_id} hasRecording={c.has_recording} durationS={c.duration_s} processing={c.processing_state === "pending"} />
       <Tabs aria-label="Call detail" value={active} onValueChange={(v) => onTab(v as DrawerTab)} items={tabs}>
         <TabPanel value="transcript">
@@ -267,5 +269,29 @@ export function CallDetailDrawer({
         <StartSimulationDialog open onOpenChange={setSimulating} agentId={c.agent.id} agentName={c.agent.name} baseCallIds={[c.call_id]} />
       )}
     </>
+  );
+}
+
+/** The summary's headline (and outcome) at the top of the drawer; the full one is on Analysis. */
+function SummaryCard({ summary, onOpen }: { summary: string; onOpen: () => void }) {
+  const outcome = summaryOutcome(summary);
+  return (
+    <section aria-label="Summary" className="flex items-start gap-3 rounded-panel border border-line bg-surface px-4 py-3.5">
+      <span className="grid size-7 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text" aria-hidden>
+        <ClipboardText className="size-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-medium leading-relaxed text-fg">{summaryHeadline(summary)}</p>
+        {outcome && (
+          <p className="mt-1 text-[13px] leading-relaxed text-fg-2">
+            <span className="font-semibold text-fg">Outcome </span>
+            {outcome}
+          </p>
+        )}
+        <button type="button" onClick={onOpen} className="link-underline mt-1.5 text-[12.5px] font-medium text-accent-text">
+          Full summary
+        </button>
+      </div>
+    </section>
   );
 }
