@@ -762,6 +762,15 @@ async def record_result(session: AsyncSession, run_id: str, body: Mapping[str, A
     run = await get_run(session, run_id, lock=True)
     if run.status != "running":
         return None
+    if run.output_call_id:
+        # Lock order: call row before the workspace billing lock. This transaction updates the run
+        # twice (the charge flushes midway), so Postgres re-checks the deferred output_call_id
+        # foreign key at commit, which needs a key-share lock on the simulated call. The call's
+        # post-call pipeline holds that row FOR UPDATE and then takes the billing lock to charge
+        # the analysis; taking the key-share here first makes us wait for it instead of deadlocking.
+        await session.execute(
+            select(Call.id).where(Call.id == run.output_call_id).with_for_update(key_share=True)
+        )
     now = datetime.now(UTC)
     usage = merge_usage(body.get("usage") or {})
     run.usage = merge_usage(run.usage or {}, usage)
