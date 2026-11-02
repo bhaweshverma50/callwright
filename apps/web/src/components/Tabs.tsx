@@ -83,7 +83,7 @@ export function Tabs({ value, onValueChange, items, children, className, density
         onScroll={measure}
         aria-label={aria["aria-label"]}
         style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
-        className={cn("flex overflow-x-auto border-b border-line [scrollbar-width:none]", compact ? "gap-4" : "gap-6")}
+        className="flex gap-6 overflow-x-auto border-b border-line [scrollbar-width:none]"
       >
         {items.map((t) => (
           <RT.Trigger

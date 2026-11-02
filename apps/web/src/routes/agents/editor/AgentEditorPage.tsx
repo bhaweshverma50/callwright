@@ -1,18 +1,5 @@
 import { Robot, FlowArrow } from "@phosphor-icons/react";
-import {
-  AudioLines,
-  ChevronLeft,
-  CircleDot,
-  Clock4,
-  History,
-  MessageSquareText,
-  Play,
-  RefreshCw,
-  Save,
-  Settings2,
-  SlidersHorizontal,
-  Undo2,
-} from "lucide-react";
+import { ChevronLeft, CircleDot, History, MessageSquareText, Play, RefreshCw, Save, Undo2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
@@ -184,12 +171,15 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
   const title = draft.name.trim() || (isNew ? "New agent" : draft.base.name);
   const blockers = draft.validation?.publish_blockers ?? [];
 
+  // Short labels and no icons keep seven tabs readable; Advanced goes last, where people look for it.
+  const PANEL_ORDER = ["tools", "knowledge", "quality"];
+  const rank = (id: string) => PANEL_ORDER.indexOf(id) + 1 || PANEL_ORDER.length + 1;
   const tabs = [
-    { value: "basics", label: "Basics", icon: <MessageSquareText aria-hidden />, alerts: counts.basics },
-    { value: "voice", label: "Voice and speech", icon: <AudioLines aria-hidden />, alerts: counts.voice },
-    { value: "behaviour", label: "Call behaviour", icon: <Clock4 aria-hidden />, alerts: counts.behaviour },
-    { value: "advanced", label: "Advanced", icon: <Settings2 aria-hidden />, alerts: counts.advanced },
-    ...panels.map((p) => ({ value: p.id, label: p.label, icon: p.icon ?? <SlidersHorizontal aria-hidden /> })),
+    { value: "basics", label: "Basics", alerts: counts.basics },
+    { value: "voice", label: "Voice", alerts: counts.voice },
+    { value: "behaviour", label: "Behaviour", alerts: counts.behaviour },
+    ...[...panels].sort((a, b) => rank(a.id) - rank(b.id)).map((p) => ({ value: p.id, label: p.label })),
+    { value: "advanced", label: "Advanced", alerts: counts.advanced },
   ];
 
   return (

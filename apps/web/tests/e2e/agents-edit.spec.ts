@@ -22,7 +22,7 @@ test("inline validation blocks the save without a request", async ({ page }) => 
   await page.getByLabel("Webhook timeout", { exact: true }).blur();
   await expect(page.getByText("Webhook timeout must be between 1 and 30 seconds.")).toBeVisible();
 
-  await page.getByRole("tab", { name: "Call behaviour" }).click();
+  await page.getByRole("tab", { name: "Behaviour" }).click();
   const max = page.getByLabel("Maximum call duration", { exact: true });
   await max.fill("0.2");
   await max.blur();
@@ -60,7 +60,7 @@ test("variables, greeting, provider switch and a saved version", async ({ page }
   await page.getByRole("radio", { name: "Agent" }).click();
 
   // Switching voice provider picks that provider's default voice for the language.
-  await page.getByRole("tab", { name: "Voice and speech" }).click();
+  await page.getByRole("tab", { name: "Voice" }).click();
   await page.getByLabel("Voice provider", { exact: true }).click();
   await page.getByRole("option", { name: "Cartesia" }).click();
   await expect(page.getByText("Voice set to Skylar, Cartesia's default for English (US).")).toBeVisible();
