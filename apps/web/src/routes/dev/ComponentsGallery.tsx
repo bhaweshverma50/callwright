@@ -43,6 +43,8 @@ import {
   Textarea,
   Ticker,
   Waveform,
+  Composer,
+  ThinkingIndicator,
   toast,
   type FlowNode,
   type Column,
@@ -228,6 +230,13 @@ export function ComponentsGallery() {
             <IconButton label="Open folder">
               <FolderOpen className="size-4" aria-hidden />
             </IconButton>
+          </div>
+        </Section>
+
+        <Section title="AI" note="The composer every assistant uses, and the line shown while a model works.">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <ThinkingIndicator label="Writing" verbs={["Reading your prompt", "Drafting", "Shaping the steps", "Tightening the wording"]} />
+            <GalleryComposer />
           </div>
         </Section>
 
@@ -773,4 +782,9 @@ export function ComponentsGallery() {
       </main>
     </div>
   );
+}
+
+function GalleryComposer() {
+  const [value, setValue] = useState("");
+  return <Composer label="Gallery composer" value={value} onChange={setValue} onSubmit={() => setValue("")} placeholder="Ask for a change" />;
 }

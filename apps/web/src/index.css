@@ -1153,3 +1153,19 @@ a:focus-visible .logo-handoff.logo-anim .wc-full {
   }
 }
 /* brand:logo:end */
+
+/* Status text that is being worked on (AI thinking lines): a soft highlight sweeps across the
+   words. Plain text colour under reduced motion. */
+.text-shimmer {
+  color: var(--text-2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .text-shimmer {
+    background: linear-gradient(90deg, var(--text-3) 0%, var(--text-3) 35%, var(--text) 50%, var(--text-3) 65%, var(--text-3) 100%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 2.2s linear infinite;
+  }
+}

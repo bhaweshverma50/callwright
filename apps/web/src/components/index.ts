@@ -28,3 +28,4 @@ export { FlowChain, ActiveDisc, Halo, type FlowNode } from "./FlowChain";
 export { PageTransition, Reveal, RevealItem, Ticker, useTicker, useRipple, EASE_OUT, EASE_OUT_SOFT, STATE_DURATION } from "./motion";
 export { cn, focusRing } from "./cn";
 export { Stepper, type Step, type StepStatus } from "./Stepper";
+export { Composer, ThinkingIndicator, type ComposerProps } from "./ai";
