@@ -1,6 +1,6 @@
 # Status and resume point
 
-Last updated: 2026-10-27. Read this first when resuming; `docs/OPERATIONS.md` is the full reference (hosting, deploys, telephony lab, playground, test checkout, design rules).
+Last updated: 2026-11-02. Read this first when resuming; `docs/OPERATIONS.md` is the full reference (hosting, deploys, telephony lab, playground, test checkout, design rules).
 
 ## Where things stand
 - `main` is pushed and deployed (2026-10-26, wave 3 live): Cloud Run API `7ef3756` (migrations through s006_0002), VM jobs worker `7ef3756`, VM voice worker `cf4bea6`, VM LiveKit `v1.13.3`, web from `7ef3756`. Verified on the hosted app with scripted calls: silence check-ins end the call as inactivity, a flow agent call, and the assistant answering "what did my last call cost?".
@@ -44,7 +44,7 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Dashboard: sparkline dot was stretched into an oval and the line stopped short (pathLength with a non-scaling stroke); copilot dock mic is now a soft secondary button with a divider before "Ask about your data".
 - Sentiment shows "Unknown" because post-call analysis is spec 007 (not built; pipeline step `analyze` is skipped).
 
-## Homepage playground, test checkout, UI polish (2026-10-27, committed 51ccbe6, not deployed)
+## Homepage playground, test checkout, UI polish (2026-10-27, committed 51ccbe6, deployed with 1881139)
 - Homepage playground: visitors call a demo agent from the browser (clinic, roadside, loan) and see each reply's latency and the running cost. Public `GET /v1/public/demo` and `POST /v1/public/demo-calls`, 3 calls per IP per hour, 2 minutes per call, charged to the demo workspace (created: `ws_01M5YB54ZTTDHJSVXQCB9D21FF`, ids in `deploy/cloudrun/deploy.sh`). Details: docs/OPERATIONS.md section 5.
 - Test checkout: "Add funds" opens `/checkout/{session}` in the web app with Stripe-style test cards for success and every decline. Section 6.
 - `useWebCall` hook extracted from `WebCallPanel` (shared with the playground); flow builder nodes and canvas restyled solid and crisp; dashboard sparkline dot and draw-in fixed; copilot dock mic is secondary; VM rollouts prune old images.
@@ -54,9 +54,16 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 ## Wave 4 (started 2026-10-27)
 - 4a, spec 007 quality and evals: merged into main 2026-10-27 (merge 2aecc70, 90/90 tasks). Post-call summary, sentiment and analysis variables for every call, quality checks with verdicts and reasons, labels, calibration, custom checks, review queue; Quality tabs in the call drawer and agent editor, Review and Calibration pages. Migration `s007_0001` (after `s006_0002`). New optional settings `EVAL_JUDGE_MODELS` (default `openai/gpt-5-mini`), `EVAL_JUDGE_MODEL`, `EVAL_CONCURRENCY=4`, `EVAL_TIMEOUT_S=60`, `EVAL_JUDGE_PASS_CUTOFF=0.5`, `CALIBRATION_MIN_SAMPLE=5`; no new secrets. The migrate role also syncs the built-in evaluator catalog.
 - Suites on the merge: API 1688, web 251, worker 480, contracts and generated types up to date.
-- Not deployed yet: `deploy.sh ... build migrate api`, then the VM worker rollout (new jobs `evaluate_call`, `rerun_analysis`), then Vercel. Voice worker unchanged.
+- Deployed with 1881139 (API, VM jobs worker, web), verified 2026-11-02.
 - Open: the `evals` key in agent config (002) is superseded by per-agent evaluator settings and can be removed; judges run without a pinned temperature (the LLM client has no parameter); judge quality is untested against real models.
-- 4b, spec 008 testing and simulation, starts next (it uses 007's judge and evaluations).
+- 4b, spec 008 testing and simulation: merged into main 2026-11-02 (94/95 tasks; T085 live latency benchmark deferred, offline benchmark unchanged at p50 666 ms). Test cases with LLM-judged runs (Testing tab on `/agents/:id/testing?tab=cases`), text simulations that replay a past call or let a persona caller play against any agent version, batch scorecards and comparison, datasets (`/simulations`, `/simulations/runs/:runId`, `/datasets`). Simulated calls are stored as calls with `origin = simulation`, so 007 scores them unchanged; they skip the concurrency limit, the mid-call credit guard and customer webhooks. Migration `s008_0001` (after `s007_0001`).
+- New optional settings: `SIMULATOR_MODEL` (default `openai/gpt-5-mini`), `TESTCASE_GENERATOR_MODEL`, `SIM_MAX_CONCURRENCY=10`, `SIM_TIMEOUT_S=60`; voice worker textsim `TEXTSIM_MAX_JOBS=10`, `TEXTSIM_JOB_TIMEOUT_S=900` (and `REDIS_URL`, rendered into `voice.env`). No new secrets.
+- Deploy 008: `deploy.sh ... build migrate api`; `deploy.sh ... build-voice`; copy `deploy/vm/docker-compose.yml` and `render-env.sh` to the VM, render with the new API and voice tags, `docker compose pull worker voice textsim && docker compose up -d` (new `textsim` service: voice image with `WORKER_ROLE=textsim`, queue `arq:textsim`, health on 127.0.0.1:8192; jobs worker gains `dispatch_simulation`, `dispatch_test_case`, `judge_result` and crons `sweep_simulations`, `purge_simulation_data`); then Vercel.
+- Open: offline (no keys) verdicts only prove plumbing; judges run without a pinned temperature (same as 007); tool description edits do not reach compiled flow nodes in variants; batches over 100 usable calls are refused (422).
+- Also fixed on merge: the API now percent-decodes the Redis password in `REDIS_URL` (render-env.sh encodes it).
+
+## Public pages (2026-11-02, deployed)
+- Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 
 ## Next, in order
 1. Place a hosted test call to confirm the faster greeting and answers (last measured live: greeting 2.1 s, answer 2.7 s). Note: `worker-hint` prints the HEAD tag; pin `CW_API_IMAGE` and `CW_VOICE_IMAGE` to tags that were actually built.
