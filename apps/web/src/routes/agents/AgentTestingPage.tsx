@@ -1,5 +1,6 @@
 /**
- * `/agents/:id/testing`: browser test call for one agent (spec 003 US1, FR-047).
+ * `/agents/:id/testing`: the agent's Testing area. Two tabs: a browser test call (spec 003 US1,
+ * FR-047) and single-turn test cases judged by an LLM (spec 008 US1, `?tab=cases`).
  *
  * The call itself is the shared `WebCallPanel` (microphone check, `POST /v1/sessions/web-call`,
  * LiveKit room). This page picks what it calls: the draft (latest saved changes) or the published
@@ -11,18 +12,19 @@
  * WakeOverlay covers the page; if they never start, the panel says so and nothing is charged.
  */
 import { PhoneCall } from "@phosphor-icons/react";
-import { Braces, ChevronLeft, Settings2 } from "lucide-react";
+import { Braces, ChevronLeft, ClipboardCheck, Headphones, Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useAgent, useVersionDetail, type AgentConfig, type DynamicVariable } from "../../api/agents";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { useQuote } from "../../api/queries";
-import { Button, EmptyState, Field, Input, PageHeader, Panel, PanelLoader, Segmented, Skeleton, WorkLayout } from "../../components";
+import { Button, EmptyState, Field, Input, PageHeader, Panel, PanelLoader, Segmented, Skeleton, TabPanel, Tabs, WorkLayout } from "../../components";
 import { WebCallPanel } from "../../components/WebCallPanel";
 import { toMicros } from "../../lib/money";
 import { RecordNotFound } from "../NotFound";
 import { quoteRequestFor } from "./editor/CostCard";
+import { TestCasesTab } from "./testing/TestCasesTab";
 
 const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -40,6 +42,8 @@ export function variablesToSend(declared: DynamicVariable[], values: Record<stri
 
 export function AgentTestingPage() {
   const { id = "" } = useParams();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "cases" ? "cases" : "call";
   const valid = ULID.test(id);
   const agent = useAgent(valid ? id : undefined);
   const [target, setTarget] = useState<TestTarget>("draft");
@@ -77,80 +81,104 @@ export function AgentTestingPage() {
       </Link>
       <PageHeader
         title={`Test ${detail.name}`}
-        description="Call the agent from your browser. Each answer shows its latency by link of the chain; the call is charged like any other call."
+        description={
+          tab === "cases"
+            ? "Single-turn test cases: what a caller says and what the agent should do. Runs are judged by an LLM and charged as a feature charge."
+            : "Call the agent from your browser. Each answer shows its latency by link of the chain; the call is charged like any other call."
+        }
         actions={
           <Button asChild icon={<Settings2 aria-hidden />}>
             <Link to={editPath}>Edit agent</Link>
           </Button>
         }
       />
-      <WorkLayout
-        main={<WebCallPanel agentId={id} version={testing} variables={variables} {...(perMinute !== null && { perMinuteMicros: perMinute })} />}
-        inspector={
-          <Panel title="Call setup" description="Changes apply to the next call." icon={<Settings2 aria-hidden />}>
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <span id="test-version-label" className="text-[13px] font-medium text-fg">
-                  Version
-                </span>
-                <Segmented
-                  aria-labelledby="test-version-label"
-                  aria-describedby="test-version-hint"
-                  value={testing}
-                  onValueChange={setTarget}
-                  fill
-                  size="sm"
-                  options={[
-                    { value: "draft", label: "Draft" },
-                    { value: "published", label: "Published", disabled: !published },
-                  ]}
-                />
-                <p id="test-version-hint" className="text-[12.5px] text-fg-3">
-                  {testing === "draft" ? `${draftLabel}: your latest saved changes.` : `${publishedLabel}: what live calls answer with.`}
-                  {!published && " Publish the agent to test the live version."}
-                </p>
-              </div>
+      <Tabs
+        aria-label="Testing"
+        value={tab}
+        onValueChange={(v) => {
+          const p = new URLSearchParams(params);
+          if (v === "cases") p.set("tab", "cases");
+          else p.delete("tab");
+          setParams(p, { replace: true });
+        }}
+        items={[
+          { value: "call", label: "Browser call", icon: <Headphones aria-hidden /> },
+          { value: "cases", label: "Test cases", icon: <ClipboardCheck aria-hidden /> },
+        ]}
+      >
+        <TabPanel value="cases">
+          <TestCasesTab agent={detail} />
+        </TabPanel>
+        <TabPanel value="call">
+          <WorkLayout
+            main={<WebCallPanel agentId={id} version={testing} variables={variables} {...(perMinute !== null && { perMinuteMicros: perMinute })} />}
+            inspector={
+              <Panel title="Call setup" description="Changes apply to the next call." icon={<Settings2 aria-hidden />}>
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2">
+                    <span id="test-version-label" className="text-[13px] font-medium text-fg">
+                      Version
+                    </span>
+                    <Segmented
+                      aria-labelledby="test-version-label"
+                      aria-describedby="test-version-hint"
+                      value={testing}
+                      onValueChange={setTarget}
+                      fill
+                      size="sm"
+                      options={[
+                        { value: "draft", label: "Draft" },
+                        { value: "published", label: "Published", disabled: !published },
+                      ]}
+                    />
+                    <p id="test-version-hint" className="text-[12.5px] text-fg-3">
+                      {testing === "draft" ? `${draftLabel}: your latest saved changes.` : `${publishedLabel}: what live calls answer with.`}
+                      {!published && " Publish the agent to test the live version."}
+                    </p>
+                  </div>
 
-              <section aria-labelledby="test-vars-title" className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <Braces className="size-4 text-fg-3" aria-hidden />
-                  <h3 id="test-vars-title" className="text-[13px] font-medium text-fg">
-                    Variables
-                  </h3>
+                  <section aria-labelledby="test-vars-title" className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <Braces className="size-4 text-fg-3" aria-hidden />
+                      <h3 id="test-vars-title" className="text-[13px] font-medium text-fg">
+                        Variables
+                      </h3>
+                    </div>
+                    {!config ? (
+                      <Skeleton className="h-9 w-full" />
+                    ) : declared.length === 0 ? (
+                      <p className="text-[12.5px] text-fg-3">
+                        This version declares no variables. Add them in the agent's prompt settings to personalise test calls.
+                      </p>
+                    ) : (
+                      <>
+                        {declared.map((v) => (
+                          <Field
+                            key={v.name}
+                            label={<span className="font-mono text-[12.5px]">{v.name}</span>}
+                            hint={v.description ?? (v.default ? `Empty uses the default, ${v.default}.` : "No default: empty leaves it unset.")}
+                          >
+                            {({ id: inputId, describedBy }) => (
+                              <Input
+                                id={inputId}
+                                aria-describedby={describedBy}
+                                maxLength={2000}
+                                placeholder={v.default ?? ""}
+                                value={values[v.name] ?? ""}
+                                onChange={(e) => setValues((prev) => ({ ...prev, [v.name]: e.target.value }))}
+                              />
+                            )}
+                          </Field>
+                        ))}
+                      </>
+                    )}
+                  </section>
                 </div>
-                {!config ? (
-                  <Skeleton className="h-9 w-full" />
-                ) : declared.length === 0 ? (
-                  <p className="text-[12.5px] text-fg-3">
-                    This version declares no variables. Add them in the agent's prompt settings to personalise test calls.
-                  </p>
-                ) : (
-                  <>
-                    {declared.map((v) => (
-                      <Field
-                        key={v.name}
-                        label={<span className="font-mono text-[12.5px]">{v.name}</span>}
-                        hint={v.description ?? (v.default ? `Empty uses the default, ${v.default}.` : "No default: empty leaves it unset.")}
-                      >
-                        {({ id: inputId, describedBy }) => (
-                          <Input
-                            id={inputId}
-                            aria-describedby={describedBy}
-                            maxLength={2000}
-                            placeholder={v.default ?? ""}
-                            value={values[v.name] ?? ""}
-                            onChange={(e) => setValues((prev) => ({ ...prev, [v.name]: e.target.value }))}
-                          />
-                        )}
-                      </Field>
-                    ))}
-                  </>
-                )}
-              </section>
-            </div>
-          </Panel>
-        }
-      />
+              </Panel>
+            }
+          />
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }
