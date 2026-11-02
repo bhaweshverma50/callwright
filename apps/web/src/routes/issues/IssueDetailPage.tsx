@@ -31,6 +31,7 @@ import { FixPanel } from "./FixPanel";
 import { ValidateDialog } from "./ValidateDialog";
 import { ValidationEvidence } from "./ValidationEvidence";
 import { DISMISS_LABELS, IssueStatusBadge, ORIGIN_LABELS } from "./shared";
+import { withoutLineRefs } from "../../lib/text";
 
 const SAMPLE_COLUMNS: Column<IssueSample>[] = [
   {
@@ -46,7 +47,9 @@ const SAMPLE_COLUMNS: Column<IssueSample>[] = [
           {shortId(s.call_id)}
         </Link>
         {s.call_origin === "simulation" && <span className="text-[12px] text-fg-3">Simulated</span>}
-        <span className="max-w-[78vw] whitespace-normal py-0.5 text-[13px] leading-relaxed text-fg md:hidden">{s.reason_excerpt}</span>
+        <span className="max-w-[78vw] whitespace-normal py-0.5 text-[13px] leading-relaxed text-fg md:hidden">
+          {withoutLineRefs(s.reason_excerpt)}
+        </span>
       </span>
     ),
   },
@@ -54,7 +57,7 @@ const SAMPLE_COLUMNS: Column<IssueSample>[] = [
     key: "reason",
     header: "Why the check failed it",
     hideOnNarrow: true,
-    cell: (s) => <p className="min-w-[24ch] max-w-[72ch] py-0.5 text-[13px] leading-relaxed text-fg">{s.reason_excerpt}</p>,
+    cell: (s) => <p className="min-w-[24ch] max-w-[72ch] py-0.5 text-[13px] leading-relaxed text-fg">{withoutLineRefs(s.reason_excerpt)}</p>,
   },
   {
     key: "version",

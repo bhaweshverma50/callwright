@@ -301,3 +301,14 @@ async def test_running_analysis_reports_its_start_and_turns_into_an_error_once_s
     owner_sql(stale_sql, (call.call_id,))
     stale = (await client.get(url, headers=account.headers)).json()
     assert stale["status"] == "error" and "stopped before it finished" in stale["error"]
+
+
+async def test_call_list_says_why_a_call_has_no_summary(
+    client: httpx.AsyncClient, account: Account, runtime: Runtime, quality: FakeLlm
+) -> None:
+    analysed = await scripted_call(runtime, account.workspace_id)
+    short = await scripted_call(runtime, account.workspace_id, lines=[("agent", "Hello? Is anyone there?")])
+    items = (await client.get("/v1/calls", headers=account.headers)).json()["items"]
+    status = {i["call_id"]: i["analysis_status"] for i in items}
+    assert status[analysed.call_id] == "completed"
+    assert status[short.call_id] == "too_short"

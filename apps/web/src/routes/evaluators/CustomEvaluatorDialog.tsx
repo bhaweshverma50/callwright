@@ -24,6 +24,7 @@ import { when } from "../calls/format";
 import { NAME_RULE, toVariableName } from "../agents/quality/variableName";
 import { CustomCheckTemplatePicker } from "./CustomCheckTemplatePicker";
 import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
+import { withoutLineRefs } from "../../lib/text";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };
@@ -194,7 +195,7 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
                 <span className="ml-auto font-mono text-[11.5px] text-fg-3">charged ${result.charged_usd.toFixed(4)}</span>
               ) : null}
             </span>
-            <p className="text-[13px] leading-relaxed text-fg">{result.rationale}</p>
+            <p className="text-[13px] leading-relaxed text-fg">{withoutLineRefs(result.rationale)}</p>
             {result.evidence?.quote && (
               <blockquote className="rounded-inline bg-surface-2 px-2.5 py-1.5 text-[12.5px] italic text-fg-2">{result.evidence.quote}</blockquote>
             )}

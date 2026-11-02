@@ -22,6 +22,7 @@ import { relative } from "../calls/format";
 import { ProblemAlert } from "../simulations/shared";
 import { EDITABLE, FixDiff } from "./FixDiff";
 import { FixStatusBadge, KIND_HINTS, KIND_LABELS } from "./shared";
+import { withoutLineRefs } from "../../lib/text";
 
 type Mode = "idle" | "draft" | "edit";
 
@@ -48,7 +49,7 @@ function Revision({ fix, current }: { fix: FixRevision; current?: boolean }) {
           Revision {fix.revision}, {relative(fix.created_at)}
         </span>
       </div>
-      {fix.rationale && <p className="max-w-[80ch] text-[13.5px] leading-relaxed text-fg-2">{fix.rationale}</p>}
+      {fix.rationale && <p className="max-w-[80ch] text-[13.5px] leading-relaxed text-fg-2">{withoutLineRefs(fix.rationale)}</p>}
       {fix.guidance && <p className="text-[12.5px] text-fg-3">Guidance: {fix.guidance}</p>}
       <FixDiff kind={fix.kind} payload={fix.payload} />
     </div>

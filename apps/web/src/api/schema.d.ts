@@ -5078,6 +5078,11 @@ export interface components {
             analysis_values?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * @description Why the call does or does not have a summary yet (null while the call is still in progress).
+             * @enum {string|null}
+             */
+            analysis_status?: "completed" | "running" | "too_short" | "not_run" | "error" | "insufficient_credit" | null;
             quality: components["schemas"]["QualitySummary"];
         };
         CallPage: {

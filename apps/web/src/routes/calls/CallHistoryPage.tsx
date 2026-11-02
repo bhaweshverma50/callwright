@@ -30,6 +30,7 @@ import { mss, usd, when } from "./format";
 import { MAX_SELECTION, checkSimulation, useCallSelection } from "./selection";
 import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
+import { summaryHeadline } from "./quality/SummaryText";
 
 function Checkbox({ checked, onChange, label, mixed }: { checked: boolean; mixed?: boolean; onChange: () => void; label: string }) {
   return (
@@ -142,7 +143,7 @@ function MobileRow({ row, selected, onToggle, onOpen }: { row: CallListItem; sel
           <span className="font-mono tnum">{mss(row.duration_s)}</span>
           <span className="font-mono text-fg-2 tnum">{usd(row.cost_usd ?? null)}</span>
         </span>
-        {row.summary && <span className="line-clamp-2 text-[12.5px] text-fg-2">{row.summary}</span>}
+        {row.summary && <span className="line-clamp-2 text-[12.5px] text-fg-2">{summaryHeadline(row.summary)}</span>}
       </button>
     </li>
   );

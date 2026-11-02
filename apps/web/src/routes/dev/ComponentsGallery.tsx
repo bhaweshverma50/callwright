@@ -50,6 +50,10 @@ import {
   type Column,
 } from "../../components";
 import { WebCallPanel } from "../../components/WebCallPanel";
+import { SummaryText } from "../calls/quality/SummaryText";
+
+const SAMPLE_SUMMARY =
+  "Acme Bank called Bhavesh Verma about a missed home loan instalment, and he paid it in full during the call. Details: name confirmed as Bhavesh Verma [3]; instalment of 650 due on the 15th [4]; aware of the missed payment [5]. Actions: explained the missed instalment; sent a secure SMS payment link [6-8]; stayed on the line while he paid. Outcome: payment of 650 received and the loan is up to date for this month. Next step: none; the agent closed the call after confirming.";
 import type { MockOptions } from "../../components/webCall";
 import { formatUsd } from "../../lib/money";
 import { referenceBreakdown } from "../public/reference";
@@ -237,6 +241,9 @@ export function ComponentsGallery() {
           <div className="grid gap-6 sm:grid-cols-2">
             <ThinkingIndicator label="Writing" verbs={["Reading your prompt", "Drafting", "Shaping the steps", "Tightening the wording"]} />
             <GalleryComposer />
+          </div>
+          <div className="mt-6 max-w-[760px] rounded-panel border border-line bg-surface p-5">
+            <SummaryText text={SAMPLE_SUMMARY} />
           </div>
         </Section>
 

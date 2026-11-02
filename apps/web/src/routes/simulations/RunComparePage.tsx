@@ -41,6 +41,7 @@ import {
   problemText,
   targetText,
 } from "./shared";
+import { withoutLineRefs } from "../../lib/text";
 
 /** 1-based caller turn number for each user message, so divergence can be marked. */
 function callerTurns(items: SimTranscriptItem[]): Map<number, number> {
@@ -223,7 +224,7 @@ const VERDICT_COLUMNS: Column<VerdictDiff>[] = [
     header: "Why, on the simulated call",
     cell: (v) => (
       <p className="min-w-[260px] max-w-[60ch] whitespace-normal py-2 text-[12.5px] leading-relaxed text-fg-2">
-        {v.simulated_reason ?? "No rationale"}
+        {withoutLineRefs(v.simulated_reason) ?? "No rationale"}
         {v.original_score != null || v.simulated_score != null ? (
           <span className="mt-1 block font-mono text-[11.5px] text-fg-3 tnum">
             Score {fmtScore(v.original_score)} to {fmtScore(v.simulated_score)}

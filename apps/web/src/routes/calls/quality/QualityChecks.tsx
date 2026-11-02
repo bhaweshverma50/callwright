@@ -10,6 +10,7 @@ import { newIdempotencyKey, qualityKeys, rerunEvaluations, useCallEvaluations, t
 import { Badge, Button, Skeleton, cn, toast } from "../../../components";
 import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../evaluators/evaluatorMeta";
 import { when } from "../format";
+import { withoutLineRefs } from "../../../lib/text";
 
 export const RUNNING_TEXT = "Running checks, results appear as each one finishes";
 const TURN_PAGE = 20;
@@ -61,7 +62,7 @@ function Items({ run }: { run: EvaluatorRun }) {
             </span>
             <span className="w-24 shrink-0 text-[12.5px] font-medium text-fg">{itemLabel(it, i)}</span>
             <span className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-fg-2">
-              {it.rationale}
+              {withoutLineRefs(it.rationale)}
               {it.evidence?.quote && <span className="mt-0.5 block italic text-fg-3">"{it.evidence.quote}"</span>}
             </span>
             {it.score != null && <span className="shrink-0 font-mono text-[11.5px] text-fg-3 tnum">{fmt(it.score)}</span>}
@@ -132,7 +133,7 @@ function RunCard({ run, defaultOpen }: { run: EvaluatorRun; defaultOpen: boolean
             )}
           </span>
           {!open && run.rationale && run.verdict !== "not_applicable" && (
-            <span className="line-clamp-1 text-[12.5px] text-fg-2">{run.rationale}</span>
+            <span className="line-clamp-1 text-[12.5px] text-fg-2">{withoutLineRefs(run.rationale)}</span>
           )}
           {run.status === "error" && run.error && <span className="text-[12.5px] text-danger-text">{run.error}</span>}
         </span>
@@ -152,7 +153,7 @@ function RunCard({ run, defaultOpen }: { run: EvaluatorRun; defaultOpen: boolean
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 border-t border-line px-3.5 py-3">
-              {run.rationale && <p className="text-[13px] leading-relaxed text-fg">{run.rationale}</p>}
+              {run.rationale && <p className="text-[13px] leading-relaxed text-fg">{withoutLineRefs(run.rationale)}</p>}
               <Items run={run} />
               <p className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] text-fg-3">
                 <span>

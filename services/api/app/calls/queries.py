@@ -17,7 +17,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import Integer, and_, func, or_, select
+from sqlalchemy import Integer, and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -230,7 +230,11 @@ def _base() -> Any:
 
 
 def list_item(
-    call: Call, agent_name: str | None, agent_deleted: datetime | None, quality: QualitySummary
+    call: Call,
+    agent_name: str | None,
+    agent_deleted: datetime | None,
+    quality: QualitySummary,
+    analysis: tuple[str, str | None] | None = None,
 ) -> dict[str, Any]:
     pending = call.status in PENDING_STATES
     return {
@@ -254,8 +258,31 @@ def list_item(
         "summary": None if pending else call.summary,
         "sentiment": None if pending else call.sentiment,
         "analysis_values": None if pending else call.analysis,
+        "analysis_status": None if pending else analysis_status(call, analysis),
         "quality": quality.as_json(),
     }
+
+
+def analysis_status(call: Call, analysis: tuple[str, str | None] | None) -> str:
+    """Why a row does or does not have a summary, for the list (007 analysis row, if any)."""
+    if analysis is None:
+        return "completed" if call.summary else "not_run"
+    status, skip_reason = analysis
+    if status in ("pending", "running"):
+        return "running"
+    if status == "skipped":
+        return skip_reason or "not_run"
+    return status
+
+
+async def analysis_states(session: AsyncSession, call_ids: list[str]) -> dict[str, tuple[str, str | None]]:
+    if not call_ids:
+        return {}
+    rows = await session.execute(
+        text("select call_id, status, skip_reason from call_analyses where call_id = any(:ids)"),
+        {"ids": call_ids},
+    )
+    return {r.call_id: (r.status, r.skip_reason) for r in rows}
 
 
 async def list_calls(
@@ -270,8 +297,13 @@ async def list_calls(
             _base().where(and_(*where)).order_by(*_order(q)).offset((page - 1) * page_size).limit(page_size)
         )
     ).all()
-    summaries = await quality_port().summaries(session, [r[0].id for r in rows], user_id)
-    items = [list_item(c, name, deleted, summaries.get(c.id, QualitySummary())) for c, name, deleted in rows]
+    ids = [r[0].id for r in rows]
+    summaries = await quality_port().summaries(session, ids, user_id)
+    states = await analysis_states(session, ids)
+    items = [
+        list_item(c, name, deleted, summaries.get(c.id, QualitySummary()), states.get(c.id))
+        for c, name, deleted in rows
+    ]
     return items, total
 
 

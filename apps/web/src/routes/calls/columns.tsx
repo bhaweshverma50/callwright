@@ -21,6 +21,7 @@ import { CHANNEL_LABELS, EVAL_LABELS, REASON_LABELS, type SortKey } from "./filt
 import { latencyTone, mss, phone, when } from "./format";
 import type { DrawerTab } from "./CallDetailDrawer";
 import { RecordingPlayer } from "./RecordingPlayer";
+import { summaryHeadline } from "./quality/SummaryText";
 
 export const CHANNEL_ICONS: Record<Channel, LucideIcon> = {
   web: Globe,
@@ -72,9 +73,18 @@ function QualityCell({ q }: { q: CallListItem["quality"] }) {
   );
 }
 
+/** Why a call has no summary, from the list's analysis_status. */
+const NO_SUMMARY: Record<string, string> = {
+  running: "Analysing",
+  too_short: "Too short to analyse",
+  not_run: "Not analysed",
+  error: "Analysis failed",
+  insufficient_credit: "Skipped: no credit",
+};
+
 function AnalysisCell({ values }: { values: CallListItem["analysis_values"] }) {
   const entries = Object.entries(values ?? {});
-  if (!entries.length) return <span className="text-fg-3">n/a</span>;
+  if (!entries.length) return <span className="text-fg-3">None</span>;
   return (
     <Tooltip
       content={
@@ -232,10 +242,14 @@ const ALL: CallColumn[] = [
     key: "summary",
     label: "Summary",
     cell: (r) =>
-      r.summary ? <TruncatedText className="block max-w-[260px] text-fg-2">{r.summary}</TruncatedText> : <span className="text-fg-3">n/a</span>,
+      r.summary ? (
+        <TruncatedText className="block max-w-[260px] text-fg-2">{summaryHeadline(r.summary)}</TruncatedText>
+      ) : (
+        <span className="text-fg-3">{NO_SUMMARY[r.analysis_status ?? "not_run"] ?? "n/a"}</span>
+      ),
   },
   { key: "sentiment", label: "Sentiment", cell: (r) => <SentimentBadge value={r.sentiment} /> },
-  { key: "analysis", label: "Analysis", cell: (r) => <AnalysisCell values={r.analysis_values} /> },
+  { key: "analysis", label: "Extracted values", cell: (r) => <AnalysisCell values={r.analysis_values} /> },
   { key: "quality", label: "Quality", cell: (r) => <QualityCell q={r.quality} /> },
 ];
 

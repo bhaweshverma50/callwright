@@ -9763,6 +9763,20 @@ components:
           - object
           - 'null'
           additionalProperties: true
+        analysis_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - completed
+          - running
+          - too_short
+          - not_run
+          - error
+          - insufficient_credit
+          - null
+          description: Why the call does or does not have a summary yet (null while the call is still
+            in progress).
         quality:
           $ref: '#/components/schemas/QualitySummary'
     CallPage:
