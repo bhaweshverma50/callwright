@@ -34,16 +34,15 @@ import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILT
 const ALL = "all";
 const DETECT_HINT = "Choose an agent to run detection";
 
-const COLUMNS: Column<IssueSummary>[] = [
+const columns = (agentNames: Record<string, string>, showAgent: boolean): Column<IssueSummary>[] => [
   {
     key: "issue",
     header: "Issue",
     cell: (i) => (
       <Link to={`/issues/${i.issue_id}`} className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 hover:underline md:max-w-[56ch]">
         <TruncatedText className="text-[13.5px] font-medium text-fg">{i.title}</TruncatedText>
-        <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] text-fg-3">
-          {i.evaluator_display_name ?? i.evaluator_name}
-          {i.flow_node_label && <span className="truncate">, node {i.flow_node_label}</span>}
+        <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-fg-3">
+          <span className="truncate">{`${i.evaluator_display_name ?? i.evaluator_name}${i.flow_node_label ? `, node ${i.flow_node_label}` : ""}`}</span>
           {i.calibration_warning && (
             <span title="The check often disagrees with human labels" className="inline-flex items-center text-warning-text">
               <TriangleAlert className="size-3.5" aria-label="Check may be wrong" />
@@ -55,16 +54,29 @@ const COLUMNS: Column<IssueSummary>[] = [
             </span>
           )}
         </span>
+        <span className="mt-1 md:hidden">
+          <IssueStatusBadge status={i.status} />
+        </span>
       </Link>
     ),
   },
-  { key: "status", header: "Status", cell: (i) => <IssueStatusBadge status={i.status} /> },
+  ...(showAgent
+    ? [
+        {
+          key: "agent",
+          header: "Agent",
+          hideOnNarrow: true,
+          cell: (i: IssueSummary) => <TruncatedText className="max-w-[18ch] text-fg-2">{agentNames[i.agent_id] ?? "Unknown agent"}</TruncatedText>,
+        },
+      ]
+    : []),
+  { key: "status", header: "Status", hideOnNarrow: true, cell: (i) => <IssueStatusBadge status={i.status} /> },
   {
     key: "affected",
     header: "Affected calls",
     numeric: true,
     cell: (i) => (
-      <span className="flex flex-col items-end gap-0.5">
+      <span className="flex flex-col items-end gap-0.5 pr-1 md:pr-0">
         <span className="text-[13.5px] font-medium text-fg">{i.affected_call_count}</span>
         <span className="whitespace-nowrap font-sans text-[11.5px] text-fg-3">{i.current_version_call_count} on published</span>
       </span>
@@ -193,6 +205,7 @@ export function IssuesPage() {
     () => [{ value: ALL, label: "All agents" }, ...(agents.data ?? []).map((a) => ({ value: a.id, label: a.name }))],
     [agents.data],
   );
+  const tableColumns = useMemo(() => columns(Object.fromEntries((agents.data ?? []).map((a) => [a.id, a.name])), !agentId), [agents.data, agentId]);
   const running = detection.data?.status === "running";
   const conflict = isApiError(detectError) && detectError.status === 409;
 
@@ -202,7 +215,7 @@ export function IssuesPage() {
         title="Issues"
         description="Repeated failures of one agent grouped into issues, each with a drafted fix that is tested in simulation before it is applied."
         actions={
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-col items-start gap-1 sm:items-end">
             <Button
               variant="primary"
               icon={running ? <Loader2 className="animate-spin" aria-hidden /> : <Radar aria-hidden />}
@@ -223,22 +236,24 @@ export function IssuesPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Select
-          size="sm"
-          aria-label="Agent"
-          className="w-[220px] max-w-full"
-          value={agentParam}
-          onValueChange={(v) => set({ agent: v === ALL ? null : v })}
-          options={agentOptions}
-        />
-        <Select
-          size="sm"
-          aria-label="Status"
-          className="w-[150px] max-w-full"
-          value={status}
-          onValueChange={(v) => set({ status: v })}
-          options={STATUS_FILTER_OPTIONS}
-        />
+        <div className="flex w-full gap-3 sm:w-auto">
+          <Select
+            size="sm"
+            aria-label="Agent"
+            className="min-w-0 flex-1 sm:w-[220px] sm:flex-none"
+            value={agentParam}
+            onValueChange={(v) => set({ agent: v === ALL ? null : v })}
+            options={agentOptions}
+          />
+          <Select
+            size="sm"
+            aria-label="Status"
+            className="w-[140px] shrink-0"
+            value={status}
+            onValueChange={(v) => set({ status: v })}
+            options={STATUS_FILTER_OPTIONS}
+          />
+        </div>
         <Segmented
           size="sm"
           aria-label="Window"
@@ -282,7 +297,7 @@ export function IssuesPage() {
         ) : (
           <Table
             caption="Issues, most affected calls first"
-            columns={COLUMNS}
+            columns={tableColumns}
             rows={issues.data?.items}
             rowKey={(i) => i.issue_id}
             loading={issues.isPending}

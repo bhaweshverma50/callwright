@@ -53,7 +53,9 @@ describe("IssuesPage (T023, T061)", () => {
     const titles = rows().map((r) => within(r).getByRole("link").textContent);
     expect(titles).not.toContain("Agent repeats the greeting after a pause");
     expect(titles.some((t) => t?.includes("insurance plan"))).toBe(false);
-    const counts = rows().map((r) => Number(within(r).getAllByRole("cell")[2]!.textContent!.match(/^\d+/)![0]));
+    const headers = within(screen.getByRole("region", { name: "Issues" })).getAllByRole("columnheader");
+    const col = headers.findIndex((h) => h.textContent === "Affected calls");
+    const counts = rows().map((r) => Number(within(r).getAllByRole("cell")[col]!.textContent!.match(/^\d+/)![0]));
     expect(counts).toEqual([...counts].sort((a, b) => b - a));
 
     await user.click(screen.getByRole("combobox", { name: "Status" }));

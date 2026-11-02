@@ -232,6 +232,54 @@ const PAGES = [
       await p.waitForTimeout(2200);
     },
   },
+  // Issues and auto-fix (spec 009).
+  { name: "issues", path: "/issues", auth: true, full: true },
+  {
+    name: "issues-agent",
+    path: "/issues",
+    auth: true,
+    full: true,
+    before: async (p) => {
+      await p.getByRole("combobox", { name: "Agent" }).click();
+      await p.getByRole("option", { name: "Front desk agent" }).click();
+      await p.getByRole("button", { name: "Detect issues" }).click();
+      await p.waitForTimeout(6000);
+    },
+  },
+  ...[
+    ["issue-validated", "Agent quotes prices"],
+    ["issue-flow", "Agent skips the confirm step"],
+    ["issue-applied", "Agent transfers billing"],
+    ["issue-open", "Agent books appointments"],
+  ].map(([name, title]) => ({
+    name,
+    path: "/issues",
+    auth: true,
+    full: true,
+    before: async (p) => {
+      await p.getByRole("link", { name: new RegExp(title) }).click();
+      await p.waitForLoadState("networkidle");
+      await p.waitForTimeout(600);
+    },
+  })),
+  ...[
+    ["issue-validate-dialog", "Agent skips the confirm step", "Validate"],
+    ["issue-apply-dialog", "Agent quotes prices", "Apply fix"],
+    ["issue-dismiss-dialog", "Agent books appointments", "Dismiss"],
+  ].map(([name, title, button]) => ({
+    name,
+    path: "/issues",
+    auth: true,
+    before: async (p) => {
+      await p.getByRole("link", { name: new RegExp(title) }).click();
+      await p.waitForLoadState("networkidle");
+      await p.getByRole("main").getByRole("button", { name: button, exact: true }).click();
+      await p.waitForTimeout(900);
+      if (button === "Dismiss") await p.getByRole("radio", { name: /Duplicate/ }).click();
+      if (button === "Validate") await p.getByRole("button", { name: "Change keep rule" }).click();
+      await p.waitForTimeout(500);
+    },
+  })),
   { name: "not-found", path: "/no-such-page", auth: true },
   { name: "components", path: "/dev/components", full: true },
 ];

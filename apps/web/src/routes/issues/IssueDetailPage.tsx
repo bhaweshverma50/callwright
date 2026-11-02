@@ -46,12 +46,14 @@ const SAMPLE_COLUMNS: Column<IssueSample>[] = [
           {shortId(s.call_id)}
         </Link>
         {s.call_origin === "simulation" && <span className="text-[12px] text-fg-3">Simulated</span>}
+        <span className="max-w-[78vw] whitespace-normal py-0.5 text-[13px] leading-relaxed text-fg md:hidden">{s.reason_excerpt}</span>
       </span>
     ),
   },
   {
     key: "reason",
     header: "Why the check failed it",
+    hideOnNarrow: true,
     cell: (s) => <p className="min-w-[24ch] max-w-[72ch] py-0.5 text-[13px] leading-relaxed text-fg">{s.reason_excerpt}</p>,
   },
   {
