@@ -376,3 +376,38 @@ def test_variant_hash_is_stable_across_key_order() -> None:
 def test_unknown_kind_is_invalid() -> None:
     with pytest.raises(InvalidFix):
         apply_fix(single(), "rewrite_everything", {})
+
+
+def test_display_diff_shows_only_what_the_fix_changed() -> None:
+    from app.issues.fixes import display_diff
+
+    base = flow()
+    out = apply_fix(
+        base,
+        "node_prompt_edit",
+        {
+            "node_id": "n_book0000",
+            "current_instructions": "Collect the address.",
+            "proposed_instructions": "New.",
+        },
+    )
+    assert display_diff(base, out) == [
+        {
+            "op": "replace",
+            "path": "/flow/graph/nodes[n_book0000]/config/instructions",
+            "old": "Collect the address.",
+            "value": "New.",
+        }
+    ]
+    payload = {
+        "source_node_id": "n_book0000",
+        "target_node_id": "n_end00000",
+        "edge_label": "done",
+        "handoff_condition": "x",
+    }
+    added = display_diff(base, apply_fix(base, "add_transition", payload))
+    assert [d["op"] for d in added] == ["add"] and added[0]["value"]["label"] == "done"
+    kb = display_diff(
+        single(), apply_fix(single(), "kb_attach", {"kb_ids_to_attach": ["kb_01B"], "uncovered_topics": []})
+    )
+    assert kb == [{"op": "add", "path": "/kb_ids[kb_01B]", "value": "kb_01B"}]

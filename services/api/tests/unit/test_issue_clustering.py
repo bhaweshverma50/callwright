@@ -199,3 +199,27 @@ def test_origin_thresholds() -> None:
     assert origin_of(fs(2, 8)) == "real"
     assert origin_of(fs(5, 5)) == "mixed"
     assert origin_of(fs(0, 3)) == "real"
+
+
+def test_at_most_twenty_new_issues_per_detection() -> None:
+    from app.issues.detection import Gathered, plan_clusters
+
+    failures = [failure(f"c{e}_{i}", evaluator=f"evl_{e:02d}") for e in range(25) for i in range(3 + e % 4)]
+    vectors = {(f.result_id, f.node_key): unit(1, 0) for f in failures}
+    gathered = Gathered(
+        agent=None,  # type: ignore[arg-type]
+        evaluators={},
+        calls_scanned=0,
+        failures=failures,
+        cached=vectors,
+        candidates={},
+        version_created={},
+        published_version_id=None,
+        calibration={},
+    )
+    plans = plan_clusters(gathered, vectors)
+    assert len(plans) == 20
+    assert all(p.decision.action == "create" for p in plans)
+    # The largest clusters are kept.
+    assert min(len(p.failures) for p in plans) >= 3
+    assert sum(1 for p in plans if len(p.failures) == 6) == 6

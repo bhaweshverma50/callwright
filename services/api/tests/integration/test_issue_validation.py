@@ -329,3 +329,47 @@ async def test_estimate_before_any_fix(issue_env: IssueEnv) -> None:
     assert (estimate.json()["affected_calls"], estimate.json()["guard_calls"]) == (10, 2)
     refused = await env.post(f"/issues/{issue_id}/validate", {})
     assert refused.status_code == 409 and refused.json()["type"].endswith("no-fix")
+
+
+# End to end (T057): real batches through the text runner stand-in, the post-call pipeline and
+# 007's evaluators, then the 008 completion hook queueing the finalize job.
+
+
+async def test_end_to_end_with_text_runner(sim_env: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.evaluators.registry import builtin_id
+    from app.issues.install import job_functions as issue_jobs
+    from tests import sim_support
+    from tests.conftest import signup
+    from tests.issues_support import enable as enable_checks
+    from tests.sim_support import make_agent
+
+    original = sim_support.sim_job_functions
+    monkeypatch.setattr(sim_support, "sim_job_functions", lambda: [*original(), *issue_jobs()])
+    account = await signup(sim_env.client, sim_env.app)
+    agent = await make_agent(sim_env.client, account)
+    intent = builtin_id("intent_fulfillment")
+    enable_checks(account.workspace_id, agent.agent_id, intent)
+    env = IssueEnv(sim_env.app, sim_env.client, account, agent, sim_env.queue)
+    env.seed_calls(6, evaluator=intent, reason="The caller wanted a Tuesday slot and was never offered one.")
+    env.seed_calls(2, evaluator=intent, verdict="pass", reason="ok", tag="guard", ago_hours=0.5)
+    await env.detect()
+    [issue] = await env.issues()
+    issue_id = issue["issue_id"]
+    fix = await env.post(f"/issues/{issue_id}/fixes", {"mode": "ai"})
+    assert fix.status_code == 201, fix.text
+    started = await env.post(f"/issues/{issue_id}/validate", {"mode": "replay", "min_sample": 3})
+    assert started.status_code == 202, started.text
+    await sim_env.drain()
+    [latest] = (await env.client.get(f"/v1/issues/{issue_id}/validations", headers=env.headers)).json()[
+        "items"
+    ]
+    assert latest["status"] == "completed", latest
+    assert latest["decision"] in ("passed", "failed", "inconclusive")
+    assert latest["treatment_runs_total"] == 8 and latest["treatment_runs_failed"] == 0
+    assert latest["headline"]["n"] == 6
+    detail = await env.issue(issue_id)
+    if latest["decision"] == "passed":
+        applied = await env.post(f"/issues/{issue_id}/apply", {}, key=False)
+        assert applied.status_code == 200, applied.text
+    else:
+        assert detail["status"] == "open"
