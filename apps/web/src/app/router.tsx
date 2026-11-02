@@ -7,7 +7,6 @@ import { RouteError } from "./RouteError";
 import { Shell } from "./Shell";
 import { AgentRedirect } from "../routes/agents/agentRedirect";
 import { NotFound } from "../routes/NotFound";
-import { AreaPlaceholder, RecordPlaceholder } from "../routes/placeholders/AreaPlaceholder";
 import { Enterprise } from "../routes/public/Enterprise";
 import { ForgotPassword } from "../routes/public/ForgotPassword";
 import { Home } from "../routes/public/Home";
@@ -49,6 +48,8 @@ const ExperimentPage = lazy(() => import("../routes/simulations/ExperimentPage")
 const RunComparePage = lazy(() => import("../routes/simulations/RunComparePage").then((m) => ({ default: m.RunComparePage })));
 const DatasetsPage = lazy(() => import("../routes/datasets/DatasetsPage").then((m) => ({ default: m.DatasetsPage })));
 const DatasetPage = lazy(() => import("../routes/datasets/DatasetPage").then((m) => ({ default: m.DatasetPage })));
+const IssuesPage = lazy(() => import("../routes/issues/IssuesPage").then((m) => ({ default: m.IssuesPage })));
+const IssueDetailPage = lazy(() => import("../routes/issues/IssueDetailPage").then((m) => ({ default: m.IssueDetailPage })));
 
 /** Agent builder (spec 002, T024), browser test calls (003) and the flow builder (004). */
 const agentRoutes: RouteObject[] = [
@@ -72,10 +73,10 @@ const simulationRoutes: RouteObject[] = [
   { path: "datasets/:datasetId", element: <DatasetPage /> },
 ];
 
-/** Areas whose specs have not shipped: list route, plus record routes where the spec has one. */
-const placeholderRoutes: RouteObject[] = [
-  { path: "issues", element: <AreaPlaceholder to="/issues" /> },
-  { path: "issues/:id", element: <RecordPlaceholder to="/issues" prefix="iss" kind="issue" /> },
+/** Issues and auto-fix (spec 009): the issue list with detection, and one issue with its fix loop. */
+const issueRoutes: RouteObject[] = [
+  { path: "issues", element: <IssuesPage /> },
+  { path: "issues/:id", element: <IssueDetailPage /> },
 ];
 
 /** Public and protected route groups (T026). Unknown signed-in addresses get NotFound (T095). */
@@ -129,7 +130,7 @@ export const routes: RouteObject[] = [
                   ...agentRoutes,
                   ...knowledgeRoutes,
                   ...simulationRoutes,
-                  ...placeholderRoutes,
+                  ...issueRoutes,
                   { path: "*", element: <NotFound /> },
                 ],
               },
