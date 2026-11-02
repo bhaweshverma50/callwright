@@ -41,7 +41,19 @@ import {
 import { RecordNotFound } from "../NotFound";
 import { relative, whenLong } from "../calls/format";
 import { ScorecardTable } from "./ScorecardTable";
-import { END_REASONS, Figure, MODE_LABELS, ProblemAlert, ProgressBar, SimStatusBadge, cost, plural, problemText, targetText } from "./shared";
+import {
+  END_REASONS,
+  Figure,
+  MODE_LABELS,
+  ProblemAlert,
+  ProgressBar,
+  SimStatusBadge,
+  cost,
+  plural,
+  problemText,
+  shortId,
+  targetPhrase,
+} from "./shared";
 
 const RUN_COLUMNS: Column<SimulationRun>[] = [
   {
@@ -51,9 +63,10 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
       r.base_call_id ? (
         <Link
           to={`/calls?call=${r.base_call_id}`}
-          className="block max-w-[26ch] truncate rounded-inline font-mono text-[12.5px] text-fg-2 hover:text-fg hover:underline"
+          title={r.base_call_id}
+          className="block whitespace-nowrap rounded-inline font-mono text-[12.5px] text-fg-2 hover:text-fg hover:underline"
         >
-          {r.base_call_id}
+          {shortId(r.base_call_id)}
         </Link>
       ) : (
         <span className="text-fg-3">Persona brief</span>
@@ -151,7 +164,9 @@ function Scorecard({ exp }: { exp: Experiment }) {
       }
       icon={<Scale aria-hidden />}
       bodyClassName="p-0"
-      actions={
+    >
+      <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
+        <span className="text-[12.5px] text-fg-3">Compare against</span>
         <Segmented
           size="sm"
           aria-label="Compare against"
@@ -162,11 +177,7 @@ function Scorecard({ exp }: { exp: Experiment }) {
             { value: "experiment", label: "Another batch", disabled: candidates.length === 0 },
           ]}
         />
-      }
-    >
-      {mode === "experiment" && candidates.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
-          <span className="text-[12.5px] text-fg-3">Baseline batch</span>
+        {mode === "experiment" && candidates.length > 0 && (
           <Select
             size="sm"
             aria-label="Baseline batch"
@@ -175,8 +186,8 @@ function Scorecard({ exp }: { exp: Experiment }) {
             onValueChange={setBaselineId}
             options={candidates.map((c) => ({ value: c.experiment_id, label: c.name, meta: relative(c.created_at) }))}
           />
-        </div>
-      )}
+        )}
+      </div>
       {card.isError ? (
         <div className="p-5">
           <ProblemAlert error={card.error} kind="scorecard" className="[&>div]:mb-0" />
@@ -275,7 +286,7 @@ export function ExperimentPage() {
       </Link>
       <PageHeader
         title={<span className="break-words">{e.name}</span>}
-        description={`${MODE_LABELS[e.mode]} of ${plural(e.total_count, "call")} from ${e.agent_name ?? "the agent"}, against ${targetText(e).toLowerCase()}.`}
+        description={`${MODE_LABELS[e.mode]} of ${plural(e.total_count, "call")} from ${e.agent_name ?? "the agent"}, against ${targetPhrase(e)}.`}
         actions={
           active ? (
             <Button icon={<CircleStop aria-hidden />} onClick={() => setConfirm(true)}>

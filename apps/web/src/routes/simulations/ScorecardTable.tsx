@@ -10,7 +10,7 @@ import { deltaTone, pct, pp } from "./shared";
 
 function Rate({ rate, passes, n }: { rate: number | null | undefined; passes: number; n: number }) {
   return (
-    <span className="flex flex-col items-end leading-tight">
+    <span className="flex flex-col items-end whitespace-nowrap leading-tight">
       <span className="font-mono text-[13px] text-fg tnum">{pct(rate)}</span>
       <span className="font-mono text-[11.5px] text-fg-3 tnum">{n ? `${passes} of ${n}` : "no samples"}</span>
     </span>

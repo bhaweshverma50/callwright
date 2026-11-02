@@ -20,7 +20,10 @@ const COLUMNS: Column<Dataset>[] = [
     key: "name",
     header: "Dataset",
     cell: (d) => (
-      <Link to={`/datasets/${d.dataset_id}`} className="flex min-w-0 max-w-[52ch] flex-col gap-0.5 rounded-inline py-1 hover:underline">
+      <Link
+        to={`/datasets/${d.dataset_id}`}
+        className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 md:max-w-[52ch] hover:underline"
+      >
         <TruncatedText className="text-[13.5px] font-medium text-fg">{d.name}</TruncatedText>
         {d.description && <span className="truncate text-[12px] text-fg-3">{d.description}</span>}
       </Link>

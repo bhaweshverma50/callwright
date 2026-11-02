@@ -342,7 +342,7 @@ function row(
 const PROMPT_V3_OPENING = "Greet the caller warmly and ask how you can help.";
 const PROMPT_VARIANT_OPENING = "Greet the caller in one short sentence, then ask for their name before anything else.";
 
-function experiment(s: SimStore, partial: Partial<StoredExperiment> & Pick<StoredExperiment, "agent_id" | "name" | "_baseCalls">): StoredExperiment {
+function experiment(_s: SimStore, partial: Partial<StoredExperiment> & Pick<StoredExperiment, "agent_id" | "name" | "_baseCalls">): StoredExperiment {
   const total = partial._baseCalls.length;
   return {
     experiment_id: simId("exp"),
@@ -352,7 +352,10 @@ function experiment(s: SimStore, partial: Partial<StoredExperiment> & Pick<Store
     agent_version_id: null,
     variant_label: null,
     variant_diff: null,
-    config_hash: `sha256:${(s.experiments.length * 7919 + 104729).toString(16)}e0c`,
+    config_hash: `sha256:${[...partial.name]
+      .reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7)
+      .toString(16)
+      .padStart(8, "0")}`,
     source: "call_selection",
     dataset_id: null,
     issue_id: null,

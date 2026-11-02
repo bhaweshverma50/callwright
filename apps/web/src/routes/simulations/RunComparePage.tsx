@@ -236,12 +236,7 @@ function Summary({ run }: { run: SimulationRun }) {
         <span className="text-fg-3">Target </span>
         {targetText(run)}
       </span>
-      {run.end_reason && (
-        <span className="text-[12.5px] text-fg-2">
-          <span className="text-fg-3">Ended </span>
-          {END_REASONS[run.end_reason].toLowerCase()}
-        </span>
-      )}
+      {run.end_reason && <span className="text-[12.5px] text-fg-2">{END_REASONS[run.end_reason]}</span>}
       {sources.length > 0 && (
         <span className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-fg-3">
           Tool answers

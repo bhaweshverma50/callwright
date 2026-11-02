@@ -20,6 +20,17 @@ export const TARGET_LABELS: Record<TargetType, string> = {
   variant: "Variant",
 };
 
+/** "the published version", "variant Shorter greeting": for use inside a sentence. */
+export function targetPhrase(r: Pick<SimulationRun | Experiment, "target_type" | "variant_label">): string {
+  if (r.target_type === "variant") return r.variant_label ? `variant "${r.variant_label}"` : "a variant";
+  return `the ${TARGET_LABELS[r.target_type].toLowerCase()}`;
+}
+
+/** call_01MOCKSIMCALL0000000000007 -> "call_01MO...000007": long ids keep both ends visible. */
+export function shortId(id: string, head = 9, tail = 6): string {
+  return id.length <= head + tail + 3 ? id : `${id.slice(0, head)}...${id.slice(-tail)}`;
+}
+
 /** "Variant: Shorter greeting", "Published version". */
 export function targetText(r: Pick<SimulationRun | Experiment, "target_type" | "variant_label">): string {
   if (r.target_type === "variant") return r.variant_label ? `Variant: ${r.variant_label}` : "Variant";

@@ -13,7 +13,7 @@ import { SIM_PAGE_SIZE, useExperiments, useStandaloneRuns, type Experiment, type
 import { Button, EmptyState, PageHeader, Pagination, Select, TabPanel, Table, Tabs, TruncatedText, type Column } from "../../components";
 import { relative } from "../calls/format";
 import { NewSimulationDialog } from "./NewSimulationDialog";
-import { END_REASONS, MODE_LABELS, ProgressBar, SimStatusBadge, cost, problemText, targetText } from "./shared";
+import { END_REASONS, MODE_LABELS, ProgressBar, SimStatusBadge, cost, problemText, targetPhrase } from "./shared";
 
 const ALL = "all";
 type Tab = "batches" | "runs";
@@ -28,10 +28,13 @@ const BATCH_COLUMNS: Column<Experiment>[] = [
     key: "name",
     header: "Batch",
     cell: (e) => (
-      <Link to={`/simulations/${e.experiment_id}`} className="flex min-w-0 max-w-[42ch] flex-col gap-0.5 rounded-inline hover:underline">
+      <Link
+        to={`/simulations/${e.experiment_id}`}
+        className="flex min-w-0 max-w-[52vw] flex-col py-1 md:max-w-[42ch] gap-0.5 rounded-inline hover:underline"
+      >
         <TruncatedText className="text-[13.5px] font-medium text-fg">{e.name}</TruncatedText>
         <span className="truncate text-[12px] text-fg-3">
-          {MODE_LABELS[e.mode]} against {targetText(e).toLowerCase()}
+          {MODE_LABELS[e.mode]} against {targetPhrase(e)}
         </span>
       </Link>
     ),
@@ -45,6 +48,7 @@ const BATCH_COLUMNS: Column<Experiment>[] = [
   {
     key: "progress",
     header: "Progress",
+    hideOnNarrow: true,
     width: "180px",
     cell: (e) => (
       <span className="flex items-center gap-2.5">
@@ -77,9 +81,12 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
     key: "run",
     header: "Run",
     cell: (r) => (
-      <Link to={`/simulations/runs/${r.simulation_run_id}`} className="flex min-w-0 max-w-[46ch] flex-col gap-0.5 rounded-inline hover:underline">
+      <Link
+        to={`/simulations/runs/${r.simulation_run_id}`}
+        className="flex min-w-0 max-w-[52vw] flex-col py-1 md:max-w-[46ch] gap-0.5 rounded-inline hover:underline"
+      >
         <TruncatedText className="text-[13.5px] font-medium text-fg">{runTitle(r)}</TruncatedText>
-        <span className="truncate text-[12px] text-fg-3">Against {targetText(r).toLowerCase()}</span>
+        <span className="truncate text-[12px] text-fg-3">Against {targetPhrase(r)}</span>
       </Link>
     ),
   },

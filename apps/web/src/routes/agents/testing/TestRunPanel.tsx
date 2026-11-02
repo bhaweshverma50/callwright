@@ -139,16 +139,6 @@ export function TestRunPanel({
       bodyClassName="p-0"
       actions={
         <>
-          {runs.length > 1 && (
-            <Select
-              size="sm"
-              aria-label="Choose a run"
-              className="w-[150px]"
-              value={runId}
-              onValueChange={onRunId}
-              options={runs.map((r) => ({ value: r.test_run_id, label: `Run ${r.number ?? ""}`.trim(), meta: relative(r.created_at) }))}
-            />
-          )}
           {active ? (
             <Button size="sm" variant="secondary" icon={<CircleStop aria-hidden />} pending={cancelling} onClick={() => void cancel()}>
               Cancel
@@ -191,7 +181,7 @@ export function TestRunPanel({
               {data.status === "cancelled" && <Badge tone="neutral">Cancelled</Badge>}
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-2.5">
             <Segmented
               size="sm"
               aria-label="Show results"
@@ -204,6 +194,16 @@ export function TestRunPanel({
                 { value: "manual", label: "Manual" },
               ]}
             />
+            {runs.length > 1 && (
+              <Select
+                size="sm"
+                aria-label="Choose a run"
+                className="w-[130px]"
+                value={runId}
+                onValueChange={onRunId}
+                options={runs.map((r) => ({ value: r.test_run_id, label: `Run ${r.number ?? ""}`.trim(), meta: relative(r.created_at) }))}
+              />
+            )}
           </div>
           {results.length === 0 ? (
             <p className="px-5 py-6 text-[13px] text-fg-3">No results match this filter.</p>

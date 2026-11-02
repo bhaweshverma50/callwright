@@ -52,7 +52,7 @@ import { RecordNotFound } from "../NotFound";
 import { SENTIMENT_TONES, STATUS_TONES, mss, relative, when } from "../calls/format";
 import { STATUS_LABELS } from "../calls/filters";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
-import { ProblemAlert, plural, problemText } from "../simulations/shared";
+import { ProblemAlert, plural, problemText, shortId } from "../simulations/shared";
 
 const EVAL_LABELS: Record<string, string> = {
   evaluated: "Checked",
@@ -73,12 +73,10 @@ function columns(onRemove: (item: DatasetItem) => void): Column<DatasetItem>[] {
         <span className="flex min-w-0 items-center gap-2">
           <Link
             to={`/calls?call=${i.call_id}`}
-            className={cn(
-              "block max-w-[24ch] truncate rounded-inline font-mono text-[12.5px] hover:underline",
-              i.available ? "text-fg" : "text-fg-3",
-            )}
+            title={i.call_id}
+            className={cn("block whitespace-nowrap rounded-inline font-mono text-[12.5px] hover:underline", i.available ? "text-fg" : "text-fg-3")}
           >
-            {i.call_id}
+            {shortId(i.call_id)}
           </Link>
           {!i.available && (
             <Tooltip content="The transcript was removed by retention. Bulk actions skip this call.">
@@ -378,7 +376,7 @@ export function DatasetPage() {
           </>
         }
       />
-      <section aria-label="Calls in this dataset" className="overflow-hidden rounded-panel border border-line bg-surface shadow-1">
+      <section aria-label="Calls in this dataset" className="relative overflow-hidden rounded-panel border border-line bg-surface shadow-1">
         <Table
           caption="Calls in this dataset, most recently added first"
           columns={columns(setRemoving)}
