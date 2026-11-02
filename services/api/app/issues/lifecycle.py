@@ -40,7 +40,7 @@ def wrong_status(status: str) -> ProblemError:
         "wrong_status",
         "Issue is closed",
         f"This issue is {word} and can no longer change.",
-        extra={"status": status},
+        extra={"issue_status": status},
     )
 
 
@@ -73,7 +73,7 @@ def refusal(status: str, event: str) -> ProblemError:
         "wrong_status",
         "Not allowed now",
         f"An issue that is {status} cannot do that. Reload the issue to see its current state.",
-        extra={"status": status},
+        extra={"issue_status": status},
     )
 
 
