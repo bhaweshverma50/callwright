@@ -56,6 +56,18 @@ def billable_cost(raw: Decimal) -> Decimal:
     return (raw * load_catalog().feature_markup).quantize(SIX, rounding=ROUND_CEILING)
 
 
+class MissingKeyAdapter:
+    """Stands in for a provider with no key outside dev and test: every call fails loudly."""
+
+    name = "missing_key"
+
+    def __init__(self, provider: str) -> None:
+        self.provider = provider
+
+    async def complete(self, model: str, messages: list[ChatMessage], **_: object) -> Completion:
+        raise ModelError(f"No API key is configured for {self.provider}; add it to the API's secrets.")
+
+
 class LlmClient:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -68,8 +80,14 @@ class LlmClient:
             return AzureOpenAIAdapter(
                 s.azure_openai_endpoint, s.azure_openai_api_key.get_secret_value(), s.azure_openai_api_version
             )
+        if provider == "azure_openai" and s.openai_api_key:
+            # Same model names on OpenAI; the voice worker falls back the same way.
+            return OpenAIAdapter(s.openai_api_key.get_secret_value())
         if provider == "anthropic" and s.anthropic_api_key:
             return AnthropicAdapter(s.anthropic_api_key.get_secret_value())
+        if s.env in ("staging", "prod"):
+            # Never answer with offline text where people read the result as a real model's.
+            return MissingKeyAdapter(provider)
         return FakeAdapter(provider)
 
     async def complete(
