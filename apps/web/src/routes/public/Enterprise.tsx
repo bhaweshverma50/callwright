@@ -1,12 +1,11 @@
-import { Gauge, Mail, PhoneIncoming, ShieldCheck, TrendingDown } from "lucide-react";
 import { Button } from "../../components";
 import { env } from "../../lib/env";
 
 const OFFERS = [
-  { icon: TrendingDown, title: "Volume rates", text: "Lower per-minute pricing for committed monthly minutes, invoiced instead of prepaid." },
-  { icon: Gauge, title: "Higher concurrency", text: "Run more calls at once than the default limit of five per workspace." },
-  { icon: PhoneIncoming, title: "Your own telephony", text: "Bring SIP trunks and numbers you already own, inbound and outbound." },
-  { icon: ShieldCheck, title: "Retention and residency", text: "Recording and transcript retention set to your policy, with encrypted storage." },
+  { title: "Volume rates", text: "Lower per-minute pricing for committed monthly minutes, invoiced instead of prepaid." },
+  { title: "Higher concurrency", text: "Run more calls at once than the default limit of five per workspace." },
+  { title: "Your own telephony", text: "Bring SIP trunks and numbers you already own, inbound and outbound." },
+  { title: "Retention and residency", text: "Recording and transcript retention set to your policy, with encrypted storage." },
 ];
 
 /** Enterprise contact (T044, FR-016). The contact link comes from VITE_SALES_CONTACT_URL. */
@@ -20,16 +19,15 @@ export function Enterprise() {
         <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-fg-2">
           Tell us your call volume, channels and compliance needs. We reply within one business day with a plan and a price.
         </p>
-        <Button asChild variant="primary" size="lg" className="mt-8" icon={<Mail aria-hidden />}>
+        <Button asChild variant="primary" size="lg" className="mt-8">
           <a href={env.salesContactUrl}>Contact sales</a>
         </Button>
       </div>
-      <dl className="grid gap-4 self-start sm:grid-cols-2">
+      <dl className="divide-y divide-line self-start border-y border-line">
         {OFFERS.map((o) => (
-          <div key={o.title} className="lift flex flex-col gap-2 rounded-panel border border-line bg-surface p-6 shadow-1">
-            <o.icon className="size-5 text-accent-text" aria-hidden />
-            <dt className="mt-2 text-[15px] font-semibold text-fg">{o.title}</dt>
-            <dd className="text-[14px] leading-relaxed text-fg-2">{o.text}</dd>
+          <div key={o.title} className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-1.5 py-6 sm:grid-cols-[200px_minmax(0,1fr)]">
+            <dt className="text-[15px] font-semibold text-fg">{o.title}</dt>
+            <dd className="text-[15px] leading-relaxed text-fg-2">{o.text}</dd>
           </div>
         ))}
       </dl>

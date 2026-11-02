@@ -134,56 +134,63 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
 
   return (
     <ConsoleFrame className={className}>
-      <header className="flex items-center justify-between gap-4 border-b border-console-line px-5 py-2.5">
-        <HeaderStatus phase={s.phase} waking={waking} />
-        <dl className="flex items-center gap-4 whitespace-nowrap text-[12px] text-console-fg-2">
-          <div className="flex items-center gap-1.5">
-            <dt className="sr-only">Duration</dt>
-            <dd className="font-mono text-console-fg tnum">
-              {mss(elapsed)}
-              <span className="text-console-fg-2"> / {mss(MAX_CALL_MS)}</span>
-            </dd>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <dt className="max-sm:sr-only">Cost so far</dt>
-            <dd className="w-[62px] text-right font-mono text-console-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
-          </div>
-        </dl>
-      </header>
+      {s.phase !== "idle" && (
+        <header className="flex items-center justify-between gap-4 border-b border-console-line px-5 py-2.5">
+          <HeaderStatus phase={s.phase} waking={waking} />
+          <dl className="flex items-center gap-4 whitespace-nowrap text-[12px] text-console-fg-2">
+            <div className="flex items-center gap-1.5">
+              <dt className="sr-only">Duration</dt>
+              <dd className="font-mono text-console-fg tnum">
+                {mss(elapsed)}
+                <span className="text-console-fg-2"> / {mss(MAX_CALL_MS)}</span>
+              </dd>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <dt className="max-sm:sr-only">Cost so far</dt>
+              <dd className="w-[62px] text-right font-mono text-console-fg tnum">{formatUsd(costMicros, { places: 4 })}</dd>
+            </div>
+          </dl>
+        </header>
+      )}
 
-      <div role="radiogroup" aria-label="Scenario" className="flex flex-wrap gap-1.5 px-5 pt-4">
-        {scenarios.map((sc) => {
-          const selected = sc.key === scenario.key;
-          return (
-            <button
-              key={sc.key}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={(busy || onCall) && !selected}
-              onClick={() => pick(sc.key)}
-              className={cn(
-                "relative flex shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40",
-                selected ? "text-white" : "text-console-fg-2 hover:bg-console-2 hover:text-console-fg",
-                focusRing,
-              )}
-            >
-              {selected && (
-                <motion.span
-                  layoutId="scenario-pill"
-                  aria-hidden
-                  className="absolute inset-0 rounded-full bg-[linear-gradient(110deg,#4a3bd6,#7a3cff_55%,#a8459a)]"
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                />
-              )}
-              <sc.icon className="relative size-4" aria-hidden />
-              <span className="relative">{sc.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {!onCall && !busy && (
+        <div
+          role="radiogroup"
+          aria-label="Scenario"
+          className="flex gap-1 overflow-x-auto px-5 pt-5 [mask-image:linear-gradient(to_right,black_80%,transparent)] [scrollbar-width:none] sm:[mask-image:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {scenarios.map((sc) => {
+            const selected = sc.key === scenario.key;
+            return (
+              <button
+                key={sc.key}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => pick(sc.key)}
+                className={cn(
+                  "relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-150",
+                  selected ? "text-console-fg" : "text-console-fg-2 hover:text-console-fg",
+                  focusRing,
+                )}
+              >
+                {selected && (
+                  <motion.span
+                    layoutId="scenario-pill"
+                    aria-hidden
+                    className="absolute inset-0 rounded-full border border-console-line bg-console-2"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                )}
+                <sc.icon className={cn("relative size-3.5", selected && "text-[#b9b2ff]")} aria-hidden />
+                <span className="relative">{sc.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      <div className="relative min-h-0 flex-1 px-5 py-4">
+      <div className="relative grid min-h-0 flex-1 px-5 py-5">
         <AnimatePresence mode="wait" initial={false}>
           {s.phase === "error" && s.problem ? (
             <Fade key="error">
@@ -210,15 +217,15 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
         </AnimatePresence>
       </div>
 
-      <footer className="flex flex-col gap-4 border-t border-console-line px-5 pb-4 pt-3.5">
-        <FlowChain nodes={NODES} active={link} flow={onCall} onConsole size="sm" stack="never" />
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <footer className={cn("flex flex-col gap-4 px-5 pb-5", onCall ? "border-t border-console-line pt-3.5" : "pt-1")}>
+        {onCall && <FlowChain nodes={NODES} active={link} flow onConsole size="sm" stack="never" />}
+        <div className="flex flex-wrap-reverse items-center justify-between gap-x-4 gap-y-3">
           <p className="min-w-0 flex-1 basis-48 text-[12.5px] leading-snug text-console-fg-2">
             {onCall
               ? s.muted
                 ? "Your microphone is muted."
                 : "Talk normally. Interrupt the agent if you like; it stops and listens."
-              : "Uses your microphone. No account needed, calls end after 2 minutes."}
+              : "Uses your microphone. No account needed, ends after 2 minutes."}
           </p>
           <div className="flex items-center gap-2">
             {onCall && (
@@ -314,25 +321,14 @@ function HeaderStatus({ phase, waking }: { phase: string; waking: boolean }) {
 
 function Brief({ scenario, dim }: { scenario: Scenario; dim: boolean }) {
   return (
-    <div className={cn("flex h-full flex-col gap-5 transition-opacity duration-200", dim && "opacity-60")}>
-      <div className="flex items-start gap-3.5">
-        <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-console-2 text-[#b9b2ff]">
-          <scenario.icon className="size-5" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12.5px] font-medium text-console-fg-2">Your part</p>
-          <p className="mt-1 max-w-[46ch] text-[15.5px] leading-relaxed text-console-fg">{scenario.brief}</p>
-        </div>
-      </div>
-      <div className="mt-auto">
-        <p className="text-[12.5px] font-medium text-console-fg-2">Try saying</p>
-        <ul className="mt-2 flex flex-col gap-2">
+    <div className={cn("flex h-full flex-col justify-center gap-6 transition-opacity duration-200", dim && "opacity-60")}>
+      <p className="max-w-[34ch] text-[20px] leading-[1.5] tracking-[-0.01em] text-console-fg sm:text-[22px]">{scenario.brief}</p>
+      <div className="text-[13.5px] leading-relaxed text-console-fg-2">
+        <p>Try saying</p>
+        <ul className="mt-1">
           {scenario.lines.map((line) => (
-            <li
-              key={line}
-              className="w-fit max-w-full rounded-panel rounded-bl-[4px] bg-console-2 px-3 py-1.5 text-[13.5px] leading-snug text-console-fg"
-            >
-              {line}
+            <li key={line} className="text-console-fg/80">
+              &ldquo;{line}&rdquo;
             </li>
           ))}
         </ul>

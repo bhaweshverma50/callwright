@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogIn, Menu, UserPlus } from "lucide-react";
+import { LayoutDashboard, LogIn, Menu } from "lucide-react";
 import { Suspense, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useSignedIn } from "../../app/auth";
@@ -47,7 +47,7 @@ export function PublicLayout() {
                 <Button asChild variant="ghost" className="hidden sm:inline-flex">
                   <Link to="/login">Sign in</Link>
                 </Button>
-                <Button asChild variant="primary" icon={<UserPlus aria-hidden />}>
+                <Button asChild variant="primary">
                   <Link to="/register">Create account</Link>
                 </Button>
               </>
@@ -73,7 +73,7 @@ export function PublicLayout() {
           ))}
         </nav>
       </Drawer>
-      <main id="main" className="flex-1">
+      <main id="main" className="flex-1 overflow-x-clip">
         <PageTransition key={pathname}>
           <Suspense fallback={<PanelLoader className="min-h-[70vh]" />}>
             <Outlet />

@@ -1,7 +1,6 @@
-import { ChartLineUp, Crosshair, Wrench } from "@phosphor-icons/react";
-import { BadgeDollarSign, Calculator, Clock, UserPlus } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Button, COMPONENT_ICONS, COMPONENT_LABELS, ChainLink, Reveal, RevealItem, cn } from "../../components";
+import { Button, COMPONENT_ICONS, COMPONENT_LABELS, Reveal, RevealItem } from "../../components";
 import { catalogV1 } from "../../lib/catalogSeed";
 import { formatUsd, toMicros } from "../../lib/money";
 import { providerLabel } from "../../lib/providers";
@@ -20,61 +19,75 @@ function fromRate(component: Part): string {
 
 const providersFor = (c: Part) => [...new Set(catalogV1.entries.filter((e) => e.component === c).map((e) => providerLabel(e.provider)))];
 
-const NcIcon = COMPONENT_ICONS.nc!;
 const TRIAL_MINUTES = talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS);
 
 const LINKS: { c: Part; text: string }[] = [
+  { c: "nc", text: "Optional. Cleans the line before anything listens to it." },
   { c: "stt", text: "Hears the caller. Pick for accuracy on your callers' accents and line quality." },
   { c: "llm", text: "Decides what to say, calls your tools and searches your documents." },
   { c: "tts", text: "Speaks the answer. Pick a voice that fits the business." },
 ];
 
 const LOOP = [
-  { icon: ChartLineUp, title: "See every call", text: "Transcript, recording, per-turn latency and the itemised cost of each call, as it happens." },
+  { title: "See every call", text: "Transcript, recording, per-turn latency and the itemised cost of each call, as it happens." },
   {
-    icon: Crosshair,
     title: "Score it, then check the score",
     text: "Evaluators grade calls with their reasons. Your own labels show how often each one agrees with a person.",
   },
   {
-    icon: Wrench,
     title: "Fix what repeats",
     text: "Repeated failures become issues with a drafted prompt fix, replayed against the calls it would change before you apply it.",
   },
 ];
 
+const H2 = "font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]";
+
+/** A titled band: heading and intro on the left, the content as ruled rows on the right. */
+function Band({ id, title, intro, children }: { id: string; title: string; intro?: ReactNode; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id}>
+      <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:py-20">
+        <div>
+          <h2 id={id} className={`${H2} max-w-[18ch]`}>
+            {title}
+          </h2>
+          {intro && <div className="mt-4 max-w-[44ch] text-[15px] leading-relaxed text-fg-2">{intro}</div>}
+        </div>
+        <div>{children}</div>
+      </div>
+    </section>
+  );
+}
+
 /** Public home (T044, FR-016). Product visuals are real components fed by the pricing engine. */
 export function Home() {
   return (
     <>
-      <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pb-16 lg:pt-12">
+      <section>
+        <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:pb-24 lg:pt-14">
           <Reveal>
             <RevealItem>
-              <h1 className="grad-text max-w-[15ch] font-display text-[34px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[46px] lg:text-[54px]">
+              <h1 className="max-w-[14ch] text-balance font-display text-[34px] font-semibold leading-[1.06] tracking-[-0.035em] text-fg sm:text-[46px] lg:text-[52px]">
                 Phone agents fast enough that callers keep talking.
               </h1>
             </RevealItem>
             <RevealItem>
-              <p className="mt-6 max-w-[48ch] text-[16px] leading-relaxed text-fg-2">
+              <p className="mt-6 max-w-[46ch] text-[16px] leading-relaxed text-fg-2">
                 Choose the speech recognition, model and voice. Callwright runs the call, times every turn and prices every second, so you can see why
                 a caller stayed or hung up.
               </p>
             </RevealItem>
-            <RevealItem className="mt-8 flex flex-wrap gap-3">
-              <Button asChild variant="primary" size="lg" idleSheen icon={<UserPlus aria-hidden />}>
+            <RevealItem className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <Button asChild variant="primary" size="lg" idleSheen>
                 <Link to="/register">Create account</Link>
               </Button>
-              <Button asChild variant="secondary" size="lg" icon={<Calculator aria-hidden />}>
+              <Button asChild variant="link" className="text-[15px]">
                 <Link to="/pricing">See pricing</Link>
               </Button>
             </RevealItem>
             <RevealItem>
-              <p className="mt-6 flex items-start gap-2 text-[13.5px] text-fg-3">
-                <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>
-                  New workspaces start with $5.00, about <span className="font-mono text-fg-2 tnum">{TRIAL_MINUTES}</span> minutes of calls.
-                </span>
+              <p className="mt-6 text-[13.5px] text-fg-3">
+                New workspaces start with $5.00, about <span className="font-mono text-fg-2 tnum">{TRIAL_MINUTES}</span> minutes of calls.
               </p>
             </RevealItem>
           </Reveal>
@@ -82,126 +95,86 @@ export function Home() {
         </div>
       </section>
 
-      <section aria-labelledby="chain" className="border-t border-line bg-surface/60">
-        <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6">
-          <h2 id="chain" className="max-w-[22ch] font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]">
-            Every link in the call is yours to choose.
-          </h2>
-          <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-fg-2">
-            A call travels from the caller through speech to text, the model and the voice, and back. Swap any link in the agent settings; nothing
-            else changes.
-          </p>
-          <ol className="mt-12 grid gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch md:gap-0">
-            {LINKS.map((l, i) => {
-              const Icon = COMPONENT_ICONS[l.c]!;
-              return (
-                <li key={l.c} className="contents">
-                  <article className="lift flex flex-col rounded-panel border border-line bg-surface p-6 shadow-1">
-                    <span className="grid size-10 place-items-center rounded-control bg-accent-soft text-accent-text">
-                      <Icon className="size-5" aria-hidden />
-                    </span>
-                    <h3 className="mt-4 text-[16px] font-semibold text-fg">{COMPONENT_LABELS[l.c]}</h3>
-                    <p className="mt-1.5 text-[14px] leading-relaxed text-fg-2">{l.text}</p>
-                    <ul className="mt-5 flex flex-wrap gap-1.5" aria-label={`${COMPONENT_LABELS[l.c]} providers`}>
-                      {providersFor(l.c).map((p) => (
-                        <li key={p} className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[12.5px] text-fg-2">
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                  {i < LINKS.length - 1 && (
-                    <div aria-hidden className="hidden w-10 items-center md:flex">
-                      <ChainLink flow className="w-full" />
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-          <p className="mt-6 flex items-start gap-2 text-[13.5px] text-fg-3">
-            <NcIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
-            Optional noise cancellation from {providersFor("nc").join(" or ")} cleans the line before speech to text hears it.
-          </p>
-        </div>
-      </section>
-
-      <section aria-labelledby="loop" className="border-t border-line">
-        <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6">
-          <h2 id="loop" className="max-w-[24ch] font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]">
-            Then keep making it better.
-          </h2>
-          <div className="mt-12 grid gap-10 md:grid-cols-3">
-            {LOOP.map((x) => (
-              <div key={x.title} className="flex flex-col gap-3 border-t-2 border-line pt-6">
-                <x.icon weight="duotone" className="size-8 text-accent-text" aria-hidden />
-                <h3 className="text-[16px] font-semibold text-fg">{x.title}</h3>
-                <p className="text-[14px] leading-relaxed text-fg-2">{x.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section aria-labelledby="price" className="border-t border-line bg-surface/60">
-        <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6">
-          <h2 id="price" className="font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]">
-            One price per minute, in five parts.
-          </h2>
-          <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-fg-2">
-            Billed per second from a prepaid balance. These are the lowest rates for each part; the calculator prices your exact setup.
-          </p>
-          <dl className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
-            {PARTS.map((c) => {
-              const Icon = COMPONENT_ICONS[c]!;
-              return (
-                <div key={c} className={cn("flex flex-col gap-3 bg-surface px-5 py-5", c === "platform" && "col-span-2 sm:col-span-1")}>
-                  <dt className="flex items-center gap-2 text-[13px] text-fg-2">
-                    <Icon className="size-4 text-fg-3" aria-hidden />
-                    {COMPONENT_LABELS[c]}
-                  </dt>
-                  <dd className="text-[13px] text-fg-3">
-                    {c === "nc" ? (
-                      <span className="text-[18px] font-medium text-fg">Included</span>
-                    ) : (
-                      <>
-                        {c !== "platform" && "from "}
-                        <span className="font-mono text-[18px] font-medium text-fg tnum">{fromRate(c)}</span> a minute
-                      </>
-                    )}
-                  </dd>
+      <Band
+        id="chain"
+        title="Every link in the call is yours to choose."
+        intro="A call travels from the caller through speech to text, the model and the voice, and back. Swap any link in the agent settings; nothing else changes."
+      >
+        <ol className="divide-y divide-line border-y border-line">
+          {LINKS.map((l) => {
+            const Icon = COMPONENT_ICONS[l.c]!;
+            return (
+              <li key={l.c} className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-1.5 py-6 sm:grid-cols-[180px_minmax(0,1fr)]">
+                <h3 className="flex items-center gap-2.5 text-[15px] font-semibold text-fg">
+                  <Icon className="size-4 shrink-0 text-accent-text" aria-hidden />
+                  {COMPONENT_LABELS[l.c]}
+                </h3>
+                <div>
+                  <p className="text-[15px] leading-relaxed text-fg-2">{l.text}</p>
+                  <p className="mt-1.5 text-[13.5px] text-fg-3">{providersFor(l.c).join(", ")}</p>
                 </div>
-              );
-            })}
-          </dl>
-          <Button asChild variant="secondary" className="mt-8" icon={<Calculator aria-hidden />}>
-            <Link to="/pricing">Open the calculator</Link>
-          </Button>
-        </div>
-      </section>
+              </li>
+            );
+          })}
+        </ol>
+      </Band>
 
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6">
-          <div className="relative overflow-hidden rounded-feature bg-console px-6 py-12 text-console-fg sm:px-12">
-            <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-90" />
-            <div className="relative flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="flex items-center gap-2 text-[13px] text-console-fg-2">
-                  <BadgeDollarSign className="size-4" aria-hidden />
-                  Trial credit
-                </p>
-                <h2 className="mt-3 max-w-[22ch] font-display text-[24px] font-medium leading-[1.2] tracking-[-0.025em] sm:text-[30px]">
-                  Your first $5 is about {TRIAL_MINUTES} minutes of calls.
-                </h2>
-                <p className="mt-3 max-w-[52ch] text-[14.5px] text-console-fg-2">
-                  No card needed until you add funds. Calls are billed per second from your balance.
-                </p>
-              </div>
-              <Button asChild variant="primary" size="lg" icon={<UserPlus aria-hidden />}>
-                <Link to="/register">Create account</Link>
-              </Button>
+      <Band id="loop" title="Then keep making it better.">
+        <ul className="divide-y divide-line border-y border-line">
+          {LOOP.map((x) => (
+            <li key={x.title} className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-1.5 py-6 sm:grid-cols-[180px_minmax(0,1fr)]">
+              <h3 className="text-[15px] font-semibold text-fg">{x.title}</h3>
+              <p className="text-[15px] leading-relaxed text-fg-2">{x.text}</p>
+            </li>
+          ))}
+        </ul>
+      </Band>
+
+      <Band
+        id="price"
+        title="One price per minute, in five parts."
+        intro={
+          <>
+            <p>Billed per second from a prepaid balance. These are the lowest rates for each part; the calculator prices your exact setup.</p>
+            <Button asChild variant="link" className="mt-5 text-[15px]">
+              <Link to="/pricing">Open the calculator</Link>
+            </Button>
+          </>
+        }
+      >
+        <dl className="divide-y divide-line border-y border-line">
+          {PARTS.map((c) => (
+            <div key={c} className="flex items-baseline justify-between gap-6 py-4">
+              <dt className="text-[15px] text-fg">{COMPONENT_LABELS[c]}</dt>
+              <dd className="text-right text-[13.5px] text-fg-3">
+                {c === "nc" ? (
+                  <span className="text-[15px] text-fg">Included</span>
+                ) : (
+                  <>
+                    {c !== "platform" && "from "}
+                    <span className="font-mono text-[16px] text-fg tnum">{fromRate(c)}</span> a minute
+                  </>
+                )}
+              </dd>
             </div>
-          </div>
+          ))}
+        </dl>
+      </Band>
+
+      <section aria-labelledby="start">
+        <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:py-28">
+          <h2
+            id="start"
+            className="max-w-[20ch] text-balance font-display text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-fg sm:text-[40px]"
+          >
+            Your first $5 is about {TRIAL_MINUTES} minutes of calls.
+          </h2>
+          <p className="mt-4 max-w-[52ch] text-[16px] leading-relaxed text-fg-2">
+            No card needed until you add funds. Calls are billed per second from your balance.
+          </p>
+          <Button asChild variant="primary" size="lg" idleSheen className="mt-8">
+            <Link to="/register">Create account</Link>
+          </Button>
         </div>
       </section>
     </>

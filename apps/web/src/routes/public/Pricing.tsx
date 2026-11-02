@@ -1,4 +1,3 @@
-import { Building, Clock } from "lucide-react";
 import { Link } from "react-router";
 import { Button, COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard } from "../../components";
 import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
@@ -18,39 +17,39 @@ export function Pricing() {
   const llm = referenceBreakdown.lines.find((l) => l.component === "llm")!;
   return (
     <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-12 sm:px-6 lg:pt-16">
-      <h1 className="grad-text max-w-[18ch] font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[44px]">
+      <h1 className="max-w-[18ch] text-balance font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[44px]">
         Pay per minute, billed per second.
       </h1>
       <p className="mt-5 max-w-[60ch] text-[16px] leading-relaxed text-fg-2">
         Build the chain your agent uses. The price per minute is the sum of its links plus the platform fee, and the same engine prices your real
         calls.
       </p>
-      <p className="mt-3 flex items-start gap-2 text-[13.5px] text-fg-3">
-        <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <span>
-          $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes
-          on the default chain.
-        </span>
+      <p className="mt-3 text-[13.5px] text-fg-3">
+        $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes on
+        the default chain.
       </p>
 
       <div className="mt-12">
         <PricingCalculator />
       </div>
 
-      <section aria-labelledby="parts" className="mt-24">
+      <section
+        aria-labelledby="parts"
+        className="mt-24 grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
+      >
         <h2 id="parts" className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
           What a minute is made of
         </h2>
-        <dl className="mt-8 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-5">
+        <dl className="divide-y divide-line border-y border-line">
           {PARTS.map((p) => {
             const Icon = COMPONENT_ICONS[p.c]!;
             return (
-              <div key={p.c} className="flex flex-col gap-2 border-t-2 border-line pt-5">
-                <dt className="flex items-center gap-2 text-[14.5px] font-semibold text-fg">
-                  <Icon className="size-4 text-accent-text" aria-hidden />
+              <div key={p.c} className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-1.5 py-5 sm:grid-cols-[180px_minmax(0,1fr)]">
+                <dt className="flex items-center gap-2.5 text-[15px] font-semibold text-fg">
+                  <Icon className="size-4 shrink-0 text-accent-text" aria-hidden />
                   {COMPONENT_LABELS[p.c]}
                 </dt>
-                <dd className="text-[14px] leading-relaxed text-fg-2">{p.text}</dd>
+                <dd className="text-[15px] leading-relaxed text-fg-2">{p.text}</dd>
               </div>
             );
           })}
@@ -82,7 +81,7 @@ cost           = rate x billed minutes`}
             <span className="font-mono tnum">${Number(llm.surcharge_usd).toFixed(4)}</span>. The voice stayed inside its bundle and bills at the call
             length.
           </p>
-          <Button asChild variant="secondary" className="mt-7" icon={<Building aria-hidden />}>
+          <Button asChild variant="link" className="mt-7 text-[15px]">
             <Link to="/enterprise">Talk to us about volume</Link>
           </Button>
         </div>
