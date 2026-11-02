@@ -73,3 +73,5 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 
 ## Deploy
 See `deploy/cloudrun/README.md` and `deploy/vm/README.md`. Every gcloud command passes the personal account and project explicitly; the machine's default gcloud account belongs to another organisation.
+- Changes to the seed templates (`services/api/app/templates/seed`) or the built-in check catalog (`app/evaluators/builtins`) need `deploy.sh ... migrate` too: the migrate job syncs both into the database; `build api` alone does not.
+- 2026-11-02: templates gained an Identity rule (never name the AI vendor) and intent fulfilment is on by default; deployed as API `7ba6b77` plus migrate, verified on the hosted API.
