@@ -48,3 +48,18 @@ afterEach(() => {
   localStorage.clear();
 });
 afterAll(() => server.close());
+
+// jsdom has no IntersectionObserver; motion's useInView (home page sections) needs one. Nothing is ever in view.
+if (!("IntersectionObserver" in globalThis)) {
+  globalThis.IntersectionObserver = class {
+    readonly root = null;
+    readonly rootMargin = "";
+    readonly thresholds = [];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  } as unknown as typeof IntersectionObserver;
+}

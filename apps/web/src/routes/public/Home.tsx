@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Button, COMPONENT_ICONS, COMPONENT_LABELS, Reveal, RevealItem } from "../../components";
+import { Button, COMPONENT_LABELS, Reveal, RevealItem } from "../../components";
 import { catalogV1 } from "../../lib/catalogSeed";
 import { formatUsd, toMicros } from "../../lib/money";
-import { providerLabel } from "../../lib/providers";
 import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
+import { ChainDemo } from "./home/ChainDemo";
+import { ProductVideo } from "./home/ProductVideo";
+import { ProviderStrip } from "./home/ProviderStrip";
+import { QualityStory } from "./home/QualityStory";
+import { TemplateRail } from "./home/TemplateRail";
 import { Playground } from "./playground/Playground";
 
 const PARTS = ["stt", "llm", "tts", "nc", "platform"] as const;
@@ -17,28 +21,7 @@ function fromRate(component: Part): string {
   return formatUsd(min, { places: 4 });
 }
 
-const providersFor = (c: Part) => [...new Set(catalogV1.entries.filter((e) => e.component === c).map((e) => providerLabel(e.provider)))];
-
 const TRIAL_MINUTES = talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS);
-
-const LINKS: { c: Part; text: string }[] = [
-  { c: "nc", text: "Optional. Cleans the line before anything listens to it." },
-  { c: "stt", text: "Hears the caller. Pick for accuracy on your callers' accents and line quality." },
-  { c: "llm", text: "Decides what to say, calls your tools and searches your documents." },
-  { c: "tts", text: "Speaks the answer. Pick a voice that fits the business." },
-];
-
-const LOOP = [
-  { title: "See every call", text: "Transcript, recording, per-turn latency and the itemised cost of each call, as it happens." },
-  {
-    title: "Score it, then check the score",
-    text: "Evaluators grade calls with their reasons. Your own labels show how often each one agrees with a person.",
-  },
-  {
-    title: "Fix what repeats",
-    text: "Repeated failures become issues with a drafted prompt fix, replayed against the calls it would change before you apply it.",
-  },
-];
 
 const H2 = "font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]";
 
@@ -54,6 +37,21 @@ function Band({ id, title, intro, children }: { id: string; title: string; intro
           {intro && <div className="mt-4 max-w-[44ch] text-[15px] leading-relaxed text-fg-2">{intro}</div>}
         </div>
         <div>{children}</div>
+      </div>
+    </section>
+  );
+}
+
+/** A titled section with the content full width under the heading. */
+function Stacked({ id, title, intro, children }: { id: string; title: string; intro?: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id}>
+      <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 lg:py-20">
+        <h2 id={id} className={`${H2} max-w-[22ch]`}>
+          {title}
+        </h2>
+        {intro && <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-fg-2">{intro}</p>}
+        <div className="mt-12">{children}</div>
       </div>
     </section>
   );
@@ -95,40 +93,31 @@ export function Home() {
         </div>
       </section>
 
-      <Band
+      <ProviderStrip />
+
+      <Stacked
         id="chain"
         title="Every link in the call is yours to choose."
         intro="A call travels from the caller through speech to text, the model and the voice, and back. Swap any link in the agent settings; nothing else changes."
       >
-        <ol className="divide-y divide-line border-y border-line">
-          {LINKS.map((l) => {
-            const Icon = COMPONENT_ICONS[l.c]!;
-            return (
-              <li key={l.c} className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-1.5 py-6 sm:grid-cols-[180px_minmax(0,1fr)]">
-                <h3 className="flex items-center gap-2.5 text-[15px] font-semibold text-fg">
-                  <Icon className="size-4 shrink-0 text-accent-text" aria-hidden />
-                  {COMPONENT_LABELS[l.c]}
-                </h3>
-                <div>
-                  <p className="text-[15px] leading-relaxed text-fg-2">{l.text}</p>
-                  <p className="mt-1.5 text-[13.5px] text-fg-3">{providersFor(l.c).join(", ")}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </Band>
+        <ChainDemo />
+      </Stacked>
 
-      <Band id="loop" title="Then keep making it better.">
-        <ul className="divide-y divide-line border-y border-line">
-          {LOOP.map((x) => (
-            <li key={x.title} className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-1.5 py-6 sm:grid-cols-[180px_minmax(0,1fr)]">
-              <h3 className="text-[15px] font-semibold text-fg">{x.title}</h3>
-              <p className="text-[15px] leading-relaxed text-fg-2">{x.text}</p>
-            </li>
-          ))}
-        </ul>
-      </Band>
+      <Stacked
+        id="tour"
+        title="Build it, call it, read the call."
+        intro="Thirty seconds of the real app: write an agent, talk to it from the browser, then open the call to see every turn timed and every second priced."
+      >
+        <ProductVideo />
+      </Stacked>
+
+      <Stacked id="loop" title="Then keep making it better.">
+        <QualityStory />
+      </Stacked>
+
+      <section aria-labelledby="templates" className="py-14 lg:py-20">
+        <TemplateRail />
+      </section>
 
       <Band
         id="price"

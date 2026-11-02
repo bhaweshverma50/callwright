@@ -83,7 +83,7 @@ export function Playground({ className }: { className?: string }) {
 
 function ConsoleFrame({ className, children }: { className?: string; children?: ReactNode }) {
   return (
-    <div className={cn("relative", className)}>
+    <div id="playground" className={cn("relative scroll-mt-24", className)}>
       <div aria-hidden className="glow-backdrop pointer-events-none absolute -inset-10 -z-0 rounded-[40px] blur-2xl" />
       <section
         aria-label="Try a call"
@@ -131,6 +131,18 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
     cancel();
     setKey(next);
   };
+
+  // The home template rail's "Try it now" switches the scenario from outside.
+  const pickRef = useRef(pick);
+  pickRef.current = pick;
+  useEffect(() => {
+    const onTry = (e: Event) => {
+      const next = (e as CustomEvent<string>).detail;
+      if (scenarios.some((sc) => sc.key === next)) pickRef.current(next);
+    };
+    window.addEventListener("cw:playground", onTry);
+    return () => window.removeEventListener("cw:playground", onTry);
+  }, [scenarios]);
 
   return (
     <ConsoleFrame className={className}>
