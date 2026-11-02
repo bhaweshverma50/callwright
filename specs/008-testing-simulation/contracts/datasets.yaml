@@ -109,6 +109,8 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
+        '422': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed' }
     delete:
       tags: [datasets]
       operationId: deleteDataset
@@ -138,6 +140,7 @@ paths:
                       items:
                         type: array
                         items: { $ref: '#/components/schemas/DatasetItem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
     post:
       tags: [datasets]
       operationId: addDatasetItems
@@ -165,6 +168,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /datasets/{dataset_id}/items/{call_id}:
     delete:
       tags: [datasets]
@@ -207,6 +211,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }

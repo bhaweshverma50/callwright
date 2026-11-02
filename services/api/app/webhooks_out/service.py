@@ -243,7 +243,8 @@ async def enqueue_event(
 ) -> str | None:
     """Queue ``event`` for ``call`` once. Returns the new delivery id (None: no URL or duplicate)."""
     url, timeout_ms = webhook_settings(config)
-    if url is None:
+    if url is None or call.origin == "simulation":
+        # 008: simulated calls never reach customer webhooks (FR-018).
         return None
     now = now or datetime.now(UTC)
     body = dumps(

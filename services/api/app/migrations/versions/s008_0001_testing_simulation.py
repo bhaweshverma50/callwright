@@ -267,8 +267,44 @@ def upgrade() -> None:
     LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
       SELECT workspace_id FROM simulation_runs WHERE id = p_id
     $$;
+
+    -- Runs whose runner went silent (sweeper cron): running without a heartbeat on the simulated
+    -- call for p_stale_s, or dispatched but never started for p_lost_s.
+    CREATE FUNCTION simulation_runs_stale(p_stale_s integer, p_lost_s integer)
+    RETURNS TABLE (run_id text, workspace_id text)
+    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+      SELECT r.id, r.workspace_id FROM simulation_runs r LEFT JOIN calls c ON c.id = r.output_call_id
+      WHERE (r.status = 'running'
+             AND coalesce(c.last_heartbeat_at, r.started_at) < now() - make_interval(secs => p_stale_s))
+         OR (r.status = 'pending' AND r.dispatched_at < now() - make_interval(secs => p_lost_s))
+      ORDER BY r.created_at
+      LIMIT 500
+    $$;
+
+    -- Retention (research R13): simulated transcripts and persona briefs follow the base call.
+    CREATE FUNCTION simulation_data_purge()
+    RETURNS bigint
+    LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = public AS $$
+      WITH gone AS (
+        SELECT r.id, r.output_call_id FROM simulation_runs r LEFT JOIN calls b ON b.id = r.base_call_id
+        WHERE r.base_call_id IS NOT NULL AND (b.id IS NULL OR b.transcript IS NULL)
+          AND (r.persona_brief IS NOT NULL OR r.output_call_id IS NOT NULL)
+      ), briefs AS (
+        UPDATE simulation_runs SET persona_brief = NULL
+        WHERE id IN (SELECT id FROM gone) AND persona_brief IS NOT NULL RETURNING id
+      ), transcripts AS (
+        UPDATE calls SET transcript = NULL, summary = NULL
+        WHERE id IN (SELECT output_call_id FROM gone) AND transcript IS NOT NULL RETURNING id
+      )
+      SELECT (SELECT count(*) FROM briefs) + (SELECT count(*) FROM transcripts)
+    $$;
     """)
-    for fn in ("test_runs_workspace_for(text)", "simulation_runs_workspace_for(text)"):
+    for fn in (
+        "test_runs_workspace_for(text)",
+        "simulation_runs_workspace_for(text)",
+        "simulation_runs_stale(integer, integer)",
+        "simulation_data_purge()",
+    ):
         op.execute(f"REVOKE ALL ON FUNCTION {fn} FROM PUBLIC")
         op.execute(f"GRANT EXECUTE ON FUNCTION {fn} TO callwright_app")
     values = ", ".join(f"('{slug}', '{name}', '{color}')" for slug, name, color in SEEDS)

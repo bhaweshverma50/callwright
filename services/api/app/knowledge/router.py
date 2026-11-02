@@ -255,16 +255,37 @@ async def set_agent_knowledge_bases(
 
 @internal_router.post("/internal/knowledge/search", responses=problem_responses(403, 404))
 async def internal_knowledge_search(body: InternalSearch, request: Request) -> dict[str, Any]:
-    """Workspace from the call; ``kb_ids`` must belong to the call's agent version (R15)."""
+    """Workspace from the call; ``kb_ids`` must belong to the call's agent version (R15).
+
+    008: a simulated call searches the knowledge of the snapshot it runs (variants included),
+    and a single-turn test case (no call) passes its test run id instead of a call id."""
     state = request.app.state
-    workspace_id = await workspace_for_call(state.db, body.call_id)
     deps = jobs.deps_from_state(state)
+    if body.call_id.startswith("trn_"):
+        from app.test_runs.router import run_workspace
+        from app.test_runs.service import get_run
+
+        workspace_id = await run_workspace(request, body.call_id)
+        async with state.db.transaction(workspace_id=workspace_id) as session:
+            run = await get_run(session, body.call_id)
+            if not set(body.kb_ids) <= service.version_kb_ids(run.config_snapshot):
+                raise forbidden("These knowledge bases are not attached to the tested configuration.")
+            return await service.search(
+                session, state.redis, deps.embedder, body.kb_ids, body.query, body.top_k
+            )
+    workspace_id = await workspace_for_call(state.db, body.call_id)
     async with state.db.transaction(workspace_id=workspace_id) as session:
         call = await session.get(Call, body.call_id)
         if call is None:
             raise not_found("call")
         version = await session.get(AgentVersion, call.agent_version_id) if call.agent_version_id else None
         allowed = service.version_kb_ids(version.config) if version is not None else set()
+        if call.origin == "simulation" and call.simulation_run_id:
+            from app.simulator.service import run_snapshot
+
+            snapshot = await run_snapshot(session, call.simulation_run_id)
+            if snapshot is not None:
+                allowed = service.version_kb_ids(snapshot)
         if not set(body.kb_ids) <= allowed:
             raise forbidden("These knowledge bases are not attached to the call's agent version.")
         return await service.search(session, state.redis, deps.embedder, body.kb_ids, body.query, body.top_k)

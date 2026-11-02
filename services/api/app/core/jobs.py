@@ -51,6 +51,10 @@ async def startup(ctx: dict[str, Any]) -> None:
     from app.evals.install import install as install_quality
 
     await install_quality(settings, None, queue=ctx["jobs"], sync=False)
+    # Testing and simulation (008): dispatch to the text runner, judges, sweeper.
+    from app.simulator.install import install as install_simulator
+
+    install_simulator()
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -78,9 +82,11 @@ def _functions() -> list[Any]:
     from app.evals.install import job_functions as quality_jobs
     from app.knowledge.jobs import ingest_document
     from app.phone_numbers.jobs import drain_channels
+    from app.simulator.install import job_functions as simulation_jobs
     from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
 
     return [
+        *simulation_jobs(),
         drain_channels,
         reconcile_balances,
         run_pipeline,
@@ -99,9 +105,11 @@ def _crons() -> list[CronJob]:
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls
     from app.phone_numbers.jobs import drain_channels
+    from app.simulator.install import crons as simulation_crons
     from app.webhooks_out.jobs import purge_webhook_deliveries
 
     return [
+        *simulation_crons(),
         cron(reconcile_balances, hour={3}, minute={0}, run_at_startup=False),
         # 003 R16: stuck calls every 15 s; deliveries older than 30 days once a day.
         cron(reap_stuck_calls, second={0, 15, 30, 45}, run_at_startup=False, unique=True),

@@ -195,7 +195,12 @@ async def _active_calls(session: AsyncSession, workspace_id: str) -> int:
             await session.execute(
                 select(func.count())
                 .select_from(Call)
-                .where(Call.workspace_id == workspace_id, Call.status.in_(tuple(ACTIVE)))
+                # 008: simulated calls run as text and never hold a concurrent-call slot.
+                .where(
+                    Call.workspace_id == workspace_id,
+                    Call.status.in_(tuple(ACTIVE)),
+                    Call.origin != "simulation",
+                )
             )
         ).scalar_one()
     )

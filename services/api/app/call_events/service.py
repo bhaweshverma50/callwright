@@ -254,7 +254,8 @@ async def ingest(
             await _apply_status(session, call, event, config, out.deferred, now)
         call.last_heartbeat_at = now
         await session.flush()
-        if call.status == "in_progress":
+        # Simulations are billed as feature charges (008), never as call minutes.
+        if call.status == "in_progress" and call.origin != "simulation":
             cost = await running_cost(session, call, catalog, now)
             if cost is not None:
                 balance = await billing.get_balance(session, workspace_id)

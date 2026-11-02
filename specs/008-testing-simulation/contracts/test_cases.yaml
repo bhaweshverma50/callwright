@@ -71,6 +71,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /test-cases:
     get:
       tags: [test_cases]
@@ -242,6 +243,11 @@ paths:
         '402': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/InsufficientCredit' }
         '409':
           description: Agent has no prompt or no agent node
+          content:
+            application/problem+json:
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '503':
+          description: The model did not answer; try again
           content:
             application/problem+json:
               schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }

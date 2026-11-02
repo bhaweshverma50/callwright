@@ -89,6 +89,11 @@ async def build_context(
     session: AsyncSession, call: Call, *, run_id: str = "", recordings_bucket: str | None = None
 ) -> EvalContext:
     config: Mapping[str, Any] = await version_config(session, call.agent_version_id) or {}
+    if call.origin == "simulation" and call.simulation_run_id:
+        # 008: a simulated call is judged against the exact snapshot it ran (variants included).
+        from app.simulator.service import run_snapshot
+
+        config = await run_snapshot(session, call.simulation_run_id) or config
     items = list((call.transcript or {}).get("items") or [])
     messages, tools, transitions = parse_transcript(items)
     turn_rows = (

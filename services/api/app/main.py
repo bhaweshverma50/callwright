@@ -48,6 +48,7 @@ from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
 from app.dashboard.router import router as dashboard_router
+from app.datasets.router import router as datasets_router
 from app.demo.router import router as demo_router
 from app.dev.router import checkout_router as fake_checkout_router
 from app.dev.router import router as dev_router
@@ -69,7 +70,13 @@ from app.prompt_ai.router import router as prompt_ai_router
 from app.recordings.router import router as recordings_router
 from app.review.router import router as review_router
 from app.sessions.router import router as sessions_router
+from app.simulator.install import install as install_simulator
+from app.simulator.internal_router import router as simulator_internal_router
+from app.simulator.router import router as simulator_router
 from app.templates.router import router as templates_router
+from app.test_cases.router import router as test_cases_router
+from app.test_runs.router import internal_router as test_runs_internal_router
+from app.test_runs.router import router as test_runs_router
 from app.tools.router import router as tools_router
 from app.usage.router import router as usage_router
 from app.voice_commands.router import router as voice_commands_router
@@ -192,6 +199,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Quality and evaluations (007): post-call analysis and evaluator pipeline handlers, the
         # 006 quality port and the built-in evaluator catalog.
         await install_quality(settings, db, queue=jobs)
+        # Testing and simulation (008): offline replies for drafting, judging and persona briefs.
+        install_simulator()
         try:
             yield
         finally:
@@ -268,6 +277,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         annotations_router,
         review_router,
         calibration_router,
+        test_cases_router,
+        test_runs_router,
+        test_runs_internal_router,
+        simulator_router,
+        simulator_internal_router,
+        datasets_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:

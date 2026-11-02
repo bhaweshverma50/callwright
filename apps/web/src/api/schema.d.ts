@@ -6029,8 +6029,11 @@ export interface components {
             name: string;
             arguments: Record<string, never>;
             output?: string | null;
-            /** @enum {string} */
-            answer_source: "mock" | "recorded" | "synthesized" | "error";
+            /**
+             * @description Null for tools a simulation runs for real (end call
+             * @enum {string|null}
+             */
+            answer_source: "mock" | "recorded" | "synthesized" | "error" | null;
         };
         TestRun: {
             test_run_id: string;
@@ -11413,6 +11416,7 @@ export interface operations {
                     "application/json": components["schemas"]["Dataset"];
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description Name already in use */
             409: {
                 headers: {
@@ -11422,6 +11426,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            422: components["responses"]["ValidationFailed"];
         };
     };
     listDatasetItems: {
@@ -11449,6 +11454,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     addDatasetItems: {
@@ -11477,6 +11483,7 @@ export interface operations {
                     "application/json": components["schemas"]["AddItemsResult"];
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description Would exceed 1,000 items */
             422: {
                 headers: {
@@ -11556,6 +11563,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     simulationPreflight: {
@@ -11598,6 +11606,7 @@ export interface operations {
                     };
                 };
             };
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };
@@ -11668,6 +11677,7 @@ export interface operations {
                 };
             };
             402: components["responses"]["InsufficientCredit"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
         };
     };
@@ -11746,6 +11756,7 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationRun"];
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description Only pending runs can be cancelled */
             409: {
                 headers: {
@@ -11818,6 +11829,7 @@ export interface operations {
                 };
             };
             402: components["responses"]["InsufficientCredit"];
+            409: components["responses"]["Conflict"];
             /** @description Mixed agents, too many calls, invalid calls or invalid variant */
             422: {
                 headers: {
@@ -11877,6 +11889,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     getExperimentScorecard: {
@@ -11927,6 +11940,7 @@ export interface operations {
                     "application/json": components["schemas"]["Experiment"];
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     internalGetSimulationSpec: {
@@ -11976,6 +11990,8 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     internalPostSimulationResult: {
@@ -12009,6 +12025,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            404: components["responses"]["NotFound"];
         };
     };
     listTestCategories: {
@@ -12083,6 +12100,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            404: components["responses"]["NotFound"];
             /** @description Seed category, or category still used by test cases */
             409: {
                 headers: {
@@ -12332,6 +12350,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description The model did not answer; try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     listTestRuns: {
@@ -12451,6 +12478,7 @@ export interface operations {
                     "application/json": components["schemas"]["TestRun"];
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description Run already finished */
             409: {
                 headers: {
@@ -12531,6 +12559,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     internalGetTestCaseSpec: {
@@ -12564,6 +12593,8 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     internalPostTestCaseResult: {
@@ -12599,6 +12630,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            404: components["responses"]["NotFound"];
         };
     };
     detectIssues: {

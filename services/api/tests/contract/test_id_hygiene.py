@@ -33,7 +33,8 @@ def _id_paths() -> list[tuple[str, str]]:
     paths: dict[str, Any] = contract_dict()["paths"]  # type: ignore[assignment]
     out = []
     for path, item in paths.items():
-        if "{" not in path or "get" not in item:
+        # Internal paths take the worker's service token, never a user token (008 runner specs).
+        if "{" not in path or "get" not in item or path.startswith("/internal/"):
             continue
         out.append(("get", path))
     return out

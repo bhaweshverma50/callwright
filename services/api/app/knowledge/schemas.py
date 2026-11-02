@@ -33,7 +33,8 @@ class SetAgentKnowledge(_Strict):
 
 
 class InternalSearch(_Strict):
-    call_id: str = Field(pattern=r"^call_")
+    # A call id, or a test run id for 008's single-turn test cases (no call exists).
+    call_id: str = Field(pattern=r"^(call|trn)_")
     query: str = Field(min_length=1, max_length=1000)
     kb_ids: list[Annotated[str, Field(pattern=r"^kb_")]] = Field(min_length=1, max_length=10)
     top_k: int = Field(default=4, ge=1, le=8)

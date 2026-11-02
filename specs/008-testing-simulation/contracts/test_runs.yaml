@@ -107,6 +107,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /test-runs/{test_run_id}/results/{test_case_id}:
     patch:
       tags: [test_runs]
@@ -162,6 +163,7 @@ paths:
                   results:
                     type: array
                     items: { $ref: '#/components/schemas/TestResult' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
   /internal/test-runs/{test_run_id}/cases/{test_case_id}/spec:
     get:
       tags: [test_runs]
@@ -187,6 +189,8 @@ paths:
                   config_snapshot: { type: object }
                   user_prompt: { type: string }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
+        '409': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict' }
   /internal/test-runs/{test_run_id}/cases/{test_case_id}/result:
     post:
       tags: [test_runs]
@@ -218,6 +222,7 @@ paths:
                 error_message: { type: [string, 'null'] }
       responses:
         '204': { description: Accepted; judging is enqueued }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -238,7 +243,7 @@ components:
         name: { type: string }
         arguments: { type: object }
         output: { type: [string, 'null'] }
-        answer_source: { type: string, enum: [mock, recorded, synthesized, error] }
+        answer_source: { type: [string, 'null'], enum: [mock, recorded, synthesized, error, null], description: Null for tools a simulation runs for real (end call, transfer, knowledge search, keypad) }
     TestRun:
       type: object
       required: [test_run_id, agent_id, target, status, total, passed, failed, errored, judge_model, agent_model, config_hash, created_at]

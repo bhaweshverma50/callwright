@@ -59,6 +59,8 @@ def usage_cost(usage: Mapping[str, Any], roles: Iterable[str] | None = None) -> 
     for role, entry in usage.items():
         if (wanted is not None and role not in wanted) or not isinstance(entry, Mapping):
             continue
+        if entry.get("offline"):
+            continue  # the runner's offline fallback answered: no vendor tokens were used
         model = str(entry.get("model") or "")
         model = model.partition("/")[2] or model
         inp, out = _int(entry.get("input_tokens")), _int(entry.get("output_tokens"))
