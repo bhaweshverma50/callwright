@@ -1200,7 +1200,7 @@ export const simHandlers = [
     if (!items) return notFound("dataset");
     const body = (await request.json().catch(() => ({}))) as { only_missing?: boolean };
     const available = items.filter((i) => i.available);
-    const upToDate = body.only_missing ? available.filter((i) => i.eval_status === "evaluated").length : 0;
+    const upToDate = body.only_missing ? available.filter((i) => i.eval_status === "passed" || i.eval_status === "failed").length : 0;
     return json(
       remembered(request, () => ({
         enqueued: available.length - upToDate,

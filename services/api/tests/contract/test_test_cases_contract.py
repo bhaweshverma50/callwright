@@ -25,7 +25,7 @@ async def test_every_test_case_operation(
     )
     assert (
         check(
-            await client.post("/v1/test-categories", json={"name": "x", "color": "#123456"}, headers=h)
+            await client.post("/v1/test-categories", json={"name": "x", "color": "#123457"}, headers=h)
         ).status_code
         == 422
     )

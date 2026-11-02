@@ -27,23 +27,21 @@ from app.test_cases.models import TestCase, TestCategory
 
 # Design palette for category chips (FR-032); seeds take fixed entries.
 CATEGORY_PALETTE: tuple[str, ...] = (
-    "#d97706",
-    "#e11d48",
-    "#0284c7",
-    "#7c3aed",
-    "#059669",
-    "#db2777",
-    "#0d9488",
-    "#4f46e5",
-    "#ca8a04",
-    "#64748b",
+    "#3346e8",
+    "#7a3cff",
+    "#e0457b",
+    "#e89a1c",
+    "#12805c",
+    "#0e8fb3",
+    "#c2281b",
+    "#5e6287",
 )
 SEED_CATEGORIES: tuple[tuple[str, str, str], ...] = (
-    ("out_of_scope", "Out of scope", "#d97706"),
-    ("bad_behaviour", "Bad behaviour", "#e11d48"),
-    ("identity", "Identity", "#0284c7"),
-    ("prompt_injection", "Prompt injection", "#7c3aed"),
-    ("guardrails", "Guardrails", "#059669"),
+    ("out_of_scope", "Out of scope", "#e89a1c"),
+    ("bad_behaviour", "Bad behaviour", "#e0457b"),
+    ("identity", "Identity", "#7a3cff"),
+    ("prompt_injection", "Prompt injection", "#c2281b"),
+    ("guardrails", "Guardrails", "#12805c"),
 )
 SLUG = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
 
@@ -304,7 +302,7 @@ async def import_cases(
     if not dry_run:
         now = datetime.now(UTC)
         for row in result.valid:
-            category = row.category or ("out_of_scope" if "out_of_scope" in names else first)
+            category = row.category or first  # the first listed category, as in the case editor
             assert category is not None
             case = TestCase(
                 id=new_id("tc"),

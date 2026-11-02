@@ -33,11 +33,11 @@ WS = "current_setting('app.workspace_id', true)"
 
 # Seed slug, name and palette colour (test_cases.service.SEED_CATEGORIES mirrors this).
 SEEDS = (
-    ("out_of_scope", "Out of scope", "#d97706"),
-    ("bad_behaviour", "Bad behaviour", "#e11d48"),
-    ("identity", "Identity", "#0284c7"),
-    ("prompt_injection", "Prompt injection", "#7c3aed"),
-    ("guardrails", "Guardrails", "#059669"),
+    ("out_of_scope", "Out of scope", "#e89a1c"),
+    ("bad_behaviour", "Bad behaviour", "#e0457b"),
+    ("identity", "Identity", "#7a3cff"),
+    ("prompt_injection", "Prompt injection", "#c2281b"),
+    ("guardrails", "Guardrails", "#12805c"),
 )
 
 

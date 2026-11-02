@@ -54,13 +54,14 @@ import { STATUS_LABELS } from "../calls/filters";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { ProblemAlert, plural, problemText, shortId } from "../simulations/shared";
 
+// The call's evaluation status from 007: its current checks passed, one failed, still running,
+// none ran, or a check errored.
 const EVAL_LABELS: Record<string, string> = {
-  evaluated: "Checked",
-  not_evaluated: "Not checked",
+  passed: "Checks passed",
+  failed: "A check failed",
   running: "Checking",
-  pending: "Checking",
-  failed: "Check failed",
-  partial: "Partly checked",
+  not_evaluated: "Not checked",
+  error: "Check error",
 };
 
 function columns(onRemove: (item: DatasetItem) => void): Column<DatasetItem>[] {

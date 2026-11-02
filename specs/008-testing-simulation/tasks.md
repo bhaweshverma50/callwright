@@ -79,13 +79,13 @@ implementation and confirm it fails.
 - [x] T035 [US1] Jobs: fan out `run_single_turn`, `judge_result`, finalize run and charge `testing.run` in services/api/app/test_runs/jobs.py
 - [x] T036 [US1] Public and internal routers (start, list, get, cancel, override, export, spec, result) in services/api/app/test_runs/router.py
 - [x] T037 [US1] Single-turn mode in the runner (agent greeting when agent speaks first, one caller turn, capture reply and tool calls) in services/voice-worker/worker/textsim/runner.py
-- [ ] T038 [P] [US1] Testing tab list with category filter, last status chips and empty-prompt guard in apps/web/src/routes/agents/testing/TestCasesTab.tsx
-- [ ] T039 [P] [US1] Case editor dialog in apps/web/src/routes/agents/testing/TestCaseEditor.tsx
-- [ ] T040 [P] [US1] Generate dialog with draft review and save in apps/web/src/routes/agents/testing/GenerateDialog.tsx
-- [ ] T041 [P] [US1] Import dialog with dry-run preview and template download in apps/web/src/routes/agents/testing/ImportDialog.tsx
-- [ ] T042 [US1] Run panel with polling, summary toast, result rows with judge reasoning, tool calls and manual override in apps/web/src/routes/agents/testing/TestRunPanel.tsx and apps/web/src/routes/agents/testing/ResultRow.tsx
-- [ ] T090 [US1] Category colour and ordering: extend migration services/api/app/migrations/versions/0080_testing_simulation.py with `test_categories.color` (seed palette values), `CATEGORY_PALETTE` in services/api/app/test_cases/service.py, order by `lower(name)` in list queries, and colour chips plus preselected category in apps/web/src/routes/agents/testing/TestCaseEditor.tsx
-- [ ] T091 [P] [US1] Web test for the Generate dialog (25 becomes 20, 0 becomes 1, singular and plural action label, "All categories" sends `category: null`) in apps/web/src/routes/agents/testing/GenerateDialog.test.tsx
+- [x] T038 [P] [US1] Testing tab list with category filter, last status chips and empty-prompt guard in apps/web/src/routes/agents/testing/TestCasesTab.tsx
+- [x] T039 [P] [US1] Case editor dialog in apps/web/src/routes/agents/testing/TestCaseEditor.tsx
+- [x] T040 [P] [US1] Generate dialog with draft review and save in apps/web/src/routes/agents/testing/GenerateDialog.tsx
+- [x] T041 [P] [US1] Import dialog with dry-run preview and template download in apps/web/src/routes/agents/testing/ImportDialog.tsx
+- [x] T042 [US1] Run panel with polling, summary toast, result rows with judge reasoning, tool calls and manual override in apps/web/src/routes/agents/testing/TestRunPanel.tsx and apps/web/src/routes/agents/testing/ResultRow.tsx
+- [x] T090 [US1] Category colour and ordering: extend migration services/api/app/migrations/versions/0080_testing_simulation.py with `test_categories.color` (seed palette values), `CATEGORY_PALETTE` in services/api/app/test_cases/service.py, order by `lower(name)` in list queries, and colour chips plus preselected category in apps/web/src/routes/agents/testing/TestCaseEditor.tsx
+- [x] T091 [P] [US1] Web test for the Generate dialog (25 becomes 20, 0 becomes 1, singular and plural action label, "All categories" sends `category: null`) in apps/web/src/routes/agents/testing/GenerateDialog.test.tsx
 - [x] T092 [P] [US1] Harness test: single-turn test case on a flow agent enters at the start node, follows a transition and reports visited nodes in services/voice-worker/tests/harness/test_textsim_single_turn_flow.py
 
 **Checkpoint**: US1 works on its own (no call history required).
@@ -115,10 +115,10 @@ implementation and confirm it fails.
 - [x] T053 [US2] Public router (preflight, simulation-runs CRUD-lite, comparison, cancel) in services/api/app/simulator/router.py
 - [x] T054 [US2] Internal router (spec with caller turns, recorded tool outputs and original node path; result) in services/api/app/simulator/internal_router.py
 - [x] T055 [US2] Replay caller (turn queue, divergence detection) to pass T045 in services/voice-worker/worker/textsim/replay_caller.py
-- [ ] T056 [P] [US2] Start dialog with mode, target picker (published, draft, version, variant) and pre-flight step in apps/web/src/routes/simulations/StartSimulationDialog.tsx and apps/web/src/routes/simulations/PreflightDialog.tsx
-- [ ] T057 [P] [US2] Variant editor (edit prompt, node instructions and tool descriptions of a copy of the base snapshot) in apps/web/src/routes/simulations/VariantEditor.tsx
-- [ ] T058 [US2] Comparison page at `/simulations/runs/:runId` with side-by-side transcripts, answer-source badges, node paths and verdict table in apps/web/src/routes/simulations/RunComparePage.tsx
-- [ ] T059 [US2] Mount StartSimulationDialog in the call quality view and Call History row actions (owned by 006/007) in apps/web/src/routes/calls/CallsPage.tsx
+- [x] T056 [P] [US2] Start dialog with mode, target picker (published, draft, version, variant) and pre-flight step in apps/web/src/routes/simulations/StartSimulationDialog.tsx and apps/web/src/routes/simulations/PreflightDialog.tsx
+- [x] T057 [P] [US2] Variant editor (edit prompt, node instructions and tool descriptions of a copy of the base snapshot) in apps/web/src/routes/simulations/VariantEditor.tsx
+- [x] T058 [US2] Comparison page at `/simulations/runs/:runId` with side-by-side transcripts, answer-source badges, node paths and verdict table in apps/web/src/routes/simulations/RunComparePage.tsx
+- [x] T059 [US2] Mount StartSimulationDialog in the call quality view and Call History row actions (owned by 006/007) in apps/web/src/routes/calls/CallsPage.tsx
 
 **Checkpoint**: US1 and US2 work independently.
 
@@ -141,10 +141,10 @@ batch-vs-batch baseline.
 - [x] T063 [US3] `compute_scorecard()` (per evaluator, per node, baseline original or experiment) to pass T060 in services/api/app/simulator/scorecard.py
 - [x] T064 [US3] Experiment service (validation 2-100 calls of one agent, single snapshot, bulk insert runs, counters, derived status, cancel, `start_experiment()` callable by 009 with `source` and `issue_id`, completion-hook registry fired once per finished batch) in services/api/app/simulator/service.py
 - [x] T065 [US3] Experiment endpoints (create, list, get, runs, scorecard, cancel) in services/api/app/simulator/router.py
-- [ ] T066 [P] [US3] Simulations page with Batch and Individual tabs, agent filter and polling in apps/web/src/routes/simulations/SimulationsPage.tsx
-- [ ] T067 [US3] Batch page with progress, runs list, scorecard by evaluator and by node, baseline switcher and cancel in apps/web/src/routes/simulations/ExperimentPage.tsx and apps/web/src/routes/simulations/ScorecardTable.tsx
-- [ ] T068 [US3] "Run simulation" on Call History multi-select (one-agent check, pre-flight, start batch) in apps/web/src/routes/calls/CallsPage.tsx
-- [ ] T093 [US3] Server-side agent filter and paging on the Simulations page (agent change refetches `GET /v1/experiments?agent_id=` and `GET /v1/simulation-runs?agent_id=&standalone=`, totals in tab labels, filter kept in the URL) with a web test that asserts a request per filter change in apps/web/src/routes/simulations/SimulationsPage.tsx and apps/web/src/routes/simulations/SimulationsPage.test.tsx
+- [x] T066 [P] [US3] Simulations page with Batch and Individual tabs, agent filter and polling in apps/web/src/routes/simulations/SimulationsPage.tsx
+- [x] T067 [US3] Batch page with progress, runs list, scorecard by evaluator and by node, baseline switcher and cancel in apps/web/src/routes/simulations/ExperimentPage.tsx and apps/web/src/routes/simulations/ScorecardTable.tsx
+- [x] T068 [US3] "Run simulation" on Call History multi-select (one-agent check, pre-flight, start batch) in apps/web/src/routes/calls/CallsPage.tsx
+- [x] T093 [US3] Server-side agent filter and paging on the Simulations page (agent change refetches `GET /v1/experiments?agent_id=` and `GET /v1/simulation-runs?agent_id=&standalone=`, totals in tab labels, filter kept in the URL) with a web test that asserts a request per filter change in apps/web/src/routes/simulations/SimulationsPage.tsx and apps/web/src/routes/simulations/SimulationsPage.test.tsx
 
 **Checkpoint**: batches and scorecards available to 009.
 
@@ -159,8 +159,8 @@ batch-vs-batch baseline.
 - [x] T070 [P] [US4] Integration test: persona from base call stores extracted brief; standalone brief run has null original side; charges `simulation.persona` and `simulation.persona_extraction` in services/api/tests/integration/test_persona_flow.py
 - [x] T071 [US4] Persona extraction (JSON schema output, metered) in services/api/app/simulator/service.py
 - [x] T072 [US4] Persona caller (brief prompt, `hang_up(reason)`, temperature 0.7, persona model from settings) to pass T069 in services/voice-worker/worker/textsim/persona_caller.py
-- [ ] T073 [US4] Persona brief editor (view extracted brief, write a standalone brief) in apps/web/src/routes/simulations/PersonaBriefEditor.tsx
-- [ ] T094 [US4] "New simulation" action on the Simulations page (agent picker, PersonaBriefEditor, pre-flight, start standalone persona run) in apps/web/src/routes/simulations/NewSimulationDialog.tsx and apps/web/src/routes/simulations/SimulationsPage.tsx
+- [x] T073 [US4] Persona brief editor (view extracted brief, write a standalone brief) in apps/web/src/routes/simulations/PersonaBriefEditor.tsx
+- [x] T094 [US4] "New simulation" action on the Simulations page (agent picker, PersonaBriefEditor, pre-flight, start standalone persona run) in apps/web/src/routes/simulations/NewSimulationDialog.tsx and apps/web/src/routes/simulations/SimulationsPage.tsx
 
 ---
 
@@ -177,10 +177,10 @@ batch-vs-batch baseline.
 - [x] T079 [US5] Dataset service (rules to pass T075, item_count maintenance, bulk evaluate via 007 with `only_missing`) in services/api/app/datasets/service.py
 - [x] T080 [US5] Datasets router in services/api/app/datasets/router.py
 - [x] T081 [US5] Accept `dataset_id` as the call source in experiment creation in services/api/app/simulator/service.py
-- [ ] T082 [P] [US5] Datasets list and create dialog in apps/web/src/routes/datasets/DatasetsPage.tsx
-- [ ] T083 [US5] Dataset page with items, unavailable markers, remove, evaluate and "Run simulation" in apps/web/src/routes/datasets/DatasetPage.tsx
-- [ ] T084 [US5] "Add to dataset" menu (pick or create inline, report skipped) mounted in the call quality view in apps/web/src/routes/datasets/AddToDatasetMenu.tsx
-- [ ] T095 [US5] "New dataset" form with required agent picker and per-field messages on submit (name, agent, server 409 shown under name), and paged dataset items with total, plus web tests, in apps/web/src/routes/datasets/NewDatasetDialog.tsx, apps/web/src/routes/datasets/DatasetPage.tsx and apps/web/src/routes/datasets/NewDatasetDialog.test.tsx
+- [x] T082 [P] [US5] Datasets list and create dialog in apps/web/src/routes/datasets/DatasetsPage.tsx
+- [x] T083 [US5] Dataset page with items, unavailable markers, remove, evaluate and "Run simulation" in apps/web/src/routes/datasets/DatasetPage.tsx
+- [x] T084 [US5] "Add to dataset" menu (pick or create inline, report skipped) mounted in the call quality view in apps/web/src/routes/datasets/AddToDatasetMenu.tsx
+- [x] T095 [US5] "New dataset" form with required agent picker and per-field messages on submit (name, agent, server 409 shown under name), and paged dataset items with total, plus web tests, in apps/web/src/routes/datasets/NewDatasetDialog.tsx, apps/web/src/routes/datasets/DatasetPage.tsx and apps/web/src/routes/datasets/NewDatasetDialog.test.tsx
 
 ---
 

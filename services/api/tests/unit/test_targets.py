@@ -121,3 +121,40 @@ async def test_variant_is_validated_hashed_and_diffed(
     assert invalid.value.errors and all(
         e["pointer"].startswith("/target/config") for e in invalid.value.errors
     )
+
+
+async def test_flow_variant_with_an_edited_graph_is_compiled(
+    app: FastAPI, client: httpx.AsyncClient, account: Account
+) -> None:
+    from tests.flow_helpers import basic, create_flow, save
+
+    h = account.headers
+    flow = (await create_flow(client, account))["flow"]
+    assert (await save(client, account, flow, basic())).status_code == 200
+    published = await client.post(f"/v1/flows/{flow['id']}/publish", json={"expected_revision": 2}, headers=h)
+    assert published.status_code == 201, published.text
+    agent = await _agent(app, account.workspace_id, flow["agent_id"])
+    async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
+        base = await resolve_target(session, agent, {"type": "published"})
+        draft = (await client.get(f"/v1/agents/{agent.id}", headers=h)).json()["draft_config"]
+        graph = copy.deepcopy(base.config["flow"]["graph"])
+        for n in graph["nodes"]:
+            if n["type"] == "agent":
+                n["config"]["instructions"] = "Help the caller. Always confirm the date twice."
+        variant = await resolve_target(
+            session, agent, {"type": "variant", "config": {**draft, "flow": {"graph": graph}}}
+        )
+        compiled = variant.config["flow"]["compiled"]
+        assert any("confirm the date twice" in str(n.get("instructions")) for n in compiled["nodes"].values())
+        assert variant.config_hash != base.config_hash
+        # No graph: the base version's compiled flow is kept.
+        same = await resolve_target(session, agent, {"type": "variant", "config": dict(draft)})
+        assert same.config["flow"]["compiled"] == base.config["flow"]["compiled"]
+        broken = copy.deepcopy(graph)
+        broken["nodes"] = [n for n in broken["nodes"] if n["type"] != "start"]
+        with pytest.raises(ProblemError) as invalid:
+            await resolve_target(
+                session, agent, {"type": "variant", "config": {**draft, "flow": {"graph": broken}}}
+            )
+    assert invalid.value.status == 422
+    assert invalid.value.errors and invalid.value.errors[0]["pointer"].startswith("/target/config/flow")

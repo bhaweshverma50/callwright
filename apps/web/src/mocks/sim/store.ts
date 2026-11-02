@@ -798,7 +798,7 @@ export function datasetItem(callId: string, n: number, addedAt: number, availabl
     started_at: iso(addedAt - (n + 1) * 3 * HOUR),
     duration_s: available ? 70 + ((n * 37) % 260) : null,
     call_status: "completed",
-    eval_status: available ? (n % 5 === 0 ? "not_evaluated" : "evaluated") : null,
+    eval_status: available ? (n % 5 === 0 ? "not_evaluated" : n % 7 === 0 ? "failed" : "passed") : null,
     sentiment: available ? SENTIMENTS[n % 3]! : null,
   };
 }

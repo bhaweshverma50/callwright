@@ -119,6 +119,50 @@ def _flow_problems(config: Mapping[str, Any]) -> list[dict[str, str]]:
     return []
 
 
+async def _compile_variant_flow(
+    session: AsyncSession, agent: Agent, config: dict[str, Any], base: Mapping[str, Any]
+) -> list[dict[str, str]]:
+    """Compile a flow variant whose graph was edited (004's compiler), so the runner runs the
+    edited instructions. A variant without a graph keeps the base version's compiled flow."""
+    from app.flows import compiler
+    from app.flows import service as flows
+
+    block = config.get("flow")
+    graph = block.get("graph") if isinstance(block, Mapping) else None
+    base_flow = base.get("flow") if isinstance(base.get("flow"), Mapping) else None
+    if not isinstance(graph, Mapping):
+        if base_flow is not None and not (isinstance(block, Mapping) and block.get("compiled")):
+            config["flow"] = dict(base_flow)
+        return []
+    if (
+        isinstance(block, Mapping)
+        and block.get("compiled")
+        and base_flow is not None
+        and compiler.graph_hash(graph) == base_flow.get("graph_hash")
+    ):
+        return []
+    flow = await flows.flow_for_agent(session, agent.id)
+    if flow is None:
+        return [field_error("/target/config/flow", "invalid_format", "This agent has no flow.")]
+    result = await flows.compile_graph(session, flow, agent, graph, config)
+    if result.compiled is None:
+        return [
+            field_error(
+                "/target/config/flow" + str(i.get("pointer") or ""), "invalid_format", str(i.get("message"))
+            )
+            for i in result.issues
+            if i.get("severity") == "error"
+        ] or [field_error("/target/config/flow", "invalid_format", "The flow has errors. Fix them first.")]
+    config["flow"] = {
+        "flow_id": flow.id,
+        "name": flow.name,
+        "graph": dict(graph),
+        "graph_hash": compiler.graph_hash(graph),
+        "compiled": result.compiled,
+    }
+    return []
+
+
 def variant_diff(base: Mapping[str, Any], variant: Mapping[str, Any]) -> list[dict[str, Any]]:
     out = []
     for change in diff_configs(dict(base), dict(variant)):
@@ -170,6 +214,15 @@ async def resolve_target(
     base_id = target.get("agent_version_id") or agent.pinned_version_id or agent.draft_version_id
     base = await _snapshot(session, agent, str(base_id))
     config = upcast(dict(raw))
+    # Blocks only a version snapshot carries (tools, knowledge) come from the base when the
+    # variant leaves them out (a variant edited from the saved draft has none).
+    for block in ("tools", "knowledge"):
+        if block not in config and block in base.config:
+            config[block] = base.config[block]
+    if agent_type_of(agent) == "flow":
+        compile_errors = await _compile_variant_flow(session, agent, config, base.config)
+        if compile_errors:
+            raise validation_failed(compile_errors)
     result = await validate_config(
         agent.type,
         versions.draft_part(config),
