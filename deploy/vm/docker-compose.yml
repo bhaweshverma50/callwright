@@ -1,5 +1,5 @@
-# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis, the arq jobs worker
-# and the voice worker. Secrets come from /opt/callwright/.env, worker.env and voice.env, written
+# Callwright realtime VM (asia-south1): Caddy (TLS), LiveKit server, Redis, the arq jobs worker,
+# the voice worker and its text simulation role (textsim). Secrets come from /opt/callwright/.env, worker.env and voice.env, written
 # by deploy/vm/render-env.sh from Secret Manager (see deploy/vm/README.md).
 # Every service restarts on its own after the VM boots (restart: unless-stopped, docker enabled
 # at boot by install-idle.sh); the VM powers itself off when idle (idle-shutdown.sh).
@@ -57,6 +57,25 @@ services:
     stop_grace_period: 30s
     depends_on:
       - livekit
+
+  # Text simulations (008): the same voice worker image in WORKER_ROLE=textsim, an arq consumer
+  # of queue arq:textsim on the local Redis (REDIS_URL in voice.env). It needs no LiveKit, only
+  # Redis, the internal API and the LLM vendor keys from voice.env; without a key for a model's
+  # provider it runs that model on deterministic offline scripts. Simulations are not latency
+  # sensitive, so OpenAI priority processing is off here. Health on 127.0.0.1:8192.
+  textsim:
+    image: ${VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}
+    restart: unless-stopped
+    network_mode: host
+    env_file: voice.env
+    environment:
+      WORKER_ROLE: textsim
+      WORKER_HEALTH_PORT: "8192"
+      TEXTSIM_MAX_JOBS: "${TEXTSIM_MAX_JOBS:-10}"
+      OPENAI_SERVICE_TIER: ""
+    stop_grace_period: 30s
+    depends_on:
+      - redis
 
   # LiveKit SIP (010 channels): carriers, WhatsApp and the lab PBX send calls here and LiveKit
   # dials out through it. Only in the "telephony" profile, which render-env.sh adds to

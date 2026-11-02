@@ -38,8 +38,11 @@ def test_sip_attributes_and_dtmf_codes() -> None:
         dtmf_code("A")
 
 
-def test_textsim_role_is_a_stub() -> None:
-    assert run_textsim() == 2
+def test_textsim_role_runs_the_textsim_consumer(monkeypatch: pytest.MonkeyPatch) -> None:
+    from worker.textsim import entry as textsim_entry
+
+    monkeypatch.setattr(textsim_entry, "main", lambda: 7)
+    assert run_textsim() == 7
 
 
 def test_create_server_applies_capacity_settings() -> None:

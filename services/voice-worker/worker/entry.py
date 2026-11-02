@@ -1,4 +1,5 @@
-"""Worker entry point. ``WORKER_ROLE=live`` joins LiveKit rooms; ``textsim`` is owned by 008.
+"""Worker entry point. ``WORKER_ROLE=live`` joins LiveKit rooms; ``textsim`` runs 008's text
+simulations (``worker.textsim.entry``, an arq consumer; command-line arguments are ignored).
 
 Live job sequence (003 plan, research R1, R2):
 
@@ -967,9 +968,10 @@ def create_server(
 
 
 def run_textsim() -> int:
-    """``role=textsim`` (text-mode simulations, 008). Not delivered in 003."""
-    log.error("WORKER_ROLE=textsim is delivered by 008-testing-simulation")
-    return 2
+    """``role=textsim`` (text-mode simulations, 008): the arq consumer in ``worker.textsim``."""
+    from worker.textsim.entry import main as textsim_main
+
+    return textsim_main()
 
 
 def main() -> int:

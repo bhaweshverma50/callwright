@@ -134,6 +134,8 @@ mv worker.env.tmp worker.env
   line LIVEKIT_API_SECRET "$LIVEKIT_API_SECRET"
   line CALLWRIGHT_INTERNAL_API_URL "$CW_API_BASE_URL/v1/internal"
   line CALLWRIGHT_SERVICE_TOKEN "$SERVICE_TOKEN"
+  # 008: the textsim role consumes arq:textsim on the local Redis (the live role ignores it).
+  line REDIS_URL "redis://:${REDIS_URL_ENCODED_PASSWORD}@127.0.0.1:6379/0"
   line CALLWRIGHT_OTEL_EXPORTER none
   line DEEPGRAM_API_KEY "$(secret_opt DEEPGRAM_API_KEY)"
   line OPENAI_API_KEY "$(secret_opt OPENAI_API_KEY)"

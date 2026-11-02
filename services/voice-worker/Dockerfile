@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.7
-# Callwright voice worker image (LiveKit Agents, WORKER_ROLE=live). Runs on the realtime VM next
-# to LiveKit (deploy/vm/docker-compose.yml, service `voice`).
+# Callwright voice worker image. One image, two process roles chosen by WORKER_ROLE:
+#   live    (default) LiveKit Agents worker, service `voice` in deploy/vm/docker-compose.yml;
+#   textsim 008 text simulations, an arq consumer of queue arq:textsim (service `textsim`).
+# Both start through the same ENTRYPOINT (python -m worker.entry); textsim ignores the CMD.
 #
 # Build from the repository root (the root .dockerignore keeps the context small):
 #   docker build -f services/voice-worker/Dockerfile -t callwright-voice-worker .
@@ -8,7 +10,7 @@
 # Plugin model files (the turn detector's ONNX models from Hugging Face; Silero VAD ships inside
 # its wheel) are downloaded at build time into HF_HOME, and the runtime runs with
 # HF_HUB_OFFLINE=1, so a call never waits on a download.
-# Health: the agent server answers on WORKER_HEALTH_PORT (8190).
+# Health: the agent server (or the textsim listener) answers on WORKER_HEALTH_PORT (8190).
 
 ARG PYTHON_IMAGE=python:3.12-slim
 
