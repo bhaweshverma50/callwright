@@ -55,6 +55,10 @@ async def startup(ctx: dict[str, Any]) -> None:
     from app.simulator.install import install as install_simulator
 
     install_simulator()
+    # Issues and auto-fix (009): detection, validation finalize, sweeper and audit.
+    from app.issues.install import install as install_issues
+
+    install_issues(settings)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -80,6 +84,7 @@ def _functions() -> list[Any]:
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
     from app.evals.install import job_functions as quality_jobs
+    from app.issues.install import job_functions as issue_jobs
     from app.knowledge.jobs import ingest_document
     from app.phone_numbers.jobs import drain_channels
     from app.simulator.install import job_functions as simulation_jobs
@@ -97,6 +102,7 @@ def _functions() -> list[Any]:
         purge_analytics_audit,
         ingest_document,
         *quality_jobs(),
+        *issue_jobs(),
     ]
 
 
@@ -104,12 +110,14 @@ def _crons() -> list[CronJob]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
     from app.calls.jobs import reap_stuck_calls
+    from app.issues.install import crons as issue_crons
     from app.phone_numbers.jobs import drain_channels
     from app.simulator.install import crons as simulation_crons
     from app.webhooks_out.jobs import purge_webhook_deliveries
 
     return [
         *simulation_crons(),
+        *issue_crons(),
         cron(reconcile_balances, hour={3}, minute={0}, run_at_startup=False),
         # 003 R16: stuck calls every 15 s; deliveries older than 30 days once a day.
         cron(reap_stuck_calls, second={0, 15, 30, 45}, run_at_startup=False, unique=True),

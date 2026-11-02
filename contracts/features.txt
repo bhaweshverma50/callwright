@@ -7,4 +7,5 @@
 006-calls-analytics
 007-quality-evals
 008-testing-simulation
+009-issues-autofix
 010-channels

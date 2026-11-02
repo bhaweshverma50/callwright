@@ -287,3 +287,66 @@ def apply_fix(snapshot: Mapping[str, Any], kind: str, payload: Mapping[str, Any]
 
 def is_advisory(kind: str, payload: Mapping[str, Any]) -> bool:
     return kind == "kb_attach" and not (payload.get("kb_ids_to_attach") or [])
+
+
+def _graph(config: Mapping[str, Any]) -> Mapping[str, Any]:
+    flow = config.get("flow")
+    graph = flow.get("graph") if isinstance(flow, Mapping) else None
+    return graph if isinstance(graph, Mapping) else {}
+
+
+def _by_id(items: Any, key: str = "id") -> dict[str, Mapping[str, Any]]:
+    return {str(i.get(key)): i for i in items or [] if isinstance(i, Mapping) and i.get(key)}
+
+
+def display_diff(base: Mapping[str, Any], variant: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Before/after of what fixes change, for display: ``[{op, path, value?, old?}]``.
+
+    Covers the prompt, tool descriptions, flow node instructions and tools, transition
+    conditions, added transitions and attached knowledge bases. Compiled flow blocks and other
+    derived data are left out.
+    """
+    out: list[dict[str, Any]] = []
+
+    def replace(path: str, old: Any, new: Any) -> None:
+        if old != new:
+            out.append({"op": "replace", "path": path, "old": old, "value": new})
+
+    replace("/prompt", base.get("prompt") or "", variant.get("prompt") or "")
+    old_tools, new_tools = _by_id(base.get("tools"), "tool_id"), _by_id(variant.get("tools"), "tool_id")
+    for tool_id, tool in new_tools.items():
+        if tool_id in old_tools:
+            replace(
+                f"/tools[{tool_id}]/description",
+                old_tools[tool_id].get("description"),
+                tool.get("description"),
+            )
+    old_nodes, new_nodes = _by_id(_graph(base).get("nodes")), _by_id(_graph(variant).get("nodes"))
+    for node_id, node in new_nodes.items():
+        before = (old_nodes.get(node_id) or {}).get("config") or {}
+        after = node.get("config") or {}
+        replace(
+            f"/flow/graph/nodes[{node_id}]/config/instructions",
+            before.get("instructions") or "",
+            after.get("instructions") or "",
+        )
+        replace(
+            f"/flow/graph/nodes[{node_id}]/config/tool_ids",
+            list(before.get("tool_ids") or []),
+            list(after.get("tool_ids") or []),
+        )
+    old_edges, new_edges = _by_id(_graph(base).get("edges")), _by_id(_graph(variant).get("edges"))
+    for edge_id, edge in new_edges.items():
+        if edge_id not in old_edges:
+            out.append({"op": "add", "path": f"/flow/graph/edges[{edge_id}]", "value": dict(edge)})
+        else:
+            replace(
+                f"/flow/graph/edges[{edge_id}]/condition",
+                old_edges[edge_id].get("condition"),
+                edge.get("condition"),
+            )
+    old_kbs = [str(k) for k in base.get("kb_ids") or []]
+    for kb_id in variant.get("kb_ids") or []:
+        if kb_id not in old_kbs:
+            out.append({"op": "add", "path": f"/kb_ids[{kb_id}]", "value": kb_id})
+    return out

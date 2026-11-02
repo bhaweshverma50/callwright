@@ -19,6 +19,7 @@ tags:
 - name: demo
 - name: flows
 - name: internal
+- name: issues
 - name: knowledge
 - name: livekit-hooks
 - name: llms
@@ -3875,6 +3876,539 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
       x-spec: 008-testing-simulation
+  /issues:
+    get:
+      tags:
+      - issues
+      operationId: listIssues
+      parameters:
+      - name: agent_id
+        in: query
+        schema:
+          type: string
+          pattern: ^agt_
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - all
+          - open
+          - validating
+          - validated
+          - applied
+          - dismissed
+          default: all
+        description: all excludes dismissed unless status=dismissed is asked
+      - name: scope
+        in: query
+        schema:
+          type: string
+          enum:
+          - real
+          - real_and_simulated
+          default: real
+        description: real hides issues whose origin is mostly simulated
+      - name: window_days
+        in: query
+        schema:
+          type: integer
+          enum:
+          - 7
+          - 14
+          - 30
+          - 90
+        description: Keep issues with last_seen_at within the last N days; omit for no window (FR-026)
+      - name: applied_agent_version_id
+        in: query
+        schema:
+          type: string
+          pattern: ^agv_
+        description: Find the issue a version came from
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Issues sorted by affected calls, then last seen
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/IssueSummary'
+      x-spec: 009-issues-autofix
+  /issues/detect:
+    post:
+      tags:
+      - issues
+      operationId: detectIssues
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                window_days:
+                  type: integer
+                  enum:
+                  - 7
+                  - 14
+                  - 30
+                  - 90
+                  default: 14
+                include_simulated:
+                  type: boolean
+                  default: false
+      responses:
+        '202':
+          description: Detection started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detection'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '409':
+          description: A detection is already running for this agent
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 009-issues-autofix
+  /issues/detection:
+    get:
+      tags:
+      - issues
+      operationId: getLatestDetection
+      parameters:
+      - name: agent_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^agt_
+      responses:
+        '200':
+          description: Latest detection for the agent (null when never run)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/Detection'
+                - type: 'null'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}:
+    get:
+      tags:
+      - issues
+      operationId: getIssue
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: Issue with current fix, latest validation and post-apply tracking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectedIssue'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/apply:
+    post:
+      tags:
+      - issues
+      operationId: applyIssueFix
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fix_revision:
+                  type: integer
+                  description: Must equal the current revision when given
+                publish:
+                  type: boolean
+                  default: true
+                  description: false creates the version without publishing
+                release_notes_extra:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+      responses:
+        '200':
+          description: Applied
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - issue
+                - agent_version_id
+                - published
+                - tool_copies
+                properties:
+                  issue:
+                    $ref: '#/components/schemas/DetectedIssue'
+                  agent_version_id:
+                    type: string
+                    pattern: ^agv_
+                  published:
+                    type: boolean
+                  release_notes:
+                    type: string
+                  tool_copies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        original_tool_id:
+                          type: string
+                        copy_tool_id:
+                          type: string
+                  draft_updated:
+                    type: boolean
+        '409':
+          description: 'Refused: no_passing_validation, base_version_changed, draft_changed, wrong_status
+            (problem type URI ends with the code)
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/dismiss:
+    post:
+      tags:
+      - issues
+      operationId: dismissIssue
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - reason
+              properties:
+                reason:
+                  type: string
+                  enum:
+                  - not_a_problem
+                  - evaluator_wrong
+                  - wont_fix
+                  - duplicate
+                  - other
+                note:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+                duplicate_of:
+                  type: string
+                  pattern: ^iss_
+              allOf:
+              - if:
+                  properties:
+                    reason:
+                      const: other
+                then:
+                  required:
+                  - note
+                  properties:
+                    note:
+                      type: string
+                      minLength: 1
+              - if:
+                  properties:
+                    reason:
+                      const: duplicate
+                then:
+                  required:
+                  - duplicate_of
+      responses:
+        '200':
+          description: Dismissed (a running validation is cancelled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectedIssue'
+        '409':
+          description: Issue already applied or dismissed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/draft-and-validate:
+    post:
+      tags:
+      - issues
+      operationId: draftAndValidateIssueFix
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/ValidationRequest'
+              - type: object
+                properties:
+                  kind:
+                    $ref: '#/components/schemas/FixKind'
+                  guidance:
+                    type:
+                    - string
+                    - 'null'
+                    maxLength: 1000
+      responses:
+        '202':
+          description: Fix drafted and validation started
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - fix
+                - validation
+                properties:
+                  fix:
+                    $ref: '#/components/schemas/FixRevision'
+                  validation:
+                    $ref: '#/components/schemas/ValidationAttempt'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '409':
+          description: Wrong status
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/fixes:
+    parameters:
+    - $ref: '#/components/parameters/IssueId'
+    get:
+      tags:
+      - issues
+      operationId: listIssueFixes
+      responses:
+        '200':
+          description: All revisions, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FixRevision'
+      x-spec: 009-issues-autofix
+    post:
+      tags:
+      - issues
+      operationId: createIssueFix
+      summary: Draft a fix with AI (billed issues.draft_fix) or store a manual one; becomes the current
+        revision
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+        description: Required when mode is ai
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - mode
+              properties:
+                mode:
+                  type: string
+                  enum:
+                  - ai
+                  - manual
+                kind:
+                  $ref: '#/components/schemas/FixKind'
+                guidance:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 1000
+                payload:
+                  $ref: '#/components/schemas/FixPayload'
+              allOf:
+              - if:
+                  properties:
+                    mode:
+                      const: manual
+                then:
+                  required:
+                  - kind
+                  - payload
+      responses:
+        '201':
+          description: New current revision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixRevision'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '409':
+          description: Issue is applied or dismissed, or a validation is running
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Kind not allowed for this issue, or payload does not match the current configuration
+            (redraft_needed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/samples:
+    get:
+      tags:
+      - issues
+      operationId: listIssueSamples
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Sample calls, most recent first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/IssueSample'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/validate:
+    post:
+      tags:
+      - issues
+      operationId: validateIssueFix
+      summary: Validate the current revision (control and treatment batches). dry_run returns the estimate
+        only.
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationRequest'
+      responses:
+        '200':
+          description: Estimate (dry_run true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationEstimate'
+        '202':
+          description: Validation started; issue is validating
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationAttempt'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '409':
+          description: Wrong status, advisory fix, or no current revision
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Not enough calls to validate, or redraft_needed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/validation/cancel:
+    post:
+      tags:
+      - issues
+      operationId: cancelIssueValidation
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: Cancelled; issue back to open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectedIssue'
+        '409':
+          description: No validation running
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 009-issues-autofix
+  /issues/{issue_id}/validations:
+    get:
+      tags:
+      - issues
+      operationId: listIssueValidations
+      parameters:
+      - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: All attempts (evidence), newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ValidationAttempt'
+      x-spec: 009-issues-autofix
   /knowledge-bases:
     get:
       tags:
@@ -7671,6 +8205,13 @@ components:
         type: string
         minLength: 8
         maxLength: 255
+    IssueId:
+      name: issue_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^iss_
     KbId:
       name: kb_id
       in: path
@@ -10537,6 +11078,145 @@ components:
           type: array
           items:
             type: string
+    DetectedIssue:
+      allOf:
+      - $ref: '#/components/schemas/IssueSummary'
+      - type: object
+        required:
+        - description
+        - evaluator_version
+        - allowed_fix_kinds
+        - recommended_fix_kind
+        properties:
+          description:
+            type: string
+          suspected_cause:
+            type:
+            - string
+            - 'null'
+          evaluator_version:
+            type: integer
+          window_days:
+            type: integer
+          allowed_fix_kinds:
+            type: array
+            items:
+              $ref: '#/components/schemas/FixKind'
+          recommended_fix_kind:
+            $ref: '#/components/schemas/FixKind'
+          current_fix:
+            oneOf:
+            - $ref: '#/components/schemas/FixRevision'
+            - type: 'null'
+          latest_validation:
+            oneOf:
+            - $ref: '#/components/schemas/ValidationAttempt'
+            - type: 'null'
+          can_apply:
+            type: boolean
+          apply_blockers:
+            type: array
+            items:
+              type: string
+              enum:
+              - no_passing_validation
+              - base_version_changed
+              - draft_changed
+              - wrong_status
+              - advisory_fix
+          applied_agent_version_id:
+            type:
+            - string
+            - 'null'
+          applied_at:
+            type:
+            - string
+            - 'null'
+            format: date-time
+          post_apply:
+            oneOf:
+            - $ref: '#/components/schemas/PostApply'
+            - type: 'null'
+          dismiss_reason:
+            type:
+            - string
+            - 'null'
+            enum:
+            - not_a_problem
+            - evaluator_wrong
+            - wont_fix
+            - duplicate
+            - other
+            - null
+          dismiss_note:
+            type:
+            - string
+            - 'null'
+          duplicate_of:
+            type:
+            - string
+            - 'null'
+          dismissed_at:
+            type:
+            - string
+            - 'null'
+            format: date-time
+          sample_preview:
+            type: array
+            maxItems: 5
+            items:
+              $ref: '#/components/schemas/IssueSample'
+    Detection:
+      type: object
+      required:
+      - agent_id
+      - status
+      - window_days
+      - include_simulated
+      - started_at
+      properties:
+        agent_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - running
+          - completed
+          - failed
+        window_days:
+          type: integer
+        include_simulated:
+          type: boolean
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        calls_scanned:
+          type: integer
+        failures_scanned:
+          type: integer
+        issues_created:
+          type: integer
+        issues_updated:
+          type: integer
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        error_message:
+          type:
+          - string
+          - 'null'
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     Dimension:
       type: string
       enum:
@@ -10999,6 +11679,55 @@ components:
           - string
           - 'null'
           format: date-time
+    EvaluatorEvidence:
+      type: object
+      required:
+      - evaluator_id
+      - evaluator_name
+      - evaluator_version
+      - set
+      - n
+      - control_passes
+      - treatment_passes
+      - blocking
+      - insufficient_data
+      properties:
+        evaluator_id:
+          type: string
+        evaluator_name:
+          type: string
+        evaluator_version:
+          type: integer
+        set:
+          type: string
+          enum:
+          - affected
+          - guard
+          - combined
+        n:
+          type: integer
+        control_passes:
+          type: integer
+        treatment_passes:
+          type: integer
+        control_rate:
+          type:
+          - number
+          - 'null'
+        treatment_rate:
+          type:
+          - number
+          - 'null'
+        delta_pp:
+          type:
+          - number
+          - 'null'
+        blocking:
+          type: boolean
+        insufficient_data:
+          type: boolean
+        version_mismatch:
+          type: integer
     EvaluatorRun:
       type: object
       required:
@@ -11396,6 +12125,226 @@ components:
           - not_in_catalog
         message:
           type: string
+    FixKind:
+      type: string
+      enum:
+      - prompt_edit
+      - node_prompt_edit
+      - add_guardrail
+      - tool_description_edit
+      - transition_condition_edit
+      - add_transition
+      - node_tool_attachment
+      - kb_attach
+    FixPayload:
+      description: Shape depends on kind
+      oneOf:
+      - title: prompt_edit
+        type: object
+        required:
+        - current_prompt
+        - proposed_prompt
+        properties:
+          current_prompt:
+            type: string
+          proposed_prompt:
+            type: string
+            minLength: 1
+      - title: node_prompt_edit
+        type: object
+        required:
+        - node_id
+        - current_instructions
+        - proposed_instructions
+        properties:
+          node_id:
+            type: string
+          node_label:
+            type: string
+          current_instructions:
+            type: string
+          proposed_instructions:
+            type: string
+            minLength: 1
+      - title: add_guardrail
+        type: object
+        required:
+        - placement
+        - rule_text
+        properties:
+          placement:
+            type: string
+            enum:
+            - agent_prompt
+            - node
+            - all_agent_nodes
+          node_id:
+            type: string
+          rule_text:
+            type: string
+            minLength: 1
+            maxLength: 500
+      - title: tool_description_edit
+        type: object
+        required:
+        - tool_id
+        - current_description
+        - proposed_description
+        properties:
+          tool_id:
+            type: string
+            pattern: ^tool_
+          tool_name:
+            type: string
+          current_description:
+            type: string
+          proposed_description:
+            type: string
+            minLength: 1
+      - title: transition_condition_edit
+        type: object
+        required:
+        - edge_id
+        - current_condition
+        - proposed_condition
+        properties:
+          edge_id:
+            type: string
+          edge_label:
+            type: string
+          source_node_id:
+            type: string
+          current_condition:
+            type: string
+          proposed_condition:
+            type: string
+            minLength: 1
+      - title: add_transition
+        type: object
+        required:
+        - source_node_id
+        - target_node_id
+        - edge_label
+        - handoff_condition
+        properties:
+          source_node_id:
+            type: string
+          target_node_id:
+            type: string
+          edge_label:
+            type: string
+            pattern: ^[a-z][a-z0-9_]{1,63}$
+          handoff_condition:
+            type: string
+            minLength: 1
+      - title: node_tool_attachment
+        type: object
+        required:
+        - node_id
+        - tools_to_attach
+        - tools_to_detach
+        properties:
+          node_id:
+            type: string
+          tools_to_attach:
+            type: array
+            items:
+              type: string
+              pattern: ^tool_
+          tools_to_detach:
+            type: array
+            items:
+              type: string
+              pattern: ^tool_
+      - title: kb_attach
+        type: object
+        required:
+        - kb_ids_to_attach
+        - uncovered_topics
+        properties:
+          kb_ids_to_attach:
+            type: array
+            items:
+              type: string
+              pattern: ^kb_
+          uncovered_topics:
+            type: array
+            items:
+              type: string
+    FixRevision:
+      type: object
+      required:
+      - revision
+      - kind
+      - payload
+      - rationale
+      - source
+      - status
+      - base_agent_version_id
+      - is_current
+      - created_at
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        kind:
+          $ref: '#/components/schemas/FixKind'
+        payload:
+          $ref: '#/components/schemas/FixPayload'
+        rationale:
+          type: string
+        source:
+          type: string
+          enum:
+          - ai
+          - manual
+        guidance:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - draft
+          - validating
+          - passed
+          - failed
+          - inconclusive
+          - superseded
+          - applied
+          - advisory
+        is_current:
+          type: boolean
+        base_agent_version_id:
+          type: string
+        base_config_hash:
+          type: string
+        variant_config_hash:
+          type:
+          - string
+          - 'null'
+        diff:
+          type: array
+          items:
+            type: object
+            properties:
+              op:
+                type: string
+                enum:
+                - add
+                - remove
+                - replace
+              path:
+                type: string
+              value: {}
+              old: {}
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
     Flow:
       type: object
       required:
@@ -11812,6 +12761,113 @@ components:
           - simulated_call
           - not_completed
           - unavailable
+    IssueSample:
+      type: object
+      required:
+      - call_id
+      - reason_excerpt
+      - agent_version_id
+      - call_origin
+      - failed_at
+      properties:
+        call_id:
+          type: string
+        reason_excerpt:
+          type: string
+        evaluator_result_ids:
+          type: array
+          items:
+            type: string
+        agent_version_id:
+          type: string
+        call_origin:
+          type: string
+          enum:
+          - live
+          - simulation
+        base_call_id:
+          type:
+          - string
+          - 'null'
+        failed_at:
+          type: string
+          format: date-time
+    IssueStatus:
+      type: string
+      enum:
+      - open
+      - validating
+      - validated
+      - applied
+      - dismissed
+    IssueSummary:
+      type: object
+      required:
+      - issue_id
+      - agent_id
+      - title
+      - evaluator_id
+      - evaluator_name
+      - status
+      - origin
+      - affected_call_count
+      - current_version_call_count
+      - last_seen_at
+      properties:
+        issue_id:
+          type: string
+          pattern: ^iss_
+        agent_id:
+          type: string
+        agent_type:
+          type: string
+          enum:
+          - single_prompt
+          - flow
+        title:
+          type: string
+        evaluator_id:
+          type: string
+        evaluator_name:
+          type: string
+        evaluator_display_name:
+          type: string
+        flow_node_id:
+          type:
+          - string
+          - 'null'
+        flow_node_label:
+          type:
+          - string
+          - 'null'
+        status:
+          $ref: '#/components/schemas/IssueStatus'
+        origin:
+          type: string
+          enum:
+          - real
+          - simulated
+          - mixed
+        affected_call_count:
+          type: integer
+        current_version_call_count:
+          type: integer
+        calibration_warning:
+          type: boolean
+        current_fix_kind:
+          oneOf:
+          - $ref: '#/components/schemas/FixKind'
+          - type: 'null'
+        recurrence_of:
+          type:
+          - string
+          - 'null'
+        first_seen_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
     JudgeQuestionConfig:
       type: object
       required:
@@ -12973,6 +14029,44 @@ components:
           - string
           - 'null'
           format: date-time
+    PostApply:
+      type: object
+      required:
+      - ready
+      properties:
+        ready:
+          type: boolean
+          description: true when at least 10 live calls ran on the applied version
+        before:
+          type: object
+          properties:
+            agent_version_id:
+              type: string
+            n:
+              type: integer
+            passes:
+              type: integer
+            rate:
+              type:
+              - number
+              - 'null'
+        after:
+          type: object
+          properties:
+            agent_version_id:
+              type: string
+            n:
+              type: integer
+            passes:
+              type: integer
+            rate:
+              type:
+              - number
+              - 'null'
+        delta_pp:
+          type:
+          - number
+          - 'null'
     PressDigitConfig:
       type: object
       additionalProperties: false
@@ -15586,6 +16680,165 @@ components:
     UserId:
       type: string
       pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+    ValidationAttempt:
+      type: object
+      required:
+      - attempt
+      - fix_revision
+      - auto
+      - mode
+      - status
+      - thresholds
+      - base_agent_version_id
+      - base_config_hash
+      - variant_config_hash
+      - affected_call_ids
+      - guard_call_ids
+      - control_experiment_id
+      - treatment_experiment_id
+      - started_at
+      properties:
+        attempt:
+          type: integer
+          minimum: 1
+        fix_revision:
+          type: integer
+        auto:
+          type: boolean
+        mode:
+          type: string
+          enum:
+          - persona
+          - replay
+        status:
+          type: string
+          enum:
+          - running
+          - completed
+          - cancelled
+          - error
+        decision:
+          type:
+          - string
+          - 'null'
+          enum:
+          - passed
+          - failed
+          - inconclusive
+          - null
+        reasons:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            properties:
+              code:
+                type: string
+                enum:
+                - insufficient_sample
+                - too_many_failed_runs
+                - improvement_below_threshold
+                - regression
+                - insufficient_data
+              evaluator_id:
+                type: string
+              set:
+                type: string
+                enum:
+                - affected
+                - guard
+                - combined
+              delta_pp:
+                type: number
+              n:
+                type: integer
+        thresholds:
+          type: object
+          required:
+          - min_improvement_pp
+          - max_regression_pp
+          - min_sample
+          properties:
+            min_improvement_pp:
+              type: number
+            max_regression_pp:
+              type: number
+            min_sample:
+              type: integer
+        base_agent_version_id:
+          type: string
+        base_config_hash:
+          type: string
+        variant_config_hash:
+          type: string
+        affected_call_ids:
+          type: array
+          items:
+            type: string
+        guard_call_ids:
+          type: array
+          items:
+            type: string
+        control_experiment_id:
+          type: string
+          pattern: ^exp_
+        treatment_experiment_id:
+          type: string
+          pattern: ^exp_
+        headline:
+          oneOf:
+          - $ref: '#/components/schemas/EvaluatorEvidence'
+          - type: 'null'
+        evaluator_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluatorEvidence'
+        treatment_runs_total:
+          type: integer
+        treatment_runs_failed:
+          type: integer
+        estimated_cost_usd:
+          type:
+          - number
+          - 'null'
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ValidationEstimate:
+      type: object
+      required:
+      - affected_calls
+      - guard_calls
+      - simulations
+      - estimated_cost_usd
+      properties:
+        affected_calls:
+          type: integer
+        guard_calls:
+          type: integer
+        simulations:
+          type: integer
+          description: 2 x (affected + guard)
+        estimated_cost_usd:
+          type: number
+        tools_missing_mock:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
     ValidationIssue:
       type: object
       required:
@@ -15622,6 +16875,43 @@ components:
           type:
           - string
           - 'null'
+    ValidationRequest:
+      type: object
+      properties:
+        dry_run:
+          type: boolean
+          default: false
+        mode:
+          type: string
+          enum:
+          - persona
+          - replay
+          default: persona
+        affected_limit:
+          type: integer
+          minimum: 3
+          maximum: 20
+          default: 20
+        guard_limit:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 10
+        min_improvement_pp:
+          type: number
+          minimum: 5
+          maximum: 50
+          default: 10
+        max_regression_pp:
+          type: number
+          minimum: 0
+          maximum: 20
+          default: 5
+        min_sample:
+          type: integer
+          minimum: 3
+          maximum: 50
+          default: 5
     VariableName:
       type: string
       pattern: ^[a-z][a-z0-9_]{0,63}$

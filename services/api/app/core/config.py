@@ -241,6 +241,10 @@ class Settings(BaseSettings):
     sim_max_concurrency: int = Field(10, ge=1, le=100)
     sim_timeout_s: float = Field(60.0, gt=0, le=600)
 
+    # Issues and auto-fix (009). ISSUES_MODEL names issues and drafts fixes (default: the
+    # simulator model). Without a key for its provider the offline fake answers.
+    issues_model: str | None = None
+
     @field_validator("env", mode="before")
     @classmethod
     def _env_alias(cls, value: Any) -> Any:

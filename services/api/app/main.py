@@ -57,6 +57,8 @@ from app.evals.router import router as evals_router
 from app.evaluators.router import router as evaluators_router
 from app.flows.hooks import register as register_flows
 from app.flows.router import router as flows_router
+from app.issues.install import install as install_issues
+from app.issues.router import router as issues_router
 from app.knowledge.router import internal_router as knowledge_internal_router
 from app.knowledge.router import router as knowledge_router
 from app.livekit_hooks.router import router as livekit_hooks_router
@@ -201,6 +203,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await install_quality(settings, db, queue=jobs)
         # Testing and simulation (008): offline replies for drafting, judging and persona briefs.
         install_simulator()
+        # Issues and auto-fix (009): naming and drafting models, embedder, validation hook.
+        install_issues(settings)
         try:
             yield
         finally:
@@ -283,6 +287,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         simulator_router,
         simulator_internal_router,
         datasets_router,
+        issues_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     if settings.dev_routes_enabled:
