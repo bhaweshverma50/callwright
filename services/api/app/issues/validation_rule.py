@@ -152,7 +152,8 @@ def evaluate(
             continue
         if r.n < thresholds.min_sample:
             out_rows.append(_with(r, insufficient_data=True))
-            info.append(_reason("insufficient_data", r))
+            if r.n or r.version_mismatch:  # a check with no verdicts at all (not applicable) is not news
+                info.append(_reason("insufficient_data", r))
             continue
         assert r.delta is not None
         blocking = r.delta < -thresholds.max_regression_pp

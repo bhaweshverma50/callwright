@@ -236,3 +236,13 @@ as in production. The mock web API (`vite --mode mock`) mirrors the same cards.
 - Settings (all optional): API `SIMULATOR_MODEL` (default `openai/gpt-5-mini`),
   `TESTCASE_GENERATOR_MODEL`, `SIM_MAX_CONCURRENCY`, `SIM_TIMEOUT_S`; text runner `REDIS_URL`
   (rendered into `voice.env`), `TEXTSIM_MAX_JOBS`, `TEXTSIM_JOB_TIMEOUT_S`. No new secrets.
+
+## 10. Issues and auto-fix (spec 009)
+
+- API module `issues` (`/v1/issues...`), web routes `/issues` and `/issues/:id`; migration `s009_0001` (after `s008_0001`). No worker code: validation batches are 008 experiments with `source = issue_validation`.
+- Detection (`detect_issues` job, one per agent at a time): current failed verdicts of enabled checks in the window (7, 14, 30 or 90 days; live calls, plus simulated ones when asked), turn failures collapsed per call, grouped by check and flow node, reasons embedded with 005's embedder (cached in `issue_failure_embeddings`), agglomerative clustering (cosine 0.25), clusters of 3 or more calls, at most 20 new issues per run, matched to existing issues at centroid similarity 0.85. New issues are named by one model call each. Billed once per run as `issues.detect`.
+- Fixes: eight kinds, drafted by the model (`issues.draft_fix`, once per revision) or written by hand; every revision is kept. `fixes.apply_fix` is the one pure function that builds both the validation variant and the applied version.
+- Validation: a control batch (published version) and a treatment batch (variant) over up to 20 affected calls and 10 guard calls. 008's completion hook queues `finalize_validation`, which waits for the simulated calls' evaluations (up to 20 minutes), pairs verdicts with 008's `pair_verdicts` and runs the keep rule (`validation_rule.py`, exact fractions). Evidence rows cannot change once written (trigger).
+- Apply re-checks the evidence under row locks and records exactly the treatment batch's snapshot through 002 (`create_version`), release notes `Fix for <issue id>: <title>`. A tool description fix copies the tool when other agents use it.
+- Crons: `sweep_issues` (every minute: stale detections fail after 15 minutes, finalized batches get their finalize job) and `audit_applied_issues` (daily 05:30, SC-001 hash audit, logs mismatches as errors).
+- Setting (optional): `ISSUES_MODEL` (default `SIMULATOR_MODEL`). No new secrets. Quickstart fixtures: `uv run python -m app.dev.seed_issues --dsn ... --workspace ws_... --agent agt_...`.

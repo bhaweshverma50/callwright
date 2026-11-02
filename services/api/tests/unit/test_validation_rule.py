@@ -184,3 +184,9 @@ def test_rows_carry_display_values() -> None:
     assert head.delta_pp == 33.3
     assert head.control_rate_display == 0.3333
     assert head.treatment_rate_display == 0.6667
+
+
+def test_checks_without_any_verdict_add_no_reason() -> None:
+    result = run(headline(10, 2, 6), Counts(OTHER, "combined", 0, 0, 0))
+    assert result.decision == "passed" and codes(result) == []
+    assert row(result, OTHER, "combined").insufficient_data

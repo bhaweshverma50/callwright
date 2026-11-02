@@ -7,12 +7,19 @@ the workspace. IDs are examples.
 ## 0. Seed a recurring failure
 
 ```bash
-cd services/api && alembic upgrade head
-# 30 calls on a single-prompt booking agent; 8 fail "factual_consistency" because the agent
-# quotes a price that is not in its price list, 2 fail it for an unrelated reason
-python -m app.dev.seed --agent single_prompt --calls 30 --scenario price_fabrication
-export API=http://localhost:8000/v1 AGENT=agt_01J...
+cd services/api && uv run alembic upgrade head
+# A published single-prompt agent (create it in the app or through POST /agents), then 30 live
+# calls on its published version: 8 fail "intent_fulfillment" because the agent quotes a price
+# that is not in its price list, 2 fail it for an unrelated reason, 20 pass. The seed switches
+# intent fulfillment on for the agent.
+uv run python -m app.dev.seed_issues --dsn postgresql://callwright:callwright@localhost:55432/callwright \
+  --workspace ws_01J... --agent agt_01J... --calls 30 --failing 8 --other 2
+export API=http://localhost:8100/v1 AGENT=agt_01J...
 ```
+
+Offline (no vendor keys) the fake judge and the text runner's fake agent answer the same way in
+both batches, so validation completes with "failed" (+0.0 pp): that proves the plumbing. A real
+improvement, and with it section 4 on a live stack, needs real model keys.
 
 ## 1. Detect (US1)
 
@@ -60,7 +67,7 @@ watch -n 5 "curl -s $API/issues/$ISS -H 'Authorization: Bearer $TOKEN' | jq '{st
 ```
 
 Expected: status `validating`, then `validated` (or `open` with reasons). Open
-`http://localhost:5173/issues/$ISS` to see thresholds, the headline row, the per-evaluator table
+`http://localhost:5180/issues/$ISS` to see thresholds, the headline row, the per-evaluator table
 and links to both batches. Compare one evaluator row with
 `GET /experiments/{treatment}/scorecard?baseline=experiment&baseline_experiment_id={control}`.
 
@@ -85,7 +92,7 @@ curl -s -X POST $API/issues/iss_01K.../dismiss -H "Authorization: Bearer $TOKEN"
   -d '{"reason":"other"}' -o /dev/null -w '%{http_code}\n'   # 422, note required
 curl -s -X POST $API/issues/iss_01K.../dismiss -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"reason":"evaluator_wrong","note":"Rubric flags polite refusals"}' | jq .status
-python -m app.dev.seed --agent-id $AGENT --calls 12 --on-latest-version   # post-apply calls
+uv run python -m app.dev.seed_issues --dsn ... --workspace ws_01J... --agent $AGENT --calls 12 --failing 0 --other 0   # post-apply calls
 curl -s $API/issues/$ISS -H "Authorization: Bearer $TOKEN" | jq .post_apply
 ```
 
@@ -93,6 +100,6 @@ curl -s $API/issues/$ISS -H "Authorization: Bearer $TOKEN" | jq .post_apply
 
 ```bash
 cd services/api
-pytest tests/unit/test_validation_rule.py tests/unit/test_issue_clustering.py tests/unit/test_fix_application.py
-pytest tests/contract/test_issues_contract.py tests/integration -k issue
+uv run pytest tests/unit/test_validation_rule.py tests/unit/test_issue_clustering.py tests/unit/test_fix_application.py
+uv run pytest tests/contract/test_issues_contract.py tests/integration -k issue
 ```
