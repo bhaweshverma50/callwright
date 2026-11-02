@@ -262,7 +262,10 @@ async def _enqueue_runs(request: Request, workspace_id: str, run_ids: list[str])
     await enqueue_runs(_jobs(request), workspace_id, run_ids)
 
 
-@router.post("/issues/{issue_id}/validate", responses=problem_responses(402, 404, 409, 422))
+@router.post(
+    "/issues/{issue_id}/validate",
+    responses={**problem_responses(402, 404, 409, 422), 202: {"description": "Validation started"}},
+)
 async def validate(
     request: Request,
     principal: CurrentPrincipal,

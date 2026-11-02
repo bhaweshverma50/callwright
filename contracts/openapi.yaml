@@ -4055,6 +4055,8 @@ paths:
                   - 'null'
                   maxLength: 500
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: Applied
           content:
@@ -4149,6 +4151,8 @@ paths:
                   required:
                   - duplicate_of
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: Dismissed (a running validation is cancelled)
           content:
@@ -4188,6 +4192,14 @@ paths:
                     - 'null'
                     maxLength: 1000
       responses:
+        '502':
+          description: The model could not draft a fix; try again or write the fix by hand
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '202':
           description: Fix drafted and validation started
           content:
@@ -4219,6 +4231,8 @@ paths:
       - issues
       operationId: listIssueFixes
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: All revisions, newest first
           content:
@@ -4275,6 +4289,14 @@ paths:
                   - kind
                   - payload
       responses:
+        '502':
+          description: The model could not draft a fix; try again or write the fix by hand
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '201':
           description: New current revision
           content:
@@ -4307,6 +4329,8 @@ paths:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: Sample calls, most recent first
           content:
@@ -4339,6 +4363,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ValidationRequest'
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: Estimate (dry_run true)
           content:
@@ -4374,6 +4400,8 @@ paths:
       parameters:
       - $ref: '#/components/parameters/IssueId'
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: Cancelled; issue back to open
           content:
@@ -4395,6 +4423,8 @@ paths:
       parameters:
       - $ref: '#/components/parameters/IssueId'
       responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
         '200':
           description: All attempts (evidence), newest first
           content:

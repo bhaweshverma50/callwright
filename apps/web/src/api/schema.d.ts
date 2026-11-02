@@ -12783,6 +12783,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     listIssueFixes: {
@@ -12807,6 +12808,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     createIssueFix: {
@@ -12843,6 +12845,7 @@ export interface operations {
                 };
             };
             402: components["responses"]["InsufficientCredit"];
+            404: components["responses"]["NotFound"];
             /** @description Issue is applied or dismissed, or a validation is running */
             409: {
                 headers: {
@@ -12854,6 +12857,15 @@ export interface operations {
             };
             /** @description Kind not allowed for this issue, or payload does not match the current configuration (redraft_needed) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The model could not draft a fix; try again or write the fix by hand */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12900,6 +12912,7 @@ export interface operations {
                 };
             };
             402: components["responses"]["InsufficientCredit"];
+            404: components["responses"]["NotFound"];
             /** @description Wrong status, advisory fix, or no current revision */
             409: {
                 headers: {
@@ -12954,8 +12967,18 @@ export interface operations {
                 };
             };
             402: components["responses"]["InsufficientCredit"];
+            404: components["responses"]["NotFound"];
             /** @description Wrong status */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The model could not draft a fix; try again or write the fix by hand */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12987,6 +13010,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
         };
     };
     cancelIssueValidation: {
@@ -13009,6 +13033,7 @@ export interface operations {
                     "application/json": components["schemas"]["DetectedIssue"];
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description No validation running */
             409: {
                 headers: {
@@ -13063,6 +13088,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description Refused: no_passing_validation, base_version_changed, draft_changed, wrong_status (problem type URI ends with the code) */
             409: {
                 headers: {
@@ -13103,6 +13129,7 @@ export interface operations {
                     "application/json": components["schemas"]["DetectedIssue"];
                 };
             };
+            404: components["responses"]["NotFound"];
             /** @description Issue already applied or dismissed */
             409: {
                 headers: {

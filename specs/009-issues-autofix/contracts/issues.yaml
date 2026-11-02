@@ -106,6 +106,7 @@ paths:
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page' }
         - { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize' }
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: Sample calls, most recent first
           content:
@@ -126,6 +127,7 @@ paths:
       tags: [issues]
       operationId: listIssueFixes
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: All revisions, newest first
           content:
@@ -160,6 +162,12 @@ paths:
                 - if: { properties: { mode: { const: manual } } }
                   then: { required: [kind, payload] }
       responses:
+        '502':
+          description: The model could not draft a fix; try again or write the fix by hand
+          content:
+            application/problem+json:
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '201':
           description: New current revision
           content:
@@ -189,6 +197,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/ValidationRequest' }
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: Estimate (dry_run true)
           content:
@@ -228,6 +237,12 @@ paths:
                     kind: { $ref: '#/components/schemas/FixKind' }
                     guidance: { type: [string, 'null'], maxLength: 1000 }
       responses:
+        '502':
+          description: The model could not draft a fix; try again or write the fix by hand
+          content:
+            application/problem+json:
+              schema: { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem' }
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '202':
           description: Fix drafted and validation started
           content:
@@ -251,6 +266,7 @@ paths:
       parameters:
         - { $ref: '#/components/parameters/IssueId' }
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: All attempts (evidence), newest first
           content:
@@ -269,6 +285,7 @@ paths:
       parameters:
         - { $ref: '#/components/parameters/IssueId' }
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: Cancelled; issue back to open
           content:
@@ -295,6 +312,7 @@ paths:
                 publish: { type: boolean, default: true, description: false creates the version without publishing }
                 release_notes_extra: { type: [string, 'null'], maxLength: 500 }
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: Applied
           content:
@@ -345,6 +363,7 @@ paths:
                 - if: { properties: { reason: { const: duplicate } } }
                   then: { required: [duplicate_of] }
       responses:
+        '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '200':
           description: Dismissed (a running validation is cancelled)
           content:
