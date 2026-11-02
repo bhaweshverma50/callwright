@@ -73,10 +73,10 @@ gcloud compute scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/v
   --zone $ZONE --account $ACCOUNT --project $PROJECT
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "cd /opt/callwright && CW_API_IMAGE=$API_IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh \
-   && sudo docker compose pull worker voice && sudo docker compose up -d worker voice \
+   && sudo docker compose pull worker voice textsim && sudo docker compose up -d worker voice textsim \
    && sudo docker image prune -af"
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
-  "curl -s -o /dev/null -w 'voice %{http_code}\n' localhost:8190; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice"
+  "curl -s -o /dev/null -w 'voice %{http_code}\n' localhost:8190; curl -s -o /dev/null -w 'textsim %{http_code}\n' localhost:8192; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice textsim"
 ```
 
 The first roll-out also changes `livekit.yaml.tmpl` (a loopback ICE candidate so the voice worker's
