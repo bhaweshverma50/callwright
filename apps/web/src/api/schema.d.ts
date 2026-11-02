@@ -5446,6 +5446,11 @@ export interface components {
             }[];
             /** Format: date-time */
             analyzed_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When the current attempt began; set while pending or running.
+             */
+            started_at?: string | null;
         };
         Annotation: {
             id: string;

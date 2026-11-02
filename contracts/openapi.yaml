@@ -9500,6 +9500,12 @@ components:
           - string
           - 'null'
           format: date-time
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: When the current attempt began; set while pending or running.
     CallComparison:
       type: object
       required:

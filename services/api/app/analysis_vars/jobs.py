@@ -127,6 +127,15 @@ async def pipeline_handler(call_id: str, session: AsyncSession) -> None:
 
 
 async def rerun_analysis(ctx: dict[str, Any], workspace_id: str, call_id: str) -> str:
-    async with ctx["db"].transaction(workspace_id=workspace_id) as session:
-        row = await analyze_call(session, call_id, rerun=True)
-        return row.status if row is not None else "missing"
+    try:
+        async with ctx["db"].transaction(workspace_id=workspace_id) as session:
+            row = await analyze_call(session, call_id, rerun=True)
+            return row.status if row is not None else "missing"
+    except Exception:
+        # The rerun endpoint already marked the row running; never leave it spinning.
+        async with ctx["db"].transaction(workspace_id=workspace_id) as session:
+            row = await session.get(CallAnalysis, call_id)
+            if row is not None and row.status == "running":
+                row.status, row.error = "error", "The analysis could not be saved. Try re-running it."
+                row.updated_at = datetime.now(UTC)
+        raise

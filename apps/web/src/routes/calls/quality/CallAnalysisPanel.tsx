@@ -69,6 +69,7 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
         </div>
         {running ? (
           <ThinkingIndicator
+            since={a.started_at}
             label="Analysing the call"
             verbs={["Reading the transcript", "Summarising", "Reading the caller's mood", "Extracting the values"]}
           />

@@ -189,3 +189,4 @@ components:
               value: { type: [boolean, string, number, "null"], description: null means not found }
               status: { type: string, enum: [current, renamed, deleted] }
         analyzed_at: { type: [string, "null"], format: date-time }
+        started_at: { type: [string, "null"], format: date-time, description: When the current attempt began; set while pending or running. }

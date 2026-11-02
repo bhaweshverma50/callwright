@@ -117,10 +117,25 @@ function elapsedText(ms: number): string {
 
 /** A live waveform with "Drafting… 4s" under it: a verb that changes every few seconds with a soft
  * shimmer, and the time so far. Screen readers hear `label` once. */
-export function ThinkingIndicator({ verbs, label, className, extra }: { verbs: string[]; label: string; className?: string; extra?: ReactNode }) {
+export function ThinkingIndicator({
+  verbs,
+  label,
+  className,
+  extra,
+  since,
+}: {
+  verbs: string[];
+  label: string;
+  className?: string;
+  extra?: ReactNode;
+  /** When the work started (server time). The timer and verb then survive remounts such as tab changes. */
+  since?: string | number | null;
+}) {
   const reduce = useReducedMotion() ?? false;
-  const [start] = useState(() => Date.now());
-  const [now, setNow] = useState(start);
+  const [mounted] = useState(() => Date.now());
+  const parsed = since == null ? NaN : typeof since === "number" ? since : Date.parse(since);
+  const start = Number.isFinite(parsed) ? Math.min(parsed, mounted) : mounted;
+  const [now, setNow] = useState(mounted);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);

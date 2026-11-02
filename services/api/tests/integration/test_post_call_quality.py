@@ -246,3 +246,58 @@ async def test_finished_call_without_an_analysis_is_not_run_instead_of_pending_f
     owner_sql("update calls set summary = null where id = %s", (call.call_id,))
     got = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=account.headers)).json()
     assert got["status"] == "skipped" and got["skip_reason"] == "not_run"
+
+
+async def test_a_full_length_summary_fits_the_table(
+    client: httpx.AsyncClient, account: Account, runtime: Runtime, quality: FakeLlm
+) -> None:
+    # The extractor allows SUMMARY_MAX characters; the database must accept that many.
+    from app.analysis_vars.extractor import SUMMARY_MAX
+
+    call = await scripted_call(runtime, account.workspace_id)
+    owner_sql("update call_analyses set summary = %s where call_id = %s", ("x" * SUMMARY_MAX, call.call_id))
+    got = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=account.headers)).json()
+    assert len(got["summary"]) == SUMMARY_MAX
+
+
+async def test_a_failed_rerun_reports_an_error_instead_of_running_forever(
+    app: FastAPI,
+    client: httpx.AsyncClient,
+    account: Account,
+    runtime: Runtime,
+    quality: FakeLlm,
+    monkeypatch: Any,
+) -> None:
+    from app.analysis_vars import jobs
+
+    call = await scripted_call(runtime, account.workspace_id)
+    owner_sql("update call_analyses set status = 'running' where call_id = %s", (call.call_id,))
+
+    async def boom(*_: object, **__: object) -> None:
+        raise RuntimeError("database refused the row")
+
+    monkeypatch.setattr(jobs, "analyze_call", boom)
+    try:
+        await jobs.rerun_analysis({"db": app.state.db}, account.workspace_id, call.call_id)
+    except RuntimeError:
+        pass
+    got = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=account.headers)).json()
+    assert got["status"] == "error" and "re-running" in got["error"]
+
+
+async def test_running_analysis_reports_its_start_and_turns_into_an_error_once_stale(
+    client: httpx.AsyncClient, account: Account, runtime: Runtime, quality: FakeLlm
+) -> None:
+    call = await scripted_call(runtime, account.workspace_id)
+    url = f"/v1/calls/{call.call_id}/analysis"
+    owner_sql(
+        "update call_analyses set status = 'running', updated_at = now() - interval '1 minute' "
+        "where call_id = %s",
+        (call.call_id,),
+    )
+    running = (await client.get(url, headers=account.headers)).json()
+    assert running["status"] == "running" and running["started_at"]
+    stale_sql = "update call_analyses set updated_at = now() - interval '6 minutes' where call_id = %s"
+    owner_sql(stale_sql, (call.call_id,))
+    stale = (await client.get(url, headers=account.headers)).json()
+    assert stale["status"] == "error" and "stopped before it finished" in stale["error"]

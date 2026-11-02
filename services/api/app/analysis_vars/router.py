@@ -96,6 +96,20 @@ def analysis_view(call: Call, row: CallAnalysis | None, current: dict[str, Any])
             "sentiment": call.sentiment,
             "values": values,
             "analyzed_at": None,
+            "started_at": None,
+        }
+    active = row.status in ("pending", "running")
+    if row.status == "running" and row.updated_at < datetime.now(UTC) - STALE_RUNNING:
+        # The worker died or the job failed before it could record why: stop the spinner.
+        return {
+            **analysis_view(call, None, current),
+            "status": "error",
+            "skip_reason": None,
+            "error": "The analysis stopped before it finished. Try re-running it.",
+            "model": row.model,
+            "summary": row.summary,
+            "sentiment": row.sentiment,
+            "values": [],
         }
     out_values = []
     for var in row.variable_snapshot or []:
@@ -125,6 +139,8 @@ def analysis_view(call: Call, row: CallAnalysis | None, current: dict[str, Any])
         "sentiment": row.sentiment,
         "values": out_values if row.status == "completed" else [],
         "analyzed_at": row.analyzed_at.isoformat() if row.analyzed_at else None,
+        # When the current attempt began, so a progress timer survives page and tab changes.
+        "started_at": row.updated_at.isoformat() if active and row.updated_at else None,
     }
 
 
