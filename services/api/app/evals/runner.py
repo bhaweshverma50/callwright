@@ -42,6 +42,7 @@ from app.evals.runtime import QualityRuntime, runtime
 from app.evals.scoring import ItemOutcome, run_verdict
 from app.evals.service import resolve_all
 from app.evals.settings import settings_hash
+from app.evals.short_call import too_short
 from app.evaluators import audio
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, Unavailable
 from app.evaluators.models import EvaluatorRow, EvaluatorVersion
@@ -165,6 +166,8 @@ async def start_group(
         chosen = [r for r in resolved if r.enabled]
     now = datetime.now(UTC)
     runs = []
+    # The automatic post-call run skips paid judges on calls too short to judge (free checks run).
+    short = trigger == "pipeline" and too_short(call, rt.settings)
     for r in chosen:
         values = dict(r.values)
         run = EvaluatorRun(
@@ -183,7 +186,9 @@ async def start_group(
             created_at=now,
         )
         rate = values.get("sample_rate_pct")
-        if (
+        if short and r.row.cost_class == "llm_judge":
+            run.status, run.skip_reason, run.completed_at = "skipped", "too_short", now
+        elif (
             isinstance(rate, int)
             and sampling.applies(trigger, call.origin)
             and not sampling.selected(call.id, r.row.name, rate)

@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUp, Clock, CloudOff, Maximize2, Minimize2, RotateCcw, Sparkles, SquarePen, Wallet, X } from "lucide-react";
+import { Clock, CloudOff, Maximize2, Minimize2, RotateCcw, Sparkles, SquarePen, Wallet, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
-import { Button, IconButton, cn, focusRing } from "../../components";
+import { Button, Composer, IconButton, ThinkingIndicator, cn, focusRing } from "../../components";
 import { viewerTimeZone } from "../../routes/calls/filters";
 import { chartVars } from "../../routes/dashboard/charts/ChartFrame";
 import { AnswerView, SuggestionChips, type ChatAnswer } from "./AnswerView";
@@ -96,11 +96,6 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
     } finally {
       setPending(false);
     }
-  };
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    void ask(draft);
   };
 
   const suggestions = catalog.data?.suggested_questions ?? [];
@@ -208,18 +203,11 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
                     ),
                   )}
                   {pending && (
-                    <li className="flex items-center gap-2 text-[12.5px] text-fg-3" aria-label="Working on it">
-                      <span className="flex gap-1" aria-hidden>
-                        {[0, 1, 2].map((d) => (
-                          <motion.span
-                            key={d}
-                            className="size-1.5 rounded-full bg-accent"
-                            animate={{ opacity: [0.3, 1, 0.3] }}
-                            transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }}
-                          />
-                        ))}
-                      </span>
-                      Looking at your calls
+                    <li>
+                      <ThinkingIndicator
+                        label="Working on it"
+                        verbs={["Looking at your calls", "Crunching the numbers", "Checking the costs", "Building the chart", "Writing the answer"]}
+                      />
                     </li>
                   )}
                 </ol>
@@ -259,41 +247,22 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
                 )}
               </AnimatePresence>
 
-              <form onSubmit={submit} className="flex items-end gap-2 border-t border-line px-3 py-3">
+              <div className="border-t border-line px-3 py-3">
                 <label htmlFor="ask-input" className="sr-only">
                   Your question
                 </label>
-                <textarea
+                <Composer
                   id="ask-input"
-                  ref={input}
-                  rows={1}
+                  inputRef={input}
                   value={draft}
                   maxLength={2000}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void ask(draft);
-                    }
-                  }}
+                  onChange={setDraft}
+                  onSubmit={() => void ask(draft)}
+                  busy={pending}
+                  sendLabel="Ask"
                   placeholder="What did my last call cost?"
-                  className={cn(
-                    "max-h-28 min-h-9 flex-1 resize-none rounded-control border border-line-strong bg-surface px-3 py-2 text-[13.5px] text-fg placeholder:text-fg-3",
-                    focusRing,
-                  )}
                 />
-                <button
-                  type="submit"
-                  aria-label="Ask"
-                  disabled={!draft.trim() || pending}
-                  className={cn(
-                    "grad-action grid size-9 shrink-0 cursor-pointer place-items-center rounded-control text-white transition-[opacity,transform] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
-                    focusRing,
-                  )}
-                >
-                  <ArrowUp className="size-4" aria-hidden />
-                </button>
-              </form>
+              </div>
             </motion.section>
           )}
         </AnimatePresence>,

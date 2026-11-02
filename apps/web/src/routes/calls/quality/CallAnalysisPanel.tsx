@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleDashed, Cpu, LoaderCircle, RotateCw } from "lucide-react";
+import { CircleDashed, Cpu, RotateCw } from "lucide-react";
 import { useState } from "react";
 import type { CallDetail } from "../../../api/calls";
 import { callKeys } from "../../../api/calls";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { qualityKeys, rerunAnalysis, useCallAnalysis, type AnalysisValue } from "../../../api/quality";
-import { Button, Skeleton, toast } from "../../../components";
+import { Button, Skeleton, ThinkingIndicator, toast } from "../../../components";
 import { AnalysisTable, SentimentBadge } from "../AnalysisTable";
 
 function show(v: AnalysisValue): string {
@@ -67,14 +67,17 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
             )}
         </div>
         {running ? (
-          <span role="status" className="inline-flex items-center gap-2 text-[13px] text-accent-text">
-            <LoaderCircle className="size-4 animate-spin" aria-hidden /> Analysing the call
-          </span>
+          <ThinkingIndicator
+            label="Analysing the call"
+            verbs={["Reading the transcript", "Summarising", "Reading the caller's mood", "Extracting the values"]}
+          />
         ) : a.status === "skipped" ? (
           <p className="text-[13px] text-fg-3">
             {a.skip_reason === "insufficient_credit"
               ? "Analysis skipped: insufficient credit. Re-run it after a top-up."
-              : "No analysis for this call: it never connected or had nothing to analyse."}
+              : a.skip_reason === "too_short"
+                ? "Not analysed: the call was too short to summarise. Re-run the analysis to force it."
+                : "No analysis for this call: it never connected or had nothing to analyse."}
           </p>
         ) : a.status === "error" ? (
           <p className="text-[13px] text-danger-text">Analysis failed{a.error ? `: ${a.error}` : ""}. Try re-running it.</p>

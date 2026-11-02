@@ -3,7 +3,8 @@
  * per-run comparison and the batch scorecard. Lists poll every 3 s only while something they show
  * is pending or running.
  */
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
 
@@ -80,6 +81,7 @@ export function useExperiments(agentId: string | null, page: number) {
         Paged<Experiment>
       >,
     placeholderData: keepPreviousData,
+    refetchOnMount: "always",
     refetchInterval: (q) => (q.state.data?.items.some((e) => isSimActive(e.status)) ? SIM_POLL_MS : false),
   });
 }
@@ -95,6 +97,7 @@ export function useStandaloneRuns(agentId: string | null, page: number) {
         }),
       ) as Promise<Paged<SimulationRun>>,
     placeholderData: keepPreviousData,
+    refetchOnMount: "always",
     refetchInterval: (q) => (q.state.data?.items.some((r) => isSimActive(r.status)) ? SIM_POLL_MS : false),
   });
 }
@@ -157,7 +160,8 @@ export function cancelExperiment(id: string) {
 }
 
 export function useSimulationRun(id: string | undefined) {
-  return useQuery({
+  const qc = useQueryClient();
+  const query = useQuery({
     queryKey: simKeys.run(id ?? ""),
     queryFn: () =>
       unwrap(api.GET("/simulation-runs/{simulation_run_id}", { params: { path: { simulation_run_id: id! } } })) as Promise<SimulationRun>,
@@ -165,7 +169,23 @@ export function useSimulationRun(id: string | undefined) {
     retry: false,
     refetchInterval: (q) => (isSimActive(q.state.data?.status) ? SIM_POLL_MS : false),
   });
+  const status = query.data?.status;
+  // Once a run ends, the lists that show it must not keep the cached "Running" row and cost.
+  useEffect(() => {
+    if (status && !isSimActive(status)) {
+      void qc.invalidateQueries({ queryKey: simKeys.runsAll });
+      void qc.invalidateQueries({ queryKey: simKeys.experimentsAll });
+    }
+  }, [status, qc]);
+  return query;
 }
+
+/** The transcript and the simulated call's checks land a few seconds after the run completes. */
+export function comparisonPending(c: Comparison | undefined): boolean {
+  if (!c) return false;
+  return c.simulated.transcript.length === 0 || c.verdicts.some((v) => v.simulated == null);
+}
+const COMPARISON_POLLS = 40;
 
 export function useComparison(id: string | undefined, ready: boolean) {
   return useQuery({
@@ -174,6 +194,7 @@ export function useComparison(id: string | undefined, ready: boolean) {
       unwrap(api.GET("/simulation-runs/{simulation_run_id}/comparison", { params: { path: { simulation_run_id: id! } } })) as Promise<Comparison>,
     enabled: Boolean(id) && ready,
     retry: false,
+    refetchInterval: (q) => (comparisonPending(q.state.data) && q.state.dataUpdateCount < COMPARISON_POLLS ? SIM_POLL_MS : false),
   });
 }
 

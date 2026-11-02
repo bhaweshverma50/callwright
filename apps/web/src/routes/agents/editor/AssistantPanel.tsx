@@ -1,13 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowUp, Check, CircleAlert, RotateCcw, Sparkles, Undo2, Wallet } from "lucide-react";
+import { Check, CircleAlert, RotateCcw, Sparkles, Undo2, Wallet } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { idempotencyKey, type PromptProposal } from "../../../api/agents";
 import { api } from "../../../api/client";
 import { ApiError, toProblem } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
-import { Button, Drawer, IconButton, Textarea, Waveform, cn } from "../../../components";
+import { Button, Composer, Drawer, ThinkingIndicator, cn } from "../../../components";
 import { formatUsd } from "../../../lib/money";
 import { lineDiff } from "../versions/lineDiff";
 import { DiffView } from "../versions/DiffView";
@@ -126,11 +126,6 @@ export function AssistantPanel({
     setApplied(null);
   };
 
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    send(text);
-  };
-
   return (
     <Drawer
       open={open}
@@ -139,35 +134,18 @@ export function AssistantPanel({
       title="Write with AI"
       meta="Drafts and edits your prompt. Nothing is saved until you save the agent."
       footer={
-        <form onSubmit={onSubmit} className="flex w-full items-end gap-2">
-          <Textarea
-            aria-label="Message the assistant"
-            rows={2}
-            className="min-h-[44px] flex-1 resize-none"
-            placeholder={
-              draft.config.prompt.trim()
-                ? "Ask for a change, for example: add a step to confirm the caller's address"
-                : "Describe what the agent should do"
-            }
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send(text);
-              }
-            }}
-          />
-          <IconButton
-            label="Send"
-            type="submit"
-            variant="primary"
-            className="size-11 shrink-0 rounded-control"
-            disabled={!text.trim() || ask.isPending}
-          >
-            <ArrowUp className="size-4" aria-hidden />
-          </IconButton>
-        </form>
+        <Composer
+          label="Message the assistant"
+          value={text}
+          onChange={setText}
+          onSubmit={() => send(text)}
+          busy={ask.isPending}
+          placeholder={
+            draft.config.prompt.trim()
+              ? "Ask for a change, for example: add a step to confirm the caller's address"
+              : "Describe what the agent should do"
+          }
+        />
       }
     >
       <div className="flex min-h-full flex-col gap-4" aria-live="polite">
@@ -236,12 +214,10 @@ export function AssistantPanel({
         </AnimatePresence>
 
         {ask.isPending && (
-          <div className="flex items-center gap-3 text-[13px] text-fg-3" role="status">
-            <span className="w-16">
-              <Waveform bars={14} height={18} live progress={1} />
-            </span>
-            Writing
-          </div>
+          <ThinkingIndicator
+            label="Writing"
+            verbs={["Reading your prompt", "Drafting", "Shaping the steps", "Tightening the wording", "Checking the rules", "Polishing"]}
+          />
         )}
         <div ref={end} />
       </div>

@@ -9,7 +9,7 @@ import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useActionKey, isRetryable } from "../../../api/paid";
 import { generateTestCases, importTestCases, testingKeys, type TestCaseImportRow, type TestCategory } from "../../../api/testing";
-import { Button, Dialog, Field, Input, Select, Textarea, cn, toast } from "../../../components";
+import { Button, Dialog, Field, Input, Select, Textarea, ThinkingIndicator, cn, toast } from "../../../components";
 import { ProblemAlert, cost, plural } from "../../simulations/shared";
 import { ALL_CATEGORIES, CategoryLabel, categoryOptions } from "./categories";
 
@@ -169,7 +169,13 @@ export function GenerateDialog({
         )
       }
     >
-      {drafts ? (
+      {pending && !drafts ? (
+        <ThinkingIndicator
+          className="py-6"
+          label="Drafting test cases"
+          verbs={["Reading the agent", "Picking the weak spots", "Writing test cases", "Setting what good looks like"]}
+        />
+      ) : drafts ? (
         <div className="flex flex-col gap-3">
           <ul className="divide-y divide-line overflow-hidden rounded-control border border-line" aria-label="Drafts">
             {drafts.map((d, i) => (

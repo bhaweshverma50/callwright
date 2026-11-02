@@ -28,6 +28,7 @@ from app.calls.models import Call
 from app.core.errors import ProblemError
 from app.evals.context import build_context
 from app.evals.runtime import runtime
+from app.evals.short_call import too_short
 from app.llms.client import billable_cost
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,10 @@ async def analyze_call(session: AsyncSession, call_id: str, *, rerun: bool = Fal
         row.variable_snapshot = variables
         row.updated_at = row.analyzed_at = datetime.now(UTC)
         row.error = row.skip_reason = None
+        if not rerun and too_short(call, rt.settings):
+            row.status, row.skip_reason = "skipped", "too_short"
+            await session.flush()
+            return row
         if await billing.get_balance(session, call.workspace_id) <= 0:
             row.status, row.skip_reason = "skipped", "insufficient_credit"
             await session.flush()

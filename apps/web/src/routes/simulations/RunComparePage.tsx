@@ -7,7 +7,7 @@
  */
 import { Flask } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Bot, ChevronLeft, CircleStop, GitBranch, Loader2, Split, User, Wrench } from "lucide-react";
+import { ArrowRight, Bot, ChevronLeft, CircleStop, GitBranch, Loader2, Split, User, Wrench, LoaderCircle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { isApiError } from "../../api/errors";
@@ -154,6 +154,12 @@ function TranscriptPanel({
         {meta}
       </header>
       <NodePath side={side} />
+      {side.transcript.length === 0 && (
+        <p role="status" className="flex items-center gap-2 px-4 py-6 text-[13px] text-fg-3">
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          Writing the transcript. It appears a few seconds after the run ends.
+        </p>
+      )}
       <ol className="max-h-[68vh] overflow-y-auto py-1.5" aria-label={`${title} transcript`}>
         {side.transcript.map((it, i) => {
           const turn = turns.get(i);
@@ -186,6 +192,15 @@ function FragmentWithMarker({ marker, turn, children }: { marker: boolean; turn:
   );
 }
 
+/** Scores are raw evaluator numbers (fractions, counts or milliseconds); never print float noise. */
+function fmtScore(n: number | null | undefined): string {
+  if (n == null) return "n/a";
+  return Math.abs(n) >= 10 ? Math.round(n).toLocaleString() : String(Math.round(n * 100) / 100);
+}
+
+/** Checks that need call audio can never run on a text simulation; list them once instead of as rows. */
+const audioOnly = (v: VerdictDiff) => v.simulated === "not_applicable" && /no (audio|recording)/i.test(v.simulated_reason ?? "");
+
 const VERDICT_COLUMNS: Column<VerdictDiff>[] = [
   {
     key: "check",
@@ -211,7 +226,7 @@ const VERDICT_COLUMNS: Column<VerdictDiff>[] = [
         {v.simulated_reason ?? "No rationale"}
         {v.original_score != null || v.simulated_score != null ? (
           <span className="mt-1 block font-mono text-[11.5px] text-fg-3 tnum">
-            Score {v.original_score ?? "n/a"} to {v.simulated_score ?? "n/a"}
+            Score {fmtScore(v.original_score)} to {fmtScore(v.simulated_score)}
           </span>
         ) : null}
       </p>
@@ -404,10 +419,20 @@ export function RunComparePage() {
               <Table
                 caption="Check verdicts, original and simulated"
                 columns={c.original ? VERDICT_COLUMNS : VERDICT_COLUMNS.filter((col) => col.key !== "original" && col.key !== "change")}
-                rows={c.verdicts}
+                rows={c.verdicts.filter((v) => !audioOnly(v))}
                 rowKey={(v) => `${v.evaluator_id}-${v.node_id ?? ""}`}
-                empty={<p className="px-5 py-6 text-[13px] text-fg-3">No checks are enabled on this agent.</p>}
+                empty={
+                  <p className="px-5 py-6 text-[13px] text-fg-3">
+                    {c.verdicts.length ? "No check can be compared on a text simulation." : "No checks are enabled on this agent."}
+                  </p>
+                }
               />
+              {c.verdicts.some(audioOnly) && (
+                <p className="border-t border-line px-5 py-3 text-[12.5px] text-fg-3">
+                  Not run on text simulations, because they need call audio:{" "}
+                  {[...new Set(c.verdicts.filter(audioOnly).map((v) => v.evaluator_display_name))].join(", ")}.
+                </p>
+              )}
             </Panel>
           </>
         )}

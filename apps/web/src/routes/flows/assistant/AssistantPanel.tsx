@@ -1,9 +1,9 @@
-import { ArrowUp, RotateCcw, Sparkles } from "lucide-react";
+import { RotateCcw, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { askAssistant, FlowProblem, type ChatTurn, type FlowGraph } from "../../../api/flows";
 import { problemMessage } from "../../../api/problems";
-import { Button, IconButton, Textarea, cn } from "../../../components";
+import { Button, Composer, ThinkingIndicator, cn } from "../../../components";
 import type { Proposal } from "./ProposalBar";
 
 const SUGGESTIONS = [
@@ -142,13 +142,11 @@ export function AssistantPanel({
               ))}
             </AnimatePresence>
             {busy && (
-              <li
-                className="flex w-fit items-center gap-1.5 rounded-panel border border-line bg-surface px-3.5 py-3"
-                aria-label="Assistant is working"
-              >
-                {[0, 1, 2].map((d) => (
-                  <span key={d} className="size-1.5 animate-pulse rounded-full bg-violet" style={{ animationDelay: `${d * 160}ms` }} />
-                ))}
+              <li className="py-1">
+                <ThinkingIndicator
+                  label="Assistant is working"
+                  verbs={["Reading the flow", "Planning the change", "Wiring the steps", "Checking the routes", "Preparing the changes"]}
+                />
               </li>
             )}
           </ol>
@@ -164,45 +162,17 @@ export function AssistantPanel({
           </div>
         )}
       </div>
-      <form
-        className="border-t border-line p-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <div className="relative">
-          <Textarea
-            aria-label="Ask the assistant"
-            rows={2}
-            value={text}
-            placeholder={pending ? "Approve or decline the pending changes first" : "Describe a change to the flow"}
-            disabled={busy}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            className="block resize-none pr-12"
-          />
-          {/* The textarea is a block (no inline baseline gap under it), so the button sits 8px in
-              from both the bottom and the right edge; pr-12 keeps text clear of it. Disabled reads
-              as a plain grey disc rather than a faded gradient. */}
-          <IconButton
-            label="Send"
-            type="submit"
-            className={cn(
-              "grad-action absolute bottom-2 right-2 size-8 rounded-full text-white shadow-[0_6px_14px_-6px_rgb(91_60_244/0.7)] hover:text-white hover:brightness-110",
-              "disabled:bg-none disabled:bg-surface-3 disabled:text-fg-3 disabled:shadow-none disabled:hover:brightness-100",
-            )}
-            disabled={!text.trim() || busy}
-          >
-            <ArrowUp className="size-4" aria-hidden />
-          </IconButton>
-        </div>
-      </form>
+      <div className="border-t border-line p-3">
+        <Composer
+          label="Ask the assistant"
+          value={text}
+          onChange={setText}
+          onSubmit={submit}
+          disabled={busy}
+          busy={busy}
+          placeholder={pending ? "Approve or decline the pending changes first" : "Describe a change to the flow"}
+        />
+      </div>
     </div>
   );
 }
