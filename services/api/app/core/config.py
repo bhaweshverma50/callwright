@@ -232,6 +232,15 @@ class Settings(BaseSettings):
     eval_judge_pass_cutoff: float = Field(0.5, ge=0, le=1)
     calibration_min_sample: int = Field(5, ge=1, le=100)
 
+    # Testing and simulation (008). SIMULATOR_MODEL plays persona callers, writes persona briefs
+    # and tool stand-ins; TESTCASE_GENERATOR_MODEL drafts test cases (default: the simulator
+    # model). Judges of test cases use the default eval judge. SIM_MAX_CONCURRENCY caps the
+    # simulation runs and test cases one workspace executes at once; the rest wait their turn.
+    simulator_model: str = "openai/gpt-5-mini"
+    testcase_generator_model: str | None = None
+    sim_max_concurrency: int = Field(10, ge=1, le=100)
+    sim_timeout_s: float = Field(60.0, gt=0, le=600)
+
     @field_validator("env", mode="before")
     @classmethod
     def _env_alias(cls, value: Any) -> Any:

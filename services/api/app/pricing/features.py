@@ -2,7 +2,8 @@
 
 A feature key is either a plain key (``prompt_generation``) or ``<prefix>.<name>``
 (``eval.intent_fulfillment``). The usage report groups keys into families: the part before the
-first dot, with ``eval`` shown as ``evaluations`` and ``simulator`` as ``simulations``. Every family
+first dot, with ``eval`` shown as ``evaluations`` and ``simulator`` and ``simulation`` (008) as
+``simulations``. Every family
 here is listed in the ``FeatureFamily`` enum of specs/001-platform-foundation/contracts/usage.yaml.
 """
 
@@ -27,6 +28,7 @@ PLAIN_KEYS = frozenset(
 PREFIXED_FAMILIES = {
     "eval": "evaluations",
     "simulator": "simulations",
+    "simulation": "simulations",
     "issues": "issues",
     "testing": "testing",
 }
