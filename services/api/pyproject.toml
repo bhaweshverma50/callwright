@@ -41,6 +41,7 @@ dependencies = [
     "google-re2>=1.1.20251105",
     "av>=19.0.2",
     "numpy>=2.5.4",
+    "scikit-learn>=1.5",
 ]
 
 [dependency-groups]
