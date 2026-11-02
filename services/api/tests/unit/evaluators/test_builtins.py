@@ -22,7 +22,14 @@ JUDGES = {
     "tool_call_correctness",
     "transition_correctness",
 }
-DEFAULT_ON = {"flow_completion", "audio_silence", "node_dead_end", "stuck_loop_detector", "latency_slo"}
+DEFAULT_ON = {
+    "flow_completion",
+    "audio_silence",
+    "node_dead_end",
+    "stuck_loop_detector",
+    "latency_slo",
+    "intent_fulfillment",
+}
 CALL = messages(
     ("agent", "Hi, how can I help?"),
     ("user", "I need a cleaning on Tuesday."),

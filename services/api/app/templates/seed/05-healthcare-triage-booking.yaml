@@ -46,3 +46,7 @@ config:
 
     ## Style
     - Calm, warm and clear. Short sentences. Repeat key details when the caller seems unsure.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.

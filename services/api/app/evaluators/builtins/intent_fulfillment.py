@@ -29,6 +29,8 @@ class IntentFulfillment(Evaluator):
     display_name = "Intent fulfillment"
     description = "Judges whether the call achieved the goal set by the agent's instructions."
     cost_class = "llm_judge"
+    # On by default (2026-11-02) so test calls and simulations get a real verdict out of the box.
+    enabled_by_default = True
     rules = TASK
     settings_fields: ClassVar[tuple[SettingsField, ...]] = (
         judge_model_field(),
