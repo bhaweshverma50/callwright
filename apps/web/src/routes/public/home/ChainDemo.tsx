@@ -45,7 +45,7 @@ export function ChainDemo() {
 
   return (
     <div ref={ref} className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
-      <div role="tablist" aria-label="Links in the call" aria-orientation="vertical" className="flex flex-col">
+      <div role="tablist" aria-label="Links in the call" aria-orientation="vertical" className="flex flex-col gap-1.5">
         {LINKS.map((l) => {
           const selected = l.c === active;
           const Icon = COMPONENT_ICONS[l.c]!;
@@ -72,7 +72,7 @@ export function ChainDemo() {
                 {COMPONENT_LABELS[l.c]}
               </span>
               <span className={cn("mt-1 block text-[14px] leading-relaxed", selected ? "text-fg-2" : "text-fg-3")}>{l.text}</span>
-              {selected && <span className="mt-2 block text-[13px] text-fg-3">{providersFor(l.c).join(", ")}</span>}
+              <span className={cn("mt-2 block text-[13px]", selected ? "text-fg-3" : "text-fg-3/70")}>{providersFor(l.c).join(", ")}</span>
               {selected && running && (
                 <motion.span
                   key={`timer-${l.c}`}
@@ -92,21 +92,21 @@ export function ChainDemo() {
         id="chain-panel"
         role="tabpanel"
         aria-labelledby={`chain-tab-${active}`}
-        className="relative flex min-h-[380px] flex-col overflow-hidden rounded-feature border border-console-line bg-console p-6 text-console-fg shadow-2 sm:p-8"
+        className="relative flex h-[420px] flex-col overflow-hidden rounded-feature border border-console-line bg-console p-6 text-console-fg shadow-2 sm:p-8"
       >
         <p className="flex items-center justify-between text-[12.5px] text-console-fg-2">
           <span>Sample turn</span>
           <span>{COMPONENT_LABELS[active]}</span>
         </p>
         <div className="relative mt-6 flex-1">
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
             <motion.div
               key={active}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.25, ease: EASE }}
-              className="flex h-full flex-col gap-5"
+              className="absolute inset-0 flex flex-col gap-5"
             >
               {active === "nc" && <NoiseScene reduce={reduce} />}
               {active === "stt" && <SpeechScene reduce={reduce} />}

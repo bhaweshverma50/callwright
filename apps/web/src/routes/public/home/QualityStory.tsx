@@ -1,5 +1,5 @@
 import { CircleCheck, CircleX, LoaderCircle } from "lucide-react";
-import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LatencyChip, OnAir, Ticker, cn } from "../../../components";
 
@@ -29,7 +29,6 @@ const STEPS = [
  */
 export function QualityStory() {
   const [active, setActive] = useState(0);
-  const Scene = STEPS[active]!.Scene;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-x-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <ol>
@@ -47,18 +46,18 @@ export function QualityStory() {
       </ol>
       <div className="hidden lg:block">
         <div className="sticky top-[calc(50vh-190px)]">
-          <Frame>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={active}
-                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-                transition={{ duration: 0.3, ease: EASE }}
+          {/* Every scene sits in the same grid cell, so the frame keeps the tallest one's height and a
+              swap is a crossfade with nothing mounting or unmounting. */}
+          <Frame className="grid [&>*]:[grid-area:1/1]">
+            {STEPS.map((st, i) => (
+              <div
+                key={st.title}
+                aria-hidden={i !== active}
+                className={cn("transition-opacity duration-300 ease-out", i === active ? "opacity-100" : "pointer-events-none opacity-0")}
               >
-                <Scene />
-              </motion.div>
-            </AnimatePresence>
+                <st.Scene active={i === active} />
+              </div>
+            ))}
           </Frame>
         </div>
       </div>
@@ -68,7 +67,7 @@ export function QualityStory() {
 
 function StoryStep({ index, active, onEnter, children }: { index: number; active: boolean; onEnter: (i: number) => void; children: ReactNode }) {
   const ref = useRef<HTMLLIElement>(null);
-  const inView = useInView(ref, { margin: "-45% 0px -45% 0px" });
+  const inView = useInView(ref, { margin: "-50% 0px -50% 0px" });
   useEffect(() => {
     if (inView) onEnter(index);
   }, [inView, index, onEnter]);
@@ -85,13 +84,13 @@ function StoryStep({ index, active, onEnter, children }: { index: number; active
   );
 }
 
-function Frame({ children }: { children: ReactNode }) {
-  return <div className="min-h-[380px] rounded-feature border border-line bg-surface p-5 shadow-2 sm:p-6">{children}</div>;
+function Frame({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("min-h-[380px] rounded-feature border border-line bg-surface p-5 shadow-2 sm:p-6", className)}>{children}</div>;
 }
 
 const usd = (n: number) => `$${n.toFixed(4)}`;
 
-function CallsScene() {
+function CallsScene(_: { active?: boolean }) {
   const reduce = useReducedMotion();
   const [cost, setCost] = useState(0.0412);
   useEffect(() => {
@@ -132,14 +131,19 @@ function CallsScene() {
   );
 }
 
-function VerdictScene() {
+function VerdictScene({ active = true }: { active?: boolean }) {
   const reduce = useReducedMotion();
   const [done, setDone] = useState(!!reduce);
+  // The verdict lands each time the scene comes into view.
   useEffect(() => {
     if (reduce) return;
+    if (!active) {
+      setDone(false);
+      return;
+    }
     const t = setTimeout(() => setDone(true), 1400);
     return () => clearTimeout(t);
-  }, [reduce]);
+  }, [reduce, active]);
   const checks = [
     { name: "Screened for emergencies first", pass: true },
     { name: "Confirmed the patient's date of birth", pass: false, pending: true },
@@ -199,7 +203,7 @@ function VerdictScene() {
   );
 }
 
-function FixScene() {
+function FixScene({ active = true }: { active?: boolean }) {
   const reduce = useReducedMotion();
   return (
     <div className="flex flex-col">
@@ -218,7 +222,7 @@ function FixScene() {
           <motion.div
             className="h-full rounded-full bg-[linear-gradient(90deg,var(--heat-1),var(--heat-2),var(--heat-3))]"
             initial={reduce ? false : { width: "0%" }}
-            animate={{ width: `${(13 / 14) * 100}%` }}
+            animate={{ width: active || reduce ? `${(13 / 14) * 100}%` : "0%" }}
             transition={{ duration: 1.4, ease: EASE, delay: 0.3 }}
           />
         </div>

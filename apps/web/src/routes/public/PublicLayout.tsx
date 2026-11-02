@@ -25,7 +25,7 @@ export function PublicLayout() {
       >
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line bg-bg/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/95">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-8 px-4 sm:px-6">
           <Link to="/" className={cn("rounded-[9px]", focusRing)} aria-label="Callwright home">
             <Logo />
