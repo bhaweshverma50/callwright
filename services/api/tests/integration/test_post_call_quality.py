@@ -101,13 +101,22 @@ async def test_scripted_booking_call_gets_analysis_and_verdicts(
     assert again == [(2,)]
 
 
-async def test_call_without_variables_still_gets_summary_and_silent_caller_is_unknown(
+async def test_silent_caller_is_too_short_to_analyse_and_judge(
     client: httpx.AsyncClient, account: Account, runtime: Runtime, quality: FakeLlm
 ) -> None:
+    h = account.headers
     call = await scripted_call(runtime, account.workspace_id, lines=[("agent", "Hello? Is anyone there?")])
-    analysis = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=account.headers)).json()
-    assert analysis["status"] == "completed" and analysis["summary"] and analysis["values"] == []
-    assert analysis["sentiment"] == "unknown"
+    analysis = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=h)).json()
+    assert analysis["status"] == "skipped" and analysis["skip_reason"] == "too_short"
+    assert analysis["summary"] is None
+    runs = {
+        r["evaluator_name"]: r
+        for r in (await client.get(f"/v1/calls/{call.call_id}/evaluations", headers=h)).json()["runs"]
+    }
+    # Intent fulfilment (a paid judge, on by default) is skipped; free checks still run.
+    assert runs["intent_fulfillment"]["status"] == "skipped"
+    assert runs["intent_fulfillment"]["skip_reason"] == "too_short"
+    assert runs["latency_slo"]["status"] == "completed"
 
 
 async def test_zero_balance_skips_analysis_and_judges(

@@ -52,6 +52,7 @@ const SKIP_LABELS: Record<NonNullable<EvaluatorRun["skip_reason"]>, string> = {
   not_applicable_agent_type: "Skipped: does not apply to this agent type",
   evaluator_disabled: "Skipped: check turned off",
   not_sampled: "Skipped: not sampled",
+  too_short: "Skipped: call too short to judge",
 };
 
 /** One-line state of a run for chips and rows ("Passed", "Skipped: not sampled", "Not applicable: no recording"). */

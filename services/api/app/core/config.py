@@ -228,6 +228,11 @@ class Settings(BaseSettings):
     eval_judge_model: str | None = None
     eval_concurrency: int = Field(4, ge=1, le=32)
     eval_timeout_s: float = Field(60.0, gt=0, le=600)
+    # Calls shorter than this, or where the caller said fewer characters than this, skip the AI
+    # summary and the LLM-judge checks after the call (free checks still run; a manual re-run
+    # forces them). Simulations are exempt from the duration rule. 0 turns a rule off.
+    analysis_min_duration_s: int = Field(15, ge=0)
+    analysis_min_caller_chars: int = Field(40, ge=0)
     # Judge scores at or above the cutoff pass (pinned in each built-in judge's version).
     eval_judge_pass_cutoff: float = Field(0.5, ge=0, le=1)
     calibration_min_sample: int = Field(5, ge=1, le=100)

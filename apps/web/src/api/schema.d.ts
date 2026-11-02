@@ -5429,7 +5429,7 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "running" | "completed" | "skipped" | "error";
             /** @enum {string|null} */
-            skip_reason?: "insufficient_credit" | null;
+            skip_reason?: "insufficient_credit" | "too_short" | null;
             error?: string | null;
             model?: string | null;
             summary?: string | null;
@@ -5567,7 +5567,7 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "running" | "completed" | "skipped" | "error";
             /** @enum {string|null} */
-            skip_reason?: "insufficient_credit" | "not_applicable_agent_type" | "evaluator_disabled" | "not_sampled" | null;
+            skip_reason?: "insufficient_credit" | "not_applicable_agent_type" | "evaluator_disabled" | "not_sampled" | "too_short" | null;
             error?: string | null;
             verdict?: components["schemas"]["Verdict"] | null;
             score?: number | null;

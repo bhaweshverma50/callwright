@@ -213,7 +213,7 @@ components:
         scope: { type: string, enum: [call, turn, flow_node] }
         trigger: { type: string, enum: [pipeline, rerun, dataset, simulation] }
         status: { type: string, enum: [pending, running, completed, skipped, error] }
-        skip_reason: { type: [string, "null"], enum: [insufficient_credit, not_applicable_agent_type, evaluator_disabled, not_sampled, null] }
+        skip_reason: { type: [string, "null"], enum: [insufficient_credit, not_applicable_agent_type, evaluator_disabled, not_sampled, too_short, null] }
         error: { type: [string, "null"] }
         verdict:
           oneOf:

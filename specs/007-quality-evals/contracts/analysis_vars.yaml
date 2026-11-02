@@ -172,7 +172,7 @@ components:
       properties:
         call_id: { type: string }
         status: { type: string, enum: [pending, running, completed, skipped, error] }
-        skip_reason: { type: [string, "null"], enum: [insufficient_credit, null] }
+        skip_reason: { type: [string, "null"], enum: [insufficient_credit, too_short, null] }
         error: { type: [string, "null"] }
         model: { type: [string, "null"] }
         summary: { type: [string, "null"], maxLength: 600 }

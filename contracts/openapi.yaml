@@ -8868,6 +8868,7 @@ components:
           - 'null'
           enum:
           - insufficient_credit
+          - too_short
           - null
         error:
           type:
@@ -11051,6 +11052,7 @@ components:
           - not_applicable_agent_type
           - evaluator_disabled
           - not_sampled
+          - too_short
           - null
         error:
           type:

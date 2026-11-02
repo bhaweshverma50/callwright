@@ -74,7 +74,9 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
           <p className="text-[13px] text-fg-3">
             {a.skip_reason === "insufficient_credit"
               ? "Analysis skipped: insufficient credit. Re-run it after a top-up."
-              : "No analysis for this call: it never connected or had nothing to analyse."}
+              : a.skip_reason === "too_short"
+                ? "Not analysed: the call was too short to summarise. Re-run the analysis to force it."
+                : "No analysis for this call: it never connected or had nothing to analyse."}
           </p>
         ) : a.status === "error" ? (
           <p className="text-[13px] text-danger-text">Analysis failed{a.error ? `: ${a.error}` : ""}. Try re-running it.</p>
