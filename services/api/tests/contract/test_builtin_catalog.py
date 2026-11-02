@@ -40,7 +40,7 @@ GOLDEN = {
         "llm_judge",
         "class",
         "all",
-        False,
+        True,
         {"judge_model": ("select",), "sample_rate_pct": ("int", 1, 100, 100)},
     ),
     "kb_relevance": (

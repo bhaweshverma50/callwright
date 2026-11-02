@@ -12,6 +12,7 @@ from tests.quality_support import scripted_call
 from tests.runtime_support import Runtime, agent_config, idem
 
 INTENT = builtin_id("intent_fulfillment")
+FACTUAL = builtin_id("factual_consistency")
 
 
 async def test_settings_listing_per_agent_type(
@@ -21,10 +22,13 @@ async def test_settings_listing_per_agent_type(
     single = runtime.versions.add_agent(account.workspace_id).agent_id
     items = check(await client.get(f"/v1/agents/{single}/eval-settings", headers=h)).json()["items"]
     assert len(items) == 8
-    assert {i["name"] for i in items if i["enabled"]} == {"audio_silence", "latency_slo"}
+    default_on = {"audio_silence", "latency_slo", "intent_fulfillment"}
+    assert {i["name"] for i in items if i["enabled"]} == default_on
     assert [i["display_name"] for i in items] == sorted(i["display_name"] for i in items)
     judges = [i for i in items if i["cost_class"] == "llm_judge"]
-    assert judges and all(i["est_cost_per_call_usd"] > 0 and not i["enabled"] for i in judges)
+    assert judges and all(i["est_cost_per_call_usd"] > 0 for i in judges)
+    # Intent fulfilment is the one judge on by default; every other paid check starts off.
+    assert all(not i["enabled"] for i in judges if i["name"] != "intent_fulfillment")
     flow = runtime.versions.add_agent(
         account.workspace_id, agent_config(type="flow"), agent_type="flow"
     ).agent_id
@@ -33,6 +37,7 @@ async def test_settings_listing_per_agent_type(
     assert {i["name"] for i in flow_items if i["enabled"]} == {
         "audio_silence",
         "flow_completion",
+        "intent_fulfillment",
         "latency_slo",
         "node_dead_end",
         "stuck_loop_detector",
@@ -131,14 +136,15 @@ async def test_evaluations_rerun_and_verdict_diff(
     done = check(
         await client.get(f"/v1/calls/{a.call_id}/evaluations", params={"include_history": "true"}, headers=h)
     ).json()
-    assert done["eval_status"] == "passed" and len(done["history"]) == 2
+    # The rerun supersedes the three default checks: long silences, turn latency, intent fulfilment.
+    assert done["eval_status"] == "passed" and len(done["history"]) == 3
     assert all(r["superseded_at"] for r in done["history"]) and all(
         r["trigger"] == "rerun" for r in done["runs"]
     )
     subset = check(
         await client.post(
             f"/v1/calls/{a.call_id}/evaluations/rerun",
-            json={"evaluator_ids": [INTENT]},
+            json={"evaluator_ids": [FACTUAL]},
             headers={**h, **idem()},
         )
     )
