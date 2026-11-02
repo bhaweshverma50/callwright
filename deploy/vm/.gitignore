@@ -1,6 +1,7 @@
 livekit.yaml
 .env
 worker.env
+voice.env
 sip.yaml
 sip-certs/
 lab-pbx/pjsip.conf
