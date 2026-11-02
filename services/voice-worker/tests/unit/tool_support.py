@@ -55,7 +55,7 @@ def tool(
 
 
 def http_spec(name: str = "check_availability", **config: Any) -> dict[str, Any]:
-    base = {
+    base: dict[str, Any] = {
         "method": "POST",
         "url": "https://api.example.com/slots",
         "headers": [],

@@ -65,10 +65,15 @@ def test_node_overrides_build_their_own_components() -> None:
     plan = plan_session(runtime, AdapterRegistry())
     control = RecordingControl()
     built: list[Any] = []
-    components = FlowComponents(AdapterRegistry(), lambda spec: built.append(spec) or spec)
+
+    def build(spec: Any) -> Any:
+        built.append(spec)
+        return spec
+
+    components = FlowComponents(AdapterRegistry(), build)
     call = FlowCall(
         runtime, control, plan, components=components, base_tools=build_call_tools(runtime, control)
-    )  # type: ignore[arg-type]
+    )
     spanish = call.node_components(call.run.node("n_spanish0"))
     assert spanish["llm"].model == "gpt-5-mini" and spanish["llm"].provider == "openai"
     assert spanish["stt"].options["language"] == "es"

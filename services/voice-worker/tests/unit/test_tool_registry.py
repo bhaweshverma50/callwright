@@ -84,7 +84,7 @@ async def test_reporting_failure_does_not_break_dispatch() -> None:
     def broken(_: Any) -> None:
         raise RuntimeError("recorder down")
 
-    h.tools.control.report_tool = broken  # type: ignore[method-assign]
+    h.tools.control.report_tool = broken  # type: ignore[method-assign,assignment]
     assert json.loads(await h.tools.dispatch("end_call", {})) == {"ended": True}
 
 
@@ -142,7 +142,7 @@ async def test_end_call_waits_for_the_goodbye_to_play_before_hanging_up() -> Non
     def context(run_ctx: object) -> object:
         return replace(original(None), wait_for_playout=Played().wait_for_playout)
 
-    h.tools._context = context  # type: ignore[method-assign]
+    h.tools._context = context  # type: ignore[method-assign,assignment]
     backend_end = h.backend.end
 
     async def end(reason: str, diagnostic: str | None) -> None:

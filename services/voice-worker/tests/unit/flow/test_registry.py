@@ -67,7 +67,7 @@ def test_every_node_type_has_a_handler_or_is_conversational() -> None:
         "end",
     }
     with pytest.raises(ValueError):
-        registry.register("agent", lambda *_: None)  # type: ignore[arg-type,return-value]
+        registry.register("agent", lambda *_: None)  # type: ignore[arg-type]
 
 
 def test_unknown_node_type_is_refused_before_the_call() -> None:

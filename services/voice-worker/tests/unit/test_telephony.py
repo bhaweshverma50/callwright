@@ -206,11 +206,7 @@ async def test_outbound_busy_is_posted_and_room_closed(monkeypatch: pytest.Monke
 
     monkeypatch.setattr("worker.entry.dial_outbound", busy)
     assert await call._await_caller() is None
-    sent = [
-        e
-        for request in posted.calls
-        for e in json.loads(request.request.content)["events"]
-    ]
+    sent = [e for request in posted.calls for e in json.loads(request.request.content)["events"]]
     assert [
         (e["status"], e.get("diagnostic"), e.get("sip_status_code"))
         for e in sent
@@ -237,11 +233,7 @@ async def test_inbound_caller_hangup_during_ring_fails_without_connecting(
 
     monkeypatch.setattr("worker.entry.ring_phase", hung_up)
     assert await call._await_caller() is None
-    sent = [
-        e
-        for request in posted.calls
-        for e in json.loads(request.request.content)["events"]
-    ]
+    sent = [e for request in posted.calls for e in json.loads(request.request.content)["events"]]
     assert [(e["status"], e.get("diagnostic")) for e in sent if e["type"] == "status"] == [
         ("ringing", None),
         ("failed", "caller_hung_up_while_ringing"),

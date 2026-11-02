@@ -95,7 +95,7 @@ def flow_llm(script: FlowScript, model: str = "gpt-5.1") -> Any:
                 said = last_user(self._chat_ctx).lower()
                 if not after_tool:
                     for rule in script.rules:
-                        if rule.match.lower() in said and rule.tool in names:
+                        if rule.match.lower() in said and rule.tool and rule.tool in names:
                             call = (rule.tool, rule.args)
                             break
                         if rule.match.lower() in said and rule.reply and not rule.tool:
@@ -254,8 +254,8 @@ async def run_flow_call(
     rt = build_runtime(dict(config), dict(runtime or {}))
     plan = plan_session(rt, AdapterRegistry())
     control = RecordingControl()
-    tools = build_call_tools(rt, control)  # type: ignore[arg-type]
-    agent = CallwrightFlowRunner().build_agent(rt, control, [], plan=plan, base_tools=tools)  # type: ignore[arg-type]
+    tools = build_call_tools(rt, control)
+    agent = CallwrightFlowRunner().build_agent(rt, control, [], plan=plan, base_tools=tools)
     model = flow_llm(script)
     replies: list[str] = []
     async with AgentSession(llm=model, vad=None) as session:

@@ -12,6 +12,7 @@ import asyncio
 import json
 import sys
 import time
+from typing import Any
 
 import httpx
 
@@ -41,7 +42,9 @@ async def run(iterations: int = 500, slow_runs: int = 3, slow_ms: float = 1500) 
         said_at: list[float] = []
         original = h.backend.speak
 
-        async def speak(text: str, allow_interruptions: bool, _orig=original, _at=said_at) -> None:
+        async def speak(
+            text: str, allow_interruptions: bool, _orig: Any = original, _at: Any = said_at
+        ) -> None:
             _at.append(time.perf_counter())
             await _orig(text, allow_interruptions)
 
