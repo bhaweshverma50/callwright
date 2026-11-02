@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { signIn } from "./helpers";
 
 // T097: shell journey (FR-005, FR-018, FR-019, FR-020).
-test("first load reads only identity and balance; no feature credentials", async ({ page }) => {
+test("first load reads identity and balance and fetches no feature credentials", async ({ page }) => {
   await signIn(page);
   const apiCalls: string[] = [];
   page.on("request", (r) => {
@@ -12,7 +12,10 @@ test("first load reads only identity and balance; no feature credentials", async
   await page.reload();
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await page.waitForLoadState("networkidle");
-  expect(new Set(apiCalls)).toEqual(new Set(["GET /v1/me", "GET /v1/billing/balance"]));
+  // The shell reads who you are and your balance; the dashboard adds its own setup-checklist reads.
+  expect(apiCalls).toEqual(expect.arrayContaining(["GET /v1/me", "GET /v1/billing/balance"]));
+  // No call, room or speech credentials are minted until a feature asks for them.
+  expect(apiCalls.filter((c) => /token|session|credential/.test(c))).toEqual([]);
 });
 
 test("unknown address shows not found inside the shell", async ({ page }) => {

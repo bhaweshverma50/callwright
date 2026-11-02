@@ -68,10 +68,9 @@ jobs:
         run: uv run mypy app
       - name: Migrations apply to an empty database
         run: uv run alembic upgrade head
-      - name: Migrations step back and forward (latest revision)
-        run: |
-          uv run alembic downgrade -1
-          uv run alembic upgrade head
+      # Migrations are forward-only (constitution); check the chain stays linear instead.
+      - name: Migrations form one linear chain
+        run: test "$(uv run alembic heads | grep -c head)" -eq 1
       - name: Agent templates sync
         run: uv run python -m app.templates.jobs sync
       - name: Tests (unit, contract, integration)
