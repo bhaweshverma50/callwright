@@ -179,9 +179,11 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [workspace_id, config_snapshot, user_prompt, dynamic_variables]
+                required: [workspace_id, agent_id, agent_type, config_snapshot, user_prompt, dynamic_variables]
                 properties:
                   workspace_id: { type: string }
+                  agent_id: { type: string }
+                  agent_type: { type: string, enum: [single_prompt, flow] }
                   config_snapshot: { type: object }
                   user_prompt: { type: string }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
@@ -207,6 +209,10 @@ paths:
                 tool_calls:
                   type: array
                   items: { $ref: '#/components/schemas/ToolCallRecord' }
+                nodes_visited:
+                  type: array
+                  description: Flow agents only; node ids in the order they were entered
+                  items: { type: string }
                 usage: { type: object }
                 duration_ms: { type: integer }
                 error_message: { type: [string, 'null'] }
@@ -266,6 +272,10 @@ components:
         tool_calls:
           type: array
           items: { $ref: '#/components/schemas/ToolCallRecord' }
+        nodes_visited:
+          type: array
+          description: Flow agents only; node ids in the order they were entered
+          items: { type: string }
         judge_status: { type: [string, 'null'], enum: [passed, failed, error, null] }
         judge_reasoning: { type: [string, 'null'] }
         override_status: { type: [string, 'null'], enum: [passed, failed, null] }

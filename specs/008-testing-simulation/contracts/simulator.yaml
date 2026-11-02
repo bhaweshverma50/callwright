@@ -310,9 +310,12 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [workspace_id, simulation_run_id, output_call_id, mode, config_snapshot, settings, dynamic_variables]
+                required: [workspace_id, simulation_run_id, output_call_id, agent_id, agent_type, channel, mode, config_snapshot, settings, dynamic_variables]
                 properties:
                   workspace_id: { type: string }
+                  agent_id: { type: string }
+                  agent_type: { type: string, enum: [single_prompt, flow] }
+                  channel: { type: string, enum: [web, sip_inbound, sip_outbound, whatsapp] }
                   simulation_run_id: { type: string }
                   output_call_id: { type: string, description: Call row pre-created with origin simulation }
                   mode: { $ref: '#/components/schemas/SimMode' }
@@ -425,6 +428,7 @@ components:
       properties:
         simulation_run_id: { type: string, pattern: '^srun_' }
         agent_id: { type: string }
+        agent_name: { type: string }
         experiment_id: { type: [string, 'null'] }
         base_call_id: { type: [string, 'null'] }
         mode: { $ref: '#/components/schemas/SimMode' }
@@ -451,6 +455,7 @@ components:
       properties:
         experiment_id: { type: string, pattern: '^exp_' }
         agent_id: { type: string }
+        agent_name: { type: string }
         name: { type: string }
         mode: { $ref: '#/components/schemas/SimMode' }
         target_type: { type: string, enum: [published, draft, version, variant] }

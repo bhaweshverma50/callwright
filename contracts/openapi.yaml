@@ -15,6 +15,7 @@ tags:
 - name: call-events-internal
 - name: calls-internal
 - name: core
+- name: datasets
 - name: demo
 - name: flows
 - name: internal
@@ -27,7 +28,10 @@ tags:
 - name: pricing
 - name: prompt_ai
 - name: sessions
+- name: simulator
 - name: templates
+- name: test_cases
+- name: test_runs
 - name: tools
 - name: usage
 - name: voices
@@ -2276,6 +2280,270 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 006-calls-analytics
+  /datasets:
+    get:
+      tags:
+      - datasets
+      operationId: listDatasets
+      parameters:
+      - name: agent_id
+        in: query
+        schema:
+          type: string
+          pattern: ^agt_
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Datasets, most recently updated first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Dataset'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - datasets
+      operationId: createDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              - agent_id
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                description:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                call_ids:
+                  type: array
+                  maxItems: 1000
+                  items:
+                    type: string
+                    pattern: ^call_
+                  description: Optional initial items (same rules as add items)
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Dataset'
+                - type: object
+                  properties:
+                    add_result:
+                      $ref: '#/components/schemas/AddItemsResult'
+        '409':
+          description: Name already in use (case-insensitive)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+  /datasets/{dataset_id}:
+    parameters:
+    - $ref: '#/components/parameters/DatasetId'
+    get:
+      tags:
+      - datasets
+      operationId: getDataset
+      responses:
+        '200':
+          description: Dataset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+    patch:
+      tags:
+      - datasets
+      operationId: updateDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                description:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '409':
+          description: Name already in use
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+    delete:
+      tags:
+      - datasets
+      operationId: deleteDataset
+      responses:
+        '204':
+          description: Dataset and item links removed; calls untouched
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+  /datasets/{dataset_id}/evaluate:
+    post:
+      tags:
+      - datasets
+      operationId: evaluateDataset
+      summary: Queue every enabled evaluator on every available call (charged by 007 per evaluation)
+      parameters:
+      - $ref: '#/components/parameters/DatasetId'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                only_missing:
+                  type: boolean
+                  default: false
+                  description: Skip calls that already have results from the current evaluator versions
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - enqueued
+                - skipped_unavailable
+                properties:
+                  enqueued:
+                    type: integer
+                  skipped_up_to_date:
+                    type: integer
+                  skipped_unavailable:
+                    type: integer
+        '402':
+          description: Balance at or below zero
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /datasets/{dataset_id}/items:
+    parameters:
+    - $ref: '#/components/parameters/DatasetId'
+    get:
+      tags:
+      - datasets
+      operationId: listDatasetItems
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Items, most recently added first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/DatasetItem'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - datasets
+      operationId: addDatasetItems
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - call_ids
+              properties:
+                call_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items:
+                    type: string
+                    pattern: ^call_
+      responses:
+        '200':
+          description: Outcome per call
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddItemsResult'
+        '422':
+          description: Would exceed 1,000 items
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /datasets/{dataset_id}/items/{call_id}:
+    delete:
+      tags:
+      - datasets
+      operationId: removeDatasetItem
+      parameters:
+      - $ref: '#/components/parameters/DatasetId'
+      - $ref: '#/components/parameters/CallIdPath'
+      responses:
+        '204':
+          description: Removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
   /dnc-entries:
     get:
       operationId: listDncEntries
@@ -2742,6 +3010,195 @@ paths:
         '404':
           $ref: '#/components/responses/Problem'
       x-spec: 007-quality-evals
+  /experiments:
+    get:
+      tags:
+      - simulator
+      operationId: listExperiments
+      parameters:
+      - name: agent_id
+        in: query
+        schema:
+          type: string
+      - name: source
+        in: query
+        schema:
+          type: string
+          enum:
+          - call_selection
+          - dataset
+          - issue_validation
+          - api
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Batches, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Experiment'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - simulator
+      operationId: startExperiment
+      summary: Start a batch over base_call_ids or a dataset (exactly one)
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              - mode
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                name:
+                  type: string
+                  maxLength: 120
+                mode:
+                  $ref: '#/components/schemas/SimMode'
+                target:
+                  $ref: '#/components/schemas/SimTarget'
+                base_call_ids:
+                  type: array
+                  minItems: 2
+                  maxItems: 100
+                  items:
+                    type: string
+                    pattern: ^call_
+                dataset_id:
+                  type: string
+                  pattern: ^ds_
+                settings:
+                  $ref: '#/components/schemas/SimSettings'
+              oneOf:
+              - required:
+                - base_call_ids
+              - required:
+                - dataset_id
+      responses:
+        '202':
+          description: Batch created; runs pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '422':
+          description: Mixed agents, too many calls, invalid calls or invalid variant
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /experiments/{experiment_id}:
+    get:
+      tags:
+      - simulator
+      operationId: getExperiment
+      parameters:
+      - $ref: '#/components/parameters/ExperimentId'
+      responses:
+        '200':
+          description: Batch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+  /experiments/{experiment_id}/cancel:
+    post:
+      tags:
+      - simulator
+      operationId: cancelExperiment
+      parameters:
+      - $ref: '#/components/parameters/ExperimentId'
+      responses:
+        '200':
+          description: Pending runs cancelled; in-flight runs finish
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+      x-spec: 008-testing-simulation
+  /experiments/{experiment_id}/runs:
+    get:
+      tags:
+      - simulator
+      operationId: listExperimentRuns
+      parameters:
+      - $ref: '#/components/parameters/ExperimentId'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Runs of the batch
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/SimulationRun'
+      x-spec: 008-testing-simulation
+  /experiments/{experiment_id}/scorecard:
+    get:
+      tags:
+      - simulator
+      operationId: getExperimentScorecard
+      parameters:
+      - $ref: '#/components/parameters/ExperimentId'
+      - name: baseline
+        in: query
+        schema:
+          type: string
+          enum:
+          - original
+          - experiment
+          default: original
+      - name: baseline_experiment_id
+        in: query
+        schema:
+          type: string
+          pattern: ^exp_
+        description: Required when baseline is experiment; must share base calls
+      responses:
+        '200':
+          description: Scorecard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scorecard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
   /flows:
     post:
       tags:
@@ -3155,6 +3612,241 @@ paths:
         '403':
           $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
+  /internal/simulation-runs/{simulation_run_id}/result:
+    post:
+      tags:
+      - simulator
+      operationId: internalPostSimulationResult
+      security:
+      - serviceToken: []
+      parameters:
+      - $ref: '#/components/parameters/SimulationRunId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - status
+              - usage
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - completed
+                  - failed
+                end_reason:
+                  $ref: '#/components/schemas/SimEndReason'
+                diverged_at_turn:
+                  type:
+                  - integer
+                  - 'null'
+                answer_source_counts:
+                  $ref: '#/components/schemas/AnswerSourceCounts'
+                persona_brief:
+                  $ref: '#/components/schemas/PersonaBrief'
+                usage:
+                  type: object
+                error_message:
+                  type:
+                  - string
+                  - 'null'
+      responses:
+        '204':
+          description: Accepted; post-call pipeline starts for the simulated call
+      x-spec: 008-testing-simulation
+  /internal/simulation-runs/{simulation_run_id}/spec:
+    get:
+      tags:
+      - simulator
+      operationId: internalGetSimulationSpec
+      summary: Called by the voice-worker text runner (service token)
+      security:
+      - serviceToken: []
+      parameters:
+      - $ref: '#/components/parameters/SimulationRunId'
+      responses:
+        '200':
+          description: Everything the runner needs
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - workspace_id
+                - simulation_run_id
+                - output_call_id
+                - agent_id
+                - agent_type
+                - channel
+                - mode
+                - config_snapshot
+                - settings
+                - dynamic_variables
+                properties:
+                  workspace_id:
+                    type: string
+                  agent_id:
+                    type: string
+                  agent_type:
+                    type: string
+                    enum:
+                    - single_prompt
+                    - flow
+                  channel:
+                    type: string
+                    enum:
+                    - web
+                    - sip_inbound
+                    - sip_outbound
+                    - whatsapp
+                  simulation_run_id:
+                    type: string
+                  output_call_id:
+                    type: string
+                    description: Call row pre-created with origin simulation
+                  mode:
+                    $ref: '#/components/schemas/SimMode'
+                  config_snapshot:
+                    type: object
+                  settings:
+                    $ref: '#/components/schemas/SimSettings'
+                  dynamic_variables:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  start_speaker:
+                    type: string
+                    enum:
+                    - agent
+                    - user
+                  caller_turns:
+                    type: array
+                    description: Replay only
+                    items:
+                      type: string
+                  recorded_tool_outputs:
+                    type: array
+                    description: Replay only; in call order
+                    items:
+                      type: object
+                      required:
+                      - name
+                      - output
+                      properties:
+                        name:
+                          type: string
+                        output:
+                          type: string
+                  original_node_path:
+                    type: array
+                    items:
+                      type: string
+                  persona_brief:
+                    $ref: '#/components/schemas/PersonaBrief'
+      x-spec: 008-testing-simulation
+  /internal/test-runs/{test_run_id}/cases/{test_case_id}/result:
+    post:
+      tags:
+      - test_runs
+      operationId: internalPostTestCaseResult
+      security:
+      - serviceToken: []
+      parameters:
+      - $ref: '#/components/parameters/TestRunId'
+      - name: test_case_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - completed
+                  - error
+                agent_response:
+                  type:
+                  - string
+                  - 'null'
+                tool_calls:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ToolCallRecord'
+                nodes_visited:
+                  type: array
+                  description: Flow agents only; node ids in the order they were entered
+                  items:
+                    type: string
+                usage:
+                  type: object
+                duration_ms:
+                  type: integer
+                error_message:
+                  type:
+                  - string
+                  - 'null'
+      responses:
+        '204':
+          description: Accepted; judging is enqueued
+      x-spec: 008-testing-simulation
+  /internal/test-runs/{test_run_id}/cases/{test_case_id}/spec:
+    get:
+      tags:
+      - test_runs
+      operationId: internalGetTestCaseSpec
+      summary: Called by the voice-worker text runner (service token)
+      security:
+      - serviceToken: []
+      parameters:
+      - $ref: '#/components/parameters/TestRunId'
+      - name: test_case_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Snapshot and single caller turn
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - workspace_id
+                - agent_id
+                - agent_type
+                - config_snapshot
+                - user_prompt
+                - dynamic_variables
+                properties:
+                  workspace_id:
+                    type: string
+                  agent_id:
+                    type: string
+                  agent_type:
+                    type: string
+                    enum:
+                    - single_prompt
+                    - flow
+                  config_snapshot:
+                    type: object
+                  user_prompt:
+                    type: string
+                  dynamic_variables:
+                    type: object
+                    additionalProperties:
+                      type: string
+      x-spec: 008-testing-simulation
   /knowledge-bases:
     get:
       tags:
@@ -4540,6 +5232,245 @@ paths:
               schema:
                 $ref: '#/components/schemas/CallRefusedProblem'
       x-spec: 003-voice-runtime
+  /simulation-runs:
+    get:
+      tags:
+      - simulator
+      operationId: listSimulationRuns
+      parameters:
+      - name: agent_id
+        in: query
+        schema:
+          type: string
+      - name: base_call_id
+        in: query
+        schema:
+          type: string
+      - name: experiment_id
+        in: query
+        schema:
+          type: string
+      - name: standalone
+        in: query
+        schema:
+          type: boolean
+        description: true returns only runs outside a batch
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/SimStatus'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Runs, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/SimulationRun'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - simulator
+      operationId: startSimulationRun
+      summary: Start one simulation (replay needs base_call_id; persona needs base_call_id or persona_brief)
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              - mode
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                mode:
+                  $ref: '#/components/schemas/SimMode'
+                base_call_id:
+                  type: string
+                  pattern: ^call_
+                target:
+                  $ref: '#/components/schemas/SimTarget'
+                persona_brief:
+                  $ref: '#/components/schemas/PersonaBrief'
+                dynamic_variables:
+                  type: object
+                  additionalProperties:
+                    type: string
+                settings:
+                  $ref: '#/components/schemas/SimSettings'
+      responses:
+        '202':
+          description: Run created as pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationRun'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+  /simulation-runs/{simulation_run_id}:
+    get:
+      tags:
+      - simulator
+      operationId: getSimulationRun
+      parameters:
+      - $ref: '#/components/parameters/SimulationRunId'
+      responses:
+        '200':
+          description: Run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+  /simulation-runs/{simulation_run_id}/cancel:
+    post:
+      tags:
+      - simulator
+      operationId: cancelSimulationRun
+      parameters:
+      - $ref: '#/components/parameters/SimulationRunId'
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationRun'
+        '409':
+          description: Only pending runs can be cancelled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /simulation-runs/{simulation_run_id}/comparison:
+    get:
+      tags:
+      - simulator
+      operationId: getSimulationComparison
+      summary: Side-by-side transcripts, flow paths and evaluator verdict diffs
+      parameters:
+      - $ref: '#/components/parameters/SimulationRunId'
+      responses:
+        '200':
+          description: Comparison (original is null for standalone persona runs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comparison'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Run not completed yet
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /simulations/preflight:
+    post:
+      tags:
+      - simulator
+      operationId: simulationPreflight
+      summary: Check mocks, count runs and estimate cost before starting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              - mode
+              - target
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                mode:
+                  $ref: '#/components/schemas/SimMode'
+                target:
+                  $ref: '#/components/schemas/SimTarget'
+                base_call_ids:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^call_
+                dataset_id:
+                  type: string
+                  pattern: ^ds_
+      responses:
+        '200':
+          description: Pre-flight report
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - run_count
+                - tools_missing_mock
+                - estimated_cost_usd
+                - invalid_calls
+                - warnings
+                properties:
+                  run_count:
+                    type: integer
+                  tools_missing_mock:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - name
+                      - kind
+                      properties:
+                        tool_id:
+                          type:
+                          - string
+                          - 'null'
+                        node_id:
+                          type:
+                          - string
+                          - 'null'
+                        name:
+                          type: string
+                        kind:
+                          type: string
+                          enum:
+                          - tool
+                          - webhook_node
+                  estimated_cost_usd:
+                    type: number
+                  invalid_calls:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InvalidCall'
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
   /templates:
     get:
       operationId: listTemplates
@@ -4638,6 +5569,584 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 002-agent-builder
+  /test-cases:
+    get:
+      tags:
+      - test_cases
+      operationId: listTestCases
+      parameters:
+      - name: agent_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^agt_
+      - name: category
+        in: query
+        schema:
+          type: string
+      - name: last_status
+        in: query
+        schema:
+          type: string
+          enum:
+          - passed
+          - failed
+          - error
+          - not_run
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of test cases
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/TestCase'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - test_cases
+      operationId: createTestCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestCaseCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCase'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+  /test-cases/export:
+    get:
+      tags:
+      - test_cases
+      operationId: exportTestCases
+      parameters:
+      - name: agent_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^agt_
+      - name: template
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Return an example file instead of the agent's cases
+      responses:
+        '200':
+          description: JSON file (Content-Disposition attachment)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCaseFile'
+      x-spec: 008-testing-simulation
+  /test-cases/generate:
+    post:
+      tags:
+      - test_cases
+      operationId: generateTestCases
+      summary: Draft test cases with an LLM (not saved). Billed as feature testing.generate.
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                category:
+                  type:
+                  - string
+                  - 'null'
+                  description: Slug
+                  or null for a mix across all categories: null
+                count:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                  default: 5
+                guidance:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Drafts for review
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - drafts
+                - cost_usd
+                properties:
+                  drafts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestCaseImportRow'
+                  cost_usd:
+                    type: number
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '409':
+          description: Agent has no prompt or no agent node
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /test-cases/import:
+    post:
+      tags:
+      - test_cases
+      operationId: importTestCases
+      summary: Bulk create from the JSON import format (also used to save reviewed AI drafts)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              - test_cases
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                dry_run:
+                  type: boolean
+                  default: false
+                format:
+                  type: string
+                  const: callwright.test_cases.v1
+                test_cases:
+                  type: array
+                  maxItems: 500
+                  items:
+                    $ref: '#/components/schemas/TestCaseImportRow'
+      responses:
+        '200':
+          description: Import outcome (rows are validated individually; valid rows are saved unless dry_run)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - created
+                - skipped_duplicates
+                - errors
+                properties:
+                  created:
+                    type: integer
+                  skipped_duplicates:
+                    type: integer
+                  created_ids:
+                    type: array
+                    items:
+                      type: string
+                  duplicates:
+                    type: array
+                    items:
+                      type: integer
+                      description: Zero-based row index
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - index
+                      - field
+                      - message
+                      properties:
+                        index:
+                          type: integer
+                        field:
+                          type: string
+                        message:
+                          type: string
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+  /test-cases/{test_case_id}:
+    parameters:
+    - name: test_case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^tc_
+    get:
+      tags:
+      - test_cases
+      operationId: getTestCase
+      responses:
+        '200':
+          description: Test case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCase'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+    patch:
+      tags:
+      - test_cases
+      operationId: updateTestCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestCaseUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCase'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+    delete:
+      tags:
+      - test_cases
+      operationId: deleteTestCase
+      responses:
+        '204':
+          description: Deleted; past results keep their copy
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+  /test-categories:
+    get:
+      tags:
+      - test_cases
+      operationId: listTestCategories
+      summary: List seed and custom test categories of the workspace
+      responses:
+        '200':
+          description: Categories ordered alphabetically by name (case-insensitive)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestCategory'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - test_cases
+      operationId: createTestCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                slug:
+                  type: string
+                  pattern: ^[a-z][a-z0-9_]{1,39}$
+                  description: Derived from name when omitted.
+                color:
+                  type: string
+                  pattern: ^#[0-9a-f]{6}$
+                  description: One of the palette colours; defaults to the first unused palette colour
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCategory'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+  /test-categories/{slug}:
+    delete:
+      tags:
+      - test_cases
+      operationId: deleteTestCategory
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Deleted
+        '409':
+          description: Seed category, or category still used by test cases
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /test-runs:
+    get:
+      tags:
+      - test_runs
+      operationId: listTestRuns
+      parameters:
+      - name: agent_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^agt_
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Runs, newest first (without results)
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  required:
+                  - items
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/TestRun'
+      x-spec: 008-testing-simulation
+    post:
+      tags:
+      - test_runs
+      operationId: startTestRun
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              properties:
+                agent_id:
+                  type: string
+                  pattern: ^agt_
+                test_case_ids:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^tc_
+                  description: Omit to run all cases (optionally filtered by category)
+                category:
+                  type: string
+                target:
+                  $ref: '#/components/schemas/TestTarget'
+                judge_model:
+                  type: string
+                  description: Defaults to the workspace judge model
+      responses:
+        '202':
+          description: Run queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRun'
+        '402':
+          $ref: '#/components/responses/InsufficientCredit'
+        '409':
+          description: Agent has no prompt / no agent node, or no test cases selected
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+      x-spec: 008-testing-simulation
+  /test-runs/{test_run_id}:
+    parameters:
+    - $ref: '#/components/parameters/TestRunId'
+    get:
+      tags:
+      - test_runs
+      operationId: getTestRun
+      responses:
+        '200':
+          description: Run with results
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TestRun'
+                - type: object
+                  required:
+                  - results
+                  properties:
+                    results:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/TestResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-spec: 008-testing-simulation
+  /test-runs/{test_run_id}/cancel:
+    post:
+      tags:
+      - test_runs
+      operationId: cancelTestRun
+      parameters:
+      - $ref: '#/components/parameters/TestRunId'
+      responses:
+        '200':
+          description: Cancelled; finished results kept, unfinished results marked error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRun'
+        '409':
+          description: Run already finished
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
+  /test-runs/{test_run_id}/export:
+    get:
+      tags:
+      - test_runs
+      operationId: exportTestRun
+      parameters:
+      - $ref: '#/components/parameters/TestRunId'
+      responses:
+        '200':
+          description: JSON attachment test_run_<id>_results.json
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - format
+                - run
+                - results
+                properties:
+                  format:
+                    type: string
+                    const: callwright.test_run_results.v1
+                  run:
+                    $ref: '#/components/schemas/TestRun'
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestResult'
+      x-spec: 008-testing-simulation
+  /test-runs/{test_run_id}/results/{test_case_id}:
+    patch:
+      tags:
+      - test_runs
+      operationId: overrideTestResult
+      summary: Set or clear a manual verdict
+      parameters:
+      - $ref: '#/components/parameters/TestRunId'
+      - name: test_case_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^tc_
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - override_status
+              properties:
+                override_status:
+                  type:
+                  - string
+                  - 'null'
+                  enum:
+                  - passed
+                  - failed
+                  - null
+                override_note:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+      responses:
+        '200':
+          description: Updated result and run counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - result
+                - run
+                properties:
+                  result:
+                    $ref: '#/components/schemas/TestResult'
+                  run:
+                    $ref: '#/components/schemas/TestRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Run not completed yet
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 008-testing-simulation
   /tools:
     get:
       tags:
@@ -6032,6 +7541,13 @@ components:
       schema:
         type: string
         pattern: ^wa_[0-9A-HJKMNP-TV-Z]{26}$
+    DatasetId:
+      name: dataset_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^ds_
     DeliveryHeader:
       name: Callwright-Delivery
       in: header
@@ -6065,6 +7581,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/WebhookEventName'
+    ExperimentId:
+      name: experiment_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^exp_
     FlowId:
       name: flow_id
       in: path
@@ -6159,6 +7682,13 @@ components:
         type: string
         examples:
         - t=1760600000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+    SimulationRunId:
+      name: simulation_run_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^srun_
     StartDate:
       name: start_date
       in: query
@@ -6166,6 +7696,13 @@ components:
       schema:
         type: string
         format: date
+    TestRunId:
+      name: test_run_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^trn_
     ToNumber:
       name: to_number
       in: query
@@ -6266,6 +7803,38 @@ components:
           active_call_count:
             type: integer
             minimum: 1
+    AddItemsResult:
+      type: object
+      required:
+      - added
+      - skipped_duplicates
+      - skipped_invalid
+      - invalid
+      properties:
+        added:
+          type: integer
+        skipped_duplicates:
+          type: integer
+        skipped_invalid:
+          type: integer
+        invalid:
+          type: array
+          items:
+            type: object
+            required:
+            - call_id
+            - reason
+            properties:
+              call_id:
+                type: string
+              reason:
+                type: string
+                enum:
+                - not_found
+                - wrong_agent
+                - simulated_call
+                - not_completed
+                - unavailable
     AgentConfig:
       type: object
       description: 'Plain, versioned agent configuration (data-model.md section 4). Ranges are enforced
@@ -6994,6 +8563,17 @@ components:
         updated_at:
           type: string
           format: date-time
+    AnswerSourceCounts:
+      type: object
+      properties:
+        mock:
+          type: integer
+        recorded:
+          type: integer
+        synthesized:
+          type: integer
+        error:
+          type: integer
     AssistantRequest:
       type: object
       required:
@@ -8119,6 +9699,33 @@ components:
               type: string
         runtime:
           $ref: '#/components/schemas/RuntimeConfig'
+    Comparison:
+      type: object
+      required:
+      - simulation_run_id
+      - simulated
+      - verdicts
+      properties:
+        simulation_run_id:
+          type: string
+        original:
+          oneOf:
+          - $ref: '#/components/schemas/ConversationSide'
+          - type: 'null'
+        simulated:
+          $ref: '#/components/schemas/ConversationSide'
+        diverged_at_turn:
+          type:
+          - integer
+          - 'null'
+        unused_caller_turns:
+          type: array
+          items:
+            type: string
+        verdicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerdictDiff'
     CompileResult:
       type: object
       required:
@@ -8340,6 +9947,28 @@ components:
           - percent_of_normal
           - duration
           default: decimal
+    ConversationSide:
+      type: object
+      required:
+      - call_id
+      - transcript
+      - node_path
+      properties:
+        call_id:
+          type: string
+        transcript:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimTranscriptItem'
+        node_path:
+          type: array
+          items:
+            type: object
+            properties:
+              node_id:
+                type: string
+              node_label:
+                type: string
     CostBreakdown:
       type: object
       required:
@@ -8717,6 +10346,78 @@ components:
                 type: number
                 minimum: 0
                 maximum: 1
+    Dataset:
+      type: object
+      required:
+      - dataset_id
+      - name
+      - agent_id
+      - item_count
+      - created_at
+      - updated_at
+      properties:
+        dataset_id:
+          type: string
+          pattern: ^ds_
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        agent_id:
+          type: string
+        agent_name:
+          type: string
+        item_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DatasetItem:
+      type: object
+      required:
+      - call_id
+      - added_at
+      - available
+      properties:
+        call_id:
+          type: string
+        added_at:
+          type: string
+          format: date-time
+        available:
+          type: boolean
+          description: false when the transcript was purged by retention
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        duration_s:
+          type:
+          - integer
+          - 'null'
+        call_status:
+          type:
+          - string
+          - 'null'
+        eval_status:
+          type:
+          - string
+          - 'null'
+        sentiment:
+          type:
+          - string
+          - 'null'
+          enum:
+          - positive
+          - neutral
+          - negative
+          - null
     DayWindow:
       description: Allowed calling time in recipient local time; null means no calls that day.
       oneOf:
@@ -9470,6 +11171,111 @@ components:
               enum:
               - insufficient_credit
               - error
+    Experiment:
+      type: object
+      required:
+      - experiment_id
+      - agent_id
+      - name
+      - mode
+      - target_type
+      - config_hash
+      - source
+      - status
+      - total_count
+      - completed_count
+      - failed_count
+      - cancelled_count
+      - created_at
+      properties:
+        experiment_id:
+          type: string
+          pattern: ^exp_
+        agent_id:
+          type: string
+        agent_name:
+          type: string
+        name:
+          type: string
+        mode:
+          $ref: '#/components/schemas/SimMode'
+        target_type:
+          type: string
+          enum:
+          - published
+          - draft
+          - version
+          - variant
+        agent_version_id:
+          type:
+          - string
+          - 'null'
+        variant_label:
+          type:
+          - string
+          - 'null'
+        variant_diff:
+          type:
+          - array
+          - 'null'
+          items:
+            type: object
+            properties:
+              op:
+                type: string
+                enum:
+                - add
+                - remove
+                - replace
+              path:
+                type: string
+              value: {}
+              old: {}
+        config_hash:
+          type: string
+        source:
+          type: string
+          enum:
+          - call_selection
+          - dataset
+          - issue_validation
+          - api
+        dataset_id:
+          type:
+          - string
+          - 'null'
+        issue_id:
+          type:
+          - string
+          - 'null'
+        settings:
+          $ref: '#/components/schemas/SimSettings'
+        status:
+          $ref: '#/components/schemas/SimStatus'
+        total_count:
+          type: integer
+        completed_count:
+          type: integer
+        failed_count:
+          type: integer
+        cancelled_count:
+          type: integer
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        error_message:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     ExtractConfig:
       type: object
       title: extract_variable
@@ -9944,6 +11750,22 @@ components:
           type:
           - string
           - 'null'
+    InvalidCall:
+      type: object
+      required:
+      - call_id
+      - reason
+      properties:
+        call_id:
+          type: string
+        reason:
+          type: string
+          enum:
+          - not_found
+          - wrong_agent
+          - simulated_call
+          - not_completed
+          - unavailable
     JudgeQuestionConfig:
       type: object
       required:
@@ -10765,6 +12587,59 @@ components:
         total_pages:
           type: integer
           minimum: 0
+    PairCounts:
+      type: object
+      required:
+      - n
+      - improved
+      - regressed
+      - unchanged_pass
+      - unchanged_fail
+      - version_mismatch
+      properties:
+        n:
+          type: integer
+        improved:
+          type: integer
+        regressed:
+          type: integer
+        unchanged_pass:
+          type: integer
+        unchanged_fail:
+          type: integer
+        version_mismatch:
+          type: integer
+    PersonaBrief:
+      type: object
+      required:
+      - goal
+      properties:
+        goal:
+          type: string
+          maxLength: 1000
+        known_facts:
+          type: array
+          maxItems: 30
+          items:
+            type: string
+            maxLength: 300
+        temperament:
+          type: string
+          maxLength: 300
+        speaking_style:
+          type: string
+          maxLength: 300
+        constraints:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 300
+        opening_line:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
     PhoneNumber:
       type: object
       required:
@@ -11648,6 +13523,119 @@ components:
         allow_interruptions:
           type: boolean
           default: true
+    Scorecard:
+      type: object
+      required:
+      - experiment_id
+      - baseline
+      - base_call_count
+      - sim_call_count
+      - excluded_runs
+      - evaluators
+      - by_node
+      properties:
+        experiment_id:
+          type: string
+        baseline:
+          type: string
+          enum:
+          - original
+          - experiment
+        baseline_experiment_id:
+          type:
+          - string
+          - 'null'
+        base_call_count:
+          type: integer
+        sim_call_count:
+          type: integer
+        excluded_runs:
+          type: array
+          items:
+            type: object
+            properties:
+              simulation_run_id:
+                type: string
+              status:
+                $ref: '#/components/schemas/SimStatus'
+              error_message:
+                type:
+                - string
+                - 'null'
+        evaluators:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScorecardRow'
+        by_node:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScorecardRow'
+    ScorecardRow:
+      type: object
+      required:
+      - evaluator_id
+      - evaluator_name
+      - evaluator_display_name
+      - evaluator_version
+      - scope
+      - base_n
+      - base_passes
+      - sim_n
+      - sim_passes
+      - pairs
+      properties:
+        evaluator_id:
+          type: string
+        evaluator_name:
+          type: string
+        evaluator_display_name:
+          type: string
+        evaluator_version:
+          type: integer
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+        node_id:
+          type:
+          - string
+          - 'null'
+        node_label:
+          type:
+          - string
+          - 'null'
+        base_n:
+          type: integer
+        base_passes:
+          type: integer
+        base_pass_rate:
+          type:
+          - number
+          - 'null'
+        sim_n:
+          type: integer
+        sim_passes:
+          type: integer
+        sim_pass_rate:
+          type:
+          - number
+          - 'null'
+        delta_pp:
+          type:
+          - number
+          - 'null'
+        base_mean_score:
+          type:
+          - number
+          - 'null'
+        sim_mean_score:
+          type:
+          - number
+          - 'null'
+        pairs:
+          $ref: '#/components/schemas/PairCounts'
     SearchResponse:
       type: object
       required:
@@ -11801,6 +13789,213 @@ components:
           secret:
             type: string
             pattern: ^whsec_[A-Za-z0-9_-]{43}$
+    SimEndReason:
+      type: string
+      enum:
+      - caller_turns_exhausted
+      - caller_hung_up
+      - agent_hangup
+      - call_transfer
+      - turn_limit_reached
+      - error
+    SimMode:
+      type: string
+      enum:
+      - replay
+      - persona
+    SimSettings:
+      type: object
+      properties:
+        max_caller_turns:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        missing_mock_policy:
+          type: string
+          enum:
+          - synthesize
+          - error
+          default: synthesize
+        persona_model:
+          type: string
+          description: Defaults to the workspace simulator model
+    SimStatus:
+      type: string
+      enum:
+      - pending
+      - running
+      - completed
+      - failed
+      - cancelled
+    SimTarget:
+      type: object
+      required:
+      - type
+      description: Defaults to published. A variant carries a full configuration snapshot.
+      properties:
+        type:
+          type: string
+          enum:
+          - published
+          - draft
+          - version
+          - variant
+          default: published
+        agent_version_id:
+          type: string
+          pattern: ^agv_
+          description: Required for version; base version for variant
+        config:
+          type: object
+          description: Full agent snapshot (config
+          tools: null
+          flow: null
+          knowledge ids); required for variant: null
+        label:
+          type: string
+          maxLength: 60
+          description: Display name for a variant
+    SimTranscriptItem:
+      type: object
+      description: Same item shape as the call transcript in 006, plus answer_source on tool outputs
+      required:
+      - type
+      properties:
+        type:
+          type: string
+          enum:
+          - message
+          - function_call
+          - function_call_output
+        role:
+          type: string
+          enum:
+          - user
+          - assistant
+        content:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: string
+        output:
+          type: string
+        is_error:
+          type: boolean
+        answer_source:
+          type: string
+          enum:
+          - mock
+          - recorded
+          - synthesized
+          - error
+        node_id:
+          type:
+          - string
+          - 'null'
+    SimulationRun:
+      type: object
+      required:
+      - simulation_run_id
+      - agent_id
+      - mode
+      - target_type
+      - config_hash
+      - status
+      - created_at
+      properties:
+        simulation_run_id:
+          type: string
+          pattern: ^srun_
+        agent_id:
+          type: string
+        agent_name:
+          type: string
+        experiment_id:
+          type:
+          - string
+          - 'null'
+        base_call_id:
+          type:
+          - string
+          - 'null'
+        mode:
+          $ref: '#/components/schemas/SimMode'
+        target_type:
+          type: string
+          enum:
+          - published
+          - draft
+          - version
+          - variant
+        agent_version_id:
+          type:
+          - string
+          - 'null'
+        variant_label:
+          type:
+          - string
+          - 'null'
+        config_hash:
+          type: string
+        persona_brief:
+          oneOf:
+          - $ref: '#/components/schemas/PersonaBrief'
+          - type: 'null'
+        persona_source:
+          type:
+          - string
+          - 'null'
+          enum:
+          - extracted
+          - provided
+          - null
+        status:
+          $ref: '#/components/schemas/SimStatus'
+        output_call_id:
+          type:
+          - string
+          - 'null'
+        end_reason:
+          oneOf:
+          - $ref: '#/components/schemas/SimEndReason'
+          - type: 'null'
+        diverged_at_turn:
+          type:
+          - integer
+          - 'null'
+        answer_source_counts:
+          $ref: '#/components/schemas/AnswerSourceCounts'
+        eval_status:
+          type: string
+          enum:
+          - pending
+          - running
+          - completed
+          - failed
+          - not_started
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        error_message:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     SipAttributes:
       type: object
       description: Attributes of the SIP participant when the room was created by a SIP call.
@@ -12204,6 +14399,312 @@ components:
       - trunk.example-carrier.com:5060
       - 203.0.113.10
       - '[2001:db8::10]:5061'
+    TestCase:
+      type: object
+      required:
+      - test_case_id
+      - agent_id
+      - name
+      - category
+      - user_prompt
+      - expected_behaviour
+      - dynamic_variables
+      - last_status
+      - created_at
+      - updated_at
+      properties:
+        test_case_id:
+          type: string
+          pattern: ^tc_
+        agent_id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        user_prompt:
+          type: string
+        expected_behaviour:
+          type: string
+        dynamic_variables:
+          type: object
+          additionalProperties:
+            type: string
+        last_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - passed
+          - failed
+          - error
+          - null
+        last_run_id:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    TestCaseCreate:
+      type: object
+      required:
+      - agent_id
+      - category
+      - user_prompt
+      - expected_behaviour
+      properties:
+        agent_id:
+          type: string
+          pattern: ^agt_
+        name:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+          description: Blank becomes "<Category name> test"
+        category:
+          type: string
+        user_prompt:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        expected_behaviour:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        dynamic_variables:
+          type: object
+          additionalProperties:
+            type: string
+    TestCaseFile:
+      type: object
+      required:
+      - format
+      - test_cases
+      properties:
+        format:
+          type: string
+          const: callwright.test_cases.v1
+        agent_id:
+          type: string
+        exported_at:
+          type: string
+          format: date-time
+        test_cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestCaseImportRow'
+    TestCaseImportRow:
+      type: object
+      required:
+      - user_prompt
+      - expected_behaviour
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        user_prompt:
+          type: string
+        expected_behaviour:
+          type: string
+        dynamic_variables:
+          type: object
+          additionalProperties:
+            type: string
+    TestCaseUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        category:
+          type: string
+        user_prompt:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        expected_behaviour:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        dynamic_variables:
+          type: object
+          additionalProperties:
+            type: string
+    TestCategory:
+      type: object
+      required:
+      - slug
+      - name
+      - color
+      - is_seed
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+          pattern: ^#[0-9a-f]{6}$
+        is_seed:
+          type: boolean
+    TestResult:
+      type: object
+      required:
+      - test_case_id
+      - case_name
+      - category
+      - user_prompt
+      - expected_behaviour
+      - status
+      - is_manual
+      properties:
+        test_case_id:
+          type: string
+        case_name:
+          type: string
+        category:
+          type: string
+        user_prompt:
+          type: string
+        expected_behaviour:
+          type: string
+        agent_response:
+          type:
+          - string
+          - 'null'
+        tool_calls:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolCallRecord'
+        nodes_visited:
+          type: array
+          description: Flow agents only; node ids in the order they were entered
+          items:
+            type: string
+        judge_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - passed
+          - failed
+          - error
+          - null
+        judge_reasoning:
+          type:
+          - string
+          - 'null'
+        override_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - passed
+          - failed
+          - null
+        override_note:
+          type:
+          - string
+          - 'null'
+        overridden_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - passed
+          - failed
+          - error
+          - null
+          description: Effective status (override wins); null while pending
+        is_manual:
+          type: boolean
+        error_message:
+          type:
+          - string
+          - 'null'
+        duration_ms:
+          type:
+          - integer
+          - 'null'
+    TestRun:
+      type: object
+      required:
+      - test_run_id
+      - agent_id
+      - target
+      - status
+      - total
+      - passed
+      - failed
+      - errored
+      - judge_model
+      - agent_model
+      - config_hash
+      - created_at
+      properties:
+        test_run_id:
+          type: string
+          pattern: ^trn_
+        number:
+          type: integer
+          description: Sequential per agent
+          for display: null
+        agent_id:
+          type: string
+        target:
+          $ref: '#/components/schemas/TestTarget'
+        config_hash:
+          type: string
+        agent_model:
+          type: string
+        judge_model:
+          type: string
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - failed
+          - cancelled
+        total:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        errored:
+          type: integer
+        cost_usd:
+          type:
+          - number
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     TestRunResult:
       type: object
       required:
@@ -12263,6 +14764,22 @@ components:
         llm_payload:
           type: string
           description: Exactly what the agent would receive
+    TestTarget:
+      type: object
+      required:
+      - type
+      properties:
+        type:
+          type: string
+          enum:
+          - draft
+          - published
+          - version
+          default: draft
+        agent_version_id:
+          type: string
+          pattern: ^agv_
+          description: Required when type is version
     Tool:
       type: object
       required:
@@ -12328,6 +14845,28 @@ components:
             type: boolean
           duration_ms:
             type: integer
+    ToolCallRecord:
+      type: object
+      required:
+      - name
+      - arguments
+      - answer_source
+      properties:
+        name:
+          type: string
+        arguments:
+          type: object
+        output:
+          type:
+          - string
+          - 'null'
+        answer_source:
+          type: string
+          enum:
+          - mock
+          - recorded
+          - synthesized
+          - error
     ToolCreate:
       type: object
       required:
@@ -13048,6 +15587,77 @@ components:
       - pass
       - fail
       - not_applicable
+    VerdictDiff:
+      type: object
+      required:
+      - evaluator_id
+      - evaluator_display_name
+      - evaluator_version
+      - scope
+      - original
+      - simulated
+      - change
+      properties:
+        evaluator_id:
+          type: string
+          pattern: ^evl_
+        evaluator_display_name:
+          type: string
+        evaluator_version:
+          type: integer
+        scope:
+          type: string
+          enum:
+          - call
+          - turn
+          - flow_node
+        node_id:
+          type:
+          - string
+          - 'null'
+        original:
+          type:
+          - string
+          - 'null'
+          enum:
+          - pass
+          - fail
+          - error
+          - not_applicable
+          - null
+        simulated:
+          type:
+          - string
+          - 'null'
+          enum:
+          - pass
+          - fail
+          - error
+          - not_applicable
+          - null
+        change:
+          type: string
+          enum:
+          - improved
+          - regressed
+          - unchanged
+          - not_comparable
+        original_score:
+          type:
+          - number
+          - 'null'
+        simulated_score:
+          type:
+          - number
+          - 'null'
+        simulated_reason:
+          type:
+          - string
+          - 'null'
+        original_reason:
+          type:
+          - string
+          - 'null'
     VersionDetail:
       allOf:
       - $ref: '#/components/schemas/VersionSummary'

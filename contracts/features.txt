@@ -6,4 +6,5 @@
 005-tools-knowledge
 006-calls-analytics
 007-quality-evals
+008-testing-simulation
 010-channels

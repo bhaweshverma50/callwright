@@ -5800,6 +5800,7 @@ export interface components {
         SimulationRun: {
             simulation_run_id: string;
             agent_id: string;
+            agent_name?: string;
             experiment_id?: string | null;
             base_call_id?: string | null;
             mode: components["schemas"]["SimMode"];
@@ -5830,6 +5831,7 @@ export interface components {
         Experiment: {
             experiment_id: string;
             agent_id: string;
+            agent_name?: string;
             name: string;
             mode: components["schemas"]["SimMode"];
             /** @enum {string} */
@@ -6061,6 +6063,8 @@ export interface components {
             expected_behaviour: string;
             agent_response?: string | null;
             tool_calls?: components["schemas"]["ToolCallRecord"][];
+            /** @description Flow agents only; node ids in the order they were entered */
+            nodes_visited?: string[];
             /** @enum {string|null} */
             judge_status?: "passed" | "failed" | "error" | null;
             judge_reasoning?: string | null;
@@ -11944,6 +11948,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         workspace_id: string;
+                        agent_id: string;
+                        /** @enum {string} */
+                        agent_type: "single_prompt" | "flow";
+                        /** @enum {string} */
+                        channel: "web" | "sip_inbound" | "sip_outbound" | "whatsapp";
                         simulation_run_id: string;
                         /** @description Call row pre-created with origin simulation */
                         output_call_id: string;
@@ -12544,6 +12553,9 @@ export interface operations {
                 content: {
                     "application/json": {
                         workspace_id: string;
+                        agent_id: string;
+                        /** @enum {string} */
+                        agent_type: "single_prompt" | "flow";
                         config_snapshot: Record<string, never>;
                         user_prompt: string;
                         dynamic_variables: {
@@ -12571,6 +12583,8 @@ export interface operations {
                     status: "completed" | "error";
                     agent_response?: string | null;
                     tool_calls?: components["schemas"]["ToolCallRecord"][];
+                    /** @description Flow agents only; node ids in the order they were entered */
+                    nodes_visited?: string[];
                     usage?: Record<string, never>;
                     duration_ms?: number;
                     error_message?: string | null;
