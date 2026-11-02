@@ -62,6 +62,18 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Open: offline (no keys) verdicts only prove plumbing; judges run without a pinned temperature (same as 007); tool description edits do not reach compiled flow nodes in variants; batches over 100 usable calls are refused (422).
 - Also fixed on merge: the API now percent-decodes the Redis password in `REDIS_URL` (render-env.sh encodes it).
 
+## Wave 5, spec 009 issues and auto-fix (merged 2026-11-02, not deployed)
+- 61/61 tasks. Recurring check failures are clustered per agent into issues, each gets an AI or manual fix (eight fix kinds), validated with a control and a treatment batch of 008 simulations over the same affected and guard calls, then applied as a new agent version (Issues and issue pages). Migration `s009_0001` (after `s007_0002`); new optional `ISSUES_MODEL` (defaults to `SIMULATOR_MODEL`); scikit-learn added to the API image. Jobs worker: jobs `detect_issues`, `finalize_validation`, `sweep_issues`, `audit_applied_issues`; crons `sweep_issues` (every minute at :40) and `audit_applied_issues` (05:30 daily). No voice worker change.
+- Deploy: `deploy.sh ... build migrate api`, VM jobs worker on the new API tag, Vercel.
+- Open: with offline models validation correctly reports no improvement, so apply was proven by integration tests rather than live; under load 008's internal result transaction can deadlock against 007's analyze step (the runner retries, but some simulated calls skip analysis), worth a lock-order fix; factual consistency is not applicable without knowledge search, so issues headlined by it cannot be validated by simulation.
+
+## Fixes on 2026-11-02 (pushed, deploy with 009)
+- API used offline text for Azure-configured agents on the hosted app (no Azure key); it now falls back to OpenAI like the voice worker, and staging/prod never answer with offline text (deployed `a54c168`).
+- Calls under 15 s or with under 40 caller characters skip the AI summary and paid judges (`too_short`; `ANALYSIS_MIN_DURATION_S`, `ANALYSIS_MIN_CALLER_CHARS`; migration `s007_0002`). Free checks always run.
+- CI green again: forward-only migrations are checked as one linear chain instead of downgrade and upgrade.
+- Simulation lists and comparison stay current; rounded scores; audio-only checks listed once.
+- One composer and a thinking line (waveform, changing verb, elapsed time) for every AI surface; calmer agent editor tabs; movable assistant dock; the save bar shows Discard and Save only with unsaved changes.
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 
