@@ -15,9 +15,12 @@ def redis_settings_for(url: str, *, conn_timeout: float = 1.0, conn_retries: int
     """arq connection settings from a ``redis://`` or ``rediss://`` (TLS) URL. TLS verifies the
     server certificate and host name against the system CAs; ``?ssl_cert_reqs=none`` turns
     verification off (self-signed test servers only)."""
-    from urllib.parse import parse_qs, urlparse
+    from urllib.parse import parse_qs, unquote, urlparse
 
     settings = RedisSettings.from_dsn(url)
+    # arq keeps the password percent-encoded; deploy/vm/render-env.sh encodes it into the URL.
+    if settings.password:
+        settings.password = unquote(settings.password)
     settings.conn_timeout = max(1, round(conn_timeout))
     settings.conn_retries = conn_retries
     if settings.ssl:
