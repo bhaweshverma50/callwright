@@ -35,13 +35,24 @@ INSTRUCTIONS = (
     "dates, times, amounts, reference numbers, addresses); 'Actions:' what the agent did (lookups, "
     "bookings, transfers, messages sent, disclosures given); 'Outcome:' what was agreed or "
     "resolved, or why it was not; 'Next step:' any follow-up either side promised. Use only facts "
-    "from the call and never guess; leave out a line the call gives nothing for. Rate the "
+    "from the call and never guess; leave out a line the call gives nothing for. Put each labelled "
+    "line on its own line and do not cite transcript line numbers. Rate the "
     "CALLER's sentiment as positive, neutral or "
     "negative. For every variable below, extract the value the call actually contains, using "
     "its description; use null when the call does not contain it. Boolean variables take true "
     "or false, number variables a number, choice variables exactly one of their choices, string "
     "variables a short text."
 )
+
+
+_LINE_REFS = re.compile(r"\s*\[\d+(?:\s*[-,]\s*\d+)*\]")
+_INLINE_LABEL = re.compile(r"\s+(?=(?:Details|Actions|Outcome|Next step):)")
+
+
+def tidy_summary(text: str) -> str:
+    """Drop transcript line references like [3] or [6-8] and start each labelled part (Details,
+    Actions, Outcome, Next step) on its own line, whatever layout the model chose."""
+    return _INLINE_LABEL.sub("\n", _LINE_REFS.sub("", text))
 
 
 class ExtractionFailed(Exception):
@@ -127,7 +138,7 @@ def resolve(
     data: Mapping[str, Any], variables: Sequence[Mapping[str, Any]], caller_spoke: bool
 ) -> tuple[str, str, dict[str, Any]]:
     # Keep the summary's lines (first line plus labelled lines); tidy spaces inside each line.
-    lines = [" ".join(line.split()) for line in str(data.get("summary") or "").splitlines()]
+    lines = [" ".join(line.split()) for line in tidy_summary(str(data.get("summary") or "")).splitlines()]
     summary = "\n".join(line for line in lines if line)[:SUMMARY_MAX]
     sentiment = str(data.get("sentiment") or "").strip().lower()
     if not caller_spoke or sentiment not in SENTIMENTS:

@@ -145,3 +145,17 @@ def test_summary_keeps_its_labelled_lines_and_the_longer_limit() -> None:
     ]
     long, _, _ = resolve({"summary": "x" * 2000, "sentiment": "neutral", "values": {}}, [], True)
     assert len(long) == 1200
+
+
+def test_summary_tidies_inline_labels_and_line_references() -> None:
+    raw = (
+        "The bank called about a missed instalment and the caller paid. Details: name Bhavesh Verma [3]; "
+        "650 due on the 15th [4]. Actions: sent an SMS payment link [6-8]. Outcome: paid in full [12, 13]."
+    )
+    summary, _, _ = resolve({"summary": raw, "sentiment": "positive", "values": {}}, [], True)
+    assert summary.split("\n") == [
+        "The bank called about a missed instalment and the caller paid.",
+        "Details: name Bhavesh Verma; 650 due on the 15th.",
+        "Actions: sent an SMS payment link.",
+        "Outcome: paid in full.",
+    ]
