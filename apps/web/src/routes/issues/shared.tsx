@@ -149,7 +149,7 @@ export function reasonText(r: ValidationReason, names: Record<string, string>, t
     case "improvement_below_threshold":
       return `${check} improved by ${delta ?? "less than needed"}, below the ${t.min_improvement_pp} pp needed.`;
     case "regression":
-      return `${check} dropped by ${delta ?? "too much"}${set ? ` on ${set}` : ""}, more than the ${t.max_regression_pp} pp allowed.`;
+      return `${check} dropped by ${r.delta_pp != null ? `${Math.abs(r.delta_pp).toFixed(1)} pp` : "too much"}${set ? ` on ${set}` : ""}, more than the ${t.max_regression_pp} pp allowed.`;
     case "insufficient_data":
       return `${check} has too few pairs${set ? ` on ${set}` : ""} to judge a regression${r.n != null ? ` (${r.n})` : ""}.`;
   }

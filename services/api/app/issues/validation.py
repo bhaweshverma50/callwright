@@ -219,7 +219,7 @@ def estimate_view(
 class Prepared:
     issue: Issue
     agent: Agent
-    fix: IssueFix
+    fix: IssueFix | None
     base: versions.AgentSnapshot
     variant: dict[str, Any]
     selection: Selection
@@ -242,8 +242,17 @@ def no_fix() -> ProblemError:
 
 
 async def prepare(
-    session: AsyncSession, settings: Settings, issue_id: str, req: Request, *, lock: bool
+    session: AsyncSession,
+    settings: Settings,
+    issue_id: str,
+    req: Request,
+    *,
+    lock: bool,
+    estimate_only: bool = False,
 ) -> Prepared:
+    """Checks and the estimate. ``estimate_only`` (dry runs) also works before a fix exists or
+    for an advisory fix, so "Draft and validate" can show its cost first; the estimate then uses
+    the published configuration."""
     from app.issues.revisions import resolve_knowledge
     from app.simulator.preflight import tools_missing_mock
 
@@ -251,25 +260,29 @@ async def prepare(
     agent = await require_live_agent(session, issue)
     transition(issue.status, "validate")
     fix = await current_fix(session, issue)
-    if fix is None:
-        raise no_fix()
-    if fix.status == "advisory":
-        raise advisory_fix()
-    if fix.status not in VALIDATABLE:
-        raise ProblemError(
-            409,
-            "wrong_status",
-            "Fix cannot be validated",
-            f"This fix is {fix.status} and cannot be validated.",
-        )
+    usable = fix is not None and fix.status in VALIDATABLE
+    if not estimate_only:
+        if fix is None:
+            raise no_fix()
+        if fix.status == "advisory":
+            raise advisory_fix()
+        if not usable:
+            raise ProblemError(
+                409,
+                "wrong_status",
+                "Fix cannot be validated",
+                f"This fix is {fix.status} and cannot be validated.",
+            )
     if agent.pinned_version_id is None:
         raise not_published()
     base = await versions.get_snapshot(session, agent.pinned_version_id)
-    try:
-        variant = apply_fix(base.config, fix.kind, fix.payload)
-    except FixError as exc:
-        raise problem(exc) from exc
-    variant = await resolve_knowledge(session, fix.kind, variant)
+    variant = dict(base.config)
+    if usable and fix is not None:
+        try:
+            variant = apply_fix(base.config, fix.kind, fix.payload)
+        except FixError as exc:
+            raise problem(exc) from exc
+        variant = await resolve_knowledge(session, fix.kind, variant)
     selection = await select_calls(
         session,
         issue,
@@ -299,6 +312,7 @@ async def start(
     user_id: str | None,
 ) -> Started:
     issue, fix, base = prepared.issue, prepared.fix, prepared.base
+    assert fix is not None, "prepare() refuses a validation without a fix"
     ids = prepared.selection.affected + prepared.selection.guard
     name = issue.title[:90]
     control, control_runs = await sim.start_experiment(

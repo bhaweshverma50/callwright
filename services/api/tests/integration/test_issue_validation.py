@@ -319,3 +319,13 @@ async def test_not_enough_calls_to_validate(issue_env: IssueEnv) -> None:
     assert refused.status_code == 422 and refused.json()["type"].endswith("not-enough-calls")
     ok = await env.post(f"/issues/{issue_id}/validate", {"min_sample": 3, "dry_run": True})
     assert ok.status_code == 200 and ok.json()["affected_calls"] == 4
+
+
+async def test_estimate_before_any_fix(issue_env: IssueEnv) -> None:
+    env = issue_env
+    issue_id = await setup(env, guard=2)
+    estimate = await env.post(f"/issues/{issue_id}/validate", {"dry_run": True})
+    assert estimate.status_code == 200, estimate.text
+    assert (estimate.json()["affected_calls"], estimate.json()["guard_calls"]) == (10, 2)
+    refused = await env.post(f"/issues/{issue_id}/validate", {})
+    assert refused.status_code == 409 and refused.json()["type"].endswith("no-fix")

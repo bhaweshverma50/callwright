@@ -277,7 +277,9 @@ async def validate(
 
     async def handler() -> tuple[int, Any]:
         async with _tx(request, principal) as session:
-            prepared = await validation.prepare(session, settings, issue_id, req, lock=not body.dry_run)
+            prepared = await validation.prepare(
+                session, settings, issue_id, req, lock=not body.dry_run, estimate_only=body.dry_run
+            )
             if body.dry_run:
                 return 200, prepared.estimate
             started = await validation.start(

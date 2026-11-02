@@ -104,7 +104,7 @@ describe("IssueDetailPage (T024, T034, T042, T047, T052, T053)", () => {
     expect(screen.getAllByText("+50.0 pp").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Control batch" })).toHaveAttribute("href", expect.stringMatching(/^\/simulations\/exp_/));
     await user.click(screen.getByRole("button", { name: /Attempt 1/ }));
-    expect(await screen.findByText(/Intent fulfilment dropped by -16.7 pp on affected and guard, more than the 5 pp allowed/)).toBeInTheDocument();
+    expect(await screen.findByText(/Intent fulfilment dropped by 16.7 pp on affected and guard, more than the 5 pp allowed/)).toBeInTheDocument();
     expect(screen.getByText("Blocks the fix")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Apply fix" }));
