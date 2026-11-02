@@ -6,8 +6,8 @@ Builds the LLM function tools for a call from the version snapshot (``tools`` an
 1. arguments are checked against the function's parameters (``invalid_arguments`` goes back to
    the LLM, nothing runs);
 2. in a simulation (``RuntimeConfig.simulation``, set by 008 or the harness) HTTP tools answer
-   their canned response without network, transfer and press digit report fixed outcomes, and
-   ``kb_search`` runs for real;
+   their canned response (or 008's ``ToolContext.simulated_answer``) without network, transfer
+   and press digit report fixed outcomes, and ``kb_search`` runs for real;
 3. otherwise the executor for the type runs; lookup tools (HTTP and ``kb_search``) add a "still
    checking" line when they run longer than 3 s;
 4. a ``tool_call`` event with timings, the outcome and secret-free arguments and output is
@@ -282,6 +282,8 @@ class CallTools:
         self, spec: ToolSpecView, args: Mapping[str, Any], ctx: ToolContext
     ) -> ToolResult:
         if ctx.simulation and spec.type == "http":
+            if ctx.simulated_answer is not None:
+                return await ctx.simulated_answer(spec, args, ctx)
             return simulated_http(spec, ctx)
         executor = self.executors.get(spec.type)
         if executor is None:

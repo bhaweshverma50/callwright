@@ -3,8 +3,9 @@
 * :class:`ToolSpecView`: one entry of the version snapshot's ``tools`` list (data-model ToolSpec),
   or the system ``kb_search`` tool.
 * :class:`ToolContext`: what an executor may use on the call: the call control, the channel, the
-  simulation flag, the variable store (dynamic variables plus values mapped by earlier tools),
-  the per-call secret map and a ``say`` that speaks without touching the LLM context.
+  simulation flag (with 008's optional answerer for HTTP tools and webhook nodes), the variable
+  store (dynamic variables plus values mapped by earlier tools), the per-call secret map and a
+  ``say`` that speaks without touching the LLM context.
 * :class:`ToolResult`: what the LLM receives (``llm_payload``) and what the ``tool_call`` event
   records.
 """
@@ -42,11 +43,19 @@ class ToolSpecView:
         )
 
 
+SimulatedAnswer = Callable[
+    ["ToolSpecView", Mapping[str, Any], "ToolContext"], Awaitable["ToolResult"]
+]
+"""008 text simulations: answers an HTTP tool or webhook node instead of its canned response
+(mock, recorded output, synthesized stand-in or error; ``worker.textsim.mock_tools``)."""
+
+
 @dataclass
 class ToolContext:
     control: CallControl
     channel: str
     simulation: bool = False
+    simulated_answer: SimulatedAnswer | None = None
     dynamic_variables: dict[str, Any] = field(default_factory=dict)
     mapped_variables: dict[str, Any] = field(default_factory=dict)
     secrets: dict[str, str] = field(default_factory=dict)

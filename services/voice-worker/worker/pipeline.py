@@ -528,10 +528,12 @@ def build_agent(
     if plan.agent_type == "flow":
         # Flow nodes carry their own tools (compiled from 005's snapshot); only worker-internal
         # tools such as voicemail detection are added to every node.
+        call_tools = getattr(provider, "call_tools", None)
         return (flow_runner or get_flow_runner()).build_agent(
             runtime,
             control,
             list(extra_tools),
+            base_tools=call_tools(runtime, control) if callable(call_tools) else None,
             plan=plan,
             on_tts_text=on_tts_text,
             extra_instructions=extra_instructions,

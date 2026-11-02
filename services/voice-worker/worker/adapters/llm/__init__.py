@@ -10,6 +10,16 @@ from typing import Any
 DEFAULT_TEMPERATURE = 1.0
 
 
+# Model families that reject any temperature other than the vendor default.
+FIXED_TEMPERATURE_PREFIXES = ("gpt-5",)
+
+
+def supports_temperature(model: str | None) -> bool:
+    """False when ``model`` only runs at the vendor default temperature, so callers that want a
+    different one (008's simulated caller asks for 0.7) leave it unset instead of failing."""
+    return not str(model or "").startswith(FIXED_TEMPERATURE_PREFIXES)
+
+
 def temperature_kwargs(options: Mapping[str, Any]) -> dict[str, Any]:
     temperature = options.get("temperature")
     if temperature is None or float(temperature) == DEFAULT_TEMPERATURE:

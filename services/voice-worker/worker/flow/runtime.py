@@ -141,7 +141,9 @@ class LiveFlowServices:
         )
         self.call.sync_variables()
         ctx = replace(base.ctx, say=self._say_line)
-        if ctx.simulation:
+        if ctx.simulation and ctx.simulated_answer is not None:
+            result = await ctx.simulated_answer(spec, {}, ctx)
+        elif ctx.simulation:
             result = simulated_http(spec, ctx)
         else:
             executor = base.executors.get("http")
@@ -161,6 +163,11 @@ class LiveFlowServices:
                     "tool_type": "http",
                     "flow_node_id": node_id,
                     "error_code": result.error_code,
+                    **(
+                        {"answer_source": result.extra["answer_source"]}
+                        if "answer_source" in result.extra
+                        else {}
+                    ),
                 },
             )
         )

@@ -26,6 +26,12 @@ class WorkerSettings(BaseSettings):
     num_idle_processes: int | None = Field(None, alias="WORKER_NUM_IDLE_PROCESSES", ge=0)
     load_threshold: float | None = Field(None, alias="WORKER_LOAD_THRESHOLD", gt=0, le=1)
 
+    # 008 text simulations (WORKER_ROLE=textsim): the arq queue on the platform Redis, jobs run
+    # at once per process and the longest a single simulation may take.
+    redis_url: str = Field("redis://localhost:56379/0", alias="REDIS_URL")
+    textsim_max_jobs: int = Field(10, alias="TEXTSIM_MAX_JOBS", ge=1)
+    textsim_job_timeout_s: int = Field(900, alias="TEXTSIM_JOB_TIMEOUT_S", ge=30)
+
     internal_api_url: str = Field(
         "http://localhost:8100/v1/internal", alias="CALLWRIGHT_INTERNAL_API_URL"
     )

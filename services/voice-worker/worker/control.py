@@ -102,6 +102,10 @@ class RuntimeCallControl:
             "name": activity.name,
             "arguments": activity.arguments,
         }
+        # 008 simulations: where the answer came from (mock, recorded, synthesized, error).
+        source = (activity.extra or {}).get("answer_source")
+        if source:
+            call_item["answer_source"] = source
         if activity.ref:
             call_item["ref"] = activity.ref
         if at is not None:
@@ -114,6 +118,8 @@ class RuntimeCallControl:
                 "output": activity.output[:8192],
                 "is_error": activity.is_error,
             }
+            if source:
+                result["answer_source"] = source
             if activity.ref:
                 result["ref"] = activity.ref
             if activity.duration_ms is not None:
