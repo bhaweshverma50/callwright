@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<!--
+  010 T067 (quickstart section 6): Callwright places an outbound call and the far end is busy.
+
+  SIPp plays the carrier at the number's termination address (run.sh imports the number with
+  termination 127.0.0.1:5090 inside livekit-sip's network namespace): it receives livekit-sip's
+  INVITE, answers 100 Trying, 180 Ringing, then 486 Busy Here, and waits for the ACK. The call
+  must end as status busy with diagnostic sip_486 and never be billed (spec 010 FR-024, R6).
+-->
+<scenario name="Callwright outbound busy">
+  <recv request="INVITE" crlf="true" timeout="60000"/>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <pause milliseconds="1000"/>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 486 Busy Here
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv request="ACK" crlf="true" timeout="10000"/>
+
+  <ResponseTimeRepartition value="1000, 5000, 10000"/>
+</scenario>

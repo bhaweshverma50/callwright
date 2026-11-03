@@ -289,13 +289,19 @@ async def reap_stuck_calls(ctx: dict[str, Any]) -> int:
 
 
 async def _replay(call_id: str) -> int:
+    from app.agent_versions.runtime_port import register as register_agent_versions
     from app.calls.catalog import load_catalog
     from app.core.config import get_settings
     from app.core.queue import ArqJobQueue
+    from app.evals.install import install as install_quality
 
     settings = get_settings()
     db = Database(settings.database_url, settings.database_admin_url, pool_size=2)
     queue = ArqJobQueue()
+    # The same ports as the jobs worker (app.core.jobs.startup): without 002's agent versions
+    # price_and_charge cannot read the call's config and the replay blocks the call.
+    register_agent_versions()
+    await install_quality(settings, None, queue=queue, sync=False)
     try:
         async with db.transaction() as session:
             workspace_id = (

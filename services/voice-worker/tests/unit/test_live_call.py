@@ -154,6 +154,17 @@ async def test_keypad_flush_becomes_a_user_turn() -> None:
     assert kinds == ["dtmf", "transcript_item"]
 
 
+async def test_keypad_turn_is_one_caller_line() -> None:
+    """The session echoes the keypad input as a user item (003 quickstart section 8: ``1234#``
+    is one caller turn): it is not recorded again as speech, but later speech still is."""
+    call, _, _ = live_call()
+    call._on_dtmf_flush("1234", "termination_key")
+    call._on_item(ev(item=ev(role="user", text_content="1234")))
+    call._on_item(ev(item=ev(role="user", text_content="1234")))
+    lines = [e["item"] for e in call.recorder.history if e["type"] == "transcript_item"]
+    assert [(i["text"], i.get("source")) for i in lines] == [("1234", "keypad"), ("1234", "voice")]
+
+
 @respx.mock
 async def test_hang_up_posts_final_status_and_deletes_room() -> None:
     route = respx.post(f"{BASE}/calls/{CALL_ID}/events").mock(

@@ -6,6 +6,8 @@ records every request. Command line::
     uv run python tests/integration/tools/flaky_receiver.py --fail 2 --port 9009 [--status 500]
 
 Every request is printed with its ``Callwright-Signature`` header; pass ``--secret`` to verify it.
+``--reply JSON`` answers successful requests with that JSON body instead of ``ok``, for example
+the ``call_inbound`` reply of 010 quickstart section 9 (``--fail 0 --port 9010 --reply ...``).
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import json
 import threading
 import time
 from dataclasses import dataclass, field
@@ -32,6 +35,7 @@ class FlakyReceiver:
     fail_status: int = 500
     delay_s: float = 0.0
     port: int = 0
+    reply: bytes | None = None
     received: list[Received] = field(default_factory=list)
     _server: ThreadingHTTPServer | None = None
 
@@ -52,9 +56,11 @@ class FlakyReceiver:
                     time.sleep(receiver.delay_s)
                 failing = len(receiver.received) <= receiver.fail
                 status = receiver.fail_status if failing else 200
-                payload = b"nope" if failing else b"ok"
+                payload = b"nope" if failing else (receiver.reply or b"ok")
                 try:
                     self.send_response(status)
+                    if receiver.reply is not None and not failing:
+                        self.send_header("Content-Type", "application/json")
                     self.send_header("Content-Length", str(len(payload)))
                     self.end_headers()
                     self.wfile.write(payload)
@@ -91,9 +97,14 @@ def main() -> None:
     parser.add_argument("--status", type=int, default=500)
     parser.add_argument("--port", type=int, default=9009)
     parser.add_argument("--secret")
+    parser.add_argument("--reply", help="JSON body for successful replies (default: ok)")
     args = parser.parse_args()
-    receiver = FlakyReceiver(fail=args.fail, fail_status=args.status, port=args.port).start()
-    print(f"listening on {receiver.url}; failing the first {args.fail} requests with {args.status}")
+    reply = json.dumps(json.loads(args.reply)).encode() if args.reply else None
+    receiver = FlakyReceiver(fail=args.fail, fail_status=args.status, port=args.port, reply=reply).start()
+    print(
+        f"listening on {receiver.url}; failing the first {args.fail} requests with {args.status}",
+        flush=True,
+    )
     seen = 0
     try:
         while True:
@@ -103,7 +114,8 @@ def main() -> None:
                 ok = verify(args.secret, signature, item.body) if args.secret else None
                 print(
                     f"{item.headers.get('Callwright-Event')} "
-                    f"{item.headers.get('Callwright-Delivery')} verified={ok}"
+                    f"{item.headers.get('Callwright-Delivery')} verified={ok}",
+                    flush=True,
                 )
             seen = len(receiver.received)
     except KeyboardInterrupt:

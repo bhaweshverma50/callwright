@@ -286,7 +286,8 @@ against baseline.
 - [x] T108 [P] Events ingest performance check (p95 under 50 ms for 50-event batches) in `services/api/tests/integration/test_events_ingest_perf.py`
 - [x] T109 Security review of tokens, service token handling, webhook secret masking and URL guard; record findings in the PR
   - Reviewed: service token compared in constant time; join tokens scoped to one room, microphone and data only, 15 minutes; internal endpoints take the workspace from the call row; webhook secrets encrypted and shown in full only on rotate; URL guard pins the checked IP, refuses redirects and private ranges at send time; LiveKit webhooks verified by JWT and body hash. Follow-ups: rate-limit `POST /v1/webhooks/test`; production needs a KMS-backed `KeyWrapper`.
-- [ ] T110 Run every section of `specs/003-voice-runtime/quickstart.md` and fix drift
+- [x] T110 Run every section of `specs/003-voice-runtime/quickstart.md` and fix drift
+  - Run 2026-11-03 on a local stack with fake vendors; results in `quickstart-results.md`. Fixed: the replay CLI (agent versions not registered), agent webhook URLs honour `WEBHOOKS_ALLOW_PRIVATE`, keypad turns recorded once; doc drift fixed. Not run: real vendors, recording upload (egress).
   - API sections (run, sessions curl, admission, replay, recording off, webhooks) checked and the commands corrected (port 8100, `app.core.jobs.WorkerSettings`). Remaining: browser and voice-worker sections with a real media server.
 
 ---
