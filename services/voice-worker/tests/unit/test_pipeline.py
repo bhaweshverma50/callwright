@@ -290,3 +290,23 @@ async def test_voicemail_tool_is_added_with_its_instruction() -> None:
     assert agent.instructions.endswith(VOICEMAIL_INSTRUCTION)
     assert await tool() == "answering machine noted"
     assert reports == [True]
+
+
+def test_a_non_english_agent_tells_the_model_its_language() -> None:
+    """Speech recognition and voice follow the agent's language; the model must hear it too."""
+    registry = AdapterRegistry()
+    stt = {"provider": "sarvam", "model": None}
+    hindi = make_runtime(
+        {"language": "hi", "stt": stt, "begin_message": "Namaste"},
+        language_options=[
+            {"code": "hi", "label": "Hindi"},
+            {"code": "en-US", "label": "English (US)"},
+        ],
+    )
+    plan = plan_session(hindi, registry)
+    assert plan.reply_language == "Hindi"
+    assert plan.greeting_language is None, "the greeting is already in the agent's language"
+    assert (
+        plan_session(make_runtime({"language": "hi", "stt": stt}), registry).reply_language == "hi"
+    )
+    assert plan_session(make_runtime({"language": "en-US"}), registry).reply_language is None

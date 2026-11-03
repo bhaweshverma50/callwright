@@ -30,6 +30,7 @@ from worker.adapters.registry import (
     UnsupportedVendor,
     VendorSpec,
 )
+from worker.adapters.stt import language_base
 from worker.audio import (
     AudioWarning,
     BackgroundAudioSpec,
@@ -362,6 +363,14 @@ def in_language(spec: VendorSpec, model: str | None, language: str) -> VendorSpe
     )
 
 
+def own_language_label(runtime: RuntimeConfig, code: str) -> str:
+    """The agent language's name from the claim's language options ("Hindi"), else its code."""
+    for option in runtime.language_options:
+        if option.code in (code, language_base(code)) and option.label:
+            return option.label
+    return code
+
+
 def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPlan:
     """Resolve everything a call needs from the frozen config. Raises ``UnsupportedVendor``."""
     config = runtime.config
@@ -407,6 +416,11 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
         if opening is not None:
             start_speaker, greeting = opening.start_speaker, opening.greeting
     greeting_language = reply_language if greeting and start_speaker == "agent" else None
+    # Speech recognition and the voice follow the agent's language setting, but the prompt may be
+    # written in another language: tell the model too (non-English agents; English is the default
+    # the prompts are written in). The same "Language rule" line a mid-call switch replaces.
+    if reply_language is None and language_base(agent_language) != "en":
+        reply_language = own_language_label(runtime, agent_language)
     return SessionPlan(
         language=language,
         stt=stt,
