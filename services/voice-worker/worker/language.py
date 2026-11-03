@@ -35,6 +35,14 @@ def reply_language_instruction(label: str) -> str:
     )
 
 
+# Agents set to "multi" (speech recognition detects the language): follow the caller. Carries the
+# rule prefix, so a set_language switch replaces it with a fixed language.
+FOLLOW_CALLER_LANGUAGE = (
+    f"{REPLY_LANGUAGE_PREFIX} reply in the language the caller is speaking, and switch when they "
+    "switch; if you cannot tell, use the language of these instructions."
+)
+
+
 def with_reply_language(instructions: str, label: str | None) -> str:
     """``instructions`` with its reply-language line replaced (removed when ``label`` is None)."""
     base = _REPLY_LINE.sub("", instructions).rstrip()

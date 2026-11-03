@@ -87,7 +87,7 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
         "api_key": creds.get("api_key", ""),
     }
     language = str(spec.options.get("language") or "").split("-")[0].lower()
-    if model in LANGUAGE_CODE_MODELS and language and language != "en":
+    if model in LANGUAGE_CODE_MODELS and language and language not in ("en", "multi"):
         kwargs["language"] = language
     voice_id = spec.options.get("voice_id")
     if voice_id:

@@ -41,7 +41,7 @@ from worker.audio import (
 )
 from worker.call_behavior import CallBehavior, behavior_from_config
 from worker.flow import FlowRunner, get_flow_runner
-from worker.language import set_language_instruction, with_reply_language
+from worker.language import FOLLOW_CALLER_LANGUAGE, set_language_instruction, with_reply_language
 from worker.tools import (
     CallControl,
     ClampedValue,
@@ -419,7 +419,7 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
     # Speech recognition and the voice follow the agent's language setting, but the prompt may be
     # written in another language: tell the model too (non-English agents; English is the default
     # the prompts are written in). The same "Language rule" line a mid-call switch replaces.
-    if reply_language is None and language_base(agent_language) != "en":
+    if reply_language is None and language_base(agent_language) not in ("en", "multi"):
         reply_language = own_language_label(runtime, agent_language)
     return SessionPlan(
         language=language,
@@ -629,6 +629,8 @@ def make_agent_class() -> type[Any]:
                 if p
             )
             instructions = with_reply_language(instructions, plan.reply_language)
+            if plan.reply_language is None and language_base(plan.language) == "multi":
+                instructions = f"{instructions}\n\n{FOLLOW_CALLER_LANGUAGE}".strip()
             super().__init__(instructions=instructions, tools=list(tools), **kwargs)
             self.plan = plan
             self._on_tts_text = on_tts_text

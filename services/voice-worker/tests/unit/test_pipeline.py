@@ -310,3 +310,24 @@ def test_a_non_english_agent_tells_the_model_its_language() -> None:
         plan_session(make_runtime({"language": "hi", "stt": stt}), registry).reply_language == "hi"
     )
     assert plan_session(make_runtime({"language": "en-US"}), registry).reply_language is None
+
+
+def test_a_multilingual_agent_follows_the_caller_language() -> None:
+    from worker.language import FOLLOW_CALLER_LANGUAGE
+    from worker.pipeline import make_agent_class
+
+    plan = plan_session(make_runtime({"language": "multi"}), AdapterRegistry())
+    assert plan.reply_language is None, "no 'reply only in Multilingual'"
+    agent = make_agent_class()(plan)
+    assert agent.instructions.endswith(FOLLOW_CALLER_LANGUAGE)
+
+
+def test_elevenlabs_gets_no_language_code_for_multi() -> None:
+    from worker.adapters.registry import VendorSpec
+    from worker.adapters.tts import elevenlabs
+
+    tts = elevenlabs.build(
+        VendorSpec("tts", "elevenlabs", "eleven_flash_v2_5", {"language": "multi"}),
+        {"api_key": "k"},
+    )
+    assert not isinstance(tts._opts.language, str), "no language code sent"
