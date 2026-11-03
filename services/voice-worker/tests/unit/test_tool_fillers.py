@@ -13,13 +13,21 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
+import pytest
 from livekit.agents import llm
 
 from tests.unit.conftest import make_runtime
 from tests.unit.tool_support import http_spec, make, tool
 from worker.adapters.registry import AdapterRegistry
 from worker.pipeline import build_agent, plan_session, with_fillers
-from worker.tools.registry import STILL_CHECKING, FillerPolicy
+from worker.tools.base import ToolSpecView
+from worker.tools.registry import (
+    BUILTIN_END_CALL,
+    GOODBYE_FILLER,
+    STILL_CHECKING,
+    FillerPolicy,
+    filler_texts,
+)
 
 
 def text(content: str) -> llm.ChatChunk:
@@ -105,3 +113,35 @@ def test_agent_receives_the_policy() -> None:
     h = make([http_spec()])
     agent = build_agent(plan, runtime, h.tools.control)
     assert agent._fillers is not None and "check_availability" in agent._fillers.texts
+
+
+async def test_silent_end_call_says_goodbye_at_once() -> None:
+    """A reply that is only the end_call action gets a spoken goodbye, not a silent hang-up."""
+    policy = FillerPolicy(filler_texts([BUILTIN_END_CALL]))
+    out = await collect(policy, call("end_call"))
+    assert out[0] == GOODBYE_FILLER + " " and policy.reply_spoke is True
+    spec = ToolSpecView.from_snapshot(tool("end_call", "end_call", {"message": "Bye now."}))
+    policy = FillerPolicy(filler_texts([spec]))
+    assert (await collect(policy, call("end_call")))[0] == "Bye now. "
+
+
+async def test_end_call_after_a_spoken_goodbye_adds_nothing() -> None:
+    policy = FillerPolicy(filler_texts([BUILTIN_END_CALL]))
+    out = await collect(policy, text("Have a lovely day, goodbye!"), call("end_call"))
+    assert not any(isinstance(c, str) for c in out)
+    h = make([tool("end_call", "end_call", {"message": "Goodbye!"})])
+    h.tools.fillers.reply_spoke = True  # the reply (or the filler) already said goodbye
+    await h.tools.dispatch("end_call", {})
+    assert h.backend.said == [] and h.backend.ended == ["agent_hangup"]
+
+
+async def test_end_call_stops_the_follow_up_reply() -> None:
+    from livekit.agents.llm import StopResponse
+
+    from worker.tools.registry import _raw_tool, function_schema
+
+    h = make([tool("end_call", "end_call")])
+    fn = _raw_tool(h.tools, function_schema(h.tools.by_name["end_call"]))
+    with pytest.raises(StopResponse):
+        await fn({}, None)
+    assert h.backend.ended == ["agent_hangup"]
