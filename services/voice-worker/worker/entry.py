@@ -175,6 +175,9 @@ class LiveCall:
         self.inactivity: InactivityTimer | None = None
         self.duration: DurationTimer | None = None
         self.dtmf: DtmfCollector | None = None
+        # Digits handed to the session as a keypad turn: the session echoes them back as a user
+        # conversation item, which must not become a second ("voice") caller line.
+        self._keypad_echo: str | None = None
         self.voicemail: VoicemailHandler | None = None
         self.background: Any = None
         self.session_span: Any = None
@@ -412,6 +415,9 @@ class LiveCall:
         offset = self.recorder.offset_ms()
         if role == "user":
             self._cancel_goodbye()
+            if self._keypad_echo is not None and text == self._keypad_echo:
+                self._keypad_echo = None  # already recorded as the keypad line
+                return
             self.tracker.transcript_final(time.time())
             self.recorder.message(
                 "user",
@@ -509,6 +515,7 @@ class LiveCall:
         self.recorder.message("user", digits, started_ms=offset, ended_ms=offset, source="keypad")
         if self.session is not None:
             self.tracker.user_speech_ended(time.time())
+            self._keypad_echo = digits
             self.session.generate_reply(user_input=digits)
 
     # run -------------------------------------------------------------------

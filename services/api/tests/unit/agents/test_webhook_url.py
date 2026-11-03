@@ -72,3 +72,19 @@ async def test_resolved_host_checked() -> None:
     assert issue is not None and issue.code == "private_address"
     assert await check_resolved(url, to_public) is None
     assert await check_resolved(url, fails) is None
+
+
+async def test_allow_private_lifts_the_range_rules_in_development() -> None:
+    """WEBHOOKS_ALLOW_PRIVATE (refused in production) lets a local receiver be set on an agent
+    (003 quickstart section 7); the scheme and format rules still apply."""
+    assert check_syntax("http://localhost:9009/hook", allow_http=True, allow_private=True) is None
+    assert check_syntax("https://10.1.2.3/x", allow_private=True) is None
+    assert check_syntax("http://localhost:9009/hook", allow_private=True) is not None  # http still off
+    assert check_syntax("notaurl", allow_private=True) is not None
+
+    async def private(_: str) -> list[str]:
+        return ["10.0.0.5"]
+
+    assert await check_resolved("https://hooks.example.com/x", private, allow_private=True) is None
+    issue = await check_resolved("https://hooks.example.com/x", private, allow_private=False)
+    assert issue is not None and issue.code == "private_address"
