@@ -149,6 +149,8 @@ FIELD_ORDER = (
     "word",
     "replacement",
     "recording",
+    "language_switching",
+    "languages",
     "tool_ids",
     "kb_ids",
     "tools",

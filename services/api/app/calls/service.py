@@ -484,7 +484,22 @@ def runtime_config(
         "heartbeat_interval_s": HEARTBEAT_INTERVAL_S,
         "recording_enabled": call.recording_enabled,
         "stt_resolved_model": components.stt.model,
+        "language_options": claim_language_options(config, components),
+        "caller_language": None,
     }
+
+
+def claim_language_options(
+    config: Mapping[str, Any], components: comp.ResolvedComponents
+) -> list[dict[str, Any]]:
+    """012: the languages ``set_language`` may switch to; the agent's own entry carries the models
+    this call resolved (Auto speech recognition included), so switching back restores them."""
+    from app.caller_language.options import language_options
+
+    options = language_options(config)
+    if options:
+        options[0] = {**options[0], "stt_model": components.stt.model, "tts_model": components.tts.model}
+    return options
 
 
 def _refused_body(call_id: str, reason: str, diagnostic: str) -> dict[str, Any]:
@@ -557,6 +572,9 @@ async def _claim_existing(
         runtime = runtime_config(
             call, snapshot, catalog, signer=registry.signer, media_bucket=media_bucket, outbound_dial=outbound
         )
+        from app.caller_language.service import start_language
+
+        runtime["caller_language"] = await start_language(session, call, runtime["language_options"])
     outcome.body = {"admitted": True, "call_id": call_id, "runtime": runtime}
     return outcome
 

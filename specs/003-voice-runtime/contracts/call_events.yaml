@@ -220,10 +220,11 @@ components:
           type: string
         event:
           type: string
-          enum: [voicemail_detected, silence_timeout, max_duration, credit_exhausted, vendor_error, segment_override, override_clamped]
+          enum: [voicemail_detected, silence_timeout, max_duration, credit_exhausted, vendor_error, segment_override, override_clamped, language_switched]
           description: |
             segment_override: a flow segment switched the model, voice or speech recognition settings (detail lists the paths; FR-046).
             override_clamped: an override value was outside the shared control range and was clamped (FR-046).
+            language_switched: the agent switched the call to the caller's language with set_language (012; detail is "<label> (<code>)").
         detail:
           type: string
         at_ms:

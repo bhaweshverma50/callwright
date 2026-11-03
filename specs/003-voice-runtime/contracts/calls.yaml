@@ -183,6 +183,34 @@ components:
             `advanced.recording` override (002) and the workspace's `recording_default` (001).
             Informational for the worker: the API starts egress only when true; the worker never
             records.
+        stt_resolved_model:
+          type: [string, 'null']
+          description: The speech recognition model Auto resolved to for the agent's language.
+        language_options:
+          type: array
+          description: >
+            Languages the caller can switch to during the call (012), the agent's own language
+            first. Empty when language switching is off, the agent is a flow, or no other language
+            is supported by both the agent's speech recognition and voice.
+          items: {$ref: '#/components/schemas/LanguageOption'}
+        caller_language:
+          type: [string, 'null']
+          description: >
+            Phone calls only (012): the caller's saved language when it is one of
+            `language_options` and differs from the agent's language. The call starts in it
+            (speech recognition, replies and a greeting with the same meaning).
+    LanguageOption:
+      type: object
+      required: [code, label, stt_model, tts_model]
+      properties:
+        code: {type: string, examples: [hi, en-US]}
+        label: {type: string, examples: [Hindi]}
+        stt_model:
+          type: [string, 'null']
+          description: Speech recognition model for this language (the agent's model when it covers it).
+        tts_model:
+          type: [string, 'null']
+          description: Voice model for this language (a multilingual model when the agent's is English only).
     CallRecordingState:
       type: object
       description: >

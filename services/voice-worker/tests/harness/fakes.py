@@ -177,6 +177,7 @@ REASONS = {
     "insufficient_credit",
 }
 SYSTEM_EVENTS = {
+    "language_switched",
     "voicemail_detected",
     "silence_timeout",
     "max_duration",

@@ -189,6 +189,10 @@ paths:
                   config_snapshot: { type: object }
                   user_prompt: { type: string }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
+                  language_options:
+                    type: array
+                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
+                    items: { $ref: '../../003-voice-runtime/contracts/calls.yaml#/components/schemas/LanguageOption' }
         '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '409': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict' }
   /internal/test-runs/{test_run_id}/cases/{test_case_id}/result:

@@ -40,6 +40,7 @@ from worker.audio import (
 )
 from worker.call_behavior import CallBehavior, behavior_from_config
 from worker.flow import FlowRunner, get_flow_runner
+from worker.language import set_language_instruction, with_reply_language
 from worker.tools import (
     CallControl,
     ClampedValue,
@@ -79,8 +80,8 @@ VOICE_STYLE_INSTRUCTION = (
     "on the phone, not the way people write. Start each reply with a short sentence. Keep replies "
     "short, usually under 35 words, and end with at most one question. Never list options or "
     "examples: ask an open question, or offer two choices at the very most. Use contractions and "
-    "everyday words, and react to what the caller just said before moving on (\"Got it.\", \"Oh, "
-    "that's tough.\", \"Okay, so...\"), without opening every reply the same way. Match the "
+    'everyday words, and react to what the caller just said before moving on ("Got it.", "Oh, '
+    'that\'s tough.", "Okay, so..."), without opening every reply the same way. Match the '
     "caller's mood and pace: calm and gentle when they are upset, brisk when they are in a hurry. "
     "Never use lists, headings, markdown, emojis or line breaks."
 )
@@ -172,6 +173,12 @@ class SessionPlan:
     background: BackgroundAudioSpec | None
     warnings: tuple[AudioWarning, ...] = ()
     agent_type: Literal["single_prompt", "flow"] = "single_prompt"
+    # 012: the agent's configured language (``language`` is the call's current one), the label
+    # of the language replies must use when it is not the agent's, and the label to say a fixed
+    # greeting in when the call starts in the caller's saved language.
+    agent_language: str | None = None
+    reply_language: str | None = None
+    greeting_language: str | None = None
 
     @property
     def generated_greeting(self) -> bool:
@@ -303,16 +310,42 @@ def _adapter_native_volume(tts: VendorSpec) -> bool:
     return bool(fn(tts.model)) if callable(fn) else False
 
 
+def caller_option(runtime: RuntimeConfig) -> Any:
+    """012: the option for the caller's saved language when the call should start in it."""
+    code = runtime.caller_language
+    options = runtime.language_options
+    if not code or len(options) < 2 or options[0].code == code:
+        return None
+    return next((o for o in options[1:] if o.code == code), None)
+
+
+def in_language(spec: VendorSpec, model: str | None, language: str) -> VendorSpec:
+    return VendorSpec(
+        spec.kind, spec.provider, model or spec.model, {**spec.options, "language": language}
+    )
+
+
 def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPlan:
     """Resolve everything a call needs from the frozen config. Raises ``UnsupportedVendor``."""
     config = runtime.config
-    language = str(config.get("language") or DEFAULT_LANGUAGE)
+    agent_language = str(config.get("language") or DEFAULT_LANGUAGE)
+    language = agent_language
     stt, auto = resolve_stt(
         config, registry, language=language, resolved_model=runtime.stt_resolved_model
     )
     llm = resolve_llm(config, registry)
     tts = resolve_tts(config, registry, language=language)
     nc = resolve_nc(config, registry)
+    reply_language: str | None = None
+    caller = caller_option(runtime)
+    if caller is not None:
+        try:
+            stt = registry.check(in_language(stt, caller.stt_model, caller.code))
+            tts = registry.check(in_language(tts, caller.tts_model, caller.code))
+        except UnsupportedVendor:
+            caller = None  # a model this worker cannot run: the call keeps the agent's language
+        else:
+            language, reply_language = caller.code, caller.label
 
     behavior = behavior_from_config(config, runtime.limits.model_dump())
     turn_detection = select_turn_detection(stt, registry)
@@ -336,6 +369,7 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
         opening = call_opening(config, variables)
         if opening is not None:
             start_speaker, greeting = opening.start_speaker, opening.greeting
+    greeting_language = reply_language if greeting and start_speaker == "agent" else None
     return SessionPlan(
         language=language,
         stt=stt,
@@ -354,6 +388,9 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
         background=background,
         warnings=tuple(warnings),
         agent_type=agent_type,
+        agent_language=agent_language,
+        reply_language=reply_language,
+        greeting_language=greeting_language,
     )
 
 
@@ -539,6 +576,7 @@ def make_agent_class() -> type[Any]:
                 )
                 if p
             )
+            instructions = with_reply_language(instructions, plan.reply_language)
             super().__init__(instructions=instructions, tools=list(tools), **kwargs)
             self.plan = plan
             self._on_tts_text = on_tts_text
@@ -607,11 +645,16 @@ def build_agent(
         )
     agent_cls = make_agent_class()
     callback = callback_instructions(runtime.variables, runtime.direction)
+    switching = (
+        set_language_instruction(runtime.language_options)
+        if len(runtime.language_options) > 1
+        else ""
+    )
     return agent_cls(
         plan,
         tools=tools,
         on_tts_text=on_tts_text,
-        extra_instructions="\n\n".join(p for p in (callback, extra_instructions) if p),
+        extra_instructions="\n\n".join(p for p in (callback, switching, extra_instructions) if p),
         filler_policy=fillers,
         **agent_kwargs,
     )
@@ -681,14 +724,22 @@ class OverrideManager:
     current: dict[Kind, VendorSpec] = field(default_factory=dict)
     _pending: dict[Kind, VendorSpec] = field(default_factory=dict)
     _pending_paths: list[str] = field(default_factory=list)
+    # 012: the reply language (label) and call language; set_language changes them.
+    reply_language: str | None = None
+    language: str | None = None
+    _pending_language: tuple[str, str | None] | None = None
 
     def __post_init__(self) -> None:
         if not self.current:
             self.current = {k: self.plan.spec(k) for k in ("stt", "llm", "tts")}
+        if self.reply_language is None:
+            self.reply_language = self.plan.reply_language
+        if self.language is None:
+            self.language = self.plan.language
 
     @property
     def pending(self) -> bool:
-        return bool(self._pending)
+        return bool(self._pending) or self._pending_language is not None
 
     def _emit(self, event: str, detail: str) -> None:
         if self.on_system_event is not None:
@@ -742,6 +793,22 @@ class OverrideManager:
             applied += [f"tts.{k}" for k in ("provider", "model") if tts.get(k)]
             self._stage("tts", VendorSpec("tts", provider, model, options), rejected)
 
+        switch = overrides.get("switch_language")
+        if switch:
+            code = str(switch.get("code") or "")
+            label = switch.get("label")
+            # Kept even when switching back to the agent's language: the conversation so far is
+            # in another language and the model would otherwise drift back to it.
+            self._pending_language = (code, str(label) if label else code)
+            applied.append("language")
+            spec = base["tts"]
+            tts_model = switch.get("tts_model") or spec.model
+            self._stage(
+                "tts",
+                VendorSpec("tts", spec.provider, tts_model, {**spec.options, "language": code}),
+                rejected,
+            )
+
         stt_raw = overrides.get("stt")
         language = overrides.get("language")
         if stt_raw or language:
@@ -793,12 +860,15 @@ class OverrideManager:
 
     def apply_pending(self) -> OverrideSwap | None:
         """Called at a turn boundary. Returns the swap, or None when nothing is staged."""
-        if not self._pending:
+        if not self.pending:
             self._pending_paths.clear()
             return None
         specs = dict(self._pending)
         paths = tuple(dict.fromkeys(self._pending_paths))
         self.current.update(specs)
+        if self._pending_language is not None:
+            self.language, self.reply_language = self._pending_language
+            self._pending_language = None
         self._pending.clear()
         self._pending_paths.clear()
         kinds = tuple(k for k in ("stt", "llm", "tts") if k in specs)
@@ -814,4 +884,6 @@ class OverrideManager:
             llm=self.current["llm"],
             tts=tts,
             tts_gain=tts_gain_for(tts),
+            language=self.language or self.plan.language,
+            reply_language=self.reply_language,
         )

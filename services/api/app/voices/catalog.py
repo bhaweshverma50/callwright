@@ -80,6 +80,13 @@ class TtsModel:
     label: str
     description: str | None
     withdrawn: bool = False
+    # Base languages the model speaks (012); an English-only model names the model a call uses
+    # for another language.
+    languages: tuple[str, ...] = ()
+    multilingual_model: str | None = None
+
+    def speaks(self, language: str) -> bool:
+        return language.split("-")[0].lower() in self.languages
 
 
 @dataclass(frozen=True)
@@ -128,6 +135,17 @@ class TtsProvider:
 
     def curated_name(self, voice_id: str) -> str | None:
         return next((v.name for v in self.curated_voices if v.voice_id == voice_id), None)
+
+    def model_for_language(self, model_id: str | None, language: str) -> str | None:
+        """The model a call in ``language`` runs (012): ``model_id`` when it speaks the language,
+        else its multilingual model when that does, else None."""
+        model = self.model(model_id or self.default_model)
+        if model is None:
+            return None
+        if model.speaks(language):
+            return model.id
+        other = self.model(model.multilingual_model) if model.multilingual_model else None
+        return other.id if other is not None and other.speaks(language) else None
 
 
 @dataclass(frozen=True)
@@ -275,6 +293,8 @@ def parse_catalog(data: Mapping[str, Any]) -> VoiceCatalog:
                     label=str(m["label"]),
                     description=m.get("description"),
                     withdrawn=bool(m.get("withdrawn", False)),
+                    languages=tuple(str(code) for code in m.get("languages", [])),
+                    multilingual_model=m.get("multilingual_model"),
                 )
                 for m in p["models"]
             ),
@@ -411,6 +431,8 @@ def catalog_json(
                         "chars_bundle_per_min": _chars_bundle(pricing, t.provider, m.id),
                         "price_per_min_usd": _price(pricing, "tts", t.provider, m.id),
                         "withdrawn": m.withdrawn,
+                        "languages": list(m.languages),
+                        "multilingual_model": m.multilingual_model,
                     }
                     for m in t.models
                     if include_withdrawn or not m.withdrawn

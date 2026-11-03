@@ -266,3 +266,27 @@ as in production. The mock web API (`vite --mode mock`) mirrors the same cards.
 - Public API `GET/POST /v1/callbacks`, `GET /v1/callbacks/{id}`, `POST /v1/callbacks/{id}/cancel`.
   Web: Calls, Callbacks tab (`/calls/callbacks`) and a card in the source call's drawer.
 - Migration `s011_0001`. No new settings or secrets.
+
+## 12. Caller language and the default voice (spec 012)
+
+- Default voice for new agents and the seed templates: ElevenLabs Multilingual v2 ($0.09/min,
+  Flash v2.5 is $0.045). Existing agents keep their saved model. The Expressiveness slider maps
+  to ElevenLabs settings in `worker/adapters/tts/elevenlabs.py`: 0 gives stability 0.9 and style 0,
+  the default 0.9 gives stability 0.35 and style 0.3 (the expressive setting chosen by ear), 2
+  gives 0.15 and 0.6, linear between; similarity 0.75 and speaker boost always; style only on
+  Multilingual v2.
+- Languages an agent offers: `services/api/app/caller_language/options.py` (speech recognition
+  provider unchanged, model per language; English-only Flash v2 and Turbo v2 switch to their v2.5
+  versions). The claim sends `language_options` and, on phone calls, `caller_language`.
+- Worker: built-in `set_language` (`worker/tools/set_language.py`) next to `end_call` and
+  `schedule_callback`; speech recognition and voice change at the next turn boundary through the
+  segment override path, the reply-language line changes at once. A call that starts in a saved
+  language translates the fixed greeting with the agent's model during session start and ring
+  (`worker/language.py`), falling back to a model-written greeting after 4 s.
+- API: switches are stored in `call_languages`, saved languages in `caller_preferences` (live
+  phone calls only; never browser calls, WhatsApp or simulations). `GET/DELETE
+  /v1/caller-preferences`, `GET /v1/calls/{id}/language`, internal
+  `POST /v1/internal/calls/{id}/language`. Callbacks need nothing extra: they are outbound calls
+  to the saved number.
+- Agent setting `advanced.language_switching` (Basics tab, under Language). Migration `s012_0001`.
+  No new settings or secrets.

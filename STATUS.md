@@ -93,6 +93,11 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Spec 011 (`specs/011-callbacks`): agents book callbacks with a built-in `schedule_callback` tool; a cron dials them through 010's outbound path (DNC, calling hours, credit, concurrency, idempotency). Callbacks tab under Calls and a card in the call drawer. Details: docs/OPERATIONS.md section 11.
 - Deploy: `deploy.sh ... build migrate api` (migration `s011_0001`), VM jobs worker on the new API tag (new cron `place_due_callbacks`), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
 
+## Caller language and a more natural default voice (2026-11-03, branch `w8-language`, not merged)
+- Spec 012 (`specs/012-caller-language`): callers switch the agent to their language mid-call (built-in `set_language`: speech recognition, replies and voice), the choice is saved per phone number and the next call (callbacks included) starts in it with a translated greeting. Agent setting `advanced.language_switching`; call drawer shows switches and the saved language with Forget. Details: docs/OPERATIONS.md section 12.
+- New agents and templates default to ElevenLabs Multilingual v2 with the expressive delivery (stability 0.35, style 0.3, speaker boost).
+- Deploy: `deploy.sh ... build migrate api` (migration `s012_0001`; migrate also syncs the templates), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 

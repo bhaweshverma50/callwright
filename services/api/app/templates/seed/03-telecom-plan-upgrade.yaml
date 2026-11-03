@@ -12,7 +12,7 @@ config:
   start_speaker: agent
   begin_message: Hello {{customer_name}}, this is {{company_name}}. I'm calling with an offer on your mobile plan. Do you have a minute?
   stt: {provider: deepgram, model: null}
-  tts: {provider: elevenlabs, model: eleven_flash_v2_5}
+  tts: {provider: elevenlabs, model: eleven_multilingual_v2}
   dynamic_variables:
     - {name: company_name, default: Acme Mobile}
     - {name: customer_name, default: Jordan Lee}

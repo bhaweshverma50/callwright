@@ -40,6 +40,15 @@ class SttOverride(TypedDict, total=False):
     language: str
 
 
+class LanguageSwitch(TypedDict, total=False):
+    """012 ``set_language``: the call's new language, its label for the reply-language line
+    and the voice model for it (a multilingual one when the agent's is English only)."""
+
+    code: str
+    label: str
+    tts_model: str | None
+
+
 class SegmentOverrides(TypedDict, total=False):
     """Per-segment overrides from a flow node (004 data-model ``Overrides``); null = inherit."""
 
@@ -47,6 +56,7 @@ class SegmentOverrides(TypedDict, total=False):
     tts: TtsOverride | None
     stt: SttOverride | None
     language: str | None
+    switch_language: LanguageSwitch | None
 
 
 @dataclass(frozen=True)

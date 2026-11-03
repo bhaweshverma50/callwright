@@ -232,6 +232,13 @@ components:
         chars_bundle_per_min: {type: [integer, 'null']}
         price_per_min_usd: {$ref: '#/components/schemas/PricePerMin'}
         withdrawn: {type: boolean}
+        languages:
+          type: array
+          description: Base languages the model speaks (012); a call in another language uses `multilingual_model`.
+          items: {type: string}
+        multilingual_model:
+          type: [string, 'null']
+          description: For an English-only model, the model a call switches to when the caller changes language (012).
     TtsProvider:
       type: object
       required: [provider, label, default_model, capabilities, models]

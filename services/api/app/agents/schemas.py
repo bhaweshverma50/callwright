@@ -28,6 +28,7 @@ MAX_GREETING = 1_000
 MAX_TOOLS = 25
 MAX_KBS = 10
 MAX_PRONUNCIATION = 200
+MAX_SWITCH_LANGUAGES = 30
 
 
 def _rng(pointer: str) -> Any:
@@ -114,6 +115,15 @@ class PronunciationEntry(_Strict):
     replacement: str = Field(min_length=1, max_length=200)
 
 
+class LanguageSwitching(_Strict):
+    """Caller language (012): switch to the caller's language and remember it per caller."""
+
+    enabled: bool = True
+    languages: list[Annotated[str, Field(min_length=2, max_length=16)]] = Field(
+        default_factory=list, max_length=MAX_SWITCH_LANGUAGES
+    )
+
+
 class Advanced(_Strict):
     webhook_url: str | None = Field(default=None, max_length=2048)
     webhook_timeout_ms: Annotated[int, _rng("/advanced/webhook_timeout_ms")] = 3000
@@ -123,6 +133,7 @@ class Advanced(_Strict):
     analysis_model: ModelRef | None = None
     pronunciation: list[PronunciationEntry] = Field(default_factory=list, max_length=MAX_PRONUNCIATION)
     recording: Literal["inherit", "on", "off"] = "inherit"
+    language_switching: LanguageSwitching = Field(default_factory=LanguageSwitching)
 
 
 class AgentConfigV1(_Strict):
@@ -161,8 +172,9 @@ class UnsupportedSchemaVersion(ValueError):
 def upcast(config: dict[str, Any]) -> dict[str, Any]:
     """Return ``config`` in the current format. Never mutates the input.
 
-    Fields added within a format version (``advanced.recording``, T088) read as their default
-    when absent, so versions written before the field existed stay readable.
+    Fields added within a format version (``advanced.recording``, T088;
+    ``advanced.language_switching``, 012) read as their default when absent, so versions written
+    before the field existed stay readable.
     """
     out = copy.deepcopy(config)
     version = out.get("schema_version", CURRENT_SCHEMA_VERSION)
@@ -175,6 +187,8 @@ def upcast(config: dict[str, Any]) -> dict[str, Any]:
     advanced = out.get("advanced")
     if isinstance(advanced, dict) and "recording" not in advanced:
         advanced["recording"] = "inherit"
+    if isinstance(advanced, dict) and "language_switching" not in advanced:
+        advanced["language_switching"] = {"enabled": True, "languages": []}
     return out
 
 

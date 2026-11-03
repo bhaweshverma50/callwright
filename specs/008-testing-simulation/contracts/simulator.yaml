@@ -328,6 +328,10 @@ paths:
                   config_snapshot: { type: object }
                   settings: { $ref: '#/components/schemas/SimSettings' }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
+                  language_options:
+                    type: array
+                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
+                    items: { $ref: '../../003-voice-runtime/contracts/calls.yaml#/components/schemas/LanguageOption' }
                   start_speaker: { type: string, enum: [agent, user] }
                   caller_turns:
                     type: array

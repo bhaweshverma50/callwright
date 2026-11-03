@@ -12,7 +12,7 @@ config:
   start_speaker: agent
   begin_message: Hello, this is the customer care team at {{company_name}}. May I speak with {{customer_name}}, please?
   stt: {provider: deepgram, model: null}
-  tts: {provider: elevenlabs, model: eleven_flash_v2_5}
+  tts: {provider: elevenlabs, model: eleven_multilingual_v2}
   dynamic_variables:
     - {name: company_name, default: Acme Bank}
     - {name: customer_name, default: Jordan Lee}

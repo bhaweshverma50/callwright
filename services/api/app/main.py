@@ -34,6 +34,8 @@ from app.calibration.router import router as calibration_router
 from app.call_events.router import router as call_events_router
 from app.callbacks.router import internal_router as callbacks_internal_router
 from app.callbacks.router import router as callbacks_router
+from app.caller_language.router import internal_router as caller_language_internal_router
+from app.caller_language.router import router as caller_language_router
 from app.calls.catalog import load_catalog
 from app.calls.read_router import router as calls_read_router
 from app.calls.router import router as calls_router
@@ -275,6 +277,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         outbound_router,
         callbacks_router,
         callbacks_internal_router,
+        caller_language_router,
+        caller_language_internal_router,
         whatsapp_router,
         whatsapp_public_router,
         flows_router,

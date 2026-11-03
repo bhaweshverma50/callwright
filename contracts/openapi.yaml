@@ -14,6 +14,7 @@ tags:
 - name: billing
 - name: call-events-internal
 - name: callbacks
+- name: caller-language
 - name: calls-internal
 - name: core
 - name: datasets
@@ -1817,6 +1818,77 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 011-callbacks
+  /caller-preferences:
+    get:
+      operationId: listCallerPreferences
+      summary: List saved caller languages
+      tags:
+      - caller-language
+      description: Most recently updated first.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: phone_number
+        in: query
+        description: Only the preference of this E.164 number.
+        schema:
+          $ref: '#/components/schemas/E164'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Saved caller languages
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CallerPreference'
+                  total:
+                    type: integer
+                    minimum: 0
+                  page:
+                    type: integer
+                    minimum: 1
+                  page_size:
+                    type: integer
+                    minimum: 1
+                  total_pages:
+                    type: integer
+                    minimum: 0
+      x-spec: 012-caller-language
+  /caller-preferences/{preference_id}:
+    parameters:
+    - $ref: '#/components/parameters/PreferenceIdPath'
+    delete:
+      operationId: deleteCallerPreference
+      summary: Forget a caller's saved language
+      tags:
+      - caller-language
+      description: The next call with this number starts in the agent's language again.
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '204':
+          description: Forgotten
+      x-spec: 012-caller-language
   /calls:
     get:
       operationId: listCalls
@@ -2265,6 +2337,31 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       x-spec: 004-flow-agents
+  /calls/{call_id}/language:
+    parameters:
+    - $ref: '#/components/parameters/CallIdPath'
+    get:
+      operationId: getCallLanguage
+      summary: Languages of a call
+      tags:
+      - caller-language
+      description: 'The agent''s language, the language the call started in (the caller''s saved language
+        on phone calls), every switch the agent made during the call, and the caller''s current saved
+        language.
+
+        '
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '200':
+          description: The call's languages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallLanguage'
+      x-spec: 012-caller-language
   /calls/{call_id}/recording:
     get:
       operationId: getRecordingLink
@@ -3737,6 +3834,41 @@ paths:
         '422':
           $ref: '#/components/responses/Problem'
       x-spec: 003-voice-runtime
+  /internal/calls/{call_id}/language:
+    parameters:
+    - $ref: '#/components/parameters/CallIdPath'
+    post:
+      operationId: reportCallLanguage
+      summary: Report a language switch (voice worker)
+      tags:
+      - internal
+      security:
+      - serviceToken: []
+      description: 'Called by the `set_language` tool. The switch is recorded on the call. On phone calls
+        the language is saved for the caller (inbound) or the dialled number (outbound and callbacks);
+        browser test calls, WhatsApp and simulated calls store no preference.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LanguageReport'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageReported'
+      x-spec: 012-caller-language
   /internal/calls/{call_id}/tool-secrets:
     parameters:
     - name: call_id
@@ -3941,6 +4073,11 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
+                  language_options:
+                    type: array
+                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
+                    items:
+                      $ref: '#/components/schemas/LanguageOption'
                   start_speaker:
                     type: string
                     enum:
@@ -4077,6 +4214,11 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
+                  language_options:
+                    type: array
+                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
+                    items:
+                      $ref: '#/components/schemas/LanguageOption'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -8495,6 +8637,12 @@ components:
         - last_90_days
         - custom
         default: last_30_days
+    PreferenceIdPath:
+      name: preference_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/CallerPreferenceId'
     ReviewLookbackDays:
       name: lookback_days
       in: query
@@ -8912,6 +9060,30 @@ components:
               default: inherit
               description: Call recording override (T088); `inherit` uses the workspace recording_default.
                 Versions written without it read as inherit
+            language_switching:
+              type: object
+              description: 'Caller language (012). When enabled, a single-prompt agent can switch speech
+                recognition, replies and voice to the caller''s language during a call (built-in `set_language`
+                tool), and phone callers start their next call in their saved language. `languages` limits
+                the choice (empty means every language the agent''s speech recognition and voice both
+                support). Versions written without it read as enabled with every language.
+
+                '
+              required:
+              - enabled
+              - languages
+              properties:
+                enabled:
+                  type: boolean
+                  default: true
+                languages:
+                  type: array
+                  maxItems: 30
+                  uniqueItems: true
+                  items:
+                    type: string
+                    minLength: 2
+                    maxLength: 16
         tool_ids:
           type: array
           maxItems: 25
@@ -9914,6 +10086,60 @@ components:
     CallId:
       type: string
       pattern: ^call_[0-9A-HJKMNP-TV-Z]{26}$
+    CallLanguage:
+      type: object
+      required:
+      - call_id
+      - agent_language
+      - started_language
+      - started_from
+      - switches
+      - caller_number
+      - preference
+      properties:
+        call_id:
+          type: string
+        agent_language:
+          $ref: '#/components/schemas/LanguageRef'
+        started_language:
+          $ref: '#/components/schemas/LanguageRef'
+        started_from:
+          type: string
+          enum:
+          - agent
+          - saved_preference
+          description: '`saved_preference` when the call started in the caller''s saved language.'
+        switches:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallLanguageSwitch'
+        caller_number:
+          description: The number whose language is saved (caller on inbound, dialled number on outbound);
+            null on browser calls.
+          oneOf:
+          - $ref: '#/components/schemas/E164'
+          - type: 'null'
+        preference:
+          description: The caller's current saved language, if any.
+          oneOf:
+          - $ref: '#/components/schemas/CallerPreference'
+          - type: 'null'
+    CallLanguageSwitch:
+      type: object
+      required:
+      - offset_ms
+      - from
+      - to
+      properties:
+        offset_ms:
+          type:
+          - integer
+          - 'null'
+          description: Time into the connected call.
+        from:
+          $ref: '#/components/schemas/LanguageRef'
+        to:
+          $ref: '#/components/schemas/LanguageRef'
     CallListItem:
       type: object
       required:
@@ -10454,6 +10680,32 @@ components:
         is the outbound call); `failed` with `failure_reason`; `cancelled` by a user.
 
         '
+    CallerPreference:
+      type: object
+      required:
+      - id
+      - phone_number
+      - language
+      - updated_at
+      - last_call_id
+      properties:
+        id:
+          $ref: '#/components/schemas/CallerPreferenceId'
+        phone_number:
+          $ref: '#/components/schemas/E164'
+        language:
+          $ref: '#/components/schemas/LanguageRef'
+        updated_at:
+          type: string
+          format: date-time
+        last_call_id:
+          type:
+          - string
+          - 'null'
+          description: The call on which the caller last switched.
+    CallerPreferenceId:
+      type: string
+      pattern: ^cpf_[0-9A-HJKMNP-TV-Z]{26}$
     CallerRoute:
       type: object
       required:
@@ -13507,6 +13759,86 @@ components:
               type: string
             voice_id:
               type: string
+    LanguageOption:
+      type: object
+      required:
+      - code
+      - label
+      - stt_model
+      - tts_model
+      properties:
+        code:
+          type: string
+          examples:
+          - hi
+          - en-US
+        label:
+          type: string
+          examples:
+          - Hindi
+        stt_model:
+          type:
+          - string
+          - 'null'
+          description: Speech recognition model for this language (the agent's model when it covers it).
+        tts_model:
+          type:
+          - string
+          - 'null'
+          description: Voice model for this language (a multilingual model when the agent's is English
+            only).
+    LanguageRef:
+      type: object
+      required:
+      - code
+      - label
+      properties:
+        code:
+          type: string
+          examples:
+          - hi
+          - en-US
+        label:
+          type: string
+          examples:
+          - Hindi
+          - English (US)
+    LanguageReport:
+      type: object
+      additionalProperties: false
+      required:
+      - language
+      properties:
+        language:
+          type: string
+          minLength: 2
+          maxLength: 16
+          description: A code from the call's `language_options`.
+        offset_ms:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+    LanguageReported:
+      type: object
+      required:
+      - recorded
+      - stored
+      - reason
+      properties:
+        recorded:
+          type: boolean
+          description: The switch was recorded on the call.
+        stored:
+          type: boolean
+          description: The language was saved for the caller.
+        reason:
+          type: string
+          enum:
+          - saved
+          - not_phone_call
+          - simulation
+          - no_number
     LatencySummary:
       type: object
       required:
@@ -15048,6 +15380,29 @@ components:
             the API starts egress only when true; the worker never records.
 
             '
+        stt_resolved_model:
+          type:
+          - string
+          - 'null'
+          description: The speech recognition model Auto resolved to for the agent's language.
+        language_options:
+          type: array
+          description: 'Languages the caller can switch to during the call (012), the agent''s own language
+            first. Empty when language switching is off, the agent is a flow, or no other language is
+            supported by both the agent''s speech recognition and voice.
+
+            '
+          items:
+            $ref: '#/components/schemas/LanguageOption'
+        caller_language:
+          type:
+          - string
+          - 'null'
+          description: 'Phone calls only (012): the caller''s saved language when it is one of `language_options`
+            and differs from the agent''s language. The call starts in it (speech recognition, replies
+            and a greeting with the same meaning).
+
+            '
     RuntimeTranscriptItem:
       type: object
       required:
@@ -15115,10 +15470,14 @@ components:
           - vendor_error
           - segment_override
           - override_clamped
+          - language_switched
           description: 'segment_override: a flow segment switched the model, voice or speech recognition
             settings (detail lists the paths; FR-046).
 
             override_clamped: an override value was outside the shared control range and was clamped (FR-046).
+
+            language_switched: the agent switched the call to the caller''s language with set_language
+            (012; detail is "<label> (<code>)").
 
             '
         detail:
@@ -16884,6 +17243,17 @@ components:
           $ref: '#/components/schemas/PricePerMin'
         withdrawn:
           type: boolean
+        languages:
+          type: array
+          description: Base languages the model speaks (012); a call in another language uses `multilingual_model`.
+          items:
+            type: string
+        multilingual_model:
+          type:
+          - string
+          - 'null'
+          description: For an English-only model, the model a call switches to when the caller changes
+            language (012).
     TtsProvider:
       type: object
       required:

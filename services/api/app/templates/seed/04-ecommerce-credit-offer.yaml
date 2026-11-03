@@ -12,7 +12,7 @@ config:
   start_speaker: agent
   begin_message: Hi {{customer_name}}, this is {{company_name}}. You've been selected for a shopping credit offer. Can I tell you about it?
   stt: {provider: deepgram, model: null}
-  tts: {provider: elevenlabs, model: eleven_flash_v2_5}
+  tts: {provider: elevenlabs, model: eleven_multilingual_v2}
   dynamic_variables:
     - {name: company_name, default: Acme Shop}
     - {name: customer_name, default: Jordan Lee}

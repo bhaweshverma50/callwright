@@ -71,7 +71,8 @@ async def test_use_template_overlays_defaults(client: httpx.AsyncClient, account
         "model": "gpt-5.1",
         "temperature": 1.0,
     }
-    assert cfg["tts"]["voice_id"] == "EXAVITQu4vr4xnSDxMaL" and cfg["tts"]["model"] == "eleven_flash_v2_5"
+    assert cfg["tts"]["voice_id"] == "EXAVITQu4vr4xnSDxMaL"
+    assert cfg["tts"]["model"] == "eleven_multilingual_v2"
     assert cfg["dynamic_variables"] == [
         {"name": "company_name", "default": "Acme Health Clinic", "description": None}
     ]

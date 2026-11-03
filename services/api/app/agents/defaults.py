@@ -50,6 +50,7 @@ ADVANCED_DEFAULTS: dict[str, Any] = {
     "analysis_model": None,
     "pronunciation": [],
     "recording": "inherit",
+    "language_switching": {"enabled": True, "languages": []},
 }
 
 

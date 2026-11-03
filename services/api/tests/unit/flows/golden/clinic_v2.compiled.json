@@ -165,7 +165,7 @@
       "transitions": [],
       "tts": {
         "expressiveness": 0.9,
-        "model": "eleven_flash_v2_5",
+        "model": "eleven_multilingual_v2",
         "provider": "elevenlabs",
         "speed": 1.0,
         "voice_id": "EXAVITQu4vr4xnSDxMaL",
@@ -278,7 +278,7 @@
       ],
       "tts": {
         "expressiveness": 0.9,
-        "model": "eleven_flash_v2_5",
+        "model": "eleven_multilingual_v2",
         "provider": "elevenlabs",
         "speed": 1.0,
         "voice_id": "EXAVITQu4vr4xnSDxMaL",

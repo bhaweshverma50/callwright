@@ -74,7 +74,7 @@
         "eleven_turbo_v2",
         "eleven_multilingual_v2"
       ],
-      "default_model": "eleven_flash_v2_5",
+      "default_model": "eleven_multilingual_v2",
       "capabilities": {"speed": true, "expressiveness": true, "volume": true},
       "streaming": true,
       "meter": "characters"

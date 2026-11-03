@@ -477,6 +477,23 @@ components:
               enum: [inherit, 'on', 'off']
               default: inherit
               description: Call recording override (T088); `inherit` uses the workspace recording_default. Versions written without it read as inherit
+            language_switching:
+              type: object
+              description: >
+                Caller language (012). When enabled, a single-prompt agent can switch speech
+                recognition, replies and voice to the caller's language during a call (built-in
+                `set_language` tool), and phone callers start their next call in their saved
+                language. `languages` limits the choice (empty means every language the agent's
+                speech recognition and voice both support). Versions written without it read as
+                enabled with every language.
+              required: [enabled, languages]
+              properties:
+                enabled: {type: boolean, default: true}
+                languages:
+                  type: array
+                  maxItems: 30
+                  uniqueItems: true
+                  items: {type: string, minLength: 2, maxLength: 16}
         tool_ids:
           type: array
           maxItems: 25

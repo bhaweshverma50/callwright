@@ -65,6 +65,8 @@ class ToolContext:
     # True when this reply already spoke (text or a filler) before the tool ran.
     reply_spoke: Callable[[], bool] = lambda: False
     turn_index: Callable[[], int | None] = lambda: None
+    # 012: replace the reply-language line in the running agent's instructions.
+    set_reply_language: Callable[[str], Awaitable[None]] | None = None
 
     @property
     def call_id(self) -> str:

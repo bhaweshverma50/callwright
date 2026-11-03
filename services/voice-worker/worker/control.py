@@ -145,6 +145,12 @@ class RuntimeCallControl:
             item["at_ms"] = at
         self._recorder.transcript_item(item)
 
+    def report_language(self, code: str, label: str) -> int | None:
+        """012: record a language switch on the transcript; returns its offset in the call."""
+        item = self._recorder.system("language_switched", f"{label} ({code})")
+        at = item.get("item", {}).get("at_ms")
+        return at if isinstance(at, int) else self._recorder.offset_ms()
+
     async def apply_overrides(self, overrides: SegmentOverrides) -> OverrideResult:
         """Stage per-segment overrides (FR-046); they apply at the next turn boundary."""
         if self._overrides is None:

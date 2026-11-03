@@ -60,6 +60,7 @@ def non_default(agent_type: str, upload_key: str) -> dict[str, Any]:
             "analysis_model": {"provider": "azure_openai", "model": "gpt-5-mini"},
             "pronunciation": [{"word": "GmbH", "replacement": "Gesellschaft"}],
             "recording": "off",
+            "language_switching": {"enabled": False, "languages": ["fr"]},
         },
         "tool_ids": ["tool_01", "tool_02"],
         "kb_ids": ["kb_01"],

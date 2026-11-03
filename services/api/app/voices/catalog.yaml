@@ -145,13 +145,15 @@ stt:
         languages: [hi, hi-Latn, bn, gu, kn, ml, mr, or, pa, ta, te, en-IN]
         builtin_turn_detection: false
 
-# 8.4 Text-to-speech. `default_voice` applies to every language without an entry in
+# 8.4 Text-to-speech. A model's `languages` are the base languages it speaks (012 caller language);
+# an English-only model names the `multilingual_model` a call switches to for another language.
+# `default_voice` applies to every language without an entry in
 # `default_voice_by_language` (keys match exactly, then by base language). `voice_id_pattern`
 # lets validation tell a voice of another provider without a vendor call.
 tts:
   - provider: elevenlabs
     label: ElevenLabs
-    default_model: eleven_flash_v2_5
+    default_model: eleven_multilingual_v2
     capabilities: {speed: true, expressiveness: true, volume: true}
     voice_listing: {source: live, server_search: true, gender_filter: true, language_filter: true, previews: true}
     voice_id_pattern: '^[A-Za-z0-9]{20}$'
@@ -182,11 +184,16 @@ tts:
       - {voice_id: pNInz6obpgDQGcFmaJgB, name: Adam, gender: male, languages: [en]}
       - {voice_id: pqHfZKP75CvOlQylNhV4, name: Bill, gender: male, languages: [en]}
     models:
-      - {id: eleven_flash_v2_5, label: Flash v2.5, description: Fast and natural; 32 languages}
-      - {id: eleven_flash_v2, label: Flash v2, description: Fast; English only}
-      - {id: eleven_turbo_v2_5, label: Turbo v2.5, description: Low latency; 32 languages}
-      - {id: eleven_turbo_v2, label: Turbo v2, description: Low latency; English only}
-      - {id: eleven_multilingual_v2, label: Multilingual v2, description: Highest quality; 29 languages}
+      - {id: eleven_multilingual_v2, label: Multilingual v2, description: Most natural and expressive; 29 languages,
+         languages: [en, ja, zh, de, hi, fr, ko, pt, it, es, id, nl, tr, pl, sv, ar, ms, da, ta, uk, ru]}
+      - {id: eleven_flash_v2_5, label: Flash v2.5, description: Fastest; 32 languages,
+         languages: [en, ja, zh, de, hi, fr, ko, pt, it, es, id, nl, tr, pl, sv, ar, ms, da, ta, uk, ru, "no"]}
+      - {id: eleven_flash_v2, label: Flash v2, description: Fast; English only, languages: [en],
+         multilingual_model: eleven_flash_v2_5}
+      - {id: eleven_turbo_v2_5, label: Turbo v2.5, description: Low latency; 32 languages,
+         languages: [en, ja, zh, de, hi, fr, ko, pt, it, es, id, nl, tr, pl, sv, ar, ms, da, ta, uk, ru, "no"]}
+      - {id: eleven_turbo_v2, label: Turbo v2, description: Low latency; English only, languages: [en],
+         multilingual_model: eleven_turbo_v2_5}
   - provider: cartesia
     label: Cartesia
     default_model: sonic-2
@@ -228,10 +235,12 @@ tts:
       ur: 862e933f-b21c-457b-8df8-8e35c6923ef8
       zh: 0f5ac064-30c7-4cf6-8748-d275f682a0d5
     models:
-      - {id: sonic-2, label: Sonic 2, description: Default Cartesia model}
-      - {id: sonic-2-2025-03-07, label: Sonic 2 (2025-03-07), description: Supports speed and emotion controls}
-      - {id: sonic-3, label: Sonic 3, description: Newest Cartesia model}
-      - {id: sonic-turbo, label: Sonic Turbo, description: Lowest latency}
+      - {id: sonic-2, label: Sonic 2, description: Default Cartesia model, languages: [en, fr, de, es, pt, zh, ja, hi, it, ko, nl, pl, ru, sv, tr]}
+      - {id: sonic-2-2025-03-07, label: Sonic 2 (2025-03-07), description: Supports speed and emotion controls,
+         languages: [en, fr, de, es, pt, zh, ja, hi, it, ko, nl, pl, ru, sv, tr]}
+      - {id: sonic-3, label: Sonic 3, description: Newest Cartesia model,
+         languages: [en, ar, bn, da, de, es, fr, gu, he, hi, id, it, ja, kn, ko, ml, mr, ms, nl, "no", or, pa, pl, pt, ru, sv, ta, te, th, tr, uk, ur, zh]}
+      - {id: sonic-turbo, label: Sonic Turbo, description: Lowest latency, languages: [en, fr, de, es, pt, zh, ja, hi, it, ko, nl, pl, ru, sv, tr]}
   - provider: fishaudio
     label: Fish Audio
     default_model: s2.1-pro
@@ -259,9 +268,9 @@ tts:
       - {voice_id: 5161d41404314212af1254556477c17d, name: Polite Japanese, gender: female, languages: [ja],
          description: Gentle, polite Japanese delivery for customer service}
     models:
-      - {id: s2.1-pro, label: S2.1 Pro, description: Newest Fish Audio model}
-      - {id: s2-pro, label: S2 Pro, description: Multi-speaker support}
-      - {id: s1, label: S1, description: Standard model}
+      - {id: s2.1-pro, label: S2.1 Pro, description: Newest Fish Audio model, languages: [en, zh, ja, ko, fr, de, es, ar, ru, nl, it, pl, pt]}
+      - {id: s2-pro, label: S2 Pro, description: Multi-speaker support, languages: [en, zh, ja, ko, fr, de, es, ar, ru, nl, it, pl, pt]}
+      - {id: s1, label: S1, description: Standard model, languages: [en, zh, ja, ko, fr, de, es, ar, ru, nl, it, pl, pt]}
 
 # 8.5 Noise cancellation (null in the config means off).
 noise_cancellation:

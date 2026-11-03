@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
 from app.billing import service as billing
+from app.caller_language.options import language_options
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
@@ -365,6 +366,7 @@ async def case_spec(session: AsyncSession, run_id: str, case_id: str) -> dict[st
         "config_snapshot": run.config_snapshot,
         "user_prompt": result.user_prompt,
         "dynamic_variables": dict(result.dynamic_variables or {}),
+        "language_options": language_options(run.config_snapshot),
     }
 
 

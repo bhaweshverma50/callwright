@@ -42,6 +42,8 @@ PREFIXES = frozenset(
         "iss",
         "txn",
         "cbk",
+        "cpf",
+        "clg",
     }
 )
 _ULID = "[0-9A-HJKMNP-TV-Z]{26}"

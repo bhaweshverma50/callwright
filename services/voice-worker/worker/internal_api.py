@@ -94,6 +94,17 @@ class ControlRange(BaseModel):
     step: float | None = None
 
 
+class LanguageOption(BaseModel):
+    """One language the caller can switch to (012); the agent's own language comes first."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    code: str
+    label: str
+    stt_model: str | None = None
+    tts_model: str | None = None
+
+
 class RuntimeConfig(BaseModel):
     """Frozen configuration for one call (contract ``RuntimeConfig``)."""
 
@@ -116,6 +127,9 @@ class RuntimeConfig(BaseModel):
     recording_enabled: bool | None = None
     stt_resolved_model: str | None = None
     controls: list[ControlRange] | None = None
+    # 012: languages set_language may switch to, and the phone caller's saved language.
+    language_options: list[LanguageOption] = Field(default_factory=list)
+    caller_language: str | None = None
 
 
 class ClaimResponse(BaseModel):

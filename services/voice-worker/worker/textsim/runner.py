@@ -122,6 +122,7 @@ def build_runtime(
     channel: str,
     variables: Mapping[str, str],
     call_id: str,
+    language_options: Sequence[Mapping[str, Any]] = (),
 ) -> RuntimeConfig:
     config = normalize_snapshot(snapshot)
     values: dict[str, str] = {
@@ -161,6 +162,7 @@ def build_runtime(
                 "ring_duration_ms": behavior.get("ring_duration_ms", 5000),
             },
             "simulation": True,
+            "language_options": [dict(o) for o in language_options],
         }
     )
 
@@ -479,6 +481,7 @@ async def run_single_turn(
                 channel="web",
                 variables=spec.dynamic_variables,
                 call_id=test_run_id,
+                language_options=spec.language_options,
             )
             session = TextSession(
                 test_run_id, runtime, deps, answers=answers, recorder=recorder, meter=meter
@@ -581,6 +584,7 @@ async def _simulate(
             channel=spec.channel,
             variables=spec.dynamic_variables,
             call_id=call_id,
+            language_options=spec.language_options,
         )
         session = TextSession(
             call_id,

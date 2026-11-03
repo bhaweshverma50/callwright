@@ -1,0 +1,183 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, caller language module
+  version: 0.1.0
+  description: >
+    Fragment owned by 012-caller-language. A caller can talk in their own language: the voice
+    agent's built-in `set_language` tool switches speech recognition, replies and voice for the
+    rest of the call, and the choice is saved per caller phone number so the next phone call
+    from or to that number (callbacks included) starts in that language. Browser test calls,
+    WhatsApp and simulations never save a preference. Agents control the feature with
+    `advanced.language_switching` (002); the claim's `RuntimeConfig` (003) carries
+    `language_options` and `caller_language`.
+servers:
+  - url: https://api.callwright.example/v1
+security:
+  - bearerAuth: []
+paths:
+  /caller-preferences:
+    get:
+      operationId: listCallerPreferences
+      summary: List saved caller languages
+      tags: [caller-language]
+      description: Most recently updated first.
+      parameters:
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page'}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+        - name: phone_number
+          in: query
+          description: Only the preference of this E.164 number.
+          schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
+      responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '200':
+          description: Saved caller languages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, page_size, total_pages]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/CallerPreference'}
+                  total: {type: integer, minimum: 0}
+                  page: {type: integer, minimum: 1}
+                  page_size: {type: integer, minimum: 1}
+                  total_pages: {type: integer, minimum: 0}
+  /caller-preferences/{preference_id}:
+    parameters:
+      - $ref: '#/components/parameters/PreferenceIdPath'
+    delete:
+      operationId: deleteCallerPreference
+      summary: Forget a caller's saved language
+      tags: [caller-language]
+      description: The next call with this number starts in the agent's language again.
+      responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '204':
+          description: Forgotten
+  /calls/{call_id}/language:
+    parameters:
+      - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath'
+    get:
+      operationId: getCallLanguage
+      summary: Languages of a call
+      tags: [caller-language]
+      description: >
+        The agent's language, the language the call started in (the caller's saved language on
+        phone calls), every switch the agent made during the call, and the caller's current
+        saved language.
+      responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '200':
+          description: The call's languages
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CallLanguage'}
+  /internal/calls/{call_id}/language:
+    parameters:
+      - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/CallIdPath'
+    post:
+      operationId: reportCallLanguage
+      summary: Report a language switch (voice worker)
+      tags: [internal]
+      security:
+        - serviceToken: []
+      description: >
+        Called by the `set_language` tool. The switch is recorded on the call. On phone calls the
+        language is saved for the caller (inbound) or the dialled number (outbound and
+        callbacks); browser test calls, WhatsApp and simulated calls store no preference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LanguageReport'}
+      responses:
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LanguageReported'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    serviceToken: {type: http, scheme: bearer, description: Static service token for /v1/internal/* endpoints (voice worker only).}
+  parameters:
+    PreferenceIdPath:
+      name: preference_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/CallerPreferenceId'}
+  schemas:
+    CallerPreferenceId:
+      type: string
+      pattern: '^cpf_[0-9A-HJKMNP-TV-Z]{26}$'
+    LanguageRef:
+      type: object
+      required: [code, label]
+      properties:
+        code: {type: string, examples: [hi, en-US]}
+        label: {type: string, examples: [Hindi, English (US)]}
+    CallerPreference:
+      type: object
+      required: [id, phone_number, language, updated_at, last_call_id]
+      properties:
+        id: {$ref: '#/components/schemas/CallerPreferenceId'}
+        phone_number: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
+        language: {$ref: '#/components/schemas/LanguageRef'}
+        updated_at: {type: string, format: date-time}
+        last_call_id: {type: [string, 'null'], description: The call on which the caller last switched.}
+    CallLanguageSwitch:
+      type: object
+      required: [offset_ms, from, to]
+      properties:
+        offset_ms: {type: [integer, 'null'], description: Time into the connected call.}
+        from: {$ref: '#/components/schemas/LanguageRef'}
+        to: {$ref: '#/components/schemas/LanguageRef'}
+    CallLanguage:
+      type: object
+      required: [call_id, agent_language, started_language, started_from, switches, caller_number, preference]
+      properties:
+        call_id: {type: string}
+        agent_language: {$ref: '#/components/schemas/LanguageRef'}
+        started_language: {$ref: '#/components/schemas/LanguageRef'}
+        started_from:
+          type: string
+          enum: [agent, saved_preference]
+          description: '`saved_preference` when the call started in the caller''s saved language.'
+        switches:
+          type: array
+          items: {$ref: '#/components/schemas/CallLanguageSwitch'}
+        caller_number:
+          description: The number whose language is saved (caller on inbound, dialled number on outbound); null on browser calls.
+          oneOf:
+            - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/E164'}
+            - {type: 'null'}
+        preference:
+          description: The caller's current saved language, if any.
+          oneOf:
+            - {$ref: '#/components/schemas/CallerPreference'}
+            - {type: 'null'}
+    LanguageReport:
+      type: object
+      additionalProperties: false
+      required: [language]
+      properties:
+        language: {type: string, minLength: 2, maxLength: 16, description: A code from the call's `language_options`.}
+        offset_ms: {type: [integer, 'null'], minimum: 0}
+    LanguageReported:
+      type: object
+      required: [recorded, stored, reason]
+      properties:
+        recorded: {type: boolean, description: The switch was recorded on the call.}
+        stored: {type: boolean, description: The language was saved for the caller.}
+        reason:
+          type: string
+          enum: [saved, not_phone_call, simulation, no_number]

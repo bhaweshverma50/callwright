@@ -74,6 +74,7 @@ class CaseSpec(BaseModel):
     config_snapshot: dict[str, Any]
     user_prompt: str
     dynamic_variables: dict[str, str] = Field(default_factory=dict)
+    language_options: list[dict[str, Any]] = Field(default_factory=list)
 
     @field_validator("dynamic_variables", mode="before")
     @classmethod
@@ -102,6 +103,7 @@ class SimulationSpec(BaseModel):
     recorded_tool_outputs: list[RecordedOutput] = Field(default_factory=list)
     original_node_path: list[str] = Field(default_factory=list)
     persona_brief: PersonaBrief | None = None
+    language_options: list[dict[str, Any]] = Field(default_factory=list)
 
     @field_validator("dynamic_variables", mode="before")
     @classmethod

@@ -51,6 +51,8 @@ from worker.tools.end_call import EndCallExecutor
 from worker.tools.http import HttpExecutor
 from worker.tools.schedule_callback import PARAMETERS as SCHEDULE_CALLBACK_PARAMETERS
 from worker.tools.schedule_callback import ScheduleCallbackExecutor
+from worker.tools.set_language import SetLanguageExecutor
+from worker.tools.set_language import spec_for as set_language_spec
 from worker.tools.transfer import TransferBackend, TransferExecutor
 
 if TYPE_CHECKING:
@@ -110,6 +112,8 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
         }
     elif spec.type == "schedule_callback":
         parameters = dict(SCHEDULE_CALLBACK_PARAMETERS)
+    elif spec.type == "set_language":
+        parameters = dict(config.get("parameters") or EMPTY_OBJECT)
     elif spec.type == "press_digit":
         parameters = {
             "type": "object",
@@ -299,9 +303,18 @@ class CallTools:
             with contextlib.suppress(Exception):
                 await handle
 
+        async def set_reply_language(label: str) -> None:
+            from worker.language import with_reply_language
+
+            agent = session.current_agent
+            await agent.update_instructions(with_reply_language(agent.instructions, label))
+
         # A shallow copy: the variable stores and secrets stay shared with the call.
         return replace(
-            self.ctx, say=say, wait_for_playout=getattr(run_ctx, "wait_for_playout", None)
+            self.ctx,
+            say=say,
+            wait_for_playout=getattr(run_ctx, "wait_for_playout", None),
+            set_reply_language=set_reply_language,
         )
 
     async def _run(
@@ -496,6 +509,10 @@ def build_call_tools(
     # 011: and can book a callback (refused on calls that are not phone calls).
     if not any(s.name == BUILTIN_SCHEDULE_CALLBACK.name for s in specs):
         specs.append(BUILTIN_SCHEDULE_CALLBACK)
+    # 012: and can switch to the caller's language when the claim offers more than one.
+    languages = list(runtime.language_options)
+    if len(languages) > 1 and not any(s.name == "set_language" for s in specs):
+        specs.append(set_language_spec(languages))
     kb = kb_spec(config)
     clients: list[httpx.AsyncClient] = []
     simulation = is_simulation(runtime)
@@ -519,6 +536,10 @@ def build_call_tools(
     executors["schedule_callback"] = ScheduleCallbackExecutor(
         api_client, api_base_url, service_token
     )
+    if len(languages) > 1:
+        executors["set_language"] = SetLanguageExecutor(
+            languages, runtime.caller_language, api_client, api_base_url, service_token
+        )
     fillers = FillerPolicy(
         filler_texts([*specs, *([kb] if kb else [])]),
         end_call_names=frozenset(s.name for s in specs if s.type == "end_call"),

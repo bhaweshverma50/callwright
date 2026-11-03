@@ -24,6 +24,7 @@ FULL_PRICING = engine.Catalog(
         engine.Rate("stt", "sarvam", None, "Auto", Decimal("0.006")),
         engine.Rate("llm", "azure_openai", "gpt-5.1", "GPT-5.1", Decimal("0.0165")),
         engine.Rate("tts", "elevenlabs", "eleven_flash_v2_5", "Flash", Decimal("0.045")),
+        engine.Rate("tts", "elevenlabs", "eleven_multilingual_v2", "Multilingual", Decimal("0.09")),
         engine.Rate("tts", "cartesia", "sonic-2", "Sonic 2", Decimal("0.0275")),
         engine.Rate("nc", "sanas", "vi", "VI", Decimal("0")),
     ),

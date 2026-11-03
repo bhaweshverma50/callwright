@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
 from app.billing import service as billing
+from app.caller_language.options import language_options
 from app.calls.models import Call, transition
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
@@ -743,6 +744,7 @@ async def spec_for(session: AsyncSession, run_id: str) -> dict[str, Any]:
         "settings": dict(run.settings or {}),
         "dynamic_variables": {str(k): str(v) for k, v in (run.dynamic_variables or {}).items()},
         "start_speaker": "user" if config.get("start_speaker") == "user" else "agent",
+        "language_options": language_options(config),
     }
     if base is not None:
         material = sim_calls.replay_material(sim_calls.items_of(base))

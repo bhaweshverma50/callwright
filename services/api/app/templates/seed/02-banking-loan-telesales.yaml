@@ -12,7 +12,7 @@ config:
   start_speaker: agent
   begin_message: Hi, this is {{company_name}} calling for {{customer_name}}. Is now a good time for a quick two-minute chat?
   stt: {provider: deepgram, model: null}
-  tts: {provider: elevenlabs, model: eleven_flash_v2_5}
+  tts: {provider: elevenlabs, model: eleven_multilingual_v2}
   dynamic_variables:
     - {name: company_name, default: Acme Finance}
     - {name: customer_name, default: Jordan Lee}

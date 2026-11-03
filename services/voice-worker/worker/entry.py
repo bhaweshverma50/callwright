@@ -62,6 +62,7 @@ from worker.internal_api import (
     RuntimeConfig,
     SipAttributes,
 )
+from worker.language import translate_greeting, translated_greeting_instruction
 from worker.metrics import (
     LATENCY_TOPIC,
     EventPoster,
@@ -189,6 +190,8 @@ class LiveCall:
         self._extra_tools: list[Any] = []
         self._extra_instructions = ""
         self._goodbye_timer: asyncio.TimerHandle | None = None
+        # 012: the fixed greeting translated into the caller's saved language.
+        self._greeting_text: str | None = None
 
     # helpers ---------------------------------------------------------------
 
@@ -739,6 +742,20 @@ class LiveCall:
             # A fixed opening often carries disclosures (recorded line, virtual assistant, debt
             # collection notice) that must be heard in full, so the caller cannot talk over it.
             frames = await self._greeting_frames(greeting_audio)
+            if plan.greeting_language:
+                if frames is None or not self._greeting_text:
+                    # Translation not ready: the model writes the same greeting in the language.
+                    self.session.generate_reply(
+                        instructions=translated_greeting_instruction(
+                            plan.greeting, plan.greeting_language
+                        ),
+                        allow_interruptions=False,
+                    )
+                    return
+                self.session.say(
+                    self._greeting_text, allow_interruptions=False, audio=_replay(frames)
+                )
+                return
             audio = {} if frames is None else {"audio": _replay(frames)}
             self.session.say(plan.greeting, allow_interruptions=False, **audio)
 
@@ -775,10 +792,15 @@ class LiveCall:
         the TTS node would). None when the agent does not open with a fixed line."""
         if plan.start_speaker != "agent" or not plan.greeting or self.components is None:
             return None
-        text = PronunciationTransform(plan.pronunciation).apply(plan.greeting)
+        greeting = plan.greeting
         tts = self.components.tts
 
         async def synthesize() -> list[Any]:
+            spoken = greeting
+            if plan.greeting_language:
+                spoken = await self._translate_greeting(plan, greeting, plan.greeting_language)
+                self._greeting_text = spoken
+            text = PronunciationTransform(plan.pronunciation).apply(spoken)
             async with tts.synthesize(text) as stream:
                 frames = [ev.frame async for ev in stream]
             self._on_tts_text(text)
@@ -787,6 +809,26 @@ class LiveCall:
             return frames
 
         return asyncio.ensure_future(synthesize())
+
+    async def _translate_greeting(self, plan: SessionPlan, greeting: str, label: str) -> str:
+        """012: the greeting in the caller's language, by the agent's model on its own client
+        (metered here; the session's metrics never see it)."""
+        creds = self.settings.vendor_credentials()
+        llm = self.registry.build(plan.llm, creds.get(plan.llm.provider, {}))
+
+        def meter(input_tokens: int, output_tokens: int) -> None:
+            self.meters.add_llm(
+                plan.llm.provider,
+                plan.llm.model or "",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
+
+        try:
+            return await translate_greeting(llm, greeting, label, on_usage=meter)
+        finally:
+            with contextlib.suppress(Exception):
+                await llm.aclose()
 
     async def _greeting_frames(self, task: asyncio.Task[list[Any]] | None) -> list[Any] | None:
         """The pre-synthesised greeting, or None to fall back to live TTS."""

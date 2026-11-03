@@ -82,7 +82,7 @@ def test_carried_fields() -> None:
         model = llm.model(cfg["llm"]["provider"], cfg["llm"]["model"])
         assert model is not None and model.temperature.is_fixed and "temperature" not in cfg["llm"]
         assert cfg["stt"] == {"provider": "deepgram", "model": None}
-        assert cfg["tts"] == {"provider": "elevenlabs", "model": "eleven_flash_v2_5"}
+        assert cfg["tts"] == {"provider": "elevenlabs", "model": "eleven_multilingual_v2"}
         assert "voice_id" not in cfg["tts"]
 
 

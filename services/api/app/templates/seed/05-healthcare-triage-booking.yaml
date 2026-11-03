@@ -12,7 +12,7 @@ config:
   start_speaker: agent
   begin_message: Thank you for calling {{company_name}}. May I have your name, and how can I help you today?
   stt: {provider: deepgram, model: null}
-  tts: {provider: elevenlabs, model: eleven_flash_v2_5}
+  tts: {provider: elevenlabs, model: eleven_multilingual_v2}
   dynamic_variables:
     - {name: company_name, default: Acme Health Clinic}
   prompt: |

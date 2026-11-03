@@ -13,6 +13,10 @@
         "termination_key": "#",
         "timeout_ms": 2500
       },
+      "language_switching": {
+        "enabled": true,
+        "languages": []
+      },
       "pronunciation": [],
       "recording": "inherit",
       "voicemail_detection": {
@@ -129,7 +133,7 @@
             "transitions": [],
             "tts": {
               "expressiveness": 0.9,
-              "model": "eleven_flash_v2_5",
+              "model": "eleven_multilingual_v2",
               "provider": "elevenlabs",
               "speed": 1.0,
               "voice_id": "EXAVITQu4vr4xnSDxMaL",
@@ -173,7 +177,7 @@
     "tool_ids": [],
     "tts": {
       "expressiveness": 0.9,
-      "model": "eleven_flash_v2_5",
+      "model": "eleven_multilingual_v2",
       "provider": "elevenlabs",
       "speed": 1.0,
       "voice_id": "EXAVITQu4vr4xnSDxMaL",

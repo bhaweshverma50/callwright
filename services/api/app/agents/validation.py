@@ -39,6 +39,7 @@ from app.agents.schemas import (
     upcast,
 )
 from app.agents.webhook_url import check_syntax
+from app.caller_language import options as caller_options
 from app.llms.service import LlmCatalog
 from app.llms.service import load_catalog as load_llm_catalog
 from app.pricing import engine
@@ -92,6 +93,9 @@ LABELS: dict[str, str] = {
     "/advanced/pronunciation/*/word": "Word",
     "/advanced/pronunciation/*/replacement": "Pronunciation",
     "/advanced/recording": "Call recording",
+    "/advanced/language_switching": "Caller language switching",
+    "/advanced/language_switching/enabled": "Caller language switching",
+    "/advanced/language_switching/languages": "Caller languages",
     "/tool_ids": "Tools",
     "/kb_ids": "Knowledge bases",
 }
@@ -686,6 +690,38 @@ def _check_text_rules(cfg: dict[str, Any], agent_type: str, ctx: PureContext, ou
                 words.add(folded)
 
 
+def _check_language_switching(cfg: dict[str, Any], vc: VoiceCatalog, out: _Collector) -> None:
+    """012: listed caller languages must be offered; ones the agent's speech recognition and
+    voice cannot handle are kept with a warning (they come back when the voice changes)."""
+    switching = _get(cfg, "advanced", "language_switching")
+    if not isinstance(switching, dict) or not isinstance(switching.get("languages"), list):
+        return
+    pointer = "/advanced/language_switching/languages"
+    codes = switching["languages"]
+    supported: set[str] | None = None
+    seen: set[str] = set()
+    for code in codes:
+        if not _is_text(code):
+            continue
+        lang = vc.language(code)
+        if lang is None or code == "multi":
+            out.error(pointer, "not_in_catalog", f"The language {code!r} is not offered.")
+            continue
+        if code in seen:
+            out.error(pointer, "duplicate_entry", f"{lang.label} is listed more than once.")
+            continue
+        seen.add(code)
+        if supported is None:
+            supported = caller_options.supported_codes(cfg, vc)
+        if code not in supported:
+            out.warn(
+                pointer,
+                "language_unsupported",
+                f"{lang.label} is not supported by this agent's speech recognition and voice, "
+                "so callers cannot switch to it.",
+            )
+
+
 def _drop_empty_pronunciation(cfg: dict[str, Any]) -> None:
     entries = _get(cfg, "advanced", "pronunciation")
     if not isinstance(entries, list):
@@ -773,6 +809,7 @@ def validate_pure(agent_type: str, config: Any, ctx: PureContext | None = None) 
     _check_speech(cfg, ctx, vc, out)
     _check_variables(cfg, agent_type, out)
     _check_text_rules(cfg, agent_type, ctx, out)
+    _check_language_switching(cfg, vc, out)
 
     model: AgentConfigV1 | None = None
     try:
