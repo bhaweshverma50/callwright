@@ -1,13 +1,13 @@
 """Call history read side (006 T016, T030, T055, T084, T091; contracts/calls.yaml).
 
-``GET /v1/calls``, ``/calls/export``, ``/calls/{id}``, ``/transcript``, ``/turn-latencies`` and
-``/compare``. ``/calls/{id}/flow-transitions`` belongs to 004 and is not served here. A call from
-another workspace is a 404 like a missing one (RLS hides it).
+``GET /v1/calls``, ``/calls/live``, ``/calls/export``, ``/calls/{id}``, ``/transcript``,
+``/turn-latencies`` and ``/compare``. ``/calls/{id}/flow-transitions`` belongs to 004 and is not
+served here. A call from another workspace is a 404 like a missing one (RLS hides it).
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -101,6 +101,14 @@ async def export_calls(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"},
     )
+
+
+@router.get("/calls/live", responses=problem_responses(401))
+async def list_live_calls(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
+    """Calls on air now. Declared before ``/calls/{call_id}`` so "live" is not read as an id."""
+    async with _tx(request, principal) as session:
+        items, count = await queries.live_calls(session)
+    return {"items": items, "count": count, "server_time": datetime.now(UTC).isoformat()}
 
 
 @router.get("/calls/{call_id}", responses=problem_responses(401, 404))

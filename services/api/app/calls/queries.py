@@ -252,6 +252,7 @@ def list_item(
         "disconnect_reason": call.disconnect_reason,
         "duration_s": int(call.billable_seconds or 0),
         "status": call.status,
+        "connected_at": call.connected_at.isoformat() if call.connected_at else None,
         "cost_usd": float(call.cost_total_usd) if call.cost_total_usd is not None else None,
         "latency_avg_ms": (call.latency_stats or {}).get("e2e_avg_ms"),
         "has_recording": call.recording_status == "available" and bool(call.recording_key),
@@ -305,6 +306,65 @@ async def list_calls(
         for c, name, deleted in rows
     ]
     return items, total
+
+
+LIVE_STATUSES = ("queued", "ringing", "in_progress")
+LIVE_LIMIT = 50
+LAST_MESSAGE_CHARS = 200
+
+
+async def live_calls(session: AsyncSession) -> tuple[list[dict[str, Any]], int]:
+    """Calls on air now (queued, ringing, in progress), newest first, with the latest line heard.
+
+    Two small indexed reads (``ix_calls_heartbeat`` leads with ``status``; events by the
+    ``(call_id, seq)`` unique key), so clients can poll it every few seconds. Simulations are
+    excluded: they are text runs, never on air. Calls a worker abandoned are swept out of these
+    statuses by ``reap_stuck`` (jobs), so the list cannot fill with ghosts.
+    """
+    where = and_(Call.status.in_(LIVE_STATUSES), Call.origin.in_(DEFAULT_ORIGINS))
+    count = int((await session.execute(select(func.count()).select_from(Call).where(where))).scalar_one())
+    rows = (
+        await session.execute(
+            _base().where(where).order_by(Call.created_at.desc(), Call.id.desc()).limit(LIVE_LIMIT)
+        )
+    ).all()
+    ids = [r[0].id for r in rows if r[0].status == "in_progress"]
+    last: dict[str, dict[str, str]] = {}
+    if ids:
+        events = await session.execute(
+            text(
+                "select distinct on (call_id) call_id, payload from call_events "
+                "where call_id = any(:ids) and type = 'transcript_item' "
+                "and payload->'item'->>'type' = 'message' "
+                "and coalesce(payload->'item'->>'text', '') <> '' "
+                "order by call_id, seq desc"
+            ),
+            {"ids": ids},
+        )
+        for e in events:
+            item = (e.payload or {}).get("item") or {}
+            text_ = " ".join(str(item.get("text") or "").split())
+            if len(text_) > LAST_MESSAGE_CHARS:
+                text_ = text_[: LAST_MESSAGE_CHARS - 1].rstrip() + "\u2026"
+            last[e.call_id] = {"role": "user" if item.get("role") == "user" else "agent", "text": text_}
+    items = [
+        {
+            "call_id": c.id,
+            "status": c.status,
+            "channel": c.channel,
+            "direction": c.direction,
+            "origin": c.origin,
+            "agent": {"id": c.agent_id, "name": name or "Unknown agent", "deleted": deleted is not None},
+            "from_number": c.from_number,
+            "to_number": c.to_number,
+            "started_at": c.created_at.isoformat(),
+            "ringing_at": c.ringing_at.isoformat() if c.ringing_at else None,
+            "connected_at": c.connected_at.isoformat() if c.connected_at else None,
+            "last_message": last.get(c.id),
+        }
+        for c, name, deleted in rows
+    ]
+    return items, count
 
 
 async def iter_export_rows(

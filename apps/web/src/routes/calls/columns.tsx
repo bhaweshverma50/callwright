@@ -20,6 +20,7 @@ import { CostCell } from "./CostBreakdown";
 import { CHANNEL_LABELS, EVAL_LABELS, REASON_LABELS, type SortKey } from "./filters";
 import { latencyTone, mss, phone, when } from "./format";
 import type { DrawerTab } from "./CallDetailDrawer";
+import { LiveDuration } from "./live/LiveDuration";
 import { RecordingPlayer } from "./RecordingPlayer";
 import { summaryHeadline } from "./quality/SummaryText";
 
@@ -200,7 +201,14 @@ const ALL: CallColumn[] = [
     label: "Duration",
     sort: "duration_s",
     numeric: true,
-    cell: (r) => (r.status === "in_progress" ? <span className="text-fg-3">Live</span> : mss(r.duration_s)),
+    cell: (r) =>
+      r.status === "in_progress" ? (
+        <LiveDuration since={r.connected_at} className="text-fg" />
+      ) : r.status === "ringing" || r.status === "queued" ? (
+        <span className="font-sans text-fg-3">Ringing</span>
+      ) : (
+        mss(r.duration_s)
+      ),
   },
   { key: "status", label: "Status", required: true, cell: (r) => <StatusBadge status={r.status} /> },
   { key: "cost_usd", label: "Cost", sort: "cost_usd", numeric: true, cell: (r) => <CostCell callId={r.call_id} value={r.cost_usd} /> },

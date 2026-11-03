@@ -93,6 +93,10 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Spec 011 (`specs/011-callbacks`): agents book callbacks with a built-in `schedule_callback` tool; a cron dials them through 010's outbound path (DNC, calling hours, credit, concurrency, idempotency). Callbacks tab under Calls and a card in the call drawer. Details: docs/OPERATIONS.md section 11.
 - Deploy: `deploy.sh ... build migrate api` (migration `s011_0001`), VM jobs worker on the new API tag (new cron `place_due_callbacks`), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
 
+## Live calls and refresh audit (2026-11-03, branch `w7-callbacks`, not merged)
+- `GET /v1/calls/live` plus `connected_at` on calls; dashboard "Live now" card, live badge on the sidebar's Calls item, calls on air pinned on Call History, live transcript in the drawer that follows the newest line. Every page refreshes on its own where data changes by itself (table in docs/OPERATIONS.md section 12).
+- Deploy: `deploy.sh ... build api` (no migration, no new settings) and Vercel. Web before API is safe: the live card and badge stay hidden while the endpoint 404s.
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 

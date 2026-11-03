@@ -121,5 +121,10 @@ export function usePlaceCall() {
     mutationFn: ({ body, key }: { body: OutboundCallRequest; key: string }) =>
       unwrap(api.POST("/outbound-calls", { body, params: { header: { "Idempotency-Key": key } } })) as Promise<OutboundCallAccepted>,
     onSettled: () => void qc.invalidateQueries({ queryKey: complianceKeys.decisions }),
+    // The placed call rings at once: the live badge, the dashboard card and Call History show it.
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["calls", "live"] });
+      void qc.invalidateQueries({ queryKey: ["calls", "list"] });
+    },
   });
 }

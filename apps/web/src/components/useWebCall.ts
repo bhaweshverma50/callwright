@@ -20,6 +20,7 @@ import {
   type WebCallDriver,
   type WebCallRequest,
 } from "./webCall";
+import { queryClient } from "../app/queryClient";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 
@@ -144,6 +145,12 @@ export function useWebCall(
     setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
+  }, [s.phase]);
+
+  // The shell's live-calls badge and the dashboard card pick the call up (and drop it) at once
+  // instead of on their next idle poll. Same key as `liveKeys.all` in api/live.ts.
+  useEffect(() => {
+    if (s.phase === "live" || s.phase === "ended") void queryClient.invalidateQueries({ queryKey: ["calls", "live"] });
   }, [s.phase]);
 
   // Report the end once.

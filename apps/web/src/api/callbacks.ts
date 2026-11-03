@@ -64,6 +64,8 @@ export function useScheduledCallbackCount() {
       return page.total;
     },
     staleTime: 30_000,
+    // Callbacks are placed by a cron; the tab count follows while any are waiting.
+    refetchInterval: (q) => (q.state.data ? 30_000 : false),
   });
 }
 

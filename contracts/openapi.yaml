@@ -2010,6 +2010,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 006-calls-analytics
+  /calls/live:
+    get:
+      operationId: listLiveCalls
+      summary: Calls that are queued, ringing or in progress right now
+      description: 'The small, cheap read behind the dashboard''s "Live now" card, the sidebar''s live
+        badge and the pinned rows on Call History. Live and test calls only (simulations are never on
+        air), newest first, at most 50. Clients poll it every few seconds while it is not empty.
+
+        '
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: The workspace's calls on air
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveCallList'
+      x-spec: 006-calls-analytics
   /calls/{call_id}:
     get:
       operationId: getCall
@@ -9955,6 +9974,12 @@ components:
           minimum: 0
         status:
           $ref: '#/components/schemas/CallStatus'
+        connected_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: When the call was answered; null before that and for calls that never connected.
         cost_usd:
           type:
           - number
@@ -13526,6 +13551,99 @@ components:
           - 'null'
         turns_measured:
           type: integer
+    LiveCall:
+      type: object
+      required:
+      - call_id
+      - status
+      - channel
+      - direction
+      - origin
+      - agent
+      - started_at
+      properties:
+        call_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - queued
+          - ringing
+          - in_progress
+        channel:
+          $ref: '#/components/schemas/Channel'
+        direction:
+          type: string
+          enum:
+          - inbound
+          - outbound
+        origin:
+          type: string
+          enum:
+          - live
+          - test
+        agent:
+          $ref: '#/components/schemas/AgentRef'
+        from_number:
+          type:
+          - string
+          - 'null'
+        to_number:
+          type:
+          - string
+          - 'null'
+        started_at:
+          type: string
+          format: date-time
+          description: When the call was created.
+        ringing_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        connected_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: When the call was answered; the live duration counts from here.
+        last_message:
+          description: The latest caller or agent line heard so far, when there is one.
+          oneOf:
+          - type: object
+            required:
+            - role
+            - text
+            properties:
+              role:
+                type: string
+                enum:
+                - user
+                - agent
+              text:
+                type: string
+                maxLength: 200
+          - type: 'null'
+    LiveCallList:
+      type: object
+      required:
+      - items
+      - count
+      - server_time
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/LiveCall'
+        count:
+          type: integer
+          minimum: 0
+          description: All calls on air, even beyond the 50 listed.
+        server_time:
+          type: string
+          format: date-time
+          description: The server clock, so clients can correct their own when ticking durations.
     LivekitWebhookEvent:
       type: object
       required:

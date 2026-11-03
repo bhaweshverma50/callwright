@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { motion } from "motion/react";
 import { NavLink, useMatch } from "react-router";
 import { Kbd, Logo, Tooltip, TruncatedText, cn, focusRing } from "../components";
+import { LiveCallsBadge } from "./LiveCallsBadge";
 import { BILLING_ITEM, NAV, SETTINGS_ITEM, type NavItem } from "./nav";
 
 /** Rail widths (docs/DESIGN.md section 5). Shell animates between them. */
@@ -153,6 +154,7 @@ function SideLink({
             aria-hidden
           />
           {expanded && <FadeLabel>{item.label}</FadeLabel>}
+          {item.to === "/calls" && <LiveCallsBadge expanded={expanded} />}
         </NavLink>
       </Tooltip>
     </>

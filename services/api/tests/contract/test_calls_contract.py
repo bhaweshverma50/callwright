@@ -93,3 +93,10 @@ async def test_export(client: httpx.AsyncClient, seeded_calls: SeededCalls) -> N
     assert [r[0] for r in rows[1:]] == [i["call_id"] for i in listed]
     full = await client.get("/v1/calls/export", headers=h)
     assert "transcript" not in full.text.splitlines()[0].lower()
+
+
+async def test_live_calls(client: httpx.AsyncClient, seeded_calls: SeededCalls) -> None:
+    ok = check(await client.get("/v1/calls/live", headers=seeded_calls.a.headers))
+    assert ok.status_code == 200 and ok.json()["count"] >= 1
+    assert check(await client.get("/v1/calls/live", headers=seeded_calls.b.headers)).json()["count"] == 0
+    assert check(await client.get("/v1/calls/live")).status_code == 401
