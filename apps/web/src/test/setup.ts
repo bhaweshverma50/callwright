@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { MotionGlobalConfig } from "motion";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "../mocks/node";
@@ -9,6 +9,10 @@ import { resetQualityMocks } from "../mocks/quality/handlers";
 import { resetSimMocks } from "../mocks/sim/store";
 import { resetIssueMocks } from "../mocks/issues/store";
 import { resetWakeForTests } from "../api/wakeGate";
+
+// Full parallel runs load every worker; route pages behind the app shell can take over the 1 s
+// default to appear, which made findBy* queries flake (IssueDetailPage, IssuesPage).
+configure({ asyncUtilTimeout: 4000 });
 
 // Animations finish instantly in tests, so tickers and transitions show their final state.
 MotionGlobalConfig.skipAnimations = true;

@@ -106,6 +106,15 @@ export function useRipple() {
   const reduce = useReducedMotion();
   const [dots, setDots] = useState<RippleDot[]>([]);
   const seq = useRef(0);
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  // A ripple outliving its button (unmounted mid-animation) must not set state afterwards.
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const t of pending) clearTimeout(t);
+      pending.clear();
+    };
+  }, []);
   const onPointerDown = useCallback(
     (e: PointerEvent<HTMLElement>) => {
       if (reduce) return;
@@ -113,7 +122,11 @@ export function useRipple() {
       const size = Math.max(r.width, r.height) * 2.2;
       const id = ++seq.current;
       setDots((d) => [...d, { id, x: e.clientX - r.left, y: e.clientY - r.top, size }]);
-      window.setTimeout(() => setDots((d) => d.filter((x) => x.id !== id)), 500);
+      const t = setTimeout(() => {
+        timers.current.delete(t);
+        setDots((d) => d.filter((x) => x.id !== id));
+      }, 500);
+      timers.current.add(t);
     },
     [reduce],
   );
