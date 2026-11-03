@@ -82,6 +82,7 @@ async def enqueue(job_name: str, *args: Any, **kwargs: Any) -> None:
 def _functions() -> list[Any]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
+    from app.callbacks.jobs import place_due_callbacks
     from app.calls.jobs import reap_stuck_calls, run_pipeline, settle_stuck_recordings, start_recording
     from app.evals.install import job_functions as quality_jobs
     from app.issues.install import job_functions as issue_jobs
@@ -93,6 +94,7 @@ def _functions() -> list[Any]:
     return [
         *simulation_jobs(),
         drain_channels,
+        place_due_callbacks,
         reconcile_balances,
         run_pipeline,
         start_recording,
@@ -110,6 +112,7 @@ def _functions() -> list[Any]:
 def _crons() -> list[CronJob]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
+    from app.callbacks.jobs import place_due_callbacks
     from app.calls.jobs import reap_stuck_calls, settle_stuck_recordings
     from app.issues.install import crons as issue_crons
     from app.phone_numbers.jobs import drain_channels
@@ -128,6 +131,8 @@ def _crons() -> list[CronJob]:
         cron(purge_analytics_audit, hour={4}, minute={30}, run_at_startup=False),
         # 010 R8: draining numbers and WhatsApp channels are removed once idle (every 30 s).
         cron(drain_channels, second={5, 35}, run_at_startup=False, unique=True),
+        # 011: scheduled callbacks are dialled once due (every minute).
+        cron(place_due_callbacks, second={20}, run_at_startup=False, unique=True),
     ]
 
 

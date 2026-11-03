@@ -83,13 +83,50 @@ VOICE_STYLE_INSTRUCTION = (
 ENDING_INSTRUCTION = (
     "When the conversation is over, end it the way a good receptionist would: in one or two short "
     "sentences confirm what was agreed or what happens next (for example when you will call back), "
-    "then say goodbye and call end_call in that same reply. If the caller has to leave right away "
-    "or asks you to call back, acknowledge exactly that request before hanging up; never promise "
-    "something you cannot do. Always say your goodbye out loud, in the reply text or in end_call's "
+    "then say goodbye and call end_call in that same reply. If the caller has to leave right away, "
+    "acknowledge exactly that before hanging up; if they ask you to call back, book it first as "
+    "described below. Never promise something you cannot do. Always say your goodbye out loud, in "
+    "the reply text or in end_call's "
     "goodbye argument. Do not wait for the caller to say goodbye back. If the caller speaks again "
     "after your goodbye only to thank you or say goodbye, call end_call without speaking. Never "
     "repeat a summary you already gave."
 )
+
+# 011: every single-prompt agent also has the built-in schedule_callback tool.
+CALLBACK_INSTRUCTION = (
+    "If the caller asks to be called back later, ask what time suits them if they have not said, "
+    "then book it with schedule_callback: the local date and time they agreed to (or in_minutes "
+    "for a time like 'in an hour') and a one-sentence note of what to continue. Tell the caller "
+    "the confirmed time from the result, then say goodbye and end the call. If the result says a "
+    "callback cannot be booked, tell the caller honestly and offer what the result suggests; never "
+    "promise a callback that was not booked."
+)
+
+
+def callback_instructions(variables: Mapping[str, Any], direction: str) -> str:
+    """The caller's current local time (to resolve "tomorrow at 5"), the callback rule and, on a
+    callback call itself, why the agent is calling."""
+    from worker.tools.schedule_callback import local_now
+
+    now = local_now(variables)
+    clock = f"{now.hour % 12 or 12}:{now.minute:02d} {'am' if now.hour < 12 else 'pm'}"
+    zone = str(variables.get("timezone") or "UTC")
+    parts = [
+        f"It is now {now:%A} {now.day} {now:%B %Y}, {clock} for the caller "
+        f"({zone}, {now.isoformat(timespec='minutes')}).",
+        CALLBACK_INSTRUCTION,
+    ]
+    if direction == "outbound" and "callback_note" in variables:
+        note = str(variables.get("callback_note") or "").strip()
+        if note and note[-1] not in ".!?":
+            note += "."
+        parts.append(
+            "This call is the callback you promised"
+            + (f": {note}" if note else ".")
+            + " Say you are calling back as agreed and continue from there."
+        )
+    return " ".join(parts)
+
 
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
 
@@ -563,11 +600,12 @@ def build_agent(
             components=flow_components,
         )
     agent_cls = make_agent_class()
+    callback = callback_instructions(runtime.variables, runtime.direction)
     return agent_cls(
         plan,
         tools=tools,
         on_tts_text=on_tts_text,
-        extra_instructions=extra_instructions,
+        extra_instructions="\n\n".join(p for p in (callback, extra_instructions) if p),
         filler_policy=fillers,
         **agent_kwargs,
     )

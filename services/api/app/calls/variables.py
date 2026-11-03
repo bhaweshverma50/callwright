@@ -15,6 +15,9 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import phonenumbers
+from phonenumbers import timezone as pn_timezone
+
 BUILTIN_VARIABLES = (
     "call_id",
     "channel",
@@ -101,6 +104,24 @@ def builtin_values(
         "current_date": local.strftime("%Y-%m-%d"),
         "current_datetime": local.isoformat(timespec="minutes"),
     }
+
+
+def number_timezone(number: str | None) -> str | None:
+    """The first IANA zone of a phone number's region (011: inbound calls run in the caller's
+    local time), or None when the number is hidden or has no single region."""
+    if not number:
+        return None
+    try:
+        parsed = phonenumbers.parse(number, None)
+    except phonenumbers.NumberParseException:
+        return None
+    for zone in pn_timezone.time_zones_for_number(parsed):
+        try:
+            ZoneInfo(zone)
+        except (ZoneInfoNotFoundError, ValueError):
+            continue
+        return str(zone)
+    return None
 
 
 @dataclass(frozen=True)

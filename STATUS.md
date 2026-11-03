@@ -89,6 +89,10 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - 002 T085: axe and keyboard audit of the agent editor in Chrome; 12 fixes in the shared primitives and agent routes (slider names, row help as descriptions, dialog focus in and out, pending buttons keep focus, voice picker radios). Findings: `specs/002-agent-builder/a11y-audit.md`.
 - 003 T069: `anthropic` LLM provider (`claude-haiku-5-5`, `claude-sonnet-5-5`) on the LiveKit Anthropic plugin, rates by migration `s003_0004` (needs `deploy.sh ... migrate`). Without `ANTHROPIC_API_KEY` (the hosted stack has none) admission refuses live calls on those agents; render-env.sh passes the key to the voice worker once it exists. Offline-verified only.
 
+## Scheduled callbacks (2026-11-03, branch `w7-callbacks`, not merged)
+- Spec 011 (`specs/011-callbacks`): agents book callbacks with a built-in `schedule_callback` tool; a cron dials them through 010's outbound path (DNC, calling hours, credit, concurrency, idempotency). Callbacks tab under Calls and a card in the call drawer. Details: docs/OPERATIONS.md section 11.
+- Deploy: `deploy.sh ... build migrate api` (migration `s011_0001`), VM jobs worker on the new API tag (new cron `place_due_callbacks`), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 

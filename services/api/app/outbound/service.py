@@ -61,11 +61,25 @@ class OutboundDeps(ChannelDeps):
     redis: Redis | None = None
 
 
+@dataclass(frozen=True)
+class Requester:
+    """Who asks for the call: a signed-in principal, or 011's callback cron on its behalf."""
+
+    workspace_id: str
+    user_id: str | None
+    requested_by: str
+
+    @classmethod
+    def of(cls, principal: Principal) -> Requester:
+        return cls(principal.workspace_id, principal.user_id, principal.user_id)
+
+
 @dataclass
 class Context:
-    """What the policies read and fill in."""
+    """What the policies read and fill in. ``now`` is the instant the calling hours are checked
+    at: the dial time, or the time a callback is booked for (011)."""
 
-    principal: Principal
+    requester: Requester
     body: OutboundCallRequest
     key: str
     session: AsyncSession
@@ -150,14 +164,14 @@ async def agent_published(ctx: Context) -> None:
 
 def _decision(ctx: Context, reason: str, **extra: Any) -> dict[str, Any]:
     return {
-        "workspace_id": ctx.principal.workspace_id,
+        "workspace_id": ctx.requester.workspace_id,
         "decided_at": ctx.now,
         "reason": reason,
         "to_number": ctx.body.to_number,
         "from_number": ctx.body.from_number,
         "phone_number_id": ctx.number.id if ctx.number else None,
         "agent_id": ctx.agent_id,
-        "requested_by": ctx.principal.user_id,
+        "requested_by": ctx.requester.requested_by,
         "idempotency_key": ctx.key,
         **extra,
     }
@@ -177,7 +191,7 @@ async def dnc_listed(ctx: Context) -> None:
 
 
 async def outside_calling_hours(ctx: Context) -> None:
-    row = await ctx.session.get(OutboundCallingHours, ctx.principal.workspace_id)
+    row = await ctx.session.get(OutboundCallingHours, ctx.requester.workspace_id)
     windows = row.windows if row is not None else calling_hours.DEFAULT_WINDOWS
     result = calling_hours.evaluate(windows, ctx.zones, ctx.timezone_source or "unknown", ctx.now)
     if result.allowed:
@@ -229,7 +243,7 @@ OUTBOUND_POLICIES: list[Policy] = [
 # Request ----------------------------------------------------------------------------------------
 
 
-def _zones(body: OutboundCallRequest) -> tuple[list[str], str]:
+def zones_for(body: OutboundCallRequest) -> tuple[list[str], str]:
     try:
         return calling_hours.recipient_zones(body.to_number, body.recipient_timezone)
     except calling_hours.InvalidTimezone as exc:
@@ -242,7 +256,7 @@ def _zones(body: OutboundCallRequest) -> tuple[list[str], str]:
         ) from None
 
 
-async def _record_block(deps: OutboundDeps, blocked: PolicyBlocked) -> None:
+async def record_block(deps: OutboundDeps, blocked: PolicyBlocked) -> None:
     async with deps.db.transaction(workspace_id=blocked.decision["workspace_id"]) as session:
         session.add(OutboundPolicyDecision(**blocked.decision))
     logger.info("outbound call blocked: %s", blocked.reason)
@@ -259,7 +273,7 @@ async def start_outbound_call(
             "This deployment has no SIP service yet, so outbound calls cannot be placed.",
         )
     key = idempotency.require_key(key)
-    zones, source = _zones(body)
+    zones, source = zones_for(body)
     assert deps.redis is not None
     bucket = TokenBucket(
         deps.redis, rate_per_s=deps.settings.outbound_rate_per_second, burst=deps.settings.outbound_rate_burst
@@ -276,10 +290,10 @@ async def start_outbound_call(
             return JSONResponse({**stored.body, "idempotent_replay": True}, status_code=stored.status)
         return idempotency.replay_response(stored)
     try:
-        status, result = await _place(deps, principal, body, key, zones, source)
+        status, result = await place(deps, Requester.of(principal), body, key, zones, source)
     except PolicyBlocked as blocked:
         await idempotency.release(deps.db, principal.workspace_id, ENDPOINT, key)
-        await _record_block(deps, blocked)
+        await record_block(deps, blocked)
         raise blocked.problem from None
     except ProblemError as problem:
         await idempotency.store(
@@ -299,26 +313,43 @@ async def start_outbound_call(
     return JSONResponse(result, status_code=status)
 
 
-async def _place(
+async def check_policies(
+    session: AsyncSession,
+    requester: Requester,
+    body: OutboundCallRequest,
+    key: str,
+    zones: list[str],
+    source: str,
+    at: datetime,
+) -> Context:
+    """Run ``OUTBOUND_POLICIES`` in ``session`` with the calling hours checked at ``at``; raises
+    the first failure (``PolicyBlocked`` or ``ProblemError``). Records nothing."""
+    ctx = Context(requester, body, key, session, at, zones=zones, timezone_source=source)
+    for policy in OUTBOUND_POLICIES:
+        await policy(ctx)
+    return ctx
+
+
+async def place(
     deps: OutboundDeps,
-    principal: Principal,
+    requester: Requester,
     body: OutboundCallRequest,
     key: str,
     zones: list[str],
     source: str,
 ) -> tuple[int, dict[str, Any]]:
+    """Policies, then 003 admission and the room. A ``PolicyBlocked`` is raised unrecorded
+    (``record_block`` logs it); a refused admission raises its problem."""
     now = datetime.now(UTC)
-    async with deps.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id) as session:
-        ctx = Context(principal, body, key, session, now, zones=zones, timezone_source=source)
-        for policy in OUTBOUND_POLICIES:
-            await policy(ctx)
+    async with deps.db.transaction(workspace_id=requester.workspace_id, user_id=requester.user_id) as session:
+        ctx = await check_policies(session, requester, body, key, zones, source, now)
         assert ctx.number is not None and ctx.agent_id is not None
         number_id, agent_id = ctx.number.id, ctx.agent_id
     assert deps.catalog is not None and deps.livekit is not None
     admission = await calls.admit(
         deps.db,
         calls.AdmissionRequest(
-            workspace_id=principal.workspace_id,
+            workspace_id=requester.workspace_id,
             agent_id=agent_id,
             channel="sip_outbound",
             direction="outbound",
@@ -329,7 +360,7 @@ async def _place(
             from_number=body.from_number,
             to_number=body.to_number,
             phone_number_id=number_id,
-            initiated_by_user_id=principal.user_id,
+            initiated_by_user_id=requester.user_id,
             idempotency_key=key,
             timezone=zones[0] if zones else None,
             ring_timeout_s=body.ring_timeout_s,

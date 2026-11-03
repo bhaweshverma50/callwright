@@ -49,6 +49,8 @@ from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecVie
 from worker.tools.dtmf import PressDigitExecutor
 from worker.tools.end_call import EndCallExecutor
 from worker.tools.http import HttpExecutor
+from worker.tools.schedule_callback import PARAMETERS as SCHEDULE_CALLBACK_PARAMETERS
+from worker.tools.schedule_callback import ScheduleCallbackExecutor
 from worker.tools.transfer import TransferBackend, TransferExecutor
 
 if TYPE_CHECKING:
@@ -106,6 +108,8 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
                 }
             },
         }
+    elif spec.type == "schedule_callback":
+        parameters = dict(SCHEDULE_CALLBACK_PARAMETERS)
     elif spec.type == "press_digit":
         parameters = {
             "type": "object",
@@ -457,6 +461,18 @@ BUILTIN_END_CALL = ToolSpecView(
 )
 
 
+BUILTIN_SCHEDULE_CALLBACK = ToolSpecView(
+    tool_id=None,
+    type="schedule_callback",
+    name="schedule_callback",
+    description=(
+        "Book a phone call back to the caller at a time they agreed to, when they ask to be "
+        "called back later. The result says the confirmed time to tell the caller, or why it "
+        "cannot be booked."
+    ),
+)
+
+
 def build_call_tools(
     runtime: RuntimeConfig,
     control: CallControl,
@@ -477,6 +493,9 @@ def build_call_tools(
     # Every single-prompt agent can hang up, even when its tools do not list end_call.
     if not any(s.type == "end_call" or s.name == BUILTIN_END_CALL.name for s in specs):
         specs.append(BUILTIN_END_CALL)
+    # 011: and can book a callback (refused on calls that are not phone calls).
+    if not any(s.name == BUILTIN_SCHEDULE_CALLBACK.name for s in specs):
+        specs.append(BUILTIN_SCHEDULE_CALLBACK)
     kb = kb_spec(config)
     clients: list[httpx.AsyncClient] = []
     simulation = is_simulation(runtime)
@@ -497,6 +516,9 @@ def build_call_tools(
         executors["kb_search"] = kb_search.KbSearchExecutor(
             api_client, api_base_url, service_token, list(kb.config["kb_ids"])
         )
+    executors["schedule_callback"] = ScheduleCallbackExecutor(
+        api_client, api_base_url, service_token
+    )
     fillers = FillerPolicy(
         filler_texts([*specs, *([kb] if kb else [])]),
         end_call_names=frozenset(s.name for s in specs if s.type == "end_call"),

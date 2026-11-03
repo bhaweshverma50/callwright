@@ -13,6 +13,7 @@ tags:
 - name: auth
 - name: billing
 - name: call-events-internal
+- name: callbacks
 - name: calls-internal
 - name: core
 - name: datasets
@@ -1661,6 +1662,161 @@ paths:
                     type: integer
                     const: 5
       x-spec: 007-quality-evals
+  /callbacks:
+    get:
+      operationId: listCallbacks
+      summary: List scheduled callbacks
+      tags:
+      - callbacks
+      description: 'With `status=scheduled` the soonest callback comes first; otherwise the latest scheduled
+        time comes first.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/CallbackStatus'
+      - name: source_call_id
+        in: query
+        description: Only callbacks booked on this call.
+        schema:
+          $ref: '#/components/schemas/CallId'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Callbacks
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total
+                - page
+                - page_size
+                - total_pages
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Callback'
+                  total:
+                    type: integer
+                    minimum: 0
+                  page:
+                    type: integer
+                    minimum: 1
+                  page_size:
+                    type: integer
+                    minimum: 1
+                  total_pages:
+                    type: integer
+                    minimum: 0
+      x-spec: 011-callbacks
+    post:
+      operationId: createCallback
+      summary: Schedule an outbound call for later
+      tags:
+      - callbacks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallbackCreate'
+            examples:
+              follow_up:
+                value:
+                  to_number: '+14155550199'
+                  from_number: '+14155550100'
+                  scheduled_at: '2026-11-04T17:00:00-08:00'
+                  note: Confirm the new appointment time.
+                  dynamic_variables:
+                    customer_name: Asha
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Callback scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Callback'
+        '409':
+          description: '`from-number-not-active`, `no-outbound-agent`, `agent-not-published`.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: 'Validation (`same-number`, `invalid-timezone`, `invalid-time`: in the past or
+            more than 30 days ahead, variables) or a compliance block at the scheduled time (`outbound-policy`
+            with `reason` `dnc_listed` or `outside_calling_hours` and `next_allowed_at`). Nothing is stored.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/PolicyBlockedProblem'
+                - $ref: '#/components/schemas/Problem'
+      x-spec: 011-callbacks
+  /callbacks/{callback_id}:
+    parameters:
+    - $ref: '#/components/parameters/CallbackIdPath'
+    get:
+      operationId: getCallback
+      summary: Get a scheduled callback
+      tags:
+      - callbacks
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '200':
+          description: The callback
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Callback'
+      x-spec: 011-callbacks
+  /callbacks/{callback_id}/cancel:
+    parameters:
+    - $ref: '#/components/parameters/CallbackIdPath'
+    post:
+      operationId: cancelCallback
+      summary: Cancel a scheduled callback
+      tags:
+      - callbacks
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '200':
+          description: Cancelled (also returned when it was already cancelled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Callback'
+        '409':
+          description: '`callback-not-scheduled`: it is already being placed, placed or failed.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 011-callbacks
   /calls:
     get:
       operationId: listCalls
@@ -3497,6 +3653,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 003-voice-runtime
+  /internal/calls/{call_id}/callbacks:
+    parameters:
+    - $ref: '#/components/parameters/CallIdPath'
+    post:
+      operationId: bookCallbackFromCall
+      summary: Book a callback for the person on this call (voice worker)
+      tags:
+      - internal
+      security:
+      - serviceToken: []
+      description: 'The `schedule_callback` tool. The destination is the caller (inbound) or the dialled
+        number (outbound), the callback is placed from the number the call used, with the call''s agent
+        and its non built-in variables plus `callback_note`. A second booking on the same call moves the
+        scheduled callback instead of adding one. Simulated calls get the same answer with `mocked: true`
+        and nothing is stored.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallbackBookRequest'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '200':
+          description: Simulated call; nothing stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallbackBooked'
+        '201':
+          description: Booked (or moved)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallbackBooked'
+        '422':
+          description: '`callback-not-possible`; `detail` is a sentence the agent can relay and `reason`
+            says why.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CallbackRefusedProblem'
+      x-spec: 011-callbacks
   /internal/calls/{call_id}/events:
     post:
       operationId: postCallEvents
@@ -8144,6 +8350,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/CallId'
+    CallbackIdPath:
+      name: callback_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/CallbackId'
     ChannelId:
       name: channel_id
       in: path
@@ -9996,6 +10208,252 @@ components:
           type:
           - number
           - 'null'
+    Callback:
+      type: object
+      required:
+      - id
+      - status
+      - scheduled_at
+      - timezone
+      - local_time
+      - to_number
+      - from_number
+      - phone_number_id
+      - agent_id
+      - agent_name
+      - note
+      - source_call_id
+      - call_id
+      - created_via
+      - created_by_user_id
+      - dynamic_variables
+      - failure_reason
+      - failure_detail
+      - attempts
+      - created_at
+      - updated_at
+      - placed_at
+      - cancelled_at
+      properties:
+        id:
+          $ref: '#/components/schemas/CallbackId'
+        status:
+          $ref: '#/components/schemas/CallbackStatus'
+        scheduled_at:
+          type: string
+          format: date-time
+          description: UTC instant.
+        timezone:
+          type: string
+          description: Recipient IANA zone the time is shown in.
+        local_time:
+          type: string
+          description: Recipient wall-clock time, ISO 8601 without offset.
+          examples:
+          - '2026-11-04T17:00:00'
+        to_number:
+          $ref: '#/components/schemas/E164'
+        from_number:
+          $ref: '#/components/schemas/E164'
+        phone_number_id:
+          type:
+          - string
+          - 'null'
+        agent_id:
+          type:
+          - string
+          - 'null'
+          description: Null when the agent was deleted; the number's outbound agent is used.
+        agent_name:
+          type:
+          - string
+          - 'null'
+        note:
+          type: string
+          maxLength: 500
+        source_call_id:
+          type:
+          - string
+          - 'null'
+          description: The call the callback was booked on.
+        call_id:
+          type:
+          - string
+          - 'null'
+          description: The outbound call that was placed.
+        created_via:
+          type: string
+          enum:
+          - agent
+          - api
+        created_by_user_id:
+          type:
+          - string
+          - 'null'
+        dynamic_variables:
+          type: object
+          additionalProperties:
+            type: string
+        failure_reason:
+          type:
+          - string
+          - 'null'
+          description: '`dnc_listed`, `outside_calling_hours`, `missed` (not placed within 30 minutes
+            of the time), `insufficient_credit`, `concurrency_limit`, `from_number_not_active`, `no_outbound_agent`,
+            `agent_not_published`, or another admission refusal code.
+
+            '
+        failure_detail:
+          type:
+          - string
+          - 'null'
+        attempts:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        placed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        cancelled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    CallbackBookRequest:
+      type: object
+      additionalProperties: false
+      description: Exactly one of `at` and `in_minutes`.
+      properties:
+        at:
+          type: string
+          maxLength: 40
+          description: Local date and time the caller agreed to, ISO 8601 (an offset is optional).
+          examples:
+          - 2026-11-04T17:00
+        in_minutes:
+          type: integer
+          minimum: 1
+          maximum: 43200
+        note:
+          type: string
+          maxLength: 500
+          default: ''
+    CallbackBooked:
+      type: object
+      required:
+      - scheduled
+      - mocked
+      - callback_id
+      - scheduled_at
+      - timezone
+      - local_time
+      - spoken_time
+      - rescheduled
+      properties:
+        scheduled:
+          type: boolean
+          const: true
+        mocked:
+          type: boolean
+        callback_id:
+          type:
+          - string
+          - 'null'
+        scheduled_at:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        local_time:
+          type: string
+        spoken_time:
+          type: string
+          description: The time to say back, for example "tomorrow, Wednesday 4 November, at 5:00 pm".
+        rescheduled:
+          type: boolean
+          description: An earlier callback booked on this call was moved.
+    CallbackCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - to_number
+      - from_number
+      - scheduled_at
+      properties:
+        to_number:
+          $ref: '#/components/schemas/E164'
+        from_number:
+          $ref: '#/components/schemas/E164'
+        agent_id:
+          type: string
+          pattern: ^agt_[0-9A-HJKMNP-TV-Z]{26}$
+          description: Defaults to the number's outbound agent.
+        scheduled_at:
+          type: string
+          format: date-time
+          description: With an offset; from one minute to 30 days ahead.
+        recipient_timezone:
+          type: string
+          maxLength: 64
+          description: IANA zone overriding the one derived from the destination number.
+        note:
+          type: string
+          maxLength: 500
+          default: ''
+        dynamic_variables:
+          type: object
+          maxProperties: 49
+          additionalProperties:
+            type: string
+            maxLength: 2000
+    CallbackId:
+      type: string
+      pattern: ^cbk_[0-9A-HJKMNP-TV-Z]{26}$
+    CallbackRefusedProblem:
+      allOf:
+      - $ref: '#/components/schemas/Problem'
+      - type: object
+        required:
+        - reason
+        properties:
+          reason:
+            type: string
+            enum:
+            - unsupported_channel
+            - number_unavailable
+            - agent_unavailable
+            - unknown_timezone
+            - invalid_time
+            - dnc_listed
+            - outside_calling_hours
+          next_allowed_at:
+            type:
+            - string
+            - 'null'
+            format: date-time
+          next_allowed_spoken:
+            type:
+            - string
+            - 'null'
+    CallbackStatus:
+      type: string
+      enum:
+      - scheduled
+      - placing
+      - placed
+      - cancelled
+      - failed
+      description: '`scheduled` until due; `placing` while the cron dials; `placed` once admitted (`call_id`
+        is the outbound call); `failed` with `failure_reason`; `cancelled` by a user.
+
+        '
     CallerRoute:
       type: object
       required:

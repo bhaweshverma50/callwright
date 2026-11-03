@@ -5,6 +5,7 @@ nodes without a mock."""
 
 from __future__ import annotations
 
+import json
 import socket
 from collections.abc import Iterator
 from typing import Any
@@ -121,3 +122,24 @@ async def test_the_guard_catches_a_real_attempt(egress: list[str]) -> None:
         with pytest.raises(httpx.ConnectError):
             await client.get("https://api.example.com/orders")
     assert egress == ["http GET https://api.example.com/orders"]
+
+
+async def test_schedule_callback_is_mocked_in_simulations(egress: list[str]) -> None:
+    """011: a simulated caller asking for a callback gets a booked time, and nothing reaches the
+    API's booking endpoint (no real callback can be created)."""
+    api = FakeInternalApi()
+    api.sim_specs["srun_cb"] = sim_spec(
+        agent_config(), caller_turns=["can you call me back in an hour"], recorded_tool_outputs=[]
+    )
+    models = Models(
+        agent=agent_script(
+            [Rule("call me back", tool="schedule_callback", args={"in_minutes": 60, "note": "x"})]
+        ),
+    )
+    status = await runner.run_simulation(api.client(), "srun_cb", deps(api, models))
+    assert status == "completed" and egress == []
+    assert not [r for r in api.requests if "callbacks" in r.url.path]
+    calls = [e for batch in api.events.values() for e in batch if e.get("type") == "tool_call"]
+    booked = [e for e in calls if e.get("name") == "schedule_callback"]
+    assert len(booked) == 1 and booked[0]["mocked"] is True and not booked[0]["is_error"]
+    assert json.loads(booked[0]["output"])["scheduled"] is True

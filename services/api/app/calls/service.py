@@ -607,6 +607,7 @@ async def claim(
             variables=dict(route.variables),
             from_number=route.from_number or sip.get("caller_number"),
             to_number=route.to_number or sip.get("trunk_phone_number"),
+            timezone=variables_mod.number_timezone(route.from_number or sip.get("caller_number")),
             phone_number_id=route.phone_number_id,
             whatsapp_channel_id=route.whatsapp_channel_id,
             sip_call_id=sip.get("call_id"),

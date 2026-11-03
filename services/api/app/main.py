@@ -32,6 +32,8 @@ from app.billing.router import router as billing_router
 from app.billing.stripe_gateway import build_gateway
 from app.calibration.router import router as calibration_router
 from app.call_events.router import router as call_events_router
+from app.callbacks.router import internal_router as callbacks_internal_router
+from app.callbacks.router import router as callbacks_router
 from app.calls.catalog import load_catalog
 from app.calls.read_router import router as calls_read_router
 from app.calls.router import router as calls_router
@@ -271,6 +273,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         knowledge_internal_router,
         phone_numbers_router,
         outbound_router,
+        callbacks_router,
+        callbacks_internal_router,
         whatsapp_router,
         whatsapp_public_router,
         flows_router,

@@ -246,3 +246,23 @@ as in production. The mock web API (`vite --mode mock`) mirrors the same cards.
 - Apply re-checks the evidence under row locks and records exactly the treatment batch's snapshot through 002 (`create_version`), release notes `Fix for <issue id>: <title>`. A tool description fix copies the tool when other agents use it.
 - Crons: `sweep_issues` (every minute: stale detections fail after 15 minutes, finalized batches get their finalize job) and `audit_applied_issues` (daily 05:30, SC-001 hash audit, logs mismatches as errors).
 - Setting (optional): `ISSUES_MODEL` (default `SIMULATOR_MODEL`). No new secrets. Quickstart fixtures: `uv run python -m app.dev.seed_issues --dsn ... --workspace ws_... --agent agt_...`.
+
+## 11. Scheduled callbacks (spec 011)
+
+- A caller who asks to be called back gets one: every single-prompt agent has a built-in
+  `schedule_callback` tool (next to the built-in `end_call`), and its instructions carry the
+  caller's current local date and time. The tool posts to `POST /v1/internal/calls/{id}/callbacks`;
+  the API calls back the caller (inbound) or the dialled number (outbound), from the number the call
+  used, with the call's own agent, and returns the time to say back ("tomorrow, Wednesday 4
+  November, at 5:00 pm"). Inbound calls now run in the caller's number zone (`timezone` variable).
+- Booking checks the do-not-call list and the calling hours at the booked time and refuses with a
+  sentence the agent relays; outside hours it names the next allowed time so the agent can offer
+  it. The time is never moved silently. Browser test calls and WhatsApp are refused; simulations
+  get a mocked booking and store nothing.
+- Cron `place_due_callbacks` (jobs worker, every minute at :20) dials due callbacks through 010's
+  outbound path with idempotency key `callback:<id>`: blocks at dial time fail the callback and are
+  logged as policy decisions, admission refusals (credit and so on) fail it with their code, a full
+  workspace waits for the next run, and a callback not placed within 30 minutes fails as `missed`.
+- Public API `GET/POST /v1/callbacks`, `GET /v1/callbacks/{id}`, `POST /v1/callbacks/{id}/cancel`.
+  Web: Calls, Callbacks tab (`/calls/callbacks`) and a card in the source call's drawer.
+- Migration `s011_0001`. No new settings or secrets.

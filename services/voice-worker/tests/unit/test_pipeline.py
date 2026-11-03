@@ -18,11 +18,13 @@ from worker.flow import (
     register_flow_runner,
 )
 from worker.pipeline import (
+    CALLBACK_INSTRUCTION,
     ENDING_INSTRUCTION,
     VOICE_STYLE_INSTRUCTION,
     build_agent,
     build_components,
     build_session,
+    callback_instructions,
     plan_session,
     pronounce,
     render_template,
@@ -220,10 +222,20 @@ def test_single_prompt_agent_carries_plan_and_instructions() -> None:
     plan = plan_session(runtime, AdapterRegistry())
     agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
     assert agent.plan is plan
-    assert (
-        agent.instructions
-        == f"{plan.instructions}\n\n{VOICE_STYLE_INSTRUCTION}\n\n{ENDING_INSTRUCTION}"
+    callback = callback_instructions(runtime.variables, runtime.direction)
+    assert agent.instructions == (
+        f"{plan.instructions}\n\n{VOICE_STYLE_INSTRUCTION}\n\n{ENDING_INSTRUCTION}\n\n{callback}"
     )
+    assert CALLBACK_INSTRUCTION in callback and callback.startswith("It is now ")
+
+
+def test_callback_instructions_give_local_time_and_callback_reason() -> None:
+    variables = {"timezone": "Asia/Kolkata", "current_datetime": "2026-11-03T14:05+05:30"}
+    text = callback_instructions(variables, "inbound")
+    assert "(Asia/Kolkata, " in text and "+05:30)" in text
+    assert "callback you promised" not in text
+    callback = callback_instructions({**variables, "callback_note": "Finish rebooking"}, "outbound")
+    assert "This call is the callback you promised: Finish rebooking." in callback
 
 
 async def test_pronounce_meters_text_sent_to_tts() -> None:
@@ -268,7 +280,11 @@ async def test_voicemail_tool_is_added_with_its_instruction() -> None:
         extra_tools=[tool],
         extra_instructions=VOICEMAIL_INSTRUCTION,
     )
-    assert [t.info.name for t in agent.tools] == ["end_call", VOICEMAIL_TOOL_NAME]
+    assert [t.info.name for t in agent.tools] == [
+        "end_call",
+        "schedule_callback",
+        VOICEMAIL_TOOL_NAME,
+    ]
     assert agent.instructions.endswith(VOICEMAIL_INSTRUCTION)
     assert await tool() == "answering machine noted"
     assert reports == [True]

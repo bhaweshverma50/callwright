@@ -94,16 +94,19 @@ def test_kb_search_is_injected_and_switchable() -> None:
         knowledge=[{"kb_id": "kb_1", "name": "Clinic FAQ", "description": "hours"}],
     )
     names = [s["name"] for s in h.tools.schemas()]
-    assert names == ["end_call", "kb_search"]
+    assert names == ["end_call", "schedule_callback", "kb_search"]
     kb = h.tools.schemas()[-1]
     assert "Clinic FAQ (hours)" in kb["description"]
-    assert [s["name"] for s in h.tools.schemas(kb_search_enabled=False)] == ["end_call"]
+    assert [s["name"] for s in h.tools.schemas(kb_search_enabled=False)] == [
+        "end_call",
+        "schedule_callback",
+    ]
 
 
 def test_function_tools_build_livekit_raw_tools() -> None:
     h = make([tool("end_call", "end_call"), http_spec()])
     built = h.tools.function_tools()
-    assert [t.info.name for t in built] == ["end_call", "check_availability"]
+    assert [t.info.name for t in built] == ["end_call", "check_availability", "schedule_callback"]
 
 
 def test_fillers_cover_lookup_tools_and_a_silent_goodbye() -> None:
@@ -121,10 +124,14 @@ def test_fillers_cover_lookup_tools_and_a_silent_goodbye() -> None:
 
 def test_every_agent_gets_a_built_in_end_call() -> None:
     h = make([http_spec()])
-    assert [s["name"] for s in h.tools.schemas()] == ["check_availability", "end_call"]
+    assert [s["name"] for s in h.tools.schemas()] == [
+        "check_availability",
+        "end_call",
+        "schedule_callback",
+    ]
     # An agent's own end_call (any name) replaces the built-in one.
     own = make([tool("end_call", "hang_up")])
-    assert [s["name"] for s in own.tools.schemas()] == ["hang_up"]
+    assert [s["name"] for s in own.tools.schemas()] == ["hang_up", "schedule_callback"]
 
 
 async def test_end_call_waits_for_the_goodbye_to_play_before_hanging_up() -> None:
