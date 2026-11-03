@@ -17,6 +17,8 @@ import type {
   CheckoutSession,
   FieldError,
   Me,
+  OnboardingStatus,
+  Preferences,
   Problem,
   Quote,
   QuoteRequest,
@@ -64,6 +66,13 @@ function currentUser(request: Request): MockUser | null {
   if (!token || !token.startsWith("mock-access.")) return null;
   const id = db().sessions[token];
   return db().users.find((u) => u.id === id) ?? null;
+}
+
+const ONBOARDING_STATUSES: OnboardingStatus[] = ["not_started", "in_progress", "skipped", "completed"];
+
+/** Saved preferences, or the defaults a user who never saved anything gets. */
+function preferencesOf(userId: string): Preferences {
+  return db().preferences?.[userId] ?? { onboarding: { status: "not_started", step: null, updated_at: null } };
 }
 
 function workspaceOf(user: MockUser): Workspace | undefined {
@@ -303,6 +312,41 @@ export const handlers = [
     if (typeof body.recording_default === "boolean") ws.recording_default = body.recording_default;
     save();
     return json<Workspace>(ws);
+  }),
+
+  // --- preferences (013) ----------------------------------------------------
+  http.get(url("/me/preferences"), ({ request }) => {
+    const user = currentUser(request);
+    if (!user?.workspace_id) return unauthorized();
+    return json<Preferences>(preferencesOf(user.id));
+  }),
+
+  http.patch(url("/me/preferences"), async ({ request }) => {
+    const user = currentUser(request);
+    if (!user?.workspace_id) return unauthorized();
+    const body = (await request.json()) as { onboarding?: { status?: unknown; step?: unknown } } | null;
+    const o = body?.onboarding;
+    const errors: FieldError[] = [];
+    if (!o || typeof o !== "object" || (!("status" in o) && !("step" in o)))
+      errors.push({ pointer: "/onboarding", code: "required", message: "Send status, step or both." });
+    else {
+      if ("status" in o && !ONBOARDING_STATUSES.includes(o.status as OnboardingStatus))
+        errors.push({ pointer: "/onboarding/status", code: "invalid_choice", message: "Choose a known status." });
+      if ("step" in o && o.step !== null && (typeof o.step !== "string" || !/^[a-z][a-z0-9_-]{0,39}$/.test(o.step)))
+        errors.push({ pointer: "/onboarding/step", code: "invalid_format", message: "Use a step id." });
+    }
+    if (errors.length) return validation(errors);
+    const current = preferencesOf(user.id).onboarding;
+    const next: Preferences = {
+      onboarding: {
+        status: "status" in o! ? (o!.status as OnboardingStatus) : current.status,
+        step: "step" in o! ? (o!.step as string | null) : current.step,
+        updated_at: new Date().toISOString(),
+      },
+    };
+    (db().preferences ??= {})[user.id] = next;
+    save();
+    return json<Preferences>(next);
   }),
 
   // --- billing -------------------------------------------------------------

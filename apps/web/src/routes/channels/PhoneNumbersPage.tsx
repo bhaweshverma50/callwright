@@ -317,7 +317,7 @@ export function PhoneNumbersPage() {
   const telephonyOff = sip.data ? !sip.data.telephony_enabled : false;
 
   const importAction = (
-    <Button variant="primary" icon={<Plus aria-hidden />} onClick={() => setImporting(true)}>
+    <Button data-tour="channels-import" variant="primary" icon={<Plus aria-hidden />} onClick={() => setImporting(true)}>
       Import number
     </Button>
   );

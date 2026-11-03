@@ -71,6 +71,7 @@ from app.llms.router import router as llms_router
 from app.outbound.router import router as outbound_router
 from app.phone_numbers.install import install as install_channels
 from app.phone_numbers.router import router as phone_numbers_router
+from app.preferences.router import router as preferences_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
 from app.recordings.router import router as recordings_router
@@ -279,6 +280,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         callbacks_internal_router,
         caller_language_router,
         caller_language_internal_router,
+        preferences_router,
         whatsapp_router,
         whatsapp_public_router,
         flows_router,

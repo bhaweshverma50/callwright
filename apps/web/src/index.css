@@ -1169,3 +1169,13 @@ a:focus-visible .logo-handoff.logo-anim .wc-full {
     animation: shimmer 2.2s linear infinite;
   }
 }
+
+/* Guided setup tour (app/tour): the spotlight's heat-ramp ring, a gradient border drawn by masking
+   the padded box down to its padding. */
+.tour-ring {
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}

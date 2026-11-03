@@ -3,7 +3,7 @@
  * reload keeps what you did (settings saves, top-ups); in tests it resets after every test.
  * Shapes are the contract types, so the mock cannot drift from the specs silently.
  */
-import type { Transaction, TransactionType, Workspace, CostBreakdown } from "../api/types";
+import type { Transaction, TransactionType, Workspace, CostBreakdown, Preferences } from "../api/types";
 import { priceQuote } from "../lib/pricing";
 import { microsToDecimal, toMicros } from "../lib/money";
 import { catalogV1 } from "./catalog";
@@ -52,6 +52,8 @@ export interface MockState {
   failures: Record<string, { count: number; first: number }>;
   verifyTokens: Record<string, string>; // token_hash -> email
   resetTokens: Record<string, { email: string; used: boolean; expires: number }>;
+  /** Per-user preferences (013), by user id. Optional: states saved before 013 have none. */
+  preferences?: Record<string, Preferences>;
 }
 
 export const DEMO_EMAIL = "ops@halcyon-dental.com";

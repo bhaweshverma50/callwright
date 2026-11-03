@@ -1,4 +1,4 @@
-import { LogOut, Monitor, Moon, Settings, Sun } from "lucide-react";
+import { Compass, LogOut, Monitor, Moon, Settings, Sun } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useMe } from "../api/queries";
 import {
@@ -17,6 +17,7 @@ import {
 } from "../components";
 import { signOut } from "./auth";
 import { setThemePref, useThemePref, type ThemePref } from "./theme";
+import { useTour } from "./tour/context";
 
 export function initialsOf(email: string): string {
   const local = email.split("@")[0] ?? "";
@@ -31,6 +32,7 @@ export function UserMenu() {
   const navigate = useNavigate();
   const theme = useThemePref();
   const email = me?.user.email;
+  const tour = useTour();
 
   return (
     <Menu>
@@ -66,6 +68,12 @@ export function UserMenu() {
           <Settings aria-hidden />
           Settings
         </MenuItem>
+        {tour && (
+          <MenuItem onSelect={tour.start}>
+            <Compass aria-hidden />
+            Guided setup
+          </MenuItem>
+        )}
         <MenuSeparator />
         <p className="px-2 pb-1 pt-1.5 text-[12px] font-medium text-fg-3">Theme</p>
         <MenuRadioGroup value={theme} onValueChange={(v) => setThemePref(v as ThemePref)}>

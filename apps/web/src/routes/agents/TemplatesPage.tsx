@@ -73,6 +73,7 @@ export function TemplatesPage() {
       </div>
 
       <div
+        data-tour="template-grid"
         className={cn(
           "grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3",
           templates.isPlaceholderData && "opacity-70 transition-opacity",

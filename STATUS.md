@@ -97,6 +97,10 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Spec 012 (`specs/012-caller-language`): callers switch the agent to their language mid-call (built-in `set_language`: speech recognition, replies and voice), the choice is saved per phone number and the next call (callbacks included) starts in it with a translated greeting. Agent setting `advanced.language_switching`; call drawer shows switches and the saved language with Forget. Details: docs/OPERATIONS.md section 12.
 - New agents and templates default to ElevenLabs Multilingual v2 with the expressive delivery (stability 0.35, style 0.3, speaker boost).
 - Deploy: `deploy.sh ... build migrate api` (migration `s012_0001`; migrate also syncs the templates), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
+## Guided setup tour (2026-11-03, branch `w9-tour`, not merged)
+- Spec 013 (`specs/013-guided-setup`): a first-run welcome card for new users (no agents, never started), then a follow-along tour with a spotlight and popover over the real controls: agents, template, prompt, voice, cost, test call, publish, channels, calls, review, recap. Steps move on when the user does the action (or "Do it for me", or Next); Skip tour ends it, Esc pauses it behind a resume chip, "Guided setup" in the account menu restarts it.
+- Progress is per user on the server: `GET/PATCH /v1/me/preferences` (`onboarding.status`, `step`), table `user_preferences` with RLS on user and workspace. Migration `s013_0001` (after `s012_0001`).
+- Deploy: `deploy.sh ... build migrate api`, then Vercel. No worker change, no new settings.
 
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
