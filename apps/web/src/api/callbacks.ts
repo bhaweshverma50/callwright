@@ -24,6 +24,11 @@ export const callbackKeys = {
   scheduledCount: ["callbacks", "scheduled-count"] as const,
 };
 
+/** Callbacks that will still change on their own; lists showing one refresh while the tab is visible. */
+const OPEN = new Set(["scheduled", "placing"]);
+const POLL_OPEN_MS = 10_000;
+const openIn = (items: { status: string }[] | undefined) => !!items?.some((c) => OPEN.has(c.status));
+
 /** One page of callbacks. With `status=scheduled` the soonest comes first, otherwise the latest. */
 export function useCallbacks(status: CallbackStatus | null, page: number) {
   return useQuery({
@@ -33,6 +38,7 @@ export function useCallbacks(status: CallbackStatus | null, page: number) {
         api.GET("/callbacks", { params: { query: { page, page_size: CALLBACK_PAGE_SIZE, ...(status && { status }) } } }),
       ) as Promise<CallbackPage>,
     placeholderData: keepPreviousData,
+    refetchInterval: (q) => (openIn(q.state.data?.items) ? POLL_OPEN_MS : false),
   });
 }
 
@@ -45,6 +51,7 @@ export function useCallCallbacks(callId: string | null) {
       return page.items;
     },
     enabled: Boolean(callId),
+    refetchInterval: (q) => (openIn(q.state.data) ? POLL_OPEN_MS : false),
   });
 }
 
@@ -57,6 +64,8 @@ export function useScheduledCallbackCount() {
       return page.total;
     },
     staleTime: 30_000,
+    // Callbacks are placed by a cron; the tab count follows while any are waiting.
+    refetchInterval: (q) => (q.state.data ? 30_000 : false),
   });
 }
 

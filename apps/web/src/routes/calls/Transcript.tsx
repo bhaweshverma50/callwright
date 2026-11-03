@@ -1,9 +1,10 @@
 import { ChatsCircle } from "@phosphor-icons/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { AlertTriangle, Bot, CheckCircle2, ChevronDown, Scissors, User, Wrench } from "lucide-react";
-import { useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import type { TranscriptItem, TurnLatency } from "../../api/calls";
-import { Badge, CopyButton, EmptyState, Skeleton, Tooltip, cn, focusRing } from "../../components";
+import { Badge, CopyButton, EmptyState, OnAir, Skeleton, Tooltip, Waveform, cn, focusRing } from "../../components";
 import { mss } from "./format";
 
 const VIRTUAL_AFTER = 500;
@@ -236,11 +237,14 @@ export function Transcript({
   latencies,
   loading,
   processing,
+  live,
 }: {
   items: TranscriptItem[] | undefined;
   latencies: TurnLatency[] | undefined;
   loading?: boolean;
   processing?: boolean;
+  /** The call is ringing or on air: lines arrive as they are spoken and new ones ease in. */
+  live?: boolean;
 }) {
   const byTurn = new Map((latencies ?? []).map((t) => [t.turn_index, t]));
   if (loading && !items) {
@@ -258,6 +262,15 @@ export function Transcript({
       </div>
     );
   }
+  if ((!items || items.length === 0) && live) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-panel border border-dashed border-line-strong/80 px-6 py-8 text-center">
+        <OnAir label="Live transcript" />
+        <Waveform quiet bars={28} height={22} className="max-w-[180px]" />
+        <p className="max-w-[34ch] text-[12.5px] text-fg-3">Waiting for the first words. Lines appear here a few seconds after they are spoken.</p>
+      </div>
+    );
+  }
   if (!items || items.length === 0) {
     return (
       <EmptyState compact icon={<ChatsCircle weight="duotone" />} title={processing ? "Transcript on its way" : "No transcript"}>
@@ -269,7 +282,8 @@ export function Transcript({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[12.5px] text-fg-3">
+        {live && <OnAir label="Live" />}
+        <p className={cn("text-[12.5px] text-fg-3", live && "mr-auto")}>
           <span className="font-mono tnum">{items.filter((i) => i.type === "message").length}</span> turns,{" "}
           <span className="font-mono tnum">{items.filter((i) => i.type === "tool_call").length}</span> tool calls
         </p>
@@ -278,18 +292,39 @@ export function Transcript({
           <CopyButton value={transcriptText(items)} label="Copy transcript" />
         </span>
       </div>
-      {rows.length > VIRTUAL_AFTER ? <VirtualRows rows={rows} latencies={byTurn} /> : <PlainRows rows={rows} latencies={byTurn} />}
+      {rows.length > VIRTUAL_AFTER ? <VirtualRows rows={rows} latencies={byTurn} /> : <PlainRows rows={rows} latencies={byTurn} live={live} />}
     </div>
   );
 }
 
-function PlainRows({ rows, latencies }: { rows: Row[]; latencies: Map<number, TurnLatency> }) {
+function PlainRows({ rows, latencies, live }: { rows: Row[]; latencies: Map<number, TurnLatency>; live?: boolean }) {
+  const reduce = useReducedMotion();
+  const end = useRef<HTMLLIElement>(null);
+  const following = useRef(true);
+  // Follow a live call: when the newest line was on screen, keep it there as lines arrive. A
+  // reader who scrolled up to an earlier line is left where they are.
+  useEffect(() => {
+    const el = end.current;
+    if (!live || !el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => (following.current = Boolean(e?.isIntersecting)));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [live, rows.length]);
+  useEffect(() => {
+    if (live && following.current) end.current?.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  }, [live, rows.length, reduce]);
   return (
     <ol className="flex flex-col gap-4">
-      {rows.map((r) => (
-        <li key={r.item.id}>
+      {rows.map((r, i) => (
+        <motion.li
+          key={r.item.id}
+          ref={i === rows.length - 1 ? end : undefined}
+          initial={live ? { opacity: 0, y: 6 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        >
           <RowView row={r} latencies={latencies} />
-        </li>
+        </motion.li>
       ))}
     </ol>
   );

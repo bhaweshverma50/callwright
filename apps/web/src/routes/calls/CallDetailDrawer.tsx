@@ -6,6 +6,7 @@ import {
   GitBranch,
   Hash,
   MessagesSquare,
+  PhoneCall,
   PhoneIncoming,
   Receipt,
   ShieldCheck,
@@ -13,9 +14,12 @@ import {
   Timer,
   type LucideIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { useCall, useFlowTransitions, useTranscript, useTurnLatencies, type CallDetail } from "../../api/calls";
+import { callKeys, isOnAir, useCall, useFlowTransitions, useTranscript, useTurnLatencies, type CallDetail } from "../../api/calls";
+import { callbackKeys } from "../../api/callbacks";
+import { qualityKeys } from "../../api/quality";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, CopyButton, Drawer, EmptyState, OnAir, Skeleton, TabPanel, Tabs, TruncatedText } from "../../components";
 import { useMediaQuery } from "../../lib/useMediaQuery";
@@ -34,6 +38,7 @@ import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { summaryHeadline, summaryOutcome } from "./quality/SummaryText";
 import { CallCallbacks } from "./callbacks/CallbackParts";
 import { CallLanguageCard } from "./CallLanguageCard";
+import { LiveDuration } from "./live/LiveDuration";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -50,7 +55,13 @@ function Fact({ icon: Icon, label, children }: { icon: LucideIcon; label: string
 }
 
 export function StatusBadge({ status }: { status: CallDetail["status"] }) {
-  if (status === "in_progress") return <OnAir label="In progress" className="whitespace-nowrap" />;
+  if (status === "in_progress") return <OnAir pill label="On air" className="whitespace-nowrap" />;
+  if (status === "ringing")
+    return (
+      <Badge tone="accent" icon={<PhoneCall aria-hidden />}>
+        Ringing
+      </Badge>
+    );
   return <Badge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</Badge>;
 }
 
@@ -64,7 +75,7 @@ function Header({ call }: { call: CallDetail }) {
         {call.disconnect_reason && <span className="text-[12.5px] text-fg-3">{REASON_LABELS[call.disconnect_reason]}</span>}
         <span className="ml-auto flex items-baseline gap-3">
           {call.cost && <CostHeader cost={call.cost} className="hidden sm:flex" />}
-          <span className="font-mono text-[15px] font-semibold text-fg tnum">{usd(call.cost_usd ?? null)}</span>
+          {!isOnAir(call.status) && <span className="font-mono text-[15px] font-semibold text-fg tnum">{usd(call.cost_usd ?? null)}</span>}
         </span>
       </div>
       <dl className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-3 rounded-panel border border-line bg-surface-2/50 p-4 sm:grid-cols-2">
@@ -93,12 +104,33 @@ function Header({ call }: { call: CallDetail }) {
           )}
         </Fact>
         <Fact icon={Timer} label="Duration">
-          <span className="font-mono tnum">{mss(call.duration_s)}</span>
+          {isOnAir(call.status) ? <LiveDuration since={call.connected_at} /> : <span className="font-mono tnum">{mss(call.duration_s)}</span>}
           {call.latency.avg_ms != null && <span className="ml-2 text-fg-3">avg turn {call.latency.avg_ms} ms</span>}
         </Fact>
       </dl>
     </div>
   );
+}
+
+/**
+ * When the open call answers, ends or finishes processing, the parts that only change at those
+ * moments (final transcript, latencies, analysis, checks, a callback booked during the call) are
+ * fetched again, so the drawer never shows a stale tab.
+ */
+function useRefreshOnStatusChange(callId: string, status: string | undefined, processing: string | undefined) {
+  const qc = useQueryClient();
+  const last = useRef<string | null>(null);
+  const key = status ? `${status}:${processing ?? ""}` : null;
+  useEffect(() => {
+    if (!key) return;
+    const before = last.current;
+    last.current = key;
+    if (before === null || before === key) return;
+    for (const k of [callKeys.transcript(callId), callKeys.latencies(callId), callKeys.flow(callId)]) void qc.invalidateQueries({ queryKey: k });
+    void qc.invalidateQueries({ queryKey: qualityKeys.analysis(callId) });
+    void qc.invalidateQueries({ queryKey: qualityKeys.evaluations(callId) });
+    void qc.invalidateQueries({ queryKey: callbackKeys.forCall(callId) });
+  }, [key, callId, qc]);
 }
 
 function Body({
@@ -114,10 +146,12 @@ function Body({
 }) {
   const call = useCall(callId);
   const wide = useMediaQuery("(min-width: 640px)");
-  const live = call.data?.status === "in_progress";
+  const status = call.data?.status;
+  const live = status !== undefined && isOnAir(status);
   const transcript = useTranscript(callId, live);
-  const latencies = useTurnLatencies(callId);
-  const flow = useFlowTransitions(callId);
+  const latencies = useTurnLatencies(callId, live);
+  const flow = useFlowTransitions(callId, live);
+  useRefreshOnStatusChange(callId, status, call.data?.processing_state);
   if (call.isError) {
     return (
       <EmptyState compact icon={<PhoneX weight="duotone" />} title="Call not found">
@@ -161,19 +195,23 @@ function Body({
       {c.summary && <SummaryCard summary={c.summary} onOpen={() => onTab("analysis")} />}
       <CallCallbacks callId={c.call_id} />
       <CallLanguageCard callId={c.call_id} />
-      <RecordingPlayer
-        callId={c.call_id}
-        hasRecording={c.has_recording}
-        durationS={c.duration_s}
-        processing={c.processing_state === "pending" || !!c.recording_pending}
-      />
+      {/* Nothing to play while the call is on air; the recording follows once it ends. */}
+      {!live && (
+        <RecordingPlayer
+          callId={c.call_id}
+          hasRecording={c.has_recording}
+          durationS={c.duration_s}
+          processing={c.processing_state === "pending" || !!c.recording_pending}
+        />
+      )}
       <Tabs aria-label="Call detail" value={active} onValueChange={(v) => onTab(v as DrawerTab)} items={tabs}>
         <TabPanel value="transcript">
           <Transcript
             items={transcript.data?.items}
             latencies={latencies.data?.turns}
             loading={transcript.isPending}
-            processing={c.processing_state === "pending" || live}
+            processing={c.processing_state === "pending"}
+            live={live}
           />
         </TabPanel>
         <TabPanel value="latency">

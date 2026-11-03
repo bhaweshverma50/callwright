@@ -105,10 +105,32 @@ export function Waveform({
   );
 }
 
-/** Pulsing on-air dot. Red is reserved for live and recording state. */
-export function OnAir({ label = "Live", className, onConsole }: { label?: ReactNode; className?: string; onConsole?: boolean }) {
+/**
+ * Pulsing on-air dot. Red is reserved for live and recording state. `pill` sets it in a soft
+ * rounded chip (status cells); the label stays in the text colour, never in red.
+ */
+export function OnAir({
+  label = "Live",
+  className,
+  onConsole,
+  pill,
+}: {
+  label?: ReactNode;
+  className?: string;
+  onConsole?: boolean;
+  pill?: boolean;
+}) {
   return (
-    <span className={cn("inline-flex items-center gap-3 text-[12.5px] font-medium", onConsole ? "text-console-fg" : "text-fg", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center text-[12.5px] font-medium",
+        onConsole ? "text-console-fg" : "text-fg",
+        pill
+          ? "h-[22px] gap-2 rounded-full border border-[color-mix(in_srgb,var(--on-air)_28%,transparent)] bg-[color-mix(in_srgb,var(--on-air)_9%,var(--surface))] pl-2 pr-2.5 text-[12px] leading-none"
+          : "gap-3",
+        className,
+      )}
+    >
       <span className="relative grid size-2.5 place-items-center" aria-hidden>
         <span className="on-air-pulse absolute inset-0 rounded-full bg-on-air animate-on-air [--halo-peak:0.6] [--halo-to:2.1]" />
         <span className="relative size-2.5 rounded-full bg-on-air" />

@@ -59,12 +59,43 @@ function queryObject(search: URLSearchParams): Record<string, string> {
   return Object.fromEntries(search.entries());
 }
 
+export const POLL_PENDING_MS = 4_000;
+/** A ringing or live call: ringing, answer and hang-up show within a few seconds. */
+export const POLL_LIVE_MS = 3_000;
+/** New calls (an incoming phone call) show up without a reload while the page is open. */
+export const POLL_IDLE_MS = 15_000;
+/** Dashboard figures move with every finished call and evaluation; a slow refresh keeps them honest. */
+export const DASHBOARD_POLL_MS = 60_000;
+/** Statuses that will still change on their own: ringing, live, or being processed after the call. */
+const ACTIVE_STATUSES = new Set<CallStatus>(["queued", "ringing", "in_progress", "ended", "processing"]);
+export const LIVE_STATUSES = new Set<CallStatus>(["queued", "ringing", "in_progress"]);
+export const isOnAir = (status: CallStatus) => LIVE_STATUSES.has(status);
+
+/** Call list: fast while any row is still changing, slow otherwise (only while the tab is visible). */
+export function callsListInterval(items: Pick<CallListItem, "status">[] | undefined): number {
+  return items?.some((c) => ACTIVE_STATUSES.has(c.status)) ? POLL_PENDING_MS : POLL_IDLE_MS;
+}
+
+/** Call detail: fastest while ringing or live, then while analysis or the recording finish; idle never. */
+export function callDetailInterval(c: Pick<CallDetail, "status" | "processing_state" | "recording_pending"> | undefined): number | false {
+  if (!c) return false;
+  if (LIVE_STATUSES.has(c.status)) return POLL_LIVE_MS;
+  return c.processing_state === "pending" || c.recording_pending ? POLL_PENDING_MS : false;
+}
+
+/** Transcript, turn latencies and flow path grow during a live call; afterwards they are fixed. */
+export function liveDetailInterval(live: boolean): number | false {
+  return live ? POLL_LIVE_MS : false;
+}
+
 export function useCalls(search: URLSearchParams) {
   const key = search.toString();
   return useQuery({
     queryKey: callKeys.list(key),
     queryFn: () => unwrap(api.GET("/calls", { params: { query: queryObject(search) as never } })) as Promise<CallPage>,
     placeholderData: keepPreviousData,
+    // Polls only while the tab is visible (React Query pauses intervals in the background).
+    refetchInterval: (q) => callsListInterval(q.state.data?.items),
   });
 }
 
@@ -78,43 +109,43 @@ export function useHasCalls(origin = "live") {
       return page.total > 0;
     },
     staleTime: 60_000,
+    // The setup sequence turns into the dashboard once the first call lands (the shell's live sync
+    // also refreshes this the moment a call starts).
+    refetchInterval: (q) => (q.state.data === false ? POLL_IDLE_MS * 2 : false),
   });
 }
-
-const POLL_PENDING_MS = 4_000;
 
 export function useCall(id: string | null) {
   return useQuery({
     queryKey: callKeys.detail(id ?? ""),
     queryFn: () => unwrap(api.GET("/calls/{call_id}", { params: { path: { call_id: id! } } })) as Promise<CallDetail>,
     enabled: Boolean(id),
-    // Post-call analysis lands without a reload (US2 scenario 7).
-    refetchInterval: (q) =>
-      q.state.data?.processing_state === "pending" || q.state.data?.recording_pending || q.state.data?.status === "in_progress"
-        ? POLL_PENDING_MS
-        : false,
+    // Ringing, answering and hanging up show at once; post-call analysis lands without a reload.
+    refetchInterval: (q) => callDetailInterval(q.state.data),
   });
 }
 
+/** `live`: the call is ringing or in progress, so new lines arrive every few seconds. */
 export function useTranscript(id: string | null, live = false) {
   return useQuery({
     queryKey: callKeys.transcript(id ?? ""),
     queryFn: () => unwrap(api.GET("/calls/{call_id}/transcript", { params: { path: { call_id: id! } } })),
     enabled: Boolean(id),
-    refetchInterval: live ? POLL_PENDING_MS : false,
+    refetchInterval: liveDetailInterval(live),
   });
 }
 
-export function useTurnLatencies(id: string | null) {
+export function useTurnLatencies(id: string | null, live = false) {
   return useQuery({
     queryKey: callKeys.latencies(id ?? ""),
     queryFn: () => unwrap(api.GET("/calls/{call_id}/turn-latencies", { params: { path: { call_id: id! } } })),
     enabled: Boolean(id),
+    refetchInterval: liveDetailInterval(live),
   });
 }
 
 /** Flow path from 004. Until 004 serves it (or for single-prompt calls) the section is hidden. */
-export function useFlowTransitions(id: string | null) {
+export function useFlowTransitions(id: string | null, live = false) {
   return useQuery({
     queryKey: callKeys.flow(id ?? ""),
     queryFn: async () => {
@@ -128,7 +159,9 @@ export function useFlowTransitions(id: string | null) {
     },
     enabled: Boolean(id),
     retry: false,
-    staleTime: 5 * 60_000,
+    staleTime: live ? 0 : 5 * 60_000,
+    // A flow agent moves between nodes during the call; the path is fixed once it ends.
+    refetchInterval: liveDetailInterval(live),
   });
 }
 
@@ -194,6 +227,7 @@ export function useDashboardStats(search: URLSearchParams) {
     queryKey: callKeys.stats(key),
     queryFn: () => unwrap(api.GET("/dashboard/stats", { params: { query: queryObject(search) as never } })) as Promise<DashboardStats>,
     placeholderData: keepPreviousData,
+    refetchInterval: DASHBOARD_POLL_MS,
   });
 }
 
@@ -203,6 +237,7 @@ export function useDashboardQuality(search: URLSearchParams) {
     queryKey: callKeys.quality(key),
     queryFn: () => unwrap(api.GET("/dashboard/quality", { params: { query: queryObject(search) as never } })) as Promise<DashboardQuality>,
     placeholderData: keepPreviousData,
+    refetchInterval: DASHBOARD_POLL_MS,
   });
 }
 
@@ -217,5 +252,6 @@ export function useAgentHealth(search: URLSearchParams) {
     queryKey: callKeys.health(key),
     queryFn: () => unwrap(api.GET("/dashboard/agent-health", { params: { query: queryObject(query) as never } })) as Promise<AgentHealth>,
     placeholderData: keepPreviousData,
+    refetchInterval: DASHBOARD_POLL_MS,
   });
 }

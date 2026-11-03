@@ -1502,6 +1502,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calls/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calls that are queued, ringing or in progress right now
+         * @description The small, cheap read behind the dashboard's "Live now" card, the sidebar's live badge and the pinned rows on Call History. Live and test calls only (simulations are never on air), newest first, at most 50. Clients poll it every few seconds while it is not empty.
+         */
+        get: operations["listLiveCalls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/calls/{call_id}": {
         parameters: {
             query?: never;
@@ -5285,6 +5305,11 @@ export interface components {
             disconnect_reason?: components["schemas"]["DisconnectReason"] | null;
             duration_s: number;
             status: components["schemas"]["CallStatus"];
+            /**
+             * Format: date-time
+             * @description When the call was answered; null before that and for calls that never connected.
+             */
+            connected_at?: string | null;
             cost_usd?: number | null;
             latency_avg_ms?: number | null;
             has_recording: boolean;
@@ -5299,6 +5324,47 @@ export interface components {
              */
             analysis_status?: "completed" | "running" | "too_short" | "not_run" | "error" | "insufficient_credit" | null;
             quality: components["schemas"]["QualitySummary"];
+        };
+        LiveCall: {
+            call_id: string;
+            /** @enum {string} */
+            status: "queued" | "ringing" | "in_progress";
+            channel: components["schemas"]["Channel"];
+            /** @enum {string} */
+            direction: "inbound" | "outbound";
+            /** @enum {string} */
+            origin: "live" | "test";
+            agent: components["schemas"]["AgentRef"];
+            from_number?: string | null;
+            to_number?: string | null;
+            /**
+             * Format: date-time
+             * @description When the call was created.
+             */
+            started_at: string;
+            /** Format: date-time */
+            ringing_at?: string | null;
+            /**
+             * Format: date-time
+             * @description When the call was answered; the live duration counts from here.
+             */
+            connected_at?: string | null;
+            /** @description The latest caller or agent line heard so far, when there is one. */
+            last_message?: {
+                /** @enum {string} */
+                role: "user" | "agent";
+                text: string;
+            } | null;
+        };
+        LiveCallList: {
+            items: components["schemas"]["LiveCall"][];
+            /** @description All calls on air, even beyond the 50 listed. */
+            count: number;
+            /**
+             * Format: date-time
+             * @description The server clock, so clients can correct their own when ticking durations.
+             */
+            server_time: string;
         };
         CallPage: {
             items: components["schemas"]["CallListItem"][];
@@ -10496,6 +10562,27 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    listLiveCalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workspace's calls on air */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveCallList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     getCall: {

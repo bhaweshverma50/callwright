@@ -22,6 +22,8 @@ import { viewerTimeZone } from "../calls/filters";
 import { CallsChart, DurationTrend, TalkTimeChart } from "./charts/ActivityCharts";
 import { ChannelSplit, DisconnectReasons, Distribution, Leaderboard, SentimentSplit } from "./charts/Breakdowns";
 import { chartVars } from "./charts/ChartFrame";
+import { CallDetailDrawer, type DrawerTab } from "../calls/CallDetailDrawer";
+import { LiveNowCard } from "../calls/live/LiveCalls";
 import { DashboardPlaceholder } from "./DashboardPlaceholder";
 import { KpiTiles } from "./KpiTiles";
 import { AgentHealthCard, QualityGrid } from "./QualitySection";
@@ -150,6 +152,7 @@ const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2
 /**
  * Fleet dashboard (US3): period presets, a custom range and an agent filter that apply on change,
  * KPI tiles with sparklines, activity and breakdown charts, quality pass rates and agent health.
+ * Calls on air show first ("Live now"); figures refresh every minute and when a call ends.
  * A workspace without any call keeps the setup sequence.
  */
 export function DashboardPage() {
@@ -205,6 +208,7 @@ function Dashboard() {
   const agents = useAgentOptions();
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [openCall, setOpenCall] = useState<{ id: string; tab: DrawerTab } | null>(null);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -249,6 +253,8 @@ function Dashboard() {
           </>
         }
       />
+
+      <LiveNowCard onOpen={(id) => setOpenCall({ id, tab: "transcript" })} />
 
       <div className="mb-5 flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -371,6 +377,14 @@ function Dashboard() {
           <AgentHealthCard data={health.data} />
         </div>
       </div>
+
+      {/* A live call opens in place (kept out of the address, which holds the dashboard's filters). */}
+      <CallDetailDrawer
+        callId={openCall?.id ?? null}
+        tab={openCall?.tab ?? "transcript"}
+        onTab={(t) => setOpenCall((o) => (o ? { ...o, tab: t } : o))}
+        onClose={() => setOpenCall(null)}
+      />
     </div>
   );
 }

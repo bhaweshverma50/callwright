@@ -43,8 +43,152 @@ const withQuality = (c: CallListItem, request: Request): CallListItem => (qualit
 
 export function resetMockCalls() {
   store = { calls: [], requests: [] };
+  liveScript = [];
   resetMockCallbacks();
   resetMockCallerLanguages();
+}
+
+/**
+ * Calls on air for the mock API. Each scripted call rings, connects and ends on a clock relative
+ * to when it was seeded, and its transcript grows a line every few seconds while it is live, so
+ * the live card, badge, pinned rows and drawer can be watched changing. `?live=3` on any mock
+ * page (or `seedMockLiveCalls(3)` from the console) turns them on; `?live=0` or nothing leaves the
+ * workspace quiet.
+ */
+interface LiveScript {
+  id: string;
+  connectAt: number;
+  endAt: number;
+  /** Lines already spoken when the script starts (calls seeded mid-conversation). */
+  heard: number;
+  from: number;
+}
+let liveScript: LiveScript[] = [];
+
+const LIVE_LINES: { role: "user" | "agent"; text: string }[] = [
+  { role: "agent", text: "Thanks for calling, this is the order desk. How can I help?" },
+  { role: "user", text: "Hi, I ordered a standing desk last week and it still says processing." },
+  { role: "agent", text: "Sorry about the wait. Can I have the order number?" },
+  { role: "user", text: "Sure, it's A as in apple, one two four nine." },
+  { role: "agent", text: "Thanks. I can see order A1249, it left our warehouse this morning." },
+  { role: "user", text: "Oh good. When will it arrive?" },
+  { role: "agent", text: "It is due on Thursday between nine and one. Shall I text you the tracking link?" },
+  { role: "user", text: "Yes please, to this number." },
+  { role: "agent", text: "Done, the link is on its way. Anything else I can help with?" },
+  { role: "user", text: "No, that's all, thanks." },
+];
+const LINE_EVERY_MS = 4_000;
+
+export function seedMockLiveCalls(count = 3, now = Date.now()) {
+  const plans = [
+    {
+      channel: "sip_inbound",
+      direction: "inbound",
+      from: "+14155550142",
+      to: "+14155550100",
+      agent: 0,
+      origin: "live",
+      connect: -134_000,
+      end: 20 * 60_000,
+      heard: 4,
+    },
+    { channel: "web", direction: "inbound", from: null, to: null, agent: 1, origin: "test", connect: -38_000, end: 15 * 60_000, heard: 2 },
+    {
+      channel: "sip_outbound",
+      direction: "outbound",
+      from: "+14155550100",
+      to: "+14155550199",
+      agent: 1,
+      origin: "live",
+      connect: 12_000,
+      end: 25 * 60_000,
+      heard: 0,
+    },
+    {
+      channel: "whatsapp",
+      direction: "inbound",
+      from: "+447700900321",
+      to: null,
+      agent: 0,
+      origin: "live",
+      connect: -61_000,
+      end: 18 * 60_000,
+      heard: 3,
+    },
+  ] as const;
+  store.calls = store.calls.filter((c) => !liveScript.some((l) => l.id === c.call_id));
+  liveScript = [];
+  const added: CallListItem[] = plans.slice(0, Math.max(0, count)).map((p, i) => {
+    const id = `call_01MOCKLIVE${pad(i)}AAAAAAAAAAAAA`;
+    liveScript.push({ id, connectAt: now + p.connect, endAt: now + p.end, heard: p.heard, from: Math.max(now, now + p.connect) });
+    const agent = MOCK_AGENTS[p.agent]!;
+    return {
+      call_id: id,
+      started_at: new Date(now + Math.min(p.connect, 0) - 6_000 - i * 1_000).toISOString(),
+      agent: { ...agent, deleted: false },
+      from_number: p.from,
+      to_number: p.to,
+      channel: p.channel,
+      origin: p.origin,
+      disconnect_reason: null,
+      duration_s: 0,
+      status: "ringing",
+      connected_at: null,
+      cost_usd: null,
+      latency_avg_ms: null,
+      has_recording: false,
+      summary: null,
+      sentiment: null,
+      analysis_values: null,
+      quality: { eval_status: "not_evaluated", pass_count: 0, fail_count: 0, label: null },
+    } as CallListItem;
+  });
+  store.calls = [...added, ...store.calls];
+  tickLive(now);
+}
+
+const directionOf = (c: CallListItem) => (c.channel === "sip_outbound" ? "outbound" : "inbound");
+
+/** Moves scripted calls along their clock: ringing, then on air, then completed. */
+function tickLive(now = Date.now()) {
+  for (const l of liveScript) {
+    const c = store.calls.find((x) => x.call_id === l.id);
+    if (!c) continue;
+    if (now < l.connectAt) {
+      c.status = "ringing";
+      c.connected_at = null;
+    } else if (now < l.endAt) {
+      c.status = "in_progress";
+      c.connected_at = new Date(l.connectAt).toISOString();
+    } else if (c.status !== "completed") {
+      c.status = "completed";
+      c.connected_at = new Date(l.connectAt).toISOString();
+      c.duration_s = Math.round((l.endAt - l.connectAt) / 1000);
+      c.disconnect_reason = "user_hangup";
+      c.cost_usd = 0.1;
+      c.latency_avg_ms = 860;
+    }
+  }
+}
+
+function liveLines(id: string, now = Date.now()): typeof LIVE_LINES {
+  const l = liveScript.find((x) => x.id === id);
+  if (!l || now < l.connectAt) return [];
+  const heard = l.heard + Math.floor((Math.min(now, l.endAt) - l.from) / LINE_EVERY_MS) + (l.heard ? 0 : 1);
+  return LIVE_LINES.slice(0, Math.min(LIVE_LINES.length, heard));
+}
+
+function liveTranscript(id: string): TranscriptItem[] {
+  return liveLines(id).map((line, i) => ({
+    id: `ti_${pad(i)}`,
+    type: "message",
+    role: line.role,
+    text: line.text,
+    interrupted: false,
+    stt_confidence: line.role === "user" ? 0.94 : null,
+    offset_ms: i * LINE_EVERY_MS + 400,
+    turn_index: line.role === "agent" ? Math.floor(i / 2) : null,
+  }));
 }
 
 const pad = (n: number) => String(n).padStart(4, "0");
@@ -69,6 +213,7 @@ export function seedMockCalls(count = 45) {
       disconnect_reason: status === "failed" ? "error" : "user_hangup",
       duration_s: status === "failed" ? 0 : 60 + i,
       status,
+      connected_at: status === "failed" ? null : new Date(now - i * 3_600_000 + 3_000).toISOString(),
       cost_usd: status === "failed" ? null : 0.1 + i / 1000,
       latency_avg_ms: status === "failed" ? null : 800 + i,
       has_recording: i !== 2,
@@ -113,7 +258,7 @@ function detail(c: CallListItem): CallDetail {
     ...c,
     agent_version_id: "agv_01MOCKVERSION00000000000001",
     agent_version_label: "v3",
-    ended_at: c.started_at,
+    ended_at: c.status === "in_progress" || c.status === "ringing" ? null : c.started_at,
     latency: { avg_ms: c.latency_avg_ms ?? null, p50_ms: 900, p95_ms: 1400, turns_measured: 3 },
     cost: c.cost_usd
       ? {
@@ -224,6 +369,7 @@ const find = (id: string) => store.calls.find((c) => c.call_id === id);
 
 export const callHandlers = [
   http.get(url("/calls"), ({ request }) => {
+    tickLive();
     const q = new URL(request.url).searchParams;
     store.requests.push(new URL(request.url).search);
     const rows = store.calls.map((c) => withQuality(c, request)).filter((c) => matches(c, q));
@@ -237,6 +383,30 @@ export const callHandlers = [
       total_pages: Math.ceil(rows.length / size),
     });
   }),
+  http.get(url("/calls/live"), () => {
+    tickLive();
+    const items = store.calls
+      .filter((c) => (c.status === "queued" || c.status === "ringing" || c.status === "in_progress") && c.origin !== "simulation")
+      .sort((a, b) => b.started_at.localeCompare(a.started_at))
+      .map((c) => {
+        const last = c.status === "in_progress" ? liveLines(c.call_id).at(-1) : undefined;
+        return {
+          call_id: c.call_id,
+          status: c.status,
+          channel: c.channel,
+          direction: directionOf(c),
+          origin: c.origin,
+          agent: c.agent,
+          from_number: c.from_number ?? null,
+          to_number: c.to_number ?? null,
+          started_at: c.started_at,
+          ringing_at: c.started_at,
+          connected_at: c.connected_at ?? null,
+          last_message: last ? { role: last.role, text: last.text } : null,
+        };
+      });
+    return json({ items: items.slice(0, 50), count: items.length, server_time: new Date().toISOString() });
+  }),
   http.get(
     url("/calls/export"),
     () =>
@@ -245,12 +415,15 @@ export const callHandlers = [
       }),
   ),
   http.get(url("/calls/:id"), ({ params, request }) => {
+    tickLive();
     const c = find(String(params.id));
     return c ? json(detail(withQuality(c, request))) : problem(404, "not_found", "No call with that id exists in this workspace.");
   }),
-  http.get(url("/calls/:id/transcript"), ({ params }) =>
-    find(String(params.id)) ? json({ call_id: params.id, items: TRANSCRIPT }) : problem(404, "not_found", "No call."),
-  ),
+  http.get(url("/calls/:id/transcript"), ({ params }) => {
+    const id = String(params.id);
+    if (!find(id)) return problem(404, "not_found", "No call.");
+    return json({ call_id: id, items: liveScript.some((l) => l.id === id) ? liveTranscript(id) : TRANSCRIPT });
+  }),
   http.get(url("/calls/:id/turn-latencies"), ({ params }) => {
     const c = find(String(params.id));
     return c ? json({ call_id: c.call_id, summary: detail(c).latency, turns: TURNS }) : problem(404, "not_found", "No call.");

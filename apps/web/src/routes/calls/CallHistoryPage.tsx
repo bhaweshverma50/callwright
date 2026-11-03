@@ -12,6 +12,8 @@ import { useRegisterVoiceActions } from "../../app/copilot/actionRegistry";
 import { FormAlert } from "../public/FormAlert";
 import { CallDetailDrawer, StatusBadge, type DrawerTab } from "./CallDetailDrawer";
 import { CallsTabs } from "./CallsTabs";
+import { OnAirStrip } from "./live/LiveCalls";
+import { LiveDuration } from "./live/LiveDuration";
 import { DebouncedInput, FilterButton, FilterChips } from "./CallFilters";
 import { CHANNEL_ICONS, COLUMNS, EXPORT_KEYS, useColumnVisibility, type CallColumn } from "./columns";
 import {
@@ -141,7 +143,13 @@ function MobileRow({ row, selected, onToggle, onOpen }: { row: CallListItem; sel
             <Icon className="size-3.5" aria-hidden />
             {CHANNEL_LABELS[row.channel]}
           </span>
-          <span className="font-mono tnum">{mss(row.duration_s)}</span>
+          {row.status === "in_progress" ? (
+            <LiveDuration since={row.connected_at} />
+          ) : row.status === "ringing" || row.status === "queued" ? (
+            <span>Ringing</span>
+          ) : (
+            <span className="font-mono tnum">{mss(row.duration_s)}</span>
+          )}
           <span className="font-mono text-fg-2 tnum">{usd(row.cost_usd ?? null)}</span>
         </span>
         {row.summary && <span className="line-clamp-2 text-[12.5px] text-fg-2">{summaryHeadline(row.summary)}</span>}
@@ -370,6 +378,8 @@ export function CallHistoryPage() {
             )}
             <FilterChips chips={chips} filters={state.filters} onChange={setFilters} onClear={() => setFilters(emptyFilters())} />
           </div>
+
+          <OnAirStrip onOpen={(id) => openCall(id)} />
 
           <AnimatePresence initial={false}>
             {selection.size > 0 && (

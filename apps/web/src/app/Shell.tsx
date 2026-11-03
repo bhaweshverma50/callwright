@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { Drawer, PageTransition, PanelLoader, cn } from "../components";
+import { useLiveCallSync } from "../api/live";
 import { CopilotDock, isFullHeightEditor } from "./assistant/CopilotDock";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -33,6 +34,9 @@ export function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
   const editor = isFullHeightEditor(pathname);
+  // One shared poll of the calls on air: feeds the Calls badge and refreshes lists, the dashboard
+  // and the balance when a call starts or ends (api/live.ts).
+  useLiveCallSync();
 
   const toggle = useCallback(() => {
     setExpanded((v) => {

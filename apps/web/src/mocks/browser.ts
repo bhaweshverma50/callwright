@@ -1,7 +1,7 @@
 import { setupWorker } from "msw/browser";
 import { handlers } from "./handlers";
 import { agentHandlers } from "./agents/handlers";
-import { callHandlers, seedMockCalls } from "./calls/handlers";
+import { callHandlers, seedMockCalls, seedMockLiveCalls } from "./calls/handlers";
 import { flowHandlers } from "./flows";
 import { toolHandlers } from "./tools";
 import { channelHandlers } from "./channels/handlers";
@@ -16,7 +16,11 @@ import { enablePersistence } from "./db";
 export async function startMocks() {
   enablePersistence();
   // `?seed` fills the call list, for demos and the home page tour recording (scripts/record-tour.mjs).
-  if (new URLSearchParams(location.search).has("seed")) seedMockCalls();
+  const params = new URLSearchParams(location.search);
+  if (params.has("seed")) seedMockCalls();
+  // `?live=3` puts calls on air (ringing, then live, transcripts growing); `?live=0` or none: quiet.
+  const live = params.get("live");
+  if (live !== null) seedMockLiveCalls(live === "" ? 3 : Number(live));
   const worker = setupWorker(
     ...handlers,
     ...agentHandlers,

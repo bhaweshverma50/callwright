@@ -290,3 +290,50 @@ as in production. The mock web API (`vite --mode mock`) mirrors the same cards.
   to the saved number.
 - Agent setting `advanced.language_switching` (Basics tab, under Language). Migration `s012_0001`.
   No new settings or secrets.
+
+## 13. Live calls and refresh (2026-11-03)
+
+- `GET /v1/calls/live` (contract `specs/006-calls-analytics/contracts/calls.yaml`): calls queued,
+  ringing or in progress, live and test origins only, newest 50 plus a total `count`, each with
+  agent, channel, direction, numbers, `ringing_at`, `connected_at` and the latest caller or agent
+  line; `server_time` lets clients tick durations on the server clock. Two indexed reads under
+  RLS, no Redis, so polling it never wakes the VM. Call list items and details also carry
+  `connected_at` now. No migration.
+- Web: one shared query (`api/live.ts`) feeds the sidebar's Calls badge, the dashboard's
+  "Live now" card (a quiet line when nothing is on air) and the rows pinned above Call History.
+  It polls every 3 s while anything is on air and every 15 s otherwise, only in a visible tab.
+  `useLiveCallSync` in the shell turns its changes into targeted refreshes: a new call refreshes
+  the call lists, an answered or ended call refreshes that call's detail and transcript, an
+  ended call refreshes the dashboard, balance, transactions, usage and callbacks, again 20 s
+  later once pricing and analysis land.
+- No server push exists (the only websocket is the copilot's speech to text), so everything is
+  polling keyed on status; `refetchOnWindowFocus` stays off app-wide as before.
+- Mock mode: `?live=3` (or `seedMockLiveCalls(3)` from the console) puts calls on air: one rings
+  and is answered 12 s later, the others are live with transcripts that grow a line every 4 s.
+  Without it the workspace is quiet. Example: `/login?seed&live=3`.
+
+Refresh audit:
+
+| Place | Changes on its own | Before | After |
+|---|---|---|---|
+| Sidebar, Calls item | calls start and end | nothing | live badge (count and on-air dot) from the shared live query |
+| Dashboard | calls on air | nothing | "Live now" card, 3 s while on air, 15 s idle; a row opens the call drawer in place |
+| Dashboard figures (stats, quality, agent health) | every finished call and evaluation | only on Refresh or reload | every 60 s, and when a call ends (again 20 s later) |
+| Dashboard setup sequence | the first call | cached 60 s, never refetched | every 30 s while empty, at once when a call starts |
+| Call History | ringing, answer, hang-up, processing | 4 s while active, 15 s idle (efb8361) | plus calls on air pinned on top, "On air" pill and ticking duration in rows, list refetched the moment a call starts or ends |
+| Call drawer | ringing to live to ended to processing | polled only in progress and processing; a ringing call never updated | 3 s while queued, ringing or live; 4 s while processing or the recording uploads; ticking duration; no cost or recording block while on air |
+| Drawer transcript | new lines during the call | polled only in progress; the final transcript was not fetched after hang-up | 3 s while ringing or live, refetched on every status change, follows the newest line unless the reader scrolled up |
+| Drawer latency and flow path | per-turn latency, node transitions | fetched once (flow cached 5 min) | 3 s while live, refetched on status change |
+| Drawer analysis, checks, callback card | post-call results, a callback booked mid-call | opened during the call: checks and callbacks never refetched | refetched on every status change, then their own running polls |
+| Balance chip, billing transactions and usage | call charges | balance every 60 s; transactions and usage static | refreshed when a call ends and 20 s later |
+| Callbacks tab count | the callback cron | cached 30 s, no poll | every 30 s |
+| Outbound call dialog | the placed call rings | nothing | live list and call list refetched at once |
+| Browser test call | the caller's own call | badge on the next idle poll | live list refetched on connect and on hang-up |
+
+Already right and unchanged: knowledge ingestion (3 s while processing), phone numbers and
+WhatsApp channels while settling (5 s), simulations, batches, scorecards and comparison (3 s
+while active), test runs (3 s), issue detection and validation (2 s), call analysis and
+evaluations (3 s while running), callback lists (10 s while one is open). Left static on
+purpose: review queue (reshuffling under a reviewer is worse), calibration, datasets, agents,
+tools and flows (they change through the user's own mutations, which invalidate), analytics chat
+(a synchronous request), playground (its own live session).
