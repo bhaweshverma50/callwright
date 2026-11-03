@@ -5,7 +5,7 @@ import { ExpandEditor } from "./ExpandEditor";
 import { reasonError } from "./fieldRules";
 import { Group, issueFor, type FormProps } from "./shared";
 
-/** End node (FR-018): a closing line, then hang up with a recorded reason. */
+/** End node (FR-018): a closing line (or the agent's own goodbye), then hang up with a recorded reason. */
 export function EndForm({ config, onChange, issues }: FormProps<EndConfig>) {
   const set = (patch: Partial<EndConfig>) => onChange({ ...config, ...patch });
   return (
@@ -13,7 +13,7 @@ export function EndForm({ config, onChange, issues }: FormProps<EndConfig>) {
       <Group
         title="Closing message"
         icon={<PhoneOff aria-hidden />}
-        description="Spoken in full before the call ends. Leave it empty to hang up at once."
+        description="Leave empty to let the agent say goodbye in its own words, fitting the call (for example confirming a callback). Text you write here is spoken word for word before the call ends."
       >
         <Field label="Closing message" hideLabel error={issueFor(issues, "message")} hint={`${config.message.length} / 500`}>
           {({ id, describedBy, invalid }) => (
@@ -23,6 +23,7 @@ export function EndForm({ config, onChange, issues }: FormProps<EndConfig>) {
               rows={3}
               maxLength={500}
               value={config.message}
+              placeholder="Leave empty to let the agent say goodbye in its own words"
               onChange={(message) => set({ message })}
               describedBy={describedBy}
               invalid={invalid}

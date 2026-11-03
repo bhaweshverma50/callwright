@@ -12375,7 +12375,9 @@ components:
         message:
           type: string
           maxLength: 500
-          default: Thanks for calling. Goodbye.
+          default: ''
+          description: Spoken word for word before the call ends. Empty (or the old default "Thanks for
+            calling. Goodbye.") lets the agent say a short goodbye in its own words that fits the call.
         reason:
           type: string
           pattern: ^[a-z_]{1,40}$

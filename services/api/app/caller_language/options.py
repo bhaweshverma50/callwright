@@ -93,8 +93,8 @@ def supported_codes(config: Mapping[str, Any], vc: VoiceCatalog | None = None) -
 def language_options(config: Mapping[str, Any], vc: VoiceCatalog | None = None) -> list[dict[str, Any]]:
     """``RuntimeConfig.language_options`` for an agent version's config (agent language first)."""
     vc = vc or load_voice_catalog()
-    if config.get("type") == "flow" or _section(config, "flow"):
-        return []
+    # Flow agents too: every conversational node gets set_language (the agent-level speech
+    # recognition and voice decide what is offered).
     enabled, chosen = switching(config)
     if not enabled:
         return []

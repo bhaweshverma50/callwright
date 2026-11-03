@@ -1,3 +1,4 @@
+import { STOCK_END_MESSAGE } from "../../model";
 import type { ConfigByNode, FlowNode, LlmLabeler } from "./summaryTypes";
 
 /** The one-line summary on a node card (FR-057): its key setting. */
@@ -48,7 +49,8 @@ export function nodeSummary(node: FlowNode, modelLabel?: LlmLabeler): string {
     }
     case "end": {
       const e = c as ConfigByNode["end"];
-      return e.message.trim() ? `"${e.message.trim()}"` : `Ends silently (${e.reason})`;
+      const message = e.message.trim();
+      return message && message !== STOCK_END_MESSAGE ? `"${message}"` : `Agent says goodbye in its own words (${e.reason})`;
     }
   }
 }

@@ -172,7 +172,6 @@ CASES: list[tuple[str, Callable[[Graph], None]]] = [
     ("W_NODE_STALLS", agent_stalls),
     ("W_NO_EXIT", no_exit),
     ("W_TRANSFER_NO_FALLBACK", transfer_no_fallback),
-    ("W_END_NO_MESSAGE", end_no_message),
     ("W_UNSET_VARIABLE", unset_variable),
     ("W_NO_BEGIN_MESSAGE", no_begin_message),
 ]
@@ -199,6 +198,13 @@ def test_each_code_fires(code: str, mutate: Callable[[Graph], None]) -> None:
     assert all(i["severity"] == severity for i in issues if i["code"] == code)
 
 
+def test_end_without_message_is_valid() -> None:
+    """An empty closing message means the agent says its own goodbye: no warning."""
+    g = clinic()
+    end_no_message(g)
+    assert [i for i in validate(g) if i["node_id"] == "n_end00001"] == []
+
+
 def test_second_start_is_named() -> None:
     g = clinic()
     two_starts(g)
@@ -211,7 +217,7 @@ def test_errors_come_before_warnings_then_node_order() -> None:
     g = clinic()
     unreachable(g)
     say_without_message(g)
-    end_no_message(g)
+    no_begin_message(g)
     issues = validate(g)
     severities = [i["severity"] for i in issues]
     assert severities == sorted(severities, key=lambda s: s != "error")

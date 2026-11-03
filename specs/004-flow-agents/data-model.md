@@ -73,7 +73,7 @@ Rule { variable: string, operator: equals | not_equals | contains | matches | ex
 | extract_variable | `instructions` (""); `fields`: ExtractField[] | 1..30 fields; names snake_case, unique across flow-set variables. The editor converts typed names ("Customer Name" to `customer_name`) before adding (FR-056) |
 | webhook | `request`: HttpRequestSpec (005); `mock_response` (null) | URL required, absolute, https (E_INVALID_FIELD); method set, timeout range and `speak_during_execution` (default true) per 005, identical to HTTP tools |
 | transfer | `transfer`: TransferSpec (005) | static needs E.164 number (E_INVALID_FIELD when malformed); dynamic needs routing instructions |
-| end | `message` ("Thanks for calling. Goodbye."); `reason` (`call_completed`, pattern `^[a-z_]{1,40}$`) | message max 500 |
+| end | `message` ("": the agent says a short goodbye in its own words that fits the call; the old default "Thanks for calling. Goodbye." is treated the same; any other text is spoken word for word); `reason` (`call_completed`, pattern `^[a-z_]{1,40}$`) | message max 500 |
 
 ```text
 Overrides {
@@ -134,7 +134,7 @@ ValidationIssue { severity: error | warning, code: string, message: string,
 | W_NODE_STALLS | warning | conversational node with no llm_condition or success edge |
 | W_NO_EXIT | warning | reachable region with no path to an end or transfer node |
 | W_TRANSFER_NO_FALLBACK | warning | transfer node without failure edge |
-| W_END_NO_MESSAGE | warning | end node with empty message |
+| W_END_NO_MESSAGE | (removed) | no longer raised: an empty message means the agent says its own goodbye |
 | W_UNSET_VARIABLE | warning | `{{var}}` used but never set and not built-in or defaulted |
 | W_NO_BEGIN_MESSAGE | warning | conversational node entered by a transition and lacking an entry line (latency hint) |
 | E_GREETING_SOURCE | error | start is agent-first with a generated greeting and its edge target is not agent or task |

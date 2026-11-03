@@ -65,7 +65,7 @@ def test_listed_languages_disabled_and_flow() -> None:
     off = config(advanced={"language_switching": {"enabled": False, "languages": []}})
     assert language_options(off) == []
     flow = default_config("flow")
-    assert language_options(flow) == []
+    assert codes(flow) == codes(config())  # flow agents switch language too
     nothing = config(advanced={"language_switching": {"enabled": True, "languages": ["he"]}})
     assert language_options(nothing) == []  # nothing to switch to
 

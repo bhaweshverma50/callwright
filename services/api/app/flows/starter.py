@@ -13,7 +13,10 @@ from app.tools.schemas import DEFAULT_EXECUTION_MESSAGE, DEFAULT_HOLD_MESSAGE
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
 DEFAULT_GREETING = "Hi, thanks for calling. How can I help?"
-DEFAULT_END_MESSAGE = "Thanks for calling. Goodbye."
+# Empty: the agent says a short goodbye in its own words that fits the call (the voice worker
+# treats the old stock line, "Thanks for calling. Goodbye.", the same way). A message the user
+# writes is spoken word for word.
+DEFAULT_END_MESSAGE = ""
 
 
 def short_id(prefix: str) -> str:

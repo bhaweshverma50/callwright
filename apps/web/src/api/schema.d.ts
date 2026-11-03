@@ -4737,7 +4737,10 @@ export interface components {
         };
         /** end */
         EndConfig: {
-            /** @default Thanks for calling. Goodbye. */
+            /**
+             * @description Spoken word for word before the call ends. Empty (or the old default "Thanks for calling. Goodbye.") lets the agent say a short goodbye in its own words that fits the call.
+             * @default
+             */
             message: string;
             /** @default call_completed */
             reason: string;

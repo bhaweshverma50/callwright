@@ -302,14 +302,8 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
             texts.append(message)
             if outs:
                 out.error("E_END_HAS_EDGES", "An End node cannot have outgoing connections.", node_id=nid)
-            if not message.strip():
-                out.warn(
-                    "W_END_NO_MESSAGE",
-                    "The call ends without a closing message.",
-                    node_id=nid,
-                    field_="message",
-                )
-            elif len(message) > 500:
+            # An empty message is fine: the agent says a goodbye that fits the call.
+            if len(message) > 500:
                 out.error(
                     "E_INVALID_FIELD",
                     "The closing message can be at most 500 characters.",

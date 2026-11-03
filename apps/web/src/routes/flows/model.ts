@@ -16,6 +16,8 @@ export function shortId(prefix: "n" | "e", taken?: Set<string>): string {
 
 export const NODE_TYPES: NodeType[] = ["start", "agent", "task", "condition", "say", "extract_variable", "webhook", "transfer", "end"];
 export const CONVERSATIONAL = new Set<NodeType>(["agent", "task"]);
+/** The End node's old default line; the voice worker treats it like an empty message (the agent says its own goodbye). */
+export const STOCK_END_MESSAGE = "Thanks for calling. Goodbye.";
 
 export const DEFAULT_LABELS: Record<NodeType, string> = {
   start: "Start",
@@ -89,7 +91,8 @@ export function defaultConfig<T extends NodeType>(type: T): ConfigByNode[T] {
         ring_timeout_s: 30,
       },
     }),
-    end: () => ({ message: "Thanks for calling. Goodbye.", reason: "call_completed" }),
+    // Empty: the agent says a short goodbye in its own words that fits the call.
+    end: () => ({ message: "", reason: "call_completed" }),
   };
   return table[type]() as ConfigByNode[T];
 }

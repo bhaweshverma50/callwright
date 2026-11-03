@@ -193,7 +193,7 @@ async def test_browser_calls_and_simulations_never_save(
     assert unauth.status_code == 401
 
 
-async def test_switching_off_or_flow_gives_no_options(
+async def test_switching_off_gives_no_options(
     client: httpx.AsyncClient, account: Account, channels: Channels
 ) -> None:
     caller = fresh_e164()
