@@ -67,6 +67,7 @@ from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
 from app.llms.router import router as llms_router
 from app.outbound.router import router as outbound_router
+from app.preferences.router import router as preferences_router
 from app.phone_numbers.install import install as install_channels
 from app.phone_numbers.router import router as phone_numbers_router
 from app.pricing.router import router as pricing_router
@@ -275,6 +276,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         outbound_router,
         callbacks_router,
         callbacks_internal_router,
+        preferences_router,
         whatsapp_router,
         whatsapp_public_router,
         flows_router,

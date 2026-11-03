@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, preferences module
+  version: 0.1.0
+  description: >
+    Fragment owned by 013-guided-setup. Per-user preferences, today only the guided setup tour's
+    progress. Each user reads and writes only their own preferences in their own workspace. A
+    user who never saved anything gets the defaults (`not_started`, no step).
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /me/preferences:
+    get:
+      operationId: getMyPreferences
+      tags: [preferences]
+      summary: The signed-in user's preferences, with defaults when nothing was saved
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Preferences'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+    patch:
+      operationId: updateMyPreferences
+      tags: [preferences]
+      summary: Save the guided setup tour's status and step; only the fields sent change
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PreferencesUpdate'}
+      responses:
+        '200':
+          description: Saved preferences
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Preferences'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    OnboardingStatus:
+      type: string
+      enum: [not_started, in_progress, skipped, completed]
+      description: >
+        `not_started` until the user starts or skips the tour; `in_progress` while it runs or is
+        paused (the step says where); `skipped` when they left it; `completed` after the last
+        step. Any status can follow any other (the tour can be restarted from the app).
+    OnboardingStep:
+      type: string
+      pattern: '^[a-z][a-z0-9_-]{0,39}$'
+      description: A step id of the web app's tour, such as `agents` or `test-call`. Opaque to the API.
+    Onboarding:
+      type: object
+      required: [status, step, updated_at]
+      properties:
+        status: {$ref: '#/components/schemas/OnboardingStatus'}
+        step:
+          oneOf:
+            - {$ref: '#/components/schemas/OnboardingStep'}
+            - {type: 'null'}
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+          description: When the tour progress was last saved; null when never saved.
+    Preferences:
+      type: object
+      required: [onboarding]
+      properties:
+        onboarding: {$ref: '#/components/schemas/Onboarding'}
+    PreferencesUpdate:
+      type: object
+      required: [onboarding]
+      additionalProperties: false
+      properties:
+        onboarding:
+          type: object
+          minProperties: 1
+          additionalProperties: false
+          properties:
+            status: {$ref: '#/components/schemas/OnboardingStatus'}
+            step:
+              description: The step to resume at; null clears it.
+              oneOf:
+                - {$ref: '#/components/schemas/OnboardingStep'}
+                - {type: 'null'}
