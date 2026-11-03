@@ -27,7 +27,14 @@ from worker.internal_api import InternalApiClient, OutboundDial
 from worker.metrics import EventRecorder, UsageMeters
 from worker.pipeline import plan_session
 from worker.settings import WorkerSettings
-from worker.telephony import DialFailed, dial, map_sip_status, ring_phase
+from worker.telephony import (
+    RINGBACK_RATE,
+    DialFailed,
+    dial,
+    map_sip_status,
+    ring_phase,
+    ringback_cycle,
+)
 
 SPEC = OutboundDial(
     sip_trunk_id="ST_out", to_number="+14155550199", from_number="+14155550100", ring_timeout_s=20
@@ -160,6 +167,40 @@ async def test_another_participant_leaving_does_not_stop_the_ring() -> None:
     assert await ring_phase(room, recorder, 1000, "sip_caller", sleep=sleep)
 
 
+async def test_ringback_plays_only_while_ringing() -> None:
+    room = FakeSipRoom(["sip_caller"])
+    recorder = EventRecorder(UsageMeters())
+    played: list[str] = []
+
+    async def ringback() -> None:
+        played.append("start")
+        try:
+            await asyncio.Event().wait()
+        finally:
+            played.append("stop")
+
+    async def sleep(seconds: float) -> None:
+        await asyncio.sleep(0)
+
+    assert await ring_phase(room, recorder, 2000, "sip_caller", sleep=sleep, ringback=ringback)
+    assert played == ["start", "stop"]
+    played.clear()
+    assert await ring_phase(room, recorder, 0, "sip_caller", sleep=sleep, ringback=ringback)
+    assert played == [], "no ring time, no tone"
+
+
+def test_ringback_cycle_is_a_double_ring() -> None:
+    cycle = ringback_cycle()
+    assert len(cycle) == RINGBACK_RATE * 3
+
+    def loud(a: float, b: float) -> bool:
+        part = cycle[int(a * RINGBACK_RATE) : int(b * RINGBACK_RATE)]
+        return max(abs(v) for v in part) > 1000
+
+    assert loud(0.05, 0.35) and not loud(0.42, 0.58) and loud(0.65, 0.95) and not loud(1.05, 2.95)
+    assert max(abs(v) for v in cycle) < 32767 * 0.2  # quiet, never clipping
+
+
 # LiveCall wiring ----------------------------------------------------------------------------
 
 
@@ -227,7 +268,7 @@ async def test_inbound_caller_hangup_during_ring_fails_without_connecting(
     )
     call, ctx = _call("sip_inbound")
 
-    async def hung_up(room: Any, recorder: Any, ring_ms: int, identity: str) -> bool:
+    async def hung_up(room: Any, recorder: Any, ring_ms: int, identity: str, **_: Any) -> bool:
         recorder.status("ringing")
         return False
 

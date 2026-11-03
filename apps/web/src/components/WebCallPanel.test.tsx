@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -149,7 +149,8 @@ describe("WebCallPanel", () => {
     };
     renderPanel({ driver });
     await user.click(screen.getByRole("button", { name: "Start test call" }));
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    expect(await screen.findByText("Ringing the agent")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Hang up" }));
     expect(screen.getByRole("button", { name: "Start test call" })).toBeInTheDocument();
     release();
     await waitFor(() => expect(hangUp).toHaveBeenCalled());
@@ -160,7 +161,13 @@ describe("WebCallPanel", () => {
     const user = userEvent.setup();
     const hangUp = vi.fn(async () => {});
     const inner = createMockDriver(FAST);
-    const driver: WebCallDriver = { ...inner, connect: async () => ({ setMuted: async () => {}, hangUp }) };
+    const driver: WebCallDriver = {
+      ...inner,
+      connect: async (_s, l) => {
+        l.activity("listening"); // the agent answered
+        return { setMuted: async () => {}, hangUp };
+      },
+    };
     const { unmount } = renderPanel({ driver });
     await user.click(screen.getByRole("button", { name: "Start test call" }));
     await screen.findByText("On air");
@@ -172,7 +179,13 @@ describe("WebCallPanel", () => {
     const user = userEvent.setup();
     const sendDigit = vi.fn(async (_d: string) => {});
     const inner = createMockDriver(FAST);
-    const driver: WebCallDriver = { ...inner, connect: async () => ({ setMuted: async () => {}, hangUp: async () => {}, sendDigit }) };
+    const driver: WebCallDriver = {
+      ...inner,
+      connect: async (_s, l) => {
+        l.activity("listening");
+        return { setMuted: async () => {}, hangUp: async () => {}, sendDigit };
+      },
+    };
     renderPanel({ driver });
     await user.click(screen.getByRole("button", { name: "Start test call" }));
     await screen.findByText("On air");
@@ -183,6 +196,26 @@ describe("WebCallPanel", () => {
     await user.keyboard("7");
     expect(sendDigit.mock.calls.map((c) => c[0])).toEqual(["4", "#", "7"]);
     expect(screen.getByText("4#7")).toBeInTheDocument();
+  });
+
+  it("rings until the agent answers", async () => {
+    const user = userEvent.setup();
+    let answer: () => void = () => {};
+    const inner = createMockDriver(FAST);
+    const driver: WebCallDriver = {
+      ...inner,
+      connect: async (_s, l) => {
+        answer = () => l.activity("speaking");
+        return { setMuted: async () => {}, hangUp: async () => {} };
+      },
+    };
+    renderPanel({ driver });
+    await user.click(screen.getByRole("button", { name: "Start test call" }));
+    expect(await screen.findByText("Ringing the agent")).toBeInTheDocument();
+    expect(screen.getAllByText("Ringing").length).toBeGreaterThan(0);
+    act(() => answer());
+    expect(await screen.findByText("On air")).toBeInTheDocument();
+    expect(screen.queryByText("Ringing the agent")).not.toBeInTheDocument();
   });
 
   it("does not label a live panel as simulated", () => {

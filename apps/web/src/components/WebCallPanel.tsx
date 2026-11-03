@@ -23,6 +23,7 @@ import { cn } from "./cn";
 import { EASE_OUT } from "./motion";
 import { LatencyChip, OnAir, Waveform } from "./signal";
 import { Keypad } from "./Keypad";
+import { RingingPhone, isRinging, useRingback } from "./ringing";
 import { InfoTip } from "./TruncatedText";
 import {
   createMockDriver,
@@ -81,6 +82,8 @@ export function WebCallPanel({
   const costMicros = (perMinuteMicros * BigInt(Math.max(0, Math.round(elapsed)))) / 60_000n;
   const onCall = s.phase === "live" || s.phase === "ending";
   const showKeypad = keypadOpen && onCall;
+  const ringing = isRinging(s);
+  useRingback(ringing);
   const lastFinal = [...s.turns].reverse().find((t) => t.final);
 
   return (
@@ -91,7 +94,7 @@ export function WebCallPanel({
     >
       <header className="flex min-h-14 items-center justify-between gap-3 border-b border-line px-5 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Status phase={s.phase} reason={s.endReason} reduce={reduce} />
+          <Status phase={s.phase} reason={s.endReason} ringing={ringing} reduce={reduce} />
           {driver.simulated && <Badge>Simulated</Badge>}
         </div>
         <dl className="flex shrink-0 items-center gap-4 text-[12px] text-fg-3">
@@ -116,7 +119,7 @@ export function WebCallPanel({
       <div className="grid gap-2 px-5 pt-4 sm:grid-cols-2">
         <WaveRow
           label="Agent"
-          status={agentStatus(s.phase, s.activity)}
+          status={ringing ? "Ringing" : agentStatus(s.phase, s.activity)}
           level={s.levels.agent}
           active={onCall && s.activity === "speaking"}
           idle={!onCall}
@@ -139,6 +142,13 @@ export function WebCallPanel({
         <div className={cn("relative h-full min-h-0", showKeypad && "max-sm:hidden")}>
           {s.phase === "error" && s.problem ? (
             <ProblemCallout problem={s.problem} />
+          ) : ringing ? (
+            <div className="grid h-full place-items-center content-center gap-4 text-center">
+              <RingingPhone reduce={reduce} />
+              <p className="text-[13.5px] font-medium text-fg-2" role="status">
+                Ringing the agent
+              </p>
+            </div>
           ) : s.turns.length === 0 ? (
             <EmptyTranscript phase={s.phase} />
           ) : (
@@ -165,14 +175,9 @@ export function WebCallPanel({
             </Button>
           )}
           {s.phase === "connecting" && (
-            <>
-              <Button variant="ghost" onClick={cancel}>
-                Cancel
-              </Button>
-              <Button variant="primary" pending>
-                Connecting
-              </Button>
-            </>
+            <Button variant="danger" icon={<PhoneOff aria-hidden />} onClick={cancel}>
+              Hang up
+            </Button>
           )}
           {onCall && (
             <>
@@ -217,7 +222,7 @@ function footerHint(s: WebCallState, elapsed: number, cost: bigint): string {
     case "requesting":
       return "Checking credit and starting the agent.";
     case "connecting":
-      return "Joining the call room.";
+      return "Ringing the agent.";
     case "live":
     case "ending":
       return s.muted ? "Muted: the agent cannot hear you." : "Talk as the caller. The agent hears your microphone.";
@@ -240,9 +245,10 @@ function callerStatus(phase: CallPhase, muted: boolean, level: number): string {
   return phase === "ended" ? "Off call" : "Mic off";
 }
 
-function Status({ phase, reason, reduce }: { phase: CallPhase; reason: EndReason | null; reduce: boolean }) {
+function Status({ phase, reason, ringing, reduce }: { phase: CallPhase; reason: EndReason | null; ringing: boolean; reduce: boolean }) {
   let node: ReactNode;
-  if (phase === "live" || phase === "ending") node = <OnAir label="On air" />;
+  if (ringing) node = <StatusText icon={<PhoneCall className="text-accent-text" />} text="Ringing" />;
+  else if (phase === "live" || phase === "ending") node = <OnAir label="On air" />;
   else if (phase === "ended")
     node =
       reason === "connection_lost" ? (
@@ -261,7 +267,7 @@ function Status({ phase, reason, reduce }: { phase: CallPhase; reason: EndReason
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.span
-        key={phase === "ending" ? "live" : phase}
+        key={ringing ? "ringing" : phase === "ending" ? "live" : phase}
         initial={reduce ? false : { opacity: 0, y: 3 }}
         animate={{ opacity: 1, y: 0 }}
         exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -3 }}

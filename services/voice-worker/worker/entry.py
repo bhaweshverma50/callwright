@@ -90,6 +90,7 @@ from worker.telephony import (
     TelephonyUnavailable,
     dial_outbound,
     dtmf_code,
+    play_ringback,
     ring_phase,
     sip_attributes,
 )
@@ -674,7 +675,14 @@ class LiveCall:
         if runtime.channel in SIP_CHANNELS and self.plan is not None:
             # 010 R5: ring for the agent's ring duration before answering; never billed.
             ring_ms = self.plan.behavior.ring_duration_ms
-            if not await ring_phase(self.ctx.room, self.recorder, ring_ms, participant.identity):
+            room = self.ctx.room
+            if not await ring_phase(
+                room,
+                self.recorder,
+                ring_ms,
+                participant.identity,
+                ringback=lambda: play_ringback(room),
+            ):
                 await self._fail("caller_hung_up_while_ringing")
                 return None
         return participant

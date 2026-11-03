@@ -14,9 +14,11 @@
 
 from __future__ import annotations
 
+import array
 import asyncio
 import contextlib
-from collections.abc import Callable, Mapping
+import math
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, Literal, Protocol
 
 from worker import telemetry
@@ -114,6 +116,55 @@ def map_sip_status(code: int | None, *, timed_out: bool = False) -> tuple[FailSt
 
 # Inbound ------------------------------------------------------------------------------------
 
+# livekit-sip answers the SIP call as soon as the caller is in the room, so the phone network's
+# own ringback stops then; the ring phase plays one instead. ponytail: one tone, the double ring
+# used in India and the UK (400 + 450 Hz; 0.4 s on, 0.2 off, 0.4 on, 2 s off). A per-country tone
+# can follow the number's country if callers elsewhere ask for it.
+RINGBACK_RATE = 16000
+RINGBACK_FRAME_MS = 20
+_RINGBACK_BURSTS = ((0.0, 0.4), (0.6, 1.0))
+_RINGBACK_CYCLE_S = 3.0
+_RINGBACK_LEVEL = 0.12  # of full scale, about -18 dBFS
+
+
+def ringback_cycle(rate: int = RINGBACK_RATE) -> array.array[int]:
+    """One 3 s ringback cycle as 16-bit mono PCM."""
+    samples = array.array("h", bytes(2 * int(rate * _RINGBACK_CYCLE_S)))
+    amp = 32767 * _RINGBACK_LEVEL / 2
+    ramp = int(rate * 0.005)  # 5 ms fades, no clicks
+    for start, end in _RINGBACK_BURSTS:
+        a, b = int(start * rate), int(end * rate)
+        for i in range(a, b):
+            edge = min(1.0, (i - a) / ramp, (b - 1 - i) / ramp)
+            t = i / rate
+            value = math.sin(2 * math.pi * 400 * t) + math.sin(2 * math.pi * 450 * t)
+            samples[i] = int(amp * edge * value)
+    return samples
+
+
+async def play_ringback(room: Any) -> None:
+    """Publish the ringback tone into the room until cancelled, then unpublish it."""
+    from livekit import rtc
+
+    source = rtc.AudioSource(RINGBACK_RATE, 1)
+    track = rtc.LocalAudioTrack.create_audio_track("ringback", source)
+    options = rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
+    publication = await room.local_participant.publish_track(track, options)
+    cycle = ringback_cycle()
+    step = RINGBACK_RATE * RINGBACK_FRAME_MS // 1000
+    try:
+        while True:
+            for i in range(0, len(cycle), step):
+                chunk = cycle[i : i + step]
+                await source.capture_frame(
+                    rtc.AudioFrame(chunk.tobytes(), RINGBACK_RATE, 1, len(chunk))
+                )
+    finally:
+        with contextlib.suppress(Exception):
+            await asyncio.shield(room.local_participant.unpublish_track(publication.sid))
+        with contextlib.suppress(Exception):
+            await source.aclose()
+
 
 async def ring_phase(
     room: Any,
@@ -122,9 +173,14 @@ async def ring_phase(
     caller_identity: str,
     *,
     sleep: Callable[[float], Any] = asyncio.sleep,
+    ringback: Callable[[], Awaitable[None]] | None = None,
 ) -> bool:
-    """Post ``ringing`` and wait ``ring_duration_ms``. False when the caller hung up meanwhile."""
+    """Post ``ringing`` and wait ``ring_duration_ms`` while ``ringback`` plays the tone. False
+    when the caller hung up meanwhile."""
     recorder.status("ringing")
+    tone = (
+        asyncio.ensure_future(ringback()) if ringback is not None and ring_duration_ms > 0 else None
+    )
     left = asyncio.Event()
 
     def on_left(participant: Any) -> None:
@@ -144,6 +200,10 @@ async def ring_phase(
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
     finally:
+        if tone is not None:
+            tone.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await tone
         with contextlib.suppress(Exception):
             room.off("participant_disconnected", on_left)
     remote = getattr(room, "remote_participants", None)

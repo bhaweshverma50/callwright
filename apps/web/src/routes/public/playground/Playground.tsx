@@ -7,6 +7,7 @@ import { api, unwrap } from "../../../api/client";
 import { ApiError } from "../../../api/errors";
 import { WAKE_EXPECTED_MS, inlineWake, useWakeState } from "../../../api/wakeGate";
 import { Button, FlowChain, LatencyChip, OnAir, Waveform, cn, focusRing, type FlowNode } from "../../../components";
+import { RingingPhone, isRinging, useRingback } from "../../../components/ringing";
 import { useWebCall } from "../../../components/useWebCall";
 import { createMockDriver, type CallProblem, type CallTurn } from "../../../components/webCall";
 import { createDemoDriver } from "../../../components/webCallLive";
@@ -110,6 +111,8 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
   const onCall = s.phase === "live" || s.phase === "ending";
   const busy = s.phase === "checking" || s.phase === "requesting" || s.phase === "connecting";
   const waking = s.phase === "requesting" && wake.status === "waking";
+  const ringing = isRinging(s);
+  useRingback(ringing);
 
   useEffect(() => {
     if (s.phase === "live" && elapsed >= MAX_CALL_MS) void end();
@@ -148,7 +151,7 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
     <ConsoleFrame className={className}>
       {s.phase !== "idle" && (
         <header className="flex items-center justify-between gap-4 border-b border-console-line px-5 py-2.5">
-          <HeaderStatus phase={s.phase} waking={waking} />
+          <HeaderStatus phase={s.phase} waking={waking} ringing={ringing} />
           <dl className="flex items-center gap-4 whitespace-nowrap text-[12px] text-console-fg-2">
             <div className="flex items-center gap-1.5">
               <dt className="sr-only">Duration</dt>
@@ -212,6 +215,13 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
             <Fade key="waking">
               <Waking startedAt={wake.status === "waking" ? wake.startedAt : Date.now()} />
             </Fade>
+          ) : ringing ? (
+            <Fade key="ringing" className="grid h-full place-items-center content-center gap-4 text-center">
+              <RingingPhone reduce={reduce} onConsole />
+              <p className="text-[14px] font-medium text-console-fg-2" role="status">
+                Ringing the agent
+              </p>
+            </Fade>
           ) : onCall || (s.phase === "connecting" && s.turns.length > 0) ? (
             <Fade key="live" className="flex h-full flex-col gap-3">
               <Waveform bars={64} seed={11} progress={1} live={onCall} onConsole height={26} flat={!onCall} />
@@ -262,18 +272,15 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
               </Button>
             ) : busy ? (
               <>
-                {s.phase === "connecting" && (
-                  <button
-                    type="button"
-                    onClick={cancel}
-                    className={cn("rounded-control px-3 py-2 text-[13px] text-console-fg-2 hover:text-console-fg", focusRing)}
-                  >
-                    Cancel
-                  </button>
+                {s.phase === "connecting" ? (
+                  <Button variant="danger" size="lg" icon={<PhoneOff aria-hidden />} onClick={cancel}>
+                    Hang up
+                  </Button>
+                ) : (
+                  <Button variant="primary" size="lg" pending>
+                    {s.phase === "checking" ? "Allow the microphone" : waking ? "Starting servers" : "Connecting"}
+                  </Button>
                 )}
-                <Button variant="primary" size="lg" pending>
-                  {s.phase === "checking" ? "Allow the microphone" : waking ? "Starting servers" : "Connecting"}
-                </Button>
               </>
             ) : s.phase === "ended" ? (
               // The summary's "Build your own agent" is the main action after a call.
@@ -314,7 +321,14 @@ function Fade({ children, className }: { children: ReactNode; className?: string
   );
 }
 
-function HeaderStatus({ phase, waking }: { phase: string; waking: boolean }) {
+function HeaderStatus({ phase, waking, ringing }: { phase: string; waking: boolean; ringing: boolean }) {
+  if (ringing)
+    return (
+      <span className="inline-flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium text-console-fg">
+        <Phone className="size-4" aria-hidden />
+        Ringing
+      </span>
+    );
   if (phase === "live" || phase === "ending") return <OnAir label="Live call" onConsole />;
   if (phase === "ended")
     return (
