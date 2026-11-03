@@ -66,6 +66,7 @@ def statuses(recorder: EventRecorder) -> list[dict[str, Any]]:
         (None, True, ("no_answer", "ring_timeout")),
         (403, False, ("failed", "sip_403")),
         (404, False, ("failed", "sip_404")),
+        (410, False, ("failed", "destination_unreachable")),
         (484, False, ("failed", "sip_484")),
         (503, False, ("failed", "sip_503")),
         (401, False, ("failed", "trunk_auth_failed")),

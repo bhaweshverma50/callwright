@@ -99,8 +99,10 @@ def dtmf_code(digit: str) -> int:
 
 
 def map_sip_status(code: int | None, *, timed_out: bool = False) -> tuple[FailStatus, str]:
-    """Research R6: busy (486, 600), no answer (408, 480, 487, ring timeout), auth failures and
-    unreachable trunks, and every other 4xx/5xx/6xx as failed with ``sip_<code>``."""
+    """Research R6: busy (486, 600), no answer (408, 480, 487, ring timeout), auth failures,
+    unreachable trunks, a destination that cannot be reached at all (410: the lab PBX's answer
+    for a softphone that is not registered), and every other 4xx/5xx/6xx as failed with
+    ``sip_<code>``."""
     if timed_out:
         return "no_answer", "ring_timeout"
     if code is None:
@@ -111,6 +113,8 @@ def map_sip_status(code: int | None, *, timed_out: bool = False) -> tuple[FailSt
         return "no_answer", f"sip_{code}"
     if code in (401, 407):
         return "failed", "trunk_auth_failed"
+    if code == 410:
+        return "failed", "destination_unreachable"
     return "failed", f"sip_{code}"
 
 

@@ -257,7 +257,13 @@ Turn it on:
    `127.0.0.1/32`.
 6. **Softphone** (Linphone, Zoiper or MicroSIP; on a phone or a laptop): SIP account, username
    `phone1`, domain `sip.bhawesh.dev:5080`, transport UDP, password from
-   `sudo cat /opt/callwright/lab-pbx/phone-password`. Codecs: put G.722 first in the softphone (HD voice, 16 kHz, used end to end when both sides have it), G.711 (PCMU/PCMA) as fallback.
+   `sudo cat /opt/callwright/lab-pbx/phone-password`. Codecs: put G.722 first in the softphone (HD voice, 16 kHz, used end to end when both sides have it), G.711 (PCMU/PCMA) as fallback. Outgoing calls only ring a softphone that is registered right now: a phone app that is closed,
+   backgrounded or asleep, or that just changed network, stops refreshing its 60 s registration and
+   the PBX has nowhere to send the call (`asterisk -rx "pjsip show contacts"` shows it `Unavail` or
+   missing). Such calls end `failed` / `destination_unreachable` (SIP 410), not `no_answer`. For
+   reliable tests keep the app in the foreground, or use a desktop softphone; TCP transport with
+   keep-alive survives home NAT better than UDP. Recreating the `lab-pbx` container (deploys) drops
+   registrations until each softphone re-registers.
    * Inbound: dial `+919000000100`; the inbound agent answers.
    * Outbound: place an outbound call from the number to `+919000000001`; the softphone rings.
    * One-way or no audio means RTP is blocked: check the firewall rule and
