@@ -37,15 +37,19 @@ export function DiffView({ lines, className }: { lines: DiffLine[]; className?: 
     <div className={cn("py-1 font-sans text-[12.5px] leading-relaxed", className)} role="table" aria-label="Line changes">
       {blocks(lines).map((b) =>
         b.kind === "fold" && !open.has(b.start) ? (
-          <button
-            key={`f${b.start}`}
-            type="button"
-            onClick={() => setOpen((s) => new Set(s).add(b.start))}
-            className="flex w-full cursor-pointer items-center gap-2 bg-surface-2/60 px-4 py-1 text-left text-[12px] text-fg-3 hover:text-fg focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <ChevronsUpDown className="size-3.5" aria-hidden />
-            {b.lines.length} unchanged lines
-          </button>
+          // A table only holds rows, so the fold button sits in a row of its own.
+          <div key={`f${b.start}`} role="row">
+            <div role="cell" aria-colspan={2}>
+              <button
+                type="button"
+                onClick={() => setOpen((s) => new Set(s).add(b.start))}
+                className="flex w-full cursor-pointer items-center gap-2 bg-surface-2/60 px-4 py-1 text-left text-[12px] text-fg-3 hover:text-fg focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <ChevronsUpDown className="size-3.5" aria-hidden />
+                {b.lines.length} unchanged lines
+              </button>
+            </div>
+          </div>
         ) : (
           (b.kind === "fold" ? b.lines.map((line, k) => ({ line, n: b.start + k })) : [{ line: b.line, n: b.n }]).map(({ line, n }) => (
             <div

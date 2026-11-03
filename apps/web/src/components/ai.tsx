@@ -26,6 +26,8 @@ export interface ComposerProps {
   busy?: boolean;
   maxLength?: number;
   inputRef?: Ref<HTMLTextAreaElement>;
+  /** Take focus when mounted (a panel whose main job is the conversation). */
+  autoFocus?: boolean;
   className?: string;
 }
 
@@ -43,6 +45,7 @@ export function Composer({
   busy,
   maxLength,
   inputRef,
+  autoFocus,
   className,
 }: ComposerProps) {
   const local = useRef<HTMLTextAreaElement | null>(null);
@@ -76,6 +79,7 @@ export function Composer({
         id={id}
         aria-label={id ? undefined : label}
         rows={1}
+        autoFocus={autoFocus}
         value={value}
         maxLength={maxLength}
         disabled={disabled}

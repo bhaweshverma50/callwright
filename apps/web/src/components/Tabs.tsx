@@ -125,7 +125,8 @@ export function Tabs({ value, onValueChange, items, children, className, density
 
 export function TabPanel({ value, children, className }: { value: string; children: ReactNode; className?: string }) {
   return (
-    <RT.Content value={value} className={cn("pt-5 outline-none data-[state=active]:animate-fade-in", className)}>
+    // Radix makes the panel a tab stop (after the tab list); keyboard users see where they landed.
+    <RT.Content value={value} className={cn("rounded-control pt-5 data-[state=active]:animate-fade-in", focusRing, className)}>
       {children}
     </RT.Content>
   );

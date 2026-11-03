@@ -64,7 +64,9 @@ export function Shell() {
       >
         Skip to content
       </a>
-      <div
+      {/* A landmark, so the logo row above the main navigation is not loose page content. */}
+      <aside
+        aria-label="Sidebar"
         className={cn(
           "hidden shrink-0 border-r border-line bg-sidebar transition-[width] duration-200 ease-out lg:block",
           expanded ? "w-[248px]" : "w-[72px]",
@@ -73,7 +75,7 @@ export function Shell() {
         <div className="sticky top-0 h-dvh">
           <Sidebar expanded={expanded} onToggle={toggle} />
         </div>
-      </div>
+      </aside>
       <Drawer open={mobileOpen} onOpenChange={setMobileOpen} title="Callwright" side="left" width="md">
         <div className="-mx-5 -my-4 h-full">
           <Sidebar expanded inDrawer onNavigate={() => setMobileOpen(false)} />

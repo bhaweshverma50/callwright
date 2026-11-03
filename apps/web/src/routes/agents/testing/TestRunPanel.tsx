@@ -145,7 +145,8 @@ export function TestRunPanel({
             </Button>
           ) : (
             <Button size="sm" variant="ghost" icon={<Download aria-hidden />} disabled={!data} onClick={() => void doExport()}>
-              <span className="hidden sm:inline">Export</span>
+              {/* Narrow screens show the icon only; sr-only keeps the name. */}
+              <span className="sr-only sm:not-sr-only">Export</span>
             </Button>
           )}
         </>

@@ -180,39 +180,54 @@ export function VoicePickerDialog({
               {items.map((v) => {
                 const on = v.voice_id === picked;
                 return (
+                  // The preview button sits beside the radio, not inside it (no nested controls).
                   <div
                     key={v.voice_id}
-                    role="radio"
-                    aria-checked={on}
-                    tabIndex={on || (!items.some((x) => x.voice_id === picked) && v === items[0]) ? 0 : -1}
                     onClick={() => setPicked(v.voice_id)}
-                    onKeyDown={(e) => {
-                      if (e.key === " " || e.key === "Enter") {
-                        e.preventDefault();
-                        setPicked(v.voice_id);
-                      }
-                      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                        e.preventDefault();
-                        const sib = (
-                          e.key === "ArrowDown" ? e.currentTarget.nextElementSibling : e.currentTarget.previousElementSibling
-                        ) as HTMLElement | null;
-                        sib?.focus();
-                      }
-                    }}
                     className={cn(
                       "flex cursor-pointer items-center gap-3 rounded-panel border p-3 text-left transition-[background-color,border-color] duration-150",
-                      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                      "has-[[role=radio]:focus-visible]:outline-2 has-[[role=radio]:focus-visible]:outline-offset-2 has-[[role=radio]:focus-visible]:outline-ring",
                       on ? "border-accent bg-accent-soft/45" : "border-line hover:border-accent/40 hover:bg-surface-2/60",
                     )}
                   >
-                    <VoiceAvatar voice={v} selected={on} />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-[13.5px] font-semibold text-fg">{v.name}</span>
-                        {v.voice_id === value && <span className="shrink-0 text-[12px] text-fg-3">Current</span>}
-                      </span>
-                      {v.description && <span className="line-clamp-2 text-[12.5px] leading-snug text-fg-2">{v.description}</span>}
-                      <VoiceTags voice={v} languageLabel={langLabel} />
+                    <div
+                      role="radio"
+                      aria-checked={on}
+                      tabIndex={on || (!items.some((x) => x.voice_id === picked) && v === items[0]) ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") {
+                          e.preventDefault();
+                          setPicked(v.voice_id);
+                          return;
+                        }
+                        // Arrows move and select, Home and End jump to the ends (radio group pattern).
+                        const keys = ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"];
+                        if (!keys.includes(e.key)) return;
+                        e.preventDefault();
+                        const i = items.indexOf(v);
+                        const next =
+                          e.key === "Home"
+                            ? 0
+                            : e.key === "End"
+                              ? items.length - 1
+                              : e.key === "ArrowDown" || e.key === "ArrowRight"
+                                ? Math.min(i + 1, items.length - 1)
+                                : Math.max(i - 1, 0);
+                        setPicked(items[next]!.voice_id);
+                        const radios = e.currentTarget.closest("[role=radiogroup]")?.querySelectorAll<HTMLElement>("[role=radio]");
+                        radios?.[next]?.focus();
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 outline-none"
+                    >
+                      <VoiceAvatar voice={v} selected={on} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-[13.5px] font-semibold text-fg">{v.name}</span>
+                          {v.voice_id === value && <span className="shrink-0 text-[12px] text-fg-3">Current</span>}
+                        </span>
+                        {v.description && <span className="line-clamp-2 text-[12.5px] leading-snug text-fg-2">{v.description}</span>}
+                        <VoiceTags voice={v} languageLabel={langLabel} />
+                      </div>
                     </div>
                     <PreviewButton voice={v} playing={preview.playing === v.voice_id} onToggle={() => preview.toggle(v.voice_id, v.preview_url!)} />
                   </div>

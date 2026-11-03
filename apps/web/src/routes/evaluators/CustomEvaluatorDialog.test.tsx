@@ -27,11 +27,11 @@ describe("CustomEvaluatorDialog (007 T062, T088, US5)", () => {
     const user = userEvent.setup();
     renderDialog();
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("listitem", { name: "Required or forbidden phrase" })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("listitem", { name: "Custom judge question" }));
+    expect(within(dialog).getByRole("button", { name: "Required or forbidden phrase" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Custom judge question" }));
     expect(await within(dialog).findByLabelText("Yes or no question")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Back" }));
-    await user.click(await within(dialog).findByRole("listitem", { name: "Required or forbidden phrase" }));
+    await user.click(await within(dialog).findByRole("button", { name: "Required or forbidden phrase" }));
     const create = await within(dialog).findByRole("button", { name: "Create check" });
     expect(create).toBeDisabled();
     await user.type(within(dialog).getByLabelText("Name"), "No guarantees");
@@ -69,7 +69,7 @@ describe("CustomEvaluatorDialog (007 T062, T088, US5)", () => {
     });
     renderDialog();
     const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("listitem", { name: "Required or forbidden phrase" }));
+    await user.click(within(dialog).getByRole("button", { name: "Required or forbidden phrase" }));
     await user.type(await within(dialog).findByLabelText("Name"), "No Guarantees!");
     await user.type(within(dialog).getByLabelText("Phrase or pattern"), "guaranteed");
     await user.click(within(dialog).getByRole("button", { name: "Create check" }));
@@ -81,7 +81,7 @@ describe("CustomEvaluatorDialog (007 T062, T088, US5)", () => {
     seedMockCalls(10);
     renderDialog();
     const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("listitem", { name: "Required or forbidden phrase" }));
+    await user.click(within(dialog).getByRole("button", { name: "Required or forbidden phrase" }));
     await user.type(await within(dialog).findByLabelText("Phrase or pattern"), "approval is guaranteed");
     await user.click(within(dialog).getByRole("radio", { name: "Pattern" }));
     await waitFor(() => expect(within(dialog).getByRole("combobox", { name: "Call to try on" })).toBeEnabled());
@@ -95,7 +95,7 @@ describe("CustomEvaluatorDialog (007 T062, T088, US5)", () => {
     const user = userEvent.setup();
     renderDialog();
     const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("listitem", { name: "Required or forbidden phrase" }));
+    await user.click(within(dialog).getByRole("button", { name: "Required or forbidden phrase" }));
     await user.type(await within(dialog).findByLabelText("Name"), "Repeat");
     await user.click(within(dialog).getByRole("radio", { name: "Pattern" }));
     await user.type(within(dialog).getByLabelText("Phrase or pattern"), "(a)\\1");

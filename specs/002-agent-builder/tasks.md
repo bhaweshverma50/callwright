@@ -238,7 +238,7 @@ research/architecture.md section 2 and plan.md.
 ## Phase 9: Polish & Cross-Cutting Concerns
 
 - [x] T084 [P] OpenTelemetry spans for save, publish, validate and vendor voice listing in `services/api/app/agents/service.py`, `services/api/app/agent_versions/service.py`, `services/api/app/voices/service.py`
-- [ ] T085 [P] Keyboard and screen-reader pass on the editor sections, dialogs and version drawer in `apps/web/src/routes/agents/`
+- [x] T085 [P] Keyboard and screen-reader pass on the editor sections, dialogs and version drawer in `apps/web/src/routes/agents/`. Done 2026-11-03 with axe and keyboard walks in Chrome: 12 fixes (slider names, row help as descriptions, dialog focus in and out, pending buttons keep focus, focusable tab panels, voice picker radios, list, table and dl structure, landmarks); findings in `a11y-audit.md`
 - [x] T086 [P] Document the interfaces for 003, 004, 005, 007, 010 (table in plan.md) as docstrings in `services/api/app/agents/hooks.py` and `services/api/app/agent_versions/service.py`
 - [x] T087 Run `scripts/assemble_contracts.py --check` and the drift test, then every step of `specs/002-agent-builder/quickstart.md`
 

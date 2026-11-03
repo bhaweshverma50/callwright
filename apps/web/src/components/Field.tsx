@@ -2,6 +2,7 @@ import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type Texta
 import { CircleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn, focusRing } from "./cn";
+import { joinIds, useFieldRowAria } from "./Panel";
 
 export interface FieldProps {
   label: ReactNode;
@@ -72,7 +73,9 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   inputSize?: "sm" | "md" | "lg";
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ prefix, suffix, inputSize = "md", className, ...rest }, ref) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ prefix, suffix, inputSize = "md", className, ...props }, ref) {
+  const row = useFieldRowAria(props.id);
+  const rest = { ...props, "aria-describedby": joinIds(row.describedBy, props["aria-describedby"]) };
   const h = inputSize === "sm" ? "h-8" : inputSize === "lg" ? "h-11 text-[14px]" : "h-9";
   if (!prefix && !suffix) return <input ref={ref} className={cn(controlBase, h, "px-3", className)} {...rest} />;
   return (
@@ -93,5 +96,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ p
 });
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...rest }, ref) {
-  return <textarea ref={ref} className={cn(controlBase, "min-h-24 px-3 py-2 leading-relaxed", className)} {...rest} />;
+  const row = useFieldRowAria(rest.id);
+  return (
+    <textarea
+      ref={ref}
+      className={cn(controlBase, "min-h-24 px-3 py-2 leading-relaxed", className)}
+      {...rest}
+      aria-describedby={joinIds(row.describedBy, rest["aria-describedby"])}
+    />
+  );
 });

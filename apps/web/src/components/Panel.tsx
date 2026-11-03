@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "./cn";
 import { InfoTip, TruncatedText } from "./TruncatedText";
 
@@ -56,6 +56,31 @@ export function PanelRows({ children, as: As = "div", className }: { children: R
 const rowLabel = "flex min-w-0 items-start gap-3";
 const rowIcon = "mt-[1px] shrink-0 text-fg-3 [&_svg]:size-4";
 
+interface FieldRowIds {
+  htmlFor: string;
+  labelId: string;
+  descriptionId?: string;
+}
+
+const FieldRowContext = createContext<FieldRowIds | null>(null);
+
+/** Join space-separated id lists, dropping empties (`undefined` when nothing is left). */
+export function joinIds(...ids: (string | undefined | null | false)[]): string | undefined {
+  const out = [...new Set(ids.flatMap((i) => (i ? i.split(/\s+/) : [])).filter(Boolean))];
+  return out.length ? out.join(" ") : undefined;
+}
+
+/**
+ * The label and description ids of the FieldRow whose control has this `id`, so primitives that a
+ * `<label for>` cannot name (slider thumbs) still get a name, and every control hears the row's
+ * one-line help as its description. Empty outside a FieldRow or for other controls in the row.
+ */
+export function useFieldRowAria(id: string | undefined): { labelledBy?: string; describedBy?: string } {
+  const row = useContext(FieldRowContext);
+  if (!row || !id || row.htmlFor !== id) return {};
+  return { labelledBy: row.labelId, describedBy: row.descriptionId };
+}
+
 /** A form row: label and one-line help on the left, the control on the right (stacked when narrow). */
 export function FieldRow({
   icon,
@@ -78,9 +103,12 @@ export function FieldRow({
   hint?: ReactNode;
   children: ReactNode;
 }) {
+  const labelId = `${htmlFor}-label`;
+  const descId = description ? (descriptionId ?? `${htmlFor}-desc`) : undefined;
+  const ids: FieldRowIds = { htmlFor, labelId, descriptionId: descId };
   const labelEl = (
     <span className="flex items-center gap-1.5">
-      <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
+      <label id={labelId} htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
         {label}
       </label>
       {hint && <InfoTip label={`About ${typeof label === "string" ? label.toLowerCase() : "this setting"}`}>{hint}</InfoTip>}
@@ -88,39 +116,43 @@ export function FieldRow({
   );
   if (inline) {
     return (
-      <div className="flex items-start justify-between gap-6 px-5 py-4">
+      <FieldRowContext.Provider value={ids}>
+        <div className="flex items-start justify-between gap-6 px-5 py-4">
+          <div className={rowLabel}>
+            {icon && <span className={rowIcon}>{icon}</span>}
+            <div className="flex min-w-0 flex-col gap-0.5">
+              {labelEl}
+              {description && (
+                <p id={descId} className="text-[12.5px] leading-relaxed text-fg-3">
+                  {description}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="shrink-0">{children}</div>
+        </div>
+      </FieldRowContext.Provider>
+    );
+  }
+  return (
+    <FieldRowContext.Provider value={ids}>
+      <div className="flex flex-col gap-3 px-5 py-4 @[34rem]:flex-row @[34rem]:items-start @[34rem]:justify-between @[34rem]:gap-8">
         <div className={rowLabel}>
           {icon && <span className={rowIcon}>{icon}</span>}
           <div className="flex min-w-0 flex-col gap-0.5">
             {labelEl}
             {description && (
-              <p id={descriptionId} className="text-[12.5px] leading-relaxed text-fg-3">
+              <p id={descId} className="text-[12.5px] leading-relaxed text-fg-3">
                 {description}
               </p>
             )}
           </div>
         </div>
-        <div className="shrink-0">{children}</div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-3 px-5 py-4 @[34rem]:flex-row @[34rem]:items-start @[34rem]:justify-between @[34rem]:gap-8">
-      <div className={rowLabel}>
-        {icon && <span className={rowIcon}>{icon}</span>}
-        <div className="flex min-w-0 flex-col gap-0.5">
-          {labelEl}
-          {description && (
-            <p id={descriptionId} className="text-[12.5px] leading-relaxed text-fg-3">
-              {description}
-            </p>
-          )}
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 pl-7 @[34rem]:w-[min(340px,52%)] @[34rem]:shrink-0 @[34rem]:items-end @[34rem]:pl-0">
+          {children}
         </div>
       </div>
-      <div className="flex min-w-0 flex-col items-stretch gap-1.5 pl-7 @[34rem]:w-[min(340px,52%)] @[34rem]:shrink-0 @[34rem]:items-end @[34rem]:pl-0">
-        {children}
-      </div>
-    </div>
+    </FieldRowContext.Provider>
   );
 }
 

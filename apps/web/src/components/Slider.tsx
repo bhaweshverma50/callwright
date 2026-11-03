@@ -1,5 +1,6 @@
 import * as RSl from "@radix-ui/react-slider";
 import { cn } from "./cn";
+import { joinIds, useFieldRowAria } from "./Panel";
 
 export interface SliderMark {
   value: number;
@@ -16,8 +17,10 @@ export interface SliderProps {
   max: number;
   step?: number;
   disabled?: boolean;
-  /** Accessible label when no visible <label> points at the thumb. */
+  /** Accessible label when no visible <label> points at the thumb. Inside a FieldRow whose
+   * `htmlFor` is this slider's `id`, the row's label names the thumb. */
   "aria-label"?: string;
+  "aria-labelledby"?: string;
   "aria-describedby"?: string;
   /** Spoken value, for example "12,000 minutes". */
   valueText?: (value: number) => string;
@@ -54,6 +57,9 @@ export function Slider({
   className,
   ...aria
 }: SliderProps) {
+  // A <label for> cannot name the thumb (a span), so the row's label is referenced instead.
+  const row = useFieldRowAria(id);
+  const labelledBy = aria["aria-label"] ? undefined : (aria["aria-labelledby"] ?? row.labelledBy);
   return (
     <div className={cn("flex w-full flex-col", disabled && "opacity-50", className)}>
       <RSl.Root
@@ -72,7 +78,8 @@ export function Slider({
         <RSl.Thumb
           id={id}
           aria-label={aria["aria-label"]}
-          aria-describedby={aria["aria-describedby"]}
+          aria-labelledby={labelledBy}
+          aria-describedby={joinIds(row.describedBy, aria["aria-describedby"])}
           aria-valuetext={valueText?.(value)}
           className={cn(
             "block size-[18px] rounded-full border-2 border-accent bg-surface shadow-1 transition-[transform,box-shadow] duration-150",

@@ -1,6 +1,7 @@
 import * as RSw from "@radix-ui/react-switch";
 import { useId, type ReactNode } from "react";
 import { cn, focusRing } from "./cn";
+import { joinIds, useFieldRowAria } from "./Panel";
 
 export interface SwitchControlProps {
   id?: string;
@@ -18,13 +19,14 @@ export interface SwitchControlProps {
  * Thumb x: off = 2px; on = 40 - 2 (borders) - 18 (thumb) - 2 (inset) = 18px.
  */
 export function SwitchControl({ id, checked, onCheckedChange, disabled, describedBy, className, ...aria }: SwitchControlProps) {
+  const row = useFieldRowAria(id);
   return (
     <RSw.Root
       id={id}
       checked={checked}
       onCheckedChange={onCheckedChange}
       disabled={disabled}
-      aria-describedby={describedBy}
+      aria-describedby={joinIds(row.describedBy, describedBy)}
       aria-label={aria["aria-label"]}
       className={cn(
         "relative box-border inline-flex h-[24px] w-[40px] shrink-0 cursor-pointer items-center overflow-hidden rounded-full border p-0 transition-[background-color,border-color] duration-200",

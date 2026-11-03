@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconButton } from "./Button";
 import { cn } from "./cn";
+import { useDialogFocus } from "./dialogFocus";
 import { TruncatedText } from "./TruncatedText";
 
 export interface DrawerProps {
@@ -25,11 +26,14 @@ const widths = { md: "w-[440px]", lg: "w-[600px]", xl: "w-[820px]" };
  * mobile navigation. Same focus trapping as Dialog; Escape closes it.
  */
 export function Drawer({ open, onOpenChange, title, meta, actions, children, footer, width = "lg", side = "right" }: DrawerProps) {
+  const focus = useDialogFocus(open);
   return (
     <RD.Root open={open} onOpenChange={onOpenChange}>
       <RD.Portal>
         <RD.Overlay className="fixed inset-0 z-40 bg-overlay backdrop-blur-[2px] data-[state=open]:animate-fade-in data-[state=closed]:animate-[fade-in_160ms_ease-in_reverse]" />
         <RD.Content
+          onOpenAutoFocus={focus.onOpenAutoFocus}
+          onCloseAutoFocus={focus.onCloseAutoFocus}
           className={cn(
             "fixed inset-y-0 z-50 flex max-w-[calc(100vw-24px)] flex-col bg-surface shadow-pop focus:outline-none",
             side === "right"
@@ -60,8 +64,14 @@ export function Drawer({ open, onOpenChange, title, meta, actions, children, foo
               </IconButton>
             </RD.Close>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-          {footer && <footer className="flex justify-end gap-2 border-t border-line px-5 py-3">{footer}</footer>}
+          <div data-dialog-body className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {children}
+          </div>
+          {footer && (
+            <footer data-dialog-footer className="flex justify-end gap-2 border-t border-line px-5 py-3">
+              {footer}
+            </footer>
+          )}
         </RD.Content>
       </RD.Portal>
     </RD.Root>

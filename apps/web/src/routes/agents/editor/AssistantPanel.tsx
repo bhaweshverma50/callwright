@@ -136,6 +136,7 @@ export function AssistantPanel({
       footer={
         <Composer
           label="Message the assistant"
+          autoFocus
           value={text}
           onChange={setText}
           onSubmit={() => send(text)}

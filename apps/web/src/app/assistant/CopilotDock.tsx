@@ -87,7 +87,7 @@ export function CopilotDock({ placement = "dock" }: { placement?: "dock" | "bar"
     <>
       {!bar && <div ref={bounds} aria-hidden className="pointer-events-none fixed inset-4 z-0" />}
       <motion.div
-        role="group"
+        role="region"
         aria-label="Assistant"
         drag={!bar}
         dragControls={controls}

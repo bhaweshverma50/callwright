@@ -5,7 +5,7 @@ Last updated: 2026-11-02. Read this first when resuming; `docs/OPERATIONS.md` is
 ## Where things stand
 - `main` is pushed and deployed (2026-10-26, wave 3 live): Cloud Run API `7ef3756` (migrations through s006_0002), VM jobs worker `7ef3756`, VM voice worker `cf4bea6`, VM LiveKit `v1.13.3`, web from `7ef3756`. Verified on the hosted app with scripted calls: silence check-ins end the call as inactivity, a flow agent call, and the assistant answering "what did my last call cost?".
 - Live app: https://callwright-one.vercel.app (sign up with any email; auto-verified; $5 trial credit). Voice calls work from Test agent on the hosted site only (localhost has no LiveKit).
-- Specs 001 done, 002 done except the accessibility audit (T085), 003 live (105 of 118).
+- Specs 001 done, 002 done (T085 accessibility audit on branch `w6-a11y-llm`), 003 live (106 of 118 with T069 on that branch).
 - Wave 3 complete 2026-10-26: specs 004 (114/114), 005 (99/100), 006 (95/95), 010 (83/85). 701 of 964 tasks. Follow-up fixes merged: flow builder performance and layout, Ask assistant call lookups and push-to-talk, compact dock, silence check-ins (worker), version compare, tabs, call panel layout. Migrations chain s006_0001, s010_0001, s004_0001, s006_0002. Suites: API 1430, worker 468, web 201. Telephony stays fake until `LIVEKIT_SIP_HOST` is set (deploy/vm/README.md). Deleting an agent attached to a number is refused (409 agent_in_use).
 - Wave 3a merged and deployed on 2026-10-26: spec 005 tools and knowledge (99 of 100 tasks; T092 quickstart run open) and spec 006 calls and analytics (95 of 95). Migrations chain s003_0002, s005_0001, s006_0001. Suites on the merge: API 1091, worker 385, web 145.
 
@@ -78,6 +78,10 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Call recordings are on: LiveKit egress on the VM (compose profile `recording`), LiveKit webhook to the API, Cloud Storage bucket `callwright-dev-data` for recordings and uploads (uploads no longer live in API memory). Setup: `deploy.sh ... storage setup`, VM render with `CW_RECORDINGS_ENABLED=true` plus a LiveKit restart, API deploy (deploy/vm/README.md, "Call recordings"). Verified on the hosted stack: a test call's MP4 landed in the bucket.
 - A sweep cron (`settle_stuck_recordings`, migration `s003_0003`) settles recordings whose webhook was lost.
 - Test calls have a keypad that sends DTMF (003 T099).
+
+## Accessibility audit and Claude adapter (2026-11-03, branch `w6-a11y-llm`, not merged)
+- 002 T085: axe and keyboard audit of the agent editor in Chrome; 12 fixes in the shared primitives and agent routes (slider names, row help as descriptions, dialog focus in and out, pending buttons keep focus, voice picker radios). Findings: `specs/002-agent-builder/a11y-audit.md`.
+- 003 T069: `anthropic` LLM provider (`claude-haiku-5-5`, `claude-sonnet-5-5`) on the LiveKit Anthropic plugin, rates by migration `s003_0004` (needs `deploy.sh ... migrate`). Without `ANTHROPIC_API_KEY` (the hosted stack has none) admission refuses live calls on those agents; render-env.sh passes the key to the voice worker once it exists. Offline-verified only.
 
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.

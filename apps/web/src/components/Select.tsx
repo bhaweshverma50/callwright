@@ -3,6 +3,7 @@ import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { controlBase } from "./Field";
+import { joinIds, useFieldRowAria } from "./Panel";
 import { TruncatedText } from "./TruncatedText";
 
 export interface SelectOption {
@@ -50,12 +51,13 @@ export function Select({
 }: SelectProps) {
   const allGroups: SelectGroup[] = groups ?? [{ label: "", options: options ?? [] }];
   const selected = allGroups.flatMap((g) => g.options).find((o) => o.value === value);
+  const row = useFieldRowAria(id);
   return (
     <RS.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <RS.Trigger
         id={id}
         aria-invalid={invalid || undefined}
-        aria-describedby={describedBy}
+        aria-describedby={joinIds(row.describedBy, describedBy)}
         aria-label={aria["aria-label"]}
         className={cn(
           controlBase,

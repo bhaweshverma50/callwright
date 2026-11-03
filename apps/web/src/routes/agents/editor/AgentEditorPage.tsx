@@ -1,7 +1,7 @@
 import { Robot, FlowArrow } from "@phosphor-icons/react";
 import { ChevronLeft, CircleDot, History, MessageSquareText, Play, RefreshCw, Save, Undo2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAgent, useAgentDefaults, useLlmCatalog, useVoiceCatalog, type AgentDetail, type ConfigIssue } from "../../../api/agents";
 import { isApiError } from "../../../api/errors";
@@ -21,6 +21,7 @@ import {
   TruncatedText,
   WorkLayout,
   cn,
+  focusRing,
   toast,
   type ErrorSummaryItem,
 } from "../../../components";
@@ -226,7 +227,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
           <Button
             icon={<Play aria-hidden />}
             pending={saving === "test"}
-            disabled={saving !== null}
+            disabled={saving === "save"}
             onClick={() => (draft.dirty || isNew ? void save("test") : navigate(`/agents/${draft.base.id}/testing`))}
           >
             Test agent
@@ -360,6 +361,15 @@ function SaveBar({
   onSave: () => void;
   versionNumber?: number;
 }) {
+  // Save leaves the bar once the form is clean; a keyboard user who pressed it lands on the
+  // status ("All changes saved") instead of the page body.
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const saveFocused = useRef(false);
+  useEffect(() => {
+    if (dirty || isNew || !saveFocused.current) return;
+    saveFocused.current = false;
+    if (document.activeElement === document.body) statusRef.current?.focus();
+  }, [dirty, isNew]);
   let status: ReactNode;
   if (isNew) status = <span className="text-warning-text">Not saved yet</span>;
   else if (dirty) status = <span className="text-warning-text">Unsaved changes</span>;
@@ -367,7 +377,7 @@ function SaveBar({
   return (
     <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-line bg-bg/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="flex items-center gap-2 text-[13px]" aria-live="polite">
+        <span ref={statusRef} tabIndex={-1} className={cn("flex items-center gap-2 rounded-inline text-[13px]", focusRing)} aria-live="polite">
           <AnimatePresence initial={false} mode="wait">
             <motion.span
               key={isNew ? "new" : dirty ? "dirty" : "clean"}
@@ -404,8 +414,11 @@ function SaveBar({
               variant="primary"
               icon={<Save aria-hidden />}
               pending={saving}
-              disabled={disabled || (!dirty && !isNew)}
-              onClick={onSave}
+              disabled={(disabled && !saving) || (!dirty && !isNew)}
+              onClick={(e) => {
+                saveFocused.current = document.activeElement === e.currentTarget;
+                onSave();
+              }}
               aria-describedby={checking ? "save-checking" : undefined}
             >
               {isNew ? "Create agent" : "Save"}
