@@ -337,3 +337,54 @@ evaluations (3 s while running), callback lists (10 s while one is open). Left s
 purpose: review queue (reshuffling under a reviewer is worse), calibration, datasets, agents,
 tools and flows (they change through the user's own mutations, which invalidate), analytics chat
 (a synchronous request), playground (its own live session).
+
+## 14. Flow callbacks, caller language and endings (2026-11-03)
+
+From a lab SIP call to a flow agent: the caller said "I'm getting a call. Can you call me in five
+minutes?" and the agent answered "Thanks for calling. Goodbye." and hung up; no callback was
+booked and the job then hung for a minute on shutdown.
+
+- Flow agents get the built-ins: every conversational node has `schedule_callback` and (when the
+  claim offers more than one language) `set_language` next to its own tools and transitions, with
+  the same callback rule (caller's local time), language rule and voice style as single-prompt
+  agents. The ending rule for flow nodes says to end through the flow's own step (a transition to
+  an End node, or an end_call tool) after confirming the next step; flows get no built-in end_call.
+  The API now sends `language_options` for flow agents too. A language switch on a flow rebuilds
+  the node the call is on at the turn boundary (it used to rebuild the entry agent, restarting the
+  flow); nodes entered later keep the reply language, and the caller's language wins over a node's
+  own voice and speech recognition. Text simulations exercise both (mocked booking, instructions
+  only for language).
+- End nodes: an empty message or the old stock line "Thanks for calling. Goodbye." makes the agent
+  say a short goodbye in its own words that fits the call (confirming a booked callback or next
+  step). The call's model writes it while the reply that took the transition plays; the wait after
+  that reply is at most 1.5 s (4 s overall) before the stock line is said instead, and nothing more
+  is said when the reply already ended with a goodbye. A message the builder wrote is spoken word
+  for word. New flows default to an empty End message (API starter, web flow model, editor copy
+  "Leave empty to let the agent say goodbye in its own words"); the `W_END_NO_MESSAGE` warning is
+  gone.
+- Callers who have to go: the ending rule (single-prompt and flows) says a caller who is
+  interrupted (another call, a meeting, "hold on") has not ended the conversation; ask in one short
+  question whether they want a call back, and book it with schedule_callback when they ask. Replayed
+  with gpt-5.1 on "I'm getting a call." alone: 0 of 8 hang-ups (single-prompt and flow), against 7
+  of 8 before; with "... Can you call me in five minutes?" 3 of 3 booked.
+- Hang-up guard: speech recognition can finalise "I'm getting a call." as its own turn while the
+  caller goes on. end_call and a transition into an End node first let the reply play, then wait
+  (at most 2 s) until no words were transcribed for 1 s; a caller still talking is not hung up on
+  (end_call answers "not ended", the transition is not taken). Normal turns are untouched: LiveKit's
+  endpointing (fixed `min_delay` from responsiveness, the semantic turn detector or STT end of turn)
+  is unchanged, so the latency budgets of spec 003 hold. Voice activity without transcribed words
+  (line noise) never keeps a call open past the 2 s.
+- Shutdown hang (root cause): hang-ups mostly come from inside the session (end_call, a flow End
+  node, transfers). `LiveCall.end` awaited `AgentSession.aclose()` there, and the close waits for
+  every running speech task, including the tool that was waiting for it. LiveKit cancelled the tool
+  after its interruption timeout ("speech not done in time after interruption"), the close never
+  finished, the room was not deleted and `ctx.shutdown` never ran; at job shutdown
+  `AgentSession.aclose()` timed out after 60 s and the process was killed. It affected single-prompt
+  end_call as well (the earlier bench repro hung the same way). The close now runs in its own task
+  after the hang-up returns (so end_call's own `tool_call` event, which used to be lost, is posted
+  before the final status), with a 10 s cap on the session close. Regression test
+  `test_end_call_from_inside_the_session_closes_it_promptly`; real-vendor bench calls now end in
+  about 2.5 s.
+- Deploy: API (`deploy.sh ... build api`, no migration: starter default, validation, language
+  options for flows), voice image (`build-voice`, roll `voice` and `textsim`), Vercel (End node
+  editor). No new settings.

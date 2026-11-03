@@ -40,5 +40,6 @@ one for later.
 - FR-008: Callbacks are tenant data under row-level security.
 
 ## Out of scope
-Recurring callbacks, retries after a missed or unanswered callback, callbacks for flow agents
-(they have no built-in tools), WhatsApp callbacks (010 has no WhatsApp outbound).
+Recurring callbacks, retries after a missed or unanswered callback, WhatsApp callbacks (010 has no
+WhatsApp outbound). Flow agents were out of scope at first; since 2026-11-03 every conversational
+flow node has `schedule_callback` too (docs/OPERATIONS.md section 14).

@@ -106,6 +106,11 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - `GET /v1/calls/live` plus `connected_at` on calls; dashboard "Live now" card, live badge on the sidebar's Calls item, calls on air pinned on Call History, live transcript in the drawer that follows the newest line. Every page refreshes on its own where data changes by itself (table in docs/OPERATIONS.md section 13).
 - Deploy: `deploy.sh ... build api` (no migration, no new settings) and Vercel. Web before API is safe: the live card and badge stay hidden while the endpoint 404s.
 
+## Flow callbacks, caller language and endings (2026-11-03, branch `w10-flow-callbacks`, not merged)
+- From a lab call to a flow agent that answered "Can you call me in five minutes?" with the End node's stock "Thanks for calling. Goodbye.": flow nodes now have `schedule_callback` and `set_language` with the single-prompt rules, End nodes without their own line say a goodbye written for the call (new flows default to an empty message), the ending rule asks a caller who has to go whether they want a call back, and end_call or an End transition waits for a caller who is still talking.
+- Fixed the 60 s shutdown hang after an agent hang-up (the session was closed from inside the tool that asked for it). Details and the real-vendor checks: docs/OPERATIONS.md section 14.
+- Deploy: `deploy.sh ... build api` (no migration), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 

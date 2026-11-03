@@ -28,8 +28,8 @@ The default voice also sounded flat (Flash v2.5, stability 0.55, no style).
   (the agent's model, else Auto's pick, else the provider's first model covering it) and its voice
   speaks it (the agent's model, else that model's multilingual version). One code per base
   language when the list is empty; the agent's own language first; never other variants of it.
-- FR-003: The claim's `RuntimeConfig` (003) carries `language_options` (empty for flow agents,
-  switching off, or nothing to switch to) and, on phone calls, `caller_language` when the saved
+- FR-003: The claim's `RuntimeConfig` (003) carries `language_options` (empty when switching is
+  off or there is nothing to switch to; flow agents included since 2026-11-03) and, on phone calls, `caller_language` when the saved
   language is offered and differs from the agent's.
 - FR-004: Single-prompt agents with options get a built-in `set_language` tool whose `language`
   enum is the offered codes, and an instruction saying when to use it and to confirm in the new
@@ -53,5 +53,5 @@ The default voice also sounded flat (Flash v2.5, stability 0.55, no style).
   and style 0.3 with speaker boost; style is sent only to Multilingual v2.
 
 ## Out of scope
-Flow agents (no built-in tools), switching the speech recognition provider, per-caller voices,
+Switching the speech recognition provider, per-caller voices,
 detecting the language from audio before the model asks, WhatsApp preferences.
