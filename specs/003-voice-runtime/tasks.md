@@ -25,7 +25,7 @@ research/architecture.md section 2.
 
 - [x] T001 Create the worker package: `services/voice-worker/pyproject.toml` (Python 3.12, `livekit-agents` 1.x with `silero`, `turn-detector`, `deepgram`, `openai`, `elevenlabs` plugins, pytest, pytest-asyncio, ruff, mypy) and `services/voice-worker/worker/__init__.py`
 - [x] T002 [P] Add `livekit-api` and `httpx` to `services/api/pyproject.toml`
-- [ ] T003 [P] Add `livekit-client` to `apps/web/package.json`
+- [x] T003 [P] Add `livekit-client` to `apps/web/package.json`
 - [x] T004 [P] Add settings `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CALLWRIGHT_SERVICE_TOKEN`, `CREDIT_GRACE_USD`, `RECORDINGS_BUCKET`, `WORKER_AGENT_NAME` to `services/api/app/core/config.py`
 - [x] T005 [P] Create worker settings (internal API URL, service token, agent name, heartbeat interval) in `services/voice-worker/worker/settings.py`
 - [x] T006 [P] Add CI workflow `.github/workflows/voice-worker.yml` running ruff, mypy, `tests/unit` and `tests/harness` for `services/voice-worker`
@@ -88,17 +88,17 @@ channel `web`, status `ended`, reason `user_hangup`, one `turn` event per agent 
 - [x] T034 [P] [US1] Deepgram STT adapter in `services/voice-worker/worker/adapters/stt/deepgram.py`
 - [x] T035 [P] [US1] OpenAI and Azure OpenAI LLM adapters in `services/voice-worker/worker/adapters/llm/openai.py` and `services/voice-worker/worker/adapters/llm/azure_openai.py`
 - [x] T036 [P] [US1] ElevenLabs TTS adapter in `services/voice-worker/worker/adapters/tts/elevenlabs.py`
-- [ ] T037 [P] [US1] Sanas and passthrough NC adapters in `services/voice-worker/worker/adapters/nc/sanas.py` and `services/voice-worker/worker/adapters/nc/none.py`
+- [x] T037 [P] [US1] Sanas and passthrough NC adapters in `services/voice-worker/worker/adapters/nc/sanas.py` and `services/voice-worker/worker/adapters/nc/none.py`
   - Open: the adapter, its `SanasEngine` contract, the `SANAS_*` settings and a fake engine (`tests/unit/test_nc_sanas.py`) are done, and `none.py` is done. FR-020 is not met for Sanas until the vendor SDK is wired: without it the filter passes audio through unchanged, meters nothing and records an `nc_passthrough` warning. Remaining: an engine module that calls `register_engine()` with the Sanas SDK (key, endpoint, model rate), then a live check that `usage.nc` matches processed audio.
 - [x] T038 [US1] Implement session assembly from RuntimeConfig (VAD, STT, LLM, TTS, NC via registry; prompt and greeting variable rendering; tools from `ToolProvider`; flow agents via `FlowRunner`) in `services/voice-worker/worker/pipeline.py`
 - [x] T039 [US1] Implement per-turn latency (direct `e2e_ms`, component metrics, greeting latency), usage meters, transcript items and event batching with 10 s heartbeat in `services/voice-worker/worker/metrics.py`
 - [x] T040 [US1] Implement job entry: prewarm models, claim, web channel handling (60 s caller join timeout, `in_progress` on join, `user_hangup` on leave), start speaker, final status post, shutdown in `services/voice-worker/worker/entry.py`
-- [ ] T041 [P] [US1] Implement `useWebCall` (request session, connect, agent state from `lk.agent.state`, transcript from `lk.transcription`, end) in `apps/web/src/routes/agents/hooks/useWebCall.ts` with tests in `apps/web/src/routes/agents/hooks/useWebCall.test.ts`
-- [ ] T042 [P] [US1] Implement variables dialog pre-filled with defaults in `apps/web/src/routes/agents/components/TestVariablesDialog.tsx`
-- [ ] T043 [US1] Implement `WebCallPanel` (orb, live transcript, end button) and `/agents/:id/testing` page, register the route in `apps/web/src/app/router.tsx`, files `apps/web/src/routes/agents/components/WebCallPanel.tsx` and `apps/web/src/routes/agents/AgentTestingPage.tsx`
-- [ ] T044 [US1] Add the five 003 fragments to the `contracts/openapi.yaml` assembly and regenerate the TS client in `apps/web/src/api/`
+- [x] T041 [P] [US1] Implement `useWebCall` (request session, connect, agent state from `lk.agent.state`, transcript from `lk.transcription`, end) in `apps/web/src/routes/agents/hooks/useWebCall.ts` with tests in `apps/web/src/routes/agents/hooks/useWebCall.test.ts`
+- [x] T042 [P] [US1] Implement variables dialog pre-filled with defaults in `apps/web/src/routes/agents/components/TestVariablesDialog.tsx`
+- [x] T043 [US1] Implement `WebCallPanel` (orb, live transcript, end button) and `/agents/:id/testing` page, register the route in `apps/web/src/app/router.tsx`, files `apps/web/src/routes/agents/components/WebCallPanel.tsx` and `apps/web/src/routes/agents/AgentTestingPage.tsx`
+- [x] T044 [US1] Add the five 003 fragments to the `contracts/openapi.yaml` assembly and regenerate the TS client in `apps/web/src/api/`
   - API side done: `003-voice-runtime` added to `contracts/features.txt` and `contracts/openapi.yaml` regenerated (fragments now document 401 on every authenticated route and 503 `media-unavailable` on web calls). Remaining: regenerate the TS client in `apps/web/src/api/` (web).
-- [ ] T118 [US1] Microphone precheck (FR-047) in `apps/web/src/routes/agents/hooks/useWebCall.ts` and `WebCallPanel.tsx`: request microphone permission before `POST /v1/sessions/web-call`; on denial show how to allow it and send no request; Playwright test with permission denied in `apps/web/tests/e2e/test-call-mic.spec.ts` asserts no session request and no call row
+- [x] T118 [US1] Microphone precheck (FR-047) in `apps/web/src/routes/agents/hooks/useWebCall.ts` and `WebCallPanel.tsx`: request microphone permission before `POST /v1/sessions/web-call`; on denial show how to allow it and send no request; Playwright test with permission denied in `apps/web/tests/e2e/test-call-mic.spec.ts` asserts no session request and no call row
 
 **Checkpoint**: US1 works end to end with the default stack.
 
@@ -130,7 +130,7 @@ ends with `max_duration_reached`.
 - [x] T055 [US2] Implement `CallControl.hang_up(reason)` (first writer wins, final status event, room delete) and handling of `control.end_call` responses in `services/voice-worker/worker/entry.py`
 - [x] T056 [US2] Handle vendor stream failures (adapter retry window 5 s, then end with `error` and `vendor_error:<kind>/<provider>` diagnostic) in `services/voice-worker/worker/pipeline.py`
 - [x] T057 [US2] Implement `reap_stuck_calls` cron (15 s) in `services/api/app/calls/jobs.py`
-- [ ] T058 [US2] Show refusal reasons and an "Add funds" link in `apps/web/src/routes/agents/components/WebCallPanel.tsx`
+- [x] T058 [US2] Show refusal reasons and an "Add funds" link in `apps/web/src/routes/agents/components/WebCallPanel.tsx`
 
 **Checkpoint**: No call starts or runs outside its limits.
 
@@ -156,7 +156,7 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 - [x] T063 [US3] Implement turn-taking mapping functions and turn detection selection (STT built-in versus semantic model, `multi` language) in `services/voice-worker/worker/pipeline.py`
 - [x] T064 [US3] Implement the pronunciation streaming transform and wire it into the agent TTS node in `services/voice-worker/worker/audio.py`
 - [x] T065 [US3] Implement background audio (built-in clips, uploaded file download and cache, gain clamp, missing-file warning) in `services/voice-worker/worker/audio.py`
-- [ ] T066 [US3] Add signed `background_audio_url` to the claim RuntimeConfig in `services/api/app/calls/service.py`
+- [x] T066 [US3] Add signed `background_audio_url` to the claim RuntimeConfig in `services/api/app/calls/service.py`
   - Claim signs uploaded ambience through the `ObjectSigner` port (`calls.ports.set_object_signer`, bucket `MEDIA_BUCKET`, 10 minutes). Remaining: no S3 signer is registered yet, so `background_audio_url` is null and the worker records `background_audio_unavailable`.
 - [x] T067 [US3] Truncate interrupted agent turns to played text and set `interrupted` in transcript items in `services/voice-worker/worker/metrics.py`
 - [x] T068 [P] [US3] AssemblyAI and Sarvam STT adapters in `services/voice-worker/worker/adapters/stt/assemblyai.py` and `services/voice-worker/worker/adapters/stt/sarvam.py`
@@ -164,7 +164,7 @@ reply wait for 0.2; pronunciation changes speech, not transcript.
 - [x] T070 [P] [US3] Cartesia TTS adapter in `services/voice-worker/worker/adapters/tts/cartesia.py` (Sarvam TTS is not in the launch catalog; research R8)
 - [x] T071 [P] [US3] Fish Audio streaming TTS adapter with character metering in `services/voice-worker/worker/adapters/tts/fishaudio.py`
 - [x] T072 [P] [US3] ai-coustics NC adapter in `services/voice-worker/worker/adapters/nc/ai_coustics.py`
-- [ ] T116 [US3] Auto speech recognition (FR-045): call 002's `voices.service.resolve_auto_stt` in `claim()` and put `stt_resolved_model` in RuntimeConfig (`services/api/app/calls/service.py`); the worker builds STT with the resolved id and reports it in usage meters (`services/voice-worker/worker/pipeline.py`, `metrics.py`); admission refuses a language the provider's Auto cannot cover; tests in `services/api/tests/unit/test_auto_stt.py` (Deepgram `en-US` to `nova-3`, `hi` to `nova-2`; AssemblyAI `es` to multilingual; Sarvam to `saarika:v2.5`) and a pricing check that a Deepgram Auto call in Hindi is charged at 0.0058 per minute
+- [x] T116 [US3] Auto speech recognition (FR-045): call 002's `voices.service.resolve_auto_stt` in `claim()` and put `stt_resolved_model` in RuntimeConfig (`services/api/app/calls/service.py`); the worker builds STT with the resolved id and reports it in usage meters (`services/voice-worker/worker/pipeline.py`, `metrics.py`); admission refuses a language the provider's Auto cannot cover; tests in `services/api/tests/unit/test_auto_stt.py` (Deepgram `en-US` to `nova-3`, `hi` to `nova-2`; AssemblyAI `es` to multilingual; Sarvam to `saarika:v2.5`) and a pricing check that a Deepgram Auto call in Hindi is charged at 0.0058 per minute
   - API side done: claim resolves Auto from the worker catalog (`calls.catalog.AdapterCatalog.resolve_auto_stt`, same rule as 002) into `stt_resolved_model`, admission refuses a language Auto cannot cover (`stt_language_unsupported:<provider>/<lang>`), pricing uses the metered model; tests in `services/api/tests/unit/test_auto_stt.py`. Remaining: swap to 002's `voices.service.resolve_auto_stt` at merge and the worker-side items.
 - [x] T117 [US3] Segment overrides (FR-046): `CallControl.apply_overrides()` in `services/voice-worker/worker/tools/__init__.py` (protocol) and `services/voice-worker/worker/pipeline.py` (swap LLM, TTS and STT at the next turn boundary, re-resolve Auto for a new language, clamp to RuntimeConfig `controls`, emit `segment_override` and `override_clamped` events, meter per model); harness scenario `services/voice-worker/tests/harness/scripts/segment_override.yaml` asserting the swap, clamping, per-model meters and first-turn latency after a swap within budget
 
@@ -252,7 +252,7 @@ event; SSRF guard.
 - [x] T096 [US6] Implement `DtmfCollector` and wire `sip_dtmf_received` to a single keypad caller turn plus `dtmf` events in `services/voice-worker/worker/call_behavior.py`
 - [x] T097 [US6] Implement `CallControl.send_dtmf()` for 005's press-digit tool in `services/voice-worker/worker/entry.py`
 - [x] T098 [US6] Implement voicemail detection for outbound calls (internal tool for the first 30 s, hang-up and leave-message actions, post-greeting silence wait) in `services/voice-worker/worker/call_behavior.py`
-- [ ] T099 [P] [US6] Add a keypad to the test panel that publishes DTMF in `apps/web/src/routes/agents/components/Keypad.tsx`
+- [x] T099 [P] [US6] Add a keypad to the test panel that publishes DTMF in `apps/web/src/routes/agents/components/Keypad.tsx`
 
 **Checkpoint**: Outbound-ready behaviours verified offline.
 

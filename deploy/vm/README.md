@@ -69,7 +69,7 @@ Then, with `TAG` the same git short sha (start the VM first if it is off:
 ACCOUNT=bhaweshverma50@gmail.com; PROJECT=callwright-dev; ZONE=asia-south1-a
 API_IMAGE=asia-south1-docker.pkg.dev/$PROJECT/callwright/api:$TAG
 VOICE_IMAGE=asia-south1-docker.pkg.dev/$PROJECT/callwright/voice-worker:$TAG
-gcloud compute scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl callwright-rtc:/opt/callwright/ \
+gcloud compute scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl deploy/vm/egress.yaml.tmpl callwright-rtc:/opt/callwright/ \
   --zone $ZONE --account $ACCOUNT --project $PROJECT
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "cd /opt/callwright && CW_API_IMAGE=$API_IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh \
@@ -140,6 +140,29 @@ It enables docker and containerd at boot, checks that every compose service has
 
 Copy the new files with the existing scp step: `docker-compose.yml`, `render-env.sh`,
 `idle-shutdown.sh`, `install-idle.sh` and `systemd/`.
+
+## Call recordings
+
+LiveKit egress (compose service `egress`, profile `recording`) records each call's audio, caller
+and agent on separate channels, and uploads an MP4 to the Cloud Storage bucket
+`callwright-dev-data`. LiveKit's webhook (rendered into `livekit.yaml`) tells the API when the
+file is ready; the call drawer then plays it through a 10 minute signed link. The same bucket
+holds uploads (ambience, knowledge documents), which otherwise live in API memory.
+
+Turn on once, in this order:
+
+1. Bucket, service account and keys (into Secret Manager), then access for the API and the VM:
+   `deploy/cloudrun/deploy.sh callwright-dev bhaweshverma50@gmail.com storage setup`
+2. VM: copy `docker-compose.yml`, `render-env.sh`, `livekit.yaml.tmpl` and `egress.yaml.tmpl`,
+   then `CW_RECORDINGS_ENABLED=true ./render-env.sh && sudo docker compose up -d`
+   (restarts LiveKit with the webhook; the flag is sticky across later renders). Check:
+   `curl -s localhost:8194` and `sudo docker compose logs --tail 20 egress`.
+3. API: `deploy.sh ... api` (picks up the bucket settings and `RECORDINGS_ENABLED=true`).
+
+Turn off: `CW_RECORDINGS_ENABLED=false ./render-env.sh && sudo docker compose up -d --remove-orphans`
+and `RECORDINGS_ENABLED=false deploy.sh ... api`. Workspace and agent recording settings still
+apply on top (an agent set to not record is never recorded). Storage costs about USD 0.02 per
+GB a month; a minute of call audio is about 1 MB.
 
 ## Telephony: phone numbers and WhatsApp (spec 010)
 

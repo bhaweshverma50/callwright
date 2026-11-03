@@ -178,7 +178,8 @@ keeps the default internet path.
 | `LIVEKIT_URL`, `LIVEKIT_PUBLIC_URL` | `wss://rtc.bhawesh.dev` | no |
 | `WAKE_VM_PROJECT`, `WAKE_VM_ZONE`, `WAKE_VM_NAME` | `callwright-dev`, `asia-south1-a`, `callwright-rtc` | no |
 | `DB_POOL_SIZE` | `5` | no |
-| `RECORDINGS_ENABLED` | `false` (no LiveKit egress service yet: calls are admitted with recording off, `not_recorded`). With `true` and no egress, the recording start fails within `RECORDINGS_EGRESS_TIMEOUT_S` (20 s), the call goes on, and it reads `recording_status=failed` with a `recording_unavailable` processing warning | no |
+| `RECORDINGS_ENABLED` | `true` once the storage keys exist (`deploy.sh ... storage`), otherwise `false` (calls admitted with recording off, `not_recorded`). With `true` and no egress service on the VM, the recording start fails within `RECORDINGS_EGRESS_TIMEOUT_S` (20 s), the call goes on, and it reads `recording_status=failed` with a `recording_unavailable` processing warning | no |
+| `STORAGE_MODE` and `S3_*`, `*_BUCKET` | set by `deploy.sh` when the `S3_ACCESS_KEY_ID` secret exists: Cloud Storage bucket `STORAGE_BUCKET` (default `callwright-dev-data`) over its S3 API for uploads, recordings and signed links | no |
 | `REDIS_CONNECT_TIMEOUT_S`, `REDIS_SOCKET_TIMEOUT_S` | defaults `2`, `5` (a stopped VM fails fast) | no |
 | `DATABASE_URL`, `DATABASE_ADMIN_URL`, `REDIS_URL`, `AUTH_JWT_SECRET`, `SECRETS_MASTER_KEY`, `SERVICE_TOKEN`, `STRIPE_WEBHOOK_SECRET`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (+ optional vendor keys) | see section 2 | yes |
 | `PORT` | set by Cloud Run | no |
@@ -228,7 +229,6 @@ curl -s -o /dev/null -w '%{http_code}\n' "$URL/v1/dev/mail"          # 404
 gcloud run services logs read callwright-api --region "$REGION" --limit 50 --account "$ACCOUNT" --project "$PROJECT"
 ```
 
-Known limits of the demo setup: `STORAGE_MODE=fake` keeps uploaded ambience files in instance
-memory (lost when the API scales to zero); configure `STORAGE_MODE=s3` with a bucket to keep
-them. With auto-verify on, registering a taken email answers 202 while a new one answers 200,
+Known limits of the demo setup: without the storage keys (`deploy.sh ... storage`), uploads
+stay in instance memory (lost when the API scales to zero) and calls are not recorded. With auto-verify on, registering a taken email answers 202 while a new one answers 200,
 which reveals that the email exists.

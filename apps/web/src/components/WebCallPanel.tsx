@@ -11,8 +11,8 @@
  * plays on timers, so the panel works in the gallery and tests without LiveKit.
  */
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Bot, CircleAlert, CircleCheck, Mic, MicOff, Phone, PhoneCall, PhoneOff, TriangleAlert, User } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Bot, CircleAlert, CircleCheck, Grid3x3, Mic, MicOff, Phone, PhoneCall, PhoneOff, TriangleAlert, User } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { env } from "../lib/env";
 import { formatUsd } from "../lib/money";
@@ -22,6 +22,7 @@ import { Button, IconButton } from "./Button";
 import { cn } from "./cn";
 import { EASE_OUT } from "./motion";
 import { LatencyChip, OnAir, Waveform } from "./signal";
+import { Keypad } from "./Keypad";
 import { InfoTip } from "./TruncatedText";
 import {
   createMockDriver,
@@ -74,10 +75,12 @@ export function WebCallPanel({
     () => ({ agent_id: agentId, ...(version && { version }), ...(variables && { dynamic_variables: variables }) }),
     [agentId, version, variables],
   );
-  const { state: s, start, cancel, end, toggleMute, elapsed } = useWebCall(driver, request, onEnded);
+  const { state: s, start, cancel, end, toggleMute, sendDigit, elapsed } = useWebCall(driver, request, onEnded);
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const reduce = useReducedMotion() ?? false;
   const costMicros = (perMinuteMicros * BigInt(Math.max(0, Math.round(elapsed)))) / 60_000n;
   const onCall = s.phase === "live" || s.phase === "ending";
+  const showKeypad = keypadOpen && onCall;
   const lastFinal = [...s.turns].reverse().find((t) => t.final);
 
   return (
@@ -129,14 +132,17 @@ export function WebCallPanel({
         />
       </div>
 
-      <div className="relative mx-5 my-4 h-[22rem] min-h-0">
-        {s.phase === "error" && s.problem ? (
-          <ProblemCallout problem={s.problem} />
-        ) : s.turns.length === 0 ? (
-          <EmptyTranscript phase={s.phase} />
-        ) : (
-          <Transcript turns={s.turns} reduce={reduce} />
-        )}
+      <div className={cn("mx-5 my-4 h-[22rem] min-h-0", showKeypad && "grid gap-4 sm:grid-cols-[minmax(0,1fr)_15rem]")}>
+        <div className={cn("relative h-full min-h-0", showKeypad && "max-sm:hidden")}>
+          {s.phase === "error" && s.problem ? (
+            <ProblemCallout problem={s.problem} />
+          ) : s.turns.length === 0 ? (
+            <EmptyTranscript phase={s.phase} />
+          ) : (
+            <Transcript turns={s.turns} reduce={reduce} />
+          )}
+        </div>
+        {showKeypad && <Keypad onPress={sendDigit} className="justify-center sm:border-l sm:border-line sm:pl-4" />}
       </div>
       <p className="sr-only" aria-live="polite">
         {lastFinal ? `${lastFinal.who === "agent" ? "Agent" : "You"}: ${lastFinal.text}` : ""}
@@ -167,6 +173,15 @@ export function WebCallPanel({
           )}
           {onCall && (
             <>
+              <IconButton
+                label={keypadOpen ? "Hide keypad" : "Show keypad"}
+                aria-pressed={keypadOpen}
+                onClick={() => setKeypadOpen((o) => !o)}
+                disabled={s.phase === "ending"}
+                className={cn("border border-line-strong", keypadOpen && "border-transparent bg-accent-soft text-accent-text hover:bg-accent-soft")}
+              >
+                <Grid3x3 aria-hidden />
+              </IconButton>
               <IconButton
                 label={s.muted ? "Unmute microphone" : "Mute microphone"}
                 aria-pressed={s.muted}

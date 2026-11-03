@@ -131,6 +131,9 @@ class Settings(BaseSettings):
     recordings_s3_access_key: SecretStr | None = None
     recordings_s3_secret_key: SecretStr | None = None
     recordings_kms_key_id: str | None = None
+    # Google Cloud Storage: a service account key (JSON). When set, egress uploads with LiveKit's
+    # native GCS output instead of the S3 API (GCS's S3 interop rejects newer SDK checksums).
+    recordings_gcp_credentials: SecretStr | None = None
     # Uploaded media (background ambience files, 002) served to the worker by signed URL.
     media_bucket: str = "callwright-media"
     # Outbound customer webhooks (FR-040): plain http only when allowed (development).
@@ -303,6 +306,7 @@ class Settings(BaseSettings):
             "service_token",
             "livekit_api_secret",
             "recordings_s3_secret_key",
+            "recordings_gcp_credentials",
             "s3_access_key_id",
             "s3_secret_access_key",
             "elevenlabs_api_key",

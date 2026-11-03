@@ -6,6 +6,8 @@
 # PROJECT and ACCOUNT are required and are passed as --project and --account to EVERY gcloud
 # command: the machine's default gcloud account belongs to another organisation and must never be
 # used implicitly. Steps (default: check-secrets build migrate api):
+#   storage        Cloud Storage bucket for uploads and recordings, its service account and
+#                  keys (stored in Secret Manager; run setup after it)
 #   setup          enable APIs, Artifact Registry repo, service account, IAM (secrets, VM start,
 #                  image pulls by the VM)
 #   check-secrets  fail when a required Secret Manager secret is missing
@@ -17,12 +19,12 @@
 #   api            deploy the callwright-api service (scale to zero, Direct VPC egress to the VM)
 #   worker-hint    print the commands that roll the new images out to the VM (jobs and voice worker)
 # Environment overrides: REGION, REPO, TAG, VM_NAME, VM_ZONE, WEB_ORIGIN, LIVEKIT_URL,
-# RECORDINGS_ENABLED (default false: no egress service), DRY_RUN=1
+# STORAGE_BUCKET, RECORDINGS_ENABLED (default true once the storage keys exist), DRY_RUN=1
 # (print the gcloud commands instead of running them).
 set -euo pipefail
 
 if [ "$#" -lt 2 ]; then
-  sed -n '2,21p' "$0" >&2
+  sed -n '2,23p' "$0" >&2
   exit 2
 fi
 PROJECT="$1"
@@ -62,7 +64,11 @@ VOICE_OPTIONAL_SECRETS=(DEEPGRAM_API_KEY ASSEMBLYAI_API_KEY SARVAM_API_KEY FISHA
   AI_COUSTICS_API_KEY)
 # Mounted when they exist.
 OPTIONAL_SECRETS=(STRIPE_SECRET_KEY OPENAI_API_KEY DEEPGRAM_API_KEY AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_KEY ANTHROPIC_API_KEY
-  ELEVENLABS_API_KEY CARTESIA_API_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_KEY)
+  ELEVENLABS_API_KEY CARTESIA_API_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_KEY
+  S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY RECORDINGS_GCP_CREDENTIALS)
+# Object storage (uploads and call recordings): one Cloud Storage bucket, used once its HMAC key
+# exists as S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY (deploy/vm/README.md, "Recordings").
+STORAGE_BUCKET="${STORAGE_BUCKET:-callwright-dev-data}"
 
 # Every gcloud call goes through here, so --account and --project are never left out.
 gc() {
@@ -191,17 +197,26 @@ step_api() {
   if [ "${DRY_RUN:-0}" != "1" ]; then
     url="$(gc run services describe callwright-api --region "$REGION" --format 'value(status.url)' 2>/dev/null || true)"
   fi
-  # shellcheck disable=SC2046 (one secret name per line, no spaces)
-  secrets="$(secrets_flag "${API_SECRETS[@]}" $(present_optional_secrets))"
+  optional="$(present_optional_secrets)"
+  # shellcheck disable=SC2086 (one secret name per line, no spaces)
+  secrets="$(secrets_flag "${API_SECRETS[@]}" $optional)"
   # "@" separates the variables because CORS_ORIGINS may hold commas.
   env="^@^ENV=staging@LOG_JSON=true@WEB_BASE_URL=$WEB_ORIGIN@CORS_ORIGINS=$WEB_ORIGIN"
   env+="@TRUSTED_PROXY_HOPS=1@AUTH_PROVIDER=local@AUTH_AUTO_VERIFY_EMAIL=true"
   env+="@STRIPE_MODE=fake@ENABLE_FAKE_CHECKOUT=true@ENABLE_DEV_ROUTES=false"
   env+="@LIVEKIT_MODE=live@LIVEKIT_URL=$LIVEKIT_URL@LIVEKIT_PUBLIC_URL=$LIVEKIT_URL"
   env+="@WAKE_VM_PROJECT=$PROJECT@WAKE_VM_ZONE=$VM_ZONE@WAKE_VM_NAME=$VM_NAME@DB_POOL_SIZE=5"
-  # No LiveKit egress service on the VM: admit calls with recording off (RECORDINGS_ENABLED=true
-  # once an egress service and a recordings bucket exist).
-  env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
+  # Recordings need the bucket (its key in Secret Manager) and the VM's egress service; without
+  # the key calls are admitted with recording off and uploads stay in memory.
+  if printf '%s\n' "$optional" | grep -qx S3_ACCESS_KEY_ID; then
+    env+="@STORAGE_MODE=s3@S3_ENDPOINT_URL=https://storage.googleapis.com@S3_REGION=auto"
+    env+="@S3_BUCKET=$STORAGE_BUCKET@RECORDINGS_BUCKET=$STORAGE_BUCKET@MEDIA_BUCKET=$STORAGE_BUCKET"
+    env+="@RECORDINGS_S3_REGION=auto@AWS_REQUEST_CHECKSUM_CALCULATION=when_required"
+    env+="@AWS_RESPONSE_CHECKSUM_VALIDATION=when_required"
+    env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-true}"
+  else
+    env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
+  fi
   [ -n "$url" ] && env+="@API_BASE_URL=$url"
   # 010 telephony: LIVEKIT_SIP_HOST=sip.bhawesh.dev turns SIP on, LIVEKIT_SIP_HOST= (empty) turns
   # it off, unset keeps what the running service has (--set-env-vars would otherwise drop it).
@@ -236,7 +251,7 @@ The VM sleeps when idle: start it first if it is off (any API request wakes it t
   gcloud compute instances start $VM_NAME --zone $VM_ZONE --account $ACCOUNT --project $PROJECT
 
 1. Copy the compose files (only when deploy/vm changed):
-  $scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx $VM_NAME:/opt/callwright/
+  $scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl deploy/vm/egress.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx $VM_NAME:/opt/callwright/
 
 2. Pin both images and render .env, worker.env and voice.env from Secret Manager:
   $ssh 'cd /opt/callwright && CW_API_IMAGE=$IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh'
@@ -252,9 +267,49 @@ The VM sleeps when idle: start it first if it is off (any API request wakes it t
 EOF
 }
 
+# Object storage for uploads and call recordings: the bucket, a service account that may write
+# to it, its HMAC key (S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY: API uploads and signed links) and
+# a JSON key (RECORDINGS_GCP_CREDENTIALS: LiveKit egress uploads). Keys are created once and go
+# straight into Secret Manager, never to the terminal. Run `setup` afterwards so the API and
+# the VM may read the new secrets.
+step_storage() {
+  local sa_name=callwright-storage
+  local sa="$sa_name@$PROJECT.iam.gserviceaccount.com"
+  exists storage buckets describe "gs://$STORAGE_BUCKET" \
+    || gc storage buckets create "gs://$STORAGE_BUCKET" --location "$REGION" \
+      --uniform-bucket-level-access --public-access-prevention
+  exists iam service-accounts describe "$sa" \
+    || gc iam service-accounts create "$sa_name" --display-name "Callwright object storage"
+  gc storage buckets add-iam-policy-binding "gs://$STORAGE_BUCKET" \
+    --member "serviceAccount:$sa" --role roles/storage.objectAdmin --format none
+  [ "${DRY_RUN:-0}" = "1" ] && return 0
+  if ! exists secrets describe S3_ACCESS_KEY_ID; then
+    gc storage hmac create "$sa" --format json | ACCOUNT="$ACCOUNT" PROJECT="$PROJECT" python3 -c '
+import json, os, subprocess, sys
+key = json.load(sys.stdin)
+for name, value in (("S3_ACCESS_KEY_ID", key["metadata"]["accessId"]), ("S3_SECRET_ACCESS_KEY", key["secret"])):
+    subprocess.run(["gcloud", "--account", os.environ["ACCOUNT"], "--project", os.environ["PROJECT"], "--quiet",
+        "secrets", "create", name, "--replication-policy", "automatic", "--data-file", "-"],
+        input=value.encode(), check=True, stdout=subprocess.DEVNULL)
+print("stored the HMAC key as S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY")'
+  fi
+  if ! exists secrets describe RECORDINGS_GCP_CREDENTIALS; then
+    local tmp
+    tmp="$(mktemp -d)"
+    gc iam service-accounts keys create "$tmp/key.json" --iam-account "$sa" --format none
+    # One line (the VM's env files refuse newlines); the private key keeps its escaped "\n".
+    python3 -c 'import json, sys; print(json.dumps(json.load(open(sys.argv[1])), separators=(",", ":")), end="")' \
+      "$tmp/key.json" | gc secrets create RECORDINGS_GCP_CREDENTIALS --replication-policy automatic \
+      --data-file - --format none
+    rm -rf "$tmp"
+    echo "stored the service account key as RECORDINGS_GCP_CREDENTIALS"
+  fi
+}
+
 for step in "${STEPS[@]}"; do
   echo "== $step"
   case "$step" in
+    storage) step_storage ;;
     setup) step_setup ;;
     check-secrets) step_check_secrets ;;
     build) step_build ;;

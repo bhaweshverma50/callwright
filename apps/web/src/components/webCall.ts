@@ -66,7 +66,25 @@ export interface CallListener {
 export interface CallConnection {
   setMuted(muted: boolean): Promise<void>;
   hangUp(): Promise<void>;
+  /** Sends a keypad press (0-9, *, #) as DTMF. Absent when the call cannot carry key presses. */
+  sendDigit?(digit: string): Promise<void>;
 }
+
+/** DTMF event codes (RFC 4733) for the keypad keys. */
+export const DTMF_CODES: Record<string, number> = {
+  "0": 0,
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
+  "9": 9,
+  "*": 10,
+  "#": 11,
+};
 
 export interface WebCallDriver {
   /** True for simulated calls; the panel labels them so nobody mistakes one for a real call. */
@@ -315,6 +333,9 @@ export function createMockDriver(opts: MockOptions = {}): WebCallDriver {
           ctrl.abort();
           clearInterval(levelTimer);
           listener.ended("user_hangup");
+        },
+        async sendDigit() {
+          /* the scripted call ignores key presses */
         },
       };
     },

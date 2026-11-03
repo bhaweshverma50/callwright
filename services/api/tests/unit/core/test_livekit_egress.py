@@ -19,8 +19,10 @@ def _settings(**values: Any) -> Settings:
 class Egress:
     def __init__(self, behaviour: str) -> None:
         self.behaviour = behaviour
+        self.requests: list[Any] = []
 
     async def start_room_composite_egress(self, request: Any) -> Any:
+        self.requests.append(request)
         if self.behaviour == "hang":
             await asyncio.sleep(30)
         if self.behaviour == "refuse":
@@ -30,7 +32,9 @@ class Egress:
 
 def client(behaviour: str, **settings: Any) -> LiveKitClient:
     lk = LiveKitClient(_settings(**settings))
-    lk._client = lambda: SimpleNamespace(egress=Egress(behaviour))  # type: ignore[method-assign]
+    egress = Egress(behaviour)
+    lk._client = lambda: SimpleNamespace(egress=egress)  # type: ignore[method-assign]
+    lk.egress = egress  # type: ignore[attr-defined]
     return lk
 
 
@@ -56,3 +60,26 @@ def test_recordings_are_enabled_by_default_and_switchable(monkeypatch: pytest.Mo
     assert _settings().recordings_enabled is True
     monkeypatch.setenv("RECORDINGS_ENABLED", "false")
     assert _settings().recordings_enabled is False
+
+
+async def test_gcp_credentials_upload_natively_to_gcs() -> None:
+    lk = client("ok", recordings_gcp_credentials='{"type": "service_account"}')
+    await lk.start_audio_recording("call-room", TARGET)
+    out = lk.egress.requests[0].file_outputs[0]  # type: ignore[attr-defined]
+    assert out.WhichOneof("output") == "gcp"
+    assert out.gcp.bucket == "callwright-recordings"
+    assert out.gcp.credentials == '{"type": "service_account"}'
+    assert out.filepath == "recordings/ws/call.mp4"
+
+
+async def test_s3_upload_falls_back_to_the_object_store_key_and_endpoint() -> None:
+    lk = client(
+        "ok",
+        s3_access_key_id="AK",
+        s3_secret_access_key="SK",
+        s3_endpoint_url="https://storage.googleapis.com",
+    )
+    await lk.start_audio_recording("call-room", TARGET)
+    s3 = lk.egress.requests[0].file_outputs[0].s3  # type: ignore[attr-defined]
+    assert (s3.access_key, s3.secret) == ("AK", "SK")
+    assert (s3.endpoint, s3.force_path_style) == ("https://storage.googleapis.com", True)

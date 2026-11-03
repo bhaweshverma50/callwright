@@ -46,6 +46,23 @@ services:
     depends_on:
       - redis
 
+  # Call recordings (profile "recording", on with CW_RECORDINGS_ENABLED=true): LiveKit egress
+  # records each call's audio and uploads it to Cloud Storage. Health on 127.0.0.1:8194.
+  egress:
+    image: ${EGRESS_IMAGE:-livekit/egress:v1.14.1}
+    profiles: ["recording"]
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml:ro
+    depends_on:
+      - livekit
+      - redis
+
   # Voice worker (services/voice-worker image, built by deploy/vm/cloudbuild-voice.yaml): joins
   # LiveKit on ws://127.0.0.1:7880 and calls the API's /v1/internal endpoints. voice.env comes
   # from render-env.sh; VOICE_IMAGE is pinned in .env. Health on 127.0.0.1:8190.

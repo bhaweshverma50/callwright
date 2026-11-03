@@ -168,6 +168,23 @@ describe("WebCallPanel", () => {
     expect(hangUp).toHaveBeenCalled();
   });
 
+  it("sends keypad presses from buttons and the keyboard as DTMF", async () => {
+    const user = userEvent.setup();
+    const sendDigit = vi.fn(async (_d: string) => {});
+    const inner = createMockDriver(FAST);
+    const driver: WebCallDriver = { ...inner, connect: async () => ({ setMuted: async () => {}, hangUp: async () => {}, sendDigit }) };
+    renderPanel({ driver });
+    await user.click(screen.getByRole("button", { name: "Start test call" }));
+    await screen.findByText("On air");
+    await user.click(screen.getByRole("button", { name: "Show keypad" }));
+    const pad = screen.getByRole("group", { name: "Keypad" });
+    await user.click(within(pad).getByRole("button", { name: "4" }));
+    await user.click(within(pad).getByRole("button", { name: "Pound" }));
+    await user.keyboard("7");
+    expect(sendDigit.mock.calls.map((c) => c[0])).toEqual(["4", "#", "7"]);
+    expect(screen.getByText("4#7")).toBeInTheDocument();
+  });
+
   it("does not label a live panel as simulated", () => {
     render(
       <MemoryRouter>

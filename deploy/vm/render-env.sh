@@ -33,18 +33,32 @@ PREV_SIP_HOST="$(sed -n 's/^LIVEKIT_SIP_HOST=//p' .env 2>/dev/null || true)"
 LIVEKIT_SIP_HOST="${CW_LIVEKIT_SIP_HOST-$PREV_SIP_HOST}"
 PREV_LAB_PBX="$(sed -n 's/^LAB_PBX=//p' .env 2>/dev/null || true)"
 LAB_PBX="${CW_LAB_PBX:-${PREV_LAB_PBX:-false}}"
+# Recordings (egress service + bucket): sticky like the lab flag. Needs the S3_ACCESS_KEY_ID secret.
+PREV_RECORDING="$(sed -n 's/^RECORDING=//p' .env 2>/dev/null || true)"
+RECORDING="${CW_RECORDINGS_ENABLED:-${PREV_RECORDING:-false}}"
+STORAGE_BUCKET="${CW_STORAGE_BUCKET:-callwright-dev-data}"
+S3_ACCESS_KEY_ID="$(secret_opt S3_ACCESS_KEY_ID)"
+if [ "$RECORDING" = "true" ] && [ -z "$S3_ACCESS_KEY_ID" ]; then
+  echo "CW_RECORDINGS_ENABLED=true needs the S3_ACCESS_KEY_ID secret (deploy/vm/README.md, Recordings)" >&2
+  exit 1
+fi
 PROFILES=""
 [ -n "$LIVEKIT_SIP_HOST" ] && PROFILES="telephony"
 [ "$LAB_PBX" = "true" ] && PROFILES="${PROFILES:+$PROFILES,}lab"
+[ "$RECORDING" = "true" ] && PROFILES="${PROFILES:+$PROFILES,}recording"
 if [ "$LAB_PBX" = "true" ] && [ -z "$LIVEKIT_SIP_HOST" ]; then
   echo "CW_LAB_PBX=true needs CW_LIVEKIT_SIP_HOST (the lab PBX talks to livekit-sip)" >&2
   exit 1
 fi
 # COMPOSE_PROFILES makes a plain `docker compose up -d` include sip and lab-pbx.
-printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\nVOICE_IMAGE=%s\nSIP_IMAGE=%s\nLIVEKIT_SIP_HOST=%s\nLAB_PBX=%s\nCOMPOSE_PROFILES=%s\n' \
-  "$REDIS_PASSWORD" "$API_IMAGE" "$VOICE_IMAGE" "$SIP_IMAGE" "$LIVEKIT_SIP_HOST" "$LAB_PBX" "$PROFILES" > .env
-export REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET
+printf 'REDIS_PASSWORD=%s\nAPI_IMAGE=%s\nVOICE_IMAGE=%s\nSIP_IMAGE=%s\nLIVEKIT_SIP_HOST=%s\nLAB_PBX=%s\nRECORDING=%s\nCOMPOSE_PROFILES=%s\n' \
+  "$REDIS_PASSWORD" "$API_IMAGE" "$VOICE_IMAGE" "$SIP_IMAGE" "$LIVEKIT_SIP_HOST" "$LAB_PBX" "$RECORDING" "$PROFILES" > .env
+export REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET CW_API_BASE_URL
 envsubst < livekit.yaml.tmpl > livekit.yaml
+if [ "$RECORDING" = "true" ]; then
+  envsubst < egress.yaml.tmpl > egress.yaml
+  chmod 644 egress.yaml # read by the egress container's own user
+fi
 # Telephony (010): sip.yaml only when the SIP service is on (README.md, "Telephony"). TLS (5061,
 # WhatsApp) only once its certificate is in sip-certs/.
 if [ -n "$LIVEKIT_SIP_HOST" ]; then
@@ -96,7 +110,21 @@ REDIS_URL_ENCODED_PASSWORD="$(python3 -c 'import sys, urllib.parse; print(urllib
   line AUTH_PROVIDER "${CW_AUTH_PROVIDER:-local}"
   line STRIPE_MODE "${CW_STRIPE_MODE:-fake}"
   line ARQ_POLL_DELAY_S "${CW_ARQ_POLL_DELAY_S:-1}"
-  line RECORDINGS_ENABLED "${CW_RECORDINGS_ENABLED:-false}"
+  line RECORDINGS_ENABLED "$RECORDING"
+  if [ -n "$S3_ACCESS_KEY_ID" ]; then
+    line STORAGE_MODE s3
+    line S3_ENDPOINT_URL https://storage.googleapis.com
+    line S3_REGION auto
+    line S3_BUCKET "$STORAGE_BUCKET"
+    line RECORDINGS_BUCKET "$STORAGE_BUCKET"
+    line MEDIA_BUCKET "$STORAGE_BUCKET"
+    line RECORDINGS_S3_REGION auto
+    line AWS_REQUEST_CHECKSUM_CALCULATION when_required
+    line AWS_RESPONSE_CHECKSUM_VALIDATION when_required
+    line S3_ACCESS_KEY_ID "$S3_ACCESS_KEY_ID"
+    line S3_SECRET_ACCESS_KEY "$(secret_opt S3_SECRET_ACCESS_KEY)"
+    line RECORDINGS_GCP_CREDENTIALS "$(secret_opt RECORDINGS_GCP_CREDENTIALS)"
+  fi
   # 010: the drain cron removes SIP trunks of deleted numbers; empty keeps SIP in memory.
   line LIVEKIT_SIP_HOST "$LIVEKIT_SIP_HOST"
   line REDIS_URL "redis://:${REDIS_URL_ENCODED_PASSWORD}@127.0.0.1:6379/0"
@@ -150,4 +178,6 @@ mv worker.env.tmp worker.env
   done
 } > voice.env.tmp
 mv voice.env.tmp voice.env
-echo "rendered .env, worker.env, voice.env and livekit.yaml${LIVEKIT_SIP_HOST:+, sip.yaml ($LIVEKIT_SIP_HOST)}${PROFILES:+; profiles: $PROFILES}"
+EGRESS_NOTE=""
+[ "$RECORDING" = "true" ] && EGRESS_NOTE=", egress.yaml"
+echo "rendered .env, worker.env, voice.env and livekit.yaml$EGRESS_NOTE${LIVEKIT_SIP_HOST:+, sip.yaml ($LIVEKIT_SIP_HOST)}${PROFILES:+; profiles: $PROFILES}"

@@ -14,5 +14,11 @@ redis:
   password: ${REDIS_PASSWORD}
 keys:
   ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+# Room and recording events go to the API (recording status, and a safety net for calls whose
+# worker never reported an end).
+webhook:
+  api_key: ${LIVEKIT_API_KEY}
+  urls:
+    - ${CW_API_BASE_URL}/v1/livekit/webhook
 logging:
   level: info

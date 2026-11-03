@@ -194,20 +194,34 @@ class LiveKitClient(_TokenMixin):
 
     async def start_audio_recording(self, room: str, target: EgressTarget) -> str:
         s = self._settings
-        s3 = lk.S3Upload(
-            access_key=s.recordings_s3_access_key.get_secret_value() if s.recordings_s3_access_key else "",
-            secret=s.recordings_s3_secret_key.get_secret_value() if s.recordings_s3_secret_key else "",
-            region=s.recordings_s3_region,
-            endpoint=s.recordings_s3_endpoint or "",
-            bucket=target.bucket,
-            force_path_style=bool(s.recordings_s3_endpoint),
-        )
+        if s.recordings_gcp_credentials:
+            output = lk.EncodedFileOutput(
+                file_type=lk.EncodedFileType.MP4,
+                filepath=target.key,
+                gcp=lk.GCPUpload(
+                    credentials=s.recordings_gcp_credentials.get_secret_value(), bucket=target.bucket
+                ),
+            )
+        else:
+            # The general object store's key and endpoint stand in when no recordings-only ones are set.
+            access = s.recordings_s3_access_key or s.s3_access_key_id
+            secret = s.recordings_s3_secret_key or s.s3_secret_access_key
+            endpoint = s.recordings_s3_endpoint or s.s3_endpoint_url
+            s3 = lk.S3Upload(
+                access_key=access.get_secret_value() if access else "",
+                secret=secret.get_secret_value() if secret else "",
+                region=s.recordings_s3_region,
+                endpoint=endpoint or "",
+                bucket=target.bucket,
+                force_path_style=bool(endpoint),
+            )
+            output = lk.EncodedFileOutput(file_type=lk.EncodedFileType.MP4, filepath=target.key, s3=s3)
         request = lk.RoomCompositeEgressRequest(
             room_name=room,
             audio_only=True,
             audio_mixing=lk.AudioMixing.DUAL_CHANNEL_AGENT,
             advanced=lk.EncodingOptions(audio_codec=lk.AudioCodec.AAC),
-            file_outputs=[lk.EncodedFileOutput(file_type=lk.EncodedFileType.MP4, filepath=target.key, s3=s3)],
+            file_outputs=[output],
         )
         timeout = s.recordings_egress_timeout_s
         try:

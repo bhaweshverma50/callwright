@@ -231,6 +231,10 @@ export function useWebCall(
     void conn.current?.setMuted(next).catch(() => dispatch({ type: "muted", muted: !next }));
   }, [s.muted]);
 
+  const sendDigit = useCallback((digit: string) => {
+    void conn.current?.sendDigit?.(digit).catch(() => {});
+  }, []);
+
   const elapsed = s.startedAt ? (s.endedAt ?? now) - s.startedAt : 0;
-  return { state: s, start, cancel, end, toggleMute, elapsed };
+  return { state: s, start, cancel, end, toggleMute, sendDigit, elapsed };
 }
