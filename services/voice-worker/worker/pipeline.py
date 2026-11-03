@@ -75,8 +75,14 @@ DEFAULT_CONTROLS: Mapping[str, tuple[float, float, float]] = {
 # Appended to every single-prompt agent. Speech starts once the first sentence is complete, so
 # a short opening sentence is heard sooner; markup is read out literally by TTS.
 VOICE_STYLE_INSTRUCTION = (
-    "Your replies are spoken aloud on a live call. Start each reply with a short sentence, use "
-    "plain conversational sentences, and never use lists, markdown or emojis."
+    "Your replies are spoken aloud on a live call, so talk the way a warm, attentive person talks "
+    "on the phone, not the way people write. Start each reply with a short sentence. Keep replies "
+    "short, usually under 35 words, and end with at most one question. Never list options or "
+    "examples: ask an open question, or offer two choices at the very most. Use contractions and "
+    "everyday words, and react to what the caller just said before moving on (\"Got it.\", \"Oh, "
+    "that's tough.\", \"Okay, so...\"), without opening every reply the same way. Match the "
+    "caller's mood and pace: calm and gentle when they are upset, brisk when they are in a hurry. "
+    "Never use lists, headings, markdown, emojis or line breaks."
 )
 
 # Appended to every single-prompt agent, which always has an end_call tool (tools/registry.py).

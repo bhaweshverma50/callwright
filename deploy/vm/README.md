@@ -257,7 +257,7 @@ Turn it on:
    `127.0.0.1/32`.
 6. **Softphone** (Linphone, Zoiper or MicroSIP; on a phone or a laptop): SIP account, username
    `phone1`, domain `sip.bhawesh.dev:5080`, transport UDP, password from
-   `sudo cat /opt/callwright/lab-pbx/phone-password`. Codec G.711 (PCMU/PCMA).
+   `sudo cat /opt/callwright/lab-pbx/phone-password`. Codecs: put G.722 first in the softphone (HD voice, 16 kHz, used end to end when both sides have it), G.711 (PCMU/PCMA) as fallback.
    * Inbound: dial `+919000000100`; the inbound agent answers.
    * Outbound: place an outbound call from the number to `+919000000001`; the softphone rings.
    * One-way or no audio means RTP is blocked: check the firewall rule and
