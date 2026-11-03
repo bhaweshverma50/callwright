@@ -6,6 +6,7 @@
  */
 import type { AgentConfig, AgentType, ConfigIssue, ConfigValidationResult } from "../../api/agents";
 import { MAX_VARIABLES, VARIABLE_NAME, isReserved, scanPlaceholders } from "../../lib/agentVariables";
+import { supportedLanguages } from "../../lib/callerLanguages";
 import { llmCatalog, sttAutoPrice, voiceCatalog } from "./catalog";
 import { findVoice } from "./voices";
 
@@ -46,6 +47,7 @@ export function defaultConfig(type: AgentType, language = "en-US"): AgentConfig 
       analysis_model: null,
       pronunciation: [],
       recording: "inherit",
+      language_switching: { enabled: true, languages: [] },
     },
     tool_ids: [],
     kb_ids: [],
@@ -291,6 +293,28 @@ export function validateConfig(type: AgentType, input: unknown, ctx: ValidateCon
     words.add(key);
   }
   if (a.recording && !["inherit", "on", "off"].includes(a.recording)) err("/advanced/recording", "invalid_format", "Choose how calls are recorded.");
+
+  // Caller language (012): unknown codes are errors; codes this agent's speech recognition and
+  // voice cannot handle are kept with a warning (they come back when the voice changes).
+  const ls = a.language_switching;
+  a.language_switching = { enabled: ls?.enabled !== false, languages: Array.isArray(ls?.languages) ? ls.languages : [] };
+  const langPointer = "/advanced/language_switching/languages";
+  const supported = new Set(supportedLanguages(voiceCatalog, c).map((l) => l.code));
+  const listed = new Set<string>();
+  for (const code of a.language_switching.languages) {
+    const l = code === "multi" ? undefined : voiceCatalog.languages.find((x) => x.code === code);
+    if (!l) err(langPointer, "not_in_catalog", `The language '${code}' is not offered.`);
+    else if (listed.has(code)) err(langPointer, "duplicate_entry", `${l.label} is listed more than once.`);
+    else {
+      listed.add(code);
+      if (!supported.has(code))
+        warn(
+          langPointer,
+          "language_unsupported",
+          `${l.label} is not supported by this agent's speech recognition and voice, so callers cannot switch to it.`,
+        );
+    }
+  }
 
   return { valid: errors.length === 0, errors, publish_blockers: blockers, warnings, normalized_config: c };
 }

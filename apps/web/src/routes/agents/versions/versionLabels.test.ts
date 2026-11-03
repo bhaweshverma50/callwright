@@ -43,6 +43,9 @@ const CONFIG_PATHS = [
   "/advanced/analysis_model",
   "/advanced/pronunciation",
   "/advanced/recording",
+  "/advanced/language_switching",
+  "/advanced/language_switching/enabled",
+  "/advanced/language_switching/languages",
   "/tool_ids",
   "/kb_ids",
   "/flow",
@@ -62,6 +65,8 @@ describe("version labels (T056, FR-025)", () => {
     expect(labelFor("/advanced/pronunciation[sql]/replacement")).toBe('Pronunciation of "sql"');
     expect(labelFor("/prompt")).toBe("System prompt");
     expect(labelFor("/tts/speed")).toBe("Voice speed");
+    expect(labelFor("/advanced/language_switching/enabled")).toBe("Caller language switching");
+    expect(labelFor("/advanced/language_switching/languages")).toBe("Caller languages");
   });
 
   it("formats values the way the editor shows them", () => {
@@ -69,6 +74,9 @@ describe("version labels (T056, FR-025)", () => {
     expect(formatValue("/tts/volume", 1)).toBe("100%");
     expect(formatValue("/advanced/dtmf/enabled", true)).toBe("On");
     expect(formatValue("/advanced/webhook_url", null)).toBe("None");
+    expect(formatValue("/advanced/language_switching/enabled", false)).toBe("Off");
+    expect(formatValue("/advanced/language_switching/languages", [])).toBe("All supported languages");
+    expect(formatValue("/advanced/language_switching/languages", ["hi", "es"], new Map([["hi", "Hindi"]]))).toBe("Hindi, es");
   });
 
   it("maps pointers to tabs and field ids", () => {
@@ -76,6 +84,7 @@ describe("version labels (T056, FR-025)", () => {
     expect(sectionOf("/advanced/webhook_url")).toBe("advanced");
     expect(sectionOf("/call_behavior/max_duration_s")).toBe("behaviour");
     expect(sectionOf("/prompt")).toBe("basics");
+    expect(sectionOf("/advanced/language_switching/languages")).toBe("basics");
     expect(fieldId("/tts/voice_id")).toBe("f-tts-voice_id");
     expect(fieldId("/dynamic_variables[order_id]/default")).toBe("f-dynamic_variables-order_id-default");
   });

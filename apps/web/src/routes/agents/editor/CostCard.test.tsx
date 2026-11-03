@@ -25,15 +25,15 @@ const chain = () => screen.getByRole("list", { name: "This agent's signal chain"
 describe("CostCard (T065, T101, US4)", () => {
   it("shows a line per component and a total equal to their sum", async () => {
     renderCard();
-    expect(await screen.findByText("$0.1200")).toBeInTheDocument();
+    expect(await screen.findByText("$0.1650")).toBeInTheDocument();
     const c = chain();
-    for (const rate of ["$0.0000", "$0.0085", "$0.0165", "$0.0450"]) expect(within(c).getByText(rate)).toBeInTheDocument();
+    for (const rate of ["$0.0000", "$0.0085", "$0.0165", "$0.0900"]) expect(within(c).getByText(rate)).toBeInTheDocument();
     expect(screen.getByText("$0.0500")).toBeInTheDocument();
   });
 
   it("marks noise cancellation as not used when it is off", async () => {
     renderCard((c) => (c.noise_cancellation = null));
-    expect(await screen.findByText("$0.1200")).toBeInTheDocument();
+    expect(await screen.findByText("$0.1650")).toBeInTheDocument();
     expect(within(chain()).getByText("Not used")).toBeInTheDocument();
     expect(within(chain()).queryByText("$0.0000")).not.toBeInTheDocument();
   });

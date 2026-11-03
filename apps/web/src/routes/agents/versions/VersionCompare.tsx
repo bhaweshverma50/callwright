@@ -1,6 +1,6 @@
 import { ArrowRight, Equal, Minus, PencilLine, Plus } from "lucide-react";
 import { useMemo } from "react";
-import { useVersionDiff, type VersionChange, type VersionSummary } from "../../../api/agents";
+import { useVersionDiff, useVoiceCatalog, type VersionChange, type VersionSummary, type VoiceCatalog } from "../../../api/agents";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Select, Skeleton, TruncatedText } from "../../../components";
 import { DiffView } from "./DiffView";
@@ -131,12 +131,15 @@ function ChangeRow({
   );
 }
 
+const languageNames = (catalog: VoiceCatalog | undefined) => new Map((catalog?.languages ?? []).map((l) => [l.code, l.label]));
+
 /** Shapes ``formatValue`` already reads well (model, variable, word, sound). */
 const isPlainShape = (o: Record<string, unknown>) =>
   ("provider" in o && "model" in o) || "word" in o || "kind" in o || ("name" in o && "default" in o);
 
 /** A value in compare: text as people read it, objects as a short list of fields, never JSON. */
 function ValueView({ path, value, strong = false }: { path: string; value: unknown; strong?: boolean }) {
+  const voices = useVoiceCatalog();
   const tone = strong ? "font-medium text-fg" : "text-fg-2";
   if (value && typeof value === "object" && !Array.isArray(value) && !isPlainShape(value as Record<string, unknown>)) {
     const fields = objectFields(path, value as Record<string, unknown>);
@@ -152,7 +155,9 @@ function ValueView({ path, value, strong = false }: { path: string; value: unkno
     );
   }
   const text = Array.isArray(value)
-    ? value.map((v) => (v && typeof v === "object" ? formatValue(path, v) : String(v))).join(", ") || "Not set"
+    ? path === "/advanced/language_switching/languages"
+      ? formatValue(path, value, languageNames(voices.data))
+      : value.map((v) => (v && typeof v === "object" ? formatValue(path, v) : String(v))).join(", ") || "Not set"
     : value === null || value === undefined || value === ""
       ? "Not set"
       : formatValue(path, value);

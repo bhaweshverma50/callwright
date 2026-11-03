@@ -235,7 +235,7 @@ export const TEMPLATES: TemplateDetail[] = SEEDS.map((s) => {
     begin_message: s.begin_message,
     start_speaker: "agent",
     stt: { provider: "deepgram", model: null },
-    tts: { provider: "elevenlabs", model: "eleven_flash_v2_5" },
+    tts: { provider: "elevenlabs", model: "eleven_multilingual_v2" },
     dynamic_variables: s.variables.map(([name, def]) => ({ name, default: def })),
   };
   return {

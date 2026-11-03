@@ -9,6 +9,7 @@ import { qualityHandlers } from "./quality/handlers";
 import { simHandlers } from "./sim/handlers";
 import { issueHandlers } from "./issues/handlers";
 import { callbackHandlers } from "./callbacks/handlers";
+import { callerLanguageHandlers } from "./callerLanguage/handlers";
 
 export const server = setupServer(
   ...handlers,
@@ -21,4 +22,5 @@ export const server = setupServer(
   ...simHandlers,
   ...issueHandlers,
   ...callbackHandlers,
+  ...callerLanguageHandlers,
 );

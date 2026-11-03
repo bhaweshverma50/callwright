@@ -148,7 +148,7 @@ const languages: Language[] = LANGS.map(([code, label]) => ({
   code,
   label,
   stt_default: { provider: INDIC.includes(code) ? "sarvam" : "deepgram", model: null },
-  tts_default: { provider: "elevenlabs", model: "eleven_flash_v2_5", voice_id: DEFAULT_VOICE_BY_PROVIDER.elevenlabs![code]! },
+  tts_default: { provider: "elevenlabs", model: "eleven_multilingual_v2", voice_id: DEFAULT_VOICE_BY_PROVIDER.elevenlabs![code]! },
 }));
 
 // --- speech recognition (8.3) ------------------------------------------------
@@ -251,11 +251,34 @@ export const sttAutoPrice = (provider: string) => price("stt", provider, null);
 
 // --- voices (8.4) ------------------------------------------------------------
 
+// Base languages each voice model speaks (012); English-only models name the model a call uses
+// when the caller switches language.
+const ELEVEN_MULTI = ["en", "ja", "zh", "de", "hi", "fr", "ko", "pt", "it", "es", "id", "nl", "tr", "pl", "sv", "ar", "ms", "da", "ta", "uk", "ru"];
+const ELEVEN_V25 = [...ELEVEN_MULTI, "no"];
+const SONIC = ["en", "fr", "de", "es", "pt", "zh", "ja", "hi", "it", "ko", "nl", "pl", "ru", "sv", "tr"];
+const SONIC_3 = ["en", ..."ar bn da de es fr gu he hi id it ja kn ko ml mr ms nl no or pa pl pt ru sv ta te th tr uk ur zh".split(" ")];
+const FISH = ["en", "zh", "ja", "ko", "fr", "de", "es", "ar", "ru", "nl", "it", "pl", "pt"];
+const TTS_LANGUAGES: Record<string, [string[], string | null]> = {
+  eleven_flash_v2_5: [ELEVEN_V25, null],
+  eleven_flash_v2: [["en"], "eleven_flash_v2_5"],
+  eleven_turbo_v2_5: [ELEVEN_V25, null],
+  eleven_turbo_v2: [["en"], "eleven_turbo_v2_5"],
+  eleven_multilingual_v2: [ELEVEN_MULTI, null],
+  "sonic-2": [SONIC, null],
+  "sonic-2-2025-03-07": [SONIC, null],
+  "sonic-3": [SONIC_3, null],
+  "sonic-turbo": [SONIC, null],
+  "s2.1-pro": [FISH, null],
+  "s2-pro": [FISH, null],
+  s1: [FISH, null],
+};
+const spoken = (id: string) => ({ languages: TTS_LANGUAGES[id]?.[0] ?? ["en"], multilingual_model: TTS_LANGUAGES[id]?.[1] ?? null });
+
 const tts: TtsProvider[] = [
   {
     provider: "elevenlabs",
     label: "ElevenLabs",
-    default_model: "eleven_flash_v2_5",
+    default_model: "eleven_multilingual_v2",
     default_voice_by_language: DEFAULT_VOICE_BY_PROVIDER.elevenlabs,
     voice_listing: { source: "live", server_search: true, gender_filter: true, language_filter: true, previews: true },
     capabilities: { speed: true, expressiveness: true, volume: true },
@@ -272,6 +295,7 @@ const tts: TtsProvider[] = [
       chars_bundle_per_min: 750,
       price_per_min_usd: price("tts", "elevenlabs", id!),
       withdrawn: false,
+      ...spoken(id!),
     })),
   },
   {
@@ -293,6 +317,7 @@ const tts: TtsProvider[] = [
       chars_bundle_per_min: 750,
       price_per_min_usd: price("tts", "cartesia", id!),
       withdrawn: false,
+      ...spoken(id!),
     })),
   },
   {
@@ -313,6 +338,7 @@ const tts: TtsProvider[] = [
       chars_bundle_per_min: 750,
       price_per_min_usd: price("tts", "fishaudio", id!),
       withdrawn: false,
+      ...spoken(id!),
     })),
   },
 ];

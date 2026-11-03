@@ -63,7 +63,7 @@ type Sel = { stt: string; llm: string; tts: string; nc: string };
 const DEFAULTS: Sel = {
   stt: key("deepgram", "nova-3"),
   llm: key("azure_openai", "gpt-5-mini"),
-  tts: key("elevenlabs", "eleven_flash_v2_5"),
+  tts: key("elevenlabs", "eleven_multilingual_v2"),
   nc: NONE,
 };
 

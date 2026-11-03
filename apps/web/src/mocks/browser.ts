@@ -9,6 +9,7 @@ import { qualityHandlers } from "./quality/handlers";
 import { simHandlers } from "./sim/handlers";
 import { issueHandlers } from "./issues/handlers";
 import { callbackHandlers } from "./callbacks/handlers";
+import { callerLanguageHandlers } from "./callerLanguage/handlers";
 import { enablePersistence } from "./db";
 
 /** Starts the in-browser mock API. Imported dynamically only when VITE_API_MOCKS=true. */
@@ -27,6 +28,7 @@ export async function startMocks() {
     ...simHandlers,
     ...issueHandlers,
     ...callbackHandlers,
+    ...callerLanguageHandlers,
   );
   await worker.start({
     onUnhandledRequest: "bypass",

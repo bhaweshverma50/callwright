@@ -2,6 +2,7 @@ import { Bot, FileText, Globe, Hand, MessageSquareQuote, Sparkles, Tag, UserRoun
 import { useState } from "react";
 import { Button, FieldRow, Input, Segmented, Select, Textarea, cn } from "../../../components";
 import { fieldId } from "../versions/versionLabels";
+import { CallerLanguageField } from "./CallerLanguageField";
 import { syncVariables, type Catalogs } from "./catalogs";
 import { FieldError, Note, Section, StackRow } from "./fields";
 import { ModelPicker } from "./ModelPicker";
@@ -16,6 +17,7 @@ const GREETING_MAX = 1000;
 /**
  * Basics tab: identity, model, prompt, greeting and variables (T040). Language changes reseed
  * speech recognition and the voice for the new language when the current ones cannot serve it.
+ * Caller language switching (012) sits under the language.
  */
 export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: AgentDraft; catalogs: Catalogs; onOpenAssistant: () => void }) {
   const { config } = draft;
@@ -89,6 +91,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
           {langNotice && <Note tone="accent">{langNotice}</Note>}
           <FieldError message={draft.errorFor("/language")} />
         </FieldRow>
+        <CallerLanguageField draft={draft} catalogs={catalogs} />
         <ModelPicker draft={draft} catalogs={catalogs} onClamp={setClamp} />
         <TemperatureControl draft={draft} catalogs={catalogs} clampNotice={clamp} />
       </Section>

@@ -39,7 +39,7 @@ describe("transactions (T058, FR-009)", () => {
     await signInDemo();
     renderApp("/billing");
     expect(await screen.findByText("minutes of calls")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText(/On your current stack: Nova-3, GPT-5 Mini and Flash v2.5/)).toHaveTextContent("$0.1050"));
+    await waitFor(() => expect(screen.getByText(/On your current stack: Nova-3, GPT-5 Mini and Multilingual v2/)).toHaveTextContent("$0.1500"));
   });
 });
 

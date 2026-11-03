@@ -18,12 +18,12 @@ function setup() {
 describe("PricingCalculator (T065, US3.4)", () => {
   it("shows the per-minute total from the quote and monthly = per-minute x minutes", async () => {
     setup();
-    // Nova-3 0.0085 + GPT-5 Mini 0.0015 + Flash v2.5 0.0450 + platform 0.0500
-    await waitFor(() => expect(screen.getByTestId("per-minute")).toHaveTextContent("$0.1050"));
-    expect(screen.getByTestId("monthly")).toHaveTextContent("$1,050.00");
+    // Nova-3 0.0085 + GPT-5 Mini 0.0015 + Multilingual v2 0.0900 + platform 0.0500
+    await waitFor(() => expect(screen.getByTestId("per-minute")).toHaveTextContent("$0.1500"));
+    expect(screen.getByTestId("monthly")).toHaveTextContent("$1,500.00");
 
     fireEvent.change(screen.getByLabelText("Minutes per month", { selector: "input" }), { target: { value: "20,000" } });
-    await waitFor(() => expect(screen.getByTestId("monthly")).toHaveTextContent("$2,100.00"));
+    await waitFor(() => expect(screen.getByTestId("monthly")).toHaveTextContent("$3,000.00"));
   });
 
   it("caps minutes at 250,000 and exposes the slider range", async () => {
@@ -33,17 +33,17 @@ describe("PricingCalculator (T065, US3.4)", () => {
     expect(slider).toHaveAttribute("aria-valuemin", "0");
     expect(slider).toHaveAttribute("aria-valuemax", String(MAX_MINUTES));
     fireEvent.change(screen.getByLabelText("Minutes per month", { selector: "input" }), { target: { value: "999999" } });
-    await waitFor(() => expect(screen.getByTestId("monthly")).toHaveTextContent("$26,250.00"));
+    await waitFor(() => expect(screen.getByTestId("monthly")).toHaveTextContent("$37,500.00"));
   });
 
   it("applies the bundle surcharge when usage per minute passes the bundle", async () => {
     setup();
-    await waitFor(() => expect(screen.getByTestId("per-minute")).toHaveTextContent("$0.1050"));
+    await waitFor(() => expect(screen.getByTestId("per-minute")).toHaveTextContent("$0.1500"));
     const tokens = screen.getByRole("slider", { name: "LLM input tokens per minute" });
     tokens.focus();
     // 12,000 -> 40,000 tokens per minute: 2x the 20,000 bundle, so the LLM line bills double.
     for (let i = 0; i < 28; i++) fireEvent.keyDown(tokens, { key: "ArrowRight" });
     expect(await screen.findByText("Bundle surcharge applies")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("per-minute")).toHaveTextContent("$0.1065"));
+    await waitFor(() => expect(screen.getByTestId("per-minute")).toHaveTextContent("$0.1515"));
   });
 });

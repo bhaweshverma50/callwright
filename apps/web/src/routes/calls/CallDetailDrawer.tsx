@@ -33,6 +33,7 @@ import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { summaryHeadline, summaryOutcome } from "./quality/SummaryText";
 import { CallCallbacks } from "./callbacks/CallbackParts";
+import { CallLanguageCard } from "./CallLanguageCard";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -159,6 +160,7 @@ function Body({
       <Header call={c} />
       {c.summary && <SummaryCard summary={c.summary} onOpen={() => onTab("analysis")} />}
       <CallCallbacks callId={c.call_id} />
+      <CallLanguageCard callId={c.call_id} />
       <RecordingPlayer
         callId={c.call_id}
         hasRecording={c.has_recording}

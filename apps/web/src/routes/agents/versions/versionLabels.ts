@@ -61,6 +61,9 @@ export const PATH_LABELS: Record<string, string> = {
   "/advanced/analysis_model/model": "Analysis model",
   "/advanced/pronunciation": "Pronunciation dictionary",
   "/advanced/recording": "Call recording",
+  "/advanced/language_switching": "Caller language switching",
+  "/advanced/language_switching/enabled": "Caller language switching",
+  "/advanced/language_switching/languages": "Caller languages",
   "/tool_ids": "Tools",
   "/kb_ids": "Knowledge bases",
   "/flow": "Flow",
@@ -91,8 +94,9 @@ export function labelFor(path: string, names?: ReadonlyMap<string, string>): str
 /** Long text gets a line diff in compare instead of old and new values side by side. */
 export const isLongText = (path: string) => path === "/prompt" || path === "/begin_message" || path === "/advanced/voicemail_detection/message";
 
-/** A value as people read it in compare ("1.5 s", "On", "None"). */
-export function formatValue(path: string, v: unknown): string {
+/** A value as people read it in compare ("1.5 s", "On", "None"). ``languages`` maps language
+ * codes to their catalog labels for the caller languages list. */
+export function formatValue(path: string, v: unknown, languages?: ReadonlyMap<string, string>): string {
   if (v === null || v === undefined || v === "") return "None";
   if (typeof v === "boolean") return v ? "On" : "Off";
   if (typeof v === "number") {
@@ -107,6 +111,8 @@ export function formatValue(path: string, v: unknown): string {
     if (path === "/stt/model" && !v) return "Auto";
     return v;
   }
+  if (path === "/advanced/language_switching/languages" && Array.isArray(v))
+    return v.length ? v.map((c) => languages?.get(String(c)) ?? String(c)).join(", ") : "All supported languages";
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
     if ("provider" in o && "model" in o) return `${o.provider} / ${o.model ?? "Auto"}`;
@@ -122,6 +128,8 @@ export type EditorSection = "basics" | "voice" | "behaviour" | "advanced";
 
 /** The editor tab that holds a field, so the error summary can open it before focusing. */
 export function sectionOf(pointer: string): EditorSection {
+  // Caller language switching (012) sits under the agent's language on Basics.
+  if (pointer.startsWith("/advanced/language_switching")) return "basics";
   if (/^\/(stt|tts|noise_cancellation)/.test(pointer)) return "voice";
   if (pointer.startsWith("/call_behavior")) return "behaviour";
   if (pointer.startsWith("/advanced")) return "advanced";

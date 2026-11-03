@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockCallbackId, mockCallbacks } from "../../mocks/callbacks/handlers";
+import { mockCallerLanguages, mockPreferenceId } from "../../mocks/callerLanguage/handlers";
 import { mockCallId, seedMockCalls } from "../../mocks/calls/handlers";
 import { renderApp, signInDemo } from "../../test/render";
 import { transcriptText } from "./Transcript";
@@ -89,6 +90,43 @@ describe("CallDetailDrawer (006 US2)", () => {
     const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
     await within(drawer).findByText("Where is my order?", undefined, { timeout: 5000 });
     expect(within(drawer).queryByRole("region", { name: "Callbacks" })).not.toBeInTheDocument();
+  });
+
+  it("shows the language switch and forgets the caller's saved language (012)", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    const user = userEvent.setup();
+    renderApp(`/calls?call=${mockCallId(1)}`);
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    const card = await within(drawer).findByRole("region", { name: "Language" }, { timeout: 5000 });
+    expect(card).toHaveTextContent("Started in English (US)");
+    expect(within(card).getByRole("list", { name: "Language switches" })).toHaveTextContent("Switched to Hindi at 0:42");
+    expect(card).toHaveTextContent("Saved for +1 555 123 4567: Hindi, updated");
+    await user.click(within(card).getByRole("button", { name: /Forget the saved language/ }));
+    await waitFor(() => expect(mockCallerLanguages().deleted).toEqual([mockPreferenceId(1)]));
+    await waitFor(() => expect(card).not.toHaveTextContent("Saved for"));
+    expect(card).toHaveTextContent("Switched to Hindi at 0:42");
+  });
+
+  it("says when a call started in the caller's saved language (012)", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    renderApp(`/calls?call=${mockCallId(4)}`);
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    const card = await within(drawer).findByRole("region", { name: "Language" }, { timeout: 5000 });
+    expect(card).toHaveTextContent("Started in Spanish (saved for this caller)");
+    expect(card).toHaveTextContent("Saved for +1 415 555 0004: Spanish");
+  });
+
+  it("never mentions saving on a browser call (012)", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    renderApp(`/calls?call=${mockCallId(3)}`);
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    const card = await within(drawer).findByRole("region", { name: "Language" }, { timeout: 5000 });
+    expect(card).toHaveTextContent("Switched to Spanish at 0:25");
+    expect(card).not.toHaveTextContent(/saved/i);
+    expect(within(card).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("copies plain text with bracketed tool lines", () => {

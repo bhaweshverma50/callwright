@@ -284,7 +284,9 @@ function seedDemo(s: AgentStore) {
   const ws = user?.workspace_id;
   if (!ws) return;
   const now = Date.now();
-  const base = (patch: Record<string, unknown>) => overlay(defaultConfig("single_prompt"), patch) as AgentConfig;
+  // The demo agents were saved before 012 made Multilingual v2 the default voice model.
+  const saved = (type: "single_prompt" | "flow") => overlay(defaultConfig(type), { tts: { model: "eleven_flash_v2_5" } });
+  const base = (patch: Record<string, unknown>) => overlay(saved("single_prompt"), patch) as AgentConfig;
   const vars = [
     { name: "company_name", default: "Halcyon Dental" },
     { name: "customer_name", default: null },
@@ -313,7 +315,11 @@ function seedDemo(s: AgentStore) {
       dynamic_variables: [vars[0]!],
       begin_message: "Thanks for calling Halcyon Dental. How can I help you today?",
       tts: { provider: "elevenlabs", model: "eleven_flash_v2_5", voice_id: "el_sarah", speed: 1.1, expressiveness: 0.9, volume: 1 },
-      advanced: { webhook_url: "https://hooks.halcyon-dental.com/calls", pronunciation: [{ word: "Halcyon", replacement: "HAL-see-on" }] },
+      advanced: {
+        webhook_url: "https://hooks.halcyon-dental.com/calls",
+        pronunciation: [{ word: "Halcyon", replacement: "HAL-see-on" }],
+        language_switching: { enabled: true, languages: ["hi", "es"] },
+      },
     }),
     "save",
     { note: "Calmer voice, webhook for the booking system", at: now - 2 * DAY },
@@ -362,7 +368,7 @@ function seedDemo(s: AgentStore) {
   );
 
   // A flow agent (built in spec 004), so the list shows both types.
-  const fl = insertAgent(ws, "Recall reminders", "flow", overlay(defaultConfig("flow"), { prompt: "" }) as AgentConfig, "flow_publish", {
+  const fl = insertAgent(ws, "Recall reminders", "flow", overlay(saved("flow"), { prompt: "" }) as AgentConfig, "flow_publish", {
     at: now - 8 * DAY,
   });
   fl.pinned_version_id = fl.draft_version_id;
