@@ -79,5 +79,19 @@ if (process.env.AFTER) {
     console.log("ask", answer.outcome, "|", answer.content);
   }
   if (call) console.log("turn-latencies", JSON.stringify(await get(`/calls/${call.call_id}/turn-latencies`)).slice(0, 600));
+  // RECORDING=1: wait for the call's recording and check that its signed link serves audio.
+  if (call && process.env.RECORDING) {
+    let rec;
+    for (let i = 0; i < 24; i++) {
+      rec = await get(`/calls/${call.call_id}/recording`);
+      if (rec.url || (rec.code && rec.code !== "recording_processing")) break;
+      await new Promise((r) => setTimeout(r, 5_000));
+    }
+    console.log("recording", JSON.stringify({ ...rec, url: rec.url ? "<signed>" : undefined }));
+    if (rec.url) {
+      const res = await fetch(rec.url);
+      console.log("recording file", res.status, res.headers.get("content-type"), (await res.arrayBuffer()).byteLength, "bytes");
+    }
+  }
 }
 await browser.close();

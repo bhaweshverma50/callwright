@@ -82,7 +82,7 @@ async def enqueue(job_name: str, *args: Any, **kwargs: Any) -> None:
 def _functions() -> list[Any]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
-    from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
+    from app.calls.jobs import reap_stuck_calls, run_pipeline, settle_stuck_recordings, start_recording
     from app.evals.install import job_functions as quality_jobs
     from app.issues.install import job_functions as issue_jobs
     from app.knowledge.jobs import ingest_document
@@ -98,6 +98,7 @@ def _functions() -> list[Any]:
         start_recording,
         deliver_webhook,
         reap_stuck_calls,
+        settle_stuck_recordings,
         purge_webhook_deliveries,
         purge_analytics_audit,
         ingest_document,
@@ -109,7 +110,7 @@ def _functions() -> list[Any]:
 def _crons() -> list[CronJob]:
     from app.analytics_chat.jobs import purge_analytics_audit
     from app.billing.jobs import reconcile_balances
-    from app.calls.jobs import reap_stuck_calls
+    from app.calls.jobs import reap_stuck_calls, settle_stuck_recordings
     from app.issues.install import crons as issue_crons
     from app.phone_numbers.jobs import drain_channels
     from app.simulator.install import crons as simulation_crons
@@ -121,6 +122,8 @@ def _crons() -> list[CronJob]:
         cron(reconcile_balances, hour={3}, minute={0}, run_at_startup=False),
         # 003 R16: stuck calls every 15 s; deliveries older than 30 days once a day.
         cron(reap_stuck_calls, second={0, 15, 30, 45}, run_at_startup=False, unique=True),
+        # Recordings whose egress_ended webhook was lost: every minute.
+        cron(settle_stuck_recordings, second={50}, run_at_startup=False, unique=True),
         cron(purge_webhook_deliveries, hour={4}, minute={0}, run_at_startup=False),
         cron(purge_analytics_audit, hour={4}, minute={30}, run_at_startup=False),
         # 010 R8: draining numbers and WhatsApp channels are removed once idle (every 30 s).

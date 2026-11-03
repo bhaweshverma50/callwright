@@ -154,10 +154,15 @@ Turn on once, in this order:
 1. Bucket, service account and keys (into Secret Manager), then access for the API and the VM:
    `deploy/cloudrun/deploy.sh callwright-dev bhaweshverma50@gmail.com storage setup`
 2. VM: copy `docker-compose.yml`, `render-env.sh`, `livekit.yaml.tmpl` and `egress.yaml.tmpl`,
-   then `CW_RECORDINGS_ENABLED=true ./render-env.sh && sudo docker compose up -d`
-   (restarts LiveKit with the webhook; the flag is sticky across later renders). Check:
+   then `CW_RECORDINGS_ENABLED=true ./render-env.sh && sudo docker compose up -d && sudo docker compose restart livekit`
+   (`up -d` does not notice a changed `livekit.yaml`, so restart LiveKit to load the webhook; the
+   flag is sticky across later renders). Check:
    `curl -s localhost:8194` and `sudo docker compose logs --tail 20 egress`.
 3. API: `deploy.sh ... api` (picks up the bucket settings and `RECORDINGS_ENABLED=true`).
+
+If a webhook is lost (API cold start, VM restart), the jobs worker's `settle_stuck_recordings`
+cron asks LiveKit about any recording still `recording` two minutes after its call ended and
+applies the result; one LiveKit has forgotten is marked failed after 30 minutes.
 
 Turn off: `CW_RECORDINGS_ENABLED=false ./render-env.sh && sudo docker compose up -d --remove-orphans`
 and `RECORDINGS_ENABLED=false deploy.sh ... api`. Workspace and agent recording settings still

@@ -128,6 +128,8 @@ class LiveKitGateway(Protocol):
 
     async def start_audio_recording(self, room: str, target: EgressTarget) -> str: ...
 
+    async def egress_info(self, egress_id: str) -> dict[str, Any] | None: ...
+
     async def aclose(self) -> None: ...
 
 
@@ -234,6 +236,24 @@ class LiveKitClient(_TokenMixin):
             raise LiveKitError(f"start egress for {room}: {exc}") from exc
         return str(info.egress_id)
 
+    async def egress_info(self, egress_id: str) -> dict[str, Any] | None:
+        """The egress as a webhook ``egressInfo`` body, or None when LiveKit no longer knows it."""
+        try:
+            res = await asyncio.wait_for(
+                self._client().egress.list_egress(lk.ListEgressRequest(egress_id=egress_id)), 10
+            )
+        except Exception as exc:
+            raise LiveKitError(f"list egress {egress_id}: {exc}") from exc
+        if not res.items:
+            return None
+        info = res.items[0]
+        return {
+            "egressId": info.egress_id,
+            "status": lk.EgressStatus.Name(info.status),
+            "error": info.error,
+            "fileResults": [{"filename": f.filename} for f in info.file_results],
+        }
+
     async def aclose(self) -> None:
         if self._api is not None:
             await self._api.aclose()
@@ -250,6 +270,7 @@ class FakeLiveKit(_TokenMixin):
     deleted: list[str] = field(default_factory=list)
     dispatches: list[tuple[str, str, dict[str, Any]]] = field(default_factory=list)
     egresses: list[tuple[str, EgressTarget]] = field(default_factory=list)
+    egress_infos: dict[str, dict[str, Any]] = field(default_factory=dict)
     fail_next: set[str] = field(default_factory=set)
 
     def _maybe_fail(self, op: str) -> None:
@@ -275,6 +296,10 @@ class FakeLiveKit(_TokenMixin):
         self._maybe_fail("start_audio_recording")
         self.egresses.append((room, target))
         return f"EG_{len(self.egresses)}"
+
+    async def egress_info(self, egress_id: str) -> dict[str, Any] | None:
+        self._maybe_fail("egress_info")
+        return self.egress_infos.get(egress_id)
 
     async def aclose(self) -> None:
         return None

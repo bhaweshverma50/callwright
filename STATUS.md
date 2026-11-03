@@ -74,6 +74,11 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Simulation lists and comparison stay current; rounded scores; audio-only checks listed once.
 - One composer and a thinking line (waveform, changing verb, elapsed time) for every AI surface; calmer agent editor tabs; movable assistant dock; the save bar shows Discard and Save only with unsaved changes.
 
+## Recordings and keypad (2026-11-03)
+- Call recordings are on: LiveKit egress on the VM (compose profile `recording`), LiveKit webhook to the API, Cloud Storage bucket `callwright-dev-data` for recordings and uploads (uploads no longer live in API memory). Setup: `deploy.sh ... storage setup`, VM render with `CW_RECORDINGS_ENABLED=true` plus a LiveKit restart, API deploy (deploy/vm/README.md, "Call recordings"). Verified on the hosted stack: a test call's MP4 landed in the bucket.
+- A sweep cron (`settle_stuck_recordings`, migration `s003_0003`) settles recordings whose webhook was lost.
+- Test calls have a keypad that sends DTMF (003 T099).
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 

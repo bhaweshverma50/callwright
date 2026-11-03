@@ -238,6 +238,48 @@ async def reap_and_clean(
     return result
 
 
+# Recordings whose ``egress_ended`` webhook never arrived (API cold, VM restarted mid-delivery):
+# ask LiveKit for the egress and apply it as if the webhook had come. One LiveKit no longer knows
+# (its server restarted) is failed after RECORDING_LOST_S.
+RECORDING_SETTLE_AFTER_S = 120
+RECORDING_LOST_S = 1800
+EGRESS_DONE = ("EGRESS_COMPLETE", "EGRESS_FAILED", "EGRESS_ABORTED", "EGRESS_LIMIT_REACHED")
+
+
+async def settle_recordings(db: Database, livekit: LiveKitGateway, *, now: datetime | None = None) -> int:
+    from app.livekit_hooks.service import egress_event
+
+    now = now or datetime.now(UTC)
+    async with db.transaction() as session:
+        rows = (
+            await session.execute(
+                text("select call_id, egress_id, ended_at from calls_recording_pending(:s)"),
+                {"s": RECORDING_SETTLE_AFTER_S},
+            )
+        ).all()
+    settled = 0
+    for row in rows:
+        try:
+            info = await livekit.egress_info(row.egress_id)
+        except LiveKitError as exc:
+            logger.info("recording sweep: LiveKit unreachable (%s)", exc)
+            break
+        if info is None:
+            if row.ended_at > now - timedelta(seconds=RECORDING_LOST_S):
+                continue
+            info = {"egressId": row.egress_id, "status": "EGRESS_LOST"}
+        elif info.get("status") not in EGRESS_DONE:
+            continue
+        await egress_event(db, "egress_ended", info)
+        settled += 1
+    return settled
+
+
+async def settle_stuck_recordings(ctx: dict[str, Any]) -> int:
+    livekit = ctx.get("livekit")
+    return await settle_recordings(ctx["db"], livekit) if livekit is not None else 0
+
+
 async def reap_stuck_calls(ctx: dict[str, Any]) -> int:
     result = await reap_and_clean(ctx["db"], ctx.get("livekit"), ctx.get("jobs"))
     return len(result.reaped)
