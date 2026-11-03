@@ -62,6 +62,9 @@ class WorkerSettings(BaseSettings):
     azure_openai_api_key: SecretStr = Field(SecretStr(""), alias="AZURE_OPENAI_API_KEY")
     azure_openai_endpoint: str = Field("", alias="AZURE_OPENAI_ENDPOINT")
     azure_openai_api_version: str = Field("", alias="AZURE_OPENAI_API_VERSION")
+    # Claude models (003 T069). Without it the anthropic provider is unavailable on this
+    # deployment: live calls are refused and text simulations use the offline scripts.
+    anthropic_api_key: SecretStr = Field(SecretStr(""), alias="ANTHROPIC_API_KEY")
     eleven_api_key: SecretStr = Field(SecretStr(""), alias="ELEVEN_API_KEY")
     cartesia_api_key: SecretStr = Field(SecretStr(""), alias="CARTESIA_API_KEY")
     fishaudio_api_key: SecretStr = Field(SecretStr(""), alias="FISHAUDIO_API_KEY")
@@ -104,6 +107,7 @@ class WorkerSettings(BaseSettings):
                 "service_tier": self.openai_service_tier,
             },
             "azure_openai": azure,
+            "anthropic": {"api_key": self.anthropic_api_key.get_secret_value()},
             "elevenlabs": {"api_key": self.eleven_api_key.get_secret_value()},
             "cartesia": {"api_key": self.cartesia_api_key.get_secret_value()},
             "fishaudio": {"api_key": self.fishaudio_api_key.get_secret_value()},

@@ -18,15 +18,23 @@ from app.agents.validation import validate_pure
 from app.llms.service import load_catalog as llm_catalog
 from app.voices.catalog import load_catalog as voice_catalog
 
-MIGRATION = Path(__file__).resolve().parents[3] / "app/migrations/versions/s001_0004_pricing_catalog.py"
+VERSIONS = Path(__file__).resolve().parents[3] / "app/migrations/versions"
+# The launch seed and the rows later migrations add to the catalog in effect (003 T069).
+PRICING_MIGRATIONS = (
+    ("s001_0004_pricing_catalog.py", "SEED_V1"),
+    ("s003_0004_anthropic_llm_rates.py", "ROWS"),
+)
 
 
 def seed_keys() -> set[tuple[str, str, str | None]]:
-    spec = importlib.util.spec_from_file_location("s001_0004_seed", MIGRATION)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return {(row[0], row[1], row[2]) for row in module.SEED_V1}
+    keys: set[tuple[str, str, str | None]] = set()
+    for filename, attr in PRICING_MIGRATIONS:
+        spec = importlib.util.spec_from_file_location(filename.removesuffix(".py"), VERSIONS / filename)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        keys |= {(row[0], row[1], row[2]) for row in getattr(module, attr)}
+    return keys
 
 
 SEED = seed_keys()

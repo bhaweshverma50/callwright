@@ -41,6 +41,17 @@ class UnsupportedVendor(Exception):
         return f"unsupported_vendor:{self.kind}/{self.provider}"
 
 
+class VendorNotConfigured(UnsupportedVendor):
+    """A catalog vendor this deployment holds no key for (raised by ``build``).
+
+    Same diagnostic as :class:`UnsupportedVendor`: for this deployment the vendor does not exist.
+    """
+
+    def __init__(self, kind: str, provider: str) -> None:
+        super().__init__(kind, provider)
+        self.args = (f"{kind}/{provider} has no API key on this deployment",)
+
+
 class UnsupportedLanguage(Exception):
     """An Auto STT choice with no model for the language (FR-045 edge case)."""
 

@@ -49,7 +49,7 @@ def test_unknown_provider_and_model_raise() -> None:
     with pytest.raises(UnsupportedVendor):
         registry.check(VendorSpec("stt", "deepgram", "nova-9"))
     with pytest.raises(UnsupportedVendor):
-        registry.build(VendorSpec("llm", "anthropic", "claude"), {})
+        registry.build(VendorSpec("llm", "mistral", "large"), {})
 
 
 def test_azure_alias_normalises() -> None:

@@ -273,6 +273,12 @@ models under the same ids. Default `{azure_openai, gpt-5.1}`.
 | `gpt-5.2` | GPT-5.2 | gpt-5 | fixed 1.0 | yes | 0.0315 | same |
 | `gpt-5-mini` | GPT-5 Mini | gpt-5 | fixed 1.0 | yes | 0.0015 | same |
 
+Added later (003 T069, migration `s003_0004`): provider `anthropic` "Anthropic" with
+`claude-haiku-5-5` "Claude Haiku 5.5" (0.0021/min) and `claude-sonnet-5-5` "Claude Sonnet 5.5"
+(0.0420/min), family `claude`, temperature fixed ("This model does not take a temperature
+setting"), tools yes, same bundles. Each rate is the vendor list price of the bundle. Live calls
+need the platform's `ANTHROPIC_API_KEY`.
+
 The analysis model select offers "Same as the agent's model" (null) plus these three. The
 temperature rule stays data, so a later ranged model needs no editor change.
 

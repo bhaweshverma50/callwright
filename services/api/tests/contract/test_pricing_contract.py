@@ -25,7 +25,7 @@ async def test_catalog(client: httpx.AsyncClient) -> None:
     response = check(await client.get("/v1/pricing/catalog"))
     assert response.headers["cache-control"] == "public, max-age=300"
     body = response.json()
-    assert body["version"] == 1 and len(body["entries"]) == 32
+    assert body["version"] == 1 and len(body["entries"]) == 34  # 32 launch rows, 2 Anthropic (s003_0004)
     pinned = check(await client.get("/v1/pricing/catalog?at=2026-06-01T00:00:00Z"))
     assert pinned.json()["version"] == 1
 

@@ -31,7 +31,7 @@ import type {
 import { env } from "../lib/env";
 import { checkTopUpAmount, microsToDecimal, toMicros } from "../lib/money";
 import { priceQuote } from "../lib/pricing";
-import { catalogV1 } from "./catalog";
+import { catalogCurrent } from "./catalog";
 import { appendTransaction, balanceOf, db, mockId, save, type MockUser } from "./db";
 
 const base = env.apiBaseUrl;
@@ -408,7 +408,7 @@ export const handlers = [
 
   // --- pricing -------------------------------------------------------------
   http.get(url("/pricing/catalog"), () =>
-    HttpResponse.json(catalogV1 satisfies Catalog as unknown as JsonBodyType, { headers: { "cache-control": "public, max-age=300" } }),
+    HttpResponse.json(catalogCurrent satisfies Catalog as unknown as JsonBodyType, { headers: { "cache-control": "public, max-age=300" } }),
   ),
 
   http.post(url("/pricing/quote"), async ({ request }) => {
@@ -416,7 +416,7 @@ export const handlers = [
     if (!body?.components?.stt || !body.components.llm || !body.components.tts)
       return validation([{ pointer: "/components", code: "required", message: "Choose speech-to-text, model and voice." }]);
     await delay(60);
-    const q = priceQuote(catalogV1 as Parameters<typeof priceQuote>[0], body.components, body.usage);
+    const q = priceQuote(catalogCurrent as Parameters<typeof priceQuote>[0], body.components, body.usage);
     return json<Quote>(q as Quote);
   }),
 

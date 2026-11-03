@@ -44,6 +44,9 @@ EXPECTED = {
     ("nc", "sanas", "st"): ("0.0000", ()),
     ("nc", "ai_coustics", "standard"): ("0.0000", ()),
     ("platform", "callwright", None): ("0.0500", ()),
+    # Added to the version in effect by s003_0004 (003 T069), not part of the launch seed.
+    ("llm", "anthropic", "claude-haiku-5-5"): ("0.0021", LLM),
+    ("llm", "anthropic", "claude-sonnet-5-5"): ("0.0420", LLM),
 }
 
 
@@ -61,7 +64,7 @@ async def _v1(app: FastAPI) -> engine.Catalog:
         return await service.catalog_version(session, 1)
 
 
-async def test_v1_holds_exactly_the_32_call_rows(app: FastAPI) -> None:
+async def test_v1_holds_exactly_the_32_launch_rows_plus_anthropic(app: FastAPI) -> None:
     catalog = await _v1(app)
     rows = {
         (r.component, r.provider, r.model): (
@@ -70,7 +73,7 @@ async def test_v1_holds_exactly_the_32_call_rows(app: FastAPI) -> None:
         )
         for r in catalog.call_rates()
     }
-    assert len(catalog.call_rates()) == 32
+    assert len(catalog.call_rates()) == 34
     assert rows == {k: (Decimal(rate), bundles) for k, (rate, bundles) in EXPECTED.items()}
 
 

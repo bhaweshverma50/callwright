@@ -89,6 +89,25 @@ wheels = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "1.17.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "docstring-parser" },
+    { name = "httpx2" },
+    { name = "jiter" },
+    { name = "opentelemetry-api" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/66/4ec271f7607460005276bb09b0d1c749a9ed0cead35a488a8676f15ed6d5/anthropic-1.17.0.tar.gz", hash = "sha256:dcf77a74dde89a9fd12405fca798b012725a107f7c9488454234a74e275c2163", size = 1756371, upload-time = "2026-10-20T22:13:35.117Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/9d/b4d4e46ec05bf19bcfd46c1417337e7cf42b9ecb95c3c63f295e2e9fee4b/anthropic-1.17.0-py3-none-any.whl", hash = "sha256:ccb98b85e1a14f81cf1e2ba348393f341f342bad9e07e014f96c9b69f853aaa7", size = 2094718, upload-time = "2026-10-20T22:13:32.585Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -191,7 +210,7 @@ source = { editable = "." }
 dependencies = [
     { name = "arq" },
     { name = "httpx" },
-    { name = "livekit-agents", extra = ["assemblyai", "cartesia", "deepgram", "elevenlabs", "fishaudio", "openai", "sarvam", "silero", "turn-detector"] },
+    { name = "livekit-agents", extra = ["anthropic", "assemblyai", "cartesia", "deepgram", "elevenlabs", "fishaudio", "openai", "sarvam", "silero", "turn-detector"] },
     { name = "livekit-plugins-ai-coustics" },
     { name = "numpy" },
     { name = "opentelemetry-api" },
@@ -217,7 +236,7 @@ dev = [
 requires-dist = [
     { name = "arq", specifier = ">=0.26,<0.29" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "livekit-agents", extras = ["deepgram", "openai", "elevenlabs", "cartesia", "silero", "turn-detector", "assemblyai", "sarvam", "fishaudio"], specifier = "~=1.8.8" },
+    { name = "livekit-agents", extras = ["anthropic", "assemblyai", "cartesia", "deepgram", "elevenlabs", "fishaudio", "openai", "sarvam", "silero", "turn-detector"], specifier = "~=1.8.8" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.3.4" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "opentelemetry-api", specifier = ">=1.30" },
@@ -717,6 +736,9 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+anthropic = [
+    { name = "livekit-plugins-anthropic" },
+]
 assemblyai = [
     { name = "livekit-plugins-assemblyai" },
 ]
@@ -808,6 +830,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/45/9b/7cf4089a8ab076bf901fac350065d50f6821be212f98d891a94436826bd8/livekit_plugins_ai_coustics-0.3.4-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:c99e9acc7173418ad92faf7d2a53580cc9bc9b8a4a2ece7994293ad287c8172c", size = 70342671, upload-time = "2026-10-11T22:32:24.878Z" },
     { url = "https://files.pythonhosted.org/packages/6d/bf/d900d7dbc6bb6fbe34307ddf80045988e950ecf2268739b0e26826754407/livekit_plugins_ai_coustics-0.3.4-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:aa9571dfc67f5d6013579e777dd5a0f7d0dbd4ff3323f017d94494fb13343813", size = 70724692, upload-time = "2026-10-11T22:32:28.183Z" },
     { url = "https://files.pythonhosted.org/packages/18/7c/57131654543f9b38bf4c3e6df281b7985783d5444deee4dcc4822af1a4dd/livekit_plugins_ai_coustics-0.3.4-cp310-abi3-win_amd64.whl", hash = "sha256:333869a86d960cb938f384231953e5f62ff973b14b5a7dd129509e877f7e5c62", size = 70303249, upload-time = "2026-10-11T22:32:31.861Z" },
+]
+
+[[package]]
+name = "livekit-plugins-anthropic"
+version = "1.8.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anthropic" },
+    { name = "httpx2" },
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/53/74/6c0673fcd0d19d1c05aa4185a089150eb10781755ad7e04c648e590bf5f4/livekit_plugins_anthropic-1.8.8.tar.gz", hash = "sha256:d7e39f009a656722641c14e3a1a3c6a3c6317cc732f2c130481c9fca7c5e9fd8", size = 9517, upload-time = "2026-10-15T06:06:58.639Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f9/d5/90843287b02e6cd6b2261f0d4c8d336baa6fc8041804d97ad66eedbcbc26/livekit_plugins_anthropic-1.8.8-py3-none-any.whl", hash = "sha256:4427b18d77db7caab0bf5dbc64b6bdd0fb94ce6a768e2b6e0e7eaa0a19a4069c", size = 11281, upload-time = "2026-10-15T06:06:57.264Z" },
 ]
 
 [[package]]

@@ -58,6 +58,13 @@
       "meter": "tokens"
     },
     {
+      "kind": "llm",
+      "provider": "anthropic",
+      "models": ["claude-haiku-5-5", "claude-sonnet-5-5"],
+      "streaming": true,
+      "meter": "tokens"
+    },
+    {
       "kind": "tts",
       "provider": "elevenlabs",
       "models": [

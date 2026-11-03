@@ -59,8 +59,32 @@ export const catalogV1: Catalog = {
   })),
 };
 
+/**
+ * Rows a later migration added to the catalog in effect (services/api s003_0004, 003 T069). The
+ * mock API serves `catalogCurrent`; the public pages keep describing the launch catalog.
+ */
+const addedRows: Row[] = [
+  ["llm", "anthropic", "claude-haiku-5-5", "Claude Haiku 5.5", "0.0021"],
+  ["llm", "anthropic", "claude-sonnet-5-5", "Claude Sonnet 5.5", "0.0420"],
+];
+
+export const catalogCurrent: Catalog = {
+  ...catalogV1,
+  entries: [
+    ...catalogV1.entries,
+    ...addedRows.map(([component, provider, model, label, rate]) => ({
+      component,
+      provider,
+      model,
+      label,
+      rate_per_min_usd: rate,
+      bundles: llmBundles,
+    })),
+  ],
+};
+
 /** Display name for a catalog row ("Nova-3", "GPT-5 Mini"); falls back to the raw model id. */
 export function modelLabel(component: string, provider: string, model: string | null | undefined): string | null {
-  const row = catalogV1.entries.find((e) => e.component === component && e.provider === provider && e.model === (model ?? null));
+  const row = catalogCurrent.entries.find((e) => e.component === component && e.provider === provider && e.model === (model ?? null));
   return row?.label ?? model ?? null;
 }

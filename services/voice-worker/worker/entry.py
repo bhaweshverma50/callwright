@@ -337,9 +337,19 @@ class LiveCall:
         if swap is None or self.components is None:
             return
         creds = self.settings.vendor_credentials()
-        for kind in swap.kinds:
-            spec = swap.specs[kind]
-            self.components.set(kind, self.registry.build(spec, creds.get(spec.provider, {})))
+        try:
+            built = {
+                kind: self.registry.build(spec, creds.get(spec.provider, {}))
+                for kind, spec in ((k, swap.specs[k]) for k in swap.kinds)
+            }
+        except UnsupportedVendor as exc:
+            # A vendor this deployment has no key for: keep the current components.
+            self.recorder.warning(
+                "override_rejected", component=exc.kind, provider=exc.provider, detail=str(exc)
+            )
+            return
+        for kind, component in built.items():
+            self.components.set(kind, component)
         plan = self.overrides.plan_for_current()
         assert self.control is not None
         self.agent = build_agent(
@@ -585,7 +595,8 @@ class LiveCall:
                 extra_instructions=extra_instructions,
                 flow_components=self._flow_components(),
             )
-        except FlowRuntimeUnavailable as exc:
+        except (FlowRuntimeUnavailable, UnsupportedVendor) as exc:
+            # UnsupportedVendor here is a catalog vendor without a key (VendorNotConfigured).
             await self._fail(exc.diagnostic)
             return
 

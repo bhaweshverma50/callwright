@@ -36,7 +36,7 @@ turn detector models are baked into the image, so a call never waits on a downlo
 and each vendor key that exists in Secret Manager: `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`,
 `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `ELEVENLABS_API_KEY` (written as
 `ELEVEN_API_KEY`, the name the ElevenLabs plugin reads), `CARTESIA_API_KEY`, `ASSEMBLYAI_API_KEY`,
-`SARVAM_API_KEY`, `FISHAUDIO_API_KEY`, `SANAS_API_KEY`, `AI_COUSTICS_API_KEY`. The VM service account
+`SARVAM_API_KEY`, `FISHAUDIO_API_KEY`, `SANAS_API_KEY`, `AI_COUSTICS_API_KEY`, `ANTHROPIC_API_KEY`. The VM service account
 needs `roles/secretmanager.secretAccessor` on each of them (`deploy.sh setup` grants it for the
 secrets that exist).
 
@@ -45,7 +45,10 @@ templates use `azure_openai`; when Azure OpenAI is not configured (no `AZURE_OPE
 `AZURE_OPENAI_ENDPOINT`) and `OPENAI_API_KEY` is, the worker runs the same model (`gpt-5.1`,
 `gpt-5.2`, `gpt-5-mini`) on OpenAI and records an `llm_provider_fallback` warning on the call. An
 agent can also select `{"provider": "openai", "model": "gpt-5.1"}` in the editor. Both providers
-have the same price.
+have the same price. Claude models (`{"provider": "anthropic", "model": "claude-haiku-5-5"}` or
+`claude-sonnet-5-5`) need `ANTHROPIC_API_KEY` in Secret Manager: the API mounts it and admission
+refuses live calls on those agents without it (`unsupported_vendor:llm/anthropic`); the voice
+worker reads it from `voice.env`.
 
 Recording: there is no LiveKit egress service on this VM, so calls cannot be recorded. Run the API
 and the jobs worker with `RECORDINGS_ENABLED=false` (deploy.sh and render-env.sh set it), which

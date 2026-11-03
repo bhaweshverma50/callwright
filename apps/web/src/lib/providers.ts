@@ -5,6 +5,7 @@ export const PROVIDER_LABELS: Record<string, string> = {
   sarvam: "Sarvam",
   azure_openai: "Azure OpenAI",
   openai: "OpenAI",
+  anthropic: "Anthropic",
   elevenlabs: "ElevenLabs",
   cartesia: "Cartesia",
   fishaudio: "Fish Audio",

@@ -5,11 +5,11 @@
  * the API joins its capability YAML with the pricing catalog (FR-039).
  */
 import type { ControlRange, Language, LlmCatalog, NoiseCancellationOption, SttProvider, TtsProvider, VoiceCatalog } from "../../api/agents";
-import { catalogV1 } from "../../lib/catalogSeed";
+import { catalogCurrent } from "../../lib/catalogSeed";
 import { chimeDataUri } from "./audio";
 
 function price(component: string, provider: string, model: string | null): string | null {
-  const row = catalogV1.entries.find((e) => e.component === component && e.provider === provider && e.model === model);
+  const row = catalogCurrent.entries.find((e) => e.component === component && e.provider === provider && e.model === model);
   return row ? row.rate_per_min_usd : null;
 }
 
@@ -21,28 +21,51 @@ const LLM_MODELS = [
   { id: "gpt-5-mini", label: "GPT-5 Mini", description: "Fastest and cheapest" },
 ];
 
+// Claude (003 T069): offered by the API's catalog; live calls need the platform's Anthropic key.
+const CLAUDE_MODELS = [
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
+];
+
 export const llmCatalog: LlmCatalog = {
   default: { provider: "azure_openai", model: "gpt-5.1" },
-  providers: (
-    [
-      ["azure_openai", "Azure OpenAI"],
-      ["openai", "OpenAI"],
-    ] as const
-  ).map(([id, label]) => ({
-    id,
-    label,
-    models: LLM_MODELS.map((m) => ({
-      id: m.id,
-      label: m.label,
-      family: "gpt-5",
-      temperature: { fixed: 1, reason: "This model only supports temperature 1.0" },
-      supports_tools: true,
-      context_window: 400_000,
-      input_tokens_bundle_per_min: 20_000,
-      price_per_min_usd: price("llm", id, m.id),
-      withdrawn: false,
+  providers: [
+    ...(
+      [
+        ["azure_openai", "Azure OpenAI"],
+        ["openai", "OpenAI"],
+      ] as const
+    ).map(([id, label]) => ({
+      id,
+      label,
+      models: LLM_MODELS.map((m) => ({
+        id: m.id,
+        label: m.label,
+        family: "gpt-5",
+        temperature: { fixed: 1, reason: "This model only supports temperature 1.0" },
+        supports_tools: true,
+        context_window: 400_000,
+        input_tokens_bundle_per_min: 20_000,
+        price_per_min_usd: price("llm", id, m.id),
+        withdrawn: false,
+      })),
     })),
-  })),
+    {
+      id: "anthropic",
+      label: "Anthropic",
+      models: CLAUDE_MODELS.map((m) => ({
+        id: m.id,
+        label: m.label,
+        family: "claude",
+        temperature: { fixed: 1, reason: "This model does not take a temperature setting" },
+        supports_tools: true,
+        context_window: 1_000_000,
+        input_tokens_bundle_per_min: 20_000,
+        price_per_min_usd: price("llm", "anthropic", m.id),
+        withdrawn: false,
+      })),
+    },
+  ],
 };
 
 // --- languages (8.1) ---------------------------------------------------------

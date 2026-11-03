@@ -6,6 +6,7 @@ import json
 from decimal import Decimal
 
 import pytest
+from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.calls import ports
@@ -110,6 +111,34 @@ async def test_unsupported_vendor_names_the_vendor(runtime: Runtime) -> None:
     admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)
     assert admission.refusal is not None and admission.refusal.status == 422
     assert admission.refusal.diagnostic == "unsupported_vendor:tts/acme"
+
+
+def with_key(monkeypatch: pytest.MonkeyPatch, key: SecretStr | None) -> None:
+    settings = calls.get_settings().model_copy(update={"anthropic_api_key": key})
+    monkeypatch.setattr(calls, "get_settings", lambda: settings)
+
+
+CLAUDE = {"provider": "anthropic", "model": "claude-haiku-5-5", "temperature": 1.0}
+
+
+async def test_anthropic_without_a_key_is_refused(runtime: Runtime, monkeypatch: pytest.MonkeyPatch) -> None:
+    """003 T069: no ANTHROPIC_API_KEY on the deployment, so live calls are refused up front."""
+    with_key(monkeypatch, None)
+    _, ws = await runtime.workspace()
+    agent = runtime.versions.add_agent(ws, agent_config(llm=CLAUDE))
+    admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)
+    assert admission.refusal is not None and admission.refusal.code == "unsupported_vendor"
+    assert admission.refusal.diagnostic == "unsupported_vendor:llm/anthropic"
+
+
+async def test_anthropic_with_a_key_is_admitted_and_priced(
+    runtime: Runtime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with_key(monkeypatch, SecretStr("sk-ant"))
+    _, ws = await runtime.workspace()
+    agent = runtime.versions.add_agent(ws, agent_config(llm=CLAUDE))
+    admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=runtime.catalog)
+    assert admission.admitted, admission.refusal
 
 
 async def test_unpriced_configuration_is_refused(runtime: Runtime) -> None:

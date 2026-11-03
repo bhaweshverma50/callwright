@@ -239,6 +239,8 @@ async def _checks(
         return refusal("flow_not_compiled")
     components = comp.resolve(snapshot.config, catalog)
     diagnostic = comp.unsupported(components, catalog)
+    if diagnostic is None and request.origin != "simulation":
+        diagnostic = comp.unconfigured(components, get_settings())
     if diagnostic is not None:
         return refusal("unsupported_vendor", diagnostic)
     try:

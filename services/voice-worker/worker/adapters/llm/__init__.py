@@ -10,8 +10,9 @@ from typing import Any
 DEFAULT_TEMPERATURE = 1.0
 
 
-# Model families that reject any temperature other than the vendor default.
-FIXED_TEMPERATURE_PREFIXES = ("gpt-5",)
+# Model families that reject any temperature other than the vendor default (Claude 5.5 models
+# take no sampling parameters at all).
+FIXED_TEMPERATURE_PREFIXES = ("gpt-5", "claude-")
 
 
 def supports_temperature(model: str | None) -> bool:

@@ -127,6 +127,21 @@ def unsupported(components: ResolvedComponents, catalog: AdapterCatalog) -> str 
     return None
 
 
+# LLM providers the voice worker runs only with a platform key (003 T069). The API and the voice
+# worker read the same secret, so a deployment without it refuses live calls here instead of
+# letting the worker fail them after the room exists. Simulations are not gated: the text runner
+# answers with its offline scripts when it has no key.
+KEYED_LLM_PROVIDERS: Mapping[str, str] = {"anthropic": "anthropic_api_key"}
+
+
+def unconfigured(components: ResolvedComponents, settings: object) -> str | None:
+    """Diagnostic when the agent's language model needs a key this deployment does not hold."""
+    attr = KEYED_LLM_PROVIDERS.get(components.llm.provider)
+    if attr is None or getattr(settings, attr, None):
+        return None
+    return f"unsupported_vendor:llm/{components.llm.provider}"
+
+
 def usage_meters(usage: Mapping[str, Any] | None) -> dict[str, int]:
     """Sum a cumulative usage snapshot into 001's bundle meters (all models of a component)."""
     usage = usage or {}

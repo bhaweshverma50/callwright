@@ -5,6 +5,7 @@ from worker.adapters.registry import (
     CatalogEntry,
     UnsupportedLanguage,
     UnsupportedVendor,
+    VendorNotConfigured,
     VendorSpec,
     load_catalog,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "CatalogEntry",
     "UnsupportedLanguage",
     "UnsupportedVendor",
+    "VendorNotConfigured",
     "VendorSpec",
     "load_catalog",
 ]
