@@ -52,10 +52,13 @@ export function AssistantPanel({
     } catch {
       /* session history is a convenience */
     }
-    list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" });
+    list.current?.scrollTo?.({ top: list.current.scrollHeight, behavior: "smooth" });
   }, [chat, flowId]);
 
   const send = async (turns: ChatTurn[]) => {
+    // Show the message at once, so the conversation (and the thinking line under it) appears
+    // while the assistant works, including on the first message.
+    setChat(turns);
     setBusy(true);
     onBusy?.(true);
     setFailed(null);

@@ -38,7 +38,7 @@ export function CompilePreview({ result }: { result: CompileResult }) {
             <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-console px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-console-fg">
               {n.instructions || "(empty)"}
             </pre>
-            {(n.transitions?.length || n.tools?.length) && (
+            {(n.transitions?.length ?? 0) + (n.tools?.length ?? 0) > 0 && (
               <>
                 <p className="flex items-center gap-1.5 text-[11.5px] font-medium uppercase tracking-wide text-fg-3">
                   <Wrench className="size-3.5" aria-hidden /> Choices and tools
