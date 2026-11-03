@@ -48,7 +48,7 @@ class InstantServices:
     async def transfer(self, node_id: str, spec: Mapping[str, Any]) -> bool:
         return True
 
-    async def end(self, message: str, reason: str) -> None:
+    async def end(self, message: str, reason: str, *, generate: bool = False) -> None:
         return None
 
     async def hang_up(self, reason: str, diagnostic: str | None = None) -> None:

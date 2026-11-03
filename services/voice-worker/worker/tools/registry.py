@@ -307,6 +307,10 @@ class CallTools:
             from worker.language import with_reply_language
 
             agent = session.current_agent
+            hook = getattr(agent, "set_reply_language", None)
+            if callable(hook):  # a flow node: later nodes keep the language too
+                await hook(label)
+                return
             await agent.update_instructions(with_reply_language(agent.instructions, label))
 
         # A shallow copy: the variable stores and secrets stay shared with the call.

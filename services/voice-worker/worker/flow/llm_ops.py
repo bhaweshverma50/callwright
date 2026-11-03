@@ -16,6 +16,16 @@ from worker.flow.context import Message
 CLASSIFY_TIMEOUT_S = 1.5
 EXTRACT_TIMEOUT_S = 8.0
 SUMMARY_TIMEOUT_S = 10.0
+GOODBYE_MAX_CHARS = 300
+STOCK_GOODBYE = "Thanks for calling. Goodbye."
+GOODBYE_SYSTEM = (
+    "You are the voice agent on this phone call, and the call is ending now. Write only what you "
+    "say as you hang up: one or two short spoken sentences that fit this conversation. If a "
+    "callback or next step was agreed and you have not confirmed it yet, confirm it briefly (with "
+    "the time if one was given); never repeat what you just said and never promise anything that "
+    "was not agreed. Then say goodbye. Speak in the language of the conversation. Plain words "
+    "only: no quotes, lists, markdown or emojis."
+)
 CLASSIFY_TOOL = "choose_category"
 EXTRACT_TOOL = "save_values"
 
@@ -155,3 +165,32 @@ async def summarize(llm: Any, history: Sequence[Message], previous: str | None) 
         return text[:1200]
 
     return await asyncio.wait_for(run(), timeout=SUMMARY_TIMEOUT_S)
+
+
+async def goodbye(
+    llm: Any,
+    history: Sequence[Message],
+    reply_language: str | None = None,
+    *,
+    booked: str | None = None,
+) -> str:
+    """The goodbye of an End node without a line of its own (no timeout here: the runtime
+    bounds the wait and falls back to the stock line). ``booked``: the spoken time of a
+    callback booked on this call."""
+    from livekit.agents import llm as lk_llm
+
+    system = GOODBYE_SYSTEM
+    if booked:
+        system += f" A callback was booked on this call for {booked}."
+    if reply_language:
+        system += f" Reply only in {reply_language}."
+    ctx = lk_llm.ChatContext.empty()
+    ctx.add_message(role="system", content=system)
+    ctx.add_message(role="user", content=transcript(history, limit=20))
+    stream = llm.chat(chat_ctx=ctx)
+    text = ""
+    async with stream:
+        async for chunk in stream:
+            delta = getattr(chunk, "delta", None)
+            text += getattr(delta, "content", None) or ""
+    return " ".join(text.split()).strip().strip('"').strip()[:GOODBYE_MAX_CHARS]

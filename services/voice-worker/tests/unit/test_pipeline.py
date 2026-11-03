@@ -18,6 +18,7 @@ from worker.flow import (
     register_flow_runner,
 )
 from worker.pipeline import (
+    CALLBACK_CLOSE,
     CALLBACK_INSTRUCTION,
     ENDING_INSTRUCTION,
     VOICE_STYLE_INSTRUCTION,
@@ -226,7 +227,8 @@ def test_single_prompt_agent_carries_plan_and_instructions() -> None:
     assert agent.instructions == (
         f"{plan.instructions}\n\n{VOICE_STYLE_INSTRUCTION}\n\n{ENDING_INSTRUCTION}\n\n{callback}"
     )
-    assert CALLBACK_INSTRUCTION in callback and callback.startswith("It is now ")
+    assert CALLBACK_INSTRUCTION.format(close=CALLBACK_CLOSE) in callback
+    assert callback.startswith("It is now ")
 
 
 def test_callback_instructions_give_local_time_and_callback_reason() -> None:

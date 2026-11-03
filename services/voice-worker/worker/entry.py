@@ -54,7 +54,7 @@ from worker.call_behavior import (
     ends_with_goodbye,
 )
 from worker.control import RuntimeCallControl
-from worker.flow import FlowRuntimeUnavailable
+from worker.flow import FlowRuntimeUnavailable, get_flow_runner
 from worker.flow.runtime import FlowComponents
 from worker.internal_api import (
     ClaimRequest,
@@ -103,6 +103,13 @@ from worker.turn_detection import DigitAwareTurnDetector
 log = logging.getLogger("callwright.worker")
 
 SIP_CHANNELS = frozenset({"sip_inbound", "whatsapp"})
+# A hang-up (end_call, a flow End node) waits for a caller who is still talking: up to
+# CALLER_QUIET_MAX_WAIT_S for CALLER_QUIET_S without transcribed words (``LiveCall.caller_quiet``).
+CALLER_QUIET_S = 1.0
+CALLER_QUIET_MAX_WAIT_S = 2.0
+# The session closes in well under a second once nothing inside it waits on the close; the cap
+# only keeps a vendor that never answers its close from holding the room open.
+SESSION_CLOSE_TIMEOUT_S = 10.0
 SYSTEM_EVENT_FOR_REASON = {
     "inactivity": "silence_timeout",
     "max_duration_reached": "max_duration",
@@ -190,6 +197,11 @@ class LiveCall:
         self._extra_tools: list[Any] = []
         self._extra_instructions = ""
         self._goodbye_timer: asyncio.TimerHandle | None = None
+        self._teardown: asyncio.Future[None] | None = None
+        # The caller's last words (interim or final transcript) and whether voice activity
+        # detection hears them now (``caller_quiet``).
+        self._caller_heard_at = float("-inf")
+        self._caller_speaking = False
         # 012: the fixed greeting translated into the caller's saved language.
         self._greeting_text: str | None = None
 
@@ -265,34 +277,54 @@ class LiveCall:
             await asyncio.sleep(0.1)
 
     async def end(self, reason: str, diagnostic: str | None) -> None:
+        """Stop the timers at once and close the call in a task of its own.
+
+        Hang-ups usually come from inside the session: end_call and transfer tools, a flow's
+        End node (a tool call or a step agent's ``on_enter``). Closing the session waits for
+        every running speech task, including the one that asked for the hang-up, so awaiting
+        the close here deadlocked: LiveKit cancelled the tool after its interruption timeout,
+        the close never finished, the room stayed open and the job was killed after
+        ``AgentSession.aclose()`` timed out at shutdown. The teardown task runs after the
+        caller's own code has returned (so its last events, such as end_call's ``tool_call``,
+        are recorded before the final status); ``run`` waits for it through ``_ended``."""
         for timer in (self.inactivity, self.duration):
             if timer is not None:
                 timer.stop()
         if self.dtmf is not None:
             self.dtmf.close()
-        system = SYSTEM_EVENT_FOR_REASON.get(reason)
-        if system:
-            self.recorder.system(system, diagnostic)
-        if diagnostic and diagnostic.startswith("vendor_error"):
-            self.recorder.system("vendor_error", diagnostic)
-        if self.session is not None:
-            with contextlib.suppress(Exception):
-                self.session.interrupt()
-        self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
-        await self.poster.stop()
-        if self.background is not None:
-            with contextlib.suppress(Exception):
-                await self.background.aclose()
-        if self.session is not None:
-            with contextlib.suppress(Exception):
-                await self.session.aclose()
-        if self.session_span is not None:
-            self.session_span.set_attribute("call.disconnect_reason", reason)
-            if diagnostic:
-                self.session_span.set_attribute("call.diagnostic", diagnostic)
-            self.session_span.end()
-        await tool_registry.PROVIDER.release(self.call_id)
-        await self._close_room(keep=reason == "call_transfer" and self._destination_in_room())
+        self._cancel_goodbye()
+        if self._teardown is None:
+            self._teardown = asyncio.ensure_future(self._close_call(reason, diagnostic))
+
+    async def _close_call(self, reason: str, diagnostic: str | None) -> None:
+        """Post the final status with usage, close the session and the room (``end``)."""
+        try:
+            system = SYSTEM_EVENT_FOR_REASON.get(reason)
+            if system:
+                self.recorder.system(system, diagnostic)
+            if diagnostic and diagnostic.startswith("vendor_error"):
+                self.recorder.system("vendor_error", diagnostic)
+            if self.session is not None:
+                with contextlib.suppress(Exception):
+                    self.session.interrupt()
+            self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
+            await self.poster.stop()
+            if self.background is not None:
+                with contextlib.suppress(Exception):
+                    await self.background.aclose()
+            if self.session is not None:
+                try:
+                    await asyncio.wait_for(self.session.aclose(), SESSION_CLOSE_TIMEOUT_S)
+                except Exception as exc:  # a stuck close must not keep the room open
+                    log.warning("session close failed for %s: %r", self.call_id, exc)
+            if self.session_span is not None:
+                self.session_span.set_attribute("call.disconnect_reason", reason)
+                if diagnostic:
+                    self.session_span.set_attribute("call.diagnostic", diagnostic)
+                self.session_span.end()
+            await tool_registry.PROVIDER.release(self.call_id)
+        finally:
+            await self._close_room(keep=reason == "call_transfer" and self._destination_in_room())
 
     def _destination_in_room(self) -> bool:
         with contextlib.suppress(Exception):
@@ -359,6 +391,16 @@ class LiveCall:
             self.components.set(kind, component)
         plan = self.overrides.plan_for_current()
         assert self.control is not None
+        if plan.agent_type == "flow":
+            # A flow keeps its place: the current node's agent is rebuilt with the new plan and
+            # components (rebuilding the entry agent would restart the flow).
+            flow_call = getattr(get_flow_runner(), "calls", {}).get(self.call_id)
+            if flow_call is not None:
+                components = {k: self.components.get(k) for k in ("stt", "llm", "tts")}
+                agent = flow_call.rebuild(plan, components)
+                if agent is not None:
+                    self.session.update_agent(agent)
+            return
         self.agent = build_agent(
             plan,
             self.runtime,
@@ -381,12 +423,35 @@ class LiveCall:
         session.on("user_state_changed", self._on_user_state)
         session.on("agent_state_changed", self._on_agent_state)
         session.on("conversation_item_added", self._on_item)
+        session.on("user_input_transcribed", self._on_transcribed)
         session.on("error", lambda ev: self._on_error(ev, plan))
         room = self.ctx.room
         room.on("participant_disconnected", self._on_participant_left)
         room.on("sip_dtmf_received", self._on_dtmf)
 
+    def _on_transcribed(self, ev: Any) -> None:
+        if str(getattr(ev, "transcript", "") or "").strip():
+            self._caller_heard_at = time.monotonic()
+
+    async def caller_quiet(
+        self, quiet_s: float = CALLER_QUIET_S, max_wait_s: float = CALLER_QUIET_MAX_WAIT_S
+    ) -> bool:
+        """``CallBackend.caller_quiet``: wait (at most ``max_wait_s``) until the caller is not
+        speaking and no words were transcribed in the last ``quiet_s``. At the deadline only
+        transcribed words count, so line noise that voice detection hears never keeps a call
+        open. Returns immediately in the usual case (the caller finished seconds ago)."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + max_wait_s
+        while True:
+            heard = time.monotonic() - self._caller_heard_at < quiet_s
+            if not heard and not self._caller_speaking:
+                return True
+            if loop.time() >= deadline:
+                return not heard
+            await asyncio.sleep(0.05)
+
     def _on_user_state(self, ev: Any) -> None:
+        self._caller_speaking = ev.new_state == "speaking"
         if ev.new_state == "speaking":
             self._cancel_goodbye()
             self.tracker.user_speech_started()
@@ -653,6 +718,8 @@ class LiveCall:
                 await self._fail("worker_exception")
             elif self.control is not None:
                 await self.control.hang_up("error", diagnostic="worker_exception")
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(self._ended.wait(), SESSION_CLOSE_TIMEOUT_S + 15)
 
     async def _await_caller(self) -> Any:
         runtime = self.runtime

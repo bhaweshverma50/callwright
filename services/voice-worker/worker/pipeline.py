@@ -86,31 +86,59 @@ VOICE_STYLE_INSTRUCTION = (
     "Never use lists, headings, markdown, emojis or line breaks."
 )
 
+# Part of both ending rules. On a lab call the caller said "I'm getting a call. Can you call me in
+# five minutes?"; speech recognition finalised the first sentence as its own turn and the model
+# hung up on it (7 of 8 times in a replay) instead of asking how to follow up.
+CALLER_HAS_TO_GO = (
+    "A caller who says they have to go or is being interrupted (another call coming in, a "
+    'meeting, someone at the door, "hold on") has not ended the conversation, and a line that '
+    "sounds unfinished is not a goodbye. If they have not said how to follow up, do not hang up: "
+    "ask in one short question whether they would like a call back, and when. If they ask to be "
+    "called back, book it with schedule_callback first. If they only ask you to hold, say you "
+    "will wait."
+)
+
 # Appended to every single-prompt agent, which always has an end_call tool (tools/registry.py).
 ENDING_INSTRUCTION = (
     "When the conversation is over, end it the way a good receptionist would: in one or two short "
     "sentences confirm what was agreed or what happens next (for example when you will call back), "
-    "then say goodbye and call end_call in that same reply. If the caller has to leave right away, "
-    "acknowledge exactly that before hanging up; if they ask you to call back, book it first as "
-    "described below. Never promise something you cannot do. Always say your goodbye out loud, in "
-    "the reply text or in end_call's "
-    "goodbye argument. Do not wait for the caller to say goodbye back. If the caller speaks again "
-    "after your goodbye only to thank you or say goodbye, call end_call without speaking. Never "
-    "repeat a summary you already gave."
+    "then say goodbye and call end_call in that same reply. "
+    + CALLER_HAS_TO_GO
+    + " Never promise something you cannot do. Always say your goodbye out loud, in the reply "
+    "text or in end_call's goodbye argument. Do not wait for the caller to say goodbye back. If "
+    "the caller speaks again after your goodbye only to thank you or say goodbye, call end_call "
+    "without speaking. Never repeat a summary you already gave."
 )
 
-# 011: every single-prompt agent also has the built-in schedule_callback tool.
+# Flow nodes (004) end the call through their own routing (a transition to an End node, or an
+# end_call tool on the node); the End node says the goodbye, written for the call unless the
+# builder wrote a fixed one (flow/runtime.py).
+FLOW_ENDING_INSTRUCTION = (
+    "When the conversation is over, end the call with the step your instructions give for it (a "
+    "transition that ends the call, or end_call). In that reply confirm in one short sentence what "
+    "was agreed or what happens next (for example when you will call back), without saying "
+    "goodbye: the goodbye is said as the call ends. If you have no step that ends the call, say "
+    "goodbye in your reply. "
+    + CALLER_HAS_TO_GO
+    + " Never promise something you cannot do. Never repeat a summary you already gave."
+)
+
+# 011: every agent also has the built-in schedule_callback tool (flow nodes too).
 CALLBACK_INSTRUCTION = (
     "If the caller asks to be called back later, ask what time suits them if they have not said, "
     "then book it with schedule_callback: the local date and time they agreed to (or in_minutes "
     "for a time like 'in an hour') and a one-sentence note of what to continue. Tell the caller "
-    "the confirmed time from the result, then say goodbye and end the call. If the result says a "
-    "callback cannot be booked, tell the caller honestly and offer what the result suggests; never "
-    "promise a callback that was not booked."
+    "the confirmed time from the result, then {close}. If the result says a callback cannot be "
+    "booked, tell the caller honestly and offer what the result suggests; never promise a "
+    "callback that was not booked."
 )
+CALLBACK_CLOSE = "say goodbye and end the call"
+FLOW_CALLBACK_CLOSE = "end the call as described above"
 
 
-def callback_instructions(variables: Mapping[str, Any], direction: str) -> str:
+def callback_instructions(
+    variables: Mapping[str, Any], direction: str, *, flow: bool = False
+) -> str:
     """The caller's current local time (to resolve "tomorrow at 5"), the callback rule and, on a
     callback call itself, why the agent is calling."""
     from worker.tools.schedule_callback import local_now
@@ -121,7 +149,7 @@ def callback_instructions(variables: Mapping[str, Any], direction: str) -> str:
     parts = [
         f"It is now {now:%A} {now.day} {now:%B %Y}, {clock} for the caller "
         f"({zone}, {now.isoformat(timespec='minutes')}).",
-        CALLBACK_INSTRUCTION,
+        CALLBACK_INSTRUCTION.format(close=FLOW_CALLBACK_CLOSE if flow else CALLBACK_CLOSE),
     ]
     if direction == "outbound" and "callback_note" in variables:
         note = str(variables.get("callback_note") or "").strip()
@@ -133,6 +161,15 @@ def callback_instructions(variables: Mapping[str, Any], direction: str) -> str:
             + " Say you are calling back as agreed and continue from there."
         )
     return " ".join(parts)
+
+
+def builtin_instructions(runtime: RuntimeConfig, *, flow: bool = False) -> str:
+    """The callback rule (with the caller's local time) and, when the claim offers more than one
+    language, the set_language rule: the same for single-prompt agents and every flow node."""
+    callback = callback_instructions(runtime.variables, runtime.direction, flow=flow)
+    options = runtime.language_options
+    switching = set_language_instruction(options) if len(options) > 1 else ""
+    return "\n\n".join(p for p in (callback, switching) if p)
 
 
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
@@ -564,6 +601,7 @@ def make_agent_class() -> type[Any]:
             on_tts_text: TtsTextHook | None = None,
             extra_instructions: str = "",
             filler_policy: FillerSource | None = None,
+            ending_instruction: str = ENDING_INSTRUCTION,
             **kwargs: Any,
         ) -> None:
             instructions = "\n\n".join(
@@ -571,7 +609,7 @@ def make_agent_class() -> type[Any]:
                 for p in (
                     plan.instructions,
                     VOICE_STYLE_INSTRUCTION,
-                    ENDING_INSTRUCTION,
+                    ending_instruction,
                     extra_instructions,
                 )
                 if p
@@ -630,8 +668,10 @@ def build_agent(
     fillers = policy_for(runtime, control) if callable(policy_for) else None
     tools += list(extra_tools)
     if plan.agent_type == "flow":
-        # Flow nodes carry their own tools (compiled from 005's snapshot); only worker-internal
-        # tools such as voicemail detection are added to every node.
+        # Flow nodes carry their own tools (compiled from 005's snapshot) plus the built-in
+        # schedule_callback and set_language from the call's tools; worker-internal tools such
+        # as voicemail detection are added to every node, with the same built-in rules a
+        # single-prompt agent gets (adapted to the flow's own routing).
         call_tools = getattr(provider, "call_tools", None)
         return (flow_runner or get_flow_runner()).build_agent(
             runtime,
@@ -640,21 +680,19 @@ def build_agent(
             base_tools=call_tools(runtime, control) if callable(call_tools) else None,
             plan=plan,
             on_tts_text=on_tts_text,
-            extra_instructions=extra_instructions,
+            extra_instructions="\n\n".join(
+                p for p in (builtin_instructions(runtime, flow=True), extra_instructions) if p
+            ),
             components=flow_components,
         )
     agent_cls = make_agent_class()
-    callback = callback_instructions(runtime.variables, runtime.direction)
-    switching = (
-        set_language_instruction(runtime.language_options)
-        if len(runtime.language_options) > 1
-        else ""
-    )
     return agent_cls(
         plan,
         tools=tools,
         on_tts_text=on_tts_text,
-        extra_instructions="\n\n".join(p for p in (callback, switching, extra_instructions) if p),
+        extra_instructions="\n\n".join(
+            p for p in (builtin_instructions(runtime), extra_instructions) if p
+        ),
         filler_policy=fillers,
         **agent_kwargs,
     )

@@ -69,6 +69,12 @@ class RuntimeCallControl:
         await self._backend.end(reason, diagnostic)
         return True
 
+    async def caller_quiet(self) -> bool:
+        """True once the caller is not talking (they may still be finishing a sentence that
+        speech recognition split into two turns). Backends that cannot tell answer True."""
+        quiet = getattr(self._backend, "caller_quiet", None)
+        return bool(await quiet()) if callable(quiet) else True
+
     async def say(self, text: str, *, allow_interruptions: bool = True) -> None:
         if self.ending:
             return

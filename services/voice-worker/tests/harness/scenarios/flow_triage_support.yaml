@@ -5,10 +5,12 @@ llm:
   rules:
     - {match: support, tool: route_to_knows_the_need}
   classify: {support: Support}
+  goodbye: "Hope the router behaves now. Goodbye!"
 caller:
   - "Hi, I need support with my router"
 expect:
   path: [n_start000, n_triage00, n_route000, n_suppline, n_end00000]
   triggers: [always, llm_condition, category, always]
   end_reason: agent_hangup
-  agent_says: ["Connecting you with support guidance now.", "Thanks for calling. Goodbye."]
+  # The End node has the stock message, so the agent says a goodbye written for the call.
+  agent_says: ["Connecting you with support guidance now.", "Hope the router behaves now. Goodbye!"]

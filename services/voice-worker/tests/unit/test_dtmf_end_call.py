@@ -75,3 +75,18 @@ async def test_end_call_without_message() -> None:
     h = make([tool("end_call", "end_call")])
     await h.tools.dispatch("end_call", {})
     assert h.backend.said == [] and h.backend.ended == ["agent_hangup"]
+
+
+async def test_end_call_waits_out_a_caller_who_is_still_talking() -> None:
+    """Speech recognition can finish "I'm getting a call." as a turn while the caller goes on
+    "Can you call me in five minutes?": end_call does not hang up on them."""
+    h = make([tool("end_call", "end_call", {"message": "Goodbye!"})])
+    h.backend.caller_quiet = _not_quiet  # type: ignore[attr-defined]
+    out = json.loads(await h.tools.dispatch("end_call", {}))
+    assert out["ended"] is False and "kept talking" in out["message"]
+    assert h.backend.ended == [] and h.backend.said == []
+    assert h.events()[0]["not_ended"] == "caller_talking"
+
+
+async def _not_quiet() -> bool:
+    return False

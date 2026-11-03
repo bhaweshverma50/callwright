@@ -51,6 +51,10 @@ class FlowScript:
     extract: dict[str, dict[str, Any]] = field(default_factory=dict)  # fragment -> values
     default_reply: str = "Sure, I can help with that."
     llm_delay_s: float = 0.0
+    # What the model writes when an End node asks it for the goodbye ("" answers nothing,
+    # None fails the request).
+    goodbye: str | None = "Glad I could help. Goodbye!"
+    goodbye_delay_s: float = 0.0
 
 
 def flow_llm(script: FlowScript, model: str = "gpt-5.1") -> Any:
@@ -77,6 +81,16 @@ def flow_llm(script: FlowScript, model: str = "gpt-5.1") -> Any:
             if script.llm_delay_s:
                 await asyncio.sleep(script.llm_delay_s)
             names = {getattr(t, "id", None) or getattr(t, "name", None) for t in self._tools}
+            first = self._chat_ctx.items[0] if self._chat_ctx.items else None
+            if not names and "call is ending now" in str(getattr(first, "text_content", "")):
+                self.owner.goodbyes.append(self._chat_ctx.copy())
+                if script.goodbye_delay_s:
+                    await asyncio.sleep(script.goodbye_delay_s)
+                if script.goodbye is None:
+                    raise RuntimeError("model unavailable")
+                if script.goodbye:
+                    self._text(script.goodbye)
+                return
             text = transcript(self._chat_ctx)
             call: tuple[str, dict[str, Any]] | None = None
             if "choose_category" in names:
@@ -139,6 +153,7 @@ def flow_llm(script: FlowScript, model: str = "gpt-5.1") -> Any:
             super().__init__()
             self.requests: list[Any] = []
             self.calls: list[str] = []
+            self.goodbyes: list[Any] = []
 
         @property
         def model(self) -> str:
@@ -246,6 +261,7 @@ async def run_flow_call(
     *,
     runtime: Mapping[str, Any] | None = None,
     after_each: Any = None,
+    control: RecordingControl | None = None,
 ) -> FlowCallResult:
     """A whole call on the real ``AgentSession`` in text mode: the opening as 003 plays it,
     then each caller line, until the flow hangs up or the lines run out."""
@@ -253,7 +269,7 @@ async def run_flow_call(
 
     rt = build_runtime(dict(config), dict(runtime or {}))
     plan = plan_session(rt, AdapterRegistry())
-    control = RecordingControl()
+    control = control or RecordingControl()
     tools = build_call_tools(rt, control)
     agent = CallwrightFlowRunner().build_agent(rt, control, [], plan=plan, base_tools=tools)
     model = flow_llm(script)
@@ -294,4 +310,5 @@ def script_from(data: Mapping[str, Any]) -> FlowScript:
         classify=dict(llm.get("classify") or {}),
         extract={k: dict(v) for k, v in (llm.get("extract") or {}).items()},
         default_reply=str(llm.get("default_reply") or "Sure, I can help with that."),
+        **({"goodbye": llm["goodbye"]} if "goodbye" in llm else {}),
     )

@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import httpx
+import pytest
 import respx
 
 from tests.harness.runner import CALL_ID
@@ -41,6 +42,7 @@ class Session:
         self.interrupted = 0
         self.closed = 0
         self.replies: list[str] = []
+        self.agents: list[Any] = []
 
     def interrupt(self) -> None:
         self.interrupted += 1
@@ -50,6 +52,9 @@ class Session:
 
     def generate_reply(self, user_input: str) -> None:
         self.replies.append(user_input)
+
+    def update_agent(self, agent: Any) -> None:
+        self.agents.append(agent)
 
 
 async def no_sleep(_: float) -> None:
@@ -174,6 +179,7 @@ async def test_hang_up_posts_final_status_and_deletes_room() -> None:
     assert call.control is not None
     assert await call.control.hang_up("max_duration_reached")
     assert not await call.control.hang_up("user_hangup")
+    await asyncio.wait_for(call._ended.wait(), 2)
     events = json.loads(route.calls.last.request.content)["events"]
     assert [e["type"] for e in events] == ["transcript_item", "status", "usage"]
     assert events[0]["item"]["event"] == "max_duration"
@@ -200,6 +206,7 @@ async def test_control_end_call_from_heartbeat_ends_the_call() -> None:
     await call.poster.flush()
     for task in list(call._tasks):
         await task
+    await asyncio.wait_for(call._ended.wait(), 2)
     assert call.control is not None and call.control.disconnect_reason == "insufficient_credit"
     assert ctx.deleted == 1
 
@@ -227,3 +234,104 @@ def test_vendor_error_ends_call_with_diagnostic() -> None:
     assert hung == [("error", "vendor_error:tts/elevenlabs")]
     codes = [e["code"] for e in call.recorder.history if e["type"] in ("warning", "error")]
     assert codes == ["vendor_error", "vendor_retry"]
+
+
+@respx.mock
+@pytest.mark.usefixtures("no_llm_prewarm")
+async def test_end_call_from_inside_the_session_closes_it_promptly() -> None:
+    """Regression (lab call, 2026-11-03): end_call hangs up from inside its own tool call, and
+    the hang-up used to await the session's close, which waits for that very tool. LiveKit
+    cancelled the tool after its interruption timeout, the room stayed open and the job was
+    killed after ``AgentSession.aclose()`` timed out. Now the close runs on its own and the
+    call is torn down at once, with end_call's own event before the final status."""
+    from livekit.agents import AgentSession
+
+    from tests.flow_support import FlowScript, Rule, flow_llm
+    from worker.pipeline import build_agent
+    from worker.tools.registry import build_call_tools
+
+    route = respx.post(f"{BASE}/calls/{CALL_ID}/events").mock(
+        return_value=httpx.Response(200, json=OK)
+    )
+    call, ctx, _ = live_call()
+    assert call.control is not None and call.plan is not None
+    tools = build_call_tools(call.runtime, call.control)
+
+    class Provider:
+        def tools_for(self, runtime: Any, control: Any) -> Any:
+            return tools.function_tools()
+
+        def filler_policy(self, runtime: Any, control: Any) -> Any:
+            return tools.fillers
+
+    agent = build_agent(call.plan, call.runtime, call.control, tool_provider=Provider())
+    model = flow_llm(FlowScript(rules=[Rule("bye", "end_call", {"goodbye": "Bye for now."})]))
+    session: Any = AgentSession(llm=model, vad=None)
+    call.session = session
+    await session.start(agent)
+    started = asyncio.get_running_loop().time()
+    session.run(user_input="That's all, bye")
+    await asyncio.wait_for(call._ended.wait(), 5)
+    assert asyncio.get_running_loop().time() - started < 3
+    assert call.control.disconnect_reason == "agent_hangup"
+    assert ctx.deleted == 1 and ctx.shutdowns == ["call ended"]
+    assert not session._started  # closed, not left half-open for the job's shutdown
+    posted = [e for r in route.calls for e in json.loads(r.request.content)["events"]]
+    kinds = [e["type"] for e in posted]
+    assert "tool_call" in kinds and kinds.index("tool_call") < kinds.index("status")
+
+
+async def test_caller_quiet_waits_for_words_not_for_line_noise() -> None:
+    call, _, _ = live_call()
+    assert await call.caller_quiet(0.2, 0.0)  # nothing heard yet
+    call._on_transcribed(ev(transcript="Can you call me", is_final=False))
+    assert not await call.caller_quiet(0.2, 0.05)  # words in the last 0.2 s
+    assert await call.caller_quiet(0.05, 0.5)  # quiet once they stop
+    call._on_user_state(ev(old_state="listening", new_state="speaking", created_at=1.0))
+    started = asyncio.get_running_loop().time()
+    # Voice activity without words (line noise) never keeps the call open past the wait.
+    assert await call.caller_quiet(0.05, 0.1)
+    assert asyncio.get_running_loop().time() - started >= 0.1
+    call._on_user_state(ev(old_state="speaking", new_state="listening", created_at=2.0))
+    assert await call.caller_quiet(0.05, 0.0)
+
+
+def test_language_swap_on_a_flow_call_rebuilds_its_current_node(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """012 on flows: the swap at the turn boundary rebuilds the node the call is on with the new
+    plan and components; building the entry agent again would restart the flow."""
+    from tests.flow_support import compiled_config
+    from worker.flow import get_flow_runner, register_flow_runner
+    from worker.pipeline import SessionComponents
+
+    rebuilt: list[tuple[Any, dict[str, Any]]] = []
+
+    class FlowCall:
+        def rebuild(self, plan: Any, components: dict[str, Any]) -> str:
+            rebuilt.append((plan, components))
+            return "node-agent"
+
+    runner = SimpleNamespace(available=True, calls={CALL_ID: FlowCall()})
+    previous = get_flow_runner()
+    register_flow_runner(runner)
+    try:
+        call, _, session = live_call(**compiled_config("greeting_end"))
+        assert call.plan is not None and call.plan.agent_type == "flow"
+        assert call.overrides is not None
+        call.components = SessionComponents(stt="stt", llm="llm", tts="tts", nc=None)
+        monkeypatch.setattr(call.registry, "build", lambda spec, creds: f"new-{spec.kind}")
+        call.overrides.request(
+            {
+                "switch_language": {"code": "hi", "label": "Hindi", "tts_model": None},
+                "stt": {"language": "hi", "model": "nova-2"},
+            }
+        )
+        call._swap_pending = True
+        call._apply_swap()
+    finally:
+        register_flow_runner(previous)
+    ((plan, components),) = rebuilt
+    assert plan.reply_language == "Hindi" and plan.language == "hi"
+    assert components["stt"] == "new-stt" and components["llm"] == "llm"
+    assert session.agents == ["node-agent"]

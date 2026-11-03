@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -29,14 +30,17 @@ from worker.adapters.registry import (
     UnsupportedVendor,
     VendorSpec,
 )
+from worker.call_behavior import ends_with_goodbye
 from worker.flow import FLOW_NOT_COMPILED, FlowRuntimeUnavailable, llm_ops
 from worker.flow import nodes as _handlers  # noqa: F401  (registers the node handlers)
 from worker.flow.context import BackgroundSummarizer, Message, handoff, known_facts
 from worker.flow.events import TOPIC, FlowEvents
 from worker.flow.executor import FlowRun, WebhookResult
+from worker.flow.nodes.end import generates as end_generates
 from worker.flow.nodes.start import Opening, opening
 from worker.flow.registry import CONVERSATIONAL, Move
 from worker.flow.templating import as_text
+from worker.language import with_reply_language
 from worker.tools import CallControl, ToolActivity
 from worker.tools.base import ToolSpecView
 from worker.tools.http import HttpExecutor
@@ -48,6 +52,12 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("callwright.flow")
 GREETING_WAIT_S = 20.0
+# The generated goodbye of an End node (B): written while the reply that took the transition
+# plays, so usually no wait is heard; never more than GOODBYE_AFTER_PLAYOUT_S after it (and
+# GOODBYE_TIMEOUT_S overall) before the configured or stock line is said instead.
+GOODBYE_TIMEOUT_S = 4.0
+GOODBYE_AFTER_PLAYOUT_S = 1.5
+REPLY_PLAYOUT_WAIT_S = 30.0
 COMPLETE_TASK = "complete_task"
 IGNORED = "Ignored: the call already moved to another step this turn."
 
@@ -74,12 +84,21 @@ def call_opening(config: Mapping[str, Any], variables: Mapping[str, Any]) -> Ope
     return opening(compiled, variables) if compiled is not None else None
 
 
+# Built-in tools of the call (005's registry) that every conversational node gets: booking a
+# callback (011) and, when the claim offers more than one language, switching language (012).
+# end_call is not one of them: a flow ends through its own routing (End nodes, end_call tools).
+NODE_BUILTINS = frozenset({"schedule_callback", "set_language"})
+
+
 def node_tools(base: CallTools, node: Mapping[str, Any]) -> CallTools:
-    """The node's tool set: its compiled tools plus knowledge search when switched on, sharing
-    the call's executors, secrets and variable stores."""
+    """The node's tool set: its compiled tools, the call's built-in schedule_callback and
+    set_language, and knowledge search when switched on, sharing the call's executors, secrets
+    and variable stores."""
     specs = [
         ToolSpecView.from_snapshot(t) for t in node.get("tools") or [] if isinstance(t, Mapping)
     ]
+    own = {s.name for s in specs}
+    specs += [s for s in base.specs if s.type in NODE_BUILTINS and s.name not in own]
     kb = base.kb if (node.get("kb_search") or {}).get("enabled") else None
     executors = dict(base.executors)
     if any(s.type == "http" for s in specs) and "http" not in executors and not base.ctx.simulation:
@@ -190,10 +209,17 @@ class LiveFlowServices:
         result = await executor.execute(view, arguments, replace(base.ctx, say=self._say_line))
         return not result.is_error
 
-    async def end(self, message: str, reason: str) -> None:
+    async def end(self, message: str, reason: str, *, generate: bool = False) -> None:
+        """Say the closing line, then hang up. ``generate``: the End node has no line of its own
+        (empty or the stock default), so the agent says a goodbye that fits the call."""
+        call = self.call
+        if generate:
+            message = await call.closing_line(message)
+        else:
+            await call.wait_for_reply_playout()
         if message:
             await self.say(message, allow_interruptions=False)
-        await self.call.control.hang_up("agent_hangup")
+        await call.control.hang_up("agent_hangup")
 
     async def hang_up(self, reason: str, diagnostic: str | None = None) -> None:
         await self.call.control.hang_up(reason, diagnostic=diagnostic)
@@ -262,6 +288,18 @@ class FlowCall:
         self.opening = opening(compiled, variables)
         self._listening = False
         self._pending_llm_timing = False
+        # 012: the language replies must use (set_language and the caller's saved language);
+        # node agents built later keep it.
+        self.reply_language: str | None = plan.reply_language
+        # Components every node uses unless it overrides them (set when a turn-boundary swap
+        # replaces the call's speech recognition, model or voice).
+        self.default_components: dict[str, Any] = {}
+        # The tool call context of the transition being taken (to wait for its reply's
+        # playout) and the text of the current reply (for the generated goodbye).
+        self.run_ctx: Any = None
+        self.reply_text = ""
+        self._goodbye: asyncio.Future[Any] | None = None
+        self._goodbye_started = 0.0
 
     # session wiring ------------------------------------------------------------------------
 
@@ -314,6 +352,102 @@ class FlowCall:
 
     def control_ended(self) -> bool:
         return bool(getattr(self.control, "ending", False))
+
+    async def wait_for_reply_playout(self) -> None:
+        """Let the reply that took the current transition finish playing (its own words come
+        before the End node's line and the hang-up)."""
+        ctx, self.run_ctx = self.run_ctx, None
+        wait = getattr(ctx, "wait_for_playout", None)
+        if callable(wait):
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(wait(), REPLY_PLAYOUT_WAIT_S)
+
+    def start_goodbye(self) -> None:
+        """Start writing the goodbye of an End node without a line of its own, from the
+        conversation so far and the reply now playing (so it is usually ready when that reply
+        ends). Nothing to write when the reply already said goodbye."""
+        if self._goodbye is not None:
+            return
+        history = self.history()
+        said = self.reply_text.strip()
+        if said and not (history and history[-1] == ("assistant", said)):
+            history.append(("assistant", said))
+        loop = asyncio.get_running_loop()
+        self._goodbye_started = loop.time()
+        if history and history[-1][0] == "assistant" and ends_with_goodbye(history[-1][1]):
+            done: asyncio.Future[Any] = loop.create_future()
+            done.set_result(None)
+            self._goodbye = done
+            return
+        llm = getattr(self.session, "llm", None) if self.session is not None else None
+        if llm is not None:
+            self._goodbye = asyncio.ensure_future(
+                llm_ops.goodbye(llm, history, self.reply_language, booked=self.booked_callback())
+            )
+
+    def booked_callback(self) -> str | None:
+        """The time of a callback booked on this call (schedule_callback's answer), so the
+        goodbye can confirm it."""
+        items = getattr(getattr(self.session, "history", None), "items", None) or []
+        for item in reversed(items):
+            if getattr(item, "type", None) != "function_call_output":
+                continue
+            if getattr(item, "name", None) != "schedule_callback":
+                continue
+            with contextlib.suppress(ValueError, TypeError):
+                answer = json.loads(str(getattr(item, "output", "") or ""))
+                if isinstance(answer, dict) and answer.get("scheduled"):
+                    return str(answer.get("spoken_time") or "") or None
+        return None
+
+    def cancel_goodbye(self) -> None:
+        task, self._goodbye = self._goodbye, None
+        if task is not None and not task.done():
+            task.cancel()
+
+    async def closing_line(self, configured: str) -> str:
+        """The generated goodbye (``start_goodbye``), said after the current reply. Empty when
+        that reply already said goodbye; the configured text (else the stock line) when the
+        model fails, answers nothing or is not back in time."""
+        fallback = configured or llm_ops.STOCK_GOODBYE
+        self.start_goodbye()
+        task, started = self._goodbye, self._goodbye_started
+        self._goodbye = None
+        await self.wait_for_reply_playout()
+        if task is None:
+            return fallback
+        loop = asyncio.get_running_loop()
+        budget = max(GOODBYE_AFTER_PLAYOUT_S, started + GOODBYE_TIMEOUT_S - loop.time())
+        try:
+            text = await asyncio.wait_for(task, budget)
+        except Exception as exc:
+            log.info(
+                "generated goodbye not used on %s: %r", getattr(self.control, "call_id", "?"), exc
+            )
+            return fallback
+        if text is None:
+            return ""
+        return text or fallback
+
+    async def caller_still_talking(self) -> bool:
+        """``CallControl.caller_quiet`` (waits briefly for a caller who is still talking)."""
+        quiet = getattr(self.control, "caller_quiet", None)
+        return not await quiet() if callable(quiet) else False
+
+    def rebuild(self, plan: SessionPlan, components: Mapping[str, Any]) -> Any:
+        """A turn-boundary swap (012 set_language, FR-046 overrides): the call's plan and
+        default components change, and the current node's agent is rebuilt with them, keeping
+        its conversation. Returns the new agent, or None between nodes."""
+        self.plan = plan
+        self.reply_language = plan.reply_language
+        self.default_components = {k: v for k, v in components.items() if v is not None}
+        current = self.current_agent
+        node_id = getattr(current, "node_id", None)
+        if node_id is None:
+            return None
+        return flow_agent_classes()[0](
+            self, node_id, initial=True, chat_ctx=current.chat_ctx, rebuild=True
+        )
 
     def sync_variables(self) -> None:
         """Flow variables for 005's request templating (flat names only)."""
@@ -390,6 +524,10 @@ class FlowCall:
             llm = resolve_llm({"llm": node.get("llm") or {}}, registry)
             if llm != self.plan.llm:
                 out["llm"] = self.components.build(llm)
+            if self.plan.language != (self.plan.agent_language or self.plan.language):
+                # The call runs in the caller's language (012): the call's speech recognition
+                # and voice for it win over the node's own, which are for the node's language.
+                return out
             tts = resolve_tts({"tts": node.get("tts") or {}}, registry, language=language)
             if tts != self.plan.tts:
                 out["tts"] = self.components.build(tts)
@@ -422,6 +560,20 @@ def _publisher(control: Any) -> Any:
     return publish
 
 
+def _chunk_text(chunk: Any) -> str:
+    if isinstance(chunk, str):
+        return chunk
+    delta = getattr(chunk, "delta", None)
+    return str(getattr(delta, "content", None) or "") if delta is not None else ""
+
+
+def raise_stop_response() -> None:
+    """End the tool call without a follow-up reply from the model."""
+    from livekit.agents.llm import StopResponse
+
+    raise StopResponse()
+
+
 _classes: tuple[type[Any], type[Any]] | None = None
 
 
@@ -430,7 +582,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
     global _classes
     if _classes is not None:
         return _classes
-    from worker.pipeline import make_agent_class, tts_gain_for
+    from worker.pipeline import FLOW_ENDING_INSTRUCTION, make_agent_class, tts_gain_for
 
     base: type[Any] = make_agent_class()
 
@@ -438,7 +590,13 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
         """One conversational node: its instructions, tools, transitions and components."""
 
         def __init__(
-            self, call: FlowCall, node_id: str, *, initial: bool, chat_ctx: Any = None
+            self,
+            call: FlowCall,
+            node_id: str,
+            *,
+            initial: bool,
+            chat_ctx: Any = None,
+            rebuild: bool = False,
         ) -> None:
             self.call = call
             self.node_id = node_id
@@ -447,9 +605,8 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
             self.rounds = 0
             self.completed = False
             node = self.node
-            ctx, extra = call.node_chat_ctx(
-                str(node.get("context_strategy") or "inherit"), chat_ctx
-            )
+            strategy = "inherit" if rebuild else str(node.get("context_strategy") or "inherit")
+            ctx, extra = call.node_chat_ctx(strategy, chat_ctx)
             instructions = call.run.render(node.get("instructions"))
             task = node.get("task")
             if task:
@@ -464,7 +621,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                     if p
                 )
             components = call.node_components(node)
-            plan = replace(call.plan, instructions=instructions)
+            plan = replace(call.plan, instructions=instructions, reply_language=call.reply_language)
             tts_spec = components.pop("_tts_spec", None)
             if tts_spec is not None:
                 plan = replace(plan, tts=tts_spec, tts_gain=tts_gain_for(tts_spec))
@@ -472,7 +629,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
             tools = [*tools_set.function_tools(), *self._transition_tools(), *call.extra_tools]
             if task:
                 tools.append(self._task_tool(task))
-            kwargs: dict[str, Any] = dict(components)
+            kwargs: dict[str, Any] = {**call.default_components, **components}
             if ctx is not None:
                 kwargs["chat_ctx"] = ctx
             super().__init__(
@@ -481,16 +638,22 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 on_tts_text=call.on_tts_text,
                 extra_instructions="\n\n".join(p for p in (extra, call.extra_instructions) if p),
                 filler_policy=tools_set.fillers,
+                ending_instruction=FLOW_ENDING_INSTRUCTION,
                 **kwargs,
             )
+
+        async def set_reply_language(self, label: str) -> None:
+            """012 set_language: reply in ``label`` now, and in every node after this one."""
+            self.call.reply_language = label
+            await self.update_instructions(with_reply_language(self.instructions, label))
 
         def _transition_tools(self) -> list[Any]:
             out = []
             for t in self.node.get("transitions") or []:
                 name = str(t["function_name"])
 
-                async def run(_args: dict[str, Any], _ctx: Any, name: str = name) -> Any:
-                    return await self._take(name)
+                async def run(_args: dict[str, Any], ctx: Any, name: str = name) -> Any:
+                    return await self._take(name, ctx)
 
                 out.append(
                     llm_ops.raw_tool(
@@ -516,15 +679,33 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 COMPLETE_TASK, "Save the collected details and continue.", schema, run
             )
 
-        async def _take(self, function_name: str) -> Any:
+        async def _take(self, function_name: str, run_ctx: Any = None) -> Any:
             call = self.call
             if not call.run.claim_turn(call.turns):
                 return IGNORED
             move = call.run.transition_move(self.node_id, function_name)
             if move is None:
                 return "Unknown transition."
+            target = call.run.node(move.target)
+            if target.get("type") == "end":
+                # Speech recognition can finish "I'm getting a call." as a turn of its own
+                # while the caller is still saying "Can you call me back?": do not hang up on
+                # a caller who is still talking. The reply's words play first; a goodbye to
+                # write is started meanwhile.
+                if end_generates(target):
+                    call.start_goodbye()
+                call.run_ctx = run_ctx
+                await call.wait_for_reply_playout()
+                if await call.caller_still_talking():
+                    call.cancel_goodbye()
+                    call.run.state.turn_moved = None
+                    raise_stop_response()
+            call.run_ctx = run_ctx
             agent = await call.handoff_to(self.node_id, move, self.chat_ctx)
-            return agent if agent is not None else "The call has ended."
+            call.run_ctx = None
+            if agent is None:
+                raise_stop_response()  # the call ended: no follow-up reply over the hang-up
+            return agent
 
         async def _complete(self, values: Mapping[str, Any], *, complete: bool) -> Any:
             call = self.call
@@ -545,6 +726,8 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 note=None if complete else f"max rounds reached after {self.rounds}",
             )
             agent = await call.handoff_to(self.node_id, move, self.chat_ctx)
+            if agent is None and complete:
+                raise_stop_response()
             return agent if agent is not None else "The call has ended."
 
         async def on_enter(self) -> None:
@@ -578,7 +761,9 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 if agent is not None and not isinstance(agent, str):
                     self.session.update_agent(agent)
                 return
+            self.call.reply_text = ""
             async for chunk in super().llm_node(chat_ctx, tools, model_settings):
+                self.call.reply_text += _chunk_text(chunk)
                 yield chunk
 
     class FlowStepAgent(base):  # type: ignore[misc]

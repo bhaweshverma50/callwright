@@ -48,7 +48,8 @@ def with_reply_language(instructions: str, label: str | None) -> str:
 
 
 def set_language_instruction(options: Sequence[Any]) -> str:
-    """When to call set_language (single-prompt agents with something to switch to)."""
+    """When to call set_language (single-prompt agents and every flow node, when the claim offers
+    something to switch to)."""
     names = ", ".join(f"{_get(o, 'label')} ({_get(o, 'code')})" for o in options)
     return (
         "Callers may prefer another language. If the caller asks to speak in another language, or "
