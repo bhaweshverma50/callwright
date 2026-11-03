@@ -96,9 +96,11 @@ export function PublishButton({
   const { publish, blockerDialog } = usePublish(agentId);
   if (published && published.id === draftVersion.id && !dirty) {
     return (
-      <Badge tone="success" icon={<Radio />} className="h-9 rounded-control px-3 text-[13px]">
-        Live on version {published.version_number}
-      </Badge>
+      <span data-tour="agent-publish" data-published="true" className="inline-flex">
+        <Badge tone="success" icon={<Radio />} className="h-9 rounded-control px-3 text-[13px]">
+          Live on version {published.version_number}
+        </Badge>
+      </span>
     );
   }
   const reason = dirty
@@ -117,7 +119,8 @@ export function PublishButton({
     </Button>
   );
   return (
-    <>
+    // The guided setup tour (013) points at this control and watches data-published.
+    <span data-tour="agent-publish" data-published="false" className="inline-flex">
       {reason ? (
         <Tooltip content={reason}>
           <span tabIndex={0} className="rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
@@ -128,6 +131,6 @@ export function PublishButton({
         button
       )}
       {blockerDialog}
-    </>
+    </span>
   );
 }

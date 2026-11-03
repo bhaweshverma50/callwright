@@ -14,6 +14,10 @@ export type RegisteredSession = S["RegisteredSession"];
 export type Me = S["Me"];
 export type User = S["User"];
 export type Workspace = S["Workspace"];
+export type Preferences = S["Preferences"];
+export type Onboarding = S["Onboarding"];
+export type OnboardingStatus = S["OnboardingStatus"];
+export type PreferencesUpdate = S["PreferencesUpdate"];
 
 export type TransactionType = S["TransactionType"];
 export type Transaction = S["Transaction"];

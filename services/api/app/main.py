@@ -67,9 +67,9 @@ from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
 from app.llms.router import router as llms_router
 from app.outbound.router import router as outbound_router
-from app.preferences.router import router as preferences_router
 from app.phone_numbers.install import install as install_channels
 from app.phone_numbers.router import router as phone_numbers_router
+from app.preferences.router import router as preferences_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router
 from app.recordings.router import router as recordings_router

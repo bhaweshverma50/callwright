@@ -93,6 +93,11 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Spec 011 (`specs/011-callbacks`): agents book callbacks with a built-in `schedule_callback` tool; a cron dials them through 010's outbound path (DNC, calling hours, credit, concurrency, idempotency). Callbacks tab under Calls and a card in the call drawer. Details: docs/OPERATIONS.md section 11.
 - Deploy: `deploy.sh ... build migrate api` (migration `s011_0001`), VM jobs worker on the new API tag (new cron `place_due_callbacks`), `build-voice` and roll `voice` and `textsim`, Vercel. No new settings.
 
+## Guided setup tour (2026-11-03, branch `w9-tour`, not merged)
+- Spec 013 (`specs/013-guided-setup`): a first-run welcome card for new users (no agents, never started), then a follow-along tour with a spotlight and popover over the real controls: agents, template, prompt, voice, cost, test call, publish, channels, calls, review, recap. Steps move on when the user does the action (or "Do it for me", or Next); Skip tour ends it, Esc pauses it behind a resume chip, "Guided setup" in the account menu restarts it.
+- Progress is per user on the server: `GET/PATCH /v1/me/preferences` (`onboarding.status`, `step`), table `user_preferences` with RLS on user and workspace. Migration `s013_0001` with down_revision `s011_0001`: re-chain it after whatever lands on `s011_0001` first.
+- Deploy: `deploy.sh ... build migrate api`, then Vercel. No worker change, no new settings.
+
 ## Public pages (2026-11-02, deployed)
 - Home, pricing and enterprise redesigned without template patterns (two-column bands with ruled rows, solid headlines, one primary action). Home adds a vendor strip with real wordmarks (`public/logos/vendors`), an interactive chain demo, a 31 s product tour (`public/media/tour.*`, re-record with `apps/web/scripts/record-tour.mjs`), a quality scroll story and the template rail. The playground shows only scenario, part and call button until a call starts.
 
