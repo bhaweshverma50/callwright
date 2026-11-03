@@ -5139,6 +5139,8 @@ export interface components {
             cost?: components["schemas"]["CostView"] | null;
             /** @enum {string} */
             processing_state: "pending" | "done";
+            /** @description The call's recording is still being finalised (uploaded after the call ends). */
+            recording_pending?: boolean;
         };
         CallTranscriptItem: components["schemas"]["TranscriptMessage"] | components["schemas"]["TranscriptToolCall"] | components["schemas"]["TranscriptToolResult"];
         TranscriptMessage: {

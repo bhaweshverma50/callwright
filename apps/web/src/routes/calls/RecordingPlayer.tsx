@@ -47,6 +47,15 @@ export function RecordingPlayer({
 
   useEffect(() => () => audio.current?.pause(), []);
 
+  // Fresher call data (the recording finished uploading, or processing started) moves a player
+  // that has not been played yet out of its first answer.
+  useEffect(() => {
+    setState((s) => {
+      if (s !== "missing" && s !== "processing") return s;
+      return hasRecording ? "idle" : processing ? "processing" : "missing";
+    });
+  }, [hasRecording, processing]);
+
   const ensureLink = useCallback(async (): Promise<string | null> => {
     const current = link.current;
     if (current && new Date(current.expires_at).getTime() - Date.now() > REFRESH_EARLY_MS) return current.url;

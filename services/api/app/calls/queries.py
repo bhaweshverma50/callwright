@@ -370,6 +370,9 @@ async def call_detail(session: AsyncSession, call_id: str, user_id: str) -> dict
             "latency": _latency_summary(call.latency_stats),
             "cost": cost_view(stored or call.cost_breakdown),
             "processing_state": "pending" if call.status in PENDING_STATES else "done",
+            # The recorder finishes its upload a few seconds after the call ends; clients keep
+            # polling while this is true instead of showing "no recording".
+            "recording_pending": call.recording_status == "recording",
         }
     )
     return detail

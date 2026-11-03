@@ -338,6 +338,9 @@ components:
                 - { $ref: "#/components/schemas/CostView" }
                 - { type: "null" }
             processing_state: { type: string, enum: [pending, done] }
+            recording_pending:
+              type: boolean
+              description: The call's recording is still being finalised (uploaded after the call ends).
     CallTranscriptItem:
       oneOf:
         - $ref: "#/components/schemas/TranscriptMessage"

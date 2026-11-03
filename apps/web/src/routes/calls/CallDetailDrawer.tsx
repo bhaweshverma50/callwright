@@ -157,7 +157,12 @@ function Body({
     <div className="flex flex-col gap-5">
       <Header call={c} />
       {c.summary && <SummaryCard summary={c.summary} onOpen={() => onTab("analysis")} />}
-      <RecordingPlayer callId={c.call_id} hasRecording={c.has_recording} durationS={c.duration_s} processing={c.processing_state === "pending"} />
+      <RecordingPlayer
+        callId={c.call_id}
+        hasRecording={c.has_recording}
+        durationS={c.duration_s}
+        processing={c.processing_state === "pending" || !!c.recording_pending}
+      />
       <Tabs aria-label="Call detail" value={active} onValueChange={(v) => onTab(v as DrawerTab)} items={tabs}>
         <TabPanel value="transcript">
           <Transcript

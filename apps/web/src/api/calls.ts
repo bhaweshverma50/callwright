@@ -21,6 +21,8 @@ export type CallDetail = S["CallListItem"] & {
   latency: S["LatencySummary"];
   cost?: S["CostView"] | null;
   processing_state: "pending" | "done";
+  /** The recording is still uploading after the call ended. */
+  recording_pending?: boolean;
 };
 export type CostView = S["CostView"];
 export type TranscriptItem = S["TranscriptMessage"] | S["TranscriptToolCall"] | S["TranscriptToolResult"];
@@ -87,7 +89,10 @@ export function useCall(id: string | null) {
     queryFn: () => unwrap(api.GET("/calls/{call_id}", { params: { path: { call_id: id! } } })) as Promise<CallDetail>,
     enabled: Boolean(id),
     // Post-call analysis lands without a reload (US2 scenario 7).
-    refetchInterval: (q) => (q.state.data?.processing_state === "pending" || q.state.data?.status === "in_progress" ? POLL_PENDING_MS : false),
+    refetchInterval: (q) =>
+      q.state.data?.processing_state === "pending" || q.state.data?.recording_pending || q.state.data?.status === "in_progress"
+        ? POLL_PENDING_MS
+        : false,
   });
 }
 
