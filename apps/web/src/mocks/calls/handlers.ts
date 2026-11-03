@@ -3,10 +3,12 @@
  * specs/006-calls-analytics/contracts. The store is empty until `seedMockCalls()` runs, so the
  * dashboard keeps its setup sequence for a new workspace; tests seed what they need.
  * `requests` records every call-list query string so tests can check what reached the server.
+ * Seeding also books the 011 callbacks on these calls (mocks/callbacks/handlers.ts).
  */
 import { http, HttpResponse, type JsonBodyType } from "msw";
 import type { CallDetail, CallListItem, DashboardStats, TranscriptItem, TurnLatency } from "../../api/calls";
 import { env } from "../../lib/env";
+import { resetMockCallbacks, seedMockCallbacks } from "../callbacks/handlers";
 
 const url = (path: string) => `${env.apiBaseUrl}${path}`;
 const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
@@ -39,6 +41,7 @@ const withQuality = (c: CallListItem, request: Request): CallListItem => (qualit
 
 export function resetMockCalls() {
   store = { calls: [], requests: [] };
+  resetMockCallbacks();
 }
 
 const pad = (n: number) => String(n).padStart(4, "0");
@@ -72,6 +75,8 @@ export function seedMockCalls(count = 45) {
       quality: { eval_status: "not_evaluated", pass_count: 0, fail_count: 0, label: null },
     } as CallListItem;
   });
+  // 011: callbacks booked on these calls (mock call 1 has a scheduled one).
+  seedMockCallbacks(store.calls);
 }
 
 function matches(c: CallListItem, q: URLSearchParams): boolean {

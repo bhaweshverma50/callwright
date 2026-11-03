@@ -35,6 +35,7 @@ const NewAgentTypePage = lazy(() => import("../routes/agents/NewAgentTypePage").
 const TemplatesPage = lazy(() => import("../routes/agents/TemplatesPage").then((m) => ({ default: m.TemplatesPage })));
 const AgentEditorPage = lazy(() => import("../routes/agents/editor/AgentEditorPage").then((m) => ({ default: m.AgentEditorPage })));
 const CallHistoryPage = lazy(() => import("../routes/calls/CallHistoryPage").then((m) => ({ default: m.CallHistoryPage })));
+const CallbacksPage = lazy(() => import("../routes/calls/callbacks/CallbacksPage").then((m) => ({ default: m.CallbacksPage })));
 const ComparePage = lazy(() => import("../routes/calls/ComparePage").then((m) => ({ default: m.ComparePage })));
 const DashboardPage = lazy(() => import("../routes/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const PhoneNumbersPage = lazy(() => import("../routes/channels/PhoneNumbersPage").then((m) => ({ default: m.PhoneNumbersPage })));
@@ -121,6 +122,7 @@ export const routes: RouteObject[] = [
                   { path: "app", element: <Navigate to="/dashboard" replace /> },
                   { path: "dashboard", element: <DashboardPage /> },
                   { path: "calls", element: <CallHistoryPage /> },
+                  { path: "calls/callbacks", element: <CallbacksPage /> },
                   { path: "calls/:callId/compare", element: <ComparePage /> },
                   { path: BILLING_ITEM.to.slice(1), element: <BillingPage /> },
                   { path: "settings", element: <SettingsPage /> },

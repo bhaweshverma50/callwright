@@ -32,6 +32,7 @@ import { Transcript } from "./Transcript";
 import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { summaryHeadline, summaryOutcome } from "./quality/SummaryText";
+import { CallCallbacks } from "./callbacks/CallbackParts";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -157,6 +158,7 @@ function Body({
     <div className="flex flex-col gap-5">
       <Header call={c} />
       {c.summary && <SummaryCard summary={c.summary} onOpen={() => onTab("analysis")} />}
+      <CallCallbacks callId={c.call_id} />
       <RecordingPlayer
         callId={c.call_id}
         hasRecording={c.has_recording}

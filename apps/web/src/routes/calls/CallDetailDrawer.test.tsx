@@ -1,6 +1,7 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { mockCallbackId, mockCallbacks } from "../../mocks/callbacks/handlers";
 import { mockCallId, seedMockCalls } from "../../mocks/calls/handlers";
 import { renderApp, signInDemo } from "../../test/render";
 import { transcriptText } from "./Transcript";
@@ -58,6 +59,36 @@ describe("CallDetailDrawer (006 US2)", () => {
     await user.click(await within(drawer).findByRole("tab", { name: "Cost" }));
     expect(await within(drawer).findByText("1.13x", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(within(drawer).getAllByText("$0.477").length).toBeGreaterThan(0);
+  });
+
+  it("shows the callback booked on the call and cancels it (011)", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    const user = userEvent.setup();
+    renderApp(`/calls?call=${mockCallId(1)}`);
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    const card = await within(drawer).findByRole("region", { name: "Callbacks" }, { timeout: 5000 });
+    expect(card).toHaveTextContent("Callback scheduled for Sat 17 Oct, 5:00 pm");
+    expect(card).toHaveTextContent("EDT");
+    expect(card).toHaveTextContent("Caller was heading into a meeting; continue rescheduling the cleaning appointment.");
+    expect(card).toHaveTextContent("+1 555 123 4567");
+    expect(within(card).getByText("Scheduled")).toBeInTheDocument();
+    await user.click(within(card).getByRole("button", { name: "Cancel callback" }));
+    const confirm = await screen.findByRole("alertdialog", { name: "Cancel this callback?" });
+    await user.click(within(confirm).getByRole("button", { name: "Cancel callback" }));
+    await waitFor(() => expect(mockCallbacks().cancelled).toEqual([mockCallbackId(0)]));
+    expect(await within(card).findByText("Cancelled", undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(card).toHaveTextContent("was cancelled");
+    expect(within(card).queryByRole("button", { name: "Cancel callback" })).not.toBeInTheDocument();
+  });
+
+  it("renders no callback card when the call booked none", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    renderApp(`/calls?call=${mockCallId(0)}`);
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    await within(drawer).findByText("Where is my order?", undefined, { timeout: 5000 });
+    expect(within(drawer).queryByRole("region", { name: "Callbacks" })).not.toBeInTheDocument();
   });
 
   it("copies plain text with bracketed tool lines", () => {
