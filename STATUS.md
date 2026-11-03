@@ -78,6 +78,7 @@ Real-vendor live benchmark (`tests/harness/bench`, caller-measured, Deepgram Nov
 - Call recordings are on: LiveKit egress on the VM (compose profile `recording`), LiveKit webhook to the API, Cloud Storage bucket `callwright-dev-data` for recordings and uploads (uploads no longer live in API memory). Setup: `deploy.sh ... storage setup`, VM render with `CW_RECORDINGS_ENABLED=true` plus a LiveKit restart, API deploy (deploy/vm/README.md, "Call recordings"). Verified on the hosted stack: a test call's MP4 landed in the bucket.
 - A sweep cron (`settle_stuck_recordings`, migration `s003_0003`) settles recordings whose webhook was lost.
 - Test calls have a keypad that sends DTMF (003 T099).
+- 008 T085 live latency benchmark (real vendors, 2026-11-03): answer p50 1748 ms, p95 2128 ms, 0 cut-offs. Fixed on the way: when the model ended a call with only the end_call action (no words), the agent hung up in silence; it now says "Thanks for calling. Goodbye!" (or the tool's message) at once and the model makes no follow-up reply. Voice worker deploy needed.
 
 ## Accessibility audit and Claude adapter (2026-11-03, branch `w6-a11y-llm`, not merged)
 - 002 T085: axe and keyboard audit of the agent editor in Chrome; 12 fixes in the shared primitives and agent routes (slider names, row help as descriptions, dialog focus in and out, pending buttons keep focus, voice picker radios). Findings: `specs/002-agent-builder/a11y-audit.md`.

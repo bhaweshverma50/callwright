@@ -60,6 +60,9 @@ log = logging.getLogger(__name__)
 FILLER_TEXT = "One moment, let me check that."
 STILL_CHECKING = "Still checking, thanks for waiting."
 STILL_CHECKING_AFTER_S = 3.0
+# Said at once when the model ends the call without a goodbye of its own (it sometimes answers
+# a caller's "thanks, that's all" with only the end_call action, which hung up in silence).
+GOODBYE_FILLER = "Thanks for calling. Goodbye!"
 MAX_EVENT_OUTPUT = 4096
 LOOKUP_TYPES = frozenset({"http", "kb_search"})
 EMPTY_OBJECT: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
@@ -179,7 +182,8 @@ def validate_arguments(schema: Mapping[str, Any], value: Any, path: str = "") ->
 
 @dataclass
 class FillerPolicy:
-    """Lookup tools and what to say at once when the model calls one before speaking."""
+    """Lookup tools (and end_call) and what to say at once when the model calls one before
+    speaking."""
 
     texts: dict[str, str] = field(default_factory=dict)
     # Set by the agent's llm_node: did the reply say anything before its tool calls?
@@ -199,6 +203,8 @@ def filler_texts(specs: Sequence[ToolSpecView]) -> dict[str, str]:
             texts[spec.name] = FILLER_TEXT
         elif spec.type == "http" and spec.config.get("speak_during_execution", True):
             texts[spec.name] = str(spec.config.get("execution_message") or FILLER_TEXT)
+        elif spec.type == "end_call":
+            texts[spec.name] = str(spec.config.get("message") or "").strip() or GOODBYE_FILLER
     return texts
 
 
@@ -329,7 +335,7 @@ class CallTools:
         return result.llm_payload
 
     def _still_checking(self, spec: ToolSpecView, ctx: ToolContext) -> asyncio.Task[None] | None:
-        if spec.name not in self.fillers.texts:
+        if spec.type not in ("http", "kb_search") or spec.name not in self.fillers.texts:
             return None
 
         async def later() -> None:
@@ -404,8 +410,16 @@ def _raw_tool(tools: CallTools, schema: dict[str, Any]) -> Any:
 
     name = str(schema["name"])
 
+    ends_call = getattr(tools.by_name.get(name), "type", None) == "end_call"
+
     async def handler(raw_arguments: dict[str, object], context: RunContext) -> str:  # type: ignore[type-arg]
-        return await tools.dispatch(name, raw_arguments, context)
+        payload = await tools.dispatch(name, raw_arguments, context)
+        if ends_call:
+            # The call is over: no follow-up reply from the model (it would talk over the hang-up).
+            from livekit.agents.llm import StopResponse
+
+            raise StopResponse()
+        return payload
 
     handler.__annotations__ = {"raw_arguments": dict, "context": RunContext, "return": str}
     return function_tool(handler, raw_schema=schema)

@@ -1,6 +1,7 @@
 """End-call tool (005 T026): let the reply that called it finish playing, speak the configured
-goodbye (if any), then hang up with ``agent_hangup``. Hanging up stops speech at once, so without
-the wait the agent's own goodbye in that reply would be cut off."""
+goodbye unless the reply already said something (its own goodbye, or the goodbye filler said
+when the model ended the call without words), then hang up with ``agent_hangup``. Hanging up
+stops speech at once, so without the wait the goodbye would be cut off."""
 
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ class EndCallExecutor:
             with contextlib.suppress(Exception):
                 await ctx.wait_for_playout()
         message = str(spec.config.get("message") or "").strip()
-        if message:
+        if message and not ctx.reply_spoke():
             await ctx.speak(message)
         await ctx.control.hang_up("agent_hangup")
         return ToolResult(llm_payload='{"ended":true}', output="ended")

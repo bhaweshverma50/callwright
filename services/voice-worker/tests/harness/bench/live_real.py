@@ -5,7 +5,8 @@ and ElevenLabs (or whatever the call set's agent config selects) answer for real
 from the worker's environment. Two bench-only additions make the slow paths measurable:
 
 - :class:`BenchToolProvider` gives the agent one tool, ``check_availability``, that sleeps
-  ``tool_delay_ms`` like a calendar or database lookup, so a caller turn that needs it shows
+  ``tool_delay_ms`` like a calendar or database lookup (plus the production built-in end_call,
+  so closing turns hang up the way real calls do), so a caller turn that needs it shows
   the instant acknowledgement and the answer after the tool.
 - :class:`SlowTurnLLM` holds back the real LLM's first token by ``slow_delay_ms`` on caller
   turns that contain ``slow_marker``, so a turn whose model is slow to start shows the
@@ -59,11 +60,25 @@ class BenchToolProvider:
 
     def __init__(self, delay_ms: float) -> None:
         self.delay_s = delay_ms / 1000.0
+        self._calls: dict[str, Any] = {}
+
+    def _production(self, runtime: Any, control: Any) -> Any:
+        """The production call tools (built-in end_call and its goodbye filler)."""
+        from worker.tools.registry import build_call_tools
+
+        key = str(control.call_id)
+        if key not in self._calls:
+            self._calls[key] = build_call_tools(runtime, control)
+        return self._calls[key]
+
+    def filler_policy(self, runtime: Any, control: Any) -> Any:
+        return self._production(runtime, control).fillers
 
     def tools_for(self, runtime: Any, control: Any) -> Sequence[Any]:
         from livekit.agents import function_tool
 
         delay = self.delay_s
+        production = list(self._production(runtime, control).function_tools())
 
         async def check_availability(day: str) -> str:
             """Look up free appointment slots for one day in the clinic calendar.
@@ -74,7 +89,7 @@ class BenchToolProvider:
             await asyncio.sleep(delay)
             return f"Free slots on {day}: 10:00 am and 2:30 pm."
 
-        return [function_tool(check_availability, name=AVAILABILITY_TOOL)]
+        return [function_tool(check_availability, name=AVAILABILITY_TOOL), *production]
 
 
 class _DelayedStream(llm.LLMStream):

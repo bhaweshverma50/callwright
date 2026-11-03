@@ -186,7 +186,8 @@ batch-vs-batch baseline.
 
 ## Phase 8: Polish and Cross-Cutting
 
-- [ ] T085 Run the latency benchmark call set against the voice-worker with the textsim changes merged and attach p50/p95 to the PR (Principle II) using services/voice-worker/tests/harness/
+- [x] T085 Run the latency benchmark call set against the voice-worker with the textsim changes merged and attach p50/p95 to the PR (Principle II) using services/voice-worker/tests/harness/
+  - Run 2026-11-03 (real vendors: Deepgram Nova-3, gpt-5.1 priority, ElevenLabs Flash; 2 calls x 6 turns, from India, `callset_real.yaml`): caller-measured answer p50 1748 ms, p95 2128 ms, 0 missed turns, 0 cut-offs, greeting at the caller 1095 ms median (2026-10-26: p50 1658 ms, p95 2207 ms). Text simulation changes add no latency to live turns. A first run showed 4.4 to 8.7 s on the closing turn: the bench replaced the agent's tools with its lookup only, so the model's end_call failed and was retried; the bench now keeps the production end_call. It also showed that a reply that is only end_call hung up in silence, fixed with a spoken goodbye filler and no follow-up reply.
 - [x] T086 [P] RLS test: every 008 table and endpoint denies cross-workspace access, including internal endpoints with a mismatched run in services/api/tests/integration/test_rls_008.py
 - [x] T087 [P] Retention hook: purge persona briefs and simulated transcripts with the base call; mark dataset items unavailable in services/api/app/simulator/jobs.py
 - [x] T088 [P] OpenTelemetry spans for runs carrying `simulation_run_id` and `call_id` in services/voice-worker/worker/textsim/runner.py

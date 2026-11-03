@@ -106,7 +106,7 @@ def test_function_tools_build_livekit_raw_tools() -> None:
     assert [t.info.name for t in built] == ["end_call", "check_availability"]
 
 
-def test_fillers_cover_lookup_tools_only() -> None:
+def test_fillers_cover_lookup_tools_and_a_silent_goodbye() -> None:
     quiet = http_spec("quiet_lookup", speak_during_execution=False)
     h = make(
         [tool("end_call", "end_call"), http_spec(), quiet, tool("press_digit", "press")],
@@ -115,6 +115,7 @@ def test_fillers_cover_lookup_tools_only() -> None:
     assert h.tools.fillers.texts == {
         "check_availability": "One moment while I check that.",
         "kb_search": "One moment, let me check that.",
+        "end_call": "Thanks for calling. Goodbye!",
     }
 
 
