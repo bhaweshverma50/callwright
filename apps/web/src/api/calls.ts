@@ -59,12 +59,20 @@ function queryObject(search: URLSearchParams): Record<string, string> {
   return Object.fromEntries(search.entries());
 }
 
+const POLL_PENDING_MS = 4_000;
+/** New calls (an incoming phone call) show up without a reload while the page is open. */
+const POLL_IDLE_MS = 15_000;
+/** Statuses that will still change on their own: ringing, live, or being processed after the call. */
+const ACTIVE_STATUSES = new Set(["queued", "ringing", "in_progress", "ended", "processing"]);
+
 export function useCalls(search: URLSearchParams) {
   const key = search.toString();
   return useQuery({
     queryKey: callKeys.list(key),
     queryFn: () => unwrap(api.GET("/calls", { params: { query: queryObject(search) as never } })) as Promise<CallPage>,
     placeholderData: keepPreviousData,
+    // Polls only while the tab is visible (React Query pauses intervals in the background).
+    refetchInterval: (q) => (q.state.data?.items.some((c) => ACTIVE_STATUSES.has(c.status)) ? POLL_PENDING_MS : POLL_IDLE_MS),
   });
 }
 
@@ -80,8 +88,6 @@ export function useHasCalls(origin = "live") {
     staleTime: 60_000,
   });
 }
-
-const POLL_PENDING_MS = 4_000;
 
 export function useCall(id: string | null) {
   return useQuery({
