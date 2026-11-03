@@ -222,7 +222,7 @@ function footerHint(s: WebCallState, elapsed: number, cost: bigint): string {
     case "requesting":
       return "Checking credit and starting the agent.";
     case "connecting":
-      return "Ringing the agent.";
+      return "The agent picks up in a moment.";
     case "live":
     case "ending":
       return s.muted ? "Muted: the agent cannot hear you." : "Talk as the caller. The agent hears your microphone.";
