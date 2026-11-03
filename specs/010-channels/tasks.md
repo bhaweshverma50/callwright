@@ -205,8 +205,10 @@ place a WhatsApp call; the call row has channel `whatsapp`.
 
 - [x] T065 [P] RLS isolation tests for all 010 tables (including `dnc_entries`, `outbound_calling_hours`, `outbound_policy_decisions`) and a check that routing and lookup functions return no secret columns in `services/api/tests/integration/test_rls_channels.py`
 - [x] T066 [P] Add OpenTelemetry spans for provisioning, routing, inbound webhook and dialling (`call_id`, `phone_number_id`, `whatsapp_channel_id`) in `services/api/app/phone_numbers/provisioning.py`, `services/api/app/phone_numbers/routing.py` and `services/voice-worker/worker/telephony.py`
-- [ ] T067 [P] Add an optional SIPp end-to-end scenario (inbound answer, outbound busy) in `services/api/tests/e2e/sipp/` used by quickstart section 6
-- [ ] T069 Run every section of `specs/010-channels/quickstart.md` and fix drift
+- [x] T067 [P] Add an optional SIPp end-to-end scenario (inbound answer, outbound busy) in `services/api/tests/e2e/sipp/` used by quickstart section 6
+  - `inbound_answer.xml`, `outbound_busy.xml`, `run.sh` (SIPp image pinned by digest, run in livekit-sip's network namespace), `test_sipp_e2e.py` (skipped unless `SIPP_E2E=1`), README. Both passed locally on 2026-11-03 against livekit/sip v1.2.0 and LiveKit 1.13.3. Not covered: media across the VM's public IP.
+- [x] T069 Run every section of `specs/010-channels/quickstart.md` and fix drift
+  - Run 2026-11-03 with real SIP through livekit-sip and SIPp; results in `quickstart-results.md`. Added `--reply` to `flaky_receiver.py`; doc drift fixed. Partial: WhatsApp (API side with fake Graph mode only; real calls need Meta).
 
 ---
 

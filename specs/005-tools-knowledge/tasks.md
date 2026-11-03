@@ -219,7 +219,8 @@ pgvector, status, preview URLs, replace and delete.
 - [x] T089 [P] OpenTelemetry spans `tool.execute`, `kb.search`, `kb.ingest` with `call_id`, `tool_type` and timing attributes in `services/voice-worker/worker/tools/registry.py`, `services/api/app/knowledge/service.py` and `services/api/app/knowledge/jobs.py`
 - [x] T090 [P] Secret leak scan (SC-005): run the US1 to US5 suites with a canary secret and assert it never appears in API responses, call events, transcripts, snapshots or captured logs, in `services/api/tests/integration/test_secret_leak_scan.py`
 - [x] T091 Benchmark call set with and without tools and KBs attached (gate: no p50/p95 turn-latency regression > 5% against `baseline.json`) in `services/voice-worker/tests/harness/bench/bench_call_set_tools.py`; add T021, T041, T073 and T091 to the CI offline-harness job
-- [ ] T092 Run quickstart.md end to end and record results in the PR description
+- [x] T092 Run quickstart.md end to end and record results in the PR description
+  - Run 2026-11-03; results in `quickstart-results.md` (instead of a PR description). Doc drift only (port, generated fixtures, kb_search gate location, mock coverage needs the HTTP tool attached).
 
 ---
 
