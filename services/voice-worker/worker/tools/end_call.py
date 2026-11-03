@@ -19,7 +19,7 @@ class EndCallExecutor:
         if ctx.wait_for_playout is not None:
             with contextlib.suppress(Exception):
                 await ctx.wait_for_playout()
-        message = str(spec.config.get("message") or "").strip()
+        message = str(arguments.get("goodbye") or spec.config.get("message") or "").strip()
         if message and not ctx.reply_spoke():
             await ctx.speak(message)
         await ctx.control.hang_up("agent_hangup")

@@ -92,6 +92,20 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
             "properties": {"destination": destination},
             "required": ["destination"],
         }
+    elif spec.type == "end_call":
+        parameters = {
+            "type": "object",
+            "properties": {
+                "goodbye": {
+                    "type": "string",
+                    "description": (
+                        "Only if you have not said goodbye in this reply yet: the one short "
+                        "sentence you say as you hang up, fitting the conversation, for example "
+                        "confirming the callback or next step."
+                    ),
+                }
+            },
+        }
     elif spec.type == "press_digit":
         parameters = {
             "type": "object",
@@ -188,6 +202,8 @@ class FillerPolicy:
     texts: dict[str, str] = field(default_factory=dict)
     # Set by the agent's llm_node: did the reply say anything before its tool calls?
     reply_spoke: bool = False
+    # end_call tools: a goodbye the model wrote into the call replaces the canned filler.
+    end_call_names: frozenset[str] = frozenset()
 
     def text_for(self, names: Sequence[str]) -> str | None:
         for name in names:
@@ -481,7 +497,10 @@ def build_call_tools(
         executors["kb_search"] = kb_search.KbSearchExecutor(
             api_client, api_base_url, service_token, list(kb.config["kb_ids"])
         )
-    fillers = FillerPolicy(filler_texts([*specs, *([kb] if kb else [])]))
+    fillers = FillerPolicy(
+        filler_texts([*specs, *([kb] if kb else [])]),
+        end_call_names=frozenset(s.name for s in specs if s.type == "end_call"),
+    )
     ctx = ToolContext(
         control=control,
         channel=runtime.channel,

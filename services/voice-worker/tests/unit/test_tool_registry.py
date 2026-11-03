@@ -17,7 +17,7 @@ def schema_of(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_function_shapes_per_type() -> None:
-    assert schema_of(tool("end_call", "end_call"))["parameters"]["properties"] == {}
+    assert list(schema_of(tool("end_call", "end_call"))["parameters"]["properties"]) == ["goodbye"]
     static = schema_of(
         tool("transfer_call", "transfer", {"routing_type": "static", "number": "+14155550100"})
     )

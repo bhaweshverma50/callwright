@@ -86,7 +86,10 @@ def node_tools(base: CallTools, node: Mapping[str, Any]) -> CallTools:
         client = httpx.AsyncClient(follow_redirects=False)
         base.clients.append(client)
         executors["http"] = HttpExecutor(client)
-    fillers = FillerPolicy(filler_texts([*specs, *([kb] if kb else [])]))
+    fillers = FillerPolicy(
+        filler_texts([*specs, *([kb] if kb else [])]),
+        end_call_names=frozenset(s.name for s in specs if s.type == "end_call"),
+    )
     ctx = replace(base.ctx, reply_spoke=lambda: fillers.reply_spoke)
     return CallTools(base.control, specs, executors, ctx, fillers, kb, clients=[])
 

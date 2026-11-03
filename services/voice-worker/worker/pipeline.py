@@ -17,6 +17,7 @@ clamped to the shared ``controls`` table at once and applied at the next turn bo
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -80,10 +81,14 @@ VOICE_STYLE_INSTRUCTION = (
 
 # Appended to every single-prompt agent, which always has an end_call tool (tools/registry.py).
 ENDING_INSTRUCTION = (
-    "When the conversation is over, say one short goodbye and call end_call in that same reply. "
-    "Do not wait for the caller to say goodbye back. If the caller speaks again after your "
-    "goodbye only to thank you or say goodbye, call end_call without speaking. Never repeat a "
-    "summary you already gave."
+    "When the conversation is over, end it the way a good receptionist would: in one or two short "
+    "sentences confirm what was agreed or what happens next (for example when you will call back), "
+    "then say goodbye and call end_call in that same reply. If the caller has to leave right away "
+    "or asks you to call back, acknowledge exactly that request before hanging up; never promise "
+    "something you cannot do. Always say your goodbye out loud, in the reply text or in end_call's "
+    "goodbye argument. Do not wait for the caller to say goodbye back. If the caller speaks again "
+    "after your goodbye only to thank you or say goodbye, call end_call without speaking. Never "
+    "repeat a summary you already gave."
 )
 
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
@@ -415,6 +420,22 @@ class FillerSource(Protocol):
     def text_for(self, names: Sequence[str]) -> str | None: ...
 
 
+def goodbye_argument(calls: Sequence[Any], policy: FillerSource) -> str | None:
+    """The goodbye the model wrote into an end_call that came without spoken words."""
+    names = getattr(policy, "end_call_names", ())
+    for call in calls:
+        if str(getattr(call, "name", "")) not in names:
+            continue
+        try:
+            args = json.loads(getattr(call, "arguments", "") or "{}")
+        except ValueError:
+            continue
+        said = str(args.get("goodbye") or "").strip() if isinstance(args, dict) else ""
+        if said:
+            return said
+    return None
+
+
 async def with_fillers(
     stream: AsyncIterable[Any], policy: FillerSource | None
 ) -> AsyncIterator[Any]:
@@ -437,7 +458,9 @@ async def with_fillers(
                 spoke = spoke or bool((getattr(delta, "content", None) or "").strip())
                 calls = getattr(delta, "tool_calls", None) or []
                 if calls and not spoke:
-                    filler = policy.text_for([str(getattr(c, "name", "")) for c in calls])
+                    filler = goodbye_argument(calls, policy) or policy.text_for(
+                        [str(getattr(c, "name", "")) for c in calls]
+                    )
                     if filler:
                         yield filler + " "
                         spoke = True

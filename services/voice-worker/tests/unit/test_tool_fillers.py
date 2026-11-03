@@ -145,3 +145,23 @@ async def test_end_call_stops_the_follow_up_reply() -> None:
     with pytest.raises(StopResponse):
         await fn({}, None)
     assert h.backend.ended == ["agent_hangup"]
+
+
+async def test_silent_end_call_says_the_goodbye_the_model_wrote() -> None:
+    """A goodbye written into end_call (a callback confirmation) replaces the canned one."""
+    policy = FillerPolicy(filler_texts([BUILTIN_END_CALL]), end_call_names=frozenset({"end_call"}))
+    fn = llm.FunctionToolCall(
+        name="end_call",
+        arguments='{"goodbye": "No problem, I will call you back after your meeting. Bye!"}',
+        call_id="c1",
+    )
+    chunk = llm.ChatChunk(id="c", delta=llm.ChoiceDelta(role="assistant", tool_calls=[fn]))
+    out = await collect(policy, chunk)
+    assert out[0] == "No problem, I will call you back after your meeting. Bye! "
+    assert (await collect(policy, call("end_call")))[0] == GOODBYE_FILLER + " "
+
+
+async def test_end_call_says_its_goodbye_argument_when_dispatched_directly() -> None:
+    h = make([tool("end_call", "end_call")])
+    await h.tools.dispatch("end_call", {"goodbye": "Talk soon, bye!"})
+    assert h.backend.said == ["Talk soon, bye!"] and h.backend.ended == ["agent_hangup"]
