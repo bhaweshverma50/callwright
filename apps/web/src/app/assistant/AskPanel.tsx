@@ -20,7 +20,7 @@ function failureOf(e: unknown): Failure {
     if (e.status === 402)
       return { kind: "credit", title: "Out of credit", message: "You're out of credit, so the assistant can't answer. Add funds to keep asking." };
     if (e.status === 429)
-      return { kind: "busy", title: "Taking a breather", message: "That's a lot of questions in a minute. Wait a moment, then try again." };
+      return { kind: "busy", title: "Too many questions", message: "That's a lot of questions in a minute. Wait a moment, then try again." };
     if (e.status === 503 || e.status === 504 || e.status === 0)
       return {
         kind: "unavailable",

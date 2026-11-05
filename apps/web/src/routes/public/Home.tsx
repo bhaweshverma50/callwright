@@ -111,7 +111,7 @@ export function Home() {
         <ProductVideo />
       </Stacked>
 
-      <Stacked id="loop" title="Then keep making it better.">
+      <Stacked id="loop" title="Then fix what keeps failing.">
         <QualityStory />
       </Stacked>
 
