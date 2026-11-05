@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from fastapi.responses import JSONResponse
@@ -80,10 +80,18 @@ async def list_agents(
     page_size: PageSizeParam = 20,
     search: Annotated[str | None, Query(max_length=100)] = None,
     type: Annotated[AgentType | None, Query()] = None,
+    status: Annotated[Literal["live", "draft", "attention"] | None, Query()] = None,
+    sort: Annotated[Literal["updated", "name", "created"], Query()] = "updated",
 ) -> dict[str, Any]:
     async with _tx(request, principal) as session:
-        rows, total = await service.list_agents(
-            session, page=page, page_size=page_size, search=search, agent_type=type
+        rows, total, counts = await service.list_agents(
+            session,
+            page=page,
+            page_size=page_size,
+            search=search,
+            agent_type=type,
+            status=status,
+            sort=sort,
         )
     items = [
         views.agent_summary(
@@ -99,7 +107,7 @@ async def list_agents(
         )
         for row in rows
     ]
-    return {"items": items, **page_meta(total, page, page_size)}
+    return {"items": items, "counts": counts, **page_meta(total, page, page_size)}
 
 
 @router.post("/agents", status_code=201, responses=problem_responses(401, 404, 422))
@@ -220,7 +228,11 @@ async def duplicate_agent(
     async def create() -> Created:
         async with _tx(request, principal) as session:
             saved = await service.duplicate_agent(
-                session, actor(request, principal), agent_id, body.name if body else None
+                session,
+                actor(request, principal),
+                agent_id,
+                body.name if body else None,
+                body.version_id if body else None,
             )
             return saved.agent.id, saved.validation.warnings
 

@@ -36,11 +36,14 @@ export function AssistantPanel({
   onOpenChange,
   draft,
   agentId,
+  initialMessage,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   draft: AgentDraft;
   agentId: string | null;
+  /** Sent once when the panel first opens, e.g. the description typed on the New agent page. */
+  initialMessage?: string | null;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [text, setText] = useState("");
@@ -93,6 +96,14 @@ export function AssistantPanel({
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [turns.length, ask.isPending]);
+
+  const sentInitial = useRef(false);
+  useEffect(() => {
+    if (!open || !initialMessage || sentInitial.current) return;
+    sentInitial.current = true;
+    send(initialMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on the first open
+  }, [open, initialMessage]);
 
   const send = (content: string) => {
     const c = content.trim();

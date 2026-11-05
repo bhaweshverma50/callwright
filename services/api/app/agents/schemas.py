@@ -242,3 +242,4 @@ class DuplicateRequest(_NameMixin):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=80)
+    version_id: str | None = Field(default=None, pattern=r"^agv_[0-9A-HJKMNP-TV-Z]{26}$")

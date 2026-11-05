@@ -92,8 +92,14 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
   const [summary, setSummary] = useState<ConfigIssue[] | null>(null);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState<"save" | "test" | null>(null);
-  const [history, setHistory] = useState(false);
-  const [assistant, setAssistant] = useState(false);
+  // Deep links: ?history=1 opens the versions (from the agents list menu); ?describe= opens the
+  // assistant with the description typed on the New agent page, sent as the first message.
+  const [describe] = useState(() => params.get("describe")?.slice(0, 2000) || null);
+  const [history, setHistory] = useState(() => params.get("history") === "1");
+  const [assistant, setAssistant] = useState(describe !== null);
+  useEffect(() => {
+    if (params.has("describe") || params.has("history")) setParams((p) => (p.delete("describe"), p.delete("history"), p), { replace: true });
+  }, [params, setParams]);
   const [note, setNote] = useState("");
   const [goTo, setGoTo] = useState<string | null>(null);
   const panels = editorPanels("single_prompt");
@@ -333,7 +339,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
           }}
         />
       )}
-      <AssistantPanel open={assistant} onOpenChange={setAssistant} draft={draft} agentId={draft.base.id} />
+      <AssistantPanel open={assistant} onOpenChange={setAssistant} draft={draft} agentId={draft.base.id} initialMessage={describe} />
     </div>
   );
 }

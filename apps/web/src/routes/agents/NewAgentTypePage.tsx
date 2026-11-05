@@ -1,28 +1,109 @@
-import { ArrowRightLeft, ChevronLeft, GitBranch, Info, MessageSquareText, Workflow, Wrench, BookOpen, Braces, Cpu } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowRightLeft,
+  BookOpen,
+  Braces,
+  ChevronLeft,
+  Copy,
+  Cpu,
+  GitBranch,
+  Info,
+  LayoutTemplate,
+  MessageSquareText,
+  Sparkles,
+  Workflow,
+  Wrench,
+} from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useId, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Badge, Button, ChoiceGroup, PageHeader, cn } from "../../components";
+import { Badge, Button, ChoiceGroup, PageHeader, Textarea, cn } from "../../components";
+import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 
 type Kind = "single" | "flow";
 
 /**
- * Agent type chooser (T038, FR-001, US1.1). Two cards that explain each type, single prompt
- * preselected, and a plain warning that the type cannot be changed later. Single prompt continues
- * to the templates; flow continues to the flow builder (spec 004).
+ * New agent (T038, FR-001, US1.1). Leads with "describe it": a sentence or two opens a new single
+ * prompt agent with the prompt assistant already drafting from it. Or start from a template or a
+ * copy of an existing agent. Below, the type chooser: two cards that explain each type, single
+ * prompt preselected, and a plain warning that the type cannot be changed later. Single prompt
+ * continues to the templates; flow continues to the flow builder (spec 004).
  */
 export function NewAgentTypePage() {
   const [kind, setKind] = useState<Kind>("single");
   const navigate = useNavigate();
   const labelId = useId();
+  const describeId = useId();
+  const [describe, setDescribe] = useState("");
+  const [copying, setCopying] = useState(false);
+  const draftWithAi = () => {
+    const d = describe.trim();
+    if (d) navigate(`/agents/new/single?describe=${encodeURIComponent(d)}`);
+  };
   return (
     <>
       <Link to="/agents" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
         <ChevronLeft className="size-4" aria-hidden /> Agents
       </Link>
-      <PageHeader title="New agent" description="Choose how the agent decides what to say next." />
-      <h2 id={labelId} className="sr-only">
-        Agent type
+      <PageHeader title="New agent" description="Describe what it should do and let the assistant draft it, or set it up yourself." />
+
+      <section aria-labelledby={describeId} className="relative mb-8 overflow-hidden rounded-feature border border-line bg-surface shadow-2">
+        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-x-0 top-0 h-32 opacity-70" />
+        <form
+          className="relative flex flex-col gap-3 p-5 sm:p-6"
+          onSubmit={(e) => {
+            e.preventDefault();
+            draftWithAi();
+          }}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="grad-action grid size-8 place-items-center rounded-control text-white">
+              <Sparkles className="size-4" aria-hidden />
+            </span>
+            <h2 id={describeId} className="text-[15px] font-medium text-fg">
+              What should this agent do?
+            </h2>
+            <Badge tone="accent">AI-drafted</Badge>
+          </div>
+          <Textarea
+            aria-labelledby={describeId}
+            rows={3}
+            maxLength={2000}
+            value={describe}
+            onChange={(e) => setDescribe(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                draftWithAi();
+              }
+            }}
+            placeholder="For example: answer calls for a dental clinic, book and move appointments, and transfer billing questions to the front desk."
+            className="bg-surface text-[14px]"
+          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[12.5px] text-fg-3">
+              Opens a single prompt agent with the assistant drafting the prompt and greeting. Nothing is saved until you save; about $0.02 per
+              request.
+            </p>
+            <Button type="submit" variant="primary" icon={<ArrowRight aria-hidden />} disabled={!describe.trim()} className="shrink-0">
+              Draft with AI
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+            <span className="mr-1 text-[12.5px] text-fg-3">Or start from</span>
+            <Button asChild size="sm" icon={<LayoutTemplate aria-hidden />}>
+              <Link to="/agents/templates">A template</Link>
+            </Button>
+            <Button size="sm" icon={<Copy aria-hidden />} onClick={() => setCopying(true)}>
+              A copy of an existing agent
+            </Button>
+          </div>
+        </form>
+      </section>
+      <DuplicateAgentDialog open={copying} onOpenChange={setCopying} agent={null} />
+
+      <h2 id={labelId} className="mb-3 text-[13px] font-medium text-fg-2">
+        Or choose the agent type yourself
       </h2>
       <ChoiceGroup
         aria-labelledby={labelId}

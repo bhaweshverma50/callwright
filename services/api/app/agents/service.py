@@ -24,7 +24,7 @@ import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from opentelemetry import trace
 from sqlalchemy import and_, func, select
@@ -290,15 +290,25 @@ async def update_draft(
 
 
 async def duplicate_agent(
-    session: AsyncSession, actor: Actor, agent_id: str, name: str | None = None
+    session: AsyncSession,
+    actor: Actor,
+    agent_id: str,
+    name: str | None = None,
+    version_id: str | None = None,
 ) -> Saved:
-    """Copy an agent's draft into a new agent of the same type with its own version 1 (FR-020)."""
+    """Copy an agent's draft, or one of its saved versions, into a new agent of the same type
+    with its own version 1 (FR-020). History and live status are not copied."""
     source = await get_agent(session, agent_id)
+    config = (
+        (await versions.get_for_agent(session, source.id, version_id)).config
+        if version_id
+        else source.draft_config
+    )
     if name is None:
         name = source.name[: 80 - len(COPY_SUFFIX)].rstrip() + COPY_SUFFIX
     result = await validate_config(
         source.type,
-        source.draft_config,
+        config,
         session=session,
         workspace_id=actor.workspace_id,
         allow_http_webhook=actor.allow_http_webhook,
@@ -356,6 +366,10 @@ def _escape_like(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+AgentStatus = Literal["live", "draft", "attention"]
+AgentSort = Literal["updated", "name", "created"]
+
+
 async def list_agents(
     session: AsyncSession,
     *,
@@ -363,8 +377,13 @@ async def list_agents(
     page_size: int,
     search: str | None = None,
     agent_type: str | None = None,
-) -> tuple[list[ListedAgent], int]:
-    """Agents newest-updated first; ``search`` is a partial name or an exact agent id (R21)."""
+    status: AgentStatus | None = None,
+    sort: AgentSort = "updated",
+) -> tuple[list[ListedAgent], int, dict[str, int]]:
+    """Agents, newest-updated first by default; ``search`` is a partial name or an exact agent id
+    (R21). ``status``: live (published), draft (never published) or attention (the draft has
+    publish blockers). Counts per status honour search and type, not status, so the tabs can show
+    them all at once."""
     where: list[Any] = [Agent.deleted_at.is_(None)]
     if agent_type:
         where.append(Agent.type == agent_type)
@@ -374,9 +393,34 @@ async def list_agents(
             where.append(Agent.id == term)
         else:
             where.append(Agent.name.ilike(f"%{_escape_like(term)}%"))
-    total = int((await session.execute(select(func.count()).select_from(Agent).where(*where))).scalar_one())
     pinned = aliased(AgentVersion)
     draft = aliased(AgentVersion)
+    blocked = func.coalesce(func.jsonb_array_length(draft.publish_blockers), 0) > 0
+    by_status = {
+        "live": Agent.pinned_version_id.is_not(None),
+        "draft": Agent.pinned_version_id.is_(None),
+        "attention": blocked,
+    }
+    count_row = (
+        await session.execute(
+            select(
+                func.count(),
+                *(func.count().filter(cond) for cond in by_status.values()),
+            )
+            .select_from(Agent)
+            .outerjoin(draft, draft.id == Agent.draft_version_id)
+            .where(*where)
+        )
+    ).one()
+    counts = {"all": int(count_row[0])} | {k: int(v) for k, v in zip(by_status, count_row[1:], strict=True)}
+    if status:
+        where.append(by_status[status])
+    total = counts[status] if status else counts["all"]
+    order = {
+        "updated": (Agent.updated_at.desc(), Agent.id.desc()),
+        "created": (Agent.created_at.desc(), Agent.id.desc()),
+        "name": (func.lower(Agent.name).asc(), Agent.id.asc()),
+    }[sort]
     rows = await session.execute(
         select(
             Agent,
@@ -387,14 +431,14 @@ async def list_agents(
         .outerjoin(pinned, and_(pinned.id == Agent.pinned_version_id))
         .outerjoin(draft, and_(draft.id == Agent.draft_version_id))
         .where(*where)
-        .order_by(Agent.updated_at.desc(), Agent.id.desc())
+        .order_by(*order)
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
     out = [
         ListedAgent(agent, number, created, bool(blockers)) for agent, number, created, blockers in rows.all()
     ]
-    return out, total
+    return out, total, counts
 
 
 def voice_label(config: Mapping[str, Any]) -> str:

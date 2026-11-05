@@ -555,7 +555,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description No confirmation step (non-destructive). The same Idempotency-Key returns the first copy (FR-038). */
+        /** @description Copies the draft, or the saved version named by version_id. The same Idempotency-Key returns the first copy (FR-038). */
         post: operations["duplicateAgent"];
         delete?: never;
         options?: never;
@@ -8062,6 +8062,10 @@ export interface operations {
                 /** @description Partial name (case-insensitive) or an exact agent id */
                 search?: string;
                 type?: components["schemas"]["AgentType"];
+                /** @description live (has a published version), draft (never published) or attention (the draft has publish blockers) */
+                status?: "live" | "draft" | "attention";
+                /** @description updated (newest first, default), created (newest first) or name (A to Z) */
+                sort?: "updated" | "name" | "created";
             };
             header?: never;
             path?: never;
@@ -8069,7 +8073,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Agents, most recently updated first */
+            /** @description Agents, most recently updated first unless sorted otherwise */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8077,6 +8081,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PageMeta"] & {
                         items: components["schemas"]["AgentSummary"][];
+                        /** @description Agents per status for the same search and type (status ignored), for the status tabs */
+                        counts: {
+                            all: number;
+                            live: number;
+                            draft: number;
+                            attention: number;
+                        };
                     };
                 };
             };
@@ -8345,6 +8356,8 @@ export interface operations {
                 "application/json": {
                     /** @description Default "<name> (copy)" */
                     name?: string;
+                    /** @description A saved version of this agent to copy; default the current draft. 404 when it belongs to another agent. */
+                    version_id?: components["schemas"]["AgentVersionId"];
                 };
             };
         };

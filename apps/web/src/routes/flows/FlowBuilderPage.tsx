@@ -82,7 +82,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
   const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
   const [tab, setTab] = useState<SideTab>(initial.last_validation.errors ? "problems" : "assistant");
   const [publishing, setPublishing] = useState(false);
-  const [history, setHistory] = useState(false);
+  const [history, setHistory] = useState(() => params.get("history") === "1");
   const [conflict, setConflict] = useState<null | "flow_revision_conflict" | "agent_draft_changed">(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [fitSignal, setFitSignal] = useState(0);

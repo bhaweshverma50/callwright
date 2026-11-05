@@ -1,29 +1,93 @@
 import { MagnifyingGlass, Robot } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BrainCircuit, FileText, LayoutTemplate, MessageSquareText, Phone, Volume2, Plus, Search, Trash2, Workflow, X } from "lucide-react";
+import {
+  ArrowUpDown,
+  BrainCircuit,
+  FileText,
+  LayoutGrid,
+  LayoutTemplate,
+  MessageSquareText,
+  Phone,
+  Plus,
+  Radio,
+  Rows3,
+  Search,
+  Trash2,
+  TriangleAlert,
+  Volume2,
+  Workflow,
+  X,
+} from "lucide-react";
 import { AnimatePresence } from "motion/react";
-import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useState } from "react";
+import { Link } from "react-router";
 import {
   agentKeys,
-  idempotencyKey,
   PAGE_SIZE,
   useAgents,
   useLlmCatalog,
   useVoiceCatalog,
-  type AgentDetail,
+  type AgentSort,
+  type AgentStatus,
   type AgentSummary,
   type AgentType,
 } from "../../api/agents";
 import { api } from "../../api/client";
 import { ApiError, toProblem } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
-import { Button, Dialog, EmptyState, FlowChain, IconButton, Input, PageHeader, Pagination, Segmented, Skeleton, toast } from "../../components";
+import {
+  Badge,
+  Button,
+  Dialog,
+  EmptyState,
+  FlowChain,
+  IconButton,
+  Input,
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+  PageHeader,
+  Pagination,
+  Segmented,
+  Skeleton,
+  TabPanel,
+  Table,
+  Tabs,
+  TruncatedText,
+  toast,
+  type Column,
+} from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
-import { AgentCard } from "./AgentCard";
+import { AgentActions, agentPath } from "./AgentActions";
+import { AgentCard, relativeDate } from "./AgentCard";
+import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { languageLabel, llmLabel } from "./editor/catalogs";
 
 type Filter = "all" | AgentType;
+type Status = "all" | AgentStatus;
+type View = "cards" | "table";
+
+const STATUSES: { value: Status; label: string; empty: string }[] = [
+  { value: "all", label: "All", empty: "No agents" },
+  { value: "live", label: "Live", empty: "No live agents" },
+  { value: "draft", label: "Drafts", empty: "No unpublished agents" },
+  { value: "attention", label: "Needs attention", empty: "Nothing needs attention" },
+];
+const SORTS: { value: AgentSort; label: string }[] = [
+  { value: "updated", label: "Last edited" },
+  { value: "created", label: "Newest" },
+  { value: "name", label: "Name, A to Z" },
+];
+const VIEW_KEY = "callwright.agents.view";
+const readView = (): View => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "table" ? "table" : "cards";
+  } catch {
+    return "cards";
+  }
+};
 
 const PARTS = [
   { key: "prompt", label: "Your prompt", icon: <FileText aria-hidden /> },
@@ -38,52 +102,35 @@ interface Attachment {
 }
 
 /**
- * Agents list (T051, US2): newest-updated first, search by part of a name or a full agent ID, a
- * type filter, duplicate (no confirmation, one copy per click, FR-038) and delete with
- * confirmation, refused with the list of live attachments when a channel still uses the agent.
+ * Agents list (T051, US2): status tabs with counts (all, live, drafts, needs attention), search by
+ * part of a name or a full agent ID, a type filter, sort, and cards or a table for many agents.
+ * Every agent has an always-visible actions menu: open, test, versions, duplicate (a dialog that
+ * picks the version and names the copy) and delete with confirmation, refused with the list of
+ * live attachments when a channel still uses the agent.
  */
 export function AgentsListPage() {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [status, setStatus] = useState<Status>("all");
+  const [sort, setSort] = useState<AgentSort>("updated");
+  const [view, setViewState] = useState<View>(readView);
   const [page, setPage] = useState(1);
   const q = useDebounced(search.trim(), 250);
-  const agents = useAgents(q, filter === "all" ? null : filter, page);
+  const agents = useAgents(q, filter === "all" ? null : filter, page, { status: status === "all" ? null : status, sort });
   const llm = useLlmCatalog();
   const voice = useVoiceCatalog();
   const [deleting, setDeleting] = useState<AgentSummary | null>(null);
   const [inUse, setInUse] = useState<{ agent: AgentSummary; attachments: Attachment[] } | null>(null);
-  const [fresh, setFresh] = useState<string | null>(null);
-  const dupKeys = useRef(new Map<string, string>());
-  const inFlight = useRef(new Set<string>());
-
-  const duplicate = useMutation({
-    mutationFn: async (a: AgentSummary) => {
-      // One key per agent until the copy exists, so repeated clicks create one copy.
-      const key = dupKeys.current.get(a.id) ?? idempotencyKey();
-      dupKeys.current.set(a.id, key);
-      const { data, error, response } = await api.POST("/agents/{agent_id}/duplicate", {
-        params: { path: { agent_id: a.id }, header: { "Idempotency-Key": key } },
-        body: {},
-      });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-      return { copy: data as AgentDetail, from: a };
-    },
-    onSuccess: ({ copy, from }) => {
-      dupKeys.current.delete(from.id);
-      setFresh(copy.id);
-      window.setTimeout(() => setFresh((f) => (f === copy.id ? null : f)), 2400);
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
-      toast({
-        tone: "success",
-        title: "Agent duplicated",
-        description: `${copy.name} starts at version 1 and is not published.`,
-        action: { label: "Open the copy", onClick: () => navigate(`/agents/${copy.id}/edit`) },
-      });
-    },
-    onError: (e) => toast({ tone: "error", title: "Not duplicated", description: problemMessage(e, "agent") }),
-  });
+  const [copying, setCopying] = useState<AgentSummary | null>(null);
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* private mode: the choice lasts until reload */
+    }
+  };
 
   const remove = useMutation({
     mutationFn: async (a: AgentSummary) => {
@@ -114,8 +161,68 @@ export function AgentsListPage() {
 
   const items = agents.data?.items ?? [];
   const total = agents.data?.total ?? 0;
-  const filtered = q !== "" || filter !== "all";
+  const counts = agents.data?.counts;
+  const filtered = q !== "" || filter !== "all" || status !== "all";
   const firstLoad = agents.isPending;
+  const statusEmpty = STATUSES.find((x) => x.value === status)!.empty;
+  const columns: Column<AgentSummary>[] = [
+    {
+      key: "name",
+      header: "Agent",
+      cell: (a) => (
+        <div className="flex min-w-0 flex-col">
+          <Link to={agentPath(a)} className="link-underline min-w-0 rounded-inline font-medium text-fg">
+            <TruncatedText focusable={false}>{a.name}</TruncatedText>
+          </Link>
+          <TruncatedText className="font-mono text-[11.5px] text-fg-3">{a.id}</TruncatedText>
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      hideOnNarrow: true,
+      cell: (a) => <Badge icon={a.type === "flow" ? <Workflow /> : <MessageSquareText />}>{a.type === "flow" ? "Flow" : "Single prompt"}</Badge>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (a) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {a.published_version ? (
+            <Badge tone="success" icon={<Radio />}>
+              Live, v{a.published_version.version_number}
+            </Badge>
+          ) : (
+            <Badge>Not published</Badge>
+          )}
+          {a.has_publish_blockers && (
+            <Badge tone="warning" icon={<TriangleAlert />}>
+              Needs attention
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    { key: "model", header: "Model", hideOnNarrow: true, cell: (a) => <TruncatedText>{llmLabel(llm.data, a.llm_model)}</TruncatedText> },
+    { key: "voice", header: "Voice", hideOnNarrow: true, cell: (a) => <TruncatedText>{a.voice_label}</TruncatedText> },
+    {
+      key: "updated",
+      header: "Last edited",
+      cell: (a) => (
+        <time className="whitespace-nowrap text-fg-2" dateTime={a.updated_at} title={new Date(a.updated_at).toLocaleString()}>
+          {relativeDate(a.updated_at)}
+        </time>
+      ),
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">Actions</span>,
+      width: "48px",
+      align: "right",
+      cell: (a) => <AgentActions agent={a} onDuplicate={() => setCopying(a)} onDelete={() => setDeleting(a)} />,
+    },
+  ];
 
   return (
     <>
@@ -169,7 +276,7 @@ export function AgentsListPage() {
         </section>
       ) : (
         <>
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
             <Input
               className="min-w-0 md:w-[340px]"
               prefix={<Search aria-hidden />}
@@ -196,82 +303,127 @@ export function AgentsListPage() {
                 setPage(1);
               }}
               options={[
-                { value: "all", label: "All" },
+                { value: "all", label: "All types" },
                 { value: "single_prompt", label: "Single prompt", icon: <MessageSquareText aria-hidden /> },
                 { value: "flow", label: "Flow", icon: <Workflow aria-hidden /> },
               ]}
             />
-            <p className="text-[12.5px] text-fg-3 md:ml-auto" aria-live="polite">
-              {firstLoad ? "" : `${total.toLocaleString()} ${total === 1 ? "agent" : "agents"}${filtered ? " found" : ""}`}
-            </p>
+            <div className="flex items-center gap-2 md:ml-auto">
+              <Menu>
+                <MenuTrigger asChild>
+                  <Button size="sm" variant="ghost" icon={<ArrowUpDown aria-hidden />}>
+                    <span className="sr-only">Sort: </span>
+                    {SORTS.find((x) => x.value === sort)!.label}
+                  </Button>
+                </MenuTrigger>
+                <MenuContent>
+                  <MenuRadioGroup
+                    value={sort}
+                    onValueChange={(v) => {
+                      setSort(v as AgentSort);
+                      setPage(1);
+                    }}
+                  >
+                    {SORTS.map((x) => (
+                      <MenuRadioItem key={x.value} value={x.value}>
+                        {x.label}
+                      </MenuRadioItem>
+                    ))}
+                  </MenuRadioGroup>
+                </MenuContent>
+              </Menu>
+              <Segmented
+                aria-label="View"
+                size="sm"
+                value={view}
+                onValueChange={setView}
+                options={[
+                  { value: "cards", label: <span className="sr-only">Cards</span>, icon: <LayoutGrid aria-hidden /> },
+                  { value: "table", label: <span className="sr-only">Table</span>, icon: <Rows3 aria-hidden /> },
+                ]}
+              />
+            </div>
           </div>
 
-          {firstLoad ? (
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading agents">
-              {Array.from({ length: 6 }, (_, i) => (
-                <Skeleton key={i} className="h-[214px] w-full rounded-panel" />
-              ))}
-            </div>
-          ) : agents.isError ? (
-            <EmptyState icon={<Robot weight="duotone" />} title="Agents did not load">
-              {problemMessage(agents.error, "agent")}
-            </EmptyState>
-          ) : items.length === 0 ? (
-            <EmptyState
-              icon={<MagnifyingGlass weight="duotone" />}
-              title={q ? `No agents match "${q}"` : "No agents of this type"}
-              actions={
-                <Button
-                  onClick={() => {
-                    setSearch("");
-                    setFilter("all");
-                  }}
-                >
-                  Clear search and filter
-                </Button>
-              }
-            >
-              Search matches part of a name, or a full agent ID such as agt_01JB...
-            </EmptyState>
-          ) : (
-            <div className={agents.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
-              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence>
-                  {items.map((a) => (
-                    <AgentCard
-                      key={a.id}
-                      agent={a}
-                      fresh={fresh === a.id}
-                      modelLabel={llmLabel(llm.data, a.llm_model)}
-                      languageLabel={languageLabel(voice.data, a.language)}
-                      duplicating={duplicate.isPending && duplicate.variables?.id === a.id}
-                      onDuplicate={() => {
-                        // A second click while the first copy is on its way does nothing (FR-038).
-                        if (inFlight.current.has(a.id)) return;
-                        inFlight.current.add(a.id);
-                        duplicate.mutate(a, { onSettled: () => inFlight.current.delete(a.id) });
-                      }}
-                      onDelete={() => setDeleting(a)}
-                    />
+          <Tabs
+            aria-label="Agent status"
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v as Status);
+              setPage(1);
+            }}
+            items={STATUSES.map((x) => ({ value: x.value, label: x.label, count: counts?.[x.value] }))}
+          >
+            <TabPanel value={status} className="pt-4">
+              {firstLoad ? (
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading agents">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <Skeleton key={i} className="h-[214px] w-full rounded-panel" />
                   ))}
-                </AnimatePresence>
-              </div>
-              {agents.data && agents.data.total_pages > 1 && (
-                <Pagination
-                  className="mt-4 px-0"
-                  page={page}
-                  totalPages={agents.data.total_pages}
-                  total={total}
-                  pageSize={PAGE_SIZE}
-                  noun="agents"
-                  onPageChange={setPage}
-                />
+                </div>
+              ) : agents.isError ? (
+                <EmptyState icon={<Robot weight="duotone" />} title="Agents did not load">
+                  {problemMessage(agents.error, "agent")}
+                </EmptyState>
+              ) : items.length === 0 ? (
+                <EmptyState
+                  icon={<MagnifyingGlass weight="duotone" />}
+                  title={q ? `No agents match "${q}"` : filter !== "all" ? "No agents of this type" : statusEmpty}
+                  actions={
+                    <Button
+                      onClick={() => {
+                        setSearch("");
+                        setFilter("all");
+                        setStatus("all");
+                      }}
+                    >
+                      Show all agents
+                    </Button>
+                  }
+                >
+                  Search matches part of a name, or a full agent ID such as agt_01JB...
+                </EmptyState>
+              ) : (
+                <div className={agents.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
+                  {view === "table" ? (
+                    <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-1">
+                      <Table caption="Agents" columns={columns} rows={items} rowKey={(a) => a.id} />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <AnimatePresence>
+                        {items.map((a) => (
+                          <AgentCard
+                            key={a.id}
+                            agent={a}
+                            modelLabel={llmLabel(llm.data, a.llm_model)}
+                            languageLabel={languageLabel(voice.data, a.language)}
+                            onDuplicate={() => setCopying(a)}
+                            onDelete={() => setDeleting(a)}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                  {agents.data && agents.data.total_pages > 1 && (
+                    <Pagination
+                      className="mt-4 px-0"
+                      page={page}
+                      totalPages={agents.data.total_pages}
+                      total={total}
+                      pageSize={PAGE_SIZE}
+                      noun="agents"
+                      onPageChange={setPage}
+                    />
+                  )}
+                </div>
               )}
-            </div>
-          )}
+            </TabPanel>
+          </Tabs>
         </>
       )}
 
+      <DuplicateAgentDialog open={copying !== null} onOpenChange={(o) => !o && setCopying(null)} agent={copying} />
       <Dialog
         open={deleting !== null}
         onOpenChange={(o) => !o && !remove.isPending && setDeleting(null)}

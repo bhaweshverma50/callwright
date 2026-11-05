@@ -9,6 +9,7 @@ import { delay, http, HttpResponse, type JsonBodyType } from "msw";
 import type {
   AgentConfig,
   AgentPage,
+  AgentSummary,
   AgentType,
   AmbientAudioFile,
   PromptAiResponse,
@@ -211,13 +212,35 @@ export const agentHandlers = [
     const pageSize = Math.min(100, Math.max(1, Number(q.get("page_size") ?? 20)));
     const search = (q.get("search") ?? "").trim();
     const type = q.get("type");
+    const status = q.get("status") as "live" | "draft" | "attention" | null;
+    const sort = q.get("sort") ?? "updated";
     await delay(160);
-    const rows = store()
+    const matched = store()
       .agents.filter((a) => a.workspace_id === ws && !a.deleted_at && (!type || a.type === type))
       .filter((a) => !search || a.id === search || a.name.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+      .map(toSummary);
+    const is = {
+      live: (a: AgentSummary) => a.published_version !== null,
+      draft: (a: AgentSummary) => a.published_version === null,
+      attention: (a: AgentSummary) => !!a.has_publish_blockers,
+    };
+    const rows = matched
+      .filter((a) => !status || is[status](a))
+      .sort((a, b) =>
+        sort === "name"
+          ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+          : sort === "created"
+            ? b.created_at.localeCompare(a.created_at)
+            : b.updated_at.localeCompare(a.updated_at),
+      );
     return json<AgentPage>({
-      items: rows.slice((page - 1) * pageSize, page * pageSize).map(toSummary),
+      counts: {
+        all: matched.length,
+        live: matched.filter(is.live).length,
+        draft: matched.filter(is.draft).length,
+        attention: matched.filter(is.attention).length,
+      },
+      items: rows.slice((page - 1) * pageSize, page * pageSize),
       total: rows.length,
       page,
       page_size: pageSize,
@@ -341,7 +364,7 @@ export const agentHandlers = [
     if (!ws) return unauthorized();
     const s = store();
     const key = request.headers.get("idempotency-key");
-    const body = ((await request.json().catch(() => ({}))) ?? {}) as { name?: string };
+    const body = ((await request.json().catch(() => ({}))) ?? {}) as { name?: string; version_id?: string };
     if (key && s.idem[`${ws}:${key}`]) {
       const prior = findAgent(ws, s.idem[`${ws}:${key}`]!);
       if (prior) {
@@ -351,8 +374,10 @@ export const agentHandlers = [
     }
     const a = findAgent(ws, String(params.agent_id));
     if (!a) return notFound();
+    const from = body.version_id ? versionById(body.version_id) : null;
+    if (body.version_id && from?.agent_id !== a.id) return notFound("Version");
     const name = (body.name ?? `${a.name} (copy)`).slice(0, 80);
-    const copy = insertAgent(ws, name, a.type, structuredClone(a.draft_config), "duplicate", { note: `Copied from ${a.name}` });
+    const copy = insertAgent(ws, name, a.type, structuredClone(from?.config ?? a.draft_config), "duplicate", { note: `Copied from ${a.name}` });
     if (key) s.idem[`${ws}:${key}`] = copy.id;
     save();
     await delay(260);

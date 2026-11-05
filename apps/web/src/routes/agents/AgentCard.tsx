@@ -1,8 +1,9 @@
-import { BrainCircuit, Copy, Globe, MessageSquareText, Mic2, Radio, Trash2, TriangleAlert, Workflow } from "lucide-react";
+import { BrainCircuit, Globe, MessageSquareText, Mic2, Radio, TriangleAlert, Workflow } from "lucide-react";
 import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router";
 import type { AgentSummary } from "../../api/agents";
-import { Badge, IconButton, Tooltip, TruncatedText, cn } from "../../components";
+import { Badge, Tooltip, TruncatedText, cn } from "../../components";
+import { AgentActions, agentPath } from "./AgentActions";
 
 export function relativeDate(iso: string): string {
   const d = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
@@ -18,7 +19,7 @@ export function relativeDate(iso: string): string {
 /**
  * One agent in the list (T051, FR-018): name and type, what it runs (model, voice, language),
  * whether it is live and on which version, and when it last changed. The whole card opens the
- * agent; duplicate and delete sit above the link layer with their own focus and tooltips.
+ * agent; its actions menu sits above the link layer with its own focus.
  */
 export function AgentCard({
   agent,
@@ -26,7 +27,6 @@ export function AgentCard({
   languageLabel,
   onDuplicate,
   onDelete,
-  duplicating,
   fresh,
 }: {
   agent: AgentSummary;
@@ -34,12 +34,11 @@ export function AgentCard({
   languageLabel: string;
   onDuplicate: () => void;
   onDelete: () => void;
-  duplicating: boolean;
   fresh?: boolean;
 }) {
   const flow = agent.type === "flow";
   const TypeIcon = flow ? Workflow : MessageSquareText;
-  const to = flow ? `/agents/${agent.id}/flow` : `/agents/${agent.id}/edit`;
+  const to = agentPath(agent);
   const navigate = useNavigate();
   return (
     <motion.div
@@ -53,7 +52,7 @@ export function AgentCard({
       <article
         onClick={(e) => {
           // The whole card opens the agent; its buttons, links and tips keep their own behaviour.
-          if (!(e.target as HTMLElement).closest("a,button,[tabindex]")) navigate(to);
+          if (!(e.target as HTMLElement).closest("a,button,[tabindex],[role=menu]")) navigate(to);
         }}
         className={cn(
           "group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border bg-surface shadow-1 transition-[transform,box-shadow,border-color] duration-200",
@@ -78,14 +77,7 @@ export function AgentCard({
             </h3>
             <TruncatedText className="font-mono text-[11.5px] text-fg-3">{agent.id}</TruncatedText>
           </div>
-          <div className="-mr-2 -mt-1 flex shrink-0 items-center opacity-100 transition-opacity sm:opacity-60 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-            <IconButton label={`Duplicate ${agent.name}`} className="size-8" pending={duplicating} onClick={onDuplicate}>
-              <Copy className="size-4" aria-hidden />
-            </IconButton>
-            <IconButton label={`Delete ${agent.name}`} className="size-8 hover:bg-danger-soft hover:text-danger-text" onClick={onDelete}>
-              <Trash2 className="size-4" aria-hidden />
-            </IconButton>
-          </div>
+          <AgentActions agent={agent} onDuplicate={onDuplicate} onDelete={onDelete} className="-mr-2 -mt-1 shrink-0" />
         </div>
 
         <dl className="mx-5 grid grid-cols-[minmax(0,1fr)] gap-y-2 border-y border-line py-3 text-[13px]">

@@ -25,7 +25,9 @@ export type VersionRef = S["VersionRef"];
 export type AgentSummary = S["AgentSummary"];
 export type AgentDetail = Omit<S["AgentDetail"], "draft_config"> & { draft_config: AgentConfig };
 export type SaveResult = Omit<S["SaveResult"], "agent"> & { agent: AgentDetail };
-export type AgentPage = S["PageMeta"] & { items: AgentSummary[] };
+export type AgentStatus = "live" | "draft" | "attention";
+export type AgentSort = "updated" | "name" | "created";
+export type AgentPage = S["PageMeta"] & { items: AgentSummary[]; counts: Record<"all" | AgentStatus, number> };
 
 export type VersionSource = S["VersionSource"];
 export type VersionSummary = S["VersionSummary"];
@@ -80,7 +82,8 @@ export interface VoiceFilters {
 
 export const agentKeys = {
   all: ["agents"] as const,
-  list: (search: string, type: AgentType | null, page: number) => ["agents", "list", { search, type, page }] as const,
+  list: (search: string, type: AgentType | null, page: number, status: AgentStatus | null = null, sort: AgentSort = "updated") =>
+    ["agents", "list", { search, type, page, status, sort }] as const,
   detail: (id: string) => ["agents", "detail", id] as const,
   defaults: (language: string) => ["agents", "defaults", language] as const,
   versions: (id: string) => ["agents", "versions", id] as const,
@@ -97,16 +100,22 @@ export const agentKeys = {
 
 export const PAGE_SIZE = 24;
 
-export function useAgents(search: string, type: AgentType | null, page: number) {
+export function useAgents(
+  search: string,
+  type: AgentType | null,
+  page: number,
+  { status = null, sort = "updated", enabled = true }: { status?: AgentStatus | null; sort?: AgentSort; enabled?: boolean } = {},
+) {
   return useQuery({
-    queryKey: agentKeys.list(search, type, page),
+    queryKey: agentKeys.list(search, type, page, status, sort),
     queryFn: () =>
       unwrap(
         api.GET("/agents", {
-          params: { query: { page, page_size: PAGE_SIZE, ...(search && { search }), ...(type && { type }) } },
+          params: { query: { page, page_size: PAGE_SIZE, sort, ...(search && { search }), ...(type && { type }), ...(status && { status }) } },
         }),
       ) as Promise<AgentPage>,
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
