@@ -1179,3 +1179,64 @@ a:focus-visible .logo-handoff.logo-anim .wc-full {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
 }
+
+/*
+  Cobalt look (ui-unslop proposal). Previewed on /dev/components?look=cobalt, which sets
+  data-look="cobalt" on <html>; once approved these rules become the defaults above and this
+  block goes. Unlayered on purpose so it wins over Tailwind's utility layer.
+  One solid cobalt action colour, no glows, washes or hover lifts, a flat logo, lighter display
+  headings. The heat ramp stays only in the cost chain and the data charts.
+*/
+[data-look="cobalt"] {
+  --shadow-glow: 0 8px 24px -12px hsl(var(--shadow-color) / 0.22);
+  --halo: color-mix(in srgb, var(--accent) 40%, transparent);
+  --halo-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --logo-violet: var(--logo-cobalt);
+  --logo-pink: var(--logo-cobalt);
+}
+[data-look="cobalt"] .grad-action {
+  background-image: none;
+  background-color: var(--accent);
+  box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.12);
+  filter: none;
+}
+[data-look="cobalt"] .grad-action:is(button, a):hover {
+  background-color: var(--accent-hover);
+}
+[data-look="cobalt"] .grad-action:is(:disabled, [aria-disabled="true"]) {
+  background-color: var(--surface-3);
+  box-shadow: none;
+}
+[data-look="cobalt"] .sheen::after {
+  display: none;
+}
+[data-look="cobalt"] .glow-backdrop {
+  background-image: none;
+}
+[data-look="cobalt"] .lift:hover {
+  transform: none;
+  box-shadow: var(--shadow-1);
+  border-color: var(--border-strong);
+}
+[data-look="cobalt"] [class*="hover:-translate-y"]:hover {
+  translate: none;
+}
+[data-look="cobalt"] [class*="hover:scale-"]:hover {
+  scale: none;
+}
+[data-look="cobalt"] .font-display {
+  font-weight: 400;
+}
+[data-look="cobalt"] .grad-heat,
+[data-look="cobalt"] [class*="var(--heat-1)"] {
+  background-image: none;
+  background-color: var(--accent);
+}
+[data-look="cobalt"] .heat-border::before {
+  background: var(--warning);
+  opacity: 0.45;
+}
+[data-look="cobalt"] .live-border::before {
+  background: var(--accent);
+  animation: none;
+}

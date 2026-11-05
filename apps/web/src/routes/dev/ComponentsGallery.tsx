@@ -1,8 +1,8 @@
 import { FolderOpen, PhoneCall as PhoneCallDuo, PhoneList, Robot } from "@phosphor-icons/react";
 import { BrainCircuit, Captions, Disc, Ear, Gauge, Mail, Mic, Moon, Play, Plus, Shuffle, Sun, Trash2, Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router";
 import { resolvedTheme, setThemePref, useThemePref } from "../../app/theme";
 import {
   Badge,
@@ -153,13 +153,33 @@ export function ComponentsGallery() {
   const [speaker, setSpeaker] = useState("agent");
   const [nc, setNc] = useState("vi");
   const [sens, setSens] = useState(0.9);
+  // Look preview (ui-unslop): ?look=cobalt sets data-look on <html>, so dialogs, menus and toasts
+  // rendered in portals get it too. Leaving the page puts the current look back.
+  const [params, setParams] = useSearchParams();
+  const look = params.get("look") === "cobalt" ? "cobalt" : "current";
+  useEffect(() => {
+    if (look === "cobalt") document.documentElement.dataset.look = "cobalt";
+    else delete document.documentElement.dataset.look;
+    return () => void delete document.documentElement.dataset.look;
+  }, [look]);
 
   return (
     <div className="min-h-dvh bg-bg">
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-bg/80 px-4 backdrop-blur-md sm:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-line bg-bg/80 px-4 backdrop-blur-md sm:px-6">
         <Link to="/" aria-label="Home">
           <Logo />
         </Link>
+        <Segmented
+          aria-label="Look"
+          size="sm"
+          className="ml-auto"
+          value={look}
+          onValueChange={(v) => setParams((p) => (v === "cobalt" ? p.set("look", "cobalt") : p.delete("look"), p), { replace: true })}
+          options={[
+            { value: "current", label: "Current" },
+            { value: "cobalt", label: "Cobalt (proposed)" },
+          ]}
+        />
         <Button
           variant="secondary"
           size="sm"
@@ -176,6 +196,17 @@ export function ComponentsGallery() {
           state only, and the heat ramp inside data visualisation. Unbounded for display, Geist for interface text, Geist Mono for figures. Rules live
           in docs/DESIGN.md.
         </p>
+        {look === "cobalt" && (
+          <div className="mt-5 max-w-[70ch] rounded-panel border border-line bg-surface px-4 py-3 text-[14px] leading-relaxed text-fg-2">
+            <p className="font-medium text-fg">Cobalt (proposed)</p>
+            <p className="mt-1">
+              Primary actions are solid cobalt, a shade darker on hover, with no glow or sheen. Cards no longer lift or glow on hover; their border
+              steps up instead. The coloured washes behind feature panels are gone. The logo is flat cobalt. Display headings drop to weight 400. The
+              violet to pink to amber ramp stays only in the cost chain and the data charts. Not shown here yet, but part of the full pass: no
+              half-pixel text sizes, sentence case instead of uppercase labels, and a pen icon instead of sparkles on AI actions.
+            </p>
+          </div>
+        )}
 
         <Section title="Tokens">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
@@ -189,11 +220,23 @@ export function ComponentsGallery() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <span className="grad-action h-12 rounded-control" />
-              <span className="text-[12px] text-fg-2">Action gradient, cobalt to violet (primary buttons, logo, switches, the active step)</span>
+              <span className="text-[12px] text-fg-2">
+                {look === "cobalt"
+                  ? "Action colour, solid cobalt (primary buttons, logo, switches, the active step)"
+                  : "Action gradient, cobalt to violet (primary buttons, logo, switches, the active step)"}
+              </span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="grad-heat h-12 rounded-control" />
-              <span className="text-[12px] text-fg-2">Heat ramp (data visualisation, chain links, highlight borders)</span>
+              {/* Inline, not grad-heat, so the cobalt preview (which flattens grad-heat on controls) keeps the ramp itself visible. */}
+              <span
+                className="h-12 rounded-control"
+                style={{ backgroundImage: "linear-gradient(90deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3))" }}
+              />
+              <span className="text-[12px] text-fg-2">
+                {look === "cobalt"
+                  ? "Heat ramp (data visualisation and the cost chain only)"
+                  : "Heat ramp (data visualisation, chain links, highlight borders)"}
+              </span>
             </div>
           </div>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
