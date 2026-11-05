@@ -100,10 +100,10 @@ export function DncImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
               </div>
             ))}
           </dl>
-          <p className="text-[12.5px] text-fg-3">{result.rows.toLocaleString()} rows read.</p>
+          <p className="text-[13px] text-fg-3">{result.rows.toLocaleString()} rows read.</p>
           {result.invalid.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-panel border border-line">
-              <table className="w-full text-[12.5px]">
+              <table className="w-full text-[13px]">
                 <thead className="sticky top-0 bg-surface-2">
                   <tr className="text-left text-fg-3">
                     <th className="px-3 py-1.5 font-medium">Row</th>
@@ -139,10 +139,10 @@ export function DncImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
               focusRing,
             )}
           >
-            <span className="grid size-10 place-items-center rounded-control bg-accent-soft text-accent-text transition-[background-image,color] group-hover:grad-action group-hover:text-white">
+            <span className="grid size-10 place-items-center rounded-control bg-accent-soft text-accent-text transition-[background-color,color] group-hover:bg-accent group-hover:text-white">
               <FileUp className="size-5" aria-hidden />
             </span>
-            <span className="text-[13.5px] font-medium text-fg">{file ? file.name : "Choose a CSV file"}</span>
+            <span className="text-[14px] font-medium text-fg">{file ? file.name : "Choose a CSV file"}</span>
             <span className="text-[12px] text-fg-3">{file ? `${(file.size / 1024).toFixed(1)} KB` : "Up to 100,000 rows and 10 MB, UTF-8"}</span>
           </button>
           <input ref={input} type="file" accept=".csv,text/csv" hidden aria-label="CSV file" onChange={(e) => choose(e.target.files?.[0] ?? null)} />

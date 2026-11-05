@@ -129,7 +129,7 @@ export function VoiceSection({ draft, catalogs }: { draft: AgentDraft; catalogs:
               </Button>
             </div>
           </div>
-          {current?.description && <p className="text-[12.5px] leading-relaxed text-fg-2">{current.description}</p>}
+          {current?.description && <p className="text-[13px] leading-relaxed text-fg-2">{current.description}</p>}
           <AnimatePresence>
             {switchedName && (
               <motion.div key={switched?.voice} initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>

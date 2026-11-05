@@ -101,7 +101,7 @@ function LanguagesRow({
         {chosen.length === 0 ? (
           !none && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-[12.5px] font-medium text-fg-2">
+              <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-[13px] font-medium text-fg-2">
                 <Languages className="size-3.5 text-accent-text" aria-hidden />
                 All supported languages
               </span>
@@ -125,7 +125,7 @@ function LanguagesRow({
                     transition={{ duration: 0.16 }}
                     title={ok ? undefined : "Not supported by this agent's speech recognition and voice"}
                     className={cn(
-                      "inline-flex h-7 max-w-full items-center gap-1 rounded-full border pl-3 pr-1 text-[12.5px]",
+                      "inline-flex h-7 max-w-full items-center gap-1 rounded-full border pl-3 pr-1 text-[13px]",
                       ok ? "border-accent/30 bg-accent-soft text-accent-text" : "border-warning/40 bg-warning-soft text-warning-text",
                     )}
                   >
@@ -219,7 +219,7 @@ function LanguagePicker({ targets, chosen, onChange }: { targets: Language[]; ch
                       aria-hidden
                       className={cn(
                         "grid size-4 shrink-0 place-items-center rounded-[5px] border transition-colors duration-150",
-                        on ? "grad-action border-transparent text-white" : "border-line-strong bg-surface",
+                        on ? "bg-accent border-transparent text-white" : "border-line-strong bg-surface",
                       )}
                     >
                       {on && <Check className="size-3" strokeWidth={3} />}
@@ -229,7 +229,7 @@ function LanguagePicker({ targets, chosen, onChange }: { targets: Language[]; ch
                 </li>
               );
             })}
-            {shown.length === 0 && <li className="col-span-full px-2.5 py-3 text-[12.5px] text-fg-3">No supported language matches.</li>}
+            {shown.length === 0 && <li className="col-span-full px-2.5 py-3 text-[13px] text-fg-3">No supported language matches.</li>}
           </ul>
           <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2.5">
             <Button size="sm" variant="ghost" disabled={!chosen.length} onClick={() => onChange([])}>

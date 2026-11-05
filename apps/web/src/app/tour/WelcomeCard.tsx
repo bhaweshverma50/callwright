@@ -40,14 +40,13 @@ export function WelcomeCard({ onStart, onDecline }: { onStart: () => void; onDec
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-24px)] w-[calc(100vw-24px)] max-w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-feature border border-line bg-surface shadow-pop focus:outline-none data-[state=open]:animate-pop-in"
         >
           <div className="relative overflow-hidden border-b border-line px-6 pb-6 pt-7">
-            <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0" />
             <FlowChain label="Setup path" nodes={PATH} active={PATH[lit]!.key} flow size="sm" stack="never" className="relative" />
           </div>
           <div className="px-6 pt-5">
             <span className="mb-3 grid size-9 place-items-center rounded-control bg-accent-soft text-accent-text">
               <Compass className="size-[18px]" aria-hidden />
             </span>
-            <RD.Title className="font-display text-[22px] font-medium leading-tight tracking-[-0.02em] text-fg">Set up your first agent</RD.Title>
+            <RD.Title className="font-display text-[22px] leading-tight tracking-[-0.02em] text-fg">Set up your first agent</RD.Title>
             <RD.Description id="tour-welcome-body" className="mt-2 text-[14px] leading-relaxed text-fg-2">
               About 3 minutes. The tour points at each control while you create an agent from a template, talk to it in your browser, publish it and
               put it on a number.

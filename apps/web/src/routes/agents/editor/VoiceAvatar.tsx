@@ -9,10 +9,10 @@ export function VoiceAvatar({ voice, size = "md", selected }: { voice: Pick<Voic
     <span
       aria-hidden
       className={cn(
-        "grid shrink-0 place-items-center rounded-full font-display font-medium",
+        "grid shrink-0 place-items-center rounded-full font-display",
         size === "sm" ? "size-8 text-[13px]" : "size-10 text-[15px]",
         selected
-          ? "grad-action text-white"
+          ? "bg-accent text-white"
           : hue === 0
             ? "bg-accent-soft text-accent-text"
             : hue === 1
@@ -46,10 +46,7 @@ export function PreviewButton({ voice, playing, onToggle }: { voice: Voice; play
   return (
     <IconButton
       label={playing ? `Stop ${voice.name} preview` : `Play ${voice.name} preview`}
-      className={cn(
-        "size-8 shrink-0 rounded-full border border-line-strong",
-        playing && "border-transparent grad-action text-white hover:text-white",
-      )}
+      className={cn("size-8 shrink-0 rounded-full border border-line-strong", playing && "border-transparent bg-accent text-white hover:text-white")}
       onClick={(e) => {
         e.stopPropagation();
         onToggle();

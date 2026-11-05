@@ -66,7 +66,7 @@ export function VariablesEditor({ draft }: { draft: AgentDraft }) {
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <code className="min-w-0 rounded-inline bg-accent-soft/70 px-1.5 py-0.5 font-mono text-[12.5px] text-accent-text">
+                      <code className="min-w-0 rounded-inline bg-accent-soft/70 px-1.5 py-0.5 font-mono text-[13px] text-accent-text">
                         <TruncatedText>{`{{${v.name}}}`}</TruncatedText>
                       </code>
                       {!inUse && (
@@ -131,7 +131,7 @@ export function VariablesEditor({ draft }: { draft: AgentDraft }) {
         </div>
       </div>
       {used.invalid.length > 0 && (
-        <p className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-warning-text">
+        <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-warning-text">
           Not valid variable names, spoken as written:
           {used.invalid.map((s) => (
             <code key={s} className="rounded-inline bg-warning-soft px-1.5 font-mono">

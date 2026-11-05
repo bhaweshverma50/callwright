@@ -67,7 +67,7 @@ export function CallerRoutesTable({ channelId, disabled }: { channelId: string; 
           Add route
         </Button>
         {error && (
-          <p role="alert" className="text-[12.5px] text-danger-text sm:col-span-3">
+          <p role="alert" className="text-[13px] text-danger-text sm:col-span-3">
             {error}
           </p>
         )}
@@ -92,7 +92,7 @@ export function CallerRoutesTable({ channelId, disabled }: { channelId: string; 
       {routes.isPending ? (
         <Skeleton className="h-20 w-full rounded-panel" />
       ) : items.length === 0 ? (
-        <p className="px-1 text-[12.5px] text-fg-3">
+        <p className="px-1 text-[13px] text-fg-3">
           {q ? `No caller numbers match "${q}".` : "No caller routes. Every caller reaches the default agent."}
         </p>
       ) : (

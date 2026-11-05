@@ -24,7 +24,7 @@ export function FormSection({
           {icon && <span className="mt-0.5 text-fg-3 [&_svg]:size-4">{icon}</span>}
           <div className="flex flex-col gap-0.5">
             <h3 className="text-[14px] font-semibold text-fg">{title}</h3>
-            {description && <p className="text-[12.5px] leading-relaxed text-fg-3">{description}</p>}
+            {description && <p className="text-[13px] leading-relaxed text-fg-3">{description}</p>}
           </div>
         </div>
         {aside}

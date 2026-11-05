@@ -57,7 +57,7 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
     <div className="flex flex-col gap-5">
       <section aria-labelledby="summary-h" className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-3">
-          <h3 id="summary-h" className="text-[12.5px] text-fg-3">
+          <h3 id="summary-h" className="text-[13px] text-fg-3">
             Summary
           </h3>
           {(a.status === "completed" || a.status === "skipped" || a.status === "error") &&
@@ -88,17 +88,17 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
         ) : a.summary ? (
           <SummaryText text={a.summary} />
         ) : (
-          <p className="text-[13.5px] text-fg-3">No summary for this call.</p>
+          <p className="text-[14px] text-fg-3">No summary for this call.</p>
         )}
       </section>
       <section aria-labelledby="sentiment-h" className="flex items-center justify-between gap-3">
-        <h3 id="sentiment-h" className="text-[12.5px] text-fg-3">
+        <h3 id="sentiment-h" className="text-[13px] text-fg-3">
           Sentiment
         </h3>
         {running ? <Skeleton className="h-5 w-20" /> : <SentimentBadge value={a.sentiment ?? (a.status === "completed" ? "unknown" : null)} />}
       </section>
       <section aria-labelledby="analysis-h" className="flex flex-col gap-2">
-        <h3 id="analysis-h" className="text-[12.5px] text-fg-3">
+        <h3 id="analysis-h" className="text-[13px] text-fg-3">
           Analysis values
         </h3>
         {running ? (
@@ -119,8 +119,8 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
                 <tr key={`${v.name}-${v.variable_id ?? ""}`} className="border-b border-line last:border-0 odd:bg-surface-2/40">
                   <th scope="row" className="w-2/5 px-3 py-2 text-left font-mono text-[12px] font-normal text-fg-2">
                     {v.name}
-                    {v.status === "renamed" && <span className="ml-1.5 font-sans text-[11.5px] text-fg-3">(renamed)</span>}
-                    {v.status === "deleted" && <span className="ml-1.5 font-sans text-[11.5px] text-fg-3">(deleted)</span>}
+                    {v.status === "renamed" && <span className="ml-1.5 font-sans text-[12px] text-fg-3">(renamed)</span>}
+                    {v.status === "deleted" && <span className="ml-1.5 font-sans text-[12px] text-fg-3">(deleted)</span>}
                   </th>
                   <td className="break-words px-3 py-2 text-fg">
                     {v.value === null || v.value === undefined || v.value === "" ? (
@@ -137,7 +137,7 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
           </table>
         )}
         {a.model && (
-          <p className="flex items-center gap-1.5 text-[11.5px] text-fg-3">
+          <p className="flex items-center gap-1.5 text-[12px] text-fg-3">
             <Cpu className="size-3" aria-hidden /> Extracted with <span className="font-mono">{a.model}</span>
           </p>
         )}

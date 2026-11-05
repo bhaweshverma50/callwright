@@ -45,7 +45,7 @@ export function CustomCheckTemplatePicker({ onPick }: { onPick: (type: CustomTyp
               aria-describedby={`tpl-${t.type}-body`}
               className={cn(
                 "group relative flex w-full cursor-pointer flex-col gap-3 overflow-hidden rounded-panel border border-line bg-surface p-4 text-left",
-                "transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-glow",
+                "transition-[border-color,box-shadow,transform] duration-200 hover:border-accent/50",
                 focusRing,
               )}
             >
@@ -54,7 +54,7 @@ export function CustomCheckTemplatePicker({ onPick }: { onPick: (type: CustomTyp
                 className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[radial-gradient(closest-side,var(--glow-b),transparent)]"
               />
               <span className="flex w-full items-center justify-between">
-                <span className="grad-action grid size-10 place-items-center rounded-control text-white shadow-[0_8px_20px_-10px_rgb(51_70_232/0.8)] [&_svg]:size-5">
+                <span className="bg-accent grid size-10 place-items-center rounded-control text-white [&_svg]:size-5">
                   <Icon aria-hidden />
                 </span>
                 {t.free ? (
@@ -67,12 +67,12 @@ export function CustomCheckTemplatePicker({ onPick }: { onPick: (type: CustomTyp
               </span>
               <span className="flex w-full flex-col gap-1">
                 <span className="text-[14px] font-semibold text-fg">{t.title}</span>
-                <span id={`tpl-${t.type}-body`} className="text-[12.5px] leading-relaxed text-fg-2">
+                <span id={`tpl-${t.type}-body`} className="text-[13px] leading-relaxed text-fg-2">
                   {t.body}
                 </span>
               </span>
-              <span className="rounded-control bg-surface-2 px-2.5 py-2 font-mono text-[11.5px] text-fg-2">{t.example}</span>
-              <span className="mt-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-accent-text">
+              <span className="rounded-control bg-surface-2 px-2.5 py-2 font-mono text-[12px] text-fg-2">{t.example}</span>
+              <span className="mt-auto inline-flex items-center gap-1 text-[13px] font-medium text-accent-text">
                 Use this template
                 <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
               </span>

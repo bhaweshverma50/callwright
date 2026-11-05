@@ -42,7 +42,7 @@ const SAMPLE_COLUMNS: Column<IssueSample>[] = [
         <Link
           to={`/calls?call=${s.call_id}`}
           title={s.call_id}
-          className="whitespace-nowrap rounded-inline font-mono text-[12.5px] text-fg-2 hover:text-fg hover:underline"
+          className="whitespace-nowrap rounded-inline font-mono text-[13px] text-fg-2 hover:text-fg hover:underline"
         >
           {shortId(s.call_id)}
         </Link>
@@ -78,7 +78,7 @@ function Summary({ issue, agentName }: { issue: DetectedIssue; agentName: string
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <IssueStatusBadge status={issue.status} />
         {issue.origin !== "real" && <Badge tone="neutral">{ORIGIN_LABELS[issue.origin]}</Badge>}
-        <span className="text-[12.5px] text-fg-3">
+        <span className="text-[13px] text-fg-3">
           Found by{" "}
           <span className="text-fg-2">
             {issue.evaluator_display_name ?? issue.evaluator_name} v{issue.evaluator_version}
@@ -118,7 +118,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
           <span className="grid size-8 shrink-0 place-items-center rounded-control bg-warning-soft text-warning-text">
             <TriangleAlert className="size-4" aria-hidden />
           </span>
-          <p className="text-[13.5px] leading-relaxed text-fg-2">
+          <p className="text-[14px] leading-relaxed text-fg-2">
             <span className="font-medium text-fg">This check may be wrong.</span> It often disagrees with the labels people gave in calibration, so
             some of these failures may not be real.{" "}
             <Link to={`/calibration?agent=${issue.agent_id}`} className="font-medium text-accent-text hover:underline">
@@ -132,7 +132,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
           <span className="grid size-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text">
             <Repeat className="size-4" aria-hidden />
           </span>
-          <p className="text-[13.5px] leading-relaxed text-fg-2">
+          <p className="text-[14px] leading-relaxed text-fg-2">
             <span className="font-medium text-fg">This pattern came back after a fix.</span> It matches an issue that was fixed earlier and showed up
             again on the new version.{" "}
             <Link to={`/issues/${issue.recurrence_of}`} className="font-medium text-accent-text hover:underline">
@@ -146,7 +146,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
           <span className="grid size-8 shrink-0 place-items-center rounded-control bg-surface-3 text-fg-2">
             <Archive className="size-4" aria-hidden />
           </span>
-          <div className="flex flex-col gap-1 text-[13.5px] text-fg-2">
+          <div className="flex flex-col gap-1 text-[14px] text-fg-2">
             <p>
               <span className="font-medium text-fg">Dismissed{issue.dismiss_reason ? `: ${DISMISS_LABELS[issue.dismiss_reason]}` : ""}.</span>{" "}
               {issue.dismissed_at && `${relative(issue.dismissed_at)}. `}Later detections update its counts and keep it dismissed.

@@ -29,7 +29,7 @@ function BarRow({
 }) {
   const inner = (
     <>
-      <span className="flex items-baseline justify-between gap-3 text-[12.5px]">
+      <span className="flex items-baseline justify-between gap-3 text-[13px]">
         <span className="min-w-0 truncate text-fg">{label}</span>
         <span className="shrink-0 font-mono text-fg-2 tnum">
           {value.toLocaleString()} <span className="text-fg-3">{pct(value, total)}</span>
@@ -131,8 +131,8 @@ export function SentimentSplit({ data }: { data: DashboardStats["sentiment"] }) 
                     )}
                   >
                     <Icon className="size-4 shrink-0" style={{ color: SENTIMENT_STYLE[k].color }} aria-hidden />
-                    <span className="text-[12.5px] text-fg">{SENTIMENT_LABELS[k]}</span>
-                    <span className="ml-auto font-mono text-[12.5px] text-fg-2 tnum">{pct(data[k], total)}</span>
+                    <span className="text-[13px] text-fg">{SENTIMENT_LABELS[k]}</span>
+                    <span className="ml-auto font-mono text-[13px] text-fg-2 tnum">{pct(data[k], total)}</span>
                   </Link>
                 </li>
               );
@@ -204,7 +204,7 @@ export function ChannelSplit({ data }: { data: DashboardStats["channels"] }) {
           <ul className="flex min-w-[150px] flex-1 flex-col gap-2">
             {rows.map((r) => {
               return (
-                <li key={r.key} className="flex items-center gap-2 whitespace-nowrap text-[12.5px]">
+                <li key={r.key} className="flex items-center gap-2 whitespace-nowrap text-[13px]">
                   <span className="size-2.5 shrink-0 rounded-full" style={{ background: CHANNEL_COLORS[r.key] }} aria-hidden />
                   <span className="text-fg">{r.label}</span>
                   <span className="ml-auto font-mono text-fg-2 tnum">{r.value.toLocaleString()}</span>

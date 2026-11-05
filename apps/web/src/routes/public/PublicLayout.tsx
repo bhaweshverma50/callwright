@@ -88,7 +88,7 @@ export function PublicLayout() {
               Build voice agents, put them on the phone, and fix what callers trip over.
             </p>
           </div>
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-14 gap-y-2.5 text-[13.5px] sm:grid-cols-3">
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-14 gap-y-2.5 text-[14px] sm:grid-cols-3">
             {[
               ["/pricing", "Pricing"],
               ["/enterprise", "Enterprise"],

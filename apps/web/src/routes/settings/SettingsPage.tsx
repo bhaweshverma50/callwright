@@ -115,7 +115,7 @@ function SettingsForm({ me }: { me: Me }) {
                   aria-describedby={`${nameId}-msg`}
                   aria-invalid={Boolean(nameErr)}
                 />
-                <div id={`${nameId}-msg`} className="flex w-full items-start justify-between gap-3 text-[12.5px]">
+                <div id={`${nameId}-msg`} className="flex w-full items-start justify-between gap-3 text-[13px]">
                   {nameErr ? (
                     <p role="alert" className="flex items-start gap-1.5 text-danger-text">
                       <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />

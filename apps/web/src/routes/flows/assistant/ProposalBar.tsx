@@ -1,4 +1,4 @@
-import { Check, CircleAlert, Sparkles, X } from "lucide-react";
+import { Check, CircleAlert, PenLine, X } from "lucide-react";
 import { motion } from "motion/react";
 import type { FlowGraph, ValidationIssue } from "../../../api/flows";
 import { Button } from "../../../components";
@@ -60,12 +60,12 @@ export function ProposalBar({
       className="pointer-events-auto flex w-[min(460px,calc(100%-24px))] flex-col gap-2.5 rounded-panel border border-line bg-surface/95 p-3 shadow-pop backdrop-blur-md"
     >
       <div className="flex items-center gap-3">
-        <span className="grad-action grid size-8 shrink-0 place-items-center rounded-control text-white shadow-glow" aria-hidden>
-          <Sparkles className="size-4" />
+        <span className="bg-accent grid size-8 shrink-0 place-items-center rounded-control text-white" aria-hidden>
+          <PenLine className="size-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] font-semibold text-fg">Pending changes</p>
-          <p className="mt-0.5 text-[12.5px] text-fg-2">{parts.length ? parts.join(", ") : "No changes to the graph"}</p>
+          <p className="text-[14px] font-semibold text-fg">Pending changes</p>
+          <p className="mt-0.5 text-[13px] text-fg-2">{parts.length ? parts.join(", ") : "No changes to the graph"}</p>
         </div>
         <div className="flex shrink-0 gap-1.5">
           <Button size="sm" variant="ghost" icon={<X aria-hidden />} onClick={onDecline}>

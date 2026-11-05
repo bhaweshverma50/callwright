@@ -153,7 +153,7 @@ export function DuplicateAgentDialog({
           <List title="The copy keeps" items={KEEPS} icon={<Check className="text-success-text" />} />
           <List title="Not copied" items={DROPS} icon={<Minus className="text-fg-3" />} />
         </div>
-        <p className="flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2 text-[12.5px] leading-relaxed text-warning-text">
+        <p className="flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2 text-[13px] leading-relaxed text-warning-text">
           <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           Tools and webhooks call the same endpoints as the original. Check them before you publish the copy.
         </p>
@@ -166,10 +166,10 @@ export function DuplicateAgentDialog({
 function List({ title, items, icon }: { title: string; items: string[]; icon: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[12.5px] font-medium text-fg">{title}</p>
+      <p className="text-[13px] font-medium text-fg">{title}</p>
       <ul className="mt-2 flex flex-col gap-1.5">
         {items.map((t) => (
-          <li key={t} className="flex items-start gap-2 text-[12.5px] leading-snug text-fg-2 [&_svg]:mt-0.5 [&_svg]:size-3.5 [&_svg]:shrink-0">
+          <li key={t} className="flex items-start gap-2 text-[13px] leading-snug text-fg-2 [&_svg]:mt-0.5 [&_svg]:size-3.5 [&_svg]:shrink-0">
             {icon}
             {t}
           </li>

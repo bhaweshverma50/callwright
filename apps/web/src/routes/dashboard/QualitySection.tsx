@@ -26,7 +26,7 @@ function EmptyQuality({ icon, title, children }: { icon: ReactNode; title: strin
       <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-5">{icon}</span>
       <div>
         <p className="text-[13px] font-medium text-fg">{title}</p>
-        <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-3">{children}</p>
+        <p className="mt-0.5 text-[13px] leading-relaxed text-fg-3">{children}</p>
       </div>
     </div>
   );
@@ -58,7 +58,7 @@ export function QualityGrid({ data }: { data: DashboardQuality | undefined }) {
                 <span className="h-1.5 overflow-hidden rounded-full bg-surface-3">
                   <span className="block h-full rounded-full bg-success" style={{ width: `${(e.pass_rate ?? 0) * 100}%` }} />
                 </span>
-                <span className="font-mono text-[11.5px] text-fg-3 tnum">
+                <span className="font-mono text-[12px] text-fg-3 tnum">
                   {e.pass_count} pass, {e.fail_count} fail, {e.not_applicable_count} n/a
                 </span>
               </li>

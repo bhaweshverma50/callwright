@@ -23,7 +23,7 @@ function Block({ label, children, mono = true }: { label: string; children: Reac
       <span className="text-[12px] font-medium text-fg-3">{label}</span>
       <div
         className={cn(
-          "max-h-56 overflow-auto rounded-control border border-line bg-surface-2/70 px-3 py-2.5 text-[12.5px] leading-relaxed text-fg",
+          "max-h-56 overflow-auto rounded-control border border-line bg-surface-2/70 px-3 py-2.5 text-[13px] leading-relaxed text-fg",
           mono && "whitespace-pre-wrap break-all font-mono",
         )}
       >
@@ -96,13 +96,7 @@ export function TestRunPanel({
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         <Field label="Arguments" error={"error" in parsed && parsed.error?.startsWith("Arguments") ? parsed.error : null}>
           {({ id }) => (
-            <Textarea
-              id={id}
-              spellCheck={false}
-              className="min-h-28 font-mono text-[12.5px]"
-              value={args}
-              onChange={(e) => setArgs(e.target.value)}
-            />
+            <Textarea id={id} spellCheck={false} className="min-h-28 font-mono text-[13px]" value={args} onChange={(e) => setArgs(e.target.value)} />
           )}
         </Field>
         <Field label="Call variables" hint="Values for {{name}} that come from the call.">
@@ -111,7 +105,7 @@ export function TestRunPanel({
               id={id}
               aria-describedby={describedBy}
               spellCheck={false}
-              className="min-h-28 font-mono text-[12.5px]"
+              className="min-h-28 font-mono text-[13px]"
               value={vars}
               onChange={(e) => setVars(e.target.value)}
             />
@@ -122,8 +116,8 @@ export function TestRunPanel({
         <Button icon={<Play aria-hidden />} pending={run.isPending} disabled={disabled || "error" in parsed} onClick={() => run.mutate()}>
           Run test
         </Button>
-        {"error" in parsed && <span className="text-[12.5px] text-danger-text">{parsed.error}</span>}
-        {run.isError && <span className="text-[12.5px] text-danger-text">{problemMessage(run.error, "tool")}</span>}
+        {"error" in parsed && <span className="text-[13px] text-danger-text">{parsed.error}</span>}
+        {run.isError && <span className="text-[13px] text-danger-text">{problemMessage(run.error, "tool")}</span>}
       </div>
       <AnimatePresence mode="wait">
         {result && (
@@ -148,7 +142,7 @@ export function TestRunPanel({
               )}
               {result.http_status != null && <Badge>HTTP {result.http_status}</Badge>}
               <Badge tone="accent">{result.duration_ms.toLocaleString()} ms</Badge>
-              {result.error_message && <span className="text-[12.5px] text-fg-2">{result.error_message}</span>}
+              {result.error_message && <span className="text-[13px] text-fg-2">{result.error_message}</span>}
             </div>
             {result.request?.url && (
               <Block label="Request sent">
@@ -163,7 +157,7 @@ export function TestRunPanel({
                 <span className="text-[12px] font-medium text-fg-3">Mapped variables</span>
                 <dl className="divide-y divide-line rounded-control border border-line">
                   {Object.entries(result.mapped_variables ?? {}).map(([k, v]) => (
-                    <div key={k} className="flex items-center justify-between gap-3 px-3 py-2 text-[12.5px]">
+                    <div key={k} className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]">
                       <dt className="flex items-center gap-1.5 font-mono text-fg">
                         <Variable className="size-3.5 text-fg-3" aria-hidden />
                         {k}
@@ -175,7 +169,7 @@ export function TestRunPanel({
               </div>
             )}
             {(result.missing_paths ?? []).length > 0 && (
-              <p className="text-[12.5px] text-warning-text">Not found in the answer: {(result.missing_paths ?? []).join(", ")}</p>
+              <p className="text-[13px] text-warning-text">Not found in the answer: {(result.missing_paths ?? []).join(", ")}</p>
             )}
             <Block label="What the agent hears">
               <span className="inline-flex items-start gap-2">

@@ -4,7 +4,7 @@
  * edit that stores a new revision, and the revision history with each revision's status.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, FlaskConical, PenLine, Sparkles, Wand2 } from "lucide-react";
+import { Bot, ChevronDown, FlaskConical, PenLine, Wand2 } from "lucide-react";
 import { useState } from "react";
 import {
   draftFixWithAi,
@@ -38,19 +38,19 @@ function Revision({ fix, current }: { fix: FixRevision; current?: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[13.5px] font-semibold text-fg">
+        <span className="text-[14px] font-semibold text-fg">
           {current ? "Current fix" : `Revision ${fix.revision}`}: {KIND_LABELS[fix.kind]}
         </span>
         <FixStatusBadge status={fix.status} />
-        <Badge tone="neutral" icon={fix.source === "ai" ? <Sparkles aria-hidden /> : <PenLine aria-hidden />}>
+        <Badge tone="neutral" icon={fix.source === "ai" ? <Bot aria-hidden /> : <PenLine aria-hidden />}>
           {fix.source === "ai" ? "Drafted by AI" : "Written by hand"}
         </Badge>
         <span className="text-[12px] text-fg-3">
           Revision {fix.revision}, {relative(fix.created_at)}
         </span>
       </div>
-      {fix.rationale && <p className="max-w-[80ch] text-[13.5px] leading-relaxed text-fg-2">{withoutLineRefs(fix.rationale)}</p>}
-      {fix.guidance && <p className="text-[12.5px] text-fg-3">Guidance: {fix.guidance}</p>}
+      {fix.rationale && <p className="max-w-[80ch] text-[14px] leading-relaxed text-fg-2">{withoutLineRefs(fix.rationale)}</p>}
+      {fix.guidance && <p className="text-[13px] text-fg-3">Guidance: {fix.guidance}</p>}
       <FixDiff kind={fix.kind} payload={fix.payload} />
     </div>
   );
@@ -155,7 +155,7 @@ export function FixPanel({
         {current ? (
           <Revision fix={current} current />
         ) : (
-          mode !== "draft" && <p className="text-[13.5px] text-fg-2">No fix yet. Draft one with AI or write it yourself.</p>
+          mode !== "draft" && <p className="text-[14px] text-fg-2">No fix yet. Draft one with AI or write it yourself.</p>
         )}
 
         {advisory && !closed && (
@@ -170,7 +170,7 @@ export function FixPanel({
             <Button variant="primary" icon={<FlaskConical aria-hidden />} disabled={advisory} onClick={onValidate}>
               {current.status === "passed" || current.status === "failed" || current.status === "inconclusive" ? "Validate again" : "Validate"}
             </Button>
-            <Button icon={<Sparkles aria-hidden />} onClick={() => setMode("draft")}>
+            <Button icon={<PenLine aria-hidden />} onClick={() => setMode("draft")}>
               Redraft
             </Button>
             {editable && (
@@ -203,7 +203,7 @@ export function FixPanel({
               </Field>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" icon={<Sparkles aria-hidden />} pending={pending === "draft"} onClick={() => void draft()}>
+              <Button variant="primary" icon={<PenLine aria-hidden />} pending={pending === "draft"} onClick={() => void draft()}>
                 Draft fix
               </Button>
               <Button
@@ -234,7 +234,7 @@ export function FixPanel({
                   id={id}
                   aria-describedby={describedBy}
                   aria-invalid={invalid}
-                  className={cn("font-mono text-[12.5px]", current?.kind === "prompt_edit" ? "min-h-[220px]" : "min-h-[110px]")}
+                  className={cn("font-mono text-[13px]", current?.kind === "prompt_edit" ? "min-h-[220px]" : "min-h-[110px]")}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                 />
@@ -253,7 +253,7 @@ export function FixPanel({
 
         {history.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-line pt-4">
-            <p className="text-[12.5px] text-fg-3">Earlier revisions</p>
+            <p className="text-[13px] text-fg-3">Earlier revisions</p>
             <ul className="flex flex-col divide-y divide-line rounded-control border border-line">
               {history.map((f) => {
                 const open = openRevision === f.revision;

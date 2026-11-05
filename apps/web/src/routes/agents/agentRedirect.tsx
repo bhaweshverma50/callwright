@@ -48,7 +48,6 @@ function Later({
         <ChevronLeft className="size-4" aria-hidden /> {backLabel}
       </Link>
       <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-70" />
         <div className="relative flex flex-col gap-1 px-6 pt-6 sm:px-10">
           <Badge icon={<Clock3 />} className="w-fit">
             In a later release

@@ -47,14 +47,13 @@ export function NewFlowAgentPage() {
         <ChevronLeft className="size-4" aria-hidden /> Agent type
       </Link>
       <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-x-0 top-0 h-40 opacity-80" />
         <div className="relative flex flex-col gap-6 p-6 sm:p-8">
           <div className="flex items-center gap-3.5">
-            <span className="grad-action grid size-12 place-items-center rounded-panel text-white shadow-glow">
+            <span className="bg-accent grid size-12 place-items-center rounded-panel text-white">
               <FlowArrow weight="duotone" className="size-6" aria-hidden />
             </span>
             <div>
-              <h1 className="font-display text-[22px] font-medium tracking-[-0.02em] text-fg sm:text-[24px]">New flow agent</h1>
+              <h1 className="font-display text-[22px] tracking-[-0.02em] text-fg sm:text-[24px]">New flow agent</h1>
               <p className="text-[13px] text-fg-3">Design the call as steps on a canvas.</p>
             </div>
           </div>
@@ -110,7 +109,7 @@ export function NewFlowAgentPage() {
                     aria-hidden
                     className={cn(
                       "relative grid size-6 place-items-center rounded-full font-mono text-[11px] font-medium",
-                      i === 0 ? "grad-action text-white shadow-glow" : "bg-surface text-fg-2 shadow-1 ring-1 ring-line",
+                      i === 0 ? "bg-accent text-white" : "bg-surface text-fg-2 shadow-1 ring-1 ring-line",
                     )}
                   >
                     {i + 1}

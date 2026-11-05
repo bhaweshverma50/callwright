@@ -123,7 +123,7 @@ export function OnAir({
   return (
     <span
       className={cn(
-        "inline-flex items-center text-[12.5px] font-medium",
+        "inline-flex items-center text-[13px] font-medium",
         onConsole ? "text-console-fg" : "text-fg",
         pill
           ? "h-[22px] gap-2 rounded-full border border-[color-mix(in_srgb,var(--on-air)_28%,transparent)] bg-[color-mix(in_srgb,var(--on-air)_9%,var(--surface))] pl-2 pr-2.5 text-[12px] leading-none"
@@ -172,7 +172,7 @@ export function LatencyChip({ latency, onConsole, className }: { latency: Latenc
           <span key={k} style={{ width: `${(latency[k] / total) * 100}%`, background: c }} />
         ))}
       </span>
-      <span className="font-mono text-[11.5px] tnum">{total} ms</span>
+      <span className="font-mono text-[12px] tnum">{total} ms</span>
     </span>
   );
 }

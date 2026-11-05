@@ -8,12 +8,13 @@ import {
   FlaskConical,
   MessageSquareText,
   Mic,
+  PenLine,
   PhoneCall,
-  Sparkles,
+  Receipt,
   TestTubeDiagonal,
   TriangleAlert,
-  Workflow,
   type LucideIcon,
+  Workflow,
 } from "lucide-react";
 import { Fragment, useState } from "react";
 import { problemMessage } from "../../api/problems";
@@ -61,7 +62,7 @@ export const FAMILY_ICONS: Record<FeatureFamily, LucideIcon> = {
   simulations: FlaskConical,
   testing: TestTubeDiagonal,
   analytics_chat: MessageSquareText,
-  prompt_generation: Sparkles,
+  prompt_generation: PenLine,
   post_call_analysis: FileSearch,
   flow_assistant: Workflow,
   voice_copilot: Mic,
@@ -71,7 +72,7 @@ export const FAMILY_ICONS: Record<FeatureFamily, LucideIcon> = {
 };
 
 function FamilyIcon({ family }: { family: FeatureFamily }) {
-  const Icon = FAMILY_ICONS[family] ?? Sparkles;
+  const Icon = FAMILY_ICONS[family] ?? Receipt;
   return <Icon className="size-4 text-fg-3" aria-hidden />;
 }
 
@@ -116,7 +117,7 @@ export function UsagePanel() {
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-5 py-3.5">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-[14px] font-semibold text-fg">Usage by feature</h2>
-          <p className="text-[12.5px] text-fg-3">Raw cost is what vendors charged; billed is what came off your balance.</p>
+          <p className="text-[13px] text-fg-3">Raw cost is what vendors charged; billed is what came off your balance.</p>
         </div>
         <fieldset className="flex flex-wrap items-start gap-3">
           <legend className="sr-only">Date range</legend>
@@ -217,11 +218,11 @@ export function UsagePanel() {
                         )}
                       </span>
                     </th>
-                    <td className="px-3 text-right font-mono text-[12.5px] text-fg-2 tnum">{r.event_count.toLocaleString()}</td>
-                    <td className="px-3 text-right text-[12.5px] text-fg-2">
+                    <td className="px-3 text-right font-mono text-[13px] text-fg-2 tnum">{r.event_count.toLocaleString()}</td>
+                    <td className="px-3 text-right text-[13px] text-fg-2">
                       <MoneyText value={r.raw_cost_usd} places={3} />
                     </td>
-                    <td className="pl-3 pr-5 text-right text-[12.5px]">
+                    <td className="pl-3 pr-5 text-right text-[13px]">
                       <MoneyText value={r.billable_cost_usd} places={3} />
                     </td>
                   </tr>
@@ -249,10 +250,10 @@ export function UsagePanel() {
               <th scope="row" className="h-11 pl-5 text-left font-medium text-fg">
                 Total
               </th>
-              <td className="px-3 text-right font-mono text-[12.5px] text-fg-2 tnum">
+              <td className="px-3 text-right font-mono text-[13px] text-fg-2 tnum">
                 {q.data.rows.reduce((s, r) => s + r.event_count, 0).toLocaleString()}
               </td>
-              <td className="px-3 text-right text-[12.5px] text-fg-2">
+              <td className="px-3 text-right text-[13px] text-fg-2">
                 <MoneyText value={q.data.total_raw_cost_usd} places={3} />
               </td>
               <td className="pl-3 pr-5 text-right text-[13px] font-medium">

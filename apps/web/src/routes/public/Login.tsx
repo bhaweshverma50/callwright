@@ -72,7 +72,7 @@ export function Login() {
             tone="warning"
             action={
               resent ? (
-                <span className="text-[12.5px]">Sent. Check your inbox for the new link.</span>
+                <span className="text-[13px]">Sent. Check your inbox for the new link.</span>
               ) : (
                 <Button size="sm" variant="secondary" pending={resend.isPending} onClick={() => resend.mutate()} className="self-start">
                   Send the link again
@@ -147,7 +147,7 @@ export function Login() {
       </form>
 
       {env.mocks && (
-        <p className="mt-5 rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
+        <p className="mt-5 rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
           Demo data is on. Use <span className="font-medium text-fg-2">ops@halcyon-dental.com</span> with{" "}
           <span className="font-medium text-fg-2">correct-horse-9</span>.{" "}
           <button

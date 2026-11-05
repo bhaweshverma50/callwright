@@ -82,7 +82,7 @@ export function FlowChain({
             </span>
             {linkLabels?.[i] != null && (
               <span
-                className={cn("flow-seg-label z-[2] font-mono text-[11.5px] tnum", onConsole ? "text-console-fg-2" : "text-fg-3")}
+                className={cn("flow-seg-label z-[2] font-mono text-[12px] tnum", onConsole ? "text-console-fg-2" : "text-fg-3")}
                 style={{ "--i": i } as CSSProperties}
               >
                 {linkLabels[i]}
@@ -151,7 +151,7 @@ export function ActiveDisc({ on }: { on: boolean }) {
   return (
     <>
       <Halo on={on} />
-      <span aria-hidden className="disc-fill grad-action" data-on={on} />
+      <span aria-hidden className="disc-fill bg-accent" data-on={on} />
     </>
   );
 }

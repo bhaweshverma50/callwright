@@ -48,9 +48,9 @@ export function Dialog({ open, onOpenChange, title, description, icon, children,
                 </span>
               )}
               <div className="flex flex-col gap-1">
-                <RD.Title className="font-display text-[17px] font-medium tracking-[-0.01em] text-fg">{title}</RD.Title>
+                <RD.Title className="font-display text-[17px] tracking-[-0.01em] text-fg">{title}</RD.Title>
                 {description ? (
-                  <RD.Description className="text-[13.5px] leading-relaxed text-fg-2">{description}</RD.Description>
+                  <RD.Description className="text-[14px] leading-relaxed text-fg-2">{description}</RD.Description>
                 ) : (
                   <RD.Description className="sr-only">{typeof title === "string" ? title : "Dialog"}</RD.Description>
                 )}
@@ -66,7 +66,7 @@ export function Dialog({ open, onOpenChange, title, description, icon, children,
           </div>
           {/* Tall content scrolls inside the dialog so the footer stays on screen. */}
           {children && (
-            <div data-dialog-body className="min-h-0 overflow-y-auto px-5 py-3 text-[13.5px] text-fg-2">
+            <div data-dialog-body className="min-h-0 overflow-y-auto px-5 py-3 text-[14px] text-fg-2">
               {children}
             </div>
           )}

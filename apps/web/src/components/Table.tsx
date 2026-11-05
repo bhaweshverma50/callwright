@@ -105,7 +105,7 @@ export function Table<T>({
                       className={cn(
                         "h-11 px-3 align-middle text-fg first:pl-5 last:pr-5",
                         (c.align === "right" || c.numeric) && "text-right",
-                        c.numeric && "font-mono text-[12.5px] tnum",
+                        c.numeric && "font-mono text-[13px] tnum",
                         c.hideOnNarrow && "hidden md:table-cell",
                       )}
                     >
@@ -140,7 +140,7 @@ export function Pagination({ page, totalPages, total, pageSize, onPageChange, no
   const to = Math.min(total, page * pageSize);
   return (
     <nav aria-label="Pagination" className={cn("flex flex-wrap items-center justify-between gap-3 px-5 py-3", className)}>
-      <p className="text-[12.5px] text-fg-3">
+      <p className="text-[13px] text-fg-3">
         <span className="font-mono tnum">{from.toLocaleString()}</span> to <span className="font-mono tnum">{to.toLocaleString()}</span> of{" "}
         <span className="font-mono tnum">{total.toLocaleString()}</span> {noun}
       </p>

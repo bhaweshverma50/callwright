@@ -8,7 +8,7 @@ export function TabHeader({ icon, title, description, actions }: { icon: ReactNo
         <span className="mt-0.5 text-fg-3 [&_svg]:size-4">{icon}</span>
         <div className="flex flex-col gap-0.5">
           <h2 className="text-[14px] font-semibold text-fg">{title}</h2>
-          <p className="text-[12.5px] text-fg-3">{description}</p>
+          <p className="text-[13px] text-fg-3">{description}</p>
         </div>
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

@@ -85,7 +85,6 @@ export function Playground({ className }: { className?: string }) {
 function ConsoleFrame({ className, children }: { className?: string; children?: ReactNode }) {
   return (
     <div id="playground" className={cn("relative scroll-mt-24", className)}>
-      <div aria-hidden className="glow-backdrop pointer-events-none absolute -inset-10 -z-0 rounded-[40px] blur-2xl" />
       <section
         aria-label="Try a call"
         className="relative flex min-h-[500px] flex-col overflow-hidden rounded-feature border border-console-line bg-console text-console-fg shadow-2"
@@ -242,7 +241,7 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
       <footer className={cn("flex flex-col gap-4 px-5 pb-5", onCall ? "border-t border-console-line pt-3.5" : "pt-1")}>
         {onCall && <FlowChain nodes={NODES} active={link} flow onConsole size="sm" stack="never" />}
         <div className="flex flex-wrap-reverse items-center justify-between gap-x-4 gap-y-3">
-          <p className="min-w-0 flex-1 basis-48 text-[12.5px] leading-snug text-console-fg-2">
+          <p className="min-w-0 flex-1 basis-48 text-[13px] leading-snug text-console-fg-2">
             {onCall
               ? s.muted
                 ? "Your microphone is muted."
@@ -296,7 +295,7 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
                 Call again
               </button>
             ) : (
-              <Button variant="primary" size="lg" idleSheen={s.phase === "idle"} icon={<Phone aria-hidden />} onClick={() => void start()}>
+              <Button variant="primary" size="lg" icon={<Phone aria-hidden />} onClick={() => void start()}>
                 {s.phase === "idle" ? scenario.action : "Try again"}
               </Button>
             )}
@@ -324,7 +323,7 @@ function Fade({ children, className }: { children: ReactNode; className?: string
 function HeaderStatus({ phase, waking, ringing }: { phase: string; waking: boolean; ringing: boolean }) {
   if (ringing)
     return (
-      <span className="inline-flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium text-console-fg">
+      <span className="inline-flex items-center gap-2 whitespace-nowrap text-[13px] font-medium text-console-fg">
         <Phone className="size-4" aria-hidden />
         Ringing
       </span>
@@ -332,13 +331,13 @@ function HeaderStatus({ phase, waking, ringing }: { phase: string; waking: boole
   if (phase === "live" || phase === "ending") return <OnAir label="Live call" onConsole />;
   if (phase === "ended")
     return (
-      <span className="inline-flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium text-console-fg-2">
+      <span className="inline-flex items-center gap-2 whitespace-nowrap text-[13px] font-medium text-console-fg-2">
         <CircleCheck className="size-4 text-[#5fd3a4]" aria-hidden />
         Call ended
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-2 whitespace-nowrap text-[12.5px] font-medium text-console-fg-2">
+    <span className="inline-flex items-center gap-2 whitespace-nowrap text-[13px] font-medium text-console-fg-2">
       <Phone className="size-4" aria-hidden />
       {waking ? "Starting the call servers" : phase === "idle" || phase === "error" ? "Try a real call" : "Connecting"}
     </span>
@@ -349,7 +348,7 @@ function Brief({ scenario, dim }: { scenario: Scenario; dim: boolean }) {
   return (
     <div className={cn("flex h-full flex-col justify-center gap-6 transition-opacity duration-200", dim && "opacity-60")}>
       <p className="max-w-[34ch] text-[20px] leading-[1.5] tracking-[-0.01em] text-console-fg sm:text-[22px]">{scenario.brief}</p>
-      <div className="text-[13.5px] leading-relaxed text-console-fg-2">
+      <div className="text-[14px] leading-relaxed text-console-fg-2">
         <p>Try saying</p>
         <ul className="mt-1">
           {scenario.lines.map((line) => (
@@ -382,7 +381,7 @@ function Waking({ startedAt }: { startedAt: number }) {
           transition={{ duration: 0.5, ease: "linear" }}
         />
       </div>
-      <p className="text-[12.5px] text-console-fg-2">The call starts on its own once they answer. Nothing is charged before it connects.</p>
+      <p className="text-[13px] text-console-fg-2">The call starts on its own once they answer. Nothing is charged before it connects.</p>
     </div>
   );
 }
@@ -416,7 +415,7 @@ const Transcript = memo(function Transcript({ turns, reduce }: { turns: CallTurn
           >
             <p
               className={cn(
-                "max-w-[40ch] rounded-panel px-3 py-1.5 text-[13.5px] leading-snug",
+                "max-w-[40ch] rounded-panel px-3 py-1.5 text-[14px] leading-snug",
                 agent ? "rounded-bl-[4px] bg-[#2a33a8] text-white" : "rounded-br-[4px] bg-console-2 text-console-fg",
                 !t.final && "opacity-75",
               )}
@@ -442,7 +441,7 @@ function Summary({ turns, elapsed, costMicros, agentEnded }: { turns: CallTurn[]
   ];
   return (
     <div className="flex h-full flex-col gap-5">
-      <p className="max-w-[44ch] text-[15.5px] leading-relaxed text-console-fg">
+      <p className="max-w-[44ch] text-[16px] leading-relaxed text-console-fg">
         {agentEnded ? "The agent wrapped up and hung up." : "You hung up."} This is what Callwright records for every call, with the transcript,
         recording and an itemised bill.
       </p>

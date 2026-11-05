@@ -44,12 +44,12 @@ export function Drawer({ open, onOpenChange, title, meta, actions, children, foo
         >
           <header className="flex items-start gap-3 border-b border-line px-5 py-4">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <RD.Title className="min-w-0 font-display text-[16px] font-medium tracking-[-0.01em] text-fg">
+              <RD.Title className="min-w-0 font-display text-[16px] tracking-[-0.01em] text-fg">
                 <TruncatedText side="bottom">{title}</TruncatedText>
               </RD.Title>
               {meta ? (
                 <RD.Description asChild>
-                  <div className="min-w-0 text-[12.5px] text-fg-3">
+                  <div className="min-w-0 text-[13px] text-fg-3">
                     <TruncatedText side="bottom">{meta}</TruncatedText>
                   </div>
                 </RD.Description>

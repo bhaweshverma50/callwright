@@ -59,7 +59,7 @@ export function Keypad({ onPress, className }: { onPress: (digit: string) => voi
             )}
           >
             <span className="text-[18px] font-medium text-fg">{d}</span>
-            {letters && <span className="mt-0.5 text-[9.5px] tracking-[0.12em] text-fg-3">{letters}</span>}
+            {letters && <span className="mt-0.5 text-[10px] tracking-[0.12em] text-fg-3">{letters}</span>}
           </button>
         ))}
       </div>

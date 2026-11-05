@@ -61,7 +61,7 @@ export function Register() {
         }
       >
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 rounded-panel border border-line bg-surface px-4 py-3.5 text-[13.5px] text-fg-2 shadow-1">
+          <div className="flex items-center gap-3 rounded-panel border border-line bg-surface px-4 py-3.5 text-[14px] text-fg-2 shadow-1">
             <EnvelopeSimple weight="duotone" className="size-7 shrink-0 text-accent-text" aria-hidden />
             The link works once. If it does not arrive in a few minutes, check spam or send it again.
           </div>
@@ -79,7 +79,7 @@ export function Register() {
             </Button>
           </div>
           {env.mocks && (
-            <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
+            <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
               <Link className="link-underline text-accent-text" to={`/verify-email?token_hash=${encodeURIComponent(`verify-${addr}`)}`}>
                 Open the verification link

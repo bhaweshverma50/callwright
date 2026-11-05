@@ -1,7 +1,7 @@
 import "./flows.css";
 import { FlowArrow } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, CircleAlert, History, ListChecks, Play, RefreshCw, Rocket, Save, Settings2, Sparkles } from "lucide-react";
+import { ChevronLeft, CircleAlert, History, ListChecks, MessageSquareText, Play, RefreshCw, Rocket, Save, Settings2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
@@ -239,7 +239,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       aria-label="Builder side panel"
       className="flex h-full min-h-0 flex-col [&>[role=tablist]]:px-5"
       items={[
-        { value: "assistant", label: "Assistant", icon: <Sparkles aria-hidden /> },
+        { value: "assistant", label: "Assistant", icon: <MessageSquareText aria-hidden /> },
         { value: "test", label: "Test", icon: <Play aria-hidden /> },
         { value: "problems", label: "Problems", icon: <ListChecks aria-hidden />, alerts: validation.result?.errors || undefined },
       ]}
@@ -287,17 +287,17 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
               maxLength={80}
               onChange={(e) => draft.setName(e.target.value)}
               aria-invalid={Boolean(nameError) || undefined}
-              className="-ml-2 h-10 w-full max-w-[520px] border-transparent bg-transparent px-2 font-display text-[20px] font-medium tracking-[-0.02em] shadow-none hover:border-line focus:border-line-strong sm:text-[22px]"
+              className="-ml-2 h-10 w-full max-w-[520px] border-transparent bg-transparent px-2 font-display text-[20px] tracking-[-0.02em] shadow-none hover:border-line focus:border-line-strong sm:text-[22px]"
             />
             {nameError && (
-              <p role="alert" className="flex items-center gap-1.5 text-[12.5px] text-danger-text">
+              <p role="alert" className="flex items-center gap-1.5 text-[13px] text-danger-text">
                 <CircleAlert className="size-3.5" aria-hidden /> {nameError}
               </p>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge icon={<FlowArrow weight="bold" />}>Flow</Badge>
-            <button type="button" onClick={() => setHistory(true)} className="cursor-pointer rounded-full transition-transform hover:-translate-y-px">
+            <button type="button" onClick={() => setHistory(true)} className="cursor-pointer rounded-full transition-transform">
               {versionNumber ? (
                 <Badge tone="success" icon={<History />}>
                   Live on version {versionNumber}
@@ -321,7 +321,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
                 initial={{ opacity: 0, x: 6 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
-                className="mr-1 flex items-center gap-1.5 text-[12.5px] text-warning-text"
+                className="mr-1 flex items-center gap-1.5 text-[13px] text-warning-text"
                 aria-live="polite"
               >
                 <span className="size-2 rounded-full bg-warning" aria-hidden /> Unsaved changes

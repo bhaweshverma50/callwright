@@ -96,7 +96,7 @@ export function AnalysisVariablesEditor({
       <h3 id="analysis-vars-h" className="sr-only">
         Analysis variables
       </h3>
-      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/40 px-5 py-2.5 text-[12.5px] text-fg-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2/40 px-5 py-2.5 text-[13px] text-fg-3">
         <Cpu className="size-3.5" aria-hidden />
         <span>
           Extracted with <span className="font-mono text-fg-2">{model.label}</span>
@@ -145,11 +145,11 @@ export function AnalysisVariablesEditor({
                       <span className="font-mono text-[13px] font-medium text-fg">{v.name}</span>
                       <Badge>{TYPE_LABELS[v.type]}</Badge>
                     </div>
-                    <p className="text-[12.5px] leading-relaxed text-fg-2">{v.description}</p>
+                    <p className="text-[13px] leading-relaxed text-fg-2">{v.description}</p>
                     {v.choices && v.choices.length > 0 && (
                       <ul className="mt-0.5 flex flex-wrap gap-1" aria-label={`Choices for ${v.name}`}>
                         {v.choices.map((c) => (
-                          <li key={c} className="rounded-full bg-surface-3 px-2 py-0.5 text-[11.5px] text-fg-2">
+                          <li key={c} className="rounded-full bg-surface-3 px-2 py-0.5 text-[12px] text-fg-2">
                             {c}
                           </li>
                         ))}

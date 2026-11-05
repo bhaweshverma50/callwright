@@ -99,9 +99,7 @@ export function Composer({
         disabled={!canSend}
         className={cn(
           "grid size-9 shrink-0 cursor-pointer place-items-center rounded-full transition-[background,color,transform,box-shadow] duration-150 active:scale-95",
-          canSend
-            ? "grad-action text-white shadow-[0_6px_14px_-6px_rgb(91_60_244/0.7)] hover:brightness-110"
-            : "cursor-not-allowed bg-surface-3 text-fg-3",
+          canSend ? "bg-accent text-white hover:bg-accent-hover" : "cursor-not-allowed bg-surface-3 text-fg-3",
           focusRing,
         )}
       >
@@ -164,7 +162,7 @@ export function ThinkingIndicator({
             {verb}…
           </motion.span>
         </AnimatePresence>
-        {elapsed >= 2000 && <span className="font-mono text-[11.5px] text-fg-3 tnum">{elapsedText(elapsed)}</span>}
+        {elapsed >= 2000 && <span className="font-mono text-[12px] text-fg-3 tnum">{elapsedText(elapsed)}</span>}
         {extra}
       </span>
     </div>

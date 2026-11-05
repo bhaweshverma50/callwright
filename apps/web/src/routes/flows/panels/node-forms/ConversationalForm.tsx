@@ -114,7 +114,7 @@ export function ConversationalForm({
             { value: "reset", label: "Fresh start" },
           ]}
         />
-        <p className="text-[12.5px] leading-relaxed text-fg-3">
+        <p className="text-[13px] leading-relaxed text-fg-3">
           {config.context_strategy === "inherit"
             ? "The whole conversation so far."
             : config.context_strategy === "summarize"

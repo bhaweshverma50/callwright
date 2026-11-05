@@ -83,7 +83,7 @@ export function Segmented<T extends string>({
             onClick={() => onValueChange(o.value)}
             className={cn(
               "relative inline-flex min-w-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[6px] px-3 font-medium transition-colors duration-150 [&_svg]:size-3.5",
-              size === "sm" ? "h-7 text-[12.5px]" : "h-8 text-[13px]",
+              size === "sm" ? "h-7 text-[13px]" : "h-8 text-[13px]",
               fill && "flex-1",
               on ? "text-fg" : "text-fg-2 hover:text-fg",
               "disabled:cursor-not-allowed disabled:text-fg-3",
@@ -185,9 +185,7 @@ export function ChoiceGroup<T extends string>({
                 "group relative flex min-w-0 cursor-pointer flex-col items-stretch rounded-panel border text-left",
                 "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-[var(--ease-out-soft)]",
                 size === "sm" ? "gap-1 px-3.5 py-3" : size === "lg" ? "gap-3 p-5" : "gap-1.5 p-4",
-                on
-                  ? "border-accent bg-accent-soft/45 shadow-[0_0_0_1px_var(--accent),0_12px_28px_-18px_rgb(51_70_232/0.55)]"
-                  : "border-line bg-surface hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow",
+                on ? "border-accent bg-accent-soft/45 shadow-[0_0_0_1px_var(--accent)]" : "border-line bg-surface hover:border-accent/45",
                 "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60 data-[disabled]:hover:translate-y-0 data-[disabled]:hover:border-line data-[disabled]:hover:shadow-none",
                 focusRing,
               )}
@@ -198,7 +196,7 @@ export function ChoiceGroup<T extends string>({
                     className={cn(
                       "grid shrink-0 place-items-center rounded-control transition-colors duration-200",
                       size === "sm" ? "size-8 [&_svg]:size-4" : "size-10 [&_svg]:size-5",
-                      on ? "grad-action text-white" : "bg-surface-2 text-accent-text",
+                      on ? "bg-accent text-white" : "bg-surface-2 text-accent-text",
                     )}
                   >
                     {o.icon}
@@ -206,11 +204,11 @@ export function ChoiceGroup<T extends string>({
                 )}
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex min-w-0 items-center justify-between gap-3">
-                    <span className={cn("min-w-0 font-semibold text-fg", size === "lg" ? "text-[15.5px]" : "text-[13.5px]")}>{o.title}</span>
+                    <span className={cn("min-w-0 font-semibold text-fg", size === "lg" ? "text-[16px]" : "text-[14px]")}>{o.title}</span>
                     {o.meta != null && size !== "sm" && <span className="shrink-0 text-[12px] text-fg-3">{o.meta}</span>}
                   </span>
                   {o.description && (
-                    <span className={cn("text-fg-2", size === "sm" ? "text-[12.5px] leading-snug" : "text-[13px] leading-relaxed")}>
+                    <span className={cn("text-fg-2", size === "sm" ? "text-[13px] leading-snug" : "text-[13px] leading-relaxed")}>
                       {o.description}
                     </span>
                   )}
@@ -224,7 +222,7 @@ export function ChoiceGroup<T extends string>({
                   aria-hidden
                   className={cn(
                     "grid size-5 shrink-0 place-items-center rounded-full border transition-[background-color,border-color,transform] duration-200",
-                    on ? "scale-100 border-transparent grad-action text-white" : "scale-90 border-line-strong bg-surface text-transparent",
+                    on ? "scale-100 border-transparent bg-accent text-white" : "scale-90 border-line-strong bg-surface text-transparent",
                   )}
                 >
                   <Check strokeWidth={3} className="size-3" />

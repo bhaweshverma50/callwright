@@ -171,7 +171,7 @@ export function WhatsAppChannelDialog({
           href={SETUP_GUIDE}
           target="_blank"
           rel="noreferrer"
-          className="flex w-fit items-center gap-1.5 text-[12.5px] font-medium text-accent-text hover:underline"
+          className="flex w-fit items-center gap-1.5 text-[13px] font-medium text-accent-text hover:underline"
         >
           <BookOpen className="size-3.5" aria-hidden />
           WhatsApp Calling setup guide
@@ -200,7 +200,7 @@ export function WhatsAppChannelDialog({
         <Field label="Callback URL" hint="Paste into the Meta app's webhook settings and subscribe to the calls field.">
           {({ id, describedBy }) => (
             <div className="flex items-center gap-2 rounded-control border border-line bg-surface-2/70 py-1 pl-3 pr-1">
-              <code id={id} aria-describedby={describedBy} className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg">
+              <code id={id} aria-describedby={describedBy} className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg">
                 {settings.data?.callback_url ?? "Loading"}
               </code>
               {settings.data && <CopyButton value={settings.data.callback_url} label="Copy callback URL" />}

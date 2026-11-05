@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock, CloudOff, Maximize2, Minimize2, RotateCcw, Sparkles, SquarePen, Wallet, X } from "lucide-react";
+import { Clock, CloudOff, Maximize2, MessageSquareText, Minimize2, RotateCcw, SquarePen, Wallet, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -115,13 +115,13 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "group/ask grad-action sheen relative flex cursor-pointer items-center overflow-hidden rounded-full text-white transition-[transform,box-shadow] duration-200 hover:scale-[1.03] active:scale-[0.97]",
+          "group/ask bg-accent relative flex cursor-pointer items-center overflow-hidden rounded-full text-white transition-[background-color,transform] duration-200 hover:bg-accent-hover active:scale-[0.97]",
           bar ? "h-8 pl-2 pr-2" : "h-9 pl-2.5 pr-2.5",
           open && "ring-2 ring-accent/35 ring-offset-2 ring-offset-surface",
           focusRing,
         )}
       >
-        <Sparkles className="size-4 shrink-0 transition-transform duration-300 group-hover/ask:rotate-12" aria-hidden />
+        <MessageSquareText className="size-4 shrink-0" aria-hidden />
         <span
           className={cn(
             "max-w-0 overflow-hidden whitespace-nowrap text-[13px] font-medium opacity-0 transition-[max-width,opacity,margin] duration-300 ease-out",
@@ -154,8 +154,8 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
               )}
             >
               <header className="flex items-center gap-2 border-b border-line px-4 py-3">
-                <span className="grad-action grid size-7 place-items-center rounded-control text-white">
-                  <Sparkles className="size-3.5" aria-hidden />
+                <span className="bg-accent grid size-7 place-items-center rounded-control text-white">
+                  <MessageSquareText className="size-3.5" aria-hidden />
                 </span>
                 <h2 className="flex-1 text-[14px] font-semibold text-fg">Ask about your data</h2>
                 <IconButton
@@ -180,7 +180,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
               <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-4 py-4" aria-live="polite">
                 {turns.length === 0 && !pending && (
                   <div className="flex flex-col gap-3">
-                    <p className="text-[13.5px] leading-relaxed text-fg-2">
+                    <p className="text-[14px] leading-relaxed text-fg-2">
                       Ask about a specific call (your last one, the most expensive) or about totals and trends: calls, talk time, cost, latency and
                       sentiment. Each answer costs a small feature charge.
                     </p>
@@ -192,7 +192,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
                     t.role === "user" ? (
                       <li
                         key={i}
-                        className="ml-auto max-w-[85%] rounded-panel rounded-br-[4px] bg-accent-soft px-3.5 py-2 text-[13.5px] text-accent-text"
+                        className="ml-auto max-w-[85%] rounded-panel rounded-br-[4px] bg-accent-soft px-3.5 py-2 text-[14px] text-accent-text"
                       >
                         {t.content}
                       </li>
@@ -232,7 +232,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium text-fg">{failure.title}</p>
-                      <p className="mt-0.5 text-[12.5px] leading-snug text-fg-2">{failure.message}</p>
+                      <p className="mt-0.5 text-[13px] leading-snug text-fg-2">{failure.message}</p>
                     </div>
                     {failure.kind === "credit" ? (
                       <Button asChild size="sm" variant="secondary" icon={<Wallet aria-hidden />}>

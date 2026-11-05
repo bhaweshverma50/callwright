@@ -95,7 +95,7 @@ export function DismissDialog({ open, onOpenChange, issue }: { open: boolean; on
             options={DISMISS_REASONS.map((r) => ({ value: r.value, title: r.label, description: r.description }))}
           />
           {tried && errors.reason && (
-            <p role="alert" className="text-[12.5px] text-danger-text">
+            <p role="alert" className="text-[13px] text-danger-text">
               {errors.reason}
             </p>
           )}

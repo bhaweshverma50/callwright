@@ -22,7 +22,7 @@ export function ResumeChip({ index, onResume, onEnd }: { index: number; onResume
       transition={{ duration: 0.32, ease: EASE_OUT_SOFT }}
       className="fixed inset-x-4 bottom-[76px] z-[45] flex items-center gap-3 rounded-full border border-line bg-surface/95 py-1.5 pl-1.5 pr-2 shadow-pop backdrop-blur-md sm:inset-x-auto sm:bottom-4 sm:left-4 sm:max-w-[calc(100vw-280px)] lg:left-1/2 lg:-translate-x-1/2"
     >
-      <span className="grid size-8 shrink-0 place-items-center rounded-full grad-action text-white">
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-white">
         <Compass className="size-4" aria-hidden />
       </span>
       <span className="flex min-w-0 flex-1 flex-col leading-tight">

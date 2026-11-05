@@ -272,7 +272,7 @@ export function ImportNumberDialog({
                   {({ id, describedBy, invalid }) => (
                     <Textarea
                       id={id}
-                      className="min-h-16 font-mono text-[12.5px]"
+                      className="min-h-16 font-mono text-[13px]"
                       placeholder="203.0.113.0/24"
                       aria-describedby={describedBy}
                       aria-invalid={invalid}

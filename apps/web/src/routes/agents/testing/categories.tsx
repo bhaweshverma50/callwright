@@ -15,7 +15,7 @@ export function CategoryDot({ color, className }: { color: string; className?: s
 export function CategoryLabel({ slug, categories, className }: { slug: string; categories: TestCategory[] | undefined; className?: string }) {
   const c = categories?.find((x) => x.slug === slug);
   return (
-    <span className={cn("inline-flex min-w-0 items-center gap-1.5 text-[12.5px] text-fg-2", className)}>
+    <span className={cn("inline-flex min-w-0 items-center gap-1.5 text-[13px] text-fg-2", className)}>
       <CategoryDot color={c?.color ?? "var(--text-3)"} />
       <span className="truncate">{c?.name ?? slug}</span>
     </span>

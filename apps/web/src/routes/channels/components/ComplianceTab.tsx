@@ -87,7 +87,7 @@ function DncPanel() {
           Block number
         </Button>
         {error && (
-          <p role="alert" className="text-[12.5px] text-danger-text sm:col-span-2">
+          <p role="alert" className="text-[13px] text-danger-text sm:col-span-2">
             {error}
           </p>
         )}
@@ -201,7 +201,7 @@ function DecisionsPanel() {
                 </Badge>
               )}
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-mono text-[12.5px] text-fg">{d.to_number}</span>
+                <span className="truncate font-mono text-[13px] text-fg">{d.to_number}</span>
                 <span className="truncate text-[12px] text-fg-3">
                   {d.reason === "outside_calling_hours" && d.recipient_local_time
                     ? `${d.recipient_local_time.slice(11, 16)} local in ${d.recipient_timezones?.[0] ?? "unknown zone"}`

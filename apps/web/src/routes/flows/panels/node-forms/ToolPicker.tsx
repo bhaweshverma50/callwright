@@ -19,7 +19,7 @@ export function ToolPicker({ value, onChange, onCreateTool }: { value: string[];
         <Skeleton className="h-16 w-full" />
       ) : items.length === 0 ? (
         <div className="flex flex-col items-start gap-2.5 rounded-control border border-dashed border-line-strong px-3.5 py-3.5">
-          <p className="text-[12.5px] leading-relaxed text-fg-3">
+          <p className="text-[13px] leading-relaxed text-fg-3">
             No tools in this workspace yet. Tools let a step look things up, transfer or end the call.
           </p>
           <Button size="sm" icon={<Plus aria-hidden />} onClick={onCreateTool}>
@@ -44,13 +44,13 @@ export function ToolPicker({ value, onChange, onCreateTool }: { value: string[];
                 >
                   <span className="text-fg-3 [&_svg]:size-4">{TOOL_META[t.type].icon}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-mono text-[12.5px] text-fg">{t.name}</span>
-                    <span className="block truncate text-[11.5px] text-fg-3">{t.description}</span>
+                    <span className="block truncate font-mono text-[13px] text-fg">{t.name}</span>
+                    <span className="block truncate text-[12px] text-fg-3">{t.description}</span>
                   </span>
                   <span
                     className={cn(
                       "grid size-5 place-items-center rounded-full border transition-[transform,background-color] duration-200",
-                      on ? "grad-action scale-100 border-transparent text-white" : "scale-90 border-line-strong text-transparent",
+                      on ? "bg-accent scale-100 border-transparent text-white" : "scale-90 border-line-strong text-transparent",
                     )}
                     aria-hidden
                   >

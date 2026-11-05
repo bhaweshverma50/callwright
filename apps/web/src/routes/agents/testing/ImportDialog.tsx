@@ -154,7 +154,7 @@ export function ImportDialog({ open, onOpenChange, agentId }: { open: boolean; o
           <Button icon={<FileJson aria-hidden />} onClick={() => fileRef.current?.click()}>
             Choose file
           </Button>
-          <span className="min-w-0 truncate text-[12.5px] text-fg-3">{fileName ?? "or paste the JSON below"}</span>
+          <span className="min-w-0 truncate text-[13px] text-fg-3">{fileName ?? "or paste the JSON below"}</span>
         </div>
         <Field label="JSON" hideLabel>
           {({ id }) => (
@@ -162,7 +162,7 @@ export function ImportDialog({ open, onOpenChange, agentId }: { open: boolean; o
               id={id}
               rows={6}
               spellCheck={false}
-              className="font-mono text-[12.5px]"
+              className="font-mono text-[13px]"
               placeholder='{"format": "callwright.test_cases.v1", "test_cases": [{"user_prompt": "...", "expected_behaviour": "..."}]}'
               value={text}
               onChange={(e) => {
@@ -197,7 +197,7 @@ export function ImportDialog({ open, onOpenChange, agentId }: { open: boolean; o
               </div>
             </dl>
             {(o.errors.length > 0 || (o.duplicates?.length ?? 0) > 0) && (
-              <ul className="max-h-48 divide-y divide-line overflow-y-auto rounded-control border border-line text-[12.5px]">
+              <ul className="max-h-48 divide-y divide-line overflow-y-auto rounded-control border border-line text-[13px]">
                 {o.errors.map((e, i) => (
                   <li key={`e${i}`} className="flex gap-3 px-3 py-2">
                     <span className="w-14 shrink-0 font-mono text-fg-3 tnum">Row {e.index + 1}</span>

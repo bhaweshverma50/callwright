@@ -26,7 +26,7 @@ function show(value: unknown): string {
 
 function Processing() {
   return (
-    <span className="inline-flex items-center gap-2 text-[12.5px] text-accent-text">
+    <span className="inline-flex items-center gap-2 text-[13px] text-accent-text">
       <Skeleton className="h-3 w-16" />
       Processing
     </span>
@@ -40,7 +40,7 @@ export function AnalysisTable({ call }: { call: CallDetail }) {
   return (
     <div className="flex flex-col gap-5">
       <section aria-labelledby="summary-h" className="flex flex-col gap-1.5">
-        <h3 id="summary-h" className="text-[12.5px] text-fg-3">
+        <h3 id="summary-h" className="text-[13px] text-fg-3">
           Summary
         </h3>
         {pending ? (
@@ -48,17 +48,17 @@ export function AnalysisTable({ call }: { call: CallDetail }) {
         ) : call.summary ? (
           <SummaryText text={call.summary} />
         ) : (
-          <p className="text-[13.5px] text-fg-3">No summary for this call.</p>
+          <p className="text-[14px] text-fg-3">No summary for this call.</p>
         )}
       </section>
       <section aria-labelledby="sentiment-h" className="flex items-center justify-between gap-3">
-        <h3 id="sentiment-h" className="text-[12.5px] text-fg-3">
+        <h3 id="sentiment-h" className="text-[13px] text-fg-3">
           Sentiment
         </h3>
         {pending ? <Processing /> : <SentimentBadge value={call.sentiment} />}
       </section>
       <section aria-labelledby="analysis-h" className="flex flex-col gap-2">
-        <h3 id="analysis-h" className="text-[12.5px] text-fg-3">
+        <h3 id="analysis-h" className="text-[13px] text-fg-3">
           Analysis values
         </h3>
         {pending ? (

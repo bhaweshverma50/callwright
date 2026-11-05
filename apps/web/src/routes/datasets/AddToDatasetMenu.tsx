@@ -59,14 +59,14 @@ export function AddToDatasetMenu({
               <Loader2 className="size-4 animate-spin" aria-hidden /> Loading
             </div>
           ) : datasets.isError ? (
-            <p className="px-2 py-2 text-[12.5px] text-danger-text">{problemText(datasets.error, "dataset")}</p>
+            <p className="px-2 py-2 text-[13px] text-danger-text">{problemText(datasets.error, "dataset")}</p>
           ) : (datasets.data ?? []).length === 0 ? (
-            <p className="px-2 py-2 text-[12.5px] text-fg-3">No datasets for this agent yet.</p>
+            <p className="px-2 py-2 text-[13px] text-fg-3">No datasets for this agent yet.</p>
           ) : (
             datasets.data!.map((d) => (
               <MenuItem key={d.dataset_id} onSelect={() => void add(d)}>
                 <span className="min-w-0 flex-1 truncate">{d.name}</span>
-                <span className="font-mono text-[11.5px] text-fg-3 tnum">{d.item_count}</span>
+                <span className="font-mono text-[12px] text-fg-3 tnum">{d.item_count}</span>
               </MenuItem>
             ))
           )}

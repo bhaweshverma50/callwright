@@ -1,5 +1,5 @@
 import { Receipt as ReceiptDuo } from "@phosphor-icons/react";
-import { ChevronRight, Gift, PhoneCall, Plus, Scale, Sparkles, Undo2, type LucideIcon } from "lucide-react";
+import { ChevronRight, Gift, PhoneCall, Plus, Receipt, Scale, type LucideIcon, Undo2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { problemMessage } from "../../api/problems";
@@ -23,7 +23,7 @@ export const TYPE_LABELS: Record<TransactionType, string> = {
 const TYPE_ICONS: Record<TransactionType, LucideIcon> = {
   top_up: Plus,
   call_charge: PhoneCall,
-  feature_charge: Sparkles,
+  feature_charge: Receipt,
   trial_grant: Gift,
   refund: Undo2,
   adjustment: Scale,
@@ -153,7 +153,7 @@ export function TransactionsTable({
           aria-label="Credit transactions, newest first"
           className={cn("px-3 pb-2 pt-1 transition-opacity sm:px-5", q.isPlaceholderData && "opacity-60")}
         >
-          <div className="flex items-center justify-end px-2 pt-3 text-[11.5px] font-medium text-fg-3">
+          <div className="flex items-center justify-end px-2 pt-3 text-[12px] font-medium text-fg-3">
             <span className={FIGURES}>
               <span>Amount</span>
               <span>Balance after</span>
@@ -228,7 +228,7 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
         <Icon className="size-3.5" aria-hidden />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
-        <TruncatedText className="text-[13.5px] text-fg" title={t.description} focusable={!opens}>
+        <TruncatedText className="text-[14px] text-fg" title={t.description} focusable={!opens}>
           {rowTitle(t)}
         </TruncatedText>
         <span className="flex min-w-0 items-center gap-2.5 text-[12px] text-fg-3">
@@ -249,9 +249,9 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
           places={3}
           signed={!isZero(t.amount_usd)}
           toned
-          className={cn("text-[13.5px]", isZero(t.amount_usd) ? "text-fg-3" : "font-medium")}
+          className={cn("text-[14px]", isZero(t.amount_usd) ? "text-fg-3" : "font-medium")}
         />
-        <span className="text-[12.5px] text-fg-2">
+        <span className="text-[13px] text-fg-2">
           <span className="sr-only">Balance after </span>
           <MoneyText value={t.balance_after_usd} places={3} />
         </span>

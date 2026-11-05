@@ -12,7 +12,7 @@ function Rate({ rate, passes, n }: { rate: number | null | undefined; passes: nu
   return (
     <span className="flex flex-col items-end whitespace-nowrap leading-tight">
       <span className="font-mono text-[13px] text-fg tnum">{pct(rate)}</span>
-      <span className="font-mono text-[11.5px] text-fg-3 tnum">{n ? `${passes} of ${n}` : "no samples"}</span>
+      <span className="font-mono text-[12px] text-fg-3 tnum">{n ? `${passes} of ${n}` : "no samples"}</span>
     </span>
   );
 }
@@ -87,7 +87,7 @@ export function scorecardColumns(rows: ScorecardRow[], opts: { byNode?: boolean;
             header: "Mean score",
             align: "right" as const,
             cell: (r: ScorecardRow) => (
-              <span className="whitespace-nowrap font-mono text-[12.5px] text-fg-2 tnum">
+              <span className="whitespace-nowrap font-mono text-[13px] text-fg-2 tnum">
                 {r.base_mean_score == null && r.sim_mean_score == null ? "n/a" : `${score(r.base_mean_score)} to ${score(r.sim_mean_score)}`}
               </span>
             ),

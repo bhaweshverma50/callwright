@@ -65,7 +65,7 @@ export function OverridesSection({
             <Cpu className="size-3.5 text-fg-3" aria-hidden /> Temperature
           </p>
           {fixed !== undefined ? (
-            <p className="rounded-control bg-surface-2 px-3 py-2 text-[12.5px] text-fg-2">
+            <p className="rounded-control bg-surface-2 px-3 py-2 text-[13px] text-fg-2">
               This model always runs at <span className="font-mono tnum">{fixed}</span>.
             </p>
           ) : (

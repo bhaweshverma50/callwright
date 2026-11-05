@@ -37,7 +37,7 @@ export function BreakdownInspector({ txn, onClose, asDrawer }: { txn: Transactio
       <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="text-[14px] font-semibold text-fg">Cost breakdown</h2>
-          <p className="text-[12.5px] text-fg-3">{when.format(new Date(txn.created_at))}</p>
+          <p className="text-[13px] text-fg-3">{when.format(new Date(txn.created_at))}</p>
         </div>
         <IconButton label="Close breakdown" className="-mr-2 -mt-1" onClick={onClose} autoFocus>
           <X className="size-4" aria-hidden />
@@ -54,15 +54,15 @@ function Body({ txn }: { txn: Transaction }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <TruncatedText as="p" className="text-[13.5px] text-fg">
+        <TruncatedText as="p" className="text-[14px] text-fg">
           {txn.description}
         </TruncatedText>
-        <MoneyText value={txn.amount_usd} places={3} signed className="text-[13.5px] font-medium text-fg" />
+        <MoneyText value={txn.amount_usd} places={3} signed className="text-[14px] font-medium text-fg" />
       </div>
       {txn.call_id && (
         <div className="-mb-1 -mt-4 flex min-w-0 items-center gap-1 pl-1">
           <span className="sr-only">Call id</span>
-          <TruncatedText className="font-mono text-[11.5px] text-fg-3">{txn.call_id}</TruncatedText>
+          <TruncatedText className="font-mono text-[12px] text-fg-3">{txn.call_id}</TruncatedText>
           <CopyButton value={txn.call_id} label="Copy call id" />
         </div>
       )}

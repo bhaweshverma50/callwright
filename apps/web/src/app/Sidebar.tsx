@@ -141,7 +141,7 @@ function SideLink({
           onClick={onNavigate}
           aria-label={expanded ? undefined : item.label}
           className={cn(
-            "group relative flex items-center rounded-control text-[13.5px] transition-[background-color,color,box-shadow] duration-150",
+            "group relative flex items-center rounded-control text-[14px] transition-[background-color,color,box-shadow] duration-150",
             expanded ? cn("w-full gap-3 px-2.5", inDrawer ? "h-11" : "h-9") : "mx-auto size-10 justify-center",
             // Active: a contained tinted square, icon and label in the accent colour. No side bars.
             active ? "bg-accent-soft font-medium text-accent-text" : "text-fg-2 hover:bg-surface-3/80 hover:text-fg",

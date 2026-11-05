@@ -131,7 +131,7 @@ export function AgentTestingPage() {
                         { value: "published", label: "Published", disabled: !published },
                       ]}
                     />
-                    <p id="test-version-hint" className="text-[12.5px] text-fg-3">
+                    <p id="test-version-hint" className="text-[13px] text-fg-3">
                       {testing === "draft" ? `${draftLabel}: your latest saved changes.` : `${publishedLabel}: what live calls answer with.`}
                       {!published && " Publish the agent to test the live version."}
                     </p>
@@ -147,7 +147,7 @@ export function AgentTestingPage() {
                     {!config ? (
                       <Skeleton className="h-9 w-full" />
                     ) : declared.length === 0 ? (
-                      <p className="text-[12.5px] text-fg-3">
+                      <p className="text-[13px] text-fg-3">
                         This version declares no variables. Add them in the agent's prompt settings to personalise test calls.
                       </p>
                     ) : (
@@ -155,7 +155,7 @@ export function AgentTestingPage() {
                         {declared.map((v) => (
                           <Field
                             key={v.name}
-                            label={<span className="font-mono text-[12.5px]">{v.name}</span>}
+                            label={<span className="font-mono text-[13px]">{v.name}</span>}
                             hint={v.description ?? (v.default ? `Empty uses the default, ${v.default}.` : "No default: empty leaves it unset.")}
                           >
                             {({ id: inputId, describedBy }) => (

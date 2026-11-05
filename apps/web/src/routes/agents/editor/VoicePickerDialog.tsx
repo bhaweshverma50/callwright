@@ -222,10 +222,10 @@ export function VoicePickerDialog({
                       <VoiceAvatar voice={v} selected={on} />
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="flex min-w-0 items-center gap-2">
-                          <span className="truncate text-[13.5px] font-semibold text-fg">{v.name}</span>
+                          <span className="truncate text-[14px] font-semibold text-fg">{v.name}</span>
                           {v.voice_id === value && <span className="shrink-0 text-[12px] text-fg-3">Current</span>}
                         </span>
-                        {v.description && <span className="line-clamp-2 text-[12.5px] leading-snug text-fg-2">{v.description}</span>}
+                        {v.description && <span className="line-clamp-2 text-[13px] leading-snug text-fg-2">{v.description}</span>}
                         <VoiceTags voice={v} languageLabel={langLabel} />
                       </div>
                     </div>
@@ -248,7 +248,7 @@ export function VoicePickerDialog({
           )}
         </div>
         {!listing.previews && (
-          <p className="text-[12.5px] text-fg-3">{provider.label} does not offer voice samples. Run a test call to hear a voice.</p>
+          <p className="text-[13px] text-fg-3">{provider.label} does not offer voice samples. Run a test call to hear a voice.</p>
         )}
       </div>
     </Dialog>

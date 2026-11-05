@@ -61,12 +61,11 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
 
   return (
     <section aria-labelledby="talk-time" className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-      <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-80" />
       <div className="relative grid items-center gap-6 px-5 py-6 sm:px-8 md:grid-cols-[260px_minmax(0,1fr)] md:gap-10">
         <div className="relative mx-auto w-[240px] md:w-[260px]">
           <Arc fill={facts?.fill ?? 0} low={low} />
           <div className="absolute inset-x-0 bottom-1 flex flex-col items-center">
-            <span className="text-[12.5px] text-fg-3">about</span>
+            <span className="text-[13px] text-fg-3">about</span>
             {facts ? (
               <Ticker
                 value={facts.minutes}
@@ -110,7 +109,7 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
               />
             )}
           </div>
-          <ul className="flex flex-col gap-2.5 text-[13.5px] text-fg-2">
+          <ul className="flex flex-col gap-2.5 text-[14px] text-fg-2">
             <li className="flex items-start gap-2.5">
               <Layers className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
               <span>

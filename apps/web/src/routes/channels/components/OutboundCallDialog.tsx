@@ -175,18 +175,18 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col gap-3 rounded-panel border border-success/30 bg-success-soft/50 px-4 py-4"
         >
-          <p className="flex items-center gap-2 text-[13.5px] font-medium text-fg">
+          <p className="flex items-center gap-2 text-[14px] font-medium text-fg">
             <CircleCheck className="size-4 text-success-text" aria-hidden />
             Dialling <span className="font-mono">{result.to_number}</span>
           </p>
-          <div className="flex min-w-0 items-center gap-2 text-[12.5px] text-fg-2">
+          <div className="flex min-w-0 items-center gap-2 text-[13px] text-fg-2">
             <span className="shrink-0 whitespace-nowrap">Call id</span>
             <code className="min-w-0 truncate font-mono text-fg" title={result.call_id}>
               {result.call_id}
             </code>
             <CopyButton value={result.call_id} label="Copy call id" />
           </div>
-          <p className="text-[12.5px] text-fg-3">
+          <p className="text-[13px] text-fg-3">
             It rings for up to 30 seconds. Busy, unanswered and failed calls are not charged.
             {result.recipient_timezones?.length ? ` Recipient time zone: ${result.recipient_timezones.join(", ")}.` : ""}
           </p>
@@ -236,10 +236,10 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
           </Field>
           {variables.length > 0 && (
             <fieldset className="flex flex-col gap-3 rounded-panel border border-line bg-surface-2/50 p-3.5">
-              <legend className="px-1 text-[12.5px] font-medium text-fg-2">Variables for this call</legend>
+              <legend className="px-1 text-[13px] font-medium text-fg-2">Variables for this call</legend>
               <div className="grid gap-3 sm:grid-cols-2">
                 {variables.map((v) => (
-                  <Field key={v.name} label={<span className="font-mono text-[12.5px]">{v.name}</span>} hint={v.description ?? undefined}>
+                  <Field key={v.name} label={<span className="font-mono text-[13px]">{v.name}</span>} hint={v.description ?? undefined}>
                     {({ id, describedBy }) => (
                       <Input
                         id={id}

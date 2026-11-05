@@ -48,7 +48,7 @@ export function Section({
           </span>
           <div className="flex flex-col gap-0.5">
             <h3 className="text-[14px] font-semibold text-fg">{title}</h3>
-            {description && <p className="text-[12.5px] leading-relaxed text-fg-3">{description}</p>}
+            {description && <p className="text-[13px] leading-relaxed text-fg-3">{description}</p>}
           </div>
         </div>
         {aside}
@@ -226,7 +226,7 @@ function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () 
             Retry setup
           </Button>
         )}
-        {number.status_detail && <p className="basis-full text-[12.5px] leading-relaxed text-danger-text">{number.status_detail}</p>}
+        {number.status_detail && <p className="basis-full text-[13px] leading-relaxed text-danger-text">{number.status_detail}</p>}
       </div>
 
       <Section icon={<Waypoints />} title="Agents" description="Changes apply to calls that start afterwards.">
@@ -282,7 +282,7 @@ function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () 
               </Button>
             </span>
           </Tooltip>
-          {callBlockedReason && <span className="text-[12.5px] text-fg-3">{callBlockedReason}</span>}
+          {callBlockedReason && <span className="text-[13px] text-fg-3">{callBlockedReason}</span>}
         </div>
       </Section>
 
@@ -388,7 +388,7 @@ function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () 
             {({ id, describedBy, invalid }) => (
               <Textarea
                 id={id}
-                className="min-h-16 font-mono text-[12.5px]"
+                className="min-h-16 font-mono text-[13px]"
                 disabled={!editable}
                 placeholder="203.0.113.0/24"
                 aria-describedby={describedBy}
@@ -448,7 +448,7 @@ function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () 
       {number.direct_uri && !telephonyOff && (
         <Section icon={<ArrowDownLeft />} title="Direct address" description="Dial this number straight into Callwright, bypassing the carrier.">
           <div className="flex items-center gap-2 rounded-control border border-line bg-surface-2/70 py-1 pl-3 pr-1">
-            <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg">{number.direct_uri}</code>
+            <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg">{number.direct_uri}</code>
             <CopyButton value={number.direct_uri} label="Copy direct address" />
           </div>
         </Section>

@@ -180,16 +180,12 @@ export function UploadDialog({
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
             )}
           >
-            <div
-              aria-hidden
-              className="glow-backdrop pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-60"
-            />
-            <span className="relative grid size-12 place-items-center rounded-panel grad-action text-white shadow-glow transition-transform duration-200 group-hover:-translate-y-0.5 [&_svg]:size-6">
+            <span className="relative grid size-12 place-items-center rounded-panel bg-accent text-white transition-transform duration-200 [&_svg]:size-6">
               <CloudUpload aria-hidden />
             </span>
             <span className="relative flex flex-col gap-0.5">
               <span className="text-[14px] font-medium text-fg">Drop a file here, or choose one</span>
-              <span className="text-[12.5px] text-fg-3">PDF or DOCX, up to 20 MB</span>
+              <span className="text-[13px] text-fg-3">PDF or DOCX, up to 20 MB</span>
             </span>
           </button>
         ) : (
@@ -198,7 +194,7 @@ export function UploadDialog({
               <FileText aria-hidden />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-[13.5px] font-medium text-fg">{file.name}</span>
+              <span className="truncate text-[14px] font-medium text-fg">{file.name}</span>
               <span className="flex items-center gap-1.5 text-[12px] text-fg-3">
                 {formatBytes(file.size)}
                 {check.state === "checking" && (
@@ -267,7 +263,7 @@ export function UploadDialog({
                   { value: "keep", label: "Keep both", icon: <Copy aria-hidden /> },
                 ]}
               />
-              {sameName === "replace" && <p className="text-[12.5px] text-fg-3">The old version stays searchable until the new one is ready.</p>}
+              {sameName === "replace" && <p className="text-[13px] text-fg-3">The old version stays searchable until the new one is ready.</p>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -287,7 +283,7 @@ export function UploadDialog({
 
         {uploading && (
           <div className="flex flex-col gap-1.5" aria-live="polite">
-            <div className="flex justify-between text-[12.5px] text-fg-2">
+            <div className="flex justify-between text-[13px] text-fg-2">
               <span>Uploading</span>
               <span className="font-mono tnum">{Math.round((progress ?? 0) * 100)}%</span>
             </div>
@@ -299,7 +295,7 @@ export function UploadDialog({
               aria-valuenow={Math.round((progress ?? 0) * 100)}
             >
               <motion.div
-                className="h-full rounded-full grad-action"
+                className="h-full rounded-full bg-accent"
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.max(4, (progress ?? 0) * 100)}%` }}
                 transition={{ ease: "easeOut" }}

@@ -44,7 +44,7 @@ function CompactReceipt({ cost }: { cost: CostView }) {
         {cost.lines.map((l) => {
           const Icon = COMPONENT_ICONS[l.component] ?? Server;
           return (
-            <li key={l.component} className="flex items-center gap-2 py-1.5 text-[12.5px]">
+            <li key={l.component} className="flex items-center gap-2 py-1.5 text-[13px]">
               <Icon className="size-3.5 text-fg-3" aria-hidden />
               <span className="text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
               <span className="ml-auto font-mono text-[12px] text-fg-3 tnum">{l.billed_minutes.toFixed(2)}m</span>
@@ -67,7 +67,7 @@ function CompactReceipt({ cost }: { cost: CostView }) {
         </ul>
       )}
       <div className="flex items-baseline justify-between">
-        <span className="text-[12.5px] text-fg-2">Total</span>
+        <span className="text-[13px] text-fg-2">Total</span>
         <span className="font-mono text-[14px] font-semibold text-fg tnum">{usd(cost.header.total_usd)}</span>
       </div>
     </div>
@@ -77,7 +77,7 @@ function CompactReceipt({ cost }: { cost: CostView }) {
 function PopoverBody({ callId }: { callId: string }) {
   const detail = useCall(callId);
   if (detail.data?.cost) return <CompactReceipt cost={detail.data.cost} />;
-  if (detail.data && !detail.data.cost) return <p className="text-[12.5px] text-fg-3">This call has not been priced yet.</p>;
+  if (detail.data && !detail.data.cost) return <p className="text-[13px] text-fg-3">This call has not been priced yet.</p>;
   return (
     <div className="flex flex-col gap-2" aria-hidden>
       <Skeleton className="h-3.5 w-32" />
@@ -114,7 +114,7 @@ export function CostCell({ callId, value }: { callId: string; value: number | nu
           onClick={(e) => e.stopPropagation()}
           aria-label={`Cost ${usd(value)}, show breakdown`}
           className={cn(
-            "cursor-pointer rounded-inline font-mono text-[12.5px] text-fg underline decoration-line-strong decoration-dotted underline-offset-4 tnum hover:decoration-accent",
+            "cursor-pointer rounded-inline font-mono text-[13px] text-fg underline decoration-line-strong decoration-dotted underline-offset-4 tnum hover:decoration-accent",
             focusRing,
           )}
         >

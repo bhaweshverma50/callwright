@@ -111,11 +111,11 @@ export const Palette = memo(function Palette({ onAdd, disabled }: { onAdd: (type
                                 focusRing,
                               )}
                             >
-                              <span className="fnode-chip mt-0.5 transition-transform duration-200 group-hover:scale-105" aria-hidden>
+                              <span className="fnode-chip mt-0.5 transition-transform duration-200" aria-hidden>
                                 {meta.icon}
                               </span>
                               <span className="min-w-0 flex-1">
-                                <span className="block text-[13.5px] font-medium leading-tight text-fg">{meta.title}</span>
+                                <span className="block text-[14px] font-medium leading-tight text-fg">{meta.title}</span>
                                 <span className="mt-0.5 line-clamp-2 block text-[12px] leading-snug text-fg-3">{meta.blurb}</span>
                               </span>
                             </button>
@@ -126,7 +126,7 @@ export const Palette = memo(function Palette({ onAdd, disabled }: { onAdd: (type
                   </section>
                 ))}
               </div>
-              <p className="mx-1 mt-1 border-t border-line px-1.5 pb-1 pt-2 text-[11.5px] text-fg-3">Click to add, or drag onto the canvas.</p>
+              <p className="mx-1 mt-1 border-t border-line px-1.5 pb-1 pt-2 text-[12px] text-fg-3">Click to add, or drag onto the canvas.</p>
             </motion.div>
           )}
         </AnimatePresence>

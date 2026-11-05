@@ -206,24 +206,21 @@ export function VersionDrawer({
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.22, delay: Math.min(i, 6) * 0.03 }}
-                      className={cn(
-                        "rounded-panel border bg-surface",
-                        v.is_draft ? "border-accent/50 shadow-[0_10px_24px_-18px_rgb(51_70_232/0.6)]" : "border-line",
-                      )}
+                      className={cn("rounded-panel border bg-surface", v.is_draft ? "border-accent/50" : "border-line")}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4 pt-3.5">
                         <div className="flex min-w-0 items-center gap-3">
                           <span
                             className={cn(
                               "grid size-9 shrink-0 place-items-center rounded-full font-mono text-[13px] font-medium tnum",
-                              v.is_published ? "grad-action text-white" : "bg-surface-2 text-fg-2",
+                              v.is_published ? "bg-accent text-white" : "bg-surface-2 text-fg-2",
                             )}
                           >
                             {v.version_number}
                           </span>
                           <div className="flex min-w-0 flex-col">
                             <span className="text-[14px] font-semibold text-fg">Version {v.version_number}</span>
-                            <span className="text-[12.5px] text-fg-3">
+                            <span className="text-[13px] text-fg-3">
                               {v.source === "restore" && v.restored_from_version_number
                                 ? `Restored from version ${v.restored_from_version_number}`
                                 : SOURCE[v.source]}
@@ -247,7 +244,7 @@ export function VersionDrawer({
                       </div>
                       {v.note && <p className="mx-4 mt-2.5 rounded-control bg-surface-2/60 px-3 py-2 text-[13px] text-fg-2">{v.note}</p>}
                       {v.summary && (
-                        <dl className="mx-4 mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
+                        <dl className="mx-4 mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px] sm:grid-cols-4">
                           <SummaryItem icon={<BrainCircuit />} label="Model">
                             {llmLabel(llm.data, v.summary.llm_model)}
                           </SummaryItem>
@@ -386,7 +383,7 @@ export function VersionDrawer({
 function SummaryItem({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="flex items-center gap-1 text-[11.5px] text-fg-3 [&_svg]:size-3">
+      <dt className="flex items-center gap-1 text-[12px] text-fg-3 [&_svg]:size-3">
         {icon}
         {label}
       </dt>

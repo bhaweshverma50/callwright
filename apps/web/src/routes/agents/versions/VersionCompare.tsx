@@ -56,13 +56,13 @@ export function VersionCompare({
       ) : diff.isError ? (
         <p className="text-[13px] text-danger-text">{problemMessage(diff.error, "version")}</p>
       ) : readable.changes.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-panel border border-line px-4 py-5 text-[13.5px] text-fg-2">
+        <div className="flex items-center gap-3 rounded-panel border border-line px-4 py-5 text-[14px] text-fg-2">
           <Equal className="size-4 text-fg-3" aria-hidden /> {toLabel} and {fromLabel.toLowerCase() === "draft" ? "the draft" : fromLabel} are the
           same.
         </div>
       ) : (
         <>
-          <p className="text-[12.5px] text-fg-3">
+          <p className="text-[13px] text-fg-3">
             {readable.changes.length} {readable.changes.length === 1 ? "change" : "changes"} from{" "}
             {fromLabel.toLowerCase() === "draft" ? "the draft" : fromLabel} to {toLabel}.
           </p>
@@ -94,7 +94,7 @@ function ChangeRow({
   return (
     <li className="overflow-hidden rounded-panel border border-line bg-surface">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-        <span className="min-w-0 text-[13.5px] font-medium text-fg">
+        <span className="min-w-0 text-[14px] font-medium text-fg">
           <TruncatedText>{labelFor(change.path, names)}</TruncatedText>
         </span>
         <Badge tone={op.tone} icon={op.icon}>
@@ -107,7 +107,7 @@ function ChangeRow({
         </div>
       ) : change.op !== "replace" ? (
         <div className="flex flex-col gap-1.5 border-t border-line px-4 py-3 text-[13px]">
-          <span className="text-[11.5px] text-fg-3">
+          <span className="text-[12px] text-fg-3">
             {change.op === "add"
               ? `In ${toLabel}, not in ${fromLabel.toLowerCase() === "draft" ? "the draft" : fromLabel}`
               : `In ${fromLabel}, not in ${toLabel}`}
@@ -117,12 +117,12 @@ function ChangeRow({
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-2 border-t border-line px-4 py-3 text-[13px] sm:grid-cols-[minmax(0,1fr)_16px_minmax(0,1fr)] sm:items-start">
           <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11.5px] text-fg-3">{fromLabel}</span>
+            <span className="text-[12px] text-fg-3">{fromLabel}</span>
             <ValueView path={change.path} value={change.old} />
           </div>
           <ArrowRight className="mt-4 hidden size-4 text-fg-3 sm:block" aria-hidden />
           <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11.5px] text-fg-3">{toLabel}</span>
+            <span className="text-[12px] text-fg-3">{toLabel}</span>
             <ValueView path={change.path} value={change.new} strong />
           </div>
         </div>

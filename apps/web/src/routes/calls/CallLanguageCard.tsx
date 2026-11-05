@@ -78,7 +78,7 @@ export function CallLanguageCard({ callId }: { callId: string }) {
         )}
         {pref && (
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line pt-2.5">
-            <p className="flex min-w-0 items-start gap-2 text-[12.5px] leading-relaxed text-fg-3">
+            <p className="flex min-w-0 items-start gap-2 text-[13px] leading-relaxed text-fg-3">
               <BookmarkCheck className="mt-0.5 size-3.5 shrink-0 text-fg-3" aria-hidden />
               <span className="min-w-0">
                 Saved for <span className="whitespace-nowrap font-mono text-fg-2 tnum">{number}</span>:{" "}

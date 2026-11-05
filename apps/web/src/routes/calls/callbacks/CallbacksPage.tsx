@@ -13,7 +13,7 @@ import { CALLBACK_STATUS_LABELS, callDrawerSearch, dayLabel, failureShort, failu
 type Filter = "all" | Extract<CallbackStatus, "scheduled" | "placed" | "failed" | "cancelled">;
 const FILTERS: Filter[] = ["all", "scheduled", "placed", "failed", "cancelled"];
 
-const linkClass = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-inline text-[12.5px] font-medium text-accent-text hover:underline";
+const linkClass = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-inline text-[13px] font-medium text-accent-text hover:underline";
 
 function SourceLink({ cb, params }: { cb: Callback; params: URLSearchParams }) {
   if (cb.source_call_id)
@@ -23,7 +23,7 @@ function SourceLink({ cb, params }: { cb: Callback; params: URLSearchParams }) {
         During a call
       </Link>
     );
-  return <span className="whitespace-nowrap text-[12.5px] text-fg-3">{cb.created_via === "api" ? "Through the API" : "By the agent"}</span>;
+  return <span className="whitespace-nowrap text-[13px] text-fg-3">{cb.created_via === "api" ? "Through the API" : "By the agent"}</span>;
 }
 
 function Outcome({ cb, params, onCancel }: { cb: Callback; params: URLSearchParams; onCancel: (cb: Callback) => void }) {
@@ -41,7 +41,7 @@ function Outcome({ cb, params, onCancel }: { cb: Callback; params: URLSearchPara
         </Button>
       );
     case "placing":
-      return <span className="whitespace-nowrap text-[12.5px] text-fg-3">Dialling now</span>;
+      return <span className="whitespace-nowrap text-[13px] text-fg-3">Dialling now</span>;
     case "placed":
       return cb.call_id ? (
         <Link to={callDrawerSearch(params, cb.call_id)} className={linkClass} aria-label={`Open the callback call to ${phoneLabel(cb.to_number)}`}>
@@ -49,17 +49,17 @@ function Outcome({ cb, params, onCancel }: { cb: Callback; params: URLSearchPara
           Open call
         </Link>
       ) : (
-        <span className="text-[12.5px] text-fg-3">Placed</span>
+        <span className="text-[13px] text-fg-3">Placed</span>
       );
     case "failed":
       return (
-        <span title={failureText(cb)} className="whitespace-nowrap text-[12.5px] text-danger-text">
+        <span title={failureText(cb)} className="whitespace-nowrap text-[13px] text-danger-text">
           {failureShort(cb)}
         </span>
       );
     case "cancelled":
       return (
-        <span className="whitespace-nowrap text-[12.5px] text-fg-3">{cb.cancelled_at ? `Cancelled ${dayLabel(cb.cancelled_at)}` : "Cancelled"}</span>
+        <span className="whitespace-nowrap text-[13px] text-fg-3">{cb.cancelled_at ? `Cancelled ${dayLabel(cb.cancelled_at)}` : "Cancelled"}</span>
       );
   }
 }
@@ -73,7 +73,7 @@ function columns(params: URLSearchParams, onCancel: (cb: Callback) => void): Col
       header: "To",
       cell: (cb) => (
         <span className="flex flex-col gap-0.5 py-1.5">
-          <span className="whitespace-nowrap font-mono text-[12.5px] text-fg tnum">{phoneLabel(cb.to_number)}</span>
+          <span className="whitespace-nowrap font-mono text-[13px] text-fg tnum">{phoneLabel(cb.to_number)}</span>
           <TruncatedText className="max-w-[18ch] text-[12px] text-fg-3">{cb.agent_name ?? "Outbound agent"}</TruncatedText>
         </span>
       ),
@@ -97,10 +97,10 @@ function MobileRow({ cb, params, onCancel }: { cb: Callback; params: URLSearchPa
   return (
     <li className="flex flex-col gap-2 px-4 py-3.5">
       <div className="flex items-start justify-between gap-3">
-        <CallbackTime callback={cb} className="text-[13.5px] font-medium text-fg" />
+        <CallbackTime callback={cb} className="text-[14px] font-medium text-fg" />
         <CallbackStatusBadge status={cb.status} />
       </div>
-      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[12.5px] text-fg-3">
+      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[13px] text-fg-3">
         <span className="whitespace-nowrap font-mono text-fg-2 tnum">{phoneLabel(cb.to_number)}</span>
         <span aria-hidden className="text-fg-3/60">
           /
@@ -108,7 +108,7 @@ function MobileRow({ cb, params, onCancel }: { cb: Callback; params: URLSearchPa
         <span className="truncate">{cb.agent_name ?? "Outbound agent"}</span>
       </p>
       {cb.note && <p className="line-clamp-2 text-[13px] leading-relaxed text-fg-2">{cb.note}</p>}
-      {cb.status === "failed" && <p className="text-[12.5px] text-danger-text">{failureText(cb)}</p>}
+      {cb.status === "failed" && <p className="text-[13px] text-danger-text">{failureText(cb)}</p>}
       <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
         <SourceLink cb={cb} params={params} />
         {cb.status === "placed" && cb.call_id && <Outcome cb={cb} params={params} onCancel={onCancel} />}
@@ -210,7 +210,7 @@ export function CallbacksPage() {
               onValueChange={(v) => set({ status: v === "all" ? null : v, page: null })}
               options={filterOptions}
             />
-            <p className="ml-auto text-[12.5px] text-fg-3" aria-live="polite">
+            <p className="ml-auto text-[13px] text-fg-3" aria-live="polite">
               {callbacks.data ? (
                 <>
                   <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {filterLabel ? `${filterLabel} ` : ""}

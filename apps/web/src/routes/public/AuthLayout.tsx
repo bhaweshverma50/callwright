@@ -23,18 +23,18 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
         <main id="main" className="flex flex-1 items-center py-12">
           <Reveal className="w-full max-w-[400px]">
             <RevealItem>
-              <h1 className="font-display text-[26px] font-semibold leading-[1.12] tracking-[-0.03em] text-fg sm:text-[30px]">{title}</h1>
+              <h1 className="font-display text-[26px] leading-[1.12] tracking-[-0.03em] text-fg sm:text-[30px]">{title}</h1>
             </RevealItem>
             {subtitle && (
               <RevealItem>
-                <p className="mt-3 text-[14.5px] leading-relaxed text-fg-2">{subtitle}</p>
+                <p className="mt-3 text-[15px] leading-relaxed text-fg-2">{subtitle}</p>
               </RevealItem>
             )}
             <RevealItem className="mt-8">{children}</RevealItem>
             {footer && <RevealItem className="mt-7 text-[14px] text-fg-2">{footer}</RevealItem>}
           </Reveal>
         </main>
-        <p className="flex gap-5 text-[12.5px] text-fg-3">
+        <p className="flex gap-5 text-[13px] text-fg-3">
           <Link to="/privacy" className={cn("link-underline hover:text-fg", focusRing)}>
             Privacy
           </Link>
@@ -47,11 +47,8 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
         aria-label="A sample call"
         className="relative hidden overflow-hidden bg-console text-console-fg lg:flex lg:items-center lg:justify-center"
       >
-        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0" />
         <div className="relative w-full max-w-[500px] px-10 py-12">
-          <p className="max-w-[24ch] font-display text-[22px] font-medium leading-[1.25] tracking-[-0.02em]">
-            Every turn timed. Every second priced.
-          </p>
+          <p className="max-w-[24ch] font-display text-[22px] leading-[1.25] tracking-[-0.02em]">Every turn timed. Every second priced.</p>
           <div className="mt-8 rounded-feature border border-console-line bg-console-2/70 p-5 backdrop-blur-sm">
             <div className="flex items-center justify-between text-[12px] text-console-fg-2">
               <span>Sample call, front desk agent</span>
@@ -63,7 +60,7 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
             <ol className="mt-5 flex flex-col gap-3">
               {TURNS.map((t, i) => (
                 <li key={i} className={cn("flex flex-col gap-1.5", t.who === "agent" ? "items-end text-right" : "items-start")}>
-                  <span className="text-[11.5px] font-medium text-console-fg-2">{t.who === "agent" ? "Agent" : "Caller"}</span>
+                  <span className="text-[12px] font-medium text-console-fg-2">{t.who === "agent" ? "Agent" : "Caller"}</span>
                   <p
                     className={cn(
                       "max-w-[32ch] rounded-panel px-3.5 py-2 text-[13px] leading-snug",
@@ -76,7 +73,7 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
                 </li>
               ))}
             </ol>
-            <div className="mt-5 flex items-center justify-between border-t border-console-line pt-4 text-[12.5px] text-console-fg-2">
+            <div className="mt-5 flex items-center justify-between border-t border-console-line pt-4 text-[13px] text-console-fg-2">
               <span>Whole call</span>
               <span className="font-mono text-[14px] text-console-fg tnum">{COST}</span>
             </div>

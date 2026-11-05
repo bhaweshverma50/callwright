@@ -33,7 +33,7 @@ export function ValidationPanel({
   };
   return (
     <div className="flex flex-col gap-3 px-5 py-4">
-      <p className="flex items-center gap-2 text-[12.5px] text-fg-3" aria-live="polite">
+      <p className="flex items-center gap-2 text-[13px] text-fg-3" aria-live="polite">
         {result.errors === 0 && result.warnings === 0 ? (
           <>
             <CircleCheck className="size-4 text-success" aria-hidden /> No problems. Ready to publish.
@@ -73,7 +73,7 @@ export function ValidationPanel({
                 )}
                 <button type="button" onClick={() => onPick(i)} className={cn("min-w-0 flex-1 cursor-pointer text-left", focusRing)}>
                   <span className="block truncate text-[12px] font-medium text-fg-2">{labelOf(i)}</span>
-                  <span className="block text-[12.5px] leading-relaxed text-fg">{i.message}</span>
+                  <span className="block text-[13px] leading-relaxed text-fg">{i.message}</span>
                 </button>
                 {i.code === "E_DANGLING_EDGE" && i.edge_id && (
                   <Button size="sm" variant="ghost" icon={<Trash2 aria-hidden />} onClick={() => onRemoveEdge(i.edge_id!)}>

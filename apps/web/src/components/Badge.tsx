@@ -46,7 +46,7 @@ export function Chip({ selected, mono = true, className, children, onPointerDown
         onPointerDown?.(e);
       }}
       className={cn(
-        "relative inline-flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full border px-3.5 text-[12.5px] transition-colors duration-150 [&_svg]:size-3.5",
+        "relative inline-flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full border px-3.5 text-[13px] transition-colors duration-150 [&_svg]:size-3.5",
         mono ? "font-mono tnum" : "font-medium",
         selected ? "border-accent bg-accent-soft text-accent-text" : "border-line-strong bg-surface text-fg-2 hover:border-accent/50 hover:text-fg",
         "disabled:cursor-not-allowed disabled:opacity-50",
@@ -64,7 +64,7 @@ export function Chip({ selected, mono = true, className, children, onPointerDown
 /** Keyboard key hint, for shortcuts in menus and tooltips. */
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-inline border border-line-strong bg-surface-2 px-1 font-mono text-[10.5px] text-fg-2">
+    <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-inline border border-line-strong bg-surface-2 px-1 font-mono text-[11px] text-fg-2">
       {children}
     </kbd>
   );

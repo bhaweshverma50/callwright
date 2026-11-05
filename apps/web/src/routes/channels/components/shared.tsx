@@ -25,7 +25,7 @@ export function ChannelStatusBadge({ status }: { status: Status }) {
 /** Live calls on a number or channel: the on-air dot when there are any. */
 export function ActiveCalls({ count }: { count: number }) {
   if (count > 0) return <OnAir label={`${count} live ${count === 1 ? "call" : "calls"}`} />;
-  return <span className="text-[12.5px] text-fg-3">No live calls</span>;
+  return <span className="text-[13px] text-fg-3">No live calls</span>;
 }
 
 export const NO_AGENT = "none";

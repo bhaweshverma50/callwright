@@ -162,7 +162,7 @@ export const callHref = (id: string) => `/calls?call=${encodeURIComponent(id)}`;
 function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 rounded-control bg-surface-2/70 px-2.5 py-2">
-      <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.04em] text-fg-3 [&_svg]:size-3">
+      <span className="flex items-center gap-1 text-[11px] font-medium text-fg-3 [&_svg]:size-3">
         {icon}
         {label}
       </span>
@@ -192,23 +192,23 @@ function CallResults({ rows, onNavigate }: { rows: CallRow[]; onNavigate?: () =>
         onClick={onNavigate}
         aria-label={`Open the call with ${r.agent_name ?? "the agent"}${r.started_at ? `, ${when(r.started_at)}` : ""}`}
         className={cn(
-          "group flex flex-col gap-3 rounded-panel border border-line bg-surface p-3 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-accent/45 hover:shadow-pop",
+          "group flex flex-col gap-3 rounded-panel border border-line bg-surface p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-accent/45 hover:shadow-pop",
           focusRing,
         )}
       >
         <div className="flex items-start gap-2.5">
-          <span className="grad-action grid size-8 shrink-0 place-items-center rounded-control text-white">
+          <span className="bg-accent grid size-8 shrink-0 place-items-center rounded-control text-white">
             <PhoneCall className="size-3.5" aria-hidden />
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="truncate text-[13.5px] font-medium text-fg">{r.agent_name ?? "Agent"}</span>
+            <span className="truncate text-[14px] font-medium text-fg">{r.agent_name ?? "Agent"}</span>
             <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-fg-3">
               {r.started_at && <span>{when(r.started_at)}</span>}
               <CallBadges row={r} />
             </span>
           </div>
           <ArrowUpRight
-            className="size-4 shrink-0 text-fg-3 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent-text"
+            className="size-4 shrink-0 text-fg-3 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent-text"
             aria-hidden
           />
         </div>
@@ -221,7 +221,7 @@ function CallResults({ rows, onNavigate }: { rows: CallRow[]; onNavigate?: () =>
             value={r.avg_latency_ms == null ? "n/a" : `${Math.round(r.avg_latency_ms).toLocaleString()} ms`}
           />
         </div>
-        <span className="flex items-center gap-1 text-[12.5px] font-medium text-accent-text">
+        <span className="flex items-center gap-1 text-[13px] font-medium text-accent-text">
           Open call
           <ChevronRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
         </span>
@@ -249,7 +249,7 @@ function CallResults({ rows, onNavigate }: { rows: CallRow[]; onNavigate?: () =>
                 {[r.started_at ? when(r.started_at) : null, mss(Number(r.duration_s ?? 0)), r.status?.replace(/_/g, " ")].filter(Boolean).join(" · ")}
               </span>
             </span>
-            <span className="font-mono text-[12.5px] text-fg-2 tnum">{r.cost_usd == null ? "n/a" : usd(r.cost_usd, 3)}</span>
+            <span className="font-mono text-[13px] text-fg-2 tnum">{r.cost_usd == null ? "n/a" : usd(r.cost_usd, 3)}</span>
             <ChevronRight
               className="size-3.5 shrink-0 text-fg-3 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-fg"
               aria-hidden
@@ -265,7 +265,7 @@ export function SuggestionChips({ items, onAsk, label }: { items: string[]; onAs
   if (!items.length || !onAsk) return null;
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[11.5px] font-medium uppercase tracking-[0.05em] text-fg-3">{label}</span>
+      <span className="text-[12px] font-medium text-fg-3">{label}</span>
       <div className="flex flex-wrap gap-1.5">
         {items.map((s) => (
           <button
@@ -273,7 +273,7 @@ export function SuggestionChips({ items, onAsk, label }: { items: string[]; onAs
             type="button"
             onClick={() => onAsk(s)}
             className={cn(
-              "group flex cursor-pointer items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3 py-1.5 text-left text-[12.5px] text-fg-2 transition-[color,background-color,border-color,transform] duration-150 hover:-translate-y-px hover:border-accent/50 hover:bg-accent-soft/40 hover:text-fg active:translate-y-0",
+              "group flex cursor-pointer items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3 py-1.5 text-left text-[13px] text-fg-2 transition-[color,background-color,border-color,transform] duration-150 hover:border-accent/50 hover:bg-accent-soft/40 hover:text-fg active:translate-y-0",
               focusRing,
             )}
           >
@@ -343,7 +343,7 @@ function Declined({ answer, onAsk }: { answer: ChatAnswer; onAsk?: (q: string) =
         <span className="grid size-7 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text">
           <Lightbulb className="size-3.5" aria-hidden />
         </span>
-        <p className="text-[13.5px] leading-relaxed text-fg">{answer.content}</p>
+        <p className="text-[14px] leading-relaxed text-fg">{answer.content}</p>
       </div>
       <SuggestionChips items={answer.suggestions ?? []} onAsk={onAsk} label="Try asking" />
     </div>
@@ -361,15 +361,15 @@ export function AnswerView({ answer, onAsk, onNavigate }: { answer: ChatAnswer; 
   const scalar = rows.length === 1 && columns.length <= 4 && columns.every((c) => c.type !== "string" && c.type !== "date");
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13.5px] leading-relaxed text-fg">{answer.content}</p>
+      <p className="text-[14px] leading-relaxed text-fg">{answer.content}</p>
       {callRows && callRows.length > 0 && <CallResults rows={callRows} onNavigate={onNavigate} />}
       {!callRows && answer.chart && answer.chart.data.length > 1 && <AnswerChart chart={answer.chart} columns={columns} />}
       {!callRows && scalar && (
         <div className={cn("grid gap-1.5", columns.length > 1 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
           {columns.map((c) => (
             <div key={c.key} className="flex flex-col gap-0.5 rounded-control border border-line bg-surface-2/60 px-3 py-2">
-              <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-fg-3">{c.label}</span>
-              <span className="font-display text-[20px] font-medium tracking-[-0.01em] text-fg tnum">
+              <span className="text-[11px] font-medium text-fg-3">{c.label}</span>
+              <span className="font-display text-[20px] tracking-[-0.01em] text-fg tnum">
                 {formatCell((rows[0] as Record<string, unknown>)[c.key ?? ""], c.type)}
               </span>
             </div>
@@ -378,7 +378,7 @@ export function AnswerView({ answer, onAsk, onNavigate }: { answer: ChatAnswer; 
       )}
       {!callRows && !scalar && rows.length > 0 && (
         <div className="max-h-[220px] overflow-auto rounded-control border border-line">
-          <table className="w-full text-[12.5px]">
+          <table className="w-full text-[13px]">
             <caption className="sr-only">Answer data</caption>
             <thead className="sticky top-0 bg-surface-2">
               <tr>

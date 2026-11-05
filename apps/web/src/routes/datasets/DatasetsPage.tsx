@@ -24,7 +24,7 @@ const COLUMNS: Column<Dataset>[] = [
         to={`/datasets/${d.dataset_id}`}
         className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 md:max-w-[52ch] hover:underline"
       >
-        <TruncatedText className="text-[13.5px] font-medium text-fg">{d.name}</TruncatedText>
+        <TruncatedText className="text-[14px] font-medium text-fg">{d.name}</TruncatedText>
         {d.description && <span className="truncate text-[12px] text-fg-3">{d.description}</span>}
       </Link>
     ),
@@ -88,7 +88,7 @@ export function DatasetsPage() {
           options={agentOptions}
         />
         {datasets.data && (
-          <span className="text-[12.5px] text-fg-3" aria-live="polite">
+          <span className="text-[13px] text-fg-3" aria-live="polite">
             <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {total === 1 ? "dataset" : "datasets"}
           </span>
         )}

@@ -59,7 +59,7 @@ export function TestCheckout() {
 
   return (
     <div className="min-h-dvh bg-bg">
-      <div className="flex justify-center border-b border-line bg-warning-soft px-4 py-2 text-[12.5px] font-medium text-warning-text">
+      <div className="flex justify-center border-b border-line bg-warning-soft px-4 py-2 text-[13px] font-medium text-warning-text">
         <span className="inline-flex items-center gap-2">
           <FlaskConical className="size-4" aria-hidden />
           Test mode. No real card is charged.
@@ -91,7 +91,7 @@ function Notice({ icon, tone, title, text }: { icon: ReactNode; tone: "danger" |
       >
         {icon}
       </span>
-      <h1 className="font-display text-[22px] font-medium tracking-[-0.02em] text-fg">{title}</h1>
+      <h1 className="font-display text-[22px] tracking-[-0.02em] text-fg">{title}</h1>
       <p className="text-[14px] text-fg-2">{text}</p>
       <Button asChild variant="secondary" icon={<ArrowLeft aria-hidden />}>
         <Link to="/billing">Back to Billing</Link>
@@ -204,7 +204,7 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
         <div>
           <p className="text-[14px] text-fg-2">Add funds to {info.workspace_name ?? "your workspace"}</p>
           <p className="mt-2 font-mono text-[40px] font-semibold leading-none tracking-[-0.02em] text-fg tnum">{amount}</p>
-          <p className="mt-3 text-[13.5px] text-fg-3">
+          <p className="mt-3 text-[14px] text-fg-3">
             About <span className="font-mono text-fg-2 tnum">{talkMinutes(micros, SEED_PER_MINUTE_MICROS)}</span> minutes of calls on the default
             stack.
           </p>
@@ -239,7 +239,7 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
               >
                 <CircleCheck className="size-7" aria-hidden />
               </motion.span>
-              <h1 className="font-display text-[22px] font-medium tracking-[-0.02em] text-fg">Payment received</h1>
+              <h1 className="font-display text-[22px] tracking-[-0.02em] text-fg">Payment received</h1>
               <p className="text-[14px] text-fg-2">{amount} is on its way to your balance. Taking you back to Billing.</p>
             </motion.div>
           ) : (
@@ -324,7 +324,7 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-start gap-2 rounded-control border border-danger/30 bg-danger-soft px-3 py-2.5 text-[13.5px] text-danger-text"
+                    className="flex items-start gap-2 rounded-control border border-danger/30 bg-danger-soft px-3 py-2.5 text-[14px] text-danger-text"
                   >
                     <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
                     {decline}
@@ -354,7 +354,7 @@ function TestCards({ cards, onPick, disabled }: { cards: TestCard[]; onPick: (c:
   return (
     <div className="flex flex-col gap-2 border-t border-line pt-5">
       <p className="text-[13px] font-medium text-fg">Test cards</p>
-      <p className="text-[12.5px] text-fg-3">Pick one to fill the form. Any future expiry date and any 3 digit code work.</p>
+      <p className="text-[13px] text-fg-3">Pick one to fill the form. Any future expiry date and any 3 digit code work.</p>
       <ul className="mt-1 flex flex-col">
         {cards.map((c) => {
           const ok = c.outcome === OK_OUTCOME;
@@ -377,7 +377,7 @@ function TestCards({ cards, onPick, disabled }: { cards: TestCard[]; onPick: (c:
                 </span>
                 <span
                   className={cn(
-                    "ml-auto inline-flex items-center gap-1.5 whitespace-nowrap text-[12.5px]",
+                    "ml-auto inline-flex items-center gap-1.5 whitespace-nowrap text-[13px]",
                     ok ? "text-success-text" : "text-danger-text",
                   )}
                 >

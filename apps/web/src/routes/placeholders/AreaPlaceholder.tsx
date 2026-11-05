@@ -25,13 +25,12 @@ export function AreaPlaceholder({ to }: { to: string }) {
     <>
       <PageHeader title={item.label} description={item.blurb} actions={<Badge icon={<Clock3 />}>In a later release</Badge>} />
       <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-60" />
         <div className="relative grid gap-10 px-5 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
           <div className="flex flex-col items-start gap-4">
             <span className="grid size-14 place-items-center rounded-panel border border-accent/20 bg-accent-soft text-accent-text">
               <Duo weight="duotone" className="size-8" aria-hidden />
             </span>
-            <h2 className="font-display text-[19px] font-medium tracking-[-0.015em] text-fg">{item.label} is being built</h2>
+            <h2 className="font-display text-[19px] tracking-[-0.015em] text-fg">{item.label} is being built</h2>
             <p className="max-w-[52ch] text-[14px] leading-relaxed text-fg-2">
               Your account, credit and pricing already work, so anything you set up here later is billed from the same balance at the same per-minute
               rates.
@@ -49,7 +48,7 @@ export function AreaPlaceholder({ to }: { to: string }) {
             <div className="rounded-panel border border-line bg-surface-2/70 px-5 py-6">
               <p className="text-[13px] font-medium text-fg">Where {item.label.toLowerCase()} fits</p>
               <FlowChain label="Build, observe, test and fix" nodes={LOOP} active={group.label} flow stack="tight" className="mt-5" />
-              <p className="mt-5 text-[13.5px] leading-relaxed text-fg-2">
+              <p className="mt-5 text-[14px] leading-relaxed text-fg-2">
                 <span className="font-medium text-fg">{group.label}:</span> {group.role}
               </p>
             </div>

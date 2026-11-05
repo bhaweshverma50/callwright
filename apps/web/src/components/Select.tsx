@@ -101,7 +101,7 @@ export function Select({
                       <Check strokeWidth={2.5} className="size-3.5 text-accent-text" aria-hidden />
                     </RS.ItemIndicator>
                     <RS.ItemText>{o.label}</RS.ItemText>
-                    {o.meta != null && <span className="ml-auto font-mono text-[11.5px] text-fg-3 tnum">{o.meta}</span>}
+                    {o.meta != null && <span className="ml-auto font-mono text-[12px] text-fg-3 tnum">{o.meta}</span>}
                   </RS.Item>
                 ))}
               </RS.Group>

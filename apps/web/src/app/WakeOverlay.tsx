@@ -32,10 +32,10 @@ export function WakeOverlay() {
       >
         <div className="flex w-full max-w-[420px] flex-col items-center gap-4 text-center">
           <LogoLoader size="lg" still />
-          <h1 id="wake-title" className="font-display text-[20px] font-semibold text-fg">
+          <h1 id="wake-title" className="font-display text-[20px] text-fg">
             The call servers did not start
           </h1>
-          <p id="wake-text" className="text-[13.5px] text-fg-2">
+          <p id="wake-text" className="text-[14px] text-fg-2">
             They usually take about a minute. Try again; if it keeps failing, the servers may be down for maintenance.
           </p>
           <Button
@@ -65,10 +65,10 @@ export function WakeOverlay() {
     >
       <div className="flex w-full max-w-[420px] flex-col items-center gap-4 text-center">
         <LogoLoader size="lg" />
-        <h1 id="wake-title" className="font-display text-[20px] font-semibold text-fg">
+        <h1 id="wake-title" className="font-display text-[20px] text-fg">
           Starting servers
         </h1>
-        <p id="wake-text" className="text-[13.5px] text-fg-2">
+        <p id="wake-text" className="text-[14px] text-fg-2">
           The call servers sleep when nobody is using them. Starting them takes about a minute; your request continues on its own.
         </p>
         <div
@@ -79,7 +79,7 @@ export function WakeOverlay() {
           aria-valuenow={percent}
           className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3"
         >
-          <div className="grad-action h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${percent}%` }} />
+          <div className="bg-accent h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${percent}%` }} />
         </div>
       </div>
     </div>

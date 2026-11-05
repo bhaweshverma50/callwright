@@ -84,7 +84,7 @@ export function TemplateRail() {
     <div>
       <div className="mx-auto flex max-w-[1200px] items-end justify-between gap-6 px-4 sm:px-6">
         <div>
-          <h2 id="templates" className="max-w-[20ch] font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]">
+          <h2 id="templates" className="max-w-[20ch] font-display text-[26px] leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]">
             Start from an agent that already works.
           </h2>
           <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-fg-2">
@@ -122,7 +122,7 @@ export function TemplateRail() {
                 </span>
               </p>
               <h3 className="mt-6 text-[18px] font-semibold leading-snug text-fg">{t.name}</h3>
-              <p className="mt-2 text-[14.5px] leading-relaxed text-fg-2">{t.text}</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-fg-2">{t.text}</p>
               <div className="mt-auto pt-6">
                 {demo ? (
                   <Button variant="secondary" size="sm" onClick={() => tryInPlayground(demo.key)}>

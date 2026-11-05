@@ -111,8 +111,8 @@ function Tile({
 }) {
   return (
     <div className="lift group relative flex min-w-0 flex-col gap-2 overflow-hidden rounded-panel border border-line bg-surface p-4 shadow-1">
-      <span className="flex items-center gap-2 text-[12.5px] text-fg-3">
-        <span className="grid size-7 place-items-center rounded-control bg-accent-soft text-accent-text transition-transform duration-200 group-hover:scale-110 [&_svg]:size-[15px]">
+      <span className="flex items-center gap-2 text-[13px] text-fg-3">
+        <span className="grid size-7 place-items-center rounded-control bg-accent-soft text-accent-text transition-transform duration-200 [&_svg]:size-[15px]">
           <Icon aria-hidden />
         </span>
         {label}

@@ -175,7 +175,7 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
       </div>
       {type === "llm_judge_custom" && <p className="text-[12px] text-fg-3">A judge trial is charged like one judged call.</p>}
       {error && (
-        <p role="alert" className="text-[12.5px] text-danger-text">
+        <p role="alert" className="text-[13px] text-danger-text">
           {error}
         </p>
       )}
@@ -191,13 +191,11 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
             <span className="flex items-center gap-2">
               <Badge tone={VERDICT_TONES[result.verdict]}>{VERDICT_LABELS[result.verdict]}</Badge>
               {result.score != null && <span className="font-mono text-[12px] text-fg-3 tnum">score {result.score}</span>}
-              {result.charged_usd ? (
-                <span className="ml-auto font-mono text-[11.5px] text-fg-3">charged ${result.charged_usd.toFixed(4)}</span>
-              ) : null}
+              {result.charged_usd ? <span className="ml-auto font-mono text-[12px] text-fg-3">charged ${result.charged_usd.toFixed(4)}</span> : null}
             </span>
             <p className="text-[13px] leading-relaxed text-fg">{withoutLineRefs(result.rationale)}</p>
             {result.evidence?.quote && (
-              <blockquote className="rounded-inline bg-surface-2 px-2.5 py-1.5 text-[12.5px] italic text-fg-2">{result.evidence.quote}</blockquote>
+              <blockquote className="rounded-inline bg-surface-2 px-2.5 py-1.5 text-[13px] italic text-fg-2">{result.evidence.quote}</blockquote>
             )}
           </motion.div>
         )}
@@ -389,7 +387,7 @@ function CheckForm({
           <label className="flex items-center justify-between gap-4 rounded-control border border-line px-3.5 py-2.5">
             <span className="flex flex-col">
               <span className="text-[13px] font-medium text-fg">Case sensitive</span>
-              <span className="text-[12.5px] text-fg-3">Off matches "Guaranteed" and "guaranteed" alike.</span>
+              <span className="text-[13px] text-fg-3">Off matches "Guaranteed" and "guaranteed" alike.</span>
             </span>
             <SwitchControl
               aria-label="Case sensitive"
@@ -403,7 +401,7 @@ function CheckForm({
           <Field
             label="Yes or no question"
             error={errors.question ?? null}
-            aside={<span className="font-mono text-[11.5px] text-fg-3 tnum">{judge.question.length}/1000</span>}
+            aside={<span className="font-mono text-[12px] text-fg-3 tnum">{judge.question.length}/1000</span>}
             hint="The judge reads the transcript as data; instructions spoken in the call cannot change the answer."
           >
             {(ids) => (

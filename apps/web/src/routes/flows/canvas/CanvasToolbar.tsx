@@ -53,7 +53,7 @@ export const CanvasToolbar = memo(function CanvasToolbar({
             aria-label={`Zoom ${zoom}%, zoom to 100%`}
             onClick={() => void flow.zoomTo(1, { duration: 220 }).then(onViewChanged)}
             className={cn(
-              "h-8 min-w-[3.25rem] cursor-pointer rounded-full px-1.5 font-mono text-[11.5px] tabular-nums text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg",
+              "h-8 min-w-[3.25rem] cursor-pointer rounded-full px-1.5 font-mono text-[12px] tabular-nums text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg",
               focusRing,
             )}
           >

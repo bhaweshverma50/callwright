@@ -73,7 +73,7 @@ export function Slider({
         onValueCommit={onValueCommit ? (v) => onValueCommit(v[0] ?? min) : undefined}
       >
         <RSl.Track className="relative h-1.5 grow overflow-hidden rounded-full bg-surface-3">
-          <RSl.Range className={cn("absolute h-full", tone === "heat" ? "grad-heat" : "grad-action")} />
+          <RSl.Range className={cn("absolute h-full", tone === "heat" ? "grad-heat" : "bg-accent")} />
         </RSl.Track>
         <RSl.Thumb
           id={id}
@@ -88,7 +88,7 @@ export function Slider({
         />
       </RSl.Root>
       {marks && marks.length > 0 && (
-        <div aria-hidden className="relative mt-1 h-4 text-[11.5px] text-fg-3">
+        <div aria-hidden className="relative mt-1 h-4 text-[12px] text-fg-3">
           {marks.map((m, i) => {
             const pct = ((m.value - min) / (max - min)) * 100;
             const edge = i === 0 && pct <= 0 ? "start" : i === marks.length - 1 && pct >= 100 ? "end" : "mid";

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, CircleAlert, FileJson, Info, Save, Sparkles, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleAlert, FileJson, Info, PenLine, Save, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { isApiError } from "../../../api/errors";
@@ -75,13 +75,13 @@ function PresetCard({ preset, onPick }: { preset: ToolPreset; onPick: () => void
     <button
       type="button"
       onClick={onPick}
-      className="group flex min-w-0 items-start gap-3 rounded-panel border border-line bg-surface p-4 text-left shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="group flex min-w-0 items-start gap-3 rounded-panel border border-line bg-surface p-4 text-left shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <ToolTile type={preset.type} />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[13.5px] font-semibold text-fg">{preset.title}</span>
-        <span className="text-[12.5px] leading-snug text-fg-2">{preset.summary}</span>
-        <span className="mt-1 font-mono text-[11.5px] text-fg-3">{preset.tool.name}</span>
+        <span className="text-[14px] font-semibold text-fg">{preset.title}</span>
+        <span className="text-[13px] leading-snug text-fg-2">{preset.summary}</span>
+        <span className="mt-1 font-mono text-[12px] text-fg-3">{preset.tool.name}</span>
       </span>
       <ArrowRight
         className="mt-1 size-4 shrink-0 text-fg-3 opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-x-0.5 group-hover:opacity-100"
@@ -97,7 +97,7 @@ function Picker({ onPick }: { onPick: (draft: ToolDraft) => void }) {
     <div className="flex flex-col gap-6">
       <FormSection
         title="Start from a preset"
-        icon={<Sparkles aria-hidden />}
+        icon={<PenLine aria-hidden />}
         description="Prefilled with sensible defaults; you can change everything before saving."
       >
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
@@ -125,7 +125,7 @@ function Picker({ onPick }: { onPick: (draft: ToolDraft) => void }) {
               key={t}
               type="button"
               onClick={() => onPick(blank(t))}
-              className="flex flex-col items-start gap-2 rounded-panel border border-line bg-surface p-3 text-left transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="flex flex-col items-start gap-2 rounded-panel border border-line bg-surface p-3 text-left transition-[transform,box-shadow,border-color] duration-200 hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <ToolTile type={t} size="sm" />
               <span className="flex flex-col gap-0.5">
@@ -332,7 +332,7 @@ export function ToolEditorDialog({
                         spellCheck={false}
                         maxLength={16384}
                         aria-describedby={describedBy}
-                        className={cn("min-h-24 font-mono text-[12.5px]")}
+                        className={cn("min-h-24 font-mono text-[13px]")}
                         placeholder={'{ "slots": ["09:30", "11:00"] }'}
                         value={draft.mock_response ?? ""}
                         onChange={(e) => set({ mock_response: e.target.value })}

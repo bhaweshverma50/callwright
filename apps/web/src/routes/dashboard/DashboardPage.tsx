@@ -104,7 +104,7 @@ function AgentPicker({ value, onChange, agents }: { value: string[]; onChange: (
             <span
               className={cn(
                 "grid size-4 place-items-center rounded-full border",
-                value.length === 0 ? "grad-action border-transparent text-white" : "border-line-strong",
+                value.length === 0 ? "bg-accent border-transparent text-white" : "border-line-strong",
               )}
             >
               {value.length === 0 && <Check className="size-3" strokeWidth={3} aria-hidden />}
@@ -130,7 +130,7 @@ function AgentPicker({ value, onChange, agents }: { value: string[]; onChange: (
                   <span
                     className={cn(
                       "grid size-4 shrink-0 place-items-center rounded-[4px] border",
-                      on ? "grad-action border-transparent text-white" : "border-line-strong",
+                      on ? "bg-accent border-transparent text-white" : "border-line-strong",
                     )}
                   >
                     {on && <Check className="size-3" strokeWidth={3} aria-hidden />}
@@ -139,7 +139,7 @@ function AgentPicker({ value, onChange, agents }: { value: string[]; onChange: (
                 </button>
               );
             })}
-            {agents.length === 0 && <p className="px-2 py-2 text-[12.5px] text-fg-3">No agents yet.</p>}
+            {agents.length === 0 && <p className="px-2 py-2 text-[13px] text-fg-3">No agents yet.</p>}
           </div>
         </RP.Content>
       </RP.Portal>
@@ -235,7 +235,7 @@ function Dashboard() {
         actions={
           <>
             {updated > 0 && (
-              <span className="text-[12.5px] text-fg-3" aria-live="polite">
+              <span className="text-[13px] text-fg-3" aria-live="polite">
                 Updated <span className="font-mono tnum">{timeFmt.format(new Date(updated))}</span>
               </span>
             )}
@@ -281,7 +281,7 @@ function Dashboard() {
                   onChange={(e) => setDraft((d) => ({ ...d, start: e.target.value }))}
                   aria-invalid={Boolean(error && draft.start && draft.end) || undefined}
                 />
-                <span className="text-[12.5px] text-fg-3">to</span>
+                <span className="text-[13px] text-fg-3">to</span>
                 <Input
                   inputSize="md"
                   type="date"
@@ -299,14 +299,14 @@ function Dashboard() {
           </div>
         </div>
         {error && draft.start && draft.end && (
-          <p role="alert" className="text-[12.5px] text-danger-text">
+          <p role="alert" className="text-[13px] text-danger-text">
             {error}
           </p>
         )}
         {!isDefault && (
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Active selection">
             {draft.period !== DEFAULT_PERIOD && (
-              <span className="inline-flex h-7 items-center gap-1 rounded-full border border-accent/30 bg-accent-soft pl-3 pr-1 text-[12.5px] text-accent-text">
+              <span className="inline-flex h-7 items-center gap-1 rounded-full border border-accent/30 bg-accent-soft pl-3 pr-1 text-[13px] text-accent-text">
                 {draft.period === "custom" && draft.start && draft.end
                   ? `${draft.start} to ${draft.end}`
                   : PERIODS.find((p) => p.value === draft.period)!.long}
@@ -323,7 +323,7 @@ function Dashboard() {
             {draft.agents.map((a) => (
               <span
                 key={a}
-                className="inline-flex h-7 max-w-[220px] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft pl-3 pr-1 text-[12.5px] text-accent-text"
+                className="inline-flex h-7 max-w-[220px] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft pl-3 pr-1 text-[13px] text-accent-text"
               >
                 <span className="truncate">{agentName(a)}</span>
                 <button
@@ -339,7 +339,7 @@ function Dashboard() {
             <Button
               variant="link"
               size="sm"
-              className="ml-1 text-[12.5px]"
+              className="ml-1 text-[13px]"
               onClick={() => setDraft({ period: DEFAULT_PERIOD, start: "", end: "", agents: [] })}
             >
               Clear all

@@ -64,7 +64,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
         <Link
           to={`/calls?call=${r.base_call_id}`}
           title={r.base_call_id}
-          className="block whitespace-nowrap rounded-inline font-mono text-[12.5px] text-fg-2 hover:text-fg hover:underline"
+          className="block whitespace-nowrap rounded-inline font-mono text-[13px] text-fg-2 hover:text-fg hover:underline"
         >
           {shortId(r.base_call_id)}
         </Link>
@@ -99,7 +99,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
       r.status === "completed" ? (
         <Link
           to={`/simulations/runs/${r.simulation_run_id}`}
-          className="inline-flex items-center gap-1 whitespace-nowrap rounded-inline text-[12.5px] font-medium text-accent-text hover:underline"
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded-inline text-[13px] font-medium text-accent-text hover:underline"
           aria-label={`Compare ${r.base_call_id ?? "run"}`}
         >
           Compare <ArrowRight className="size-3.5" aria-hidden />
@@ -124,13 +124,13 @@ function VariantDiff({ exp }: { exp: Experiment }) {
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {d.op !== "add" && (
                 <div className="min-w-0 rounded-control border border-danger/25 bg-danger-soft/50 px-3 py-2">
-                  <span className="text-[11.5px] font-medium text-danger-text">Before</span>
+                  <span className="text-[12px] font-medium text-danger-text">Before</span>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] text-fg">{text(d.old)}</p>
                 </div>
               )}
               {d.op !== "remove" && (
                 <div className="min-w-0 rounded-control border border-success/25 bg-success-soft/50 px-3 py-2">
-                  <span className="text-[11.5px] font-medium text-success-text">After</span>
+                  <span className="text-[12px] font-medium text-success-text">After</span>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] text-fg">{text(d.value)}</p>
                 </div>
               )}
@@ -166,7 +166,7 @@ function Scorecard({ exp }: { exp: Experiment }) {
       bodyClassName="p-0"
     >
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
-        <span className="text-[12.5px] text-fg-3">Compare against</span>
+        <span className="text-[13px] text-fg-3">Compare against</span>
         <Segmented
           size="sm"
           aria-label="Compare against"
@@ -192,7 +192,7 @@ function Scorecard({ exp }: { exp: Experiment }) {
         <div className="p-5">
           <ProblemAlert error={card.error} kind="scorecard" className="[&>div]:mb-0" />
           {isApiError(card.error) && card.error.status === 422 && (
-            <p className="text-[12.5px] text-fg-3">A batch can only be compared with another batch over the same calls.</p>
+            <p className="text-[13px] text-fg-3">A batch can only be compared with another batch over the same calls.</p>
           )}
         </div>
       ) : !data ? (
@@ -222,7 +222,7 @@ function Scorecard({ exp }: { exp: Experiment }) {
                 <TriangleAlert className="size-4 text-warning" aria-hidden />
                 {plural(data.excluded_runs.length, "run")} left out of the simulated side
               </p>
-              <ul className="flex flex-col gap-1.5 text-[12.5px]">
+              <ul className="flex flex-col gap-1.5 text-[13px]">
                 {data.excluded_runs.map((r) => (
                   <li key={r.simulation_run_id} className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:gap-3">
                     <span className="shrink-0 font-mono text-fg-3">{r.status}</span>
@@ -300,13 +300,13 @@ export function ExperimentPage() {
         <section aria-label="Progress" className="rounded-panel border border-line bg-surface px-5 py-4 shadow-1">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <SimStatusBadge status={e.status} />
-            <span className="text-[12.5px] text-fg-3">Started {whenLong(e.created_at)}</span>
+            <span className="text-[13px] text-fg-3">Started {whenLong(e.created_at)}</span>
             {e.source === "dataset" && e.dataset_id && (
-              <Link to={`/datasets/${e.dataset_id}`} className="text-[12.5px] text-accent-text hover:underline">
+              <Link to={`/datasets/${e.dataset_id}`} className="text-[13px] text-accent-text hover:underline">
                 From a dataset
               </Link>
             )}
-            {e.source === "issue_validation" && <span className="text-[12.5px] text-fg-3">Started by issue validation</span>}
+            {e.source === "issue_validation" && <span className="text-[13px] text-fg-3">Started by issue validation</span>}
           </div>
           <div className="mb-4 flex items-center gap-3">
             <ProgressBar

@@ -59,7 +59,7 @@ function Attempt({ a }: { a: ValidationAttempt }) {
   const h = a.headline;
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-5 py-3 text-[12.5px] text-fg-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-5 py-3 text-[13px] text-fg-3">
         <span>
           Keep if the headline improves by {t.min_improvement_pp} pp or more, nothing drops by more than {t.max_regression_pp} pp, with at least{" "}
           {t.min_sample} calls.
@@ -74,13 +74,13 @@ function Attempt({ a }: { a: ValidationAttempt }) {
         </span>
       </div>
       {a.status === "running" ? (
-        <p className="flex items-center gap-2 px-5 py-6 text-[13.5px] text-fg-2">
+        <p className="flex items-center gap-2 px-5 py-6 text-[14px] text-fg-2">
           <FlaskConical className="size-4 text-accent-text" aria-hidden />
           Simulating {a.affected_call_ids.length} affected and {a.guard_call_ids.length} guard calls in both batches. The result appears here when
           they finish.
         </p>
       ) : a.status === "cancelled" ? (
-        <p className="px-5 py-6 text-[13.5px] text-fg-2">This validation was cancelled before it finished. Nothing was decided.</p>
+        <p className="px-5 py-6 text-[14px] text-fg-2">This validation was cancelled before it finished. Nothing was decided.</p>
       ) : (
         <>
           {h && (
@@ -152,7 +152,7 @@ export function ValidationEvidence({
       <Attempt a={shown} />
       {attempts.length > 1 && (
         <div className="border-t border-line px-5 py-3">
-          <p className="mb-2 flex items-center gap-1.5 text-[12.5px] text-fg-3">
+          <p className="mb-2 flex items-center gap-1.5 text-[13px] text-fg-3">
             <History className="size-3.5" aria-hidden />
             Earlier attempts
           </p>
@@ -164,7 +164,7 @@ export function ValidationEvidence({
                   aria-pressed={a.attempt === shown.attempt}
                   onClick={() => setSelected(a.attempt)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-control border px-2.5 py-1.5 text-[12.5px] transition-colors",
+                    "inline-flex items-center gap-2 rounded-control border px-2.5 py-1.5 text-[13px] transition-colors",
                     a.attempt === shown.attempt
                       ? "border-accent bg-accent-soft/50 text-fg"
                       : "border-line bg-surface text-fg-2 hover:border-line-strong",

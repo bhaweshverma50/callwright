@@ -23,7 +23,7 @@ function ReadyBar({ kb }: { kb: KnowledgeBase }) {
   const total = Math.max(1, kb.document_count);
   const parts = [
     { key: "ready", n: kb.ready_count, className: "bg-success" },
-    { key: "processing", n: kb.processing_count, className: "grad-action animate-pulse" },
+    { key: "processing", n: kb.processing_count, className: "bg-accent animate-pulse" },
     { key: "failed", n: kb.failed_count, className: "bg-danger" },
   ];
   return (
@@ -60,10 +60,10 @@ function KbCard({ kb }: { kb: KnowledgeBase }) {
         onClick={(e) => {
           if (!(e.target as HTMLElement).closest("a,button")) navigate(to);
         }}
-        className="group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border border-line bg-surface shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow focus-within:border-accent/45"
+        className="group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border border-line bg-surface shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:border-accent/45 focus-within:border-accent/45"
       >
         <div className="flex items-start gap-3 px-5 pb-3 pt-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text transition-[background-image,color] duration-200 group-hover:grad-action group-hover:text-white">
+          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text transition-[background-color,color] duration-200 group-hover:bg-accent group-hover:text-white">
             <BookOpen className="size-5" aria-hidden />
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-px">
@@ -72,7 +72,7 @@ function KbCard({ kb }: { kb: KnowledgeBase }) {
                 <TruncatedText focusable={false}>{kb.name}</TruncatedText>
               </Link>
             </h3>
-            <p className={cn("line-clamp-2 min-h-[2lh] text-[12.5px] leading-snug", kb.description ? "text-fg-2" : "italic text-fg-3")}>
+            <p className={cn("line-clamp-2 min-h-[2lh] text-[13px] leading-snug", kb.description ? "text-fg-2" : "italic text-fg-3")}>
               {kb.description || "No description"}
             </p>
           </div>
@@ -132,7 +132,6 @@ export function KnowledgeListPage() {
 
       {empty ? (
         <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-          <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-70" />
           <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
             <EmptyState
               className="px-0 py-0"
@@ -177,7 +176,7 @@ export function KnowledgeListPage() {
                 ) : undefined
               }
             />
-            <p className="text-[12.5px] text-fg-3 md:ml-auto" aria-live="polite">
+            <p className="text-[13px] text-fg-3 md:ml-auto" aria-live="polite">
               {firstLoad ? "" : `${total.toLocaleString()} ${total === 1 ? "knowledge base" : "knowledge bases"}${q ? " found" : ""}`}
             </p>
           </div>

@@ -42,7 +42,7 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
               <span aria-hidden className="absolute left-[35px] top-[36px] h-full w-0.5 bg-line-strong">
                 {filled && (
                   <motion.span
-                    className="grad-action absolute inset-0 origin-top"
+                    className="bg-accent absolute inset-0 origin-top"
                     initial={{ scaleY: 0 }}
                     animate={{ scaleY: 1 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 * i }}
@@ -76,9 +76,7 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
                   )}
                   <span className="min-w-0 break-words">{s.title}</span>
                 </h3>
-                <p className={cn("max-w-[56ch] text-[13.5px] leading-relaxed", s.status === "pending" ? "text-fg-3" : "text-fg-2")}>
-                  {s.description}
-                </p>
+                <p className={cn("max-w-[56ch] text-[14px] leading-relaxed", s.status === "pending" ? "text-fg-3" : "text-fg-2")}>{s.description}</p>
               </div>
               {s.status === "active" && s.action && <div className="shrink-0 @[30rem]:-mt-[3px]">{s.action}</div>}
             </div>

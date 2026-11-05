@@ -10,7 +10,7 @@ import {
   Info,
   LayoutTemplate,
   MessageSquareText,
-  Sparkles,
+  PenLine,
   Workflow,
   Wrench,
 } from "lucide-react";
@@ -48,7 +48,6 @@ export function NewAgentTypePage() {
       <PageHeader title="New agent" description="Describe what it should do and let the assistant draft it, or set it up yourself." />
 
       <section aria-labelledby={describeId} className="relative mb-8 overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-x-0 top-0 h-32 opacity-70" />
         <form
           className="relative flex flex-col gap-3 p-5 sm:p-6"
           onSubmit={(e) => {
@@ -57,8 +56,8 @@ export function NewAgentTypePage() {
           }}
         >
           <div className="flex items-center gap-2.5">
-            <span className="grad-action grid size-8 place-items-center rounded-control text-white">
-              <Sparkles className="size-4" aria-hidden />
+            <span className="bg-accent grid size-8 place-items-center rounded-control text-white">
+              <PenLine className="size-4" aria-hidden />
             </span>
             <h2 id={describeId} className="text-[15px] font-medium text-fg">
               What should this agent do?
@@ -81,7 +80,7 @@ export function NewAgentTypePage() {
             className="bg-surface text-[14px]"
           />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[12.5px] text-fg-3">
+            <p className="text-[13px] text-fg-3">
               Opens a single prompt agent with the assistant drafting the prompt and greeting. Nothing is saved until you save; about $0.02 per
               request.
             </p>
@@ -90,7 +89,7 @@ export function NewAgentTypePage() {
             </Button>
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-            <span className="mr-1 text-[12.5px] text-fg-3">Or start from</span>
+            <span className="mr-1 text-[13px] text-fg-3">Or start from</span>
             <Button asChild size="sm" icon={<LayoutTemplate aria-hidden />}>
               <Link to="/agents/templates">A template</Link>
             </Button>
@@ -154,7 +153,7 @@ export function NewAgentTypePage() {
         ]}
       />
       <div className="mt-6 flex flex-col gap-4 rounded-panel border border-line bg-surface-2/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="flex items-start gap-2.5 text-[13.5px] text-fg-2">
+        <p className="flex items-start gap-2.5 text-[14px] text-fg-2">
           <Info className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden />
           <span>
             <span className="font-medium text-fg">The type cannot be changed later.</span> To switch, create a new agent of the other type.
@@ -211,7 +210,7 @@ function TypeArt({ kind, on }: { kind: Kind; on: boolean }) {
         strokeWidth={1.25}
       />
       {label && (
-        <text x={x + w / 2} y={y + 17} textAnchor="middle" className="fill-[var(--text-2)] font-sans text-[10.5px]">
+        <text x={x + w / 2} y={y + 17} textAnchor="middle" className="fill-[var(--text-2)] font-sans text-[11px]">
           {label}
         </text>
       )}
@@ -224,9 +223,8 @@ function TypeArt({ kind, on }: { kind: Kind; on: boolean }) {
       <svg viewBox="0 0 320 112" className="block h-[112px] w-full" aria-hidden>
         <defs>
           <linearGradient id={`g-${id}`} x1="0" x2="320" y1="0" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--heat-1)" />
-            <stop offset="0.55" stopColor="var(--heat-2)" />
-            <stop offset="1" stopColor="var(--heat-3)" />
+            <stop offset="0" stopColor="var(--accent)" />
+            <stop offset="1" stopColor="var(--accent)" />
           </linearGradient>
         </defs>
         {kind === "single" ? (

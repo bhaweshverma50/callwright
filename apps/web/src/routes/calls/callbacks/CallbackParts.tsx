@@ -32,7 +32,7 @@ export function ZoneTag({ callback, className }: { callback: Pick<Callback, "tim
     <span
       title={`Recipient's time zone: ${callback.timezone}`}
       className={cn(
-        "inline-flex h-[18px] items-center rounded-inline border border-line bg-surface-2 px-1.5 align-[1px] font-mono text-[10.5px] font-medium leading-none text-fg-3",
+        "inline-flex h-[18px] items-center rounded-inline border border-line bg-surface-2 px-1.5 align-[1px] font-mono text-[11px] font-medium leading-none text-fg-3",
         className,
       )}
     >
@@ -139,7 +139,7 @@ export function CallbackCard({ callback: cb, onCancel }: { callback: Callback; o
           <p className="min-w-0 text-[14px] leading-relaxed text-fg-2">{headline(cb)}</p>
           <CallbackStatusBadge status={cb.status} />
         </div>
-        <p className="text-[12.5px] text-fg-3">
+        <p className="text-[13px] text-fg-3">
           To <span className="whitespace-nowrap font-mono text-fg-2 tnum">{phoneLabel(cb.to_number)}</span> from{" "}
           <span className="whitespace-nowrap font-mono text-fg-2 tnum">{phoneLabel(cb.from_number)}</span>
           {cb.agent_name && (
@@ -152,7 +152,7 @@ export function CallbackCard({ callback: cb, onCancel }: { callback: Callback; o
           )}
         </p>
         {cb.note && <p className="mt-0.5 text-[13px] leading-relaxed text-fg">{cb.note}</p>}
-        {cb.status === "failed" && <p className="text-[12.5px] text-danger-text">{failureText(cb)}</p>}
+        {cb.status === "failed" && <p className="text-[13px] text-danger-text">{failureText(cb)}</p>}
         {(cb.status === "scheduled" || (cb.status === "placed" && cb.call_id)) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             {cb.status === "scheduled" && (
@@ -161,7 +161,7 @@ export function CallbackCard({ callback: cb, onCancel }: { callback: Callback; o
               </Button>
             )}
             {cb.status === "placed" && cb.call_id && (
-              <Link to={callDrawerSearch(params, cb.call_id)} className="link-underline text-[12.5px] font-medium text-accent-text">
+              <Link to={callDrawerSearch(params, cb.call_id)} className="link-underline text-[13px] font-medium text-accent-text">
                 Open the callback call
               </Link>
             )}

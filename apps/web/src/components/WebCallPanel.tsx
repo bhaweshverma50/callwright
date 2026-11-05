@@ -145,7 +145,7 @@ export function WebCallPanel({
           ) : ringing ? (
             <div className="grid h-full place-items-center content-center gap-4 text-center">
               <RingingPhone reduce={reduce} />
-              <p className="text-[13.5px] font-medium text-fg-2" role="status">
+              <p className="text-[14px] font-medium text-fg-2" role="status">
                 Ringing the agent
               </p>
             </div>
@@ -162,7 +162,7 @@ export function WebCallPanel({
       </p>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
-        <p className="min-w-0 flex-1 basis-56 text-[12.5px] text-fg-3">{footerHint(s, elapsed, costMicros)}</p>
+        <p className="min-w-0 flex-1 basis-56 text-[13px] text-fg-3">{footerHint(s, elapsed, costMicros)}</p>
         <div className="flex items-center gap-2">
           {(s.phase === "idle" || s.phase === "ended" || s.phase === "error") && (
             <Button variant="primary" icon={<Phone aria-hidden />} onClick={() => void start()}>
@@ -321,8 +321,8 @@ function WaveRow({
   return (
     <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 rounded-control bg-surface-2 py-2 pl-3 pr-3">
       <div className="flex min-w-0 flex-col leading-tight">
-        <span className="text-[12.5px] font-medium text-fg">{label}</span>
-        <span className={cn("text-[11.5px]", muted ? "text-warning-text" : active ? "text-accent-text" : "text-fg-3")}>{status}</span>
+        <span className="text-[13px] font-medium text-fg">{label}</span>
+        <span className={cn("text-[12px]", muted ? "text-warning-text" : active ? "text-accent-text" : "text-fg-3")}>{status}</span>
       </div>
       <div
         aria-hidden
@@ -363,7 +363,7 @@ function ProblemCallout({ problem }: { problem: CallProblem }) {
         {mic ? <MicOff /> : <CircleAlert />}
       </span>
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="text-[13.5px] font-semibold text-fg">{problem.title}</p>
+        <p className="text-[14px] font-semibold text-fg">{problem.title}</p>
         <p className="text-[13px] leading-relaxed text-fg-2">{problem.detail}</p>
         {problem.action && (
           <Link to={problem.action.href} className="link-underline mt-1 self-start text-[13px] font-medium text-accent-text">
@@ -402,12 +402,12 @@ const Transcript = memo(function Transcript({ turns, reduce }: { turns: CallTurn
             className={cn("flex flex-col gap-1", agent ? "items-start" : "items-end", !first && "-mt-1.5")}
           >
             {first && (
-              <span className={cn("flex items-center gap-1.5 text-[11.5px] font-medium text-fg-3", !agent && "flex-row-reverse")}>
+              <span className={cn("flex items-center gap-1.5 text-[12px] font-medium text-fg-3", !agent && "flex-row-reverse")}>
                 <span
                   aria-hidden
                   className={cn(
                     "grid size-5 place-items-center rounded-full [&_svg]:size-3",
-                    agent ? "grad-action text-white" : "bg-surface-2 text-fg-2",
+                    agent ? "bg-accent text-white" : "bg-surface-2 text-fg-2",
                   )}
                 >
                   {agent ? <Bot /> : <User />}
@@ -417,7 +417,7 @@ const Transcript = memo(function Transcript({ turns, reduce }: { turns: CallTurn
             )}
             <p
               className={cn(
-                "max-w-[min(46ch,82%)] rounded-panel px-3.5 py-2 text-[13.5px] leading-relaxed transition-colors duration-200",
+                "max-w-[min(46ch,82%)] rounded-panel px-3.5 py-2 text-[14px] leading-relaxed transition-colors duration-200",
                 agent ? "rounded-tl-[6px] bg-surface-2" : "rounded-tr-[6px] bg-accent-soft",
                 t.final ? "text-fg" : "text-fg-2",
               )}

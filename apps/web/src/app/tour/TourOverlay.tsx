@@ -319,7 +319,7 @@ export function TourOverlay({
             {hole && (
               <>
                 <span className="absolute -inset-[3px] rounded-[15px]" style={{ boxShadow: "0 0 0 6px var(--halo-soft)" }} />
-                <span className="tour-ring absolute -inset-[3px] rounded-[15px] grad-heat p-[2px]" />
+                <span className="tour-ring absolute -inset-[3px] rounded-[15px] bg-accent p-[2px]" />
                 {!reduce && (
                   <motion.span
                     className="absolute -inset-[9px] rounded-[18px] border-2 border-[var(--halo)]"
@@ -391,7 +391,7 @@ function Segments({ index, reduce }: { index: number; reduce: boolean }) {
           {i < index && <span className="absolute inset-0 rounded-full bg-accent/60" />}
           {i === index && (
             <motion.span
-              className="absolute inset-0 origin-left rounded-full grad-action"
+              className="absolute inset-0 origin-left rounded-full bg-accent"
               initial={reduce ? false : { scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 0.5, ease: EASE_OUT_SOFT }}
@@ -436,14 +436,14 @@ function StepCard({
       <div className="flex items-center gap-3 px-4 pt-4">
         <motion.span
           key={step.id}
-          className="grid size-9 shrink-0 place-items-center rounded-full grad-action text-white shadow-[0_6px_14px_-8px_rgb(51_70_232/0.8)]"
+          className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-white"
           initial={reduce ? false : { scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.36, ease: EASE_OUT_SOFT }}
         >
           <Icon className="size-[18px]" strokeWidth={1.75} aria-hidden />
         </motion.span>
-        <p className="min-w-0 flex-1 text-[12.5px] text-fg-3">
+        <p className="min-w-0 flex-1 text-[13px] text-fg-3">
           Step <span className="font-medium text-fg tnum">{index + 1}</span> of <span className="tnum">{COUNTED}</span>
         </p>
         <Button variant="ghost" size="sm" className="-mr-1" onClick={onSkip}>
@@ -457,22 +457,17 @@ function StepCard({
         <Segments index={index} reduce={reduce} />
       </div>
       <div className="px-4 pt-4">
-        <h2
-          id="tour-title"
-          ref={titleRef}
-          tabIndex={-1}
-          className="font-display text-[17px] font-medium leading-snug tracking-[-0.01em] text-fg outline-none"
-        >
+        <h2 id="tour-title" ref={titleRef} tabIndex={-1} className="font-display text-[17px] leading-snug tracking-[-0.01em] text-fg outline-none">
           {step.title}
         </h2>
-        <p id="tour-body" className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+        <p id="tour-body" className="mt-1.5 text-[14px] leading-relaxed text-fg-2">
           {step.body}
         </p>
         <AnimatePresence initial={false} mode="wait">
           {progress.done ? (
             <motion.p
               key="done"
-              className="mt-3 flex items-center gap-2 text-[12.5px] font-medium text-success-text"
+              className="mt-3 flex items-center gap-2 text-[13px] font-medium text-success-text"
               initial={{ opacity: 0, y: 3 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -485,7 +480,7 @@ function StepCard({
           ) : progress.waiting && step.waitingFor ? (
             <motion.p
               key="waiting"
-              className="mt-3 flex items-center gap-2 text-[12.5px] text-accent-text"
+              className="mt-3 flex items-center gap-2 text-[13px] text-accent-text"
               initial={{ opacity: 0, y: 3 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -553,7 +548,6 @@ function Recap({
   return (
     <>
       <div className="relative overflow-hidden px-5 pb-4 pt-6 sm:rounded-t-panel">
-        <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-70" />
         <div className="relative flex flex-col items-start gap-4">
           <span className="relative grid size-12 place-items-center">
             {!reduce && (
@@ -566,7 +560,7 @@ function Recap({
               />
             )}
             <motion.span
-              className="relative grid size-12 place-items-center rounded-full grad-action text-white shadow-[0_10px_24px_-10px_rgb(51_70_232/0.85)]"
+              className="relative grid size-12 place-items-center rounded-full bg-accent text-white"
               initial={reduce ? false : { scale: 0.6, rotate: -12, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 320, damping: 18 }}
@@ -579,11 +573,11 @@ function Recap({
               id="tour-title"
               ref={titleRef}
               tabIndex={-1}
-              className="font-display text-[20px] font-medium leading-snug tracking-[-0.015em] text-fg outline-none"
+              className="font-display text-[20px] leading-snug tracking-[-0.015em] text-fg outline-none"
             >
               {step.title}
             </h2>
-            <p id="tour-body" className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+            <p id="tour-body" className="mt-1.5 text-[14px] leading-relaxed text-fg-2">
               {step.body}
             </p>
           </div>
@@ -607,7 +601,7 @@ function Recap({
                   focusRing,
                 )}
               >
-                <span className="grid size-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text transition-transform duration-200 group-hover:scale-105">
+                <span className="grid size-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text transition-transform duration-200">
                   <Icon className="size-4" strokeWidth={1.75} aria-hidden />
                 </span>
                 <span className="flex min-w-0 flex-col">
@@ -620,7 +614,7 @@ function Recap({
         })}
       </ul>
       <div className="mt-3 flex items-center gap-3 border-t border-line px-5 py-3.5">
-        <p className="min-w-0 flex-1 text-[12.5px] text-fg-3">Guided setup stays in your account menu.</p>
+        <p className="min-w-0 flex-1 text-[13px] text-fg-3">Guided setup stays in your account menu.</p>
         <Button variant="primary" size="sm" onClick={onFinish}>
           Finish
         </Button>

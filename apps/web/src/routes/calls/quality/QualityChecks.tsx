@@ -60,12 +60,12 @@ function Items({ run }: { run: EvaluatorRun }) {
             <span className="mt-px">
               <VerdictIcon verdict={it.verdict} />
             </span>
-            <span className="w-24 shrink-0 text-[12.5px] font-medium text-fg">{itemLabel(it, i)}</span>
-            <span className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-fg-2">
+            <span className="w-24 shrink-0 text-[13px] font-medium text-fg">{itemLabel(it, i)}</span>
+            <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-fg-2">
               {withoutLineRefs(it.rationale)}
               {it.evidence?.quote && <span className="mt-0.5 block italic text-fg-3">"{it.evidence.quote}"</span>}
             </span>
-            {it.score != null && <span className="shrink-0 font-mono text-[11.5px] text-fg-3 tnum">{fmt(it.score)}</span>}
+            {it.score != null && <span className="shrink-0 font-mono text-[12px] text-fg-3 tnum">{fmt(it.score)}</span>}
           </li>
         ))}
       </ol>
@@ -127,15 +127,15 @@ function RunCard({ run, defaultOpen }: { run: EvaluatorRun; defaultOpen: boolean
             <span className="font-mono text-[11px] text-fg-3">v{run.evaluator_version}</span>
             <Badge tone={runTone(run)}>{runStateLabel(run)}</Badge>
             {run.scope === "turn" && items.length > 0 && (
-              <span className="font-mono text-[11.5px] text-fg-3 tnum">
+              <span className="font-mono text-[12px] text-fg-3 tnum">
                 {failing} of {items.length} turns failed
               </span>
             )}
           </span>
           {!open && run.rationale && run.verdict !== "not_applicable" && (
-            <span className="line-clamp-1 text-[12.5px] text-fg-2">{withoutLineRefs(run.rationale)}</span>
+            <span className="line-clamp-1 text-[13px] text-fg-2">{withoutLineRefs(run.rationale)}</span>
           )}
-          {run.status === "error" && run.error && <span className="text-[12.5px] text-danger-text">{run.error}</span>}
+          {run.status === "error" && run.error && <span className="text-[13px] text-danger-text">{run.error}</span>}
         </span>
         {run.score != null && run.status === "completed" && (
           <span className="mt-0.5 shrink-0 font-mono text-[12px] text-fg-2 tnum">{fmt(run.score)}</span>
@@ -254,7 +254,7 @@ export function QualityChecks({ callId, canRerun }: { callId: string; canRerun: 
     return (
       <div className="flex items-start gap-3 rounded-panel border border-dashed border-line-strong px-4 py-3.5">
         <ShieldCheck weight="duotone" className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
-        <p className="text-[12.5px] text-fg-3">Quality checks could not load. {problemMessage(evals.error, "call")}</p>
+        <p className="text-[13px] text-fg-3">Quality checks could not load. {problemMessage(evals.error, "call")}</p>
       </div>
     );
   }
@@ -268,7 +268,7 @@ export function QualityChecks({ callId, canRerun }: { callId: string; canRerun: 
   return (
     <section aria-labelledby="checks-h" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 id="checks-h" className="text-[13.5px] font-semibold text-fg">
+        <h3 id="checks-h" className="text-[14px] font-semibold text-fg">
           Quality checks
         </h3>
         <Summary status={data.eval_status} pass={data.pass_count} fail={data.fail_count} errors={errors} />
@@ -279,7 +279,7 @@ export function QualityChecks({ callId, canRerun }: { callId: string; canRerun: 
         )}
       </div>
       {refused && (
-        <p role="alert" className="text-[12.5px] text-warning-text">
+        <p role="alert" className="text-[13px] text-warning-text">
           {refused}
         </p>
       )}
@@ -288,7 +288,7 @@ export function QualityChecks({ callId, canRerun }: { callId: string; canRerun: 
           <ShieldCheck weight="duotone" className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
           <div>
             <p className="text-[13px] font-medium text-fg">No checks ran on this call</p>
-            <p className="text-[12.5px] text-fg-3">Turn on checks in the agent's Quality tab; calls that end afterwards are scored automatically.</p>
+            <p className="text-[13px] text-fg-3">Turn on checks in the agent's Quality tab; calls that end afterwards are scored automatically.</p>
           </div>
         </div>
       ) : (
@@ -324,7 +324,7 @@ export function QualityChecks({ callId, canRerun }: { callId: string; canRerun: 
                 aria-label="Earlier results"
               >
                 {history.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-[12.5px]">
+                  <li key={r.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-[13px]">
                     <span className="font-medium text-fg-2">{r.evaluator_display_name ?? r.evaluator_name}</span>
                     <span className="font-mono text-[11px] text-fg-3">v{r.evaluator_version}</span>
                     <Badge tone={runTone(r)}>{runStateLabel(r)}</Badge>

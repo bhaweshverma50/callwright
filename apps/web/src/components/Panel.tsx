@@ -33,7 +33,7 @@ export function Panel({
             {icon && <span className="mt-0.5 text-fg-3 [&_svg]:size-4">{icon}</span>}
             <div className="flex flex-col gap-0.5">
               {title && <h2 className="text-[14px] font-semibold text-fg">{title}</h2>}
-              {description && <p className="text-[12.5px] text-fg-3">{description}</p>}
+              {description && <p className="text-[13px] text-fg-3">{description}</p>}
             </div>
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -108,7 +108,7 @@ export function FieldRow({
   const ids: FieldRowIds = { htmlFor, labelId, descriptionId: descId };
   const labelEl = (
     <span className="flex items-center gap-1.5">
-      <label id={labelId} htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
+      <label id={labelId} htmlFor={htmlFor} className="cursor-pointer text-[14px] font-medium text-fg">
         {label}
       </label>
       {hint && <InfoTip label={`About ${typeof label === "string" ? label.toLowerCase() : "this setting"}`}>{hint}</InfoTip>}
@@ -123,7 +123,7 @@ export function FieldRow({
             <div className="flex min-w-0 flex-col gap-0.5">
               {labelEl}
               {description && (
-                <p id={descId} className="text-[12.5px] leading-relaxed text-fg-3">
+                <p id={descId} className="text-[13px] leading-relaxed text-fg-3">
                   {description}
                 </p>
               )}
@@ -142,7 +142,7 @@ export function FieldRow({
           <div className="flex min-w-0 flex-col gap-0.5">
             {labelEl}
             {description && (
-              <p id={descId} className="text-[12.5px] leading-relaxed text-fg-3">
+              <p id={descId} className="text-[13px] leading-relaxed text-fg-3">
                 {description}
               </p>
             )}
@@ -178,12 +178,12 @@ export function InfoRow({
     <div className="flex items-center justify-between gap-4 px-5 py-4">
       <dt className={cn(rowLabel, "items-center")}>
         {icon && <span className={cn(rowIcon, "mt-0")}>{icon}</span>}
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-[13.5px] font-medium text-fg">
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-[14px] font-medium text-fg">
           {label}
           {hint && <InfoTip label={`About ${typeof label === "string" ? label.toLowerCase() : "this value"}`}>{hint}</InfoTip>}
         </span>
       </dt>
-      <dd className="flex min-w-0 justify-end text-right text-[13.5px] text-fg-2">
+      <dd className="flex min-w-0 justify-end text-right text-[14px] text-fg-2">
         <TruncatedText title={title}>{children}</TruncatedText>
       </dd>
     </div>
@@ -195,8 +195,8 @@ export function PageHeader({ title, description, actions }: { title: ReactNode; 
   return (
     <div className="mb-7 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
       <div className="flex min-w-0 flex-col gap-1.5">
-        <h1 className="font-display text-[22px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[26px]">{title}</h1>
-        {description && <p className="max-w-[72ch] text-[13.5px] text-fg-2">{description}</p>}
+        <h1 className="font-display text-[22px] leading-tight tracking-[-0.02em] text-fg sm:text-[26px]">{title}</h1>
+        {description && <p className="max-w-[72ch] text-[14px] text-fg-2">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -205,7 +205,7 @@ export function PageHeader({ title, description, actions }: { title: ReactNode; 
 
 /** Caption for figures and key/value keys: sentence case, small, muted. */
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cn("text-[12.5px] text-fg-3", className)}>{children}</span>;
+  return <span className={cn("text-[13px] text-fg-3", className)}>{children}</span>;
 }
 
 /**

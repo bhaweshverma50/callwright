@@ -23,7 +23,7 @@ function fromRate(component: Part): string {
 
 const TRIAL_MINUTES = talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS);
 
-const H2 = "font-display text-[26px] font-medium leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]";
+const H2 = "font-display text-[26px] leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]";
 
 /** A titled band: heading and intro on the left, the content as ruled rows on the right. */
 function Band({ id, title, intro, children }: { id: string; title: string; intro?: ReactNode; children: ReactNode }) {
@@ -65,7 +65,7 @@ export function Home() {
         <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-12 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:pb-24 lg:pt-14">
           <Reveal>
             <RevealItem>
-              <h1 className="max-w-[14ch] text-balance font-display text-[34px] font-semibold leading-[1.06] tracking-[-0.035em] text-fg sm:text-[46px] lg:text-[52px]">
+              <h1 className="max-w-[14ch] text-balance font-display text-[34px] leading-[1.06] tracking-[-0.035em] text-fg sm:text-[46px] lg:text-[52px]">
                 Phone agents fast enough that callers keep talking.
               </h1>
             </RevealItem>
@@ -76,7 +76,7 @@ export function Home() {
               </p>
             </RevealItem>
             <RevealItem className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
-              <Button asChild variant="primary" size="lg" idleSheen>
+              <Button asChild variant="primary" size="lg">
                 <Link to="/register">Create account</Link>
               </Button>
               <Button asChild variant="link" className="text-[15px]">
@@ -84,7 +84,7 @@ export function Home() {
               </Button>
             </RevealItem>
             <RevealItem>
-              <p className="mt-6 text-[13.5px] text-fg-3">
+              <p className="mt-6 text-[14px] text-fg-3">
                 New workspaces start with $5.00, about <span className="font-mono text-fg-2 tnum">{TRIAL_MINUTES}</span> minutes of calls.
               </p>
             </RevealItem>
@@ -135,7 +135,7 @@ export function Home() {
           {PARTS.map((c) => (
             <div key={c} className="flex items-baseline justify-between gap-6 py-4">
               <dt className="text-[15px] text-fg">{COMPONENT_LABELS[c]}</dt>
-              <dd className="text-right text-[13.5px] text-fg-3">
+              <dd className="text-right text-[14px] text-fg-3">
                 {c === "nc" ? (
                   <span className="text-[15px] text-fg">Included</span>
                 ) : (
@@ -152,16 +152,13 @@ export function Home() {
 
       <section aria-labelledby="start">
         <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:py-28">
-          <h2
-            id="start"
-            className="max-w-[20ch] text-balance font-display text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-fg sm:text-[40px]"
-          >
+          <h2 id="start" className="max-w-[20ch] text-balance font-display text-[30px] leading-[1.1] tracking-[-0.03em] text-fg sm:text-[40px]">
             Your first $5 is about {TRIAL_MINUTES} minutes of calls.
           </h2>
           <p className="mt-4 max-w-[52ch] text-[16px] leading-relaxed text-fg-2">
             No card needed until you add funds. Calls are billed per second from your balance.
           </p>
-          <Button asChild variant="primary" size="lg" idleSheen className="mt-8">
+          <Button asChild variant="primary" size="lg" className="mt-8">
             <Link to="/register">Create account</Link>
           </Button>
         </div>

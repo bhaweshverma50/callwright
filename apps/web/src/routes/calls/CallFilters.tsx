@@ -24,7 +24,7 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]",
+        "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]",
         on
           ? "border-accent bg-accent-soft font-medium text-accent-text"
           : "border-line-strong bg-surface text-fg-2 hover:border-accent/50 hover:text-fg",
@@ -116,7 +116,7 @@ export function FilterButton({
           Filters
           {count > 0 && (
             <span
-              className="grad-action grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 font-mono text-[11px] font-medium text-white tnum"
+              className="bg-accent grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 font-mono text-[11px] font-medium text-white tnum"
               aria-hidden
             >
               {count}
@@ -154,7 +154,7 @@ export function FilterButton({
               </Group>
             ))}
             <Group title="Agent">
-              {agents.length === 0 && <span className="text-[12.5px] text-fg-3">No agents yet.</span>}
+              {agents.length === 0 && <span className="text-[13px] text-fg-3">No agents yet.</span>}
               {agents.map((a) => (
                 <Toggle key={a.id} on={filters.agent_id.includes(a.id)} onClick={() => toggle("agent_id", a.id)}>
                   {a.name}
@@ -262,7 +262,7 @@ export function FilterChips({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.16 }}
-            className="inline-flex h-7 max-w-full items-center gap-1 rounded-full border border-accent/30 bg-accent-soft pl-3 pr-1 text-[12.5px] text-accent-text"
+            className="inline-flex h-7 max-w-full items-center gap-1 rounded-full border border-accent/30 bg-accent-soft pl-3 pr-1 text-[13px] text-accent-text"
           >
             <span className="truncate">{c.label}</span>
             <button
@@ -276,7 +276,7 @@ export function FilterChips({
           </motion.span>
         ))}
       </AnimatePresence>
-      <Button variant="link" size="sm" className="ml-1 text-[12.5px]" onClick={onClear}>
+      <Button variant="link" size="sm" className="ml-1 text-[13px]" onClick={onClear}>
         Clear all
       </Button>
     </div>

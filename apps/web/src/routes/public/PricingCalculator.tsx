@@ -160,7 +160,7 @@ export function PricingCalculator() {
           ) : (
             <Skeleton className="mx-auto mt-1 h-3.5 w-16" />
           )}
-          <span className="block font-mono text-[11.5px] text-fg-3 tnum">
+          <span className="block font-mono text-[12px] text-fg-3 tnum">
             {off
               ? "optional"
               : line?.rate_per_min_usd
@@ -176,7 +176,6 @@ export function PricingCalculator() {
 
   return (
     <div className="relative">
-      <div aria-hidden className="glow-backdrop pointer-events-none absolute -inset-8 -z-0 rounded-[48px] blur-2xl" />
       <div className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
         <div className="border-b border-line px-5 pb-6 pt-5 sm:px-7">
           <p className="mb-5 flex items-center gap-2 text-[13px] text-fg-3">
@@ -254,7 +253,7 @@ export function PricingCalculator() {
             </Field>
 
             <details className="group rounded-panel border border-line bg-surface-2/60 px-4 py-3.5">
-              <summary className={cn("flex cursor-pointer select-none list-none items-center gap-2 text-[13.5px] font-medium text-fg", focusRing)}>
+              <summary className={cn("flex cursor-pointer select-none list-none items-center gap-2 text-[14px] font-medium text-fg", focusRing)}>
                 <ChevronDown className="size-4 text-fg-3 transition-transform group-open:rotate-180" aria-hidden />
                 Usage per minute of call
                 <span className="font-normal text-fg-3">for long prompts or chatty agents</span>
@@ -289,14 +288,14 @@ export function PricingCalculator() {
 
             {perMinute !== null && perMinute > 0n && (
               <section aria-labelledby="buys">
-                <h3 id="buys" className="flex items-center gap-2 text-[13.5px] font-medium text-fg">
+                <h3 id="buys" className="flex items-center gap-2 text-[14px] font-medium text-fg">
                   <Clock className="size-4 text-fg-3" aria-hidden />
                   What a top-up buys on this chain
                 </h3>
                 <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[25, 100, 500, 1000].map((d) => (
                     <div key={d} className="rounded-control border border-line bg-surface-2/60 px-3.5 py-3">
-                      <dt className="font-mono text-[12.5px] text-fg-3 tnum">{formatUsd(String(d), { places: 0 })}</dt>
+                      <dt className="font-mono text-[13px] text-fg-3 tnum">{formatUsd(String(d), { places: 0 })}</dt>
                       <dd className="mt-1 text-[13px] text-fg-2">
                         <Ticker
                           value={Number((BigInt(d) * 1_000_000n) / perMinute)}
@@ -418,7 +417,7 @@ function ChainChoice({
                       <TruncatedText focusable={false} side="left" className="flex-1">
                         {o.label}
                       </TruncatedText>
-                      {o.value !== NONE && <span className="font-mono text-[11.5px] text-fg-3 tnum">{formatUsd(o.rate, { places: 4 })}/m</span>}
+                      {o.value !== NONE && <span className="font-mono text-[12px] text-fg-3 tnum">{formatUsd(o.rate, { places: 4 })}/m</span>}
                     </button>
                   );
                 })}
@@ -548,7 +547,7 @@ function Receipt({
         </div>
       </dl>
 
-      <p className="mt-auto pt-6 text-[12.5px] leading-relaxed text-fg-3">
+      <p className="mt-auto pt-6 text-[13px] leading-relaxed text-fg-3">
         Catalog version <span className="font-mono tnum">{version ?? ""}</span>. Calls are billed per second, rounded up, from your prepaid balance.
       </p>
     </section>

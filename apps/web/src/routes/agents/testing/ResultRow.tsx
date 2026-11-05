@@ -62,10 +62,10 @@ export function ResultRow({
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="flex min-w-0 items-center gap-3">
-            <span className="truncate text-[13.5px] font-medium text-fg">{result.case_name}</span>
+            <span className="truncate text-[14px] font-medium text-fg">{result.case_name}</span>
             <CategoryLabel slug={result.category} categories={categories} className="hidden shrink-0 sm:inline-flex" />
           </span>
-          <span className="truncate text-[12.5px] text-fg-3">{result.agent_response ?? result.error_message ?? result.user_prompt}</span>
+          <span className="truncate text-[13px] text-fg-3">{result.agent_response ?? result.error_message ?? result.user_prompt}</span>
         </span>
         <span className="flex items-center gap-3">
           {result.duration_ms != null && (
@@ -91,7 +91,7 @@ export function ResultRow({
                   <li key={i} className="flex min-w-0 flex-col gap-1 rounded-control border border-line bg-surface px-3 py-2">
                     <span className="flex flex-wrap items-center gap-2">
                       <Wrench className="size-3.5 text-fg-3" aria-hidden />
-                      <span className="font-mono text-[12.5px] text-fg">{t.name}</span>
+                      <span className="font-mono text-[13px] text-fg">{t.name}</span>
                       {t.answer_source && <AnswerSourceBadge source={t.answer_source} />}
                     </span>
                     <span className="break-all font-mono text-[12px] text-fg-3">{JSON.stringify(t.arguments)}</span>
@@ -116,7 +116,7 @@ export function ResultRow({
           )}
           {settled && (
             <div className="flex flex-col gap-1.5 rounded-control border border-line bg-surface px-3.5 py-3">
-              <span className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-2">
+              <span className="flex flex-wrap items-center gap-2 text-[13px] text-fg-2">
                 <Gavel className="size-3.5 text-fg-3" aria-hidden />
                 Judge {result.judge_status ? JUDGE_LABEL[result.judge_status] : "pending"}
                 {result.is_manual && result.judge_status && (
@@ -132,7 +132,7 @@ export function ResultRow({
           )}
           {settled && (
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`Verdict for ${result.case_name}`}>
-              <span className="mr-1 text-[12.5px] text-fg-3">{canOverride ? "Override the verdict" : "You can override once the run finishes"}</span>
+              <span className="mr-1 text-[13px] text-fg-3">{canOverride ? "Override the verdict" : "You can override once the run finishes"}</span>
               <Button
                 size="sm"
                 variant={result.override_status === "passed" ? "primary" : "secondary"}

@@ -174,12 +174,12 @@ export function ValidateDialog({
           )}
         </div>
         {report?.warnings?.map((w) => (
-          <p key={w} className="text-[12.5px] text-fg-2">
+          <p key={w} className="text-[13px] text-fg-2">
             {w}
           </p>
         ))}
         {report?.tools_missing_mock && report.tools_missing_mock.length > 0 && (
-          <p className="text-[12.5px] text-fg-2">
+          <p className="text-[13px] text-fg-2">
             Tools without a mock response: <span className="font-mono">{report.tools_missing_mock.join(", ")}</span>. They answer with the recorded
             output or a generated stand-in.
           </p>
@@ -197,7 +197,7 @@ export function ValidateDialog({
             {showThresholds ? "Hide keep rule" : "Change keep rule"}
           </Button>
           {!showThresholds && (
-            <p className="text-[12.5px] text-fg-3">
+            <p className="text-[13px] text-fg-3">
               Keep the fix if the headline check improves by {values.min_improvement_pp} pp or more, no other check drops by more than{" "}
               {values.max_regression_pp} pp, and at least {values.min_sample} affected calls are judged in both batches.
             </p>

@@ -155,16 +155,16 @@ function SettingField({
         <label htmlFor={id} className="text-[13px] font-medium text-fg">
           {field.label}
         </label>
-        {range && <span className="font-mono text-[11.5px] text-fg-3 tnum">{range}</span>}
+        {range && <span className="font-mono text-[12px] text-fg-3 tnum">{range}</span>}
       </div>
       <div className="flex min-w-0 flex-col gap-1.5 sm:items-end">
         {control}
         {error ? (
-          <p id={helpId} role="alert" className="text-[12.5px] text-danger-text sm:text-right">
+          <p id={helpId} role="alert" className="text-[13px] text-danger-text sm:text-right">
             {error}
           </p>
         ) : (
-          <p id={helpId} className="max-w-[56ch] text-[12.5px] leading-relaxed text-fg-3 sm:text-right">
+          <p id={helpId} className="max-w-[56ch] text-[13px] leading-relaxed text-fg-3 sm:text-right">
             {adjusted && <span className="font-medium text-warning-text">Adjusted to fit this version's range. </span>}
             {helper}
           </p>
@@ -269,14 +269,14 @@ export function EvaluatorCard({
         <span
           className={cn(
             "grid size-9 shrink-0 place-items-center rounded-control transition-colors duration-300 [&_svg]:size-[18px]",
-            setting.enabled ? "grad-action text-white shadow-[0_6px_16px_-8px_rgb(51_70_232/0.7)]" : "bg-surface-3 text-fg-3",
+            setting.enabled ? "bg-accent text-white" : "bg-surface-3 text-fg-3",
           )}
         >
           <Icon aria-hidden />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="text-[13.5px] font-semibold text-fg">{setting.display_name}</h3>
+            <h3 className="text-[14px] font-semibold text-fg">{setting.display_name}</h3>
             <Badge>{SCOPE_LABELS[setting.scope]}</Badge>
             {judge ? (
               <Badge tone="warning" icon={<CircleDollarSign aria-hidden />}>
@@ -286,9 +286,9 @@ export function EvaluatorCard({
               <Badge tone="success">{COST_LABELS.free}</Badge>
             )}
             {setting.kind === "custom" && <Badge tone="accent">Custom</Badge>}
-            <span className="font-mono text-[11.5px] text-fg-3">v{setting.current_version}</span>
+            <span className="font-mono text-[12px] text-fg-3">v{setting.current_version}</span>
           </div>
-          {setting.description && <p className="text-[12.5px] leading-relaxed text-fg-2">{setting.description}</p>}
+          {setting.description && <p className="text-[13px] leading-relaxed text-fg-2">{setting.description}</p>}
           {judge && (
             <p className="text-[12px] text-warning-text">
               Costs credit per call
@@ -296,7 +296,7 @@ export function EvaluatorCard({
             </p>
           )}
           {cardError && (
-            <p role="alert" className="text-[12.5px] text-danger-text">
+            <p role="alert" className="text-[13px] text-danger-text">
               {cardError}
             </p>
           )}
@@ -391,7 +391,7 @@ export function EvaluatorCard({
                   exit={{ opacity: 0 }}
                   className="flex items-center justify-end gap-2 border-t border-line bg-surface-2/50 px-4 py-2.5"
                 >
-                  <span className="mr-auto text-[12.5px] text-fg-3">Unsaved changes to this check</span>
+                  <span className="mr-auto text-[13px] text-fg-3">Unsaved changes to this check</span>
                   <Button size="sm" icon={<RotateCcw aria-hidden />} onClick={() => setDraft(saved)} disabled={busy === "save"}>
                     Discard
                   </Button>

@@ -34,7 +34,7 @@ function blocks(lines: DiffLine[]): Block[] {
 export function DiffView({ lines, className }: { lines: DiffLine[]; className?: string }) {
   const [open, setOpen] = useState<Set<number>>(() => new Set());
   return (
-    <div className={cn("py-1 font-sans text-[12.5px] leading-relaxed", className)} role="table" aria-label="Line changes">
+    <div className={cn("py-1 font-sans text-[13px] leading-relaxed", className)} role="table" aria-label="Line changes">
       {blocks(lines).map((b) =>
         b.kind === "fold" && !open.has(b.start) ? (
           // A table only holds rows, so the fold button sits in a row of its own.

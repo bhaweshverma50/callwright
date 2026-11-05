@@ -210,7 +210,7 @@ export function VariantEditor({
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-[13px] font-medium text-fg">Tool descriptions</legend>
           {tools.map((t) => (
-            <Field key={t.id} label={<span className="font-mono text-[12.5px]">{t.name}</span>}>
+            <Field key={t.id} label={<span className="font-mono text-[13px]">{t.name}</span>}>
               {({ id }) => (
                 <Textarea
                   id={id}

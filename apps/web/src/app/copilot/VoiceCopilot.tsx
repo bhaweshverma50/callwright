@@ -510,14 +510,14 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
                   maxLength={1000}
                   autoFocus
                   className={cn(
-                    "h-8 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-2.5 text-[12.5px] text-fg placeholder:text-fg-3",
+                    "h-8 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-2.5 text-[13px] text-fg placeholder:text-fg-3",
                     focusRing,
                   )}
                 />
                 <button
                   type="submit"
                   aria-label="Send command"
-                  className={cn("grad-action grid size-8 cursor-pointer place-items-center rounded-control text-white", focusRing)}
+                  className={cn("bg-accent grid size-8 cursor-pointer place-items-center rounded-control text-white", focusRing)}
                 >
                   <Send className="size-3.5" aria-hidden />
                 </button>
@@ -564,7 +564,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
             onClick={() => (listening ? void stop() : busy ? undefined : void start("toggle"))}
             className={cn(
               size,
-              "relative grid cursor-pointer place-items-center rounded-full transition-[transform,background-color,color] duration-150 hover:scale-[1.04] active:scale-95",
+              "relative grid cursor-pointer place-items-center rounded-full transition-[transform,background-color,color] duration-150 active:scale-95",
               // Secondary until it is live: "Ask about your data" is the dock's one gradient action.
               listening ? "bg-on-air text-white" : "bg-accent-soft text-accent-text hover:bg-accent hover:text-white",
               focusRing,

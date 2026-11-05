@@ -34,8 +34,8 @@ export function QualityStory() {
       <ol>
         {STEPS.map((s, i) => (
           <StoryStep key={s.title} index={i} onEnter={setActive} active={i === active}>
-            <h3 className="font-display text-[22px] font-medium leading-[1.2] tracking-[-0.02em] text-fg sm:text-[26px]">{s.title}</h3>
-            <p className="mt-3 max-w-[42ch] text-[15.5px] leading-relaxed text-fg-2">{s.text}</p>
+            <h3 className="font-display text-[22px] leading-[1.2] tracking-[-0.02em] text-fg sm:text-[26px]">{s.title}</h3>
+            <p className="mt-3 max-w-[42ch] text-[16px] leading-relaxed text-fg-2">{s.text}</p>
             <div className="mt-8 lg:hidden">
               <Frame>
                 <s.Scene />
@@ -109,13 +109,13 @@ function CallsScene(_: { active?: boolean }) {
       <div className="mt-3 flex items-center justify-between gap-4 rounded-panel bg-surface-2 px-4 py-3.5">
         <div className="min-w-0">
           <OnAir label="Live, front desk" />
-          <p className="mt-1 truncate text-[13.5px] text-fg-2">&ldquo;Can I come in tomorrow morning?&rdquo;</p>
+          <p className="mt-1 truncate text-[14px] text-fg-2">&ldquo;Can I come in tomorrow morning?&rdquo;</p>
         </div>
         <Ticker value={cost} format={usd} className="font-mono text-[18px] text-fg" />
       </div>
       <ul className="mt-2 divide-y divide-line">
         {rows.map((r) => (
-          <li key={r.who} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-1 py-3 text-[13.5px]">
+          <li key={r.who} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-1 py-3 text-[14px]">
             <span className="min-w-0">
               <span className="block truncate font-mono text-fg">{r.who}</span>
               <span className="text-fg-3">
@@ -196,7 +196,7 @@ function VerdictScene({ active = true }: { active?: boolean }) {
           );
         })}
       </ul>
-      <p className="mt-5 text-[13.5px] text-fg-2">
+      <p className="mt-5 text-[14px] text-fg-2">
         This check agrees with your reviewers on <span className="font-mono text-fg tnum">92%</span> of labelled calls.
       </p>
     </div>
@@ -209,12 +209,12 @@ function FixScene({ active = true }: { active?: boolean }) {
     <div className="flex flex-col">
       <p className="text-[13px] font-medium text-fg-2">Issue seen in 14 calls this week</p>
       <p className="mt-2 text-[16px] font-semibold text-fg">Books a visit without the patient&apos;s date of birth</p>
-      <div className="mt-4 overflow-hidden rounded-panel border border-line font-mono text-[12.5px] leading-relaxed">
+      <div className="mt-4 overflow-hidden rounded-panel border border-line font-mono text-[13px] leading-relaxed">
         <p className="bg-danger-soft px-3 py-1.5 text-danger-text">- Book the earliest slot the caller accepts.</p>
         <p className="bg-success-soft px-3 py-1.5 text-success-text">+ Ask for the date of birth and confirm it before booking any slot.</p>
       </div>
       <div className="mt-5">
-        <div className="flex items-baseline justify-between text-[13.5px]">
+        <div className="flex items-baseline justify-between text-[14px]">
           <span className="text-fg-2">Replayed on the 14 calls</span>
           <span className="font-mono text-fg tnum">13 now ask first</span>
         </div>
@@ -227,7 +227,7 @@ function FixScene({ active = true }: { active?: boolean }) {
           />
         </div>
       </div>
-      <p className="mt-5 text-[13.5px] text-fg-3">Nothing changes until you apply the fix.</p>
+      <p className="mt-5 text-[14px] text-fg-3">Nothing changes until you apply the fix.</p>
     </div>
   );
 }

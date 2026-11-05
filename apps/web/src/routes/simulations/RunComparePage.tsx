@@ -81,7 +81,7 @@ function Item({ item, turn, diverged }: { item: SimTranscriptItem; turn: number 
             {caller ? "Caller" : "Agent"}
             {turn !== undefined && <span className="font-mono tnum">turn {turn}</span>}
           </span>
-          <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-fg">{item.content}</p>
+          <p className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-fg">{item.content}</p>
         </div>
       </li>
     );
@@ -149,7 +149,7 @@ function TranscriptPanel({
     <section aria-label={title} className="flex min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-1">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3">
         <h2 className="text-[14px] font-semibold text-fg">{title}</h2>
-        <Link to={`/calls?call=${side.call_id}`} className="min-w-0 truncate font-mono text-[11.5px] text-fg-3 hover:text-fg hover:underline">
+        <Link to={`/calls?call=${side.call_id}`} className="min-w-0 truncate font-mono text-[12px] text-fg-3 hover:text-fg hover:underline">
           {side.call_id}
         </Link>
         {meta}
@@ -223,10 +223,10 @@ const VERDICT_COLUMNS: Column<VerdictDiff>[] = [
     key: "why",
     header: "Why, on the simulated call",
     cell: (v) => (
-      <p className="min-w-[260px] max-w-[60ch] whitespace-normal py-2 text-[12.5px] leading-relaxed text-fg-2">
+      <p className="min-w-[260px] max-w-[60ch] whitespace-normal py-2 text-[13px] leading-relaxed text-fg-2">
         {withoutLineRefs(v.simulated_reason) ?? "No rationale"}
         {v.original_score != null || v.simulated_score != null ? (
-          <span className="mt-1 block font-mono text-[11.5px] text-fg-3 tnum">
+          <span className="mt-1 block font-mono text-[12px] text-fg-3 tnum">
             Score {fmtScore(v.original_score)} to {fmtScore(v.simulated_score)}
           </span>
         ) : null}
@@ -244,17 +244,17 @@ function Summary({ run }: { run: SimulationRun }) {
       className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-panel border border-line bg-surface px-5 py-3.5 shadow-1"
     >
       <SimStatusBadge status={run.status} />
-      <span className="text-[12.5px] text-fg-2">
+      <span className="text-[13px] text-fg-2">
         <span className="text-fg-3">Mode </span>
         {MODE_LABELS[run.mode]}
       </span>
-      <span className="text-[12.5px] text-fg-2">
+      <span className="text-[13px] text-fg-2">
         <span className="text-fg-3">Target </span>
         {targetText(run)}
       </span>
-      {run.end_reason && <span className="text-[12.5px] text-fg-2">{END_REASONS[run.end_reason]}</span>}
+      {run.end_reason && <span className="text-[13px] text-fg-2">{END_REASONS[run.end_reason]}</span>}
       {sources.length > 0 && (
-        <span className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-fg-3">
+        <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-fg-3">
           Tool answers
           {sources.map((k) => (
             <Badge key={k} tone={ANSWER_SOURCES[k].tone}>
@@ -263,7 +263,7 @@ function Summary({ run }: { run: SimulationRun }) {
           ))}
         </span>
       )}
-      <span className="font-mono text-[12.5px] text-fg tnum sm:ml-auto">{cost(run.cost_usd)}</span>
+      <span className="font-mono text-[13px] text-fg tnum sm:ml-auto">{cost(run.cost_usd)}</span>
     </section>
   );
 }
@@ -313,7 +313,7 @@ export function RunComparePage() {
     c && c.unused_caller_turns && c.unused_caller_turns.length > 0 ? (
       <div className="border-t border-line bg-surface-2/60 px-4 py-3">
         <p className="mb-1.5 text-[12px] font-medium text-fg-2">Recorded caller turns never used</p>
-        <ol className="flex flex-col gap-1 text-[12.5px] text-fg-3">
+        <ol className="flex flex-col gap-1 text-[13px] text-fg-3">
           {c.unused_caller_turns.map((t, i) => (
             <li key={i} className="break-words">
               {t}
@@ -348,7 +348,7 @@ export function RunComparePage() {
               <>
                 {" "}
                 from{" "}
-                <Link to={`/calls?call=${r.base_call_id}`} className="break-all font-mono text-[12.5px] hover:underline">
+                <Link to={`/calls?call=${r.base_call_id}`} className="break-all font-mono text-[13px] hover:underline">
                   {r.base_call_id}
                 </Link>
               </>
@@ -429,7 +429,7 @@ export function RunComparePage() {
                 }
               />
               {c.verdicts.some(audioOnly) && (
-                <p className="border-t border-line px-5 py-3 text-[12.5px] text-fg-3">
+                <p className="border-t border-line px-5 py-3 text-[13px] text-fg-3">
                   Not run on text simulations, because they need call audio:{" "}
                   {[...new Set(c.verdicts.filter(audioOnly).map((v) => v.evaluator_display_name))].join(", ")}.
                 </p>

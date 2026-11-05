@@ -70,7 +70,7 @@ export function CallingHoursEditor() {
                       checked={!!w}
                       onCheckedChange={(on) => setDay(d, on ? { ...DEFAULT } : null)}
                     />
-                    <span className={cn("w-[52px] text-[12.5px]", w ? "text-fg-2" : "text-fg-3")}>{w ? "Calls" : "No calls"}</span>
+                    <span className={cn("w-[52px] text-[13px]", w ? "text-fg-2" : "text-fg-3")}>{w ? "Calls" : "No calls"}</span>
                   </div>
                   {w ? (
                     <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1 sm:w-fit">
@@ -98,7 +98,7 @@ export function CallingHoursEditor() {
                       <div className="relative h-1 overflow-hidden rounded-full bg-surface-3" aria-hidden>
                         {!bad && (
                           <span
-                            className="grad-action absolute inset-y-0 rounded-full transition-all duration-300"
+                            className="bg-accent absolute inset-y-0 rounded-full transition-[left,width] duration-300"
                             style={{ left: `${span(w).left}%`, width: `${span(w).width}%` }}
                           />
                         )}
@@ -106,7 +106,7 @@ export function CallingHoursEditor() {
                       {bad && <p className="text-[12px] text-danger-text">The start must be before the end.</p>}
                     </div>
                   ) : (
-                    <span className="col-span-2 flex h-8 items-center rounded-control border border-dashed border-line px-3 text-[12.5px] text-fg-3 sm:col-span-1 sm:w-[268px]">
+                    <span className="col-span-2 flex h-8 items-center rounded-control border border-dashed border-line px-3 text-[13px] text-fg-3 sm:col-span-1 sm:w-[268px]">
                       Blocked all day
                     </span>
                   )}

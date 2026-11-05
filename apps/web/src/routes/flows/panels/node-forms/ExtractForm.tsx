@@ -58,7 +58,7 @@ export function ExtractForm({ config, onChange, issues, takenNames }: FormProps<
                   value={f.description}
                   placeholder="What to look for, for example the caller's date of birth"
                   onChange={(e) => setField(i, { description: e.target.value })}
-                  className="mt-2 min-h-0 text-[12.5px]"
+                  className="mt-2 min-h-0 text-[13px]"
                 />
                 {issueFor(issues, `fields.${i}`) && <p className="mt-1.5 text-[12px] text-danger-text">{issueFor(issues, `fields.${i}`)}</p>}
               </li>

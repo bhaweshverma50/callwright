@@ -26,7 +26,7 @@ export function PreflightStep({ report, agentId, agentType }: { report: Prefligh
 
       {missing.length > 0 && (
         <div className="flex flex-col gap-3 rounded-control border border-warning/40 bg-warning-soft px-3.5 py-3 text-warning-text" role="alert">
-          <p className="flex items-start gap-2 text-[13.5px] font-medium">
+          <p className="flex items-start gap-2 text-[14px] font-medium">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             {missing.length === 1 ? "1 tool has no mock response" : `${missing.length} tools have no mock response`}
           </p>
@@ -42,7 +42,7 @@ export function PreflightStep({ report, agentId, agentType }: { report: Prefligh
               </li>
             ))}
           </ul>
-          <p className="pl-6 text-[12.5px] leading-relaxed text-fg-2">
+          <p className="pl-6 text-[13px] leading-relaxed text-fg-2">
             Simulations never call real systems. If you run anyway, these calls are answered by the output recorded in the original call when there is
             one, otherwise by a generated stand-in. Each answer is labelled with its source.
           </p>
@@ -55,7 +55,7 @@ export function PreflightStep({ report, agentId, agentType }: { report: Prefligh
       {report.invalid_calls.length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-medium text-fg">{plural(report.invalid_calls.length, "call")} will be skipped</p>
-          <ul className="max-h-40 divide-y divide-line overflow-y-auto rounded-control border border-line text-[12.5px]">
+          <ul className="max-h-40 divide-y divide-line overflow-y-auto rounded-control border border-line text-[13px]">
             {report.invalid_calls.map((c) => (
               <li key={c.call_id} className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
                 <span className="min-w-0 truncate font-mono text-fg-2">{c.call_id}</span>
@@ -67,7 +67,7 @@ export function PreflightStep({ report, agentId, agentType }: { report: Prefligh
       )}
 
       {report.warnings.map((w) => (
-        <p key={w} className="flex items-start gap-2 text-[12.5px] text-fg-2">
+        <p key={w} className="flex items-start gap-2 text-[13px] text-fg-2">
           <Info className="mt-0.5 size-3.5 shrink-0 text-fg-3" aria-hidden />
           {w}
         </p>

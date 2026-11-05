@@ -59,8 +59,8 @@ export function SummaryText({ text }: { text: string }) {
           key={i}
           className={
             i === 0 && found.length
-              ? "max-w-[72ch] text-[14.5px] font-medium leading-relaxed text-fg"
-              : "max-w-[72ch] text-[13.5px] leading-relaxed text-fg"
+              ? "max-w-[72ch] text-[15px] font-medium leading-relaxed text-fg"
+              : "max-w-[72ch] text-[14px] leading-relaxed text-fg"
           }
         >
           {p}
@@ -77,8 +77,8 @@ export function SummaryText({ text }: { text: string }) {
                   <Icon className="size-3.5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <dt className="text-[12.5px] font-semibold text-fg">{section.label}</dt>
-                  <dd className="mt-0.5 text-[13.5px] leading-relaxed text-fg-2">
+                  <dt className="text-[13px] font-semibold text-fg">{section.label}</dt>
+                  <dd className="mt-0.5 text-[14px] leading-relaxed text-fg-2">
                     {bullets.length > 1 ? (
                       <ul className="flex flex-col gap-1">
                         {bullets.map((b, i) => (

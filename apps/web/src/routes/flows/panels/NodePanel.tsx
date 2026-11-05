@@ -99,7 +99,7 @@ export const NodePanel = memo(function NodePanel({
         {own.length > 0 && (
           <ul className="flex flex-col gap-1.5 border-b border-line bg-surface-2/50 px-5 py-3">
             {own.map((i, k) => (
-              <li key={k} className="flex items-start gap-2 text-[12.5px] leading-relaxed">
+              <li key={k} className="flex items-start gap-2 text-[13px] leading-relaxed">
                 {i.severity === "error" ? (
                   <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-danger-text" aria-label="Error" />
                 ) : (

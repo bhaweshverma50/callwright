@@ -59,11 +59,11 @@ function QualityCell({ q }: { q: CallListItem["quality"] }) {
     );
   return (
     <span className="flex items-center gap-2 whitespace-nowrap">
-      <span className="flex items-center gap-1 text-[12.5px] text-fg-2">
+      <span className="flex items-center gap-1 text-[13px] text-fg-2">
         {icon}
         {q.eval_status === "not_evaluated" ? <span className="text-fg-3">Not evaluated</span> : EVAL_LABELS[q.eval_status]}
         {(q.pass_count > 0 || q.fail_count > 0) && (
-          <span className="font-mono text-[11.5px] text-fg-3 tnum">
+          <span className="font-mono text-[12px] text-fg-3 tnum">
             {q.pass_count}/{q.pass_count + q.fail_count}
           </span>
         )}
@@ -159,7 +159,7 @@ const ALL: CallColumn[] = [
     label: "From",
     cell: (r) =>
       r.channel === "web" && !r.from_number ? (
-        <span className="text-[12.5px] text-fg-3">Browser</span>
+        <span className="text-[13px] text-fg-3">Browser</span>
       ) : (
         <span className="whitespace-nowrap font-mono text-[12px] text-fg-2 tnum">
           {phone(r.from_number) || <span className="text-fg-3">n/a</span>}

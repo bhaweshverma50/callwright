@@ -35,7 +35,7 @@ export function Group({
           {icon && <span className="mt-0.5 text-fg-3 [&_svg]:size-4">{icon}</span>}
           <div className="min-w-0">
             <h3 className="text-[14px] font-semibold leading-snug text-fg">{title}</h3>
-            {description && <p className="mt-1 text-[12.5px] leading-relaxed text-fg-3">{description}</p>}
+            {description && <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{description}</p>}
           </div>
         </div>
         {aside}

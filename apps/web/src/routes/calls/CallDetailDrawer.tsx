@@ -1,8 +1,9 @@
 import { ClipboardText, PhoneX } from "@phosphor-icons/react";
 import {
   ArrowLeftRight,
-  FlaskConical,
+  Bot,
   ChartNoAxesColumn,
+  FlaskConical,
   GitBranch,
   Hash,
   MessagesSquare,
@@ -10,7 +11,6 @@ import {
   PhoneIncoming,
   Receipt,
   ShieldCheck,
-  Sparkles,
   Timer,
   type LucideIcon,
 } from "lucide-react";
@@ -72,14 +72,14 @@ function Header({ call }: { call: CallDetail }) {
         <StatusBadge status={call.status} />
         <Badge tone="neutral">{CHANNEL_LABELS[call.channel]}</Badge>
         {call.origin !== "live" && <Badge tone={call.origin === "simulation" ? "accent" : "neutral"}>{ORIGIN_LABELS[call.origin]}</Badge>}
-        {call.disconnect_reason && <span className="text-[12.5px] text-fg-3">{REASON_LABELS[call.disconnect_reason]}</span>}
+        {call.disconnect_reason && <span className="text-[13px] text-fg-3">{REASON_LABELS[call.disconnect_reason]}</span>}
         <span className="ml-auto flex items-baseline gap-3">
           {call.cost && <CostHeader cost={call.cost} className="hidden sm:flex" />}
           {!isOnAir(call.status) && <span className="font-mono text-[15px] font-semibold text-fg tnum">{usd(call.cost_usd ?? null)}</span>}
         </span>
       </div>
       <dl className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-3 rounded-panel border border-line bg-surface-2/50 p-4 sm:grid-cols-2">
-        <Fact icon={Sparkles} label="Agent">
+        <Fact icon={Bot} label="Agent">
           <span className="flex min-w-0 items-center gap-1.5">
             <TruncatedText>
               {call.agent.name}
@@ -90,13 +90,13 @@ function Header({ call }: { call: CallDetail }) {
         </Fact>
         <Fact icon={Hash} label="Call ID">
           <span className="flex min-w-0 items-center gap-1">
-            <TruncatedText className="font-mono text-[12.5px]">{call.call_id}</TruncatedText>
+            <TruncatedText className="font-mono text-[13px]">{call.call_id}</TruncatedText>
             <CopyButton value={call.call_id} label="Copy call ID" className="-my-1" />
           </span>
         </Fact>
         <Fact icon={PhoneIncoming} label="From and to">
           {call.channel !== "web" && (call.from_number || call.to_number) ? (
-            <span className="font-mono text-[12.5px] tnum">
+            <span className="font-mono text-[13px] tnum">
               {phone(call.from_number) || "Unknown"} <span className="text-fg-3">to</span> {phone(call.to_number) || "Unknown"}
             </span>
           ) : (
@@ -335,7 +335,7 @@ function SummaryCard({ summary, onOpen }: { summary: string; onOpen: () => void 
             {outcome}
           </p>
         )}
-        <button type="button" onClick={onOpen} className="link-underline mt-1.5 text-[12.5px] font-medium text-accent-text">
+        <button type="button" onClick={onOpen} className="link-underline mt-1.5 text-[13px] font-medium text-accent-text">
           Full summary
         </button>
       </div>

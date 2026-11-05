@@ -121,7 +121,7 @@ export function CostCard({ config, llm, voice }: { config: AgentConfig; llm: Llm
             <h2 id="cost-title" className="text-[14px] font-semibold text-fg">
               Cost per minute
             </h2>
-            <p className="text-[12.5px] text-fg-3">Updates as you change models and voices.</p>
+            <p className="text-[13px] text-fg-3">Updates as you change models and voices.</p>
           </div>
         </div>
         <InfoTip label="How the estimate works" side="left">
@@ -176,7 +176,7 @@ export function CostCard({ config, llm, voice }: { config: AgentConfig; llm: Llm
           {total ? (
             <span className={cn("transition-opacity", quote.isFetching && "opacity-70")}>
               <MoneyText value={total} places={4} animate className="text-[22px] font-semibold tracking-[-0.01em] text-fg" />
-              <span className="ml-0.5 text-[12.5px] text-fg-3">/min</span>
+              <span className="ml-0.5 text-[13px] text-fg-3">/min</span>
             </span>
           ) : (
             <Skeleton className="h-6 w-24" />
@@ -185,7 +185,7 @@ export function CostCard({ config, llm, voice }: { config: AgentConfig; llm: Llm
       </div>
 
       {minutes !== null && (
-        <p className="border-t border-line px-5 py-3 text-[12.5px] text-fg-2">
+        <p className="border-t border-line px-5 py-3 text-[13px] text-fg-2">
           Your balance covers about <span className="font-mono text-fg tnum">{minutes.toLocaleString()}</span> minutes on this agent.
         </p>
       )}
@@ -199,10 +199,10 @@ export function CostCard({ config, llm, voice }: { config: AgentConfig; llm: Llm
             className="overflow-hidden"
           >
             <div className="heat-border mx-3 mb-3 rounded-control bg-warning-soft/70 px-4 py-3" role="status">
-              <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-warning-text">
+              <p className="flex items-center gap-1.5 text-[13px] font-semibold text-warning-text">
                 <Zap className="size-3.5" aria-hidden /> Long prompt: calls may cost more
               </p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-fg-2">
+              <p className="mt-1 text-[13px] leading-relaxed text-fg-2">
                 A typical minute would send about <span className="font-mono tnum">{risk.perMinute.toLocaleString()}</span> input tokens, past the{" "}
                 <span className="font-mono tnum">{risk.bundle.toLocaleString()}</span> included in each minute of {llmModel?.label ?? "the model"}.
                 The extra is billed as a surcharge of about {surchargeText(line("llm")?.rate_per_min_usd, risk.perMinute / risk.bundle)} a minute.

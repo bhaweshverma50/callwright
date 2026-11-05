@@ -29,7 +29,7 @@ function Tile({ icon: Icon, label, value, hint }: { icon: LucideIcon; label: str
         aria-hidden
         className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-[radial-gradient(closest-side,var(--glow-a),transparent)]"
       />
-      <span className="flex items-center gap-2 text-[12.5px] text-fg-3">
+      <span className="flex items-center gap-2 text-[13px] text-fg-3">
         <Icon className="size-4" aria-hidden />
         {label}
       </span>
@@ -131,14 +131,14 @@ function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; ind
         <span
           className={cn(
             "grid size-9 shrink-0 place-items-center rounded-control [&_svg]:size-[18px]",
-            grey ? "bg-surface-3 text-fg-3" : "grad-action text-white",
+            grey ? "bg-surface-3 text-fg-3" : "bg-accent text-white",
           )}
         >
           <Icon aria-hidden />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className={cn("text-[13.5px] font-semibold", grey ? "text-fg-2" : "text-fg")}>{row.display_name}</span>
+            <span className={cn("text-[14px] font-semibold", grey ? "text-fg-2" : "text-fg")}>{row.display_name}</span>
             {row.flow_node_label && <Badge tone="accent">{row.flow_node_label}</Badge>}
             {row.evaluator_version != null && <span className="font-mono text-[11px] text-fg-3">v{row.evaluator_version}</span>}
           </span>
@@ -154,7 +154,7 @@ function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; ind
             <span className="text-[13px] font-medium text-fg-2">
               Not enough data ({row.n} of {min})
             </span>
-            <span className="text-[12.5px]">
+            <span className="text-[13px]">
               Label {min - row.n} more scored {min - row.n === 1 ? "call" : "calls"} to see how far this check can be trusted.
             </span>
           </div>
@@ -167,15 +167,15 @@ function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; ind
               <Badge tone={reading.tone} className="w-fit">
                 {reading.label}
               </Badge>
-              <span className="text-[12.5px] leading-relaxed text-fg-2">{reading.body}</span>
+              <span className="text-[13px] leading-relaxed text-fg-2">{reading.body}</span>
               {row.agreement_ci?.low != null && row.agreement_ci.high != null && (
-                <span className="font-mono text-[11.5px] text-fg-3 tnum">
+                <span className="font-mono text-[12px] text-fg-3 tnum">
                   95% range {pct(row.agreement_ci.low)} to {pct(row.agreement_ci.high)}
                 </span>
               )}
             </div>
           </div>
-          <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5 text-[11.5px]" role="table" aria-label={`${row.display_name} agreement matrix`}>
+          <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5 text-[12px]" role="table" aria-label={`${row.display_name} agreement matrix`}>
             <span role="columnheader" />
             <span role="columnheader" className="px-1 text-fg-3">
               You said good
@@ -195,7 +195,7 @@ function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; ind
             <Cell label="Both fail" sub="Check and you agree" value={row.both_fail} good n={row.n} />
           </div>
           {hint && (
-            <p className="flex items-start gap-2 rounded-control bg-accent-soft/50 px-3 py-2 text-[12.5px] text-accent-text">
+            <p className="flex items-start gap-2 rounded-control bg-accent-soft/50 px-3 py-2 text-[13px] text-accent-text">
               <SlidersHorizontal className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               {hint}
             </p>

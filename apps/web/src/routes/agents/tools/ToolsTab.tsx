@@ -56,14 +56,14 @@ function ToolRow({ tool, onEdit, onDetach }: { tool: Tool; onEdit: () => void; o
           <button
             type="button"
             onClick={onEdit}
-            className="min-w-0 truncate rounded-inline font-mono text-[13.5px] font-semibold text-fg hover:text-accent-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="min-w-0 truncate rounded-inline font-mono text-[14px] font-semibold text-fg hover:text-accent-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {tool.name}
           </button>
           <span className="text-[12px] text-fg-3">{TOOL_META[tool.type].label}</span>
         </div>
         <p className="line-clamp-2 text-[13px] leading-relaxed text-fg-2">{tool.description}</p>
-        <p className="w-fit max-w-full truncate rounded-inline bg-surface-2 px-1.5 py-0.5 font-mono text-[11.5px] text-fg-3">{toolSummary(tool)}</p>
+        <p className="w-fit max-w-full truncate rounded-inline bg-surface-2 px-1.5 py-0.5 font-mono text-[12px] text-fg-3">{toolSummary(tool)}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {waiting && <Badge icon={<MessageCircleMore />}>Waiting line</Badge>}
           {missingMock && (
@@ -152,7 +152,6 @@ export function ToolsTab({ config, update }: EditorPanelProps) {
           </EmptyState>
         ) : attached.length === 0 ? (
           <div className="relative overflow-hidden">
-            <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-50" />
             <EmptyState
               compact
               className="relative"

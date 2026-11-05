@@ -191,7 +191,7 @@ export function StartSimulationDialog({ open, onOpenChange, agentId, agentName, 
                 { value: "persona", label: "Persona" },
               ]}
             />
-            <p className="text-[12.5px] text-fg-3">
+            <p className="text-[13px] text-fg-3">
               {mode === "replay"
                 ? "Feeds the recorded caller turns, in order, to the target. Cheapest; best for small prompt changes."
                 : "An LLM plays the caller from a brief written from each call, and reacts to what the agent says. Use it after larger changes."}
@@ -211,7 +211,7 @@ export function StartSimulationDialog({ open, onOpenChange, agentId, agentName, 
             )}
           </Field>
           {sources.agent.isError && (
-            <p className="text-[12.5px] text-fg-3">
+            <p className="text-[13px] text-fg-3">
               This agent's versions could not be loaded, so only the published version and saved draft are offered.
             </p>
           )}
@@ -267,7 +267,7 @@ export function StartSimulationDialog({ open, onOpenChange, agentId, agentName, 
             </Field>
           )}
           {variantEmpty && (
-            <p className="text-[12.5px] text-fg-3">Edit the variant before continuing; an unchanged copy gives the same results as the draft.</p>
+            <p className="text-[13px] text-fg-3">Edit the variant before continuing; an unchanged copy gives the same results as the draft.</p>
           )}
           <ProblemAlert error={error} kind="simulation" />
         </div>

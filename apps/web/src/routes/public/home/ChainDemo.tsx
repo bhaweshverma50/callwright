@@ -94,7 +94,7 @@ export function ChainDemo() {
         aria-labelledby={`chain-tab-${active}`}
         className="relative flex h-[420px] flex-col overflow-hidden rounded-feature border border-console-line bg-console p-6 text-console-fg shadow-2 sm:p-8"
       >
-        <p className="flex items-center justify-between text-[12.5px] text-console-fg-2">
+        <p className="flex items-center justify-between text-[13px] text-console-fg-2">
           <span>Sample turn</span>
           <span>{COMPONENT_LABELS[active]}</span>
         </p>
@@ -190,7 +190,7 @@ function ModelScene({ reduce }: { reduce: boolean }) {
           Can I come in tomorrow morning?
         </p>
       </Step>
-      <Step i={1} reduce={reduce} className="rounded-panel border border-console-line px-4 py-3 font-mono text-[12.5px] leading-relaxed">
+      <Step i={1} reduce={reduce} className="rounded-panel border border-console-line px-4 py-3 font-mono text-[13px] leading-relaxed">
         <p className="text-console-fg-2">check_availability</p>
         <p>{`{ "department": "general", "day": "tomorrow" }`}</p>
         <p className="mt-1 text-[#5fd3a4]">{`["9:30", "11:15"]`}</p>

@@ -61,13 +61,13 @@ function CallGlyph({ call }: { call: LiveCall }) {
 
 function LastLine({ call }: { call: LiveCall }) {
   if (call.status !== "in_progress") {
-    return <span className="text-[12.5px] text-fg-3">Waiting for an answer</span>;
+    return <span className="text-[13px] text-fg-3">Waiting for an answer</span>;
   }
   const m = call.last_message;
-  if (!m) return <span className="text-[12.5px] text-fg-3">Connected, nobody has spoken yet</span>;
+  if (!m) return <span className="text-[13px] text-fg-3">Connected, nobody has spoken yet</span>;
   const Who = m.role === "user" ? User : Bot;
   return (
-    <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-fg-2">
+    <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-fg-2">
       <Who className="size-3.5 shrink-0 text-fg-3" aria-label={m.role === "user" ? "Caller" : "Agent"} />
       <TruncatedText focusable={false}>{m.text}</TruncatedText>
     </span>
@@ -98,12 +98,12 @@ export function LiveCallRow({ call, onOpen }: { call: LiveCall; onOpen: (id: str
         <CallGlyph call={call} />
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="flex min-w-0 items-center gap-1.5">
-            <span className={cn("truncate text-[13.5px] font-medium text-fg", call.channel !== "web" && "font-mono text-[13px] tnum")}>
+            <span className={cn("truncate text-[14px] font-medium text-fg", call.channel !== "web" && "font-mono text-[13px] tnum")}>
               {liveParty(call)}
             </span>
             {call.origin === "test" && <Badge>Test</Badge>}
           </span>
-          <span className="truncate text-[12.5px] text-fg-3">{liveContext(call)}</span>
+          <span className="truncate text-[13px] text-fg-3">{liveContext(call)}</span>
         </span>
         <span className="col-span-3 col-start-1 row-start-2 min-w-0 pl-[3.125rem] md:col-span-1 md:col-start-3 md:row-start-1 md:pl-0">
           <LastLine call={call} />
@@ -118,10 +118,10 @@ export function LiveCallRow({ call, onOpen }: { call: LiveCall; onOpen: (id: str
                 height={18}
                 className="hidden w-[52px] sm:block"
               />
-              <LiveDuration since={call.connected_at} className="min-w-[3.25rem] text-right text-[13.5px] font-semibold text-fg" />
+              <LiveDuration since={call.connected_at} className="min-w-[3.25rem] text-right text-[14px] font-semibold text-fg" />
             </>
           ) : (
-            <span className="text-[12.5px] font-medium text-accent-text">Ringing</span>
+            <span className="text-[13px] font-medium text-accent-text">Ringing</span>
           )}
         </span>
       </button>
@@ -145,7 +145,7 @@ function CardHeader({ count, children }: { count: number; children?: ReactNode }
   return (
     <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3 sm:px-5">
       <OnAir label={<span className="text-[14px] font-semibold text-fg">Live now</span>} />
-      <span className="text-[12.5px] text-fg-3" aria-live="polite">
+      <span className="text-[13px] text-fg-3" aria-live="polite">
         <span className="font-mono tnum">{count}</span> {count === 1 ? "call" : "calls"}
       </span>
       {children}
@@ -175,16 +175,16 @@ export function LiveNowCard({ onOpen }: { onOpen: (id: string) => void }) {
           transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
           className="relative mb-5 overflow-hidden rounded-panel border border-line bg-surface shadow-1"
         >
-          <span className="grad-heat absolute inset-x-0 top-0 h-[2px] opacity-80" aria-hidden />
+          <span className="absolute inset-x-0 top-0 h-[2px] bg-accent" aria-hidden />
           <CardHeader count={data.count}>
-            <span className="hidden text-[12.5px] text-fg-3 sm:inline">Open a call to follow its transcript as it happens.</span>
+            <span className="hidden text-[13px] text-fg-3 sm:inline">Open a call to follow its transcript as it happens.</span>
             <Button asChild variant="link" size="sm" className="ml-auto">
               <Link to="/calls">All calls</Link>
             </Button>
           </CardHeader>
           <LiveCallList calls={data.items} onOpen={onOpen} label="Calls on air" />
           {data.count > data.items.length && (
-            <p className="border-t border-line px-5 py-2.5 text-[12.5px] text-fg-3">
+            <p className="border-t border-line px-5 py-2.5 text-[13px] text-fg-3">
               Showing the newest {data.items.length} of {data.count}.
             </p>
           )}
@@ -202,7 +202,7 @@ export function LiveNowCard({ onOpen }: { onOpen: (id: string) => void }) {
           <span className="relative grid size-2.5 place-items-center" aria-hidden>
             <span className="size-2 rounded-full bg-line-strong" />
           </span>
-          <p className="text-[12.5px] text-fg-3">
+          <p className="text-[13px] text-fg-3">
             <span className="font-medium text-fg-2">No calls right now.</span> Calls show here the moment they ring.
           </p>
         </motion.section>
@@ -227,7 +227,7 @@ export function OnAirStrip({ onOpen }: { onOpen: (id: string) => void }) {
           className="border-b border-line bg-[color-mix(in_srgb,var(--accent-soft)_22%,var(--surface))]"
         >
           <CardHeader count={live.data?.count ?? items.length}>
-            <span className="text-[12.5px] text-fg-3">Pinned while they are on air</span>
+            <span className="text-[13px] text-fg-3">Pinned while they are on air</span>
           </CardHeader>
           <LiveCallList calls={items} onOpen={onOpen} label="Calls on air" />
         </motion.div>

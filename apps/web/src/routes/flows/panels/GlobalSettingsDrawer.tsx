@@ -71,7 +71,7 @@ export function GlobalSettingsDrawer({
       title="Flow settings"
       width="xl"
       meta={
-        <span className="flex items-center gap-1.5 text-[12.5px] text-fg-3">
+        <span className="flex items-center gap-1.5 text-[13px] text-fg-3">
           {meta.saves === "draft" ? (
             <>
               <CircleDot className={cn("size-3", unsaved(section) ? "text-warning" : "text-fg-3")} aria-hidden />

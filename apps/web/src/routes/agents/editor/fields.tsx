@@ -49,7 +49,7 @@ export function FieldError({ id, message }: { id?: string; message: string | nul
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.16 }}
-          className="flex w-full items-start gap-1.5 text-left text-[12.5px] text-danger-text"
+          className="flex w-full items-start gap-1.5 text-left text-[13px] text-danger-text"
         >
           <CircleAlert className="mt-px size-3.5 shrink-0" strokeWidth={2} aria-hidden />
           <span>{message}</span>
@@ -66,7 +66,7 @@ export function Note({ children, tone = "neutral", id }: { children: ReactNode; 
     <p
       id={id}
       className={cn(
-        "flex w-full items-start gap-1.5 text-left text-[12.5px] leading-snug",
+        "flex w-full items-start gap-1.5 text-left text-[13px] leading-snug",
         tone === "warning" ? "text-warning-text" : tone === "accent" ? "text-accent-text" : "text-fg-3",
       )}
     >
@@ -102,15 +102,15 @@ export function StackRow({
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="flex items-center gap-1.5">
               {htmlFor ? (
-                <label htmlFor={htmlFor} className="cursor-pointer text-[13.5px] font-medium text-fg">
+                <label htmlFor={htmlFor} className="cursor-pointer text-[14px] font-medium text-fg">
                   {label}
                 </label>
               ) : (
-                <span className="text-[13.5px] font-medium text-fg">{label}</span>
+                <span className="text-[14px] font-medium text-fg">{label}</span>
               )}
               {hint && <InfoTip label={`About ${typeof label === "string" ? label.toLowerCase() : "this setting"}`}>{hint}</InfoTip>}
             </span>
-            {description && <p className="text-[12.5px] leading-relaxed text-fg-3">{description}</p>}
+            {description && <p className="text-[13px] leading-relaxed text-fg-3">{description}</p>}
           </div>
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
@@ -125,7 +125,7 @@ export function ValuePill({ children, muted }: { children: ReactNode; muted?: bo
   return (
     <span
       className={cn(
-        "inline-flex h-6 min-w-[64px] items-center justify-center rounded-inline px-2 font-mono text-[12.5px] tnum",
+        "inline-flex h-6 min-w-[64px] items-center justify-center rounded-inline px-2 font-mono text-[13px] tnum",
         muted ? "bg-surface-2 text-fg-3" : "bg-accent-soft text-accent-text",
       )}
     >
@@ -246,7 +246,7 @@ export function UnitNumberInput({
         disabled={disabled}
         aria-invalid={Boolean(error)}
         aria-describedby={`${id}-help`}
-        suffix={<span className="text-[12.5px]">{unit}</span>}
+        suffix={<span className="text-[13px]">{unit}</span>}
         onChange={(e) => {
           const t = e.target.value;
           setText(t);
@@ -263,7 +263,7 @@ export function UnitNumberInput({
       {error ? (
         <FieldError id={`${id}-help`} message={error} />
       ) : helper ? (
-        <p id={`${id}-help`} className="w-full text-left text-[12.5px] text-fg-3 @[34rem]:text-right">
+        <p id={`${id}-help`} className="w-full text-left text-[13px] text-fg-3 @[34rem]:text-right">
           {helper(stored)}
         </p>
       ) : null}

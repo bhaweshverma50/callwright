@@ -66,14 +66,13 @@ export function LiveCall({ className }: { className?: string }) {
 
   return (
     <div ref={ref} className={cn("relative", className)}>
-      <div aria-hidden className="glow-backdrop pointer-events-none absolute -inset-10 -z-0 rounded-[40px] blur-2xl" />
       <figure
         aria-label="Sample call: a dental front desk agent moves an appointment"
         className="relative overflow-hidden rounded-feature border border-console-line bg-console text-console-fg shadow-2"
       >
         <header className="flex items-center justify-between gap-4 border-b border-console-line px-5 py-2.5">
           {ended ? (
-            <span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-console-fg-2">
+            <span className="inline-flex items-center gap-2 text-[13px] font-medium text-console-fg-2">
               <CircleCheck className="size-4 text-[#5fd3a4]" aria-hidden />
               Call ended
             </span>
@@ -127,7 +126,7 @@ export function LiveCall({ className }: { className?: string }) {
                 className={cn("flex flex-col gap-1", turn.who === "agent" ? "items-end text-right" : "items-start")}
                 aria-hidden={!shown}
               >
-                <span className="text-[11.5px] font-medium text-console-fg-2">{turn.who === "agent" ? "Agent" : "Caller"}</span>
+                <span className="text-[12px] font-medium text-console-fg-2">{turn.who === "agent" ? "Agent" : "Caller"}</span>
                 <p
                   className={cn(
                     "max-w-[36ch] rounded-panel px-3 py-1.5 text-[13px] leading-snug",

@@ -30,7 +30,7 @@ export function SwitchControl({ id, checked, onCheckedChange, disabled, describe
       aria-label={aria["aria-label"]}
       className={cn(
         "relative box-border inline-flex h-[24px] w-[40px] shrink-0 cursor-pointer items-center overflow-hidden rounded-full border p-0 transition-[background-color,border-color] duration-200",
-        "border-line-strong bg-surface-3 hover:border-fg-3 data-[state=checked]:grad-action data-[state=checked]:border-transparent",
+        "border-line-strong bg-surface-3 hover:border-fg-3 data-[state=checked]:bg-accent data-[state=checked]:border-transparent",
         "disabled:cursor-not-allowed disabled:opacity-50",
         focusRing,
         className,
@@ -64,11 +64,11 @@ export function Switch({ checked, onCheckedChange, label, description, icon, dis
       <div className="flex items-start gap-3">
         {icon && <span className="mt-0.5 text-fg-3 [&_svg]:size-4">{icon}</span>}
         <div className="flex flex-col gap-0.5">
-          <label htmlFor={id} className="cursor-pointer text-[13.5px] font-medium text-fg">
+          <label htmlFor={id} className="cursor-pointer text-[14px] font-medium text-fg">
             {label}
           </label>
           {description && (
-            <p id={`${id}-d`} className="text-[12.5px] leading-relaxed text-fg-3">
+            <p id={`${id}-d`} className="text-[13px] leading-relaxed text-fg-3">
               {description}
             </p>
           )}

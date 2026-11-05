@@ -30,7 +30,7 @@ export function LiveCallsBadge({ expanded }: { expanded: boolean }) {
             <span className={cn("relative size-2 rounded-full bg-on-air", !expanded && "ring-2 ring-sidebar")} />
           </span>
           {expanded && (
-            <span className="font-mono text-[11.5px] font-medium leading-none text-fg tnum" aria-hidden>
+            <span className="font-mono text-[12px] font-medium leading-none text-fg tnum" aria-hidden>
               {n}
             </span>
           )}

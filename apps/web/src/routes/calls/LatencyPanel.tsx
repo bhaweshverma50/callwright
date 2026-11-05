@@ -64,7 +64,7 @@ export function LatencyPanel({ summary, turns, loading }: { summary: LatencySumm
           Latency is recorded for every agent turn once the call connects.
         </EmptyState>
       ) : (
-        <table className="w-full text-[12.5px]">
+        <table className="w-full text-[13px]">
           <caption className="sr-only">Latency per agent turn, in milliseconds</caption>
           <thead>
             <tr className="text-left text-[12px] text-fg-3">

@@ -26,7 +26,7 @@ export function FlowPath({ items, highlight }: { items: FlowTransition[]; highli
               aria-hidden
               className={cn(
                 "relative mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-medium",
-                last ? "grad-action border-transparent text-white" : "border-line-strong bg-surface text-fg-2",
+                last ? "bg-accent border-transparent text-white" : "border-line-strong bg-surface text-fg-2",
                 differs && "border-transparent bg-warning-soft text-warning-text",
               )}
             >

@@ -172,7 +172,7 @@ export function PersonaBriefView({ brief, source }: { brief: PersonaBrief; sourc
       <div className="grid grid-cols-1 gap-x-8 gap-y-4 px-5 py-4 md:grid-cols-2">
         <div className="flex flex-col gap-1 md:col-span-2">
           <span className="text-[12px] text-fg-3">Goal</span>
-          <p className="text-[13.5px] text-fg">{brief.goal}</p>
+          <p className="text-[14px] text-fg">{brief.goal}</p>
         </div>
         {(brief.known_facts?.length ?? 0) > 0 && (
           <div className="flex flex-col gap-1">

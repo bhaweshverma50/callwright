@@ -48,7 +48,7 @@ function Checkbox({ checked, onChange, label, mixed }: { checked: boolean; mixed
       }}
       className={cn(
         "grid size-[18px] cursor-pointer place-items-center rounded-[5px] border transition-[background-color,border-color,transform] duration-150 active:scale-90",
-        checked || mixed ? "grad-action border-transparent text-white" : "border-line-strong bg-surface hover:border-accent",
+        checked || mixed ? "bg-accent border-transparent text-white" : "border-line-strong bg-surface hover:border-accent",
         focusRing,
       )}
     >
@@ -103,7 +103,7 @@ function ColumnsMenu({ hidden, toggle }: { hidden: Set<string>; toggle: (k: stri
             <span
               className={cn(
                 "grid size-4 place-items-center rounded-[4px] border",
-                c.required || !hidden.has(c.key) ? "grad-action border-transparent text-white" : "border-line-strong",
+                c.required || !hidden.has(c.key) ? "bg-accent border-transparent text-white" : "border-line-strong",
                 c.required && "opacity-50",
               )}
               aria-hidden
@@ -113,7 +113,7 @@ function ColumnsMenu({ hidden, toggle }: { hidden: Set<string>; toggle: (k: stri
               </DM.ItemIndicator>
             </span>
             {c.label}
-            {c.required && <span className="ml-auto text-[11.5px] text-fg-3">Always shown</span>}
+            {c.required && <span className="ml-auto text-[12px] text-fg-3">Always shown</span>}
           </DM.CheckboxItem>
         ))}
       </MenuContent>
@@ -134,10 +134,10 @@ function MobileRow({ row, selected, onToggle, onOpen }: { row: CallListItem; sel
         className={cn("flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 rounded-inline text-left", focusRing)}
       >
         <span className="flex items-center justify-between gap-2">
-          <span className="truncate text-[13.5px] font-medium text-fg">{row.agent.name}</span>
+          <span className="truncate text-[14px] font-medium text-fg">{row.agent.name}</span>
           <StatusBadge status={row.status} />
         </span>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-fg-3">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-fg-3">
           <span>{when(row.started_at)}</span>
           <span className="flex items-center gap-1">
             <Icon className="size-3.5" aria-hidden />
@@ -152,7 +152,7 @@ function MobileRow({ row, selected, onToggle, onOpen }: { row: CallListItem; sel
           )}
           <span className="font-mono text-fg-2 tnum">{usd(row.cost_usd ?? null)}</span>
         </span>
-        {row.summary && <span className="line-clamp-2 text-[12.5px] text-fg-2">{summaryHeadline(row.summary)}</span>}
+        {row.summary && <span className="line-clamp-2 text-[13px] text-fg-2">{summaryHeadline(row.summary)}</span>}
       </button>
     </li>
   );
@@ -362,7 +362,7 @@ export function CallHistoryPage() {
                 onCommit={(v) => setFilters({ ...state.filters, call_id: v })}
               />
               <FilterButton filters={state.filters} count={chips.length} agents={agents.data ?? []} onChange={setFilters} />
-              <p className="ml-auto text-[12.5px] text-fg-3" aria-live="polite">
+              <p className="ml-auto text-[13px] text-fg-3" aria-live="polite">
                 {calls.data ? (
                   <>
                     <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {total === 1 ? "call" : "calls"}
@@ -414,7 +414,7 @@ export function CallHistoryPage() {
                   </div>
                 </div>
                 {simError && (
-                  <p role="alert" className="px-5 pb-2.5 text-[12.5px] text-danger-text">
+                  <p role="alert" className="px-5 pb-2.5 text-[13px] text-danger-text">
                     {simError}
                   </p>
                 )}
@@ -484,7 +484,7 @@ export function CallHistoryPage() {
                                 key={c.key}
                                 className={cn(
                                   "h-12 bg-[var(--row)] px-3 align-middle text-fg transition-colors duration-150 last:pr-5",
-                                  c.numeric && "text-right font-mono text-[12.5px] tnum",
+                                  c.numeric && "text-right font-mono text-[13px] tnum",
                                   c.key === "call_id" && "sticky left-12 z-[1]",
                                 )}
                               >
@@ -530,7 +530,7 @@ export function CallHistoryPage() {
                 onPageChange={(page) => update({ page }, true)}
                 className="flex-1"
               />
-              <label className="flex items-center gap-2 px-5 pb-3 text-[12.5px] text-fg-3 sm:pb-0">
+              <label className="flex items-center gap-2 px-5 pb-3 text-[13px] text-fg-3 sm:pb-0">
                 Rows per page
                 <Select
                   size="sm"

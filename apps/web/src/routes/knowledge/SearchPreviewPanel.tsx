@@ -53,8 +53,8 @@ export function SearchPreviewPanel({ kbId, disabled }: { kbId: string; disabled?
           Search
         </Button>
       </form>
-      {disabled && <p className="mt-3 text-[12.5px] text-fg-3">Available once a document is ready.</p>}
-      {search.isError && <p className="mt-3 text-[12.5px] text-danger-text">{problemMessage(search.error, "knowledge base")}</p>}
+      {disabled && <p className="mt-3 text-[13px] text-fg-3">Available once a document is ready.</p>}
+      {search.isError && <p className="mt-3 text-[13px] text-danger-text">{problemMessage(search.error, "knowledge base")}</p>}
       <AnimatePresence mode="wait">
         {data && (
           <motion.div
@@ -89,14 +89,14 @@ export function SearchPreviewPanel({ kbId, disabled }: { kbId: string; disabled?
                     className="flex flex-col gap-2 rounded-panel border border-line bg-surface p-3.5 shadow-1"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="grid size-6 shrink-0 place-items-center rounded-full grad-action font-mono text-[11px] font-medium text-white">
+                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent font-mono text-[11px] font-medium text-white">
                         {i + 1}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-fg">{r.file_name}</span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-fg">{r.file_name}</span>
                       <span className="shrink-0 text-[12px] text-fg-3">{pages(r.page_from, r.page_to)}</span>
                     </div>
                     {r.heading && <p className="text-[12px] font-medium text-accent-text">{r.heading}</p>}
-                    <p className="line-clamp-4 text-[12.5px] leading-relaxed text-fg-2">{withoutHeading(r.content, r.heading)}</p>
+                    <p className="line-clamp-4 text-[13px] leading-relaxed text-fg-2">{withoutHeading(r.content, r.heading)}</p>
                     <div className="flex items-center gap-2" aria-label={`Relevance ${Math.round(r.score * 100)}%`}>
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
                         <motion.div
@@ -106,7 +106,7 @@ export function SearchPreviewPanel({ kbId, disabled }: { kbId: string; disabled?
                           transition={{ duration: 0.5, delay: 0.1 + i * 0.05 }}
                         />
                       </div>
-                      <span className="w-9 text-right font-mono text-[11.5px] text-fg-3 tnum">{r.score.toFixed(2)}</span>
+                      <span className="w-9 text-right font-mono text-[12px] text-fg-3 tnum">{r.score.toFixed(2)}</span>
                     </div>
                   </motion.li>
                 ))}

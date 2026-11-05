@@ -1,4 +1,4 @@
-import { Bot, FileText, Globe, Hand, MessageSquareQuote, Sparkles, Tag, UserRound } from "lucide-react";
+import { Bot, FileText, Globe, Hand, MessageSquareQuote, PenLine, Tag, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Button, FieldRow, Input, Segmented, Select, Textarea, cn } from "../../../components";
 import { fieldId } from "../versions/versionLabels";
@@ -103,14 +103,14 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
           htmlFor={fieldId("/prompt")}
           description="Instructions the agent follows on every call: its role, what to collect, what never to do."
           actions={
-            <Button size="sm" variant="secondary" icon={<Sparkles aria-hidden />} onClick={onOpenAssistant}>
+            <Button size="sm" variant="secondary" icon={<PenLine aria-hidden />} onClick={onOpenAssistant}>
               Write with AI
             </Button>
           }
         >
           <Textarea
             id={fieldId("/prompt")}
-            className="min-h-[300px] resize-y text-[13.5px]"
+            className="min-h-[300px] resize-y text-[14px]"
             value={config.prompt}
             placeholder={"You are the front desk for {{company_name}}. You answer calls, book appointments and answer common questions..."}
             aria-invalid={Boolean(draft.errorFor("/prompt"))}

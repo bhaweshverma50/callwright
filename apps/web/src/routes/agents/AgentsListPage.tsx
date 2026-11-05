@@ -174,7 +174,7 @@ export function AgentsListPage() {
           <Link to={agentPath(a)} className="link-underline min-w-0 rounded-inline font-medium text-fg">
             <TruncatedText focusable={false}>{a.name}</TruncatedText>
           </Link>
-          <TruncatedText className="font-mono text-[11.5px] text-fg-3">{a.id}</TruncatedText>
+          <TruncatedText className="font-mono text-[12px] text-fg-3">{a.id}</TruncatedText>
         </div>
       ),
     },
@@ -245,7 +245,6 @@ export function AgentsListPage() {
 
       {!firstLoad && total === 0 && !filtered ? (
         <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-          <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-70" />
           <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
             <EmptyState
               className="px-0 py-0"

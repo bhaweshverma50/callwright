@@ -20,7 +20,7 @@ const LABELS = ["", "Too weak", "Fair", "Good", "Strong"];
 /** Four-segment meter with a spoken label. Rule shown: at least 10 characters. */
 export function PasswordStrength({ password, id }: { password: string; id?: string }) {
   const score = passwordScore(password);
-  const tone = score <= 1 ? "bg-danger" : score === 2 ? "bg-warning" : "grad-action";
+  const tone = score <= 1 ? "bg-danger" : score === 2 ? "bg-warning" : "bg-accent";
   return (
     <div id={id} className="flex items-center gap-3" aria-live="polite">
       <div className="flex flex-1 gap-1" aria-hidden>

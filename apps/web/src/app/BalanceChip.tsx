@@ -32,7 +32,7 @@ export function BalanceChip() {
           "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] transition-[border-color,box-shadow,background-color] duration-150",
           tone === "danger" && "border-danger/40 bg-danger-soft text-danger-text",
           tone === "warning" && "border-warning/50 bg-warning-soft text-warning-text",
-          tone === "neutral" && "border-line-strong bg-surface text-fg hover:border-accent/60 hover:shadow-glow",
+          tone === "neutral" && "border-line-strong bg-surface text-fg hover:border-accent/60",
           focusRing,
         )}
       >

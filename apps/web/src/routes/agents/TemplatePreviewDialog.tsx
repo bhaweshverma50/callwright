@@ -118,27 +118,27 @@ export function TemplatePreviewDialog({
           ) : (
             <>
               <section className="flex flex-col gap-1.5">
-                <h3 className="flex items-center gap-1.5 text-[12.5px] font-medium text-fg-3">
+                <h3 className="flex items-center gap-1.5 text-[13px] font-medium text-fg-3">
                   <MessageSquareQuote className="size-3.5" aria-hidden /> Greeting
                 </h3>
-                <p className="rounded-control bg-accent-soft/35 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-fg">
+                <p className="rounded-control bg-accent-soft/35 px-3.5 py-2.5 text-[14px] leading-relaxed text-fg">
                   <Highlighted text={t.config.begin_message ?? ""} />
                 </p>
               </section>
               <section className="flex flex-col gap-1.5">
-                <h3 className="text-[12.5px] font-medium text-fg-3">Prompt</h3>
+                <h3 className="text-[13px] font-medium text-fg-3">Prompt</h3>
                 <div className="max-h-[260px] overflow-y-auto whitespace-pre-wrap rounded-control border border-line bg-surface-2/50 px-3.5 py-3 text-[13px] leading-relaxed text-fg-2">
                   <Highlighted text={t.config.prompt} />
                 </div>
               </section>
               <section className="flex flex-col gap-1.5">
-                <h3 className="flex items-center gap-1.5 text-[12.5px] font-medium text-fg-3">
+                <h3 className="flex items-center gap-1.5 text-[13px] font-medium text-fg-3">
                   <Braces className="size-3.5" aria-hidden /> Variables, with the defaults test calls use
                 </h3>
                 <dl className="divide-y divide-line overflow-hidden rounded-control border border-line">
                   {t.config.dynamic_variables.map((v) => (
                     <div key={v.name} className="flex items-center justify-between gap-4 px-3.5 py-2">
-                      <dt className="font-mono text-[12.5px] text-accent-text">{`{{${v.name}}}`}</dt>
+                      <dt className="font-mono text-[13px] text-accent-text">{`{{${v.name}}}`}</dt>
                       <dd className="min-w-0 text-[13px] text-fg">
                         <TruncatedText>{v.default}</TruncatedText>
                       </dd>
@@ -157,7 +157,7 @@ export function TemplatePreviewDialog({
                   { icon: <Captions />, label: "Speech recognition", value: `${sttProvider?.label ?? t.config.stt.provider}, Auto` },
                 ].map((f) => (
                   <div key={f.label} className="flex min-w-0 flex-col gap-0.5 rounded-control bg-surface-2/60 px-3 py-2.5">
-                    <span className="flex items-center gap-1.5 text-[11.5px] text-fg-3 [&_svg]:size-3.5">
+                    <span className="flex items-center gap-1.5 text-[12px] text-fg-3 [&_svg]:size-3.5">
                       {f.icon}
                       {f.label}
                     </span>

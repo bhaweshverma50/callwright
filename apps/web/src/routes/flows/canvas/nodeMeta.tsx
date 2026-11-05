@@ -1,4 +1,4 @@
-import { Braces, ClipboardList, GitBranch, Globe, Megaphone, PhoneForwarded, PhoneOff, Play, Sparkles } from "lucide-react";
+import { Bot, Braces, ClipboardList, GitBranch, Globe, Megaphone, PhoneForwarded, PhoneOff, Play } from "lucide-react";
 import type { ReactNode } from "react";
 import type { NodeType } from "../../../api/flows";
 
@@ -11,7 +11,7 @@ export interface NodeMeta {
 
 export const NODE_META: Record<NodeType, NodeMeta> = {
   start: { title: "Start", blurb: "Who speaks first and the greeting", icon: <Play aria-hidden /> },
-  agent: { title: "Agent", blurb: "A conversation with its own instructions", icon: <Sparkles aria-hidden /> },
+  agent: { title: "Agent", blurb: "A conversation with its own instructions", icon: <Bot aria-hidden /> },
   task: { title: "Task", blurb: "Collects named details from the caller", icon: <ClipboardList aria-hidden /> },
   condition: { title: "Condition", blurb: "Routes by category or by rule, silently", icon: <GitBranch aria-hidden /> },
   say: { title: "Say", blurb: "Speaks a fixed line without the model", icon: <Megaphone aria-hidden /> },

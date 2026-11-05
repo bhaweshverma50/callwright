@@ -57,12 +57,12 @@ function OtherLabel({ a }: { a: Annotation }) {
           .toUpperCase()}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex flex-wrap items-center gap-2 text-[12.5px]">
+        <span className="flex flex-wrap items-center gap-2 text-[13px]">
           <span className="font-medium text-fg">{a.user.display_name}</span>
           <Badge tone={a.label === "good" ? "success" : "danger"}>{a.label === "good" ? "Good" : "Bad"}</Badge>
           <span className="text-fg-3">{when(a.updated_at)}</span>
         </span>
-        {a.note && <p className="text-[12.5px] leading-relaxed text-fg-2">{a.note}</p>}
+        {a.note && <p className="text-[13px] leading-relaxed text-fg-2">{a.note}</p>}
       </div>
     </li>
   );
@@ -143,7 +143,7 @@ export function YourReview({ callId, onLabelled }: { callId: string; onLabelled?
   return (
     <section aria-labelledby="review-h" className="flex flex-col gap-3 rounded-panel border border-line bg-surface-2/40 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 id="review-h" className="text-[13.5px] font-semibold text-fg">
+        <h3 id="review-h" className="text-[14px] font-semibold text-fg">
           Your review
         </h3>
         <span className="text-[12px] text-fg-3">Labels calibrate the automatic checks.</span>
@@ -157,7 +157,7 @@ export function YourReview({ callId, onLabelled }: { callId: string; onLabelled?
             <Thumb label="bad" active={mine?.label === "bad"} disabled={busy} onClick={() => press("bad")} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`note-${callId}`} className="flex items-baseline justify-between text-[12.5px] text-fg-3">
+            <label htmlFor={`note-${callId}`} className="flex items-baseline justify-between text-[13px] text-fg-3">
               <span>Note {mine ? "" : "(saved with your label)"}</span>
               <span className={cn("font-mono tnum", tooLong && "text-danger-text")}>
                 {text.length.toLocaleString("en-US")}/{NOTE_LIMIT.toLocaleString("en-US")}
@@ -172,12 +172,12 @@ export function YourReview({ callId, onLabelled }: { callId: string; onLabelled?
               onChange={(e) => setNote(e.target.value)}
             />
             {tooLong && (
-              <p role="alert" className="text-[12.5px] text-danger-text">
+              <p role="alert" className="text-[13px] text-danger-text">
                 Keep the note under 2,000 characters.
               </p>
             )}
             {error && (
-              <p role="alert" className="text-[12.5px] text-danger-text">
+              <p role="alert" className="text-[13px] text-danger-text">
                 {error}
               </p>
             )}

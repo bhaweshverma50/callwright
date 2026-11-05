@@ -6,7 +6,7 @@
  */
 import { ClipboardText } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, FileDown, MoreHorizontal, Pencil, Play, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Download, FileDown, MoreHorizontal, Pencil, PenLine, Play, Plus, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import type { AgentDetail } from "../../../api/agents";
@@ -212,7 +212,7 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
               }}
               options={[{ value: ALL_CATEGORIES, label: "All categories" }, ...categoryOptions(categories.data)]}
             />
-            <span className="text-[12.5px] text-fg-3" aria-live="polite">
+            <span className="text-[13px] text-fg-3" aria-live="polite">
               {cases.data ? plural(total, "case") : <Skeleton className="h-3 w-14" />}
             </span>
           </div>
@@ -220,7 +220,7 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
             <Button size="sm" variant="ghost" icon={<Plus aria-hidden />} onClick={() => setEditing({ mode: "new" })}>
               New case
             </Button>
-            <Button size="sm" variant="ghost" icon={<Sparkles aria-hidden />} onClick={() => setDialog("generate")} disabled={Boolean(blocked)}>
+            <Button size="sm" variant="ghost" icon={<PenLine aria-hidden />} onClick={() => setDialog("generate")} disabled={Boolean(blocked)}>
               Generate
             </Button>
             <Menu>
@@ -288,7 +288,7 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
                 <Button variant="primary" icon={<Plus aria-hidden />} onClick={() => setEditing({ mode: "new" })}>
                   New case
                 </Button>
-                <Button icon={<Sparkles aria-hidden />} onClick={() => setDialog("generate")} disabled={Boolean(blocked)}>
+                <Button icon={<PenLine aria-hidden />} onClick={() => setDialog("generate")} disabled={Boolean(blocked)}>
                   Generate drafts
                 </Button>
               </>
@@ -362,8 +362,8 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
                             onClick={() => setEditing({ mode: "edit", tc })}
                             className="flex w-full min-w-0 cursor-pointer flex-col gap-0.5 rounded-inline text-left"
                           >
-                            <span className="truncate text-[13.5px] font-medium text-fg">{tc.name}</span>
-                            <span className="truncate text-[12.5px] text-fg-3">{tc.user_prompt}</span>
+                            <span className="truncate text-[14px] font-medium text-fg">{tc.name}</span>
+                            <span className="truncate text-[13px] text-fg-3">{tc.user_prompt}</span>
                           </button>
                         </td>
                         <td className="hidden w-[180px] px-3 align-middle md:table-cell">

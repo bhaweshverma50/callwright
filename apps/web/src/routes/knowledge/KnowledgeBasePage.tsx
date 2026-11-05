@@ -248,10 +248,10 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
       </Link>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="min-w-0 max-w-full font-display text-[22px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[26px]">
+          <h1 className="min-w-0 max-w-full font-display text-[22px] leading-tight tracking-[-0.02em] text-fg sm:text-[26px]">
             <TruncatedText>{kb.name}</TruncatedText>
           </h1>
-          {kb.description && <p className="max-w-[72ch] text-[13.5px] text-fg-2">{kb.description}</p>}
+          {kb.description && <p className="max-w-[72ch] text-[14px] text-fg-2">{kb.description}</p>}
           <div className="flex flex-wrap items-center gap-2">
             <KbStatusBadge status={kb.status} />
             {kb.attachable ? <Badge tone="accent">Can be attached</Badge> : <Badge>Not attachable yet</Badge>}
@@ -336,7 +336,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
             <SearchPreviewPanel kbId={kb.id} disabled={!kb.attachable} />
             {kb.processing_count > 0 && (
               <Tooltip content="Large documents can take up to two minutes.">
-                <p className="flex items-center gap-2 rounded-panel bg-accent-soft/60 px-4 py-3 text-[12.5px] text-fg" tabIndex={0}>
+                <p className="flex items-center gap-2 rounded-panel bg-accent-soft/60 px-4 py-3 text-[13px] text-fg" tabIndex={0}>
                   <RotateCw className="size-4 animate-spin text-accent-text" aria-hidden />
                   {kb.processing_count} {kb.processing_count === 1 ? "document is" : "documents are"} being processed.
                 </p>

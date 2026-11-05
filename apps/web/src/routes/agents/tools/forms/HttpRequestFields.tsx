@@ -112,7 +112,7 @@ export function HttpRequestFields({
         }
       >
         {value.headers.length === 0 ? (
-          <p className="rounded-control bg-surface-2/70 px-3 py-2.5 text-[12.5px] text-fg-3">No headers. Add one for an API key or a content type.</p>
+          <p className="rounded-control bg-surface-2/70 px-3 py-2.5 text-[13px] text-fg-3">No headers. Add one for an API key or a content type.</p>
         ) : (
           <ul className="flex flex-col gap-2" aria-label="Headers">
             <AnimatePresence initial={false}>
@@ -164,7 +164,7 @@ export function HttpRequestFields({
                         }
                         className={cn(
                           "grid size-9 place-items-center rounded-control transition-colors duration-150 [&_svg]:size-4",
-                          h.secret ? "grad-action text-white shadow-glow" : "text-fg-3 hover:bg-surface-2 hover:text-fg",
+                          h.secret ? "bg-accent text-white" : "text-fg-3 hover:bg-surface-2 hover:text-fg",
                         )}
                       >
                         {h.secret ? <Lock aria-hidden /> : <LockOpen aria-hidden />}
@@ -199,7 +199,7 @@ export function HttpRequestFields({
             <Textarea
               id={id}
               spellCheck={false}
-              className="min-h-24 font-mono text-[12.5px]"
+              className="min-h-24 font-mono text-[13px]"
               placeholder={'{\n  "date": "{{date}}",\n  "caller": "{{caller_number}}"\n}'}
               aria-describedby={describedBy}
               aria-invalid={invalid}

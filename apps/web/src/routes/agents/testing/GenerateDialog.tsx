@@ -5,7 +5,7 @@
  * Drafting is charged once per action (Idempotency-Key).
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { PenLine } from "lucide-react";
 import { useState } from "react";
 import { useActionKey, isRetryable } from "../../../api/paid";
 import { generateTestCases, importTestCases, testingKeys, type TestCaseImportRow, type TestCategory } from "../../../api/testing";
@@ -52,7 +52,7 @@ function DraftRow({
           <span className="text-fg-3">Caller: </span>
           {draft.user_prompt}
         </span>
-        <span className="text-[12.5px] text-fg-2">
+        <span className="text-[13px] text-fg-2">
           <span className="text-fg-3">Expected: </span>
           {draft.expected_behaviour}
         </span>
@@ -137,7 +137,7 @@ export function GenerateDialog({
       open={open}
       onOpenChange={onOpenChange}
       size="lg"
-      icon={<Sparkles aria-hidden />}
+      icon={<PenLine aria-hidden />}
       title={drafts ? "Review drafted test cases" : "Generate test cases"}
       description={
         drafts
@@ -162,7 +162,7 @@ export function GenerateDialog({
         ) : (
           <>
             <Button onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button variant="primary" icon={<Sparkles aria-hidden />} pending={pending} disabled={count === null} onClick={() => void generate()}>
+            <Button variant="primary" icon={<PenLine aria-hidden />} pending={pending} disabled={count === null} onClick={() => void generate()}>
               {count === null ? "Generate test cases" : generateLabel(count)}
             </Button>
           </>

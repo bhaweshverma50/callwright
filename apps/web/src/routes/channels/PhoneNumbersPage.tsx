@@ -90,15 +90,15 @@ function ChannelCard({
           }
         }}
         aria-label={ariaLabel}
-        className="group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border border-line bg-surface text-left shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow focus-visible:border-accent focus-visible:outline-none focus-visible:shadow-glow"
+        className="group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border border-line bg-surface text-left shadow-1 transition-[transform,box-shadow,border-color] duration-200 hover:border-accent/45 focus-visible:border-accent focus-visible:outline-none"
       >
         <div className="flex items-start gap-3 px-5 pb-3.5 pt-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text transition-[background-image,color] duration-200 group-hover:grad-action group-hover:text-white [&_svg]:size-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text transition-[background-color,color] duration-200 group-hover:bg-accent group-hover:text-white [&_svg]:size-5">
             {icon}
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-px">
             <span className="truncate font-mono text-[15px] font-medium leading-snug text-fg tnum">{title}</span>
-            <span className="truncate text-[12.5px] text-fg-2">{subtitle}</span>
+            <span className="truncate text-[13px] text-fg-2">{subtitle}</span>
           </div>
           <div className="shrink-0 pt-0.5">{status}</div>
         </div>
@@ -160,10 +160,10 @@ function SetupDots({ c }: { c: WhatsAppChannel }) {
   ];
   const done = steps.filter((s) => s.done).length;
   return (
-    <span className="flex items-center gap-2 text-[12.5px] text-fg-3">
+    <span className="flex items-center gap-2 text-[13px] text-fg-3">
       <span className="flex gap-1" aria-hidden>
         {steps.map((s) => (
-          <span key={s.label} className={cn("h-1.5 w-4 rounded-full", s.done ? "grad-action" : "bg-surface-3")} />
+          <span key={s.label} className={cn("h-1.5 w-4 rounded-full", s.done ? "bg-accent" : "bg-surface-3")} />
         ))}
       </span>
       {done} of 3 setup steps
@@ -230,7 +230,6 @@ function Hero({
 }) {
   return (
     <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-      <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-70" />
       <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
         <EmptyState className="px-0 py-0" icon={icon} title={title} actions={action}>
           {body}
@@ -260,7 +259,7 @@ function NeedsPanel() {
     <section className="rounded-panel border border-line bg-surface shadow-1">
       <header className="border-b border-line px-5 py-3.5">
         <h2 className="text-[14px] font-semibold text-fg">What you need</h2>
-        <p className="text-[12.5px] text-fg-3">Have these ready before you import.</p>
+        <p className="text-[13px] text-fg-3">Have these ready before you import.</p>
       </header>
       <ol className="flex flex-col gap-4 px-5 py-4">
         {NEEDS.map((n, i) => (
@@ -273,8 +272,8 @@ function NeedsPanel() {
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-control bg-accent-soft text-accent-text [&_svg]:size-4">{n.icon}</span>
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[13.5px] font-medium text-fg">{n.title}</span>
-              <span className="text-[12.5px] leading-relaxed text-fg-3">{n.detail}</span>
+              <span className="text-[14px] font-medium text-fg">{n.title}</span>
+              <span className="text-[13px] leading-relaxed text-fg-3">{n.detail}</span>
             </div>
           </motion.li>
         ))}

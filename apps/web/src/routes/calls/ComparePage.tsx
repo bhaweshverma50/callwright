@@ -35,7 +35,7 @@ function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "righ
         </p>
         <Link
           to={`/calls?call=${call.call_id}`}
-          className={cn("block truncate rounded-inline font-mono text-[11.5px] text-accent-text hover:underline", focusRing)}
+          className={cn("block truncate rounded-inline font-mono text-[12px] text-accent-text hover:underline", focusRing)}
         >
           {call.call_id}
         </Link>
@@ -61,7 +61,7 @@ function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "righ
 
 function Items({ ids, items, latencies }: { ids: string[]; items: Map<string, TranscriptItem>; latencies: Map<number, TurnLatency> }) {
   const list = ids.map((id) => items.get(id)).filter((i): i is TranscriptItem => Boolean(i));
-  if (!list.length) return <p className="text-[12.5px] italic text-fg-3">No turn</p>;
+  if (!list.length) return <p className="text-[13px] italic text-fg-3">No turn</p>;
   return (
     <div className="flex flex-col gap-2">
       {transcriptRows(list).map((r) => {
@@ -220,8 +220,8 @@ function Comparison({ data }: { data: CallComparison }) {
                 {data.flow_diff.map((f) => (
                   <tr key={f.sequence} className={cn("border-b border-line last:border-0", f.differs && "bg-warning-soft/50")}>
                     <td className="h-10 pl-5 font-mono text-fg-3 tnum">{f.sequence}</td>
-                    <td className={cn("font-mono text-[12.5px]", f.differs ? "text-warning-text" : "text-fg-2")}>{f.left_node_id ?? "n/a"}</td>
-                    <td className={cn("pr-5 font-mono text-[12.5px]", f.differs ? "font-medium text-warning-text" : "text-fg-2")}>
+                    <td className={cn("font-mono text-[13px]", f.differs ? "text-warning-text" : "text-fg-2")}>{f.left_node_id ?? "n/a"}</td>
+                    <td className={cn("pr-5 font-mono text-[13px]", f.differs ? "font-medium text-warning-text" : "text-fg-2")}>
                       {f.right_node_id ?? "n/a"}
                     </td>
                   </tr>

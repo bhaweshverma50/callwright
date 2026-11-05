@@ -32,7 +32,7 @@ const BATCH_COLUMNS: Column<Experiment>[] = [
         to={`/simulations/${e.experiment_id}`}
         className="flex min-w-0 max-w-[52vw] flex-col py-1 md:max-w-[42ch] gap-0.5 rounded-inline hover:underline"
       >
-        <TruncatedText className="text-[13.5px] font-medium text-fg">{e.name}</TruncatedText>
+        <TruncatedText className="text-[14px] font-medium text-fg">{e.name}</TruncatedText>
         <span className="truncate text-[12px] text-fg-3">
           {MODE_LABELS[e.mode]} against {targetPhrase(e)}
         </span>
@@ -85,7 +85,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
         to={`/simulations/runs/${r.simulation_run_id}`}
         className="flex min-w-0 max-w-[52vw] flex-col py-1 md:max-w-[46ch] gap-0.5 rounded-inline hover:underline"
       >
-        <TruncatedText className="text-[13.5px] font-medium text-fg">{runTitle(r)}</TruncatedText>
+        <TruncatedText className="text-[14px] font-medium text-fg">{runTitle(r)}</TruncatedText>
         <span className="truncate text-[12px] text-fg-3">Against {targetPhrase(r)}</span>
       </Link>
     ),

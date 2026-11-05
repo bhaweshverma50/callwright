@@ -160,7 +160,7 @@ export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLIn
             {disabledWhy}
           </p>
         )}
-        <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-fg-3">
+        <p className="flex items-start gap-2 text-[13px] leading-relaxed text-fg-3">
           <ExternalLink className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           You return here after paying. Credit appears once the payment is confirmed.
         </p>

@@ -41,7 +41,7 @@ export function TextDiff({ before, after, label }: { before: string; after: stri
   const removed = lines.filter((l) => l.op === "remove").length;
   return (
     <figure className="flex min-w-0 flex-col gap-1.5">
-      <figcaption className="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px] text-fg-3">
+      <figcaption className="flex flex-wrap items-baseline justify-between gap-2 text-[13px] text-fg-3">
         <span>{label}</span>
         <span className="font-mono tnum">
           <span className="text-success-text">+{added}</span> <span className="text-danger-text">-{removed}</span>
@@ -50,7 +50,7 @@ export function TextDiff({ before, after, label }: { before: string; after: stri
       <div
         role="table"
         aria-label={`${label}, before and after`}
-        className="overflow-hidden rounded-control border border-line bg-surface-2/60 font-mono text-[12.5px]"
+        className="overflow-hidden rounded-control border border-line bg-surface-2/60 font-mono text-[13px]"
       >
         {lines.map((l, k) => (
           <div
@@ -92,7 +92,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 function Added({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="flex items-center gap-1.5 text-[12.5px] text-fg-3">
+      <span className="flex items-center gap-1.5 text-[13px] text-fg-3">
         <Plus className="size-3.5 text-success-text" aria-hidden />
         {label}
       </span>
@@ -103,7 +103,7 @@ function Added({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const Mono = ({ children }: { children: ReactNode }) => <span className="break-all font-mono text-[12.5px]">{children}</span>;
+const Mono = ({ children }: { children: ReactNode }) => <span className="break-all font-mono text-[13px]">{children}</span>;
 
 const PLACEMENT = { agent_prompt: "the agent prompt", node: "one node", all_agent_nodes: "every agent node" } as const;
 
@@ -169,13 +169,13 @@ export function FixDiff({ kind, payload }: { kind: FixKind; payload: FixPayload 
           {kbs.length > 0 && <Fact label="Knowledge bases to attach">{<Mono>{kbs.join(", ")}</Mono>}</Fact>}
           {topics.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="flex items-center gap-1.5 text-[12.5px] text-fg-3">
+              <span className="flex items-center gap-1.5 text-[13px] text-fg-3">
                 <BookX className="size-3.5 text-warning-text" aria-hidden />
                 Topics no knowledge base covers
               </span>
               <ul className="flex flex-wrap gap-1.5">
                 {topics.map((t) => (
-                  <li key={t} className="rounded-full border border-line bg-surface px-2.5 py-1 text-[12.5px] text-fg">
+                  <li key={t} className="rounded-full border border-line bg-surface px-2.5 py-1 text-[13px] text-fg">
                     {t}
                   </li>
                 ))}

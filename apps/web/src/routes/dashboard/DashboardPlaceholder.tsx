@@ -116,14 +116,13 @@ export function DashboardPlaceholder() {
       <WorkLayout
         main={
           <section aria-labelledby="setup" className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-            <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-60" />
             <div className="relative px-5 pb-5 pt-6 sm:px-6">
               <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
                 <div className="min-w-0">
-                  <h2 id="setup" className="font-display text-[19px] font-medium tracking-[-0.015em] text-fg">
+                  <h2 id="setup" className="font-display text-[19px] tracking-[-0.015em] text-fg">
                     Get your first call on the line
                   </h2>
-                  <p className="mt-1.5 text-[13.5px] text-fg-2">Three steps, about ten minutes. Your trial credit covers the test calls.</p>
+                  <p className="mt-1.5 text-[14px] text-fg-2">Three steps, about ten minutes. Your trial credit covers the test calls.</p>
                 </div>
                 <p className="text-[13px] text-fg-2" aria-live="polite">
                   <span className="font-mono text-fg tnum">{done}</span> of <span className="font-mono tnum">{steps.length}</span> done
@@ -138,7 +137,7 @@ export function DashboardPlaceholder() {
                 className="mt-5 h-1.5 overflow-hidden rounded-full bg-surface-3"
               >
                 <motion.div
-                  className="grad-action h-full origin-left rounded-full"
+                  className="bg-accent h-full origin-left rounded-full"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: done / steps.length }}
                   transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -186,7 +185,7 @@ export function DashboardPlaceholder() {
                 {me?.user.email ?? <Skeleton className="ml-auto h-4 w-32" />}
               </InfoRow>
             </PanelRows>
-            <p className="border-t border-line px-5 py-3.5 text-[12.5px] leading-relaxed text-fg-3">
+            <p className="border-t border-line px-5 py-3.5 text-[13px] leading-relaxed text-fg-3">
               Change the name and recording default in{" "}
               <Link to="/settings" className={cn("link-underline text-accent-text", focusRing)}>
                 Settings

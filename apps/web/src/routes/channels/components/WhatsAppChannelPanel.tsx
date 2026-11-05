@@ -30,14 +30,14 @@ function Step({ done, title, detail, index }: { done: boolean; title: string; de
       <span
         className={cn(
           "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full [&_svg]:size-3.5",
-          done ? "grad-action text-white shadow-glow" : "border border-dashed border-line-strong bg-surface text-fg-3",
+          done ? "bg-accent text-white" : "border border-dashed border-line-strong bg-surface text-fg-3",
         )}
       >
         {done ? <Check strokeWidth={3} aria-hidden /> : <CircleDashed aria-hidden />}
       </span>
       <div className="flex min-w-0 flex-col">
-        <span className={cn("text-[13.5px] font-medium", done ? "text-fg" : "text-fg-2")}>{title}</span>
-        <span className="text-[12.5px] text-fg-3">{detail}</span>
+        <span className={cn("text-[14px] font-medium", done ? "text-fg" : "text-fg-2")}>{title}</span>
+        <span className="text-[13px] text-fg-3">{detail}</span>
       </div>
     </motion.li>
   );
@@ -184,7 +184,7 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
             Retry setup
           </Button>
         )}
-        {channel.status_detail && <p className="basis-full text-[12.5px] leading-relaxed text-danger-text">{channel.status_detail}</p>}
+        {channel.status_detail && <p className="basis-full text-[13px] leading-relaxed text-danger-text">{channel.status_detail}</p>}
       </div>
 
       <Section
@@ -221,7 +221,7 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
           />
         </ol>
         <div className="mt-4 flex items-center gap-2 rounded-control border border-line bg-surface-2/70 py-1 pl-3 pr-1">
-          <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg">{settings.data?.callback_url ?? "Loading"}</code>
+          <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg">{settings.data?.callback_url ?? "Loading"}</code>
           {settings.data && <CopyButton value={settings.data.callback_url} label="Copy callback URL" />}
         </div>
         {channel.last_webhook_at && (

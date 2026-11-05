@@ -26,7 +26,7 @@ const MAX = 2000;
 
 function Counter({ value }: { value: string }) {
   return (
-    <span className={cn("font-mono text-[11.5px] tnum", value.length > MAX ? "text-danger-text" : "text-fg-3")}>
+    <span className={cn("font-mono text-[12px] tnum", value.length > MAX ? "text-danger-text" : "text-fg-3")}>
       {value.length.toLocaleString()} / {MAX.toLocaleString()}
     </span>
   );
@@ -220,10 +220,7 @@ export function TestCaseEditor({
               <button
                 type="button"
                 onClick={() => setAdding((a) => !a)}
-                className={cn(
-                  "inline-flex cursor-pointer items-center gap-1 rounded-inline text-[12.5px] text-accent-text hover:underline",
-                  focusRing,
-                )}
+                className={cn("inline-flex cursor-pointer items-center gap-1 rounded-inline text-[13px] text-accent-text hover:underline", focusRing)}
               >
                 <Plus className="size-3.5" aria-hidden />
                 New category
@@ -284,7 +281,7 @@ export function TestCaseEditor({
               {declared.map((v) => (
                 <Field
                   key={v.name}
-                  label={<span className="font-mono text-[12.5px]">{v.name}</span>}
+                  label={<span className="font-mono text-[13px]">{v.name}</span>}
                   hint={v.default ? `Empty uses ${v.default}.` : undefined}
                 >
                   {({ id, describedBy }) => (

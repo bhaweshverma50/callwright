@@ -4,7 +4,7 @@
   Callwright tokens: the signal chain system (docs/DESIGN.md). Components only use semantic names.
 
   Palette: ink #171A3D for text and the dark base #0E1030, cool paper #F4F5FA, one action colour
-  (cobalt #3346E8, with a cobalt to violet gradient on primary actions), on-air red #F0412F for
+  (cobalt #3346E8, solid on primary actions), on-air red #F0412F for
   live and recording only, and the spectrogram heat ramp #7A3CFF > #E0457B > #FFB347 for data
   visualisation. Success, warning and danger are separate from the accent.
 
@@ -18,16 +18,14 @@
   color-scheme: light;
   /* Motion tokens (docs/DESIGN.md section 8): every button and loader uses these. */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
-  --sheen-duration: 560ms;
-  --sheen-idle-cycle: 7s;
   --press-duration: 90ms;
   --press-scale: 0.975;
   --skeleton-duration: 1.3s;
   /* State changes (a node becoming active: its disc fill and halo) and the halo pulse loop. */
   --state-duration: 360ms;
   --halo-pulse-duration: 1.8s;
-  --halo: rgb(122 60 255 / 0.5);
-  --halo-soft: rgb(122 60 255 / 0.14);
+  --halo: color-mix(in srgb, var(--accent) 40%, transparent);
+  --halo-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --bg: #f4f5fa;
   --surface: #ffffff;
   --surface-2: #eceef6;
@@ -66,8 +64,6 @@
   --ring: #3346e8;
   --shadow-color: 234 45% 18%;
   --overlay: rgb(14 16 48 / 0.42);
-  --glow-a: rgb(51 70 232 / 0.16);
-  --glow-b: rgb(122 60 255 / 0.12);
   --tooltip-bg: #171a3d;
   --tooltip-fg: #eef0fb;
   --tooltip-edge: transparent;
@@ -107,11 +103,6 @@
   --ring: #8b97ff;
   --shadow-color: 236 70% 3%;
   --overlay: rgb(5 6 20 / 0.66);
-  --glow-a: rgb(75 92 240 / 0.24);
-  --glow-b: rgb(122 60 255 / 0.2);
-  /* Lifted above every dark surface so the tip reads as floating, not as a hole in the page. */
-  --halo: rgb(164 123 255 / 0.6);
-  --halo-soft: rgb(164 123 255 / 0.2);
   --tooltip-bg: #2b3172;
   --tooltip-fg: #eef0fb;
   --tooltip-edge: rgb(255 255 255 / 0.08);
@@ -168,7 +159,6 @@
   --shadow-1: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 1px hsl(var(--shadow-color) / 0.04);
   --shadow-2: 0 18px 40px -18px hsl(var(--shadow-color) / 0.35), 0 4px 10px -4px hsl(var(--shadow-color) / 0.12);
   --shadow-pop: 0 14px 36px -10px hsl(var(--shadow-color) / 0.3), 0 2px 6px hsl(var(--shadow-color) / 0.1);
-  --shadow-glow: 0 10px 30px -12px rgb(51 70 232 / 0.45);
 
   --animate-fade-in: fade-in 160ms ease-out;
   --animate-pop-in: pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -277,24 +267,6 @@
     stroke-dashoffset: -24;
   }
 }
-@keyframes sheen {
-  from {
-    transform: translateX(-110%) skewX(-20deg);
-  }
-  to {
-    transform: translateX(420%) skewX(-20deg);
-  }
-}
-/* Idle pass for the single hero CTA: one pass, then a long rest (pass = first 8% of the cycle). */
-@keyframes sheen-idle {
-  0% {
-    transform: translateX(-110%) skewX(-20deg);
-  }
-  8%,
-  100% {
-    transform: translateX(420%) skewX(-20deg);
-  }
-}
 @keyframes ripple {
   from {
     transform: translate(-50%, -50%) scale(0);
@@ -303,11 +275,6 @@
   to {
     transform: translate(-50%, -50%) scale(1);
     opacity: 0;
-  }
-}
-@keyframes spin-angle {
-  to {
-    --border-angle: 360deg;
   }
 }
 /* An open, quiet line: a soft highlight sweeps along even bars (the delay steps per bar). */
@@ -514,12 +481,6 @@
   }
 }
 
-@property --border-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
 @layer base {
   html {
     background: var(--bg);
@@ -560,11 +521,6 @@
 /* Tabular figures for every number that lines up. */
 @utility tnum {
   font-variant-numeric: tabular-nums slashed-zero;
-}
-
-/* Cobalt to violet: primary actions, active markers. The logo uses the --logo-* tokens. */
-@utility grad-action {
-  background-image: linear-gradient(120deg, #3346e8 0%, #5a3cf4 55%, #7a3cff 100%);
 }
 
 /* Spectrogram heat ramp: data visualisation, chain links, highlight borders. */
@@ -750,23 +706,6 @@
 }
 
 @layer components {
-  /* Gradient text: only on the home and pricing headlines. */
-  .grad-text {
-    background-image: linear-gradient(100deg, var(--text) 0%, var(--text) 38%, var(--accent) 70%, var(--violet) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  [data-theme="dark"] .grad-text {
-    background-image: linear-gradient(100deg, #eef0fb 0%, #eef0fb 36%, #a3adff 70%, #c4a6ff 100%);
-  }
-
-  /* Soft radial glows behind feature surfaces. */
-  .glow-backdrop {
-    background-image:
-      radial-gradient(60% 55% at 78% 30%, var(--glow-b), transparent 70%), radial-gradient(55% 60% at 20% 70%, var(--glow-a), transparent 70%);
-  }
-
   /* Shimmer skeleton. */
   .skeleton {
     background-color: var(--surface-3);
@@ -810,46 +749,12 @@
     }
   }
 
-  /* Hover lift with a cobalt glow for interactive cards. */
+  /* Interactive cards: the border darkens on hover; nothing moves or glows. */
   .lift {
-    transition:
-      transform 180ms ease-out,
-      box-shadow 180ms ease-out,
-      border-color 180ms ease-out;
+    transition: border-color 180ms ease-out;
   }
   .lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-glow);
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  }
-
-  /*
-    Sheen: one diagonal pass of a narrow, soft highlight across a primary button, started by hover or
-    keyboard focus (Button sets data-sheen and clears it on animationend, so rapid hover in and out
-    never restarts a pass). Timings come from the motion tokens on :root.
-  */
-  .sheen {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-  }
-  .sheen::after {
-    content: "";
-    position: absolute;
-    inset: -2px auto -2px 0;
-    width: 28%;
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.32) 50%, transparent);
-    transform: translateX(-110%) skewX(-20deg);
-    pointer-events: none;
-  }
-  .sheen[data-sheen]::after {
-    animation: sheen var(--sheen-duration) var(--ease-out-soft) 1;
-  }
-  .sheen-idle::after {
-    animation: sheen-idle var(--sheen-idle-cycle) var(--ease-out-soft) 1.5s infinite;
-  }
-  .sheen-idle[data-sheen]::after {
-    animation: sheen var(--sheen-duration) var(--ease-out-soft) 1;
+    border-color: var(--border-strong);
   }
 
   /*
@@ -1012,7 +917,7 @@
     animation: ripple 450ms ease-out forwards;
   }
 
-  /* Animated heat-ramp border for the focused or active feature panel. */
+  /* Cobalt border for the focused or active feature panel. */
   .live-border {
     position: relative;
   }
@@ -1022,7 +927,7 @@
     inset: -1px;
     border-radius: inherit;
     padding: 1px;
-    background: conic-gradient(from var(--border-angle), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-1));
+    background: var(--accent);
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -1031,14 +936,13 @@
     opacity: 0;
     transition: opacity 200ms ease-out;
     pointer-events: none;
-    animation: spin-angle 6s linear infinite;
   }
   .live-border:focus-within::before,
   .live-border[data-active="true"]::before {
     opacity: 1;
   }
 
-  /* Static heat-ramp border (highlight lines, surcharge rows). */
+  /* Warning border (surcharge rows). */
   .heat-border {
     position: relative;
   }
@@ -1048,7 +952,8 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(120deg, var(--heat-1), var(--heat-2), var(--heat-3));
+    background: var(--warning);
+    opacity: 0.45;
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -1059,18 +964,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sheen::after {
-    display: none;
-  }
   *,
   *::before,
   *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
-  }
-  .lift:hover {
-    transform: none;
   }
   .halo > .halo-pulse,
   .on-air-pulse,
@@ -1090,15 +989,15 @@
 :root {
   --logo-ink: #171a3d;
   --logo-cobalt: #3346e8;
-  --logo-violet: #7a3cff;
-  --logo-pink: #e0457b;
+  --logo-violet: #3346e8;
+  --logo-pink: #3346e8;
 }
 [data-theme="dark"],
 .logo-on-dark {
   --logo-ink: #f4f5fa;
   --logo-cobalt: #6e7dff;
-  --logo-violet: #a47bff;
-  --logo-pink: #f06a97;
+  --logo-violet: #6e7dff;
+  --logo-pink: #6e7dff;
 }
 /* Logo motion: one pass on hover or focus of the logo or its link, never idle, none under reduced motion. */
 /* Held state: while the logo (or its link) is hovered or focused, the symbol stays split and the
@@ -1178,65 +1077,4 @@ a:focus-visible .logo-handoff.logo-anim .wc-full {
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-}
-
-/*
-  Cobalt look (ui-unslop proposal). Previewed on /dev/components?look=cobalt, which sets
-  data-look="cobalt" on <html>; once approved these rules become the defaults above and this
-  block goes. Unlayered on purpose so it wins over Tailwind's utility layer.
-  One solid cobalt action colour, no glows, washes or hover lifts, a flat logo, lighter display
-  headings. The heat ramp stays only in the cost chain and the data charts.
-*/
-[data-look="cobalt"] {
-  --shadow-glow: 0 8px 24px -12px hsl(var(--shadow-color) / 0.22);
-  --halo: color-mix(in srgb, var(--accent) 40%, transparent);
-  --halo-soft: color-mix(in srgb, var(--accent) 12%, transparent);
-  --logo-violet: var(--logo-cobalt);
-  --logo-pink: var(--logo-cobalt);
-}
-[data-look="cobalt"] .grad-action {
-  background-image: none;
-  background-color: var(--accent);
-  box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.12);
-  filter: none;
-}
-[data-look="cobalt"] .grad-action:is(button, a):hover {
-  background-color: var(--accent-hover);
-}
-[data-look="cobalt"] .grad-action:is(:disabled, [aria-disabled="true"]) {
-  background-color: var(--surface-3);
-  box-shadow: none;
-}
-[data-look="cobalt"] .sheen::after {
-  display: none;
-}
-[data-look="cobalt"] .glow-backdrop {
-  background-image: none;
-}
-[data-look="cobalt"] .lift:hover {
-  transform: none;
-  box-shadow: var(--shadow-1);
-  border-color: var(--border-strong);
-}
-[data-look="cobalt"] [class*="hover:-translate-y"]:hover {
-  translate: none;
-}
-[data-look="cobalt"] [class*="hover:scale-"]:hover {
-  scale: none;
-}
-[data-look="cobalt"] .font-display {
-  font-weight: 400;
-}
-[data-look="cobalt"] .grad-heat,
-[data-look="cobalt"] [class*="var(--heat-1)"] {
-  background-image: none;
-  background-color: var(--accent);
-}
-[data-look="cobalt"] .heat-border::before {
-  background: var(--warning);
-  opacity: 0.45;
-}
-[data-look="cobalt"] .live-border::before {
-  background: var(--accent);
-  animation: none;
 }

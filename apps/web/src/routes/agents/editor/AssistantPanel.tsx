@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Check, CircleAlert, RotateCcw, Sparkles, Undo2, Wallet } from "lucide-react";
+import { Check, CircleAlert, MessageSquareText, RotateCcw, Undo2, Wallet } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
@@ -164,16 +164,16 @@ export function AssistantPanel({
         {turns.length === 0 && (
           <div className="flex flex-col gap-4">
             <div className="flex items-start gap-3 rounded-panel bg-surface-2/60 p-4">
-              <span className="grid size-9 shrink-0 place-items-center rounded-control grad-action text-white">
-                <Sparkles className="size-4" aria-hidden />
+              <span className="grid size-9 shrink-0 place-items-center rounded-control bg-accent text-white">
+                <MessageSquareText className="size-4" aria-hidden />
               </span>
-              <p className="text-[13.5px] leading-relaxed text-fg-2">
+              <p className="text-[14px] leading-relaxed text-fg-2">
                 The assistant drafts prompts in the same structure as the templates: role, steps, rules. Each request costs about $0.02 from your
                 balance.
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <p className="text-[12.5px] text-fg-3">Try one of these</p>
+              <p className="text-[13px] text-fg-3">Try one of these</p>
               {SUGGESTIONS.filter((s) => draft.config.prompt.trim() || s.startsWith("A ")).map((s) => (
                 <button
                   key={s}
@@ -197,7 +197,7 @@ export function AssistantPanel({
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             >
               {t.role === "user" ? (
-                <div className="ml-auto w-fit max-w-[85%] rounded-panel rounded-br-[4px] bg-accent-soft px-3.5 py-2.5 text-[13.5px] text-fg">
+                <div className="ml-auto w-fit max-w-[85%] rounded-panel rounded-br-[4px] bg-accent-soft px-3.5 py-2.5 text-[14px] text-fg">
                   {t.content}
                 </div>
               ) : t.error ? (
@@ -214,11 +214,11 @@ export function AssistantPanel({
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  <p className="max-w-[92%] text-[13.5px] leading-relaxed text-fg">{t.content}</p>
+                  <p className="max-w-[92%] text-[14px] leading-relaxed text-fg">{t.content}</p>
                   {t.proposal && (
                     <ProposalCard turn={t} current={draft.config.prompt} applied={applied?.turn === t.id} onApply={() => apply(t)} onUndo={undo} />
                   )}
-                  {t.billed && <span className="text-[11.5px] text-fg-3">Charged {formatUsd(t.billed, { places: 3 })}</span>}
+                  {t.billed && <span className="text-[12px] text-fg-3">Charged {formatUsd(t.billed, { places: 3 })}</span>}
                 </div>
               )}
             </motion.div>
@@ -256,7 +256,7 @@ function ProposalCard({
     <div className={cn("overflow-hidden rounded-panel border bg-surface", applied ? "border-success/50" : "border-line")}>
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
         <span className="flex items-center gap-2 text-[13px] font-medium text-fg">
-          <Sparkles className="size-3.5 text-accent-text" aria-hidden />
+          <MessageSquareText className="size-3.5 text-accent-text" aria-hidden />
           {lines ? "Proposed changes to the prompt" : "Proposed prompt"}
         </span>
         {applied ? (
@@ -273,11 +273,11 @@ function ProposalCard({
         {lines ? (
           <DiffView lines={lines} />
         ) : (
-          <pre className="whitespace-pre-wrap px-4 py-3 font-sans text-[12.5px] leading-relaxed text-fg-2">{p.prompt}</pre>
+          <pre className="whitespace-pre-wrap px-4 py-3 font-sans text-[13px] leading-relaxed text-fg-2">{p.prompt}</pre>
         )}
       </div>
       {applied && (
-        <p className="flex items-center gap-1.5 border-t border-line bg-success-soft/50 px-4 py-2 text-[12.5px] text-success-text">
+        <p className="flex items-center gap-1.5 border-t border-line bg-success-soft/50 px-4 py-2 text-[13px] text-success-text">
           <RotateCcw className="size-3.5" aria-hidden /> Applied to the editor. Save the agent to keep it.
         </p>
       )}

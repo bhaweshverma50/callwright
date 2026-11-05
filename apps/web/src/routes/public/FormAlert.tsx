@@ -13,7 +13,7 @@ export function FormAlert({ tone = "error", children, action }: { tone?: "error"
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "mb-5 flex items-start gap-2.5 rounded-control border px-3.5 py-3 text-[13.5px] leading-relaxed",
+        "mb-5 flex items-start gap-2.5 rounded-control border px-3.5 py-3 text-[14px] leading-relaxed",
         tone === "error" && "border-danger/30 bg-danger-soft text-danger-text",
         tone === "warning" && "border-warning/40 bg-warning-soft text-warning-text",
         tone === "info" && "border-accent/25 bg-accent-soft text-accent-text",

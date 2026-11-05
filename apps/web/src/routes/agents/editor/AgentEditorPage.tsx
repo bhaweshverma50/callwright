@@ -198,7 +198,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
 
       <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="min-w-0 max-w-full font-display text-[22px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[26px]">
+          <h1 className="min-w-0 max-w-full font-display text-[22px] leading-tight tracking-[-0.02em] text-fg sm:text-[26px]">
             <TruncatedText>{title}</TruncatedText>
           </h1>
           <div className="flex flex-wrap items-center gap-2">

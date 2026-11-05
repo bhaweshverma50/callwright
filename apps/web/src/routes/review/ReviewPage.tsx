@@ -71,17 +71,17 @@ function QueueCard({ item, index, onOpen }: { item: QueueItem; index: number; on
         aria-label={`Review call with ${item.agent_name}, ${verdictLine(item)}`}
         className={cn(
           "group flex h-full w-full cursor-pointer flex-col gap-3 rounded-panel border border-line bg-surface p-4 text-left shadow-1",
-          "transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow",
+          "transition-[border-color,box-shadow,transform] duration-200 hover:border-accent/45",
           focusRing,
         )}
       >
         <span className="flex w-full items-start justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="grad-action grid size-8 shrink-0 place-items-center rounded-control text-white [&_svg]:size-4">
+            <span className="bg-accent grid size-8 shrink-0 place-items-center rounded-control text-white [&_svg]:size-4">
               <Bot aria-hidden />
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-[13.5px] font-semibold text-fg">{item.agent_name}</span>
+              <span className="truncate text-[14px] font-semibold text-fg">{item.agent_name}</span>
               <span className="flex items-center gap-1 text-[12px] text-fg-3">
                 <Clock className="size-3" aria-hidden />
                 {relative(item.ended_at)}
@@ -96,7 +96,7 @@ function QueueCard({ item, index, onOpen }: { item: QueueItem; index: number; on
         <span className="flex w-full items-center justify-between gap-2">
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 text-[12.5px] font-medium",
+              "inline-flex items-center gap-1.5 text-[13px] font-medium",
               total === 0 ? "text-fg-3" : item.fail_count === 0 ? "text-success-text" : "text-danger-text",
             )}
           >
@@ -198,9 +198,7 @@ export function ReviewPage() {
               onClick={() => set((p) => (s.value === "disagreement" ? p.delete("queue") : p.set("queue", s.value)))}
               className={cn(
                 "relative flex cursor-pointer flex-col gap-1.5 overflow-hidden rounded-panel border p-4 text-left transition-[border-color,box-shadow,background-color] duration-200",
-                on
-                  ? "border-accent bg-accent-soft/40 shadow-[0_0_0_1px_var(--accent),0_14px_30px_-20px_rgb(51_70_232/0.6)]"
-                  : "border-line bg-surface hover:border-accent/40",
+                on ? "border-accent bg-accent-soft/40 shadow-[0_0_0_1px_var(--accent)]" : "border-line bg-surface hover:border-accent/40",
                 focusRing,
               )}
             >
@@ -211,11 +209,11 @@ export function ReviewPage() {
                 />
               )}
               <span className="flex w-full items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-[13.5px] font-semibold text-fg">
+                <span className="flex items-center gap-2 text-[14px] font-semibold text-fg">
                   <span
                     className={cn(
                       "grid size-7 place-items-center rounded-control [&_svg]:size-3.5",
-                      on ? "grad-action text-white" : "bg-surface-3 text-fg-2",
+                      on ? "bg-accent text-white" : "bg-surface-3 text-fg-2",
                     )}
                   >
                     <Icon aria-hidden />
@@ -226,7 +224,7 @@ export function ReviewPage() {
                   {n ?? <Skeleton className="inline-block h-5 w-6" />}
                 </span>
               </span>
-              <span className="text-[12.5px] leading-relaxed text-fg-3">{s.hint}</span>
+              <span className="text-[13px] leading-relaxed text-fg-3">{s.hint}</span>
             </button>
           );
         })}
@@ -268,7 +266,7 @@ export function ReviewPage() {
         footer={
           callId ? (
             <div className="flex w-full items-center gap-3">
-              <span className="text-[12.5px] text-fg-3" aria-live="polite">
+              <span className="text-[13px] text-fg-3" aria-live="polite">
                 {labelled ? "Labelled. It leaves the queue." : "Label the call, then move on."}
               </span>
               <Button

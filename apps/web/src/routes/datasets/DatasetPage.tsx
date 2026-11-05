@@ -75,7 +75,7 @@ function columns(onRemove: (item: DatasetItem) => void): Column<DatasetItem>[] {
           <Link
             to={`/calls?call=${i.call_id}`}
             title={i.call_id}
-            className={cn("block whitespace-nowrap rounded-inline font-mono text-[12.5px] hover:underline", i.available ? "text-fg" : "text-fg-3")}
+            className={cn("block whitespace-nowrap rounded-inline font-mono text-[13px] hover:underline", i.available ? "text-fg" : "text-fg-3")}
           >
             {shortId(i.call_id)}
           </Link>

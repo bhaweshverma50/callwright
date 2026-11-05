@@ -66,7 +66,7 @@ export function CostBreakdownCard({
   return (
     <section aria-label={title} className={cn("@container overflow-hidden rounded-panel border border-line bg-surface", className)}>
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 pb-3 pt-4">
-        <h3 className="text-[13.5px] font-semibold text-fg">{title}</h3>
+        <h3 className="text-[14px] font-semibold text-fg">{title}</h3>
         <div className="flex items-center gap-3">
           <dl className="flex gap-3 text-[12px] text-fg-3">
             <div className="flex gap-1">
@@ -93,7 +93,7 @@ export function CostBreakdownCard({
         </div>
       </header>
 
-      <table className="w-full border-t border-dashed border-line-strong text-[12.5px]">
+      <table className="w-full border-t border-dashed border-line-strong text-[13px]">
         <caption className="sr-only">Base cost per component</caption>
         <thead className="sr-only">
           <tr>
@@ -139,7 +139,7 @@ export function CostBreakdownCard({
 
       {surcharged.length > 0 && (
         <div className="heat-border mx-3 mb-3 mt-1 rounded-control bg-warning-soft/70 px-4 py-3">
-          <p className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-warning-text">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-warning-text">
             <Zap className="size-3.5" aria-hidden />
             Bundle surcharge
             <InfoTip label="What a bundle surcharge is" className="text-warning-text">
@@ -151,7 +151,7 @@ export function CostBreakdownCard({
             {surcharged.map((l) => {
               const over = l.meters.filter((m) => m.used > Number(m.included));
               return (
-                <li key={l.component} className="grid grid-cols-[1fr_auto] gap-x-4 text-[12.5px]">
+                <li key={l.component} className="grid grid-cols-[1fr_auto] gap-x-4 text-[13px]">
                   <span className="text-fg">
                     {COMPONENT_LABELS[l.component]} billed at <span className="font-mono tnum">{Number(l.bundle_multiplier).toFixed(2)}x</span> the
                     call length

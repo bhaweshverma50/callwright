@@ -56,8 +56,8 @@ export function AgentCard({
         }}
         className={cn(
           "group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border bg-surface shadow-1 transition-[transform,box-shadow,border-color] duration-200",
-          "hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-glow focus-within:border-accent/45",
-          fresh ? "border-accent/60 shadow-glow" : "border-line",
+          "hover:-translate-y-0.5 hover:border-accent/45 focus-within:border-accent/45",
+          fresh ? "border-accent/60" : "border-line",
         )}
       >
         <div className="flex items-start gap-3 px-5 pb-3 pt-4">
@@ -75,7 +75,7 @@ export function AgentCard({
                 <TruncatedText focusable={false}>{agent.name}</TruncatedText>
               </Link>
             </h3>
-            <TruncatedText className="font-mono text-[11.5px] text-fg-3">{agent.id}</TruncatedText>
+            <TruncatedText className="font-mono text-[12px] text-fg-3">{agent.id}</TruncatedText>
           </div>
           <AgentActions agent={agent} onDuplicate={onDuplicate} onDelete={onDelete} className="-mr-2 -mt-1 shrink-0" />
         </div>

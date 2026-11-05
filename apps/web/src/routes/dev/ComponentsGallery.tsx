@@ -1,8 +1,8 @@
 import { FolderOpen, PhoneCall as PhoneCallDuo, PhoneList, Robot } from "@phosphor-icons/react";
 import { BrainCircuit, Captions, Disc, Ear, Gauge, Mail, Mic, Moon, Play, Plus, Shuffle, Sun, Trash2, Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useState, type ReactNode } from "react";
+import { Link } from "react-router";
 import { resolvedTheme, setThemePref, useThemePref } from "../../app/theme";
 import {
   Badge,
@@ -115,8 +115,8 @@ const CALL_SCENARIOS: Record<string, { label: string; options: MockOptions }> = 
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
     <section className="border-t border-line py-10">
-      <h2 className="font-display text-[18px] font-medium tracking-[-0.015em] text-fg">{title}</h2>
-      {note && <p className="mt-1.5 max-w-[70ch] text-[13.5px] text-fg-2">{note}</p>}
+      <h2 className="font-display text-[18px] tracking-[-0.015em] text-fg">{title}</h2>
+      {note && <p className="mt-1.5 max-w-[70ch] text-[14px] text-fg-2">{note}</p>}
       <div className="mt-6">{children}</div>
     </section>
   );
@@ -125,7 +125,7 @@ function Section({ title, note, children }: { title: string; note?: string; chil
 function Demo({ name, children }: { name: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-5 shadow-1">
-      <p className="text-[12.5px] font-medium text-fg-3">{name}</p>
+      <p className="text-[13px] font-medium text-fg-3">{name}</p>
       <div className="flex min-h-16 flex-1 flex-col justify-center">{children}</div>
     </div>
   );
@@ -153,15 +153,6 @@ export function ComponentsGallery() {
   const [speaker, setSpeaker] = useState("agent");
   const [nc, setNc] = useState("vi");
   const [sens, setSens] = useState(0.9);
-  // Look preview (ui-unslop): ?look=cobalt sets data-look on <html>, so dialogs, menus and toasts
-  // rendered in portals get it too. Leaving the page puts the current look back.
-  const [params, setParams] = useSearchParams();
-  const look = params.get("look") === "cobalt" ? "cobalt" : "current";
-  useEffect(() => {
-    if (look === "cobalt") document.documentElement.dataset.look = "cobalt";
-    else delete document.documentElement.dataset.look;
-    return () => void delete document.documentElement.dataset.look;
-  }, [look]);
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -169,20 +160,10 @@ export function ComponentsGallery() {
         <Link to="/" aria-label="Home">
           <Logo />
         </Link>
-        <Segmented
-          aria-label="Look"
-          size="sm"
-          className="ml-auto"
-          value={look}
-          onValueChange={(v) => setParams((p) => (v === "cobalt" ? p.set("look", "cobalt") : p.delete("look"), p), { replace: true })}
-          options={[
-            { value: "current", label: "Current" },
-            { value: "cobalt", label: "Cobalt (proposed)" },
-          ]}
-        />
         <Button
           variant="secondary"
           size="sm"
+          className="ml-auto"
           icon={theme === "dark" ? <Sun aria-hidden /> : <Moon aria-hidden />}
           onClick={() => setThemePref(theme === "dark" ? "light" : "dark")}
         >
@@ -190,23 +171,11 @@ export function ComponentsGallery() {
         </Button>
       </header>
       <main id="main" className="mx-auto max-w-[1120px] px-4 pb-24 pt-12 sm:px-6">
-        <h1 className="font-display text-[30px] font-semibold tracking-[-0.03em] text-fg">Components</h1>
+        <h1 className="font-display text-[30px] tracking-[-0.03em] text-fg">Components</h1>
         <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-fg-2">
-          The signal chain system: ink and paper, one cobalt action colour with a cobalt to violet gradient on primary actions, on-air red for live
-          state only, and the heat ramp inside data visualisation. Unbounded for display, Geist for interface text, Geist Mono for figures. Rules live
-          in docs/DESIGN.md.
+          The signal chain system: ink and paper, one solid cobalt action colour, on-air red for live state only, and the heat ramp inside data
+          visualisation. Unbounded for display, Geist for interface text, Geist Mono for figures. Rules live in docs/DESIGN.md.
         </p>
-        {look === "cobalt" && (
-          <div className="mt-5 max-w-[70ch] rounded-panel border border-line bg-surface px-4 py-3 text-[14px] leading-relaxed text-fg-2">
-            <p className="font-medium text-fg">Cobalt (proposed)</p>
-            <p className="mt-1">
-              Primary actions are solid cobalt, a shade darker on hover, with no glow or sheen. Cards no longer lift or glow on hover; their border
-              steps up instead. The coloured washes behind feature panels are gone. The logo is flat cobalt. Display headings drop to weight 400. The
-              violet to pink to amber ramp stays only in the cost chain and the data charts. Not shown here yet, but part of the full pass: no
-              half-pixel text sizes, sentence case instead of uppercase labels, and a pen icon instead of sparkles on AI actions.
-            </p>
-          </div>
-        )}
 
         <Section title="Tokens">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
@@ -219,28 +188,16 @@ export function ComponentsGallery() {
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <span className="grad-action h-12 rounded-control" />
-              <span className="text-[12px] text-fg-2">
-                {look === "cobalt"
-                  ? "Action colour, solid cobalt (primary buttons, logo, switches, the active step)"
-                  : "Action gradient, cobalt to violet (primary buttons, logo, switches, the active step)"}
-              </span>
+              <span className="h-12 rounded-control bg-accent" />
+              <span className="text-[12px] text-fg-2">Action colour, solid cobalt (primary buttons, logo, switches, the active step)</span>
             </div>
             <div className="flex flex-col gap-1.5">
-              {/* Inline, not grad-heat, so the cobalt preview (which flattens grad-heat on controls) keeps the ramp itself visible. */}
-              <span
-                className="h-12 rounded-control"
-                style={{ backgroundImage: "linear-gradient(90deg, var(--heat-1), var(--heat-2) 55%, var(--heat-3))" }}
-              />
-              <span className="text-[12px] text-fg-2">
-                {look === "cobalt"
-                  ? "Heat ramp (data visualisation and the cost chain only)"
-                  : "Heat ramp (data visualisation, chain links, highlight borders)"}
-              </span>
+              <span className="grad-heat h-12 rounded-control" />
+              <span className="text-[12px] text-fg-2">Heat ramp (data visualisation and the cost chain only)</span>
             </div>
           </div>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            <p className="font-display text-[28px] font-semibold tracking-[-0.03em] text-fg">Unbounded</p>
+            <p className="font-display text-[28px] tracking-[-0.03em] text-fg">Unbounded</p>
             <p className="text-[14px] leading-relaxed text-fg">Geist 14 for interface and body text, sentence case everywhere.</p>
             <p className="font-mono text-[14px] text-fg tnum">$1,234.567 / 0.0085 / 640 ms</p>
           </div>
@@ -249,7 +206,7 @@ export function ComponentsGallery() {
             <div className="h-10 w-24 rounded-control border border-line bg-surface" title="Control 8px" />
             <div className="h-10 w-24 rounded-panel border border-line bg-surface shadow-1" title="Work surface 12px" />
             <div className="h-10 w-24 rounded-feature border border-line bg-surface shadow-2" title="Feature 20px" />
-            <span className="text-[12.5px] text-fg-3">Radius and elevation by hierarchy: inline, control, work surface, feature</span>
+            <span className="text-[13px] text-fg-3">Radius and elevation by hierarchy: inline, control, work surface, feature</span>
           </div>
         </Section>
 
@@ -514,17 +471,12 @@ export function ComponentsGallery() {
                 </div>
               </div>
             </Demo>
-            <Demo name="Hero CTA idle sheen (one pass every 7 s)">
-              <Button variant="primary" idleSheen icon={<Plus aria-hidden />}>
-                Create account
-              </Button>
-            </Demo>
-            <Demo name="Ripple, press and sheen (press and hover)">
+            <Demo name="Ripple and press">
               <Button variant="primary" icon={<Play aria-hidden />}>
                 Make a test call
               </Button>
             </Demo>
-            <Demo name="Card lift with glow (hover)">
+            <Demo name="Card hover (border darkens)">
               <div className="lift rounded-panel border border-line bg-surface p-4 text-[13px] text-fg-2 shadow-1">Front desk agent</div>
             </Demo>
             <Demo name="Animated link underline">
@@ -588,8 +540,6 @@ export function ComponentsGallery() {
           </div>
           <dl className="mt-6 grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
             {[
-              ["Sheen pass", "560 ms, cubic-bezier(0.22, 1, 0.36, 1), on hover or keyboard focus"],
-              ["Hero idle sheen", "one pass every 7 s, hero CTA only"],
               ["Press", "scale 0.975 for 90 ms, plus the ripple"],
               ["Skeleton shimmer", "1.3 s per cycle, ease-in-out, stops when content arrives"],
               ["Route transition", "220 ms fade and 6px rise"],
@@ -601,7 +551,7 @@ export function ComponentsGallery() {
               </div>
             ))}
           </dl>
-          <p className="mt-4 text-[12.5px] text-fg-3">
+          <p className="mt-4 text-[13px] text-fg-3">
             Route transitions (fade and rise), drawers, dialogs, menus and toasts animate on open and close; open the overlays below to see them.
             Ticker values end on the exact figure, for example {formatUsd(BigInt(ticker), { places: 3 })}.
           </p>
@@ -668,7 +618,7 @@ export function ComponentsGallery() {
             <Panel title="Workspace" description="Name and defaults for new calls." icon={<Gauge />} bodyClassName="p-0">
               <PanelRows>
                 <div className="flex items-center justify-between gap-4 px-5 py-4">
-                  <span className="flex items-center gap-3 text-[13.5px] font-medium text-fg">
+                  <span className="flex items-center gap-3 text-[14px] font-medium text-fg">
                     <Disc className="size-4 text-fg-3" aria-hidden />
                     Switch, on and off
                   </span>
@@ -704,10 +654,10 @@ export function ComponentsGallery() {
             ]}
           >
             <TabPanel value="one">
-              <p className="text-[13.5px] text-fg-2">Arrow keys move between tabs; the marker slides.</p>
+              <p className="text-[14px] text-fg-2">Arrow keys move between tabs; the marker slides.</p>
             </TabPanel>
             <TabPanel value="two">
-              <p className="text-[13.5px] text-fg-2">Second panel.</p>
+              <p className="text-[14px] text-fg-2">Second panel.</p>
             </TabPanel>
           </Tabs>
         </Section>

@@ -1,4 +1,4 @@
-import { SlidersVertical, WandSparkles } from "lucide-react";
+import { PenLine, SlidersVertical } from "lucide-react";
 import type { HttpToolConfig } from "../../../../api/tools";
 import { Button, Field, Textarea } from "../../../../components";
 import { PARAMETERS_EXAMPLE, type Errors } from "./fieldRules";
@@ -35,7 +35,7 @@ export function HttpToolForm({
           <Button
             size="sm"
             variant="ghost"
-            icon={<WandSparkles aria-hidden />}
+            icon={<PenLine aria-hidden />}
             onClick={() => onParametersText(JSON.stringify(PARAMETERS_EXAMPLE, null, 2))}
           >
             Use example
@@ -47,7 +47,7 @@ export function HttpToolForm({
             <Textarea
               id={id}
               spellCheck={false}
-              className="min-h-40 font-mono text-[12.5px] leading-relaxed"
+              className="min-h-40 font-mono text-[13px] leading-relaxed"
               aria-describedby={describedBy}
               aria-invalid={invalid}
               value={parametersText}

@@ -79,13 +79,13 @@ export function Toaster() {
         >
           <span className="mt-0.5">{icons[t.tone ?? "info"]}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <RT.Title className="text-[13.5px] font-medium text-fg">{t.title}</RT.Title>
-            {t.description && <RT.Description className="text-[12.5px] leading-relaxed text-fg-2">{t.description}</RT.Description>}
+            <RT.Title className="text-[14px] font-medium text-fg">{t.title}</RT.Title>
+            {t.description && <RT.Description className="text-[13px] leading-relaxed text-fg-2">{t.description}</RT.Description>}
             {t.action && (
               <RT.Action
                 altText={t.action.label}
                 onClick={t.action.onClick}
-                className={cn("link-underline mt-1 w-fit cursor-pointer rounded-inline text-[12.5px] font-medium text-accent-text", focusRing)}
+                className={cn("link-underline mt-1 w-fit cursor-pointer rounded-inline text-[13px] font-medium text-accent-text", focusRing)}
               >
                 {t.action.label}
               </RT.Action>

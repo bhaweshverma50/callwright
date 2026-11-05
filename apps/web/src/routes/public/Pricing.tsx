@@ -17,14 +17,14 @@ export function Pricing() {
   const llm = referenceBreakdown.lines.find((l) => l.component === "llm")!;
   return (
     <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-12 sm:px-6 lg:pt-16">
-      <h1 className="max-w-[18ch] text-balance font-display text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[44px]">
+      <h1 className="max-w-[18ch] text-balance font-display text-[32px] leading-[1.08] tracking-[-0.03em] text-fg sm:text-[44px]">
         Pay per minute, billed per second.
       </h1>
       <p className="mt-5 max-w-[60ch] text-[16px] leading-relaxed text-fg-2">
         Build the chain your agent uses. The price per minute is the sum of its links plus the platform fee, and the same engine prices your real
         calls.
       </p>
-      <p className="mt-3 text-[13.5px] text-fg-3">
+      <p className="mt-3 text-[14px] text-fg-3">
         $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes on
         the default chain.
       </p>
@@ -34,7 +34,7 @@ export function Pricing() {
       </div>
 
       <section aria-labelledby="parts" className="mt-24 grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <h2 id="parts" className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
+        <h2 id="parts" className="font-display text-[24px] leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
           What a minute is made of
         </h2>
         <dl className="divide-y divide-line border-y border-line">
@@ -58,14 +58,14 @@ export function Pricing() {
         className="mt-24 grid grid-cols-[minmax(0,1fr)] items-start gap-12 border-t border-line pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
       >
         <div>
-          <h2 id="rule" className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
+          <h2 id="rule" className="font-display text-[24px] leading-[1.15] tracking-[-0.02em] text-fg sm:text-[28px]">
             When a call uses more than its bundle
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-fg-2">
             The model and voice include a usage bundle per minute. Each is billed for whichever is longer: the call itself, or its usage divided by
             the bundle. Speech to text, noise cancellation and the platform fee never carry a surcharge.
           </p>
-          <pre className="mt-6 overflow-x-auto rounded-panel border border-line bg-surface px-4 py-3.5 font-mono text-[12.5px] leading-relaxed text-fg">
+          <pre className="mt-6 overflow-x-auto rounded-panel border border-line bg-surface px-4 py-3.5 font-mono text-[13px] leading-relaxed text-fg">
             {`billed minutes = max(call minutes, usage / bundle)
 cost           = rate x billed minutes`}
           </pre>

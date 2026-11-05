@@ -63,7 +63,7 @@ export const EdgePanel = memo(function EdgePanel({
     <div className="flex h-full min-h-0 flex-col">
       <header className="panel-head flex items-start gap-3 border-b border-line px-5 py-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-3">Connection</p>
+          <p className="text-[11px] font-semibold text-fg-3">Connection</p>
           <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-fg">
             <span className="flex min-w-0 items-center gap-1.5" data-ntype={source?.type}>
               <span className="fnode-chip !size-6 !rounded-[7px] [&_svg]:!size-3.5">{source && NODE_META[source.type].icon}</span>
@@ -123,12 +123,12 @@ export const EdgePanel = memo(function EdgePanel({
                 aria-label="How the agent sees this"
                 className="shrink-0 overflow-hidden rounded-panel border border-line bg-console text-console-fg shadow-1"
               >
-                <p className="flex items-center gap-1.5 border-b border-console-line px-3.5 py-2 text-[11.5px] font-medium text-console-fg-2">
+                <p className="flex items-center gap-1.5 border-b border-console-line px-3.5 py-2 text-[12px] font-medium text-console-fg-2">
                   <Bot className="size-3.5" aria-hidden /> How the agent sees this
                 </p>
                 <div className="px-3.5 py-3">
-                  <p className="font-mono text-[12.5px] text-[#a3adff]">{name ?? "route_to_..."}()</p>
-                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-console-fg-2">
+                  <p className="font-mono text-[13px] text-[#a3adff]">{name ?? "route_to_..."}()</p>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-console-fg-2">
                     {transitionDescription(target?.label ?? "the next step", edge.condition)}
                   </p>
                 </div>
@@ -148,7 +148,7 @@ export const EdgePanel = memo(function EdgePanel({
                   />
                 )}
               </Field>
-              <p className="rounded-control bg-surface-2 px-3 py-2.5 text-[12.5px] leading-relaxed text-fg-2">
+              <p className="rounded-control bg-surface-2 px-3 py-2.5 text-[13px] leading-relaxed text-fg-2">
                 {source?.label ?? "The condition"} decides the route by reading the conversation, so this connection needs no condition of its own.
                 Rename the category on the node and this connection follows.
               </p>
@@ -208,12 +208,12 @@ export const EdgePanel = memo(function EdgePanel({
             </>
           )}
           {OUTCOME_COPY[edge.trigger] && (
-            <p className="rounded-control bg-surface-2 px-3 py-2.5 text-[12.5px] leading-relaxed text-fg-2">{OUTCOME_COPY[edge.trigger]}</p>
+            <p className="rounded-control bg-surface-2 px-3 py-2.5 text-[13px] leading-relaxed text-fg-2">{OUTCOME_COPY[edge.trigger]}</p>
           )}
           {own
             .filter((i) => !i.field)
             .map((i, k) => (
-              <p key={k} className="flex items-start gap-2 text-[12.5px] text-danger-text">
+              <p key={k} className="flex items-start gap-2 text-[13px] text-danger-text">
                 <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                 {i.message}
               </p>

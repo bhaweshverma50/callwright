@@ -1,4 +1,4 @@
-import { RotateCcw, Sparkles } from "lucide-react";
+import { MessageSquareText, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { askAssistant, FlowProblem, type ChatTurn, type FlowGraph } from "../../../api/flows";
@@ -102,11 +102,11 @@ export function AssistantPanel({
         {chat.length === 0 ? (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="grad-action grid size-8 place-items-center rounded-control text-white shadow-glow" aria-hidden>
-                <Sparkles className="size-4" />
+              <span className="bg-accent grid size-8 place-items-center rounded-control text-white" aria-hidden>
+                <MessageSquareText className="size-4" />
               </span>
               <div>
-                <p className="text-[13.5px] font-semibold text-fg">Build with the assistant</p>
+                <p className="text-[14px] font-semibold text-fg">Build with the assistant</p>
                 <p className="text-[12px] text-fg-3">Describe a change; review it on the canvas before it applies.</p>
               </div>
             </div>
@@ -117,7 +117,7 @@ export function AssistantPanel({
                     type="button"
                     disabled={busy || pending}
                     onClick={() => setText(s)}
-                    className="lift w-full cursor-pointer rounded-control border border-line bg-surface px-3 py-2 text-left text-[12.5px] text-fg-2 hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-60"
+                    className="lift w-full cursor-pointer rounded-control border border-line bg-surface px-3 py-2 text-left text-[13px] text-fg-2 hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {s}
                   </button>
@@ -155,7 +155,7 @@ export function AssistantPanel({
           </ol>
         )}
         {failed && (
-          <div className="mt-3 flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2.5 text-[12.5px] text-warning-text">
+          <div className="mt-3 flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2.5 text-[13px] text-warning-text">
             <span className="flex-1">{failed.message}</span>
             {failed.retry.length > 0 && failed.retry.at(-1)?.role === "user" && !pending && (
               <Button size="sm" variant="ghost" icon={<RotateCcw aria-hidden />} onClick={() => void send(failed.retry)}>

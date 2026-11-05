@@ -61,7 +61,7 @@ export function ConditionForm({
             { value: "rule", label: "Rules", icon: <Workflow aria-hidden /> },
           ]}
         />
-        <p className="text-[12.5px] leading-relaxed text-fg-3">
+        <p className="text-[13px] leading-relaxed text-fg-3">
           {config.kind === "classify"
             ? "The model reads the conversation and picks one category, silently. Each category gets its own connection."
             : "Checks variables in order; the first rule that matches wins, otherwise the Otherwise connection is followed. No model runs."}
@@ -118,7 +118,7 @@ export function ConditionForm({
                       value={c.description}
                       placeholder="When does this category fit?"
                       onChange={(e) => set({ categories: config.categories.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)) })}
-                      className="mt-2 min-h-0 text-[12.5px]"
+                      className="mt-2 min-h-0 text-[13px]"
                     />
                   </motion.li>
                 );
@@ -164,7 +164,7 @@ export function ConditionForm({
       ) : (
         <Group title="Rules" description="Connect the Rule handle once per rule, then set each rule on its connection.">
           {outgoing.filter((e) => e.trigger === "rule" || e.trigger === "else").length === 0 ? (
-            <p className="rounded-control border border-dashed border-line-strong px-3 py-3 text-[12.5px] text-fg-3">
+            <p className="rounded-control border border-dashed border-line-strong px-3 py-3 text-[13px] text-fg-3">
               No rules yet. Drag from the Rule handle to the next step.
             </p>
           ) : (
@@ -174,9 +174,9 @@ export function ConditionForm({
                   <button
                     type="button"
                     onClick={() => onSelectEdge(e.id)}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-control border border-line bg-surface px-3 py-2 text-left text-[12.5px] transition-colors hover:border-line-strong hover:bg-surface-2/60"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-control border border-line bg-surface px-3 py-2 text-left text-[13px] transition-colors hover:border-line-strong hover:bg-surface-2/60"
                   >
-                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-3 font-mono text-[10.5px] text-fg-2">
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-3 font-mono text-[11px] text-fg-2">
                       {e.trigger === "else" ? "∗" : i + 1}
                     </span>
                     <span className="min-w-0 truncate font-mono text-fg">{edgeText(e)}</span>

@@ -29,7 +29,7 @@ export function ChecksCard({
             <h2 id="checks-title" className="text-[14px] font-semibold text-fg">
               Checks
             </h2>
-            <p className="text-[12.5px] text-fg-3">Things to review before this agent goes live.</p>
+            <p className="text-[13px] text-fg-3">Things to review before this agent goes live.</p>
           </div>
         </div>
         <InfoTip label="About checks" side="left">
@@ -64,7 +64,7 @@ export function ChecksCard({
                 )}
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="text-[13px] font-medium text-fg">{labelFor(it.pointer)}</span>
-                  <span className="text-[12.5px] leading-snug text-fg-2">{it.message}</span>
+                  <span className="text-[13px] leading-snug text-fg-2">{it.message}</span>
                 </span>
               </button>
             </li>

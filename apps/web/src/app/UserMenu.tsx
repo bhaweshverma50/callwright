@@ -43,7 +43,7 @@ export function UserMenu() {
           focusRing,
         )}
       >
-        <span className="grad-action grid size-8 place-items-center rounded-full text-[11.5px] font-semibold text-white">
+        <span className="bg-accent grid size-8 place-items-center rounded-full text-[12px] font-semibold text-white">
           {email ? initialsOf(email) : ""}
         </span>
         {email ? (

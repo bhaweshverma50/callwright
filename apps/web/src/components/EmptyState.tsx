@@ -28,8 +28,8 @@ export function EmptyState({ icon, title, children, actions, compact, className 
         </div>
       )}
       <div className="flex max-w-[56ch] flex-col gap-1">
-        <h3 className={cn("font-display font-medium tracking-[-0.01em] text-fg", compact ? "text-[14px]" : "text-[17px]")}>{title}</h3>
-        {children && <div className="text-[13.5px] leading-relaxed text-fg-2">{children}</div>}
+        <h3 className={cn("font-display tracking-[-0.01em] text-fg", compact ? "text-[14px]" : "text-[17px]")}>{title}</h3>
+        {children && <div className="text-[14px] leading-relaxed text-fg-2">{children}</div>}
       </div>
       {actions && <div className="mt-1 flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

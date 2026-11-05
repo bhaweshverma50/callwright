@@ -56,7 +56,7 @@ export function ExpandEditor({
           className="font-mono text-[13px] leading-relaxed"
         />
         {maxLength ? (
-          <p className="mt-2 text-right font-mono text-[11.5px] text-fg-3 tnum">
+          <p className="mt-2 text-right font-mono text-[12px] text-fg-3 tnum">
             {value.length.toLocaleString()} / {maxLength.toLocaleString()}
           </p>
         ) : null}

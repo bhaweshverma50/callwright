@@ -11,7 +11,7 @@ import { EvaluatorCard, HEADLINE_LIMIT } from "./EvaluatorCard";
 
 function Stat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12.5px] text-fg-3 [&_svg]:size-3.5">
+    <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-3 [&_svg]:size-3.5">
       {icon}
       <span className="font-mono text-fg-2 tnum">{value}</span>
       {label}

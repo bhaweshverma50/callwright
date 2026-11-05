@@ -21,7 +21,7 @@ export function TopBar({ onOpenNav, assist }: { onOpenNav: () => void; assist?: 
         {isPending ? (
           <Skeleton className="h-3.5 w-36" />
         ) : (
-          <TruncatedText side="bottom" className="text-[13.5px] font-medium text-fg">
+          <TruncatedText side="bottom" className="text-[14px] font-medium text-fg">
             {me?.workspace.name}
           </TruncatedText>
         )}

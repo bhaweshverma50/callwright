@@ -42,13 +42,13 @@ export function Field({ label, hint, error, hideLabel, aside, className, childre
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16 }}
-            className="flex items-start gap-1.5 text-[12.5px] text-danger-text"
+            className="flex items-start gap-1.5 text-[13px] text-danger-text"
           >
             <CircleAlert className="mt-px size-3.5 shrink-0" strokeWidth={2} aria-hidden />
             {error}
           </motion.p>
         ) : hint ? (
-          <p key="hint" id={hintId} className="text-[12.5px] text-fg-3">
+          <p key="hint" id={hintId} className="text-[13px] text-fg-3">
             {hint}
           </p>
         ) : null}
@@ -58,7 +58,7 @@ export function Field({ label, hint, error, hideLabel, aside, className, childre
 }
 
 export const controlBase = cn(
-  "w-full rounded-control border bg-surface text-[13.5px] text-fg placeholder:text-fg-3",
+  "w-full rounded-control border bg-surface text-[14px] text-fg placeholder:text-fg-3",
   "border-line-strong hover:border-fg-3 transition-[border-color,box-shadow] duration-150",
   "focus-visible:border-accent focus-visible:shadow-[0_0_0_4px_var(--accent-soft)]",
   "disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-3",

@@ -40,7 +40,7 @@ export function ForgotPassword() {
         footer={back}
       >
         {env.mocks && (
-          <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[12.5px] text-fg-3">
+          <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
             Demo data is on, so no email is sent.{" "}
             <Link className="link-underline text-accent-text" to={`/reset-password?token_hash=${encodeURIComponent(`reset-${addr}`)}`}>
               Open the reset link

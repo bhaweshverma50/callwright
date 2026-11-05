@@ -40,7 +40,7 @@ const columns = (agentNames: Record<string, string>, showAgent: boolean): Column
     header: "Issue",
     cell: (i) => (
       <Link to={`/issues/${i.issue_id}`} className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 hover:underline md:max-w-[56ch]">
-        <TruncatedText className="text-[13.5px] font-medium text-fg">{i.title}</TruncatedText>
+        <TruncatedText className="text-[14px] font-medium text-fg">{i.title}</TruncatedText>
         <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-fg-3">
           <span className="truncate">{`${i.evaluator_display_name ?? i.evaluator_name}${i.flow_node_label ? `, node ${i.flow_node_label}` : ""}`}</span>
           {i.calibration_warning && (
@@ -77,8 +77,8 @@ const columns = (agentNames: Record<string, string>, showAgent: boolean): Column
     numeric: true,
     cell: (i) => (
       <span className="flex flex-col items-end gap-0.5 pr-1 md:pr-0">
-        <span className="text-[13.5px] font-medium text-fg">{i.affected_call_count}</span>
-        <span className="whitespace-nowrap font-sans text-[11.5px] text-fg-3">{i.current_version_call_count} on published</span>
+        <span className="text-[14px] font-medium text-fg">{i.affected_call_count}</span>
+        <span className="whitespace-nowrap font-sans text-[12px] text-fg-3">{i.current_version_call_count} on published</span>
       </span>
     ),
   },

@@ -51,7 +51,7 @@ export function StartForm({ config, onChange, issues, nextLabel }: FormProps<Sta
         }
       >
         {generated ? (
-          <p className="rounded-control bg-accent-soft/60 px-3 py-2.5 text-[12.5px] leading-relaxed text-accent-text">
+          <p className="rounded-control bg-accent-soft/60 px-3 py-2.5 text-[13px] leading-relaxed text-accent-text">
             The opening line comes from {nextLabel ? <strong className="font-semibold">{nextLabel}</strong> : "the next step"}: its instructions write
             it. This needs Start to lead to an Agent or Task step.
           </p>
@@ -77,7 +77,7 @@ export function StartForm({ config, onChange, issues, nextLabel }: FormProps<Sta
             )}
           </Field>
         )}
-        {generated && issueFor(issues, "greeting_type") && <p className="text-[12.5px] text-danger-text">{issueFor(issues, "greeting_type")}</p>}
+        {generated && issueFor(issues, "greeting_type") && <p className="text-[13px] text-danger-text">{issueFor(issues, "greeting_type")}</p>}
       </Group>
     </>
   );

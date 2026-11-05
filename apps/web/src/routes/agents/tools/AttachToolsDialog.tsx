@@ -145,7 +145,7 @@ export function AttachToolsDialog({
                           <span className="truncate font-mono text-[13px] font-medium text-fg">{t.name}</span>
                           <span className="shrink-0 text-[12px] text-fg-3">{TOOL_META[t.type].label}</span>
                         </span>
-                        <span className="truncate text-[12.5px] text-fg-2">{t.description}</span>
+                        <span className="truncate text-[13px] text-fg-2">{t.description}</span>
                       </span>
                       {isAttached ? (
                         <Badge tone="success">Attached</Badge>
@@ -158,7 +158,7 @@ export function AttachToolsDialog({
                           aria-hidden
                           className={cn(
                             "grid size-5 shrink-0 place-items-center rounded-full border transition-[background-color,border-color,transform] duration-200",
-                            on ? "scale-100 border-transparent grad-action text-white" : "scale-90 border-line-strong bg-surface text-transparent",
+                            on ? "scale-100 border-transparent bg-accent text-white" : "scale-90 border-line-strong bg-surface text-transparent",
                           )}
                         >
                           <Check strokeWidth={3} className="size-3" />

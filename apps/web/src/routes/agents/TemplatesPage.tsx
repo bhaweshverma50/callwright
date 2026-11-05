@@ -40,7 +40,7 @@ export function TemplatesPage() {
         <div role="group" aria-label="Industry" className="flex flex-wrap gap-2">
           <Chip mono={false} selected={category === null} onClick={() => setCategory(null)}>
             All
-            {total != null && <span className="font-mono text-[11.5px] opacity-70 tnum">{total}</span>}
+            {total != null && <span className="font-mono text-[12px] opacity-70 tnum">{total}</span>}
           </Chip>
           {cats.isPending
             ? Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-9 w-24 rounded-full" />)
@@ -50,7 +50,7 @@ export function TemplatesPage() {
                   <Chip key={c.id} mono={false} selected={category === c.id} onClick={() => setCategory(category === c.id ? null : c.id)}>
                     <Icon aria-hidden />
                     {c.label}
-                    <span className="font-mono text-[11.5px] opacity-70 tnum">{c.count}</span>
+                    <span className="font-mono text-[12px] opacity-70 tnum">{c.count}</span>
                   </Chip>
                 );
               })}
@@ -81,13 +81,13 @@ export function TemplatesPage() {
       >
         <Link
           to="/agents/new/single"
-          className="group relative flex min-h-[208px] flex-col gap-4 overflow-hidden rounded-panel border border-dashed border-accent/50 bg-accent-soft/25 p-5 transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:bg-accent-soft/45 hover:shadow-glow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="group relative flex min-h-[208px] flex-col gap-4 overflow-hidden rounded-panel border border-dashed border-accent/50 bg-accent-soft/25 p-5 transition-[transform,box-shadow,background-color] duration-200 hover:bg-accent-soft/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
-          <span className="grid size-11 place-items-center rounded-control grad-action text-white shadow-[0_8px_18px_-10px_rgb(51_70_232/0.8)] transition-transform duration-200 group-hover:scale-105">
+          <span className="grid size-11 place-items-center rounded-control bg-accent text-white transition-transform duration-200">
             <Plus className="size-5" aria-hidden />
           </span>
           <span className="flex w-full flex-col gap-1">
-            <span className="text-[12.5px] text-fg-3">Any industry</span>
+            <span className="text-[13px] text-fg-3">Any industry</span>
             <span className="text-[15px] font-semibold leading-snug text-fg">Start from scratch</span>
             <span className="text-[13px] leading-relaxed text-fg-2">
               A blank agent with the platform defaults. You write the prompt and choose every setting.
@@ -124,14 +124,11 @@ export function TemplatesPage() {
                   exit={{ opacity: 0, scale: 0.97 }}
                   onClick={() => setPreview(t)}
                   aria-haspopup="dialog"
-                  className="group flex min-h-[208px] min-w-0 cursor-pointer flex-col gap-4 rounded-panel border border-line bg-surface p-5 text-left shadow-1 transition-[box-shadow,border-color] duration-200 hover:border-accent/45 hover:shadow-glow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="group flex min-h-[208px] min-w-0 cursor-pointer flex-col gap-4 rounded-panel border border-line bg-surface p-5 text-left shadow-1 transition-[box-shadow,border-color] duration-200 hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <span className="flex w-full items-start justify-between gap-3">
                     <span
-                      className={cn(
-                        "grid size-11 place-items-center rounded-control transition-transform duration-200 group-hover:scale-105",
-                        CATEGORY_TINT[t.category],
-                      )}
+                      className={cn("grid size-11 place-items-center rounded-control transition-transform duration-200", CATEGORY_TINT[t.category])}
                     >
                       <Glyph weight="duotone" className="size-6" aria-hidden />
                     </span>
@@ -140,7 +137,7 @@ export function TemplatesPage() {
                     </Badge>
                   </span>
                   <span className="flex w-full min-w-0 flex-col gap-1">
-                    <span className="text-[12.5px] text-fg-3">{label(t.category)}</span>
+                    <span className="text-[13px] text-fg-3">{label(t.category)}</span>
                     <span className="text-[15px] font-semibold leading-snug text-fg">{t.name}</span>
                     <span className="line-clamp-3 text-[13px] leading-relaxed text-fg-2">{t.description}</span>
                   </span>

@@ -89,22 +89,22 @@ export function PublishDialog({
     >
       <div className="flex flex-col gap-4">
         {dirty && (
-          <p className="flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2.5 text-[12.5px] text-warning-text">
+          <p className="flex items-start gap-2 rounded-control bg-warning-soft px-3 py-2.5 text-[13px] text-warning-text">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden /> Save your changes first; publishing uses the saved draft.
           </p>
         )}
         {errors > 0 ? (
-          <p className="flex items-start gap-2 rounded-control bg-danger-soft px-3 py-2.5 text-[12.5px] text-danger-text">
+          <p className="flex items-start gap-2 rounded-control bg-danger-soft px-3 py-2.5 text-[13px] text-danger-text">
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden /> {errors} error{errors === 1 ? "" : "s"} must be fixed before publishing.
             Open Problems in the side panel to find them.
           </p>
         ) : warnings > 0 ? (
-          <p className="flex items-start gap-2 rounded-control bg-warning-soft/60 px-3 py-2.5 text-[12.5px] text-warning-text">
+          <p className="flex items-start gap-2 rounded-control bg-warning-soft/60 px-3 py-2.5 text-[13px] text-warning-text">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden /> {warnings} warning{warnings === 1 ? "" : "s"}. You can publish; they are
             worth a look.
           </p>
         ) : validation ? (
-          <p className="flex items-start gap-2 rounded-control bg-success-soft px-3 py-2.5 text-[12.5px] text-success-text">
+          <p className="flex items-start gap-2 rounded-control bg-success-soft px-3 py-2.5 text-[13px] text-success-text">
             <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden /> No problems found. The flow is ready to take calls.
           </p>
         ) : null}

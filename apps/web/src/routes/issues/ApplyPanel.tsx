@@ -118,11 +118,11 @@ export function ApplyPanel({ issue }: { issue: DetectedIssue }) {
       <Panel title="Applied" icon={<TrendingUp aria-hidden />} description={issue.applied_at ? `Applied ${relative(issue.applied_at)}.` : undefined}>
         <div className="flex flex-col gap-4">
           {issue.applied_agent_version_id && (
-            <p className="text-[13.5px] text-fg-2">
+            <p className="text-[14px] text-fg-2">
               The fix became version{" "}
               <Link
                 to={agentPath(issue)}
-                className="rounded-inline font-mono text-[12.5px] text-accent-text hover:underline"
+                className="rounded-inline font-mono text-[13px] text-accent-text hover:underline"
                 title={issue.applied_agent_version_id}
               >
                 {shortId(issue.applied_agent_version_id)}
@@ -172,11 +172,9 @@ export function ApplyPanel({ issue }: { issue: DetectedIssue }) {
       }
     >
       {issue.can_apply ? (
-        <p className="text-[13.5px] text-fg-2">
-          The current fix passed validation against the published version. Apply it to create the new version.
-        </p>
+        <p className="text-[14px] text-fg-2">The current fix passed validation against the published version. Apply it to create the new version.</p>
       ) : (
-        <ul className="flex flex-col gap-1.5 text-[13.5px] text-fg-2" aria-label="Why the fix cannot be applied yet">
+        <ul className="flex flex-col gap-1.5 text-[14px] text-fg-2" aria-label="Why the fix cannot be applied yet">
           {lines.map((line) => (
             <li key={line} className="flex items-start gap-2">
               <span className="mt-[8px] size-1.5 shrink-0 rounded-full bg-fg-3" aria-hidden />

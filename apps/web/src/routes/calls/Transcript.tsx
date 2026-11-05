@@ -76,7 +76,7 @@ export function TurnLatencyChip({ turn }: { turn: TurnLatency }) {
               ),
             )}
         </span>
-        <span className={cn("font-mono text-[11.5px] tnum", tone)}>{e2e === null ? "n/a" : `${e2e} ms`}</span>
+        <span className={cn("font-mono text-[12px] tnum", tone)}>{e2e === null ? "n/a" : `${e2e} ms`}</span>
       </span>
     </Tooltip>
   );
@@ -95,7 +95,7 @@ function ToolCall({
   return (
     <div
       className={cn(
-        "ml-10 overflow-hidden rounded-control border bg-surface-2/60 text-[12.5px]",
+        "ml-10 overflow-hidden rounded-control border bg-surface-2/60 text-[13px]",
         error ? "border-danger-text/30 bg-danger-soft/40" : "border-line",
       )}
     >
@@ -121,7 +121,7 @@ function ToolCall({
           <Badge>No result</Badge>
         )}
         {result?.duration_ms != null && (
-          <span className="whitespace-nowrap font-mono text-[11.5px] text-fg-3 tnum">{result.duration_ms.toLocaleString()} ms</span>
+          <span className="whitespace-nowrap font-mono text-[12px] text-fg-3 tnum">{result.duration_ms.toLocaleString()} ms</span>
         )}
         <span className="ml-auto hidden font-mono text-[11px] text-fg-3 tnum sm:inline">{mss(item.offset_ms / 1000)}</span>
         <ChevronDown className={cn("size-3.5 text-fg-3 transition-transform duration-200", open && "rotate-180")} aria-hidden />
@@ -129,16 +129,16 @@ function ToolCall({
       {open && (
         <div className="grid gap-2 border-t border-line px-3 py-2.5 sm:grid-cols-2">
           <div className="min-w-0">
-            <p className="mb-1 text-[11.5px] text-fg-3">Arguments</p>
-            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-inline bg-surface px-2 py-1.5 font-mono text-[11.5px] text-fg-2">
+            <p className="mb-1 text-[12px] text-fg-3">Arguments</p>
+            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-inline bg-surface px-2 py-1.5 font-mono text-[12px] text-fg-2">
               {args}
             </pre>
           </div>
           <div className="min-w-0">
-            <p className="mb-1 text-[11.5px] text-fg-3">{error ? "Error" : "Result"}</p>
+            <p className="mb-1 text-[12px] text-fg-3">{error ? "Error" : "Result"}</p>
             <pre
               className={cn(
-                "max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-inline bg-surface px-2 py-1.5 font-mono text-[11.5px]",
+                "max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-inline bg-surface px-2 py-1.5 font-mono text-[12px]",
                 error ? "text-danger-text" : "text-fg-2",
               )}
             >
@@ -158,7 +158,7 @@ function Message({ item, latency }: { item: Extract<TranscriptItem, { type: "mes
       <span
         className={cn(
           "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-3.5",
-          agent ? "grad-action text-white" : "bg-surface-3 text-fg-2",
+          agent ? "bg-accent text-white" : "bg-surface-3 text-fg-2",
         )}
         aria-hidden
       >
@@ -166,7 +166,7 @@ function Message({ item, latency }: { item: Extract<TranscriptItem, { type: "mes
       </span>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[12.5px] font-medium text-fg">{agent ? "Agent" : "Caller"}</span>
+          <span className="text-[13px] font-medium text-fg">{agent ? "Agent" : "Caller"}</span>
           <span className="font-mono text-[11px] text-fg-3 tnum">{mss(item.offset_ms / 1000)}</span>
           {agent && latency && <TurnLatencyChip turn={latency} />}
           {!agent && item.stt_confidence != null && (
@@ -182,7 +182,7 @@ function Message({ item, latency }: { item: Extract<TranscriptItem, { type: "mes
             </Badge>
           )}
         </div>
-        <p className={cn("text-[13.5px] leading-relaxed text-fg-2", item.interrupted && "text-fg-3")}>
+        <p className={cn("text-[14px] leading-relaxed text-fg-2", item.interrupted && "text-fg-3")}>
           {item.text}
           {item.interrupted && <span aria-hidden> ...</span>}
         </p>
@@ -267,7 +267,7 @@ export function Transcript({
       <div className="flex flex-col items-center gap-3 rounded-panel border border-dashed border-line-strong/80 px-6 py-8 text-center">
         <OnAir label="Live transcript" />
         <Waveform quiet bars={28} height={22} className="max-w-[180px]" />
-        <p className="max-w-[34ch] text-[12.5px] text-fg-3">Waiting for the first words. Lines appear here a few seconds after they are spoken.</p>
+        <p className="max-w-[34ch] text-[13px] text-fg-3">Waiting for the first words. Lines appear here a few seconds after they are spoken.</p>
       </div>
     );
   }
@@ -283,11 +283,11 @@ export function Transcript({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         {live && <OnAir label="Live" />}
-        <p className={cn("text-[12.5px] text-fg-3", live && "mr-auto")}>
+        <p className={cn("text-[13px] text-fg-3", live && "mr-auto")}>
           <span className="font-mono tnum">{items.filter((i) => i.type === "message").length}</span> turns,{" "}
           <span className="font-mono tnum">{items.filter((i) => i.type === "tool_call").length}</span> tool calls
         </p>
-        <span className="flex items-center gap-1 text-[12.5px] text-fg-2">
+        <span className="flex items-center gap-1 text-[13px] text-fg-2">
           Copy transcript
           <CopyButton value={transcriptText(items)} label="Copy transcript" />
         </span>

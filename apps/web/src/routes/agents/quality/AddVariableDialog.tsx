@@ -179,7 +179,7 @@ function VariableForm({ agentId, existing, onDone }: { agentId: string; existing
         label="Description"
         error={serverErrors.description ?? (touched.description ? errors.description : null)}
         hint="Tell the model exactly what to capture and when to leave it as not found."
-        aside={<span className="font-mono text-[11.5px] text-fg-3 tnum">{`${description.length}/${MAX_DESCRIPTION}`}</span>}
+        aside={<span className="font-mono text-[12px] text-fg-3 tnum">{`${description.length}/${MAX_DESCRIPTION}`}</span>}
       >
         {(ids) => (
           <Textarea
@@ -237,7 +237,7 @@ function VariableForm({ agentId, existing, onDone }: { agentId: string; existing
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="inline-flex h-7 items-center gap-1 rounded-full border border-line-strong bg-surface-2 pl-2.5 pr-1 text-[12.5px] text-fg"
+                            className="inline-flex h-7 items-center gap-1 rounded-full border border-line-strong bg-surface-2 pl-2.5 pr-1 text-[13px] text-fg"
                           >
                             {c}
                             <button

@@ -170,7 +170,7 @@ export function RecordingPlayer({
           }}
           aria-label={playing ? "Pause recording" : "Play recording"}
           className={cn(
-            "group/play relative grid size-8 cursor-pointer place-items-center rounded-full bg-accent-soft text-accent-text transition-transform duration-150 hover:scale-105 active:scale-95",
+            "group/play relative grid size-8 cursor-pointer place-items-center rounded-full bg-accent-soft text-accent-text transition-transform duration-150 active:scale-95",
             focusRing,
           )}
         >
@@ -203,7 +203,7 @@ export function RecordingPlayer({
             <Play className="ml-0.5 size-3.5" aria-hidden fill="currentColor" />
           )}
         </button>
-        {(playing || time > 0) && <span className="font-mono text-[11.5px] text-fg-3 tnum">{mss(time)}</span>}
+        {(playing || time > 0) && <span className="font-mono text-[12px] text-fg-3 tnum">{mss(time)}</span>}
       </span>
     );
   }
@@ -222,7 +222,7 @@ export function RecordingPlayer({
         </span>
         <div className="min-w-0">
           <p className="text-[13px] font-medium text-fg">{copy.title}</p>
-          <p className="text-[12.5px] text-fg-3">{copy.body}</p>
+          <p className="text-[13px] text-fg-3">{copy.body}</p>
         </div>
       </div>
     );
@@ -235,7 +235,7 @@ export function RecordingPlayer({
         onClick={toggle}
         aria-label={playing ? "Pause recording" : "Play recording"}
         className={cn(
-          "grad-action grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-white shadow-1 transition-transform duration-150 hover:scale-105 active:scale-95",
+          "bg-accent grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-white shadow-1 transition-transform duration-150 active:scale-95",
           focusRing,
         )}
       >

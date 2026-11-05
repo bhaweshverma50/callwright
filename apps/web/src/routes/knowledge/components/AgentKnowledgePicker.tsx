@@ -1,5 +1,5 @@
 import { BookOpenText, MagnifyingGlass } from "@phosphor-icons/react";
-import { BookOpen, Check, ExternalLink, FileText, Link2, Plus, Search, Sparkles, Unlink, X } from "lucide-react";
+import { BookOpen, Check, ExternalLink, FileText, Lightbulb, Link2, Plus, Search, Unlink, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -50,13 +50,13 @@ function KbOption({
         <span
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-control [&_svg]:size-4",
-            on ? "grad-action text-white" : "bg-accent-soft text-accent-text",
+            on ? "bg-accent text-white" : "bg-accent-soft text-accent-text",
           )}
         >
           <BookOpen aria-hidden />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-[13.5px] font-medium text-fg">{kb.name}</span>
+          <span className="truncate text-[14px] font-medium text-fg">{kb.name}</span>
           <span className="truncate text-[12px] text-fg-3">
             {reason ?? `${kb.ready_count} of ${kb.document_count} ${kb.document_count === 1 ? "document" : "documents"} ready`}
           </span>
@@ -68,7 +68,7 @@ function KbOption({
             aria-hidden
             className={cn(
               "grid size-5 shrink-0 place-items-center rounded-full border transition-[background-color,border-color,transform] duration-200",
-              on ? "scale-100 border-transparent grad-action text-white" : "scale-90 border-line-strong bg-surface text-transparent",
+              on ? "scale-100 border-transparent bg-accent text-white" : "scale-90 border-line-strong bg-surface text-transparent",
             )}
           >
             <Check strokeWidth={3} className="size-3" />
@@ -280,7 +280,6 @@ export function KnowledgeTab({ config, update }: EditorPanelProps) {
           </div>
         ) : attached.length === 0 ? (
           <div className="relative overflow-hidden">
-            <div aria-hidden className="glow-backdrop pointer-events-none absolute inset-0 opacity-50" />
             <EmptyState
               compact
               className="relative"
@@ -347,8 +346,8 @@ export function KnowledgeTab({ config, update }: EditorPanelProps) {
         )}
       </Panel>
       {ids.length > 0 && (
-        <div className="flex items-start gap-2.5 rounded-panel border border-line bg-surface px-4 py-3 text-[12.5px] text-fg-2">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden />
+        <div className="flex items-start gap-2.5 rounded-panel border border-line bg-surface px-4 py-3 text-[13px] text-fg-2">
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden />
           <p>
             The agent gets a <span className="font-mono text-fg">kb_search</span> tool and says a short line while it looks things up. New documents
             count at once; no need to publish again.

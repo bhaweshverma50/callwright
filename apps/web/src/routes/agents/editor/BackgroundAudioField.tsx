@@ -174,7 +174,7 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
           </FieldRow>
           {items.length > 0 && (
             <div className="px-5 py-3">
-              <p className="mb-2 text-[12.5px] font-medium text-fg-2">Your uploads</p>
+              <p className="mb-2 text-[13px] font-medium text-fg-2">Your uploads</p>
               <ul className="flex flex-col gap-1.5">
                 {items.map((u) => (
                   <li key={u.key} className="flex items-center gap-3 rounded-control bg-surface-2/60 px-3 py-1.5">

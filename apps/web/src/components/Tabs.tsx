@@ -91,7 +91,7 @@ export function Tabs({ value, onValueChange, items, children, className, density
             value={t.value}
             disabled={t.disabled}
             className={cn(
-              "relative flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[13.5px] text-fg-2 transition-colors [&_svg]:size-4",
+              "relative flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[14px] text-fg-2 transition-colors [&_svg]:size-4",
               compact && "[&>svg:first-child]:hidden @[45rem]:[&>svg:first-child]:block",
               "hover:text-fg data-[state=active]:font-medium data-[state=active]:text-fg",
               "disabled:cursor-not-allowed disabled:text-fg-3",
@@ -100,7 +100,7 @@ export function Tabs({ value, onValueChange, items, children, className, density
           >
             {t.icon}
             {t.label}
-            {t.count != null && <span className="font-mono text-[11.5px] text-fg-3 tnum">{t.count}</span>}
+            {t.count != null && <span className="font-mono text-[12px] text-fg-3 tnum">{t.count}</span>}
             {t.alerts ? (
               <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger-soft px-1 font-mono text-[11px] font-medium text-danger-text tnum">
                 <span className="sr-only">, problems: </span>
@@ -111,7 +111,7 @@ export function Tabs({ value, onValueChange, items, children, className, density
               <motion.span
                 layoutId={layoutId}
                 aria-hidden
-                className="grad-action absolute inset-x-0 bottom-0 h-0.5 rounded-full"
+                className="bg-accent absolute inset-x-0 bottom-0 h-0.5 rounded-full"
                 transition={{ type: "spring", stiffness: 500, damping: 40 }}
               />
             )}
