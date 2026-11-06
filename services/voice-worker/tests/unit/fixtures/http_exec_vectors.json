@@ -20,12 +20,12 @@
       "expect": {"method": "GET", "url": "https://api.example.com/patients/Ana%20Lopez%2FJr%3F/visits", "body": null, "headers": {}, "missing": []}
     },
     {
-      "name": "lookup order is arguments then dynamic variables then mapped variables",
+      "name": "lookup order is dynamic variables then arguments then mapped variables",
       "spec": {"method": "POST", "url": "https://api.example.com/x", "headers": [], "body_template": {"a": "{{who}}", "b": "{{caller_id}}", "c": "{{booking_ref}}"}},
       "arguments": {"who": "from-args"},
       "dynamic": {"who": "from-dynamic", "caller_id": "+14155550100"},
       "mapped": {"caller_id": "from-mapped", "booking_ref": "BK-1"},
-      "expect": {"method": "POST", "url": "https://api.example.com/x", "body": {"a": "from-args", "b": "+14155550100", "c": "BK-1"}, "headers": {"Content-Type": "application/json"}, "missing": []}
+      "expect": {"method": "POST", "url": "https://api.example.com/x", "body": {"a": "from-dynamic", "b": "+14155550100", "c": "BK-1"}, "headers": {"Content-Type": "application/json"}, "missing": []}
     },
     {
       "name": "a whole-string placeholder keeps the JSON type",

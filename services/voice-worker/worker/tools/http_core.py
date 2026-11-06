@@ -4,8 +4,8 @@ Pure functions with no I/O. A copy of the API's ``services/api/app/tools/http_co
 two services share no package, research R5); both run the same test vectors
 (``tests/unit/fixtures/http_exec_vectors.json``), so editor test runs and calls agree.
 
-Placeholders are ``{{name}}`` with names ``[A-Za-z_][A-Za-z0-9_.]*``, looked up in the LLM
-arguments, then the call's dynamic variables, then variables mapped by earlier tools. The body
+Placeholders are ``{{name}}`` with names ``[A-Za-z_][A-Za-z0-9_.]*``, looked up in the call's
+dynamic variables, then the LLM arguments, then variables mapped by earlier tools. The body
 template is JSON: placeholders are substituted inside string values only, and a string that is
 exactly one placeholder takes the variable's JSON type, so caller speech can never change the
 JSON structure. URL placeholders are percent-encoded.
@@ -30,7 +30,8 @@ _MISSING = object()
 
 
 class Variables:
-    """Lookup in order: arguments, dynamic variables, mapped variables (R6)."""
+    """Lookup in order: dynamic variables, arguments, mapped variables (R6). Call variables come
+    first so the model can never override a platform value such as ``user_number`` (016 FR-022)."""
 
     def __init__(
         self,
@@ -38,7 +39,7 @@ class Variables:
         dynamic: Mapping[str, Any] | None = None,
         mapped: Mapping[str, Any] | None = None,
     ) -> None:
-        self.sources = (arguments, dynamic or {}, mapped or {})
+        self.sources = (dynamic or {}, arguments, mapped or {})
         self.missing: list[str] = []
 
     def get(self, name: str) -> Any:

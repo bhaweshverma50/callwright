@@ -68,7 +68,8 @@ does not copy its code or copy text.
 ## R6. Templating and response mapping
 
 - **Decision**: Placeholders `{{name}}` with names `[a-zA-Z_][a-zA-Z0-9_.]*`. Lookup order:
-  LLM arguments, call dynamic variables, previously mapped variables. The body template is
+  call dynamic variables, LLM arguments, previously mapped variables (call variables first, so
+  the model cannot override trusted values such as `user_number`). The body template is
   parsed as JSON first and placeholders are substituted inside string values (a value that is
   exactly one placeholder takes the variable's JSON type), so caller speech can never break the
   JSON structure. URL placeholders are percent-encoded. Response mapping uses a small dot-path

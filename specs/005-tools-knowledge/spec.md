@@ -284,7 +284,8 @@ reaches the agent; remove it and confirm the pre-flight check lists the tool.
   POST), URL, headers, an optional body template, a parameter schema (JSON Schema object), a
   timeout (default 8 seconds, 1 to 30 seconds), response mappings and an optional waiting line.
 - **FR-015**: URL, header values and body template MUST support `{{name}}` placeholders filled
-  from the agent's arguments, then call variables, then previously mapped variables.
+  from call variables, then the agent's arguments, then previously mapped variables, so the
+  agent can never override a call variable such as `user_number`.
 - **FR-016**: When no body template is set, the agent's arguments MUST be sent as the JSON body
   for POST, PUT and PATCH, and as query parameters for GET and DELETE.
 - **FR-017**: Arguments MUST be validated against the parameter schema before any request is
