@@ -66,14 +66,27 @@ services:
   # Voice worker (services/voice-worker image, built by deploy/vm/cloudbuild-voice.yaml): joins
   # LiveKit on ws://127.0.0.1:7880 and calls the API's /v1/internal endpoints. voice.env comes
   # from render-env.sh; VOICE_IMAGE is pinned in .env. Health on 127.0.0.1:8190.
-  voice:
+  # On stop the worker drains: it takes no new calls and keeps every call it holds until it ends,
+  # for up to 3,600 s (the SDK's drain timeout, also the longest call an agent allows). The grace
+  # period adds 5 minutes on top, so a deploy never cuts a call (014 FR-001, FR-002). Deploy with
+  # roll-voice.sh, which starts the new image in the other slot before this one drains.
+  voice: &voice
     image: ${VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}
     restart: unless-stopped
     network_mode: host
     env_file: voice.env
-    stop_grace_period: 30s
+    stop_grace_period: 3900s
     depends_on:
       - livekit
+
+  # The second slot of a rolling voice deploy (roll-voice.sh, 014 FR-003): deploys alternate
+  # between voice and voice-b. Only started when named, so a plain `docker compose up -d` leaves
+  # it alone. Health on 127.0.0.1:8195 (8194 is egress).
+  voice-b:
+    <<: *voice
+    environment:
+      WORKER_HEALTH_PORT: "8195"
+    profiles: [voice-b]
 
   # Text simulations (008): the same voice worker image in WORKER_ROLE=textsim, an arq consumer
   # of queue arq:textsim on the local Redis (REDIS_URL in voice.env). It needs no LiveKit, only

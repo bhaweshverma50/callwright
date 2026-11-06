@@ -72,12 +72,12 @@ Then, with `TAG` the same git short sha (start the VM first if it is off:
 ACCOUNT=bhaweshverma50@gmail.com; PROJECT=callwright-dev; ZONE=asia-south1-a
 API_IMAGE=asia-south1-docker.pkg.dev/$PROJECT/callwright/api:$TAG
 VOICE_IMAGE=asia-south1-docker.pkg.dev/$PROJECT/callwright/voice-worker:$TAG
-gcloud compute scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl deploy/vm/egress.yaml.tmpl callwright-rtc:/opt/callwright/ \
+gcloud compute scp deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/roll-voice.sh deploy/vm/livekit.yaml.tmpl deploy/vm/egress.yaml.tmpl callwright-rtc:/opt/callwright/ \
   --zone $ZONE --account $ACCOUNT --project $PROJECT
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "cd /opt/callwright && CW_API_IMAGE=$API_IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh \
-   && sudo docker compose pull worker voice textsim && sudo docker compose up -d worker voice textsim \
-   && sudo docker image prune -af"
+   && sudo docker compose pull worker textsim && sudo docker compose up -d worker textsim \
+   && sudo ./roll-voice.sh && sudo docker image prune -af"
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "curl -s -o /dev/null -w 'voice %{http_code}\n' localhost:8190; curl -s -o /dev/null -w 'textsim %{http_code}\n' localhost:8193; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice textsim"
 ```
@@ -85,6 +85,11 @@ gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PRO
 The first roll-out also changes `livekit.yaml.tmpl` (a loopback ICE candidate so the voice worker's
 media stays on the host); restart LiveKit once after rendering, while no call is running:
 `sudo docker compose restart livekit`.
+
+`roll-voice.sh` deploys the voice worker without cutting calls: it starts the new image in the
+idle slot (`voice` on 8190 or `voice-b` on 8195), waits for its health check, then stops the old
+slot in the background. The old worker takes no new calls and keeps its calls until they end, for
+up to 65 minutes (`stop_grace_period`); `/tmp/voice-drain-<slot>.log` shows when it is done.
 
 `render-env.sh` keeps the pinned `VOICE_IMAGE` (and `API_IMAGE`) in `.env` across later renders,
 so a reboot or a plain `sudo docker compose up -d` runs the same images. The log should show the

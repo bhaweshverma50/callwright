@@ -251,19 +251,20 @@ The VM sleeps when idle: start it first if it is off (any API request wakes it t
   gcloud compute instances start $VM_NAME --zone $VM_ZONE --account $ACCOUNT --project $PROJECT
 
 1. Copy the compose files (only when deploy/vm changed):
-  $scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/livekit.yaml.tmpl deploy/vm/egress.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx $VM_NAME:/opt/callwright/
+  $scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh deploy/vm/roll-voice.sh deploy/vm/livekit.yaml.tmpl deploy/vm/egress.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx $VM_NAME:/opt/callwright/
 
 2. Pin both images and render .env, worker.env and voice.env from Secret Manager:
   $ssh 'cd /opt/callwright && CW_API_IMAGE=$IMAGE CW_VOICE_IMAGE=$VOICE_IMAGE ./render-env.sh'
 
-3. Pull and restart the workers, then delete the images no container uses (the 19 GB disk fills
-   up after a few deploys; old tags stay in Artifact Registry). Restart LiveKit once when
-   livekit.yaml.tmpl changed, with no call running:
-  $ssh 'cd /opt/callwright && sudo docker compose pull worker voice && sudo docker compose up -d worker voice && sudo docker image prune -af'
+3. Restart the jobs worker and roll the voice worker (the new one starts before the old one
+   drains, so live calls are never cut), then delete the images no container uses (the 19 GB
+   disk fills up after a few deploys; old tags stay in Artifact Registry). Restart LiveKit once
+   when livekit.yaml.tmpl changed, with no call running:
+  $ssh 'cd /opt/callwright && sudo docker compose pull worker && sudo docker compose up -d worker && sudo ./roll-voice.sh && sudo docker image prune -af'
   $ssh 'cd /opt/callwright && sudo docker compose restart livekit'
 
 4. Check them:
-  $ssh 'curl -s localhost:8191; echo; curl -s -o /dev/null -w "voice %{http_code}\\n" localhost:8190; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice'
+  $ssh 'curl -s localhost:8191; echo; curl -s -o /dev/null -w "voice %{http_code}\\n" localhost:8190; curl -s -o /dev/null -w "voice-b %{http_code}\\n" localhost:8195; sudo docker compose -f /opt/callwright/docker-compose.yml logs --tail 30 voice'
 EOF
 }
 
