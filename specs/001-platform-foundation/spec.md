@@ -243,7 +243,8 @@ in-range rows and correct totals appear.
 ## Assumptions
 
 - Email + password is the only sign-in method in v1; SSO/OAuth is a later enterprise feature.
-- One user per workspace in v1; team invitations and roles are out of scope.
+- One user per workspace in v1. Superseded by 023 (team and roles): several members with Owner,
+  Admin, Builder, Supervisor and Analyst roles.
 - Prices are in USD only; taxes and invoices are handled by the payment provider.
 - The trial credit amount and concurrency default are configurable per environment.
 - Marketing pages are static content and need no CMS.

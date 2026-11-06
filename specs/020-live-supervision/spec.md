@@ -220,11 +220,12 @@ the supervisor's lines, and the agent's next reply uses the note.
 ### User Story 7 - Supervisor work states (Priority: P3, Phase 3)
 
 Each supervisor has a state: Ready, Away (with a reason) or Off, plus Wrap-up after a takeover.
-Approval cards and red banners go first to Ready supervisors. A supervisor can claim a call with
+Approval cards and red banners go to the agent's assigned supervisors (023 FR-012), Ready ones
+first. A supervisor can claim a call with
 "Joining in 15/30/60 s" so others know it is covered, and keeps a watch list of up to 4 calls.
 
 **Why this priority**: With more than one supervisor, work must be shared and covered; it
-needs team members and Phase 3.
+needs team members and supervisor assignment (023) and Phase 3.
 
 **Independent Test**: With two supervisors, set one Away, raise an approval, and confirm it goes
 to the Ready one; claim a call with "Joining in 30 s" and confirm the other sees the claim.

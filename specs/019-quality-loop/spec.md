@@ -322,7 +322,7 @@ from a refund policy document and accept one.
 - A reopened issue that 009 detection would also match on real calls: detection updates the
   reopened issue instead of creating a recurrence.
 - A rubric is edited while a review is open: the review saves against the version it opened with.
-- The second-pass reviewer is the call's first reviewer in a multi-member workspace: refused.
+- The second-pass reviewer is the call's first reviewer while another member may review it: refused.
 - Audio checks on calls longer than 60 minutes: measured on the whole call; the rationale lists
   at most the 5 worst moments.
 - An override on a simulated call: allowed, but it never affects live-call figures.
@@ -388,9 +388,9 @@ from a refund policy document and accept one.
   majority of the call's headline evaluator verdicts or from another review), or picked as a
   spot check (10% of other reviews, chosen at random).
 - **FR-017**: A second reviewer MUST NOT see the first review, its author or the call's evaluator
-  verdicts before saving. The same person MUST NOT do both passes in a workspace with more than
-  one member; in a single-member workspace the second pass opens no sooner than 24 hours later
-  with the first review hidden and is marked "same reviewer".
+  verdicts before saving. The same person MUST NOT do both passes when another member may
+  review the call (023 FR-006); when nobody else may, the second pass opens no sooner than 24
+  hours later with the first review hidden and is marked "same reviewer".
 - **FR-018**: Two reviews that differ on the overall verdict, or by 2 points on any category, MUST
   go to adjudication, where a reviewer who did neither pass sees both and saves the final review.
   Otherwise the pair resolves as agreed and the final review is the first one.
