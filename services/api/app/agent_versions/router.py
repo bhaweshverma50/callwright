@@ -41,7 +41,7 @@ def _tx(request: Request, principal: Principal) -> Any:
 
 
 def _allow_http(request: Request) -> bool:
-    return bool(request.app.state.settings.env == "dev")
+    return bool(request.app.state.settings.allow_http_webhooks)
 
 
 async def _agent(session: AsyncSession, agent_id: str, *, include_deleted: bool = False) -> Agent:

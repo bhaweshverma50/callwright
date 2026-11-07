@@ -25,9 +25,8 @@ from ulid import ULID
 
 from app.calls.effects import DELIVER_WEBHOOK, Deferred
 from app.calls.models import Call
-from app.core.config import Settings
 from app.core.ids import new_id
-from app.core.secrets import KeyWrapper, LocalKeyWrapper, WorkspaceSecret, get_secret, put_secret
+from app.core.secrets import KeyWrapper, WorkspaceSecret, get_secret, put_secret
 from app.webhooks_out.models import WebhookDelivery, WebhookSigningSecret
 
 ROTATION_OVERLAP = timedelta(hours=24)
@@ -35,10 +34,6 @@ DEFAULT_TIMEOUT_MS = 3000
 MIN_TIMEOUT_MS = 1000
 MAX_TIMEOUT_MS = 30000
 RECORDING_URL_TTL_S = 600
-
-
-def key_wrapper(settings: Settings) -> KeyWrapper:
-    return LocalKeyWrapper(settings.secrets_master_key.get_secret_value())
 
 
 def new_secret() -> str:

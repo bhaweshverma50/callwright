@@ -18,6 +18,7 @@ from app.core.auth import CurrentPrincipal, Principal
 from app.core.errors import ProblemError, not_found, problem_responses, validation_failed
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id, require_id
+from app.evals import settings as eval_settings
 from app.evals.context import build_context
 from app.evals.runtime import runtime
 from app.evaluators import service
@@ -36,7 +37,7 @@ def _tx(request: Request, principal: Principal) -> Any:
 
 
 def _models(request: Request) -> list[str]:
-    return list(request.app.state.settings.judge_models)
+    return list(eval_settings.judge_models(request.app.state.settings))
 
 
 @router.get("/evaluators")

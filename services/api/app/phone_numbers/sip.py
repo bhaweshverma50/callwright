@@ -4,13 +4,13 @@ Every imported number gets one inbound trunk, one outbound trunk and, while an i
 attached, one dispatch rule; a WhatsApp channel gets an inbound trunk (Meta's digest credentials,
 TLS media) and a dispatch rule. ``SipGateway`` is the port:
 
-* ``LiveKitSip`` (``Settings.sip_live``) calls LiveKit's SIP service through ``livekit-api``
+* ``LiveKitSip`` (``sip_live``) calls LiveKit's SIP service through ``livekit-api``
   with a per-call timeout. Every failure is a ``SipError`` with a short operator-safe message.
 * ``FakeSip`` keeps objects in memory (tests, offline development and deployments without a
   ``livekit-sip`` service). ``fail_next`` makes the next named operation fail.
 
 Deleting an object that no longer exists is not an error, so compensation and retries are
-idempotent. The extension of 003's ``core/livekit.py`` lives here so the two ports stay small.
+idempotent.
 """
 
 from __future__ import annotations
@@ -277,5 +277,13 @@ class FakeSip:
         return None
 
 
+def sip_live(settings: Settings) -> bool:
+    """Trunks and dispatch rules go to LiveKit's SIP API: ``SIP_MODE=live``, or ``auto`` with
+    ``LIVEKIT_MODE=live`` and ``LIVEKIT_SIP_HOST`` set."""
+    if settings.sip_mode == "auto":
+        return settings.livekit_mode == "live" and bool(settings.livekit_sip_host)
+    return settings.sip_mode == "live"
+
+
 def build_sip(settings: Settings) -> SipGateway:
-    return LiveKitSip(settings) if settings.sip_live else FakeSip()
+    return LiveKitSip(settings) if sip_live(settings) else FakeSip()

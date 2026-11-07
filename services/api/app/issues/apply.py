@@ -35,6 +35,7 @@ from app.agent_versions.canonical import content_hash
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.errors import ProblemError
+from app.core.secrets import key_wrapper
 from app.issues.lifecycle import FINAL, transition, wrong_status
 from app.issues.models import Issue, IssueFix
 from app.issues.service import agent_deleted, current_fix, draft_matches, get_issue, latest_for_revision
@@ -137,7 +138,7 @@ async def change_tool(
         await session.flush()
         return out
     actor = tools.ToolActor(workspace_id=agent.workspace_id, user_id=user_id, allow_http=True)
-    copy_ = await tools.duplicate_tool(session, actor, tools.key_wrapper(settings), tool_id)
+    copy_ = await tools.duplicate_tool(session, actor, key_wrapper(settings), tool_id)
     copy_.name = tool.name
     copy_.description = description
     await session.flush()

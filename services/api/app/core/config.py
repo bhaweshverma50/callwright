@@ -86,7 +86,6 @@ class Settings(BaseSettings):
     allow_auto_verify_in_production: bool = False
     supabase_url: str | None = None
     supabase_anon_key: SecretStr | None = None
-    supabase_service_key: SecretStr | None = None
 
     # Payments: "fake" serves a local checkout page and signs webhooks with the configured secret.
     stripe_mode: Literal["fake", "live"] = "fake"
@@ -127,7 +126,6 @@ class Settings(BaseSettings):
     recordings_s3_region: str = "us-east-1"
     recordings_s3_access_key: SecretStr | None = None
     recordings_s3_secret_key: SecretStr | None = None
-    recordings_kms_key_id: str | None = None
     # Google Cloud Storage: a service account key (JSON). When set, egress uploads with LiveKit's
     # native GCS output instead of the S3 API (GCS's S3 interop rejects newer SDK checksums).
     recordings_gcp_credentials: SecretStr | None = None
@@ -278,45 +276,17 @@ class Settings(BaseSettings):
             return [m.strip() for m in raw.split(",") if m.strip()]
         return value
 
-    @property
-    def judge_models(self) -> list[str]:
-        """Allowed judge models, the default first (FR-036)."""
-        models = [m for m in self.eval_judge_models if m]
-        if self.eval_judge_model:
-            models = [self.eval_judge_model, *(m for m in models if m != self.eval_judge_model)]
-        return models or ["openai/gpt-5-mini"]
-
-    @property
-    def default_judge_model(self) -> str:
-        return self.judge_models[0]
-
     @model_validator(mode="after")
     def _check(self) -> Settings:
         from app.core.secrets import decrypt_config_value
 
-        for name in (
-            "auth_jwt_secret",
-            "supabase_anon_key",
-            "supabase_service_key",
-            "stripe_secret_key",
-            "stripe_webhook_secret",
-            "service_token",
-            "livekit_api_secret",
-            "recordings_s3_secret_key",
-            "recordings_gcp_credentials",
-            "s3_access_key_id",
-            "s3_secret_access_key",
-            "elevenlabs_api_key",
-            "cartesia_api_key",
-            "openai_api_key",
-            "azure_openai_api_key",
-            "anthropic_api_key",
-            "deepgram_api_key",
-        ):
+        for name in type(self).model_fields:
             value = getattr(self, name)
-            if isinstance(value, SecretStr) and value.get_secret_value().startswith("enc:"):
-                plain = decrypt_config_value(value.get_secret_value(), self.secrets_master_key)
-                object.__setattr__(self, name, SecretStr(plain))
+            if name != "secrets_master_key" and isinstance(value, SecretStr):
+                plain = value.get_secret_value()
+                if plain.startswith("enc:"):
+                    plain = decrypt_config_value(plain, self.secrets_master_key)
+                    object.__setattr__(self, name, SecretStr(plain))
         if self.env in ("staging", "prod"):
             insecure = [
                 n
@@ -350,10 +320,6 @@ class Settings(BaseSettings):
         return self
 
     @property
-    def dev_tools_enabled(self) -> bool:
-        return self.env != "prod"
-
-    @property
     def dev_routes_enabled(self) -> bool:
         """/v1/dev/mail and the fake storage previews."""
         if self.enable_dev_routes is not None:
@@ -370,30 +336,14 @@ class Settings(BaseSettings):
         return self.dev_routes_enabled
 
     @property
+    def allow_http_webhooks(self) -> bool:
+        """Plain http URLs in agent, tool and flow configuration (webhooks, tool endpoints)."""
+        return self.env == "dev"
+
+    @property
     def livekit_client_url(self) -> str:
         """WebSocket URL handed to browsers (defaults to the server URL)."""
         return self.livekit_public_url or self.livekit_url
-
-    @property
-    def demo_agent_ids(self) -> dict[str, str]:
-        """Scenario key to agent id, in DEMO_AGENTS order; empty when the playground is off."""
-        if not self.demo_workspace_id:
-            return {}
-        pairs = (part.split("=", 1) for part in self.demo_agents.split(",") if "=" in part)
-        return {key.strip(): value.strip() for key, value in pairs if key.strip() and value.strip()}
-
-    @property
-    def sip_live(self) -> bool:
-        """True when trunks and dispatch rules go to LiveKit's SIP API (010)."""
-        if self.sip_mode == "auto":
-            return self.livekit_mode == "live" and bool(self.livekit_sip_host)
-        return self.sip_mode == "live"
-
-    @property
-    def whatsapp_graph_live(self) -> bool:
-        if self.whatsapp_graph_mode == "auto":
-            return self.sip_live
-        return self.whatsapp_graph_mode == "live"
 
 
 @lru_cache(maxsize=1)

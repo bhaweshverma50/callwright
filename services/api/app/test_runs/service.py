@@ -28,6 +28,7 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
+from app.evals.settings import default_judge_model, judge_models
 from app.simulator.charges import charge_run, merge_usage
 from app.simulator.targets import agent_model, agent_type_of, require_agent, resolve_target, runnable_problem
 from app.test_cases.models import TestCase, TestCategory
@@ -139,8 +140,8 @@ async def start_run(
 ) -> tuple[TestRun, list[str]]:
     """Create the run and its pending results. Returns (run, case ids to dispatch)."""
     agent = await require_agent(session, str(body["agent_id"]), pointer="/agent_id")
-    judge_model = str(body.get("judge_model") or settings.default_judge_model)
-    if judge_model not in settings.judge_models:
+    judge_model = str(body.get("judge_model") or default_judge_model(settings))
+    if judge_model not in judge_models(settings):
         raise validation_failed(
             [field_error("/judge_model", "invalid_format", "Choose one of the judge models")]
         )

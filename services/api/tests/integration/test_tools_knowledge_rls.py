@@ -8,6 +8,7 @@ import sqlalchemy.exc
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from app.core.secrets import key_wrapper
 from app.knowledge import jobs
 from app.tools import service as tools
 from app.tools.schemas import ToolCreate
@@ -35,7 +36,7 @@ async def test_tables_are_isolated(app: FastAPI) -> None:
         await tools.create_tool(
             session,
             tools.ToolActor(workspace_id=a.workspace_id, user_id=a.user_id),
-            tools.key_wrapper(app.state.settings),
+            key_wrapper(app.state.settings),
             ToolCreate(type="end_call", name="end_call", description="End", config={}),
         )
     kb_id = await new_kb(app, a)

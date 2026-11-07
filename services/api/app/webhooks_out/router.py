@@ -16,6 +16,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import new_id, path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.core.secrets import key_wrapper
 from app.webhooks_out import jobs, service
 from app.webhooks_out.models import DELIVERY_STATUSES, WEBHOOK_EVENTS, WebhookDelivery
 
@@ -36,7 +37,7 @@ def _tx(request: Request, principal: CurrentPrincipal) -> Any:
 
 @router.get("/webhooks/signing-secret", responses=problem_responses(401))
 async def get_signing_secret(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    wrapper = service.key_wrapper(request.app.state.settings)
+    wrapper = key_wrapper(request.app.state.settings)
     async with _tx(request, principal) as session:
         view = await service.masked_secret(session, wrapper, principal.workspace_id)
     return view.masked()
@@ -44,7 +45,7 @@ async def get_signing_secret(request: Request, principal: CurrentPrincipal) -> d
 
 @router.post("/webhooks/signing-secret/rotate", responses=problem_responses(401))
 async def rotate_signing_secret(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    wrapper = service.key_wrapper(request.app.state.settings)
+    wrapper = key_wrapper(request.app.state.settings)
     async with _tx(request, principal) as session:
         view = await service.rotate_secret(session, wrapper, principal.workspace_id)
     return {**view.masked(), "secret": view.secret}
@@ -130,7 +131,7 @@ async def send_test(body: TestRequest, request: Request, principal: CurrentPrinc
     now = datetime.now(UTC)
     delivery_id = new_id("whd")
     payload = service.ping_body(delivery_id, now)
-    wrapper = service.key_wrapper(settings)
+    wrapper = key_wrapper(settings)
     async with _tx(request, principal) as session:
         secrets = await service.signing_secrets(session, wrapper, principal.workspace_id, now)
     raw = payload.encode()

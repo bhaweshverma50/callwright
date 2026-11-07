@@ -14,6 +14,7 @@ from app.agents.views import parse_if_match
 from app.core.auth import CurrentPrincipal, Principal
 from app.core.errors import problem_responses
 from app.core.ids import path_id
+from app.core.secrets import key_wrapper
 from app.flows import assistant, service
 from app.flows.schemas import (
     AssistantRequest,
@@ -23,7 +24,6 @@ from app.flows.schemas import (
     ValidateRequest,
     graph_json,
 )
-from app.tools import service as tools
 
 router = APIRouter(tags=["flows"])
 
@@ -40,7 +40,7 @@ def _actor(request: Request, principal: Principal) -> agents.Actor:
     return agents.Actor(
         workspace_id=principal.workspace_id,
         user_id=principal.user_id,
-        allow_http_webhook=request.app.state.settings.env == "dev",
+        allow_http_webhook=request.app.state.settings.allow_http_webhooks,
     )
 
 
@@ -93,7 +93,7 @@ async def save_flow(
             name=body.name,
             graph=graph_json(body.graph),
             agent_settings=body.agent_settings.model_dump() if body.agent_settings else None,
-            wrapper=tools.key_wrapper(request.app.state.settings),
+            wrapper=key_wrapper(request.app.state.settings),
         )
         out = service.flow_view(flow, agent)
     return JSONResponse(out, headers=_etag(flow.revision))
@@ -120,7 +120,7 @@ async def validate_flow(
         agent = await agents.get_agent(session, flow.agent_id)
         graph = graph_json(body.graph) if body is not None and body.graph is not None else flow.graph
         return await service.validate_graph(
-            session, agent, graph, allow_http_webhook=request.app.state.settings.env == "dev"
+            session, agent, graph, allow_http_webhook=request.app.state.settings.allow_http_webhooks
         )
 
 
@@ -128,7 +128,7 @@ async def validate_flow(
 async def compile_flow(flow_id: FlowId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     async with _tx(request, principal) as session:
         return await service.compile_preview(
-            session, flow_id, allow_http_webhook=request.app.state.settings.env == "dev"
+            session, flow_id, allow_http_webhook=request.app.state.settings.allow_http_webhooks
         )
 
 

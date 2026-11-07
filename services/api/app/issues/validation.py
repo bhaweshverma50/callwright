@@ -33,6 +33,7 @@ from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
+from app.evals.settings import judge_models
 from app.evals.views import LATEST_CURRENT
 from app.evaluators.models import EvaluatorRow
 from app.issues import validation_rule as rule
@@ -174,10 +175,10 @@ async def estimate_cost(
     per_run = await per_run_cost(session, agent.id, mode, model)
     if mode == "persona":
         per_run += billable_cost(token_cost(model.partition("/")[2] or model, *EXTRACTION_TOKENS))
-    judge_models = settings.judge_models
-    for r in await resolve_all(session, agent, judge_models):
+    models = judge_models(settings)
+    for r in await resolve_all(session, agent, models):
         if r.enabled:
-            per_run += Decimal(str(est_cost(r.row, r.values, judge_models) or 0))
+            per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
     return (per_run * run_count).quantize(Decimal("0.000001"))
 
 
@@ -615,7 +616,7 @@ async def finalize(
 
     control_rows = await verdict_rows(session, keyed(runs_c))
     treatment_rows = await verdict_rows(session, keyed(runs_t))
-    enabled = [r.row.id for r in await resolve_all(session, agent, settings.judge_models) if r.enabled]
+    enabled = [r.row.id for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled]
     evaluator_ids = [issue.evaluator_id, *sorted(e for e in set(enabled) if e != issue.evaluator_id)]
     counts = paired_counts(
         evaluator_ids, control_rows, treatment_rows, attempt.affected_call_ids, attempt.guard_call_ids

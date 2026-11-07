@@ -29,7 +29,6 @@ from app.core.errors import ProblemError, not_found
 from app.core.ids import new_id
 from app.core.pagination import page_meta
 from app.core.secrets import delete_secret, get_secret, put_secret
-from app.core.sip import SipError
 from app.phone_numbers import provisioning, validation
 from app.phone_numbers.models import PhoneNumber
 from app.phone_numbers.schemas import PhoneNumberImport, PhoneNumberUpdate
@@ -41,6 +40,7 @@ from app.phone_numbers.shared import (
     iso,
     require_published,
 )
+from app.phone_numbers.sip import SipError
 
 logger = logging.getLogger(__name__)
 

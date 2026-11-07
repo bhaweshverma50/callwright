@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 
+from app.evals.settings import default_judge_model
 from tests.conftest import Account
 from tests.contract.conftest import check
 
@@ -123,7 +124,7 @@ async def test_flow_catalog_matches_golden(client: httpx.AsyncClient, account: A
     items = {e["name"]: e for e in body["items"]}
     assert set(items) == set(GOLDEN)
     assert [e["display_name"] for e in body["items"]] == sorted(e["display_name"] for e in body["items"])
-    default_model = app.state.settings.default_judge_model  # type: ignore[attr-defined]
+    default_model = default_judge_model(app.state.settings)  # type: ignore[attr-defined]
     for name, (display, scope, cost, kind, types, on, fields) in GOLDEN.items():
         e = items[name]
         assert (

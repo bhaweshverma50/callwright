@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.calls import pipeline
+from app.core.secrets import key_wrapper
 from app.webhooks_out import service as webhooks
 from tests.conftest import Account, signup
 from tests.runtime_support import SERVICE_HEADERS, Events, Runtime, agent_config, ended_call, owner_sql
@@ -43,7 +44,7 @@ async def test_tables_are_isolated_per_workspace(app: FastAPI, runtime: Runtime)
     ws_a = setup.workspace_id
     await pipeline.run(runtime.db, ws_a, setup.call_id, catalog=runtime.catalog)
     async with runtime.db.transaction(workspace_id=ws_a) as session:
-        await webhooks.masked_secret(session, webhooks.key_wrapper(app.state.settings), ws_a)
+        await webhooks.masked_secret(session, key_wrapper(app.state.settings), ws_a)
         await session.execute(
             text(
                 "insert into idempotency_keys (workspace_id, endpoint, key, request_hash) "

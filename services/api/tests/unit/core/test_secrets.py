@@ -19,6 +19,7 @@ from app.core.secrets import (
     delete_secret,
     encrypt_config_value,
     get_secret,
+    key_wrapper,
     list_secrets,
     mask_secret,
     put_secret,
@@ -71,6 +72,19 @@ def test_encrypted_config_values_are_decrypted_at_load() -> None:
     assert "whsec_real_secret" not in repr(settings)
 
 
+def test_every_secret_setting_is_decrypted_at_load() -> None:
+    names = [
+        name
+        for name, field in Settings.model_fields.items()
+        if name != "secrets_master_key" and "SecretStr" in str(field.annotation)
+    ]
+    assert {"livekit_api_key", "recordings_s3_access_key", "stripe_webhook_secret"} <= set(names)
+    values = {name: SecretStr(encrypt_config_value(f"plain-{name}", KEY)) for name in names}
+    settings = make_settings(**values, secrets_master_key=SecretStr(KEY))
+    for name in names:
+        assert getattr(settings, name).get_secret_value() == f"plain-{name}", name
+
+
 def test_production_refuses_dev_defaults() -> None:
     with pytest.raises(ValueError, match="dev defaults"):
         Settings(_env_file=None, env="prod")  # type: ignore[call-arg]
@@ -78,7 +92,7 @@ def test_production_refuses_dev_defaults() -> None:
 
 async def test_workspace_secret_store(app: FastAPI) -> None:
     _, ws = await make_workspace(app)
-    wrapper = LocalKeyWrapper(app.state.settings.secrets_master_key.get_secret_value())
+    wrapper = key_wrapper(app.state.settings)
     async with app.state.db.transaction(workspace_id=ws) as session:
         ref = await put_secret(session, wrapper, ws, "sip_password", "super-secret-value")
         assert ref.masked == "****alue"

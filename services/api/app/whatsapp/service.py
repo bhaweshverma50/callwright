@@ -32,7 +32,6 @@ from app.core.errors import ProblemError, field_error, not_found, validation_fai
 from app.core.ids import new_id
 from app.core.pagination import page_meta
 from app.core.secrets import delete_secret, get_secret, put_secret
-from app.core.sip import InboundTrunkSpec, SipError
 from app.phone_numbers import validation
 from app.phone_numbers.provisioning import dispatch_spec
 from app.phone_numbers.shared import (
@@ -44,6 +43,7 @@ from app.phone_numbers.shared import (
     iso,
     require_published,
 )
+from app.phone_numbers.sip import InboundTrunkSpec, SipError
 from app.whatsapp.graph_client import GraphError, WhatsAppGraph
 from app.whatsapp.models import WhatsAppCallerRoute, WhatsAppChannel
 from app.whatsapp.schemas import CallerRouteCreate, WhatsAppChannelCreate, WhatsAppChannelUpdate

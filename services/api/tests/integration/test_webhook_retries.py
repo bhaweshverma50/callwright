@@ -13,6 +13,7 @@ import pytest
 from fastapi import FastAPI
 
 from app.calls.effects import Deferred
+from app.core.secrets import key_wrapper
 from app.webhooks_out import jobs, service
 from tests.integration.tools.flaky_receiver import FlakyReceiver, verify
 from tests.runtime_support import Runtime, admitted_call, agent_config, owner_sql
@@ -83,7 +84,7 @@ async def test_fails_twice_then_succeeds_with_valid_signatures(
     assert attempts[0][0]["response_excerpt"] == "nope"
     # Every attempt verifies with the workspace secret; the body is identical each time.
     async with runtime.db.transaction(workspace_id=ws) as session:
-        secret = (await service.signing_secrets(session, service.key_wrapper(app.state.settings), ws))[0]
+        secret = (await service.signing_secrets(session, key_wrapper(app.state.settings), ws))[0]
     bodies = {r.body for r in receiver.received}
     assert len(bodies) == 1 and len(receiver.received) == 3
     for item in receiver.received:
@@ -169,7 +170,7 @@ async def test_rotation_overlap_signs_with_both_secrets(
 ) -> None:
     receiver = receiver_factory(fail=0)
     ws, delivery_id = await _delivery(runtime, receiver.url)
-    wrapper = service.key_wrapper(app.state.settings)
+    wrapper = key_wrapper(app.state.settings)
     async with runtime.db.transaction(workspace_id=ws) as session:
         old = (await service.signing_secrets(session, wrapper, ws))[0]
         new = (await service.rotate_secret(session, wrapper, ws)).secret

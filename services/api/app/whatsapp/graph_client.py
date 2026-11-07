@@ -23,6 +23,7 @@ from typing import Any, Literal, Protocol
 import httpx
 
 from app.core.config import Settings
+from app.phone_numbers.sip import sip_live
 
 SIP_PORT = 5061
 
@@ -196,5 +197,12 @@ class FakeWhatsAppGraph:
         return None
 
 
+def graph_live(settings: Settings) -> bool:
+    """``WHATSAPP_GRAPH_MODE=auto`` calls Meta only when telephony is live."""
+    if settings.whatsapp_graph_mode == "auto":
+        return sip_live(settings)
+    return settings.whatsapp_graph_mode == "live"
+
+
 def build_graph(settings: Settings) -> WhatsAppGraph:
-    return LiveWhatsAppGraph(settings) if settings.whatsapp_graph_live else FakeWhatsAppGraph()
+    return LiveWhatsAppGraph(settings) if graph_live(settings) else FakeWhatsAppGraph()

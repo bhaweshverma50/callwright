@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from callwright_contract.protocol import DISPATCH_CHANNEL, DISPATCH_ROUTE_REF
 from opentelemetry import trace
 
-from app.core.sip import DispatchRuleSpec, InboundTrunkSpec, OutboundTrunkSpec, SipError, SipGateway
 from app.phone_numbers.models import PhoneNumber
+from app.phone_numbers.sip import DispatchRuleSpec, InboundTrunkSpec, OutboundTrunkSpec, SipError, SipGateway
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.phone_numbers")

@@ -37,7 +37,7 @@ def actor(request: Request, principal: Principal) -> service.Actor:
     return service.Actor(
         workspace_id=principal.workspace_id,
         user_id=principal.user_id,
-        allow_http_webhook=request.app.state.settings.env == "dev",
+        allow_http_webhook=request.app.state.settings.allow_http_webhooks,
     )
 
 
@@ -153,7 +153,7 @@ async def validate_agent_config(
             body.agent_id,
             session=session,
             workspace_id=principal.workspace_id,
-            allow_http_webhook=request.app.state.settings.env == "dev",
+            allow_http_webhook=request.app.state.settings.allow_http_webhooks,
         )
     return result.json()
 

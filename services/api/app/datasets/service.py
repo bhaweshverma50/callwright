@@ -23,6 +23,7 @@ from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
 from app.datasets.models import Dataset, DatasetItem
+from app.evals.settings import judge_models
 from app.simulator import calls as sim_calls
 from app.simulator.targets import require_agent
 
@@ -302,7 +303,7 @@ async def evaluate(
     if agent is not None:
         enabled = {
             r.row.id: r.row.current_version
-            for r in await resolve_all(session, agent, runtime().settings.judge_models)
+            for r in await resolve_all(session, agent, judge_models(runtime().settings))
             if r.enabled
         }
     runs: dict[str, list[EvaluatorRun]] = {}

@@ -47,7 +47,6 @@ from app.core.health import router as health_router
 from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
-from app.core.sip import build_sip
 from app.core.storage import build_store
 from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
@@ -71,6 +70,7 @@ from app.llms.router import router as llms_router
 from app.outbound.router import router as outbound_router
 from app.phone_numbers.install import install as install_channels
 from app.phone_numbers.router import router as phone_numbers_router
+from app.phone_numbers.sip import build_sip
 from app.preferences.router import router as preferences_router
 from app.pricing.router import router as pricing_router
 from app.prompt_ai.router import router as prompt_ai_router

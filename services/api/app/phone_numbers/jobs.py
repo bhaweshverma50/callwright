@@ -11,11 +11,11 @@ from sqlalchemy import text
 
 from app.calls.models import Call
 from app.core.db import Database
-from app.core.sip import SipError, SipGateway
 from app.phone_numbers import provisioning
 from app.phone_numbers import service as numbers
 from app.phone_numbers.models import PhoneNumber
 from app.phone_numbers.shared import active_counts
+from app.phone_numbers.sip import SipError, SipGateway
 from app.whatsapp import service as whatsapp
 from app.whatsapp.models import WhatsAppChannel
 

@@ -42,7 +42,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["jobs"] = ArqJobQueue(pool=ctx["redis"])
     ctx["livekit"] = build_livekit(settings)
     # Channels (010): the drain cron removes SIP objects of deleted numbers and channels.
-    from app.core.sip import build_sip
+    from app.phone_numbers.sip import build_sip
 
     ctx["sip"] = build_sip(settings)
     ctx["adapter_catalog"] = load_catalog()

@@ -93,7 +93,7 @@ async def _main(argv: list[str]) -> int:
     parser.add_argument("--workspace", required=True)
     args = parser.parse_args(argv)
     settings = get_settings()
-    if not settings.dev_tools_enabled:
+    if settings.env == "prod":
         print("seed_demo is disabled in production", file=sys.stderr)
         return 2
     if not is_valid_id(args.workspace, "ws"):

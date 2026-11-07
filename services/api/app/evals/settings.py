@@ -17,10 +17,23 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from app.core.config import Settings
 from app.core.errors import field_error
 
 MAX_HEADLINE = 4
 HEADLINE_LIMIT_MESSAGE = "Up to 4 headline checks per agent"
+
+
+def judge_models(settings: Settings) -> list[str]:
+    """Allowed judge models, the default first (FR-036)."""
+    models = [m for m in settings.eval_judge_models if m]
+    if settings.eval_judge_model:
+        models = [settings.eval_judge_model, *(m for m in models if m != settings.eval_judge_model)]
+    return models or ["openai/gpt-5-mini"]
+
+
+def default_judge_model(settings: Settings) -> str:
+    return judge_models(settings)[0]
 
 
 def fmt(value: Any) -> str:

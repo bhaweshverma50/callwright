@@ -41,7 +41,7 @@ from app.evals.models import EvaluatorResultItem, EvaluatorRun, EvaluatorRunGrou
 from app.evals.runtime import QualityRuntime, runtime
 from app.evals.scoring import ItemOutcome, run_verdict
 from app.evals.service import resolve_all
-from app.evals.settings import settings_hash
+from app.evals.settings import default_judge_model, judge_models, settings_hash
 from app.evals.short_call import too_short
 from app.evaluators import audio
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, Unavailable
@@ -148,7 +148,7 @@ async def start_group(
     group = await session.get(EvaluatorRunGroup, group_id)
     assert group is not None
     agent = await session.get(Agent, call.agent_id)
-    resolved = await resolve_all(session, agent, rt.settings.judge_models) if agent is not None else []
+    resolved = await resolve_all(session, agent, judge_models(rt.settings)) if agent is not None else []
     by_id = {r.row.id: r for r in resolved}
     if evaluator_ids:
         wanted = list(dict.fromkeys(evaluator_ids))
@@ -236,7 +236,7 @@ def tools_for(db: Database, workspace_id: str, rt: QualityRuntime, settings: dic
         judge=rt.judge,
         read_levels=audio.read_levels,
         neighbours=neighbours if rt.embedder is not None else None,
-        judge_model=str(settings.get("judge_model") or rt.settings.default_judge_model),
+        judge_model=str(settings.get("judge_model") or default_judge_model(rt.settings)),
         cutoff=rt.settings.eval_judge_pass_cutoff,
     )
 

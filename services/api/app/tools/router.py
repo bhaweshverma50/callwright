@@ -19,6 +19,7 @@ from app.core.errors import ProblemError, not_found, problem_responses, too_many
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.core.rate_limit import RateLimiter
+from app.core.secrets import key_wrapper
 from app.tools import hooks as _hooks  # noqa: F401  (registers 002 hooks)
 from app.tools import http_exec, service
 from app.tools.presets import PRESETS
@@ -45,12 +46,12 @@ def _actor(request: Request, principal: Principal) -> service.ToolActor:
     return service.ToolActor(
         workspace_id=principal.workspace_id,
         user_id=principal.user_id,
-        allow_http=request.app.state.settings.env == "dev",
+        allow_http=request.app.state.settings.allow_http_webhooks,
     )
 
 
 def _wrapper(request: Request) -> Any:
-    return service.key_wrapper(request.app.state.settings)
+    return key_wrapper(request.app.state.settings)
 
 
 async def _view(session: Any, tool: Any) -> dict[str, Any]:
@@ -101,7 +102,7 @@ async def test_run_tool(
         raise too_many_requests(
             limit.retry_after_s, "Test runs are limited to 30 a minute. Try again shortly."
         )
-    allow_http = request.app.state.settings.env == "dev"
+    allow_http = request.app.state.settings.allow_http_webhooks
     secrets: dict[str, str] = {}
     async with _tx(request, principal) as session:
         if body.tool_id is not None:
@@ -265,7 +266,5 @@ async def get_call_tool_secrets(call_id: CallId, request: Request) -> JSONRespon
             raise ProblemError(403, "forbidden", "Not allowed", "The call has no agent version.")
         version = await session.get(AgentVersion, call.agent_version_id)
         config = version.config if version is not None else {}
-        secrets = await service.secrets_for_config(
-            session, service.key_wrapper(state.settings), workspace_id, config
-        )
+        secrets = await service.secrets_for_config(session, key_wrapper(state.settings), workspace_id, config)
     return JSONResponse({"secrets": secrets}, headers={"Cache-Control": "no-store"})

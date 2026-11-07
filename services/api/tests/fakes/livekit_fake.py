@@ -16,8 +16,8 @@ import httpx
 import pytest_asyncio
 from fastapi import FastAPI
 
-from app.core.sip import FakeSip
 from app.phone_numbers.install import install
+from app.phone_numbers.sip import FakeSip
 from app.whatsapp.graph_client import FakeWhatsAppGraph
 from tests.conftest import Account
 from tests.runtime_support import SERVICE_HEADERS, Runtime

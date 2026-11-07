@@ -16,7 +16,7 @@ import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import SecretStr
@@ -25,6 +25,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
 
 _NONCE_BYTES = 12
 _ENC_PREFIX = "enc:v1:"
@@ -54,6 +57,10 @@ class LocalKeyWrapper:
 
     def unwrap(self, blob: bytes) -> bytes:
         return self._aead.decrypt(blob[:_NONCE_BYTES], blob[_NONCE_BYTES:], b"dek")
+
+
+def key_wrapper(settings: Settings) -> KeyWrapper:
+    return LocalKeyWrapper(settings.secrets_master_key.get_secret_value())
 
 
 @dataclass(frozen=True)

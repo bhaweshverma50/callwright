@@ -17,6 +17,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.client_ip import client_ip
+from app.core.config import Settings
 from app.core.errors import ProblemError, problem_responses, too_many_requests
 from app.core.rate_limit import TokenBucket
 from app.sessions.router import deps_from
@@ -42,9 +43,17 @@ class DemoCaller:
     user_id: str | None = None
 
 
+def demo_agent_ids(settings: Settings) -> dict[str, str]:
+    """Scenario key to agent id, in DEMO_AGENTS order; empty when the playground is off."""
+    if not settings.demo_workspace_id:
+        return {}
+    pairs = (part.split("=", 1) for part in settings.demo_agents.split(",") if "=" in part)
+    return {key.strip(): value.strip() for key, value in pairs if key.strip() and value.strip()}
+
+
 @router.get("/public/demo", response_model=DemoInfo)
 async def demo_info(request: Request) -> DemoInfo:
-    return DemoInfo(agents=list(request.app.state.settings.demo_agent_ids))
+    return DemoInfo(agents=list(demo_agent_ids(request.app.state.settings)))
 
 
 @router.post(
@@ -55,7 +64,7 @@ async def demo_info(request: Request) -> DemoInfo:
 )
 async def start_demo_call(body: DemoCallRequest, request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
-    agent_id = settings.demo_agent_ids.get(body.agent)
+    agent_id = demo_agent_ids(settings).get(body.agent)
     if agent_id is None:
         raise ProblemError(404, "not_found", "Not found", "This demo agent is not available.")
     per_hour = settings.demo_calls_per_hour

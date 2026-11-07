@@ -42,6 +42,7 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
+from app.evals.settings import judge_models
 from app.simulator import calls as sim_calls
 from app.simulator.charges import charge_run, merge_usage
 from app.simulator.models import SimulationExperiment, SimulationRun
@@ -848,7 +849,7 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
         return None
     from app.evals.runtime import runtime
 
-    resolved = await resolve_all(session, agent, runtime().settings.judge_models)
+    resolved = await resolve_all(session, agent, judge_models(runtime().settings))
     enabled = {r.row.id: r.row.current_version for r in resolved if r.enabled}
     existing = list(
         (await session.execute(select(EvaluatorRun).where(EvaluatorRun.call_id == base.id))).scalars()

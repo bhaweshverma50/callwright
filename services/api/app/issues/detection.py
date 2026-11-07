@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.ids import new_id
+from app.evals.settings import judge_models
 from app.evals.views import LATEST_CURRENT
 from app.evaluators.judge import json_object, neutralise
 from app.evaluators.models import EvaluatorRow
@@ -78,7 +79,7 @@ async def enabled_evaluators(
 ) -> dict[str, EvaluatorRow]:
     from app.evals.service import resolve_all
 
-    return {r.row.id: r.row for r in await resolve_all(session, agent, settings.judge_models) if r.enabled}
+    return {r.row.id: r.row for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled}
 
 
 async def calibration_flags(session: AsyncSession, agent_id: str, settings: Settings) -> dict[str, bool]:

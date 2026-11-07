@@ -18,7 +18,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.billing import service
 from app.core.ids import new_id
-from app.core.secrets import LocalKeyWrapper, put_secret
+from app.core.secrets import key_wrapper, put_secret
 from app.pricing import engine
 from tests.conftest import Account, signup
 from tests.integration.billing.stripe_fixtures import start_checkout
@@ -72,7 +72,7 @@ async def populated(client: httpx.AsyncClient, app: FastAPI) -> tuple[Account, A
         )
         await put_secret(
             session,
-            LocalKeyWrapper(app.state.settings.secrets_master_key.get_secret_value()),
+            key_wrapper(app.state.settings),
             a.workspace_id,
             "sip_password",
             "hunter2-secret",

@@ -16,6 +16,7 @@ from app.evals import service, verdict_diff, views
 from app.evals.jobs import EVALUATE_CALL, start_evaluation
 from app.evals.runner import AlreadyRunning, already_running
 from app.evals.schemas import RerunBody, SettingPut
+from app.evals.settings import judge_models
 
 router = APIRouter(tags=["evals"])
 
@@ -30,7 +31,7 @@ def _tx(request: Request, principal: Principal) -> Any:
 
 
 def _judge_models(request: Request) -> list[str]:
-    return list(request.app.state.settings.judge_models)
+    return list(judge_models(request.app.state.settings))
 
 
 @router.get("/agents/{agent_id}/eval-settings", responses=problem_responses(404))

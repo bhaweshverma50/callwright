@@ -18,6 +18,7 @@ from ulid import ULID
 
 from app.core.config import Settings
 from app.core.db import Database
+from app.evals.settings import default_judge_model
 from app.evaluators.base import Evaluator, SettingsField
 from app.evaluators.builtins.anomaly_detection import AnomalyDetection
 from app.evaluators.builtins.audio_silence import AudioSilence
@@ -67,7 +68,7 @@ def definition(ev: Evaluator, settings: Settings) -> dict[str, Any]:
         "rules": ev.rules,
         "cutoff": settings.eval_judge_pass_cutoff if ev.cost_class == "llm_judge" else None,
         "threshold_direction": ev.threshold_direction,
-        "judge_model": settings.default_judge_model if ev.cost_class == "llm_judge" else None,
+        "judge_model": default_judge_model(settings) if ev.cost_class == "llm_judge" else None,
     }
 
 

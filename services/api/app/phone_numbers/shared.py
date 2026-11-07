@@ -17,8 +17,8 @@ from app.calls.ports import registry
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
-from app.core.secrets import KeyWrapper, LocalKeyWrapper
-from app.core.sip import SipGateway
+from app.core.secrets import KeyWrapper, key_wrapper
+from app.phone_numbers.sip import SipGateway
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ChannelDeps:
 
     @property
     def wrapper(self) -> KeyWrapper:
-        return LocalKeyWrapper(self.settings.secrets_master_key.get_secret_value())
+        return key_wrapper(self.settings)
 
 
 def _resolver(one_arg: Any) -> Any:

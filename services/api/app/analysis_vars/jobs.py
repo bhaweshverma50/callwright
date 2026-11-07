@@ -28,6 +28,7 @@ from app.calls.models import Call
 from app.core.errors import ProblemError
 from app.evals.context import build_context
 from app.evals.runtime import runtime
+from app.evals.settings import default_judge_model
 from app.evals.short_call import too_short
 from app.llms.client import billable_cost
 
@@ -58,7 +59,7 @@ async def analyze_call(session: AsyncSession, call_id: str, *, rerun: bool = Fal
     with tracer.start_as_current_span("analysis.analyze_call", attributes={"call_id": call_id}) as span:
         variables = snapshot(await active_variables(session, call.agent_id))
         ctx = await build_context(session, call)
-        model = extractor.model_for(ctx.config, rt.settings.default_judge_model)
+        model = extractor.model_for(ctx.config, default_judge_model(rt.settings))
         span.set_attribute("llm.model", model)
         row.model = model
         row.variable_snapshot = variables

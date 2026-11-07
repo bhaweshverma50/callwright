@@ -25,10 +25,9 @@ from ulid import ULID
 
 from app.agents import service as agents
 from app.agents.models import Agent
-from app.core.config import Settings
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
-from app.core.secrets import KeyWrapper, LocalKeyWrapper, delete_secret, get_secret, put_secret
+from app.core.secrets import KeyWrapper, delete_secret, get_secret, put_secret
 from app.tools.models import Tool
 from app.tools.schemas import CONFIG_MODELS, ToolCreate, ToolSpec, ToolUpdate
 from app.tools.validation import Issue, issue, validate_tool
@@ -47,10 +46,6 @@ class ToolActor:
         return agents.Actor(
             workspace_id=self.workspace_id, user_id=self.user_id, allow_http_webhook=self.allow_http
         )
-
-
-def key_wrapper(settings: Settings) -> KeyWrapper:
-    return LocalKeyWrapper(settings.secrets_master_key.get_secret_value())
 
 
 def tool_in_use(agent_rows: Sequence[tuple[str, str]]) -> ProblemError:
@@ -600,7 +595,6 @@ __all__ = [
     "duplicate_tool",
     "flow_node_usages",
     "get_tool",
-    "key_wrapper",
     "list_tools",
     "mock_coverage",
     "register_flow_mock_hook",

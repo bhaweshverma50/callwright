@@ -32,7 +32,7 @@ from app.calls.ports import InboundRoute
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.ids import is_valid_id, new_id
-from app.core.secrets import LocalKeyWrapper
+from app.core.secrets import key_wrapper
 from app.core.url_guard import guarded_request
 from app.phone_numbers import validation
 from app.phone_numbers.shared import _resolver, agent_state
@@ -146,7 +146,7 @@ async def call_inbound_webhook(
         except UrlNotAllowed:
             outcome.failure = "blocked_url"
             return outcome
-        wrapper = LocalKeyWrapper(settings.secrets_master_key.get_secret_value())
+        wrapper = key_wrapper(settings)
         async with db.transaction(workspace_id=workspace_id) as session:
             secrets = await webhooks.signing_secrets(session, wrapper, workspace_id)
         headers = {

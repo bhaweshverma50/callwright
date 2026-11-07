@@ -24,7 +24,7 @@ from app.calls.effects import DELIVER_WEBHOOK
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.queue import JobQueue
-from app.core.secrets import KeyWrapper
+from app.core.secrets import KeyWrapper, key_wrapper
 from app.core.url_guard import guarded_request
 from app.webhooks_out import service, signing
 from app.webhooks_out.models import WebhookDelivery
@@ -138,7 +138,7 @@ async def deliver(
     now: datetime | None = None,
     rng: random.Random | None = None,
 ) -> DeliveryOutcome:
-    wrapper = wrapper or service.key_wrapper(settings)
+    wrapper = wrapper or key_wrapper(settings)
     async with db.transaction(workspace_id=workspace_id) as session:
         row = (
             await session.execute(
