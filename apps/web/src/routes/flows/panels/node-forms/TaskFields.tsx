@@ -2,7 +2,8 @@ import { Braces, List, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { TaskField } from "../../../../api/flows";
 import { Button, IconButton, Input, Segmented, Select, Switch, Textarea } from "../../../../components";
-import { fieldNameError, jsonError, toVariableName } from "./fieldRules";
+import { fieldNameError, jsonError } from "./fieldRules";
+import { FLOW_FIELD_NAME_MAX, toMachineName } from "../../../../lib/machineName";
 
 const TYPES = [
   { value: "string", label: "Text" },
@@ -94,7 +95,7 @@ export function TaskFields({ fields, onChange, error }: { fields: TaskField[]; o
                       aria-label={`Field ${i + 1} name`}
                       value={f.name}
                       onChange={(e) => set(i, { name: e.target.value })}
-                      onBlur={(e) => set(i, { name: toVariableName(e.target.value) || e.target.value })}
+                      onBlur={(e) => set(i, { name: toMachineName(e.target.value, FLOW_FIELD_NAME_MAX) || e.target.value })}
                       aria-invalid={Boolean(nameError) || undefined}
                       className="font-mono"
                     />

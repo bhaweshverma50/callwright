@@ -3,18 +3,17 @@
  * so Save stays disabled while a field is invalid; the server remains the authority.
  */
 import type { HttpToolConfig, PressDigitConfig, ToolConfig, ToolDraft, TransferConfig } from "../../../../api/tools";
+import { isMachineName, NAME_RULE } from "../../../../lib/machineName";
 
-const NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const E164 = /^\+[1-9]\d{6,14}$/;
 const HEADER = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/;
-const VARIABLE = /^[a-z][a-z0-9_]{0,63}$/;
 const PLACEHOLDER = /\{\{\s*[A-Za-z_][A-Za-z0-9_.]*\s*\}\}/g;
 
 export type Errors = Record<string, string>;
 
 export function nameError(name: string): string | null {
   if (!name) return "Enter a name.";
-  if (!NAME.test(name)) return "Use lowercase letters, digits and underscores, starting with a letter.";
+  if (!isMachineName(name)) return `${NAME_RULE}.`;
   if (name === "kb_search") return "kb_search is reserved for knowledge search.";
   if (name.startsWith("route_to_")) return "Names starting with route_to_ are reserved for flows.";
   return null;
@@ -108,7 +107,7 @@ export function httpErrors(c: HttpToolConfig, texts: { parameters?: string; body
   });
   const vars = new Set<string>();
   c.response_mappings.forEach((m, i) => {
-    if (!VARIABLE.test(m.variable_name)) out[`mappings.${i}.variable_name`] = "Lowercase letters, digits and underscores.";
+    if (!isMachineName(m.variable_name)) out[`mappings.${i}.variable_name`] = "Lowercase letters, digits and underscores.";
     else if (vars.has(m.variable_name)) out[`mappings.${i}.variable_name`] = "Mapped twice.";
     vars.add(m.variable_name);
     if (!m.json_path.trim()) out[`mappings.${i}.json_path`] = "Enter a path such as data.slots[0].time.";

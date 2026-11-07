@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryNameError, e164Error, fieldNameError, jsonError, maxRoundsError, timeoutError, toVariableName, urlError } from "./fieldRules";
+import { categoryNameError, e164Error, fieldNameError, jsonError, maxRoundsError, timeoutError, urlError } from "./fieldRules";
 
 describe("node field rules (T104)", () => {
   it("checks max rounds 1 to 20", () => {
@@ -33,7 +33,5 @@ describe("node field rules (T104)", () => {
     expect(categoryNameError("sales", ["Sales"])).toMatch(/already/);
     expect(categoryNameError("!x", [])).toMatch(/letters/);
     expect(fieldNameError("Bad Name", [])).toMatch(/lowercase/);
-    expect(toVariableName("Customer Name")).toBe("customer_name");
-    expect(toVariableName(" 2nd Phone! ")).toBe("v_2nd_phone");
   });
 });

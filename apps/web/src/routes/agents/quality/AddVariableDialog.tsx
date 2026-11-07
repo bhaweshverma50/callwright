@@ -13,7 +13,7 @@ import {
   type VariableType,
 } from "../../../api/quality";
 import { Button, Dialog, Field, Input, Segmented, Textarea, toast } from "../../../components";
-import { NAME_RULE, toVariableName } from "./variableName";
+import { NAME_RULE, toMachineName } from "../../../lib/machineName";
 
 export const TYPE_LABELS: Record<VariableType, string> = { boolean: "Yes or no", string: "Text", number: "Number", choice: "One of a set" };
 export const TYPE_ICONS = { boolean: ToggleLeft, string: Type, number: Hash, choice: ListChecks } as const;
@@ -76,7 +76,7 @@ function VariableForm({ agentId, existing, onDone }: { agentId: string; existing
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const name = toVariableName(typed);
+  const name = toMachineName(typed);
   const errors = variableFormErrors({ name, type, description, choices });
   const valid = !errors.name && !errors.description && !errors.choices;
   const choiceDuplicate = choices.includes(choiceText.trim());

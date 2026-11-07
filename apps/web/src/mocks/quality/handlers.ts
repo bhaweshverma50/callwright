@@ -28,12 +28,12 @@ import type {
   Verdict,
 } from "../../api/quality";
 import { env } from "../../lib/env";
-import { MACHINE_NAME_RE, toVariableName } from "../../routes/agents/quality/variableName";
-import { fieldError, schemaFields } from "../../routes/agents/quality/settingsSchema";
+import { fieldError, schemaFields } from "../../api/evaluatorSettings";
 import { store as agentStore } from "../agents/store";
 import { MOCK_AGENTS, mockCalls, setQualitySummarizer } from "../calls/handlers";
 import { db } from "../db";
 import { BUILTINS, DEFAULT_JUDGE, JUDGE_MODELS } from "./catalog";
+import { isMachineName, toMachineName } from "../../lib/machineName";
 
 const url = (path: string) => `${env.apiBaseUrl}${path}`;
 const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
@@ -842,7 +842,7 @@ setQualitySummarizer((call, request) => {
 // Handlers ------------------------------------------------------------------------------------
 
 const variableError = (body: Partial<AnalysisVariable>, agentId: string, selfId?: string): Response | null => {
-  if (body.name !== undefined && !MACHINE_NAME_RE.test(body.name))
+  if (body.name !== undefined && !isMachineName(body.name))
     return invalid("/name", "Use lowercase letters, digits and underscores, starting with a letter");
   if (body.description !== undefined && (!body.description.trim() || body.description.length > 500))
     return invalid("/description", "Describe what to capture in 1 to 500 characters.");
@@ -967,7 +967,7 @@ export const qualityHandlers = [
       evaluator_type: "phrase_check" | "llm_judge_custom";
       config: CustomConfig;
     };
-    const name = body.name ?? toVariableName(body.display_name ?? "");
+    const name = body.name ?? toMachineName(body.display_name ?? "");
     if (!name) return invalid("/display_name", "Use a name with at least one letter.");
     const err = validateCustom(body.evaluator_type, body.config);
     if (err) return err;

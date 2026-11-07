@@ -3,7 +3,7 @@
  * The same rules run in the editor (Save stays disabled while a field is invalid) and in the
  * mock API; the platform validates again on save.
  */
-import type { JudgeModel, SettingsField } from "../../../api/quality";
+import type { JudgeModel, SettingsField } from "./quality";
 
 export const fmtNumber = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 4 });
 

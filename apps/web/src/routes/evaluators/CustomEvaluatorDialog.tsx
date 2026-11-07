@@ -21,10 +21,10 @@ import {
 } from "../../api/quality";
 import { Badge, Button, Dialog, Field, Input, Segmented, Select, SwitchControl, Textarea, toast } from "../../components";
 import { when } from "../calls/format";
-import { NAME_RULE, toVariableName } from "../agents/quality/variableName";
 import { CustomCheckTemplatePicker } from "./CustomCheckTemplatePicker";
 import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
 import { withoutLineRefs } from "../../lib/text";
+import { NAME_RULE, toMachineName } from "../../lib/machineName";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };
@@ -232,7 +232,7 @@ function CheckForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const machine = existing ? existing.name : toVariableName(displayName);
+  const machine = existing ? existing.name : toMachineName(displayName);
   const judgeModel = judge.judge_model || defaultModel;
   const config: CustomConfig =
     type === "phrase_check"
