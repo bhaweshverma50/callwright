@@ -3,7 +3,8 @@ import { Server, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import { useCall, type CostView } from "../../api/calls";
 import { COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard, Skeleton, cn, focusRing } from "../../components";
-import { costViewToBreakdown, mss, usd } from "./format";
+import { costViewToBreakdown } from "./format";
+import { mss, usd } from "../../lib/format";
 
 /** The full receipt in the call drawer: 001's receipt fed from the 006 cost view. */
 export function CostPanel({ cost }: { cost: CostView }) {

@@ -3,7 +3,7 @@ import { useCallLanguage, useForgetCallerPreference, type CallLanguage } from ".
 import { problemMessage } from "../../api/problems";
 import { Button, toast } from "../../components";
 import { phoneLabel } from "./callbacks/format";
-import { mss, relative } from "./format";
+import { mss, timeAgo } from "../../lib/format";
 
 const Strong = ({ children }: { children: string }) => <span className="font-medium text-fg">{children}</span>;
 
@@ -84,7 +84,7 @@ export function CallLanguageCard({ callId }: { callId: string }) {
                 Saved for <span className="whitespace-nowrap font-mono text-fg-2 tnum">{number}</span>:{" "}
                 <span className="font-medium text-fg">{pref.language.label}</span>, updated{" "}
                 <time dateTime={pref.updated_at} className="whitespace-nowrap">
-                  {relative(pref.updated_at)}
+                  {timeAgo(pref.updated_at)}
                 </time>
               </span>
             </p>

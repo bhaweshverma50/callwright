@@ -27,9 +27,9 @@ import {
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
 import { Badge, Button, EmptyState, PageHeader, Pagination, Segmented, Select, Table, TruncatedText, cn, type Column } from "../../components";
-import { relative } from "../calls/format";
-import { ProblemAlert, plural, problemText } from "../simulations/shared";
 import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILTER_OPTIONS, windowRange } from "./shared";
+import { plural, timeAgo } from "../../lib/format";
+import { ProblemAlert, problemText } from "../../components/ProblemAlert";
 
 const ALL = "all";
 const DETECT_HINT = "Choose an agent to run detection";
@@ -98,7 +98,7 @@ const columns = (agentNames: Record<string, string>, showAgent: boolean): Column
     key: "seen",
     header: "Last seen",
     hideOnNarrow: true,
-    cell: (i) => <span className="whitespace-nowrap text-fg-2">{relative(i.last_seen_at)}</span>,
+    cell: (i) => <span className="whitespace-nowrap text-fg-2">{timeAgo(i.last_seen_at)}</span>,
   },
 ];
 
@@ -129,7 +129,7 @@ function DetectionStatus({ detection }: { detection: Detection }) {
         </>
       ) : (
         <>
-          Last detection {detection.finished_at ? relative(detection.finished_at) : ""}: scanned {plural(detection.calls_scanned ?? 0, "call")} and{" "}
+          Last detection {detection.finished_at ? timeAgo(detection.finished_at) : ""}: scanned {plural(detection.calls_scanned ?? 0, "call")} and{" "}
           {plural(detection.failures_scanned ?? 0, "failure")}
           {range && ` from ${range}`}, created {plural(detection.issues_created ?? 0, "issue")} and updated {detection.issues_updated ?? 0}.
         </>

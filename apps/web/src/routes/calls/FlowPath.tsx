@@ -1,7 +1,7 @@
 import { GitBranch } from "lucide-react";
 import type { FlowTransition } from "../../api/calls";
 import { Badge, cn } from "../../components";
-import { mss } from "./format";
+import { mss } from "../../lib/format";
 
 /**
  * Flow path of a flow-agent call (FR-013): every node visited in order with the transition taken.

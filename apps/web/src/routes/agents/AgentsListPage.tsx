@@ -6,7 +6,6 @@ import {
   FileText,
   LayoutGrid,
   LayoutTemplate,
-  MessageSquareText,
   Phone,
   Plus,
   Radio,
@@ -15,7 +14,6 @@ import {
   Trash2,
   TriangleAlert,
   Volume2,
-  Workflow,
   X,
 } from "lucide-react";
 import { AnimatePresence } from "motion/react";
@@ -61,10 +59,12 @@ import {
 } from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
 import { AgentActions } from "./AgentActions";
-import { AgentCard, relativeDate } from "./AgentCard";
+import { AgentCard } from "./AgentCard";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { languageLabel, llmLabel } from "./editor/catalogs";
 import { agentPath } from "../../lib/paths";
+import { timeAgo } from "../../lib/format";
+import { AGENT_TYPES, AgentTypeBadge } from "./agentType";
 
 type Filter = "all" | AgentType;
 type Status = "all" | AgentStatus;
@@ -183,7 +183,7 @@ export function AgentsListPage() {
       key: "type",
       header: "Type",
       hideOnNarrow: true,
-      cell: (a) => <Badge icon={a.type === "flow" ? <Workflow /> : <MessageSquareText />}>{a.type === "flow" ? "Flow" : "Single prompt"}</Badge>,
+      cell: (a) => <AgentTypeBadge type={a.type} />,
     },
     {
       key: "status",
@@ -212,7 +212,7 @@ export function AgentsListPage() {
       header: "Last edited",
       cell: (a) => (
         <time className="whitespace-nowrap text-fg-2" dateTime={a.updated_at} title={new Date(a.updated_at).toLocaleString()}>
-          {relativeDate(a.updated_at)}
+          {timeAgo(a.updated_at)}
         </time>
       ),
     },
@@ -304,8 +304,10 @@ export function AgentsListPage() {
               }}
               options={[
                 { value: "all", label: "All types" },
-                { value: "single_prompt", label: "Single prompt", icon: <MessageSquareText aria-hidden /> },
-                { value: "flow", label: "Flow", icon: <Workflow aria-hidden /> },
+                ...(["single_prompt", "flow"] as const).map((type) => {
+                  const { label, icon: Icon } = AGENT_TYPES[type];
+                  return { value: type, label, icon: <Icon aria-hidden /> };
+                }),
               ]}
             />
             <div className="flex items-center gap-2 md:ml-auto">

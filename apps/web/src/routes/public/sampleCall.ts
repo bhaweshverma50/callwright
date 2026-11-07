@@ -3,7 +3,7 @@
  * appointment. Times are seconds from the start of the call; latency is per agent turn, split by
  * link of the chain (speech to text, model, voice) in milliseconds.
  */
-import type { Latency } from "../components/signal";
+import type { Latency } from "../../components";
 
 export interface SampleTurn {
   who: "caller" | "agent";

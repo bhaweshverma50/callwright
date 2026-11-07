@@ -13,10 +13,11 @@
  * below plays a scripted call on timers so the panel works in the gallery, in MSW mock mode and in
  * tests without a media server.
  */
-import type { Latency } from "./signal";
-import { ApiError } from "../api/errors";
-import type { Problem } from "../api/types";
+import type { Latency } from "../components/signal";
+import { ApiError, isApiError } from "../api/errors";
+import { isInsufficientCredit } from "../api/paid";
 import { BILLING_PATH } from "../lib/paths";
+import type { Problem } from "../api/types";
 
 export type MicCheck = "granted" | "denied" | "unavailable";
 /** What the agent is doing, from the `lk.agent.state` participant attribute. */
@@ -129,20 +130,19 @@ export const CONNECTION_FAILED: CallProblem = {
 
 /** Turns a failed session request into words the operator can act on. */
 export function problemFromError(e: unknown): CallProblem {
-  if (!(e instanceof ApiError)) return { kind: "network", title: "Could not start the call", detail: "Something went wrong. Try again." };
-  const p: Problem = e.problem;
-  const type = p.type ?? "";
+  if (!isApiError(e)) return { kind: "network", title: "Could not start the call", detail: "Something went wrong. Try again." };
+  const p = e.problem;
   if (e.status === 0) return { kind: "network", title: "Could not reach Callwright", detail: "Check your connection and try again." };
-  if (e.status === 402 || type.endsWith("/insufficient-credit"))
+  if (isInsufficientCredit(e))
     return {
       kind: "refused",
       title: "Not enough credit",
       detail: "Add funds to keep making test calls. The refused attempt was not charged.",
       action: { label: "Add funds", href: BILLING_PATH },
     };
-  if (e.status === 403 || type.endsWith("/email-unverified"))
+  if (e.status === 403 || p.code === "email_unverified")
     return { kind: "refused", title: "Verify your email first", detail: "Open the link we emailed you, then start the test call again." };
-  if (e.status === 429 || type.endsWith("/concurrency-limit"))
+  if (e.status === 429 || p.code === "concurrency_limit")
     return {
       kind: "refused",
       title: "Too many calls at once",
@@ -150,19 +150,19 @@ export function problemFromError(e: unknown): CallProblem {
     };
   // The wake gate (api/wakeGate.ts) already waited for the call servers; this is what is left
   // when they did not start in time.
-  if (e.status === 503 && (p.code === "waking_up" || type.endsWith("/waking-up")))
+  if (e.status === 503 && p.code === "waking_up")
     return {
       kind: "network",
       title: "The call servers are still starting",
       detail: `They sleep when nobody is calling and usually start within a minute. Wait a moment, then start the call again. ${NOT_CHARGED}`,
     };
-  if (e.status === 503 || type.endsWith("/media-unavailable"))
+  if (e.status === 503 || p.code === "media_unavailable")
     return {
       kind: "network",
       title: "The call server is unavailable",
       detail: "The call could not start and was not charged. Try again in a moment.",
     };
-  if (e.status === 409 && (p.code === "agent_not_published" || type.endsWith("/agent-not-published")))
+  if (e.status === 409 && p.code === "agent_not_published")
     return { kind: "refused", title: "This agent is not published yet", detail: "Publish a version first, or test the draft instead." };
   return { kind: "refused", title: p.title || "The call was refused", detail: p.detail ?? "Try again in a moment." };
 }
@@ -211,16 +211,18 @@ export interface MockOptions {
 }
 
 const REFUSALS: Record<number, Problem> = {
-  402: { type: "https://callwright.dev/problems/insufficient-credit", title: "Insufficient credit", status: 402 },
-  403: { type: "https://callwright.dev/problems/email-unverified", title: "Email not verified", status: 403 },
+  402: { type: "https://callwright.dev/problems/insufficient-credit", code: "insufficient_credit", title: "Insufficient credit", status: 402 },
+  403: { type: "https://callwright.dev/problems/email-unverified", code: "email_unverified", title: "Email not verified", status: 403 },
   429: {
     type: "https://callwright.dev/problems/concurrency-limit",
+    code: "concurrency_limit",
     title: "Concurrency limit reached",
     status: 429,
     detail: "Your workspace allows 5 calls at once and 5 are running. End one or wait, then try again.",
   },
   422: {
     type: "https://callwright.dev/problems/pricing-unavailable",
+    code: "pricing_unavailable",
     title: "This configuration has no price yet",
     status: 422,
     detail: "Pick a listed voice or model in the agent's settings, then try again.",

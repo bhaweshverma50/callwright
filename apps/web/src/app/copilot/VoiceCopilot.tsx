@@ -2,15 +2,16 @@ import { AudioLines, Keyboard, Loader2, Mic, MicOff, Send, WifiOff, X } from "lu
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { api, postForm, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { useLazyToken } from "../../api/lazyToken";
 import type { components } from "../../api/schema";
 import { cn, focusRing, Kbd, Tooltip } from "../../components";
-import { viewerTimeZone } from "../../routes/calls/filters";
 import { openAsk } from "../assistant/bus";
 import { highlight, highlightableElements, registeredActions, runAction } from "./actionRegistry";
 import { openDeepgramStream, type LiveTranscriber, type StreamCredential } from "./stt/deepgram";
+import { viewerTimeZone } from "../../lib/format";
+import { CALLS_PATH, callsPath } from "../../lib/paths";
 
 type Interpret = components["schemas"]["InterpretResult"];
 type Phase = "idle" | "starting" | "listening" | "transcribing" | "thinking" | "done";
@@ -61,26 +62,26 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 
 /** The Call History address for a validated navigate result (date ranges become calendar dates). */
 export function callsUrl(params: Record<string, unknown> | null | undefined, now = new Date()): string {
-  const q = new URLSearchParams();
-  for (const key of ["status", "channel", "sentiment"]) {
+  const list = (key: string) => {
     const v = params?.[key];
-    if (Array.isArray(v) && v.length) q.set(key, v.join(","));
-  }
-  if (typeof params?.agent_id === "string") q.set("agent_id", params.agent_id);
+    return Array.isArray(v) ? v.map(String) : undefined;
+  };
   const day = (offset: number) => iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset));
-  const range = params?.date_range;
   const dates: Record<string, [string, string]> = {
     today: [day(0), day(0)],
     yesterday: [day(-1), day(-1)],
     this_week: [day(-((now.getDay() + 6) % 7)), day(0)],
     last_7_days: [day(-6), day(0)],
   };
-  if (typeof range === "string" && dates[range]) {
-    q.set("start_date", dates[range]![0]);
-    q.set("end_date", dates[range]![1]);
-  }
-  const s = q.toString();
-  return s ? `/calls?${s}` : "/calls";
+  const range = typeof params?.date_range === "string" ? dates[params.date_range] : undefined;
+  return callsPath({
+    status: list("status"),
+    channel: list("channel"),
+    sentiment: list("sentiment"),
+    agent_id: typeof params?.agent_id === "string" ? params.agent_id : undefined,
+    start_date: range?.[0],
+    end_date: range?.[1],
+  });
 }
 
 /**
@@ -150,7 +151,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
       history.current = [...history.current, { role: "copilot" as const, content: r.speak ?? r.action }].slice(-12);
       setFailures(0);
       if (r.action === "navigate" && r.target) {
-        navigate(r.target === "/calls" ? callsUrl(r.params) : r.target);
+        navigate(r.target === CALLS_PATH ? callsUrl(r.params) : r.target);
         setNotice({ tone: "info", text: r.speak ?? "Done." });
       } else if (r.action === "route_to_copilot") {
         if (r.target === "analytics_chat") openAsk(r.query ?? undefined);
@@ -159,7 +160,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
           text: r.target === "analytics_chat" ? "Opening the analytics assistant." : "That assistant opens from its builder page.",
         });
       } else if (r.action === "ui_action" && r.target) {
-        const ran = runAction(r.target, (r.params as Record<string, unknown> | null) ?? null);
+        const ran = runAction(r.target, r.params ?? null);
         setNotice(ran ? { tone: "info", text: r.speak ?? "Done." } : { tone: "error", text: "This page can't do that any more." });
       } else if (r.action === "answer") {
         setNotice({ tone: "info", text: r.speak ?? "" });
@@ -183,7 +184,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
       setPartial(text);
       history.current = [...history.current, { role: "user" as const, content: text }].slice(-12);
       try {
-        const result = (await unwrap(
+        const result = await unwrap(
           api.POST("/voice-commands/interpret", {
             body: {
               transcript: text.slice(0, 1000),
@@ -192,13 +193,13 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
                 page_title: document.title,
                 current_datetime: new Date().toISOString(),
                 timezone: viewerTimeZone(),
-                available_actions: registeredActions() as never,
+                available_actions: registeredActions(),
                 highlightable_elements: highlightableElements(),
               },
               conversation_history: history.current.slice(0, -1),
             },
           }),
-        )) as Interpret;
+        );
         perform(result);
       } catch {
         fail(navigator.onLine ? "The copilot could not answer. Try again." : "You're offline.");
@@ -229,7 +230,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
       else {
         const form = new FormData();
         form.append("audio", new Blob(m.chunks, { type: "audio/webm" }), "command.webm");
-        const res = (await unwrap(api.POST("/voice-commands/transcribe", { body: form as never }))) as { transcript: string };
+        const res = await postForm("/voice-commands/transcribe", form);
         text = res.transcript;
       }
     } catch (e) {

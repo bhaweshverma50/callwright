@@ -22,26 +22,28 @@ import {
   type SimulationRun,
   type VerdictDiff,
 } from "../../api/simulations";
-import { Badge, Button, EmptyState, PageHeader, Panel, PanelLoader, Segmented, Skeleton, Table, cn, toast, type Column } from "../../components";
+import {
+  Badge,
+  Button,
+  cn,
+  type Column,
+  EmptyState,
+  FormAlert,
+  PageHeader,
+  Panel,
+  PanelLoader,
+  Segmented,
+  Skeleton,
+  Table,
+  toast,
+} from "../../components";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { RecordNotFound } from "../NotFound";
-import { whenLong } from "../calls/format";
-import { FormAlert } from "../public/FormAlert";
 import { PersonaBriefView } from "./PersonaBriefEditor";
-import {
-  ANSWER_SOURCES,
-  AnswerSourceBadge,
-  CHANGE,
-  END_REASONS,
-  MODE_LABELS,
-  ProblemAlert,
-  SimStatusBadge,
-  VerdictBadge,
-  cost,
-  problemText,
-  targetText,
-} from "./shared";
+import { ANSWER_SOURCES, AnswerSourceBadge, CHANGE, END_REASONS, MODE_LABELS, SimStatusBadge, VerdictBadge, targetText } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
+import { costUsd, whenLong } from "../../lib/format";
+import { ProblemAlert, problemText } from "../../components/ProblemAlert";
 
 /** 1-based caller turn number for each user message, so divergence can be marked. */
 function callerTurns(items: SimTranscriptItem[]): Map<number, number> {
@@ -263,7 +265,7 @@ function Summary({ run }: { run: SimulationRun }) {
           ))}
         </span>
       )}
-      <span className="font-mono text-[13px] text-fg tnum sm:ml-auto">{cost(run.cost_usd)}</span>
+      <span className="font-mono text-[13px] text-fg tnum sm:ml-auto">{costUsd(run.cost_usd)}</span>
     </section>
   );
 }

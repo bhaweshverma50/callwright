@@ -11,7 +11,7 @@ import { createDataset, describeAddResult, type Dataset } from "../../api/datase
 import { isApiError } from "../../api/errors";
 import { fieldErrors } from "../../api/problems";
 import { Button, Dialog, Field, Input, Select, Textarea, toast } from "../../components";
-import { ProblemAlert } from "../simulations/shared";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 type Errors = { name?: string; agent?: string; description?: string };
 

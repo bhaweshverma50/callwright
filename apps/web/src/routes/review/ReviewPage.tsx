@@ -7,9 +7,9 @@ import { useAgentOptions } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
 import { useReviewQueue, useReviewSummary, type QueueItem, type ReviewStrategy } from "../../api/quality";
 import { Button, EmptyState, PageHeader, Select, Skeleton, cn, focusRing } from "../../components";
-import { SentimentBadge } from "../calls/AnalysisTable";
 import { CallDetailDrawer, type DrawerTab } from "../calls/CallDetailDrawer";
-import { mss, relative } from "../calls/format";
+import { mss, timeAgo } from "../../lib/format";
+import { SentimentBadge } from "../../components/callVocabulary";
 
 export const EMPTY_QUEUE = "Nothing to review. Every recent call in this queue is labelled, or no checks have run yet.";
 
@@ -84,7 +84,7 @@ function QueueCard({ item, index, onOpen }: { item: QueueItem; index: number; on
               <span className="truncate text-[14px] font-semibold text-fg">{item.agent_name}</span>
               <span className="flex items-center gap-1 text-[12px] text-fg-3">
                 <Clock className="size-3" aria-hidden />
-                {relative(item.ended_at)}
+                {timeAgo(item.ended_at)}
                 <span aria-hidden>·</span>
                 <span className="font-mono tnum">{mss(item.duration_s)}</span>
               </span>

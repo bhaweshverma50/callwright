@@ -105,12 +105,3 @@ export function TelephonyNotice({ className }: { className?: string }) {
     </div>
   );
 }
-
-export function relativeTime(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86_400) return `${Math.round(s / 3600)} h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}

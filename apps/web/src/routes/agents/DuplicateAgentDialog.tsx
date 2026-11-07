@@ -7,8 +7,9 @@ import { api } from "../../api/client";
 import { ApiError, toProblem } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { Button, Dialog, Field, Input, Select, Skeleton, toast } from "../../components";
-import { relativeDate } from "./AgentCard";
 import { agentPath } from "../../lib/paths";
+import { timeAgo } from "../../lib/format";
+import { AGENT_TYPES } from "./agentType";
 
 const DRAFT = "draft";
 const KEEPS = ["Prompt, greeting and variables", "Model, voice, speech and call settings", "Tools and knowledge bases, linked to the same ones"];
@@ -76,7 +77,7 @@ export function DuplicateAgentDialog({
     ...saved.map((v) => ({
       value: v.id,
       label: `Version ${v.version_number}${v.is_published ? " · live" : ""}`,
-      meta: relativeDate(v.created_at),
+      meta: timeAgo(v.created_at),
     })),
   ];
 
@@ -119,7 +120,11 @@ export function DuplicateAgentDialog({
                       setVersionId(DRAFT);
                       setName(null);
                     }}
-                    options={picker.data.items.map((a) => ({ value: a.id, label: a.name, meta: a.type === "flow" ? "Flow" : undefined }))}
+                    options={picker.data.items.map((a) => ({
+                      value: a.id,
+                      label: a.name,
+                      meta: a.type === "flow" ? AGENT_TYPES.flow.label : undefined,
+                    }))}
                     placeholder={picker.data.items.length ? "Choose an agent" : "No agents yet"}
                   />
                 ) : (

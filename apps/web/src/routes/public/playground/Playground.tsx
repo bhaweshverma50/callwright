@@ -7,15 +7,16 @@ import { api, unwrap } from "../../../api/client";
 import { ApiError } from "../../../api/errors";
 import { WAKE_EXPECTED_MS, inlineWake, useWakeState } from "../../../api/wakeGate";
 import { Button, FlowChain, LatencyChip, OnAir, Waveform, cn, focusRing, type FlowNode } from "../../../components";
-import { RingingPhone, isRinging, useRingback } from "../../../components/ringing";
-import { useWebCall } from "../../../components/useWebCall";
-import { createMockDriver, type CallProblem, type CallTurn } from "../../../components/webCall";
-import { createDemoDriver } from "../../../components/webCallLive";
+import { RingingPhone, isRinging, useRingback } from "../../../webCall/ringing";
+import { useWebCall } from "../../../webCall/useWebCall";
+import { createMockDriver, type CallProblem, type CallTurn } from "../../../webCall/webCall";
+import { createDemoDriver } from "../../../webCall/webCallLive";
 import { env } from "../../../lib/env";
 import { formatUsd } from "../../../lib/money";
 import { SEED_PER_MINUTE_MICROS } from "../../../lib/stack";
 import { LiveCall } from "../LiveCall";
 import { SCENARIOS, type Scenario } from "./scenarios";
+import { mss } from "../../../lib/format";
 
 /** Demo calls end here even if the agent's own limit is longer. */
 const MAX_CALL_MS = 120_000;
@@ -27,11 +28,6 @@ const NODES: FlowNode[] = [
   { key: "tts", label: "Voice", icon: <Volume2 aria-hidden /> },
   { key: "hears", label: "You hear", icon: <Ear aria-hidden /> },
 ];
-
-const mss = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
 
 const replyMs = (t: CallTurn) => (t.latency ? t.latency.stt + t.latency.llm + t.latency.tts : null);
 
@@ -155,8 +151,8 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
             <div className="flex items-center gap-1.5">
               <dt className="sr-only">Duration</dt>
               <dd className="font-mono text-console-fg tnum">
-                {mss(elapsed)}
-                <span className="text-console-fg-2"> / {mss(MAX_CALL_MS)}</span>
+                {mss(Math.floor(elapsed / 1000))}
+                <span className="text-console-fg-2"> / {mss(Math.floor(MAX_CALL_MS / 1000))}</span>
               </dd>
             </div>
             <div className="flex items-center gap-1.5">
@@ -434,7 +430,7 @@ function Summary({ turns, elapsed, costMicros, agentEnded }: { turns: CallTurn[]
   const replies = turns.filter((t) => t.who === "agent" && t.final);
   const med = median(replies.map(replyMs).filter((v): v is number => v !== null));
   const stats = [
-    { label: "Length", value: mss(elapsed) },
+    { label: "Length", value: mss(Math.floor(elapsed / 1000)) },
     { label: "Agent replies", value: String(replies.length) },
     { label: "Typical reply time", value: med === null ? "n/a" : `${med} ms` },
     { label: "Cost", value: formatUsd(costMicros, { places: 4 }) },

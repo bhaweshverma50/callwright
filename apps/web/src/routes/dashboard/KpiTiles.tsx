@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useId, type ReactNode } from "react";
 import type { DashboardStats } from "../../api/calls";
 import { Skeleton, Ticker, cn } from "../../components";
-import { mss, talkTime, usd } from "../calls/format";
+import { dayLabel, mss, talkTime, usd } from "../../lib/format";
 
 /** A small area sparkline drawn as one SVG path; the latest point gets a dot.
  * The SVG stretches (preserveAspectRatio="none"), so the dot is an HTML element (an SVG circle
@@ -124,8 +124,6 @@ function Tile({
   );
 }
 
-const fmtDay = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
-
 /** KPI tiles (FR-018), each with its sparkline over the period's buckets. */
 export function KpiTiles({ stats }: { stats: DashboardStats | undefined }) {
   if (!stats) {
@@ -164,8 +162,7 @@ export function KpiTiles({ stats }: { stats: DashboardStats | undefined }) {
         sub={
           k.peak_day ? (
             <>
-              Peak <span className="font-mono text-fg-2 tnum">{k.peak_day.total_calls}</span> calls on{" "}
-              {fmtDay.format(new Date(`${k.peak_day.date}T00:00:00Z`))}
+              Peak <span className="font-mono text-fg-2 tnum">{k.peak_day.total_calls}</span> calls on {k.peak_day.date && dayLabel(k.peak_day.date)}
             </>
           ) : (
             "No busy day yet"

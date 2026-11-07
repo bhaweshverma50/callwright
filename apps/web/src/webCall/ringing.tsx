@@ -5,7 +5,7 @@
 import { Phone } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect } from "react";
-import { cn } from "./cn";
+import { cn } from "../components/cn";
 import type { WebCallState } from "./useWebCall";
 
 /** The call is placed and the agent has not answered yet (no words from either side). */

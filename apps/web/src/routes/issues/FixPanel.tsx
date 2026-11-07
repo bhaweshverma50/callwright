@@ -18,11 +18,11 @@ import {
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
 import { Badge, Button, Field, Panel, Select, Textarea, cn, toast } from "../../components";
-import { relative } from "../calls/format";
-import { ProblemAlert } from "../simulations/shared";
 import { EDITABLE, FixDiff } from "./FixDiff";
 import { FixStatusBadge, KIND_HINTS, KIND_LABELS } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
+import { timeAgo } from "../../lib/format";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 type Mode = "idle" | "draft" | "edit";
 
@@ -46,7 +46,7 @@ function Revision({ fix, current }: { fix: FixRevision; current?: boolean }) {
           {fix.source === "ai" ? "Drafted by AI" : "Written by hand"}
         </Badge>
         <span className="text-[12px] text-fg-3">
-          Revision {fix.revision}, {relative(fix.created_at)}
+          Revision {fix.revision}, {timeAgo(fix.created_at)}
         </span>
       </div>
       {fix.rationale && <p className="max-w-[80ch] text-[14px] leading-relaxed text-fg-2">{withoutLineRefs(fix.rationale)}</p>}
@@ -269,7 +269,7 @@ export function FixPanel({
                       <span className="text-fg-2">{KIND_LABELS[f.kind]}</span>
                       <FixStatusBadge status={f.status} />
                       <span className="ml-auto flex items-center gap-2 text-[12px] text-fg-3">
-                        {relative(f.created_at)}
+                        {timeAgo(f.created_at)}
                         <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} aria-hidden />
                       </span>
                     </button>

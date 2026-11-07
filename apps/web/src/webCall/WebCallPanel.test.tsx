@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { env } from "../lib/env";
 import { server } from "../mocks/node";
-import { TooltipProvider } from "./Tooltip";
+import { TooltipProvider } from "../components/Tooltip";
 import { WebCallPanel, type WebCallPanelProps } from "./WebCallPanel";
 import { ApiError } from "../api/errors";
 import { createMockDriver, problemFromError, type MockOptions, type MockStep, type WebCallDriver } from "./webCall";

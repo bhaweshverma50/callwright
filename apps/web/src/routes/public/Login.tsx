@@ -7,10 +7,9 @@ import { fieldErrors, problemMessage } from "../../api/problems";
 import { startSession, useSignedIn } from "../../api/session";
 import { safeNext } from "../../lib/paths";
 import { LogIn } from "lucide-react";
-import { Button, Field, Input } from "../../components";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
 
 function retryText(seconds?: number) {
   if (!seconds) return "in a few minutes";

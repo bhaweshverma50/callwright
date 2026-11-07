@@ -1,7 +1,7 @@
 import { CircleAlert, Info, TriangleAlert } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { cn } from "../../components";
+import { cn } from "./cn";
 
 /** Form-level message above the fields: error (danger), warning or info (cobalt). */
 export function FormAlert({ tone = "error", children, action }: { tone?: "error" | "warning" | "info"; children: ReactNode; action?: ReactNode }) {

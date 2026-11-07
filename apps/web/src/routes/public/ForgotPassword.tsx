@@ -4,10 +4,9 @@ import { Link, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { problemMessage } from "../../api/problems";
 import { Send } from "lucide-react";
-import { Button, Field, Input } from "../../components";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
 
 /** Request a reset link (T041, US1.4). The answer never reveals whether the account exists. */
 export function ForgotPassword() {

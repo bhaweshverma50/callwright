@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { TranscriptItem, TurnLatency } from "../../api/calls";
 import { Badge, CopyButton, EmptyState, OnAir, Skeleton, Tooltip, Waveform, cn, focusRing } from "../../components";
-import { mss } from "./format";
+import { mss } from "../../lib/format";
 
 const VIRTUAL_AFTER = 500;
 

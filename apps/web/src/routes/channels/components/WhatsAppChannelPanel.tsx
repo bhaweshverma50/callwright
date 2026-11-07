@@ -17,7 +17,8 @@ import { webhookUrlError } from "../validation";
 import { CallerRoutesTable } from "./CallerRoutesTable";
 import { DeleteNumberDialog } from "./DeleteNumberDialog";
 import { Section } from "./NumberDetailPanel";
-import { ActiveCalls, AgentSelect, ChannelStatusBadge, relativeTime } from "./shared";
+import { ActiveCalls, AgentSelect, ChannelStatusBadge } from "./shared";
+import { timeAgo } from "../../../lib/format";
 
 function Step({ done, title, detail, index }: { done: boolean; title: string; detail: string; index: number }) {
   return (
@@ -199,7 +200,7 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
             title="Credentials checked"
             detail={
               channel.credentials_verified_at
-                ? `The token can read this number. ${relativeTime(channel.credentials_verified_at)}`
+                ? `The token can read this number. ${timeAgo(channel.credentials_verified_at)}`
                 : "Waiting for a token WhatsApp accepts."
             }
           />
@@ -215,7 +216,7 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
             title="Callback verified"
             detail={
               channel.webhook_verified_at
-                ? `WhatsApp confirmed the callback ${relativeTime(channel.webhook_verified_at)}.`
+                ? `WhatsApp confirmed the callback ${timeAgo(channel.webhook_verified_at)}.`
                 : "Paste the callback URL and verify token in the Meta app."
             }
           />
@@ -224,9 +225,7 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
           <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-fg">{settings.data?.callback_url ?? "Loading"}</code>
           {settings.data && <CopyButton value={settings.data.callback_url} label="Copy callback URL" />}
         </div>
-        {channel.last_webhook_at && (
-          <p className="mt-2 text-[12px] text-fg-3">Last notification from WhatsApp {relativeTime(channel.last_webhook_at)}.</p>
-        )}
+        {channel.last_webhook_at && <p className="mt-2 text-[12px] text-fg-3">Last notification from WhatsApp {timeAgo(channel.last_webhook_at)}.</p>}
       </Section>
 
       <Section icon={<Waypoints />} title="Default agent" description="Answers every caller without a route of their own.">

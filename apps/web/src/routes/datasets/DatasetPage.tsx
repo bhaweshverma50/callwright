@@ -49,10 +49,10 @@ import {
   type Column,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
-import { SENTIMENT_TONES, STATUS_TONES, mss, relative, when } from "../calls/format";
-import { STATUS_LABELS } from "../calls/filters";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
-import { ProblemAlert, plural, problemText, shortId } from "../simulations/shared";
+import { mss, plural, shortId, timeAgo, when } from "../../lib/format";
+import { CallStatusBadge, SentimentBadge } from "../../components/callVocabulary";
+import { ProblemAlert, problemText } from "../../components/ProblemAlert";
 
 // The call's evaluation status from 007: its current checks passed, one failed, still running,
 // none ran, or a check errored.
@@ -99,33 +99,21 @@ function columns(onRemove: (item: DatasetItem) => void): Column<DatasetItem>[] {
       key: "status",
       header: "Status",
       hideOnNarrow: true,
-      cell: (i) =>
-        i.call_status && i.call_status in STATUS_TONES ? (
-          <Badge tone={STATUS_TONES[i.call_status as keyof typeof STATUS_TONES]}>{STATUS_LABELS[i.call_status as keyof typeof STATUS_LABELS]}</Badge>
-        ) : (
-          <span className="text-fg-3">n/a</span>
-        ),
+      cell: (i) => (i.call_status ? <CallStatusBadge status={i.call_status} /> : <span className="text-fg-3">n/a</span>),
     },
     {
       key: "eval",
       header: "Checks",
       hideOnNarrow: true,
-      cell: (i) => (
-        <span className={cn("whitespace-nowrap text-fg-2", dim(i))}>{i.eval_status ? (EVAL_LABELS[i.eval_status] ?? i.eval_status) : "n/a"}</span>
-      ),
+      cell: (i) => <span className={cn("whitespace-nowrap text-fg-2", dim(i))}>{i.eval_status ? EVAL_LABELS[i.eval_status] : "n/a"}</span>,
     },
     {
       key: "sentiment",
       header: "Sentiment",
       hideOnNarrow: true,
-      cell: (i) =>
-        i.sentiment ? (
-          <Badge tone={SENTIMENT_TONES[i.sentiment]}>{i.sentiment.charAt(0).toUpperCase() + i.sentiment.slice(1)}</Badge>
-        ) : (
-          <span className="text-fg-3">n/a</span>
-        ),
+      cell: (i) => <SentimentBadge value={i.sentiment} />,
     },
-    { key: "added", header: "Added", hideOnNarrow: true, cell: (i) => <span className="whitespace-nowrap text-fg-2">{relative(i.added_at)}</span> },
+    { key: "added", header: "Added", hideOnNarrow: true, cell: (i) => <span className="whitespace-nowrap text-fg-2">{timeAgo(i.added_at)}</span> },
     {
       key: "remove",
       header: <span className="sr-only">Remove</span>,
@@ -343,7 +331,7 @@ export function DatasetPage() {
           <>
             {d.description ? `${d.description} ` : ""}
             <span className="text-fg-3">
-              {plural(d.item_count, "call")} of {d.agent_name ?? "one agent"}, updated {relative(d.updated_at)}.
+              {plural(d.item_count, "call")} of {d.agent_name ?? "one agent"}, updated {timeAgo(d.updated_at)}.
             </span>
           </>
         }

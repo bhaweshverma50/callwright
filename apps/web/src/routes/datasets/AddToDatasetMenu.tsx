@@ -8,8 +8,8 @@ import { Database, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { addDatasetItems, datasetKeys, describeAddResult, useAgentDatasets, type Dataset } from "../../api/datasets";
 import { Button, MenuContent, MenuItem, MenuLabel, MenuSeparator, Menu, MenuTrigger, toast } from "../../components";
-import { problemText } from "../simulations/shared";
 import { NewDatasetDialog } from "./NewDatasetDialog";
+import { problemText } from "../../components/ProblemAlert";
 
 export function AddToDatasetMenu({
   agentId,

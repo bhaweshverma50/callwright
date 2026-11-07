@@ -24,36 +24,27 @@ import {
 } from "../../api/simulations";
 import {
   Button,
+  type Column,
   ConfirmDialog,
   EmptyState,
+  Figure,
   PageHeader,
   Pagination,
   Panel,
   PanelLoader,
+  ProgressBar,
   Segmented,
   Select,
   Skeleton,
   Table,
-  TruncatedText,
   toast,
-  type Column,
+  TruncatedText,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
-import { relative, whenLong } from "../calls/format";
 import { ScorecardTable } from "./ScorecardTable";
-import {
-  END_REASONS,
-  Figure,
-  MODE_LABELS,
-  ProblemAlert,
-  ProgressBar,
-  SimStatusBadge,
-  cost,
-  plural,
-  problemText,
-  shortId,
-  targetPhrase,
-} from "./shared";
+import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
+import { costUsd, plural, shortId, timeAgo, whenLong } from "../../lib/format";
+import { ProblemAlert, problemText } from "../../components/ProblemAlert";
 
 const RUN_COLUMNS: Column<SimulationRun>[] = [
   {
@@ -90,7 +81,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
     hideOnNarrow: true,
     cell: (r) => <span className="whitespace-nowrap text-fg-2">{r.diverged_at_turn != null ? `Turn ${r.diverged_at_turn}` : "No"}</span>,
   },
-  { key: "cost", header: "Cost", numeric: true, hideOnNarrow: true, cell: (r) => cost(r.cost_usd) },
+  { key: "cost", header: "Cost", numeric: true, hideOnNarrow: true, cell: (r) => costUsd(r.cost_usd) },
   {
     key: "open",
     header: <span className="sr-only">Comparison</span>,
@@ -184,7 +175,7 @@ function Scorecard({ exp }: { exp: Experiment }) {
             className="w-[300px] max-w-full"
             value={chosen ?? undefined}
             onValueChange={setBaselineId}
-            options={candidates.map((c) => ({ value: c.experiment_id, label: c.name, meta: relative(c.created_at) }))}
+            options={candidates.map((c) => ({ value: c.experiment_id, label: c.name, meta: timeAgo(c.created_at) }))}
           />
         )}
       </div>
@@ -329,7 +320,7 @@ export function ExperimentPage() {
             </Figure>
             <Figure label="Cancelled">{e.cancelled_count}</Figure>
             <Figure label="Still to run">{e.total_count - settled}</Figure>
-            <Figure label="Cost">{active && e.cost_usd == null ? "Running" : cost(e.cost_usd)}</Figure>
+            <Figure label="Cost">{active && e.cost_usd == null ? "Running" : costUsd(e.cost_usd)}</Figure>
           </div>
         </section>
 

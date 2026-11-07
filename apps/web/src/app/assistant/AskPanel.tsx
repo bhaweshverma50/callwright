@@ -6,19 +6,19 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
-import { Button, Composer, IconButton, ThinkingIndicator, cn, focusRing } from "../../components";
-import { viewerTimeZone } from "../../routes/calls/filters";
-import { chartVars } from "../../routes/dashboard/charts/ChartFrame";
+import { Button, chartVars, cn, Composer, focusRing, IconButton, ThinkingIndicator } from "../../components";
 import { AnswerView, SuggestionChips, type ChatAnswer } from "./AnswerView";
 import { onOpenAsk } from "./bus";
 import { BILLING_PATH } from "../../lib/paths";
+import { viewerTimeZone } from "../../lib/format";
+import { isInsufficientCredit } from "../../api/paid";
 
 type Turn = { role: "user"; content: string } | { role: "assistant"; content: string; answer: ChatAnswer };
 type Failure = { kind: "credit" | "busy" | "unavailable" | "other"; title: string; message: string };
 
 function failureOf(e: unknown): Failure {
   if (isApiError(e)) {
-    if (e.status === 402)
+    if (isInsufficientCredit(e))
       return { kind: "credit", title: "Out of credit", message: "You're out of credit, so the assistant can't answer. Add funds to keep asking." };
     if (e.status === 429)
       return { kind: "busy", title: "Too many questions", message: "That's a lot of questions in a minute. Wait a moment, then try again." };

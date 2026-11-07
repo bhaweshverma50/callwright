@@ -12,15 +12,17 @@ import {
   THRESHOLDS,
   draftAndValidate,
   estimateValidation,
+  issueKeys,
   validateFix,
   type DetectedIssue,
   type FixKind,
   type ValidationAttempt,
-  type ValidationRequest,
+  type ValidationMode,
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
-import { Button, Dialog, Field, Input, Segmented, Skeleton } from "../../components";
-import { Figure, ProblemAlert, cost, plural } from "../simulations/shared";
+import { Button, Dialog, Field, Figure, Input, Segmented, Skeleton } from "../../components";
+import { costUsd, plural } from "../../lib/format";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 type Key = keyof typeof THRESHOLDS;
 const FIELDS: { key: Key; label: string; unit: string; hint: string }[] = [
@@ -52,7 +54,7 @@ export function ValidateDialog({
   draft?: { kind?: FixKind; guidance?: string | null } | null;
   onStarted: (attempt: ValidationAttempt) => void;
 }) {
-  const [mode, setMode] = useState<ValidationRequest["mode"]>("persona");
+  const [mode, setMode] = useState<ValidationMode>("persona");
   const [showThresholds, setShowThresholds] = useState(false);
   const [values, setValues] = useState<Record<Key, string>>(() => ({
     min_improvement_pp: String(THRESHOLDS.min_improvement_pp.default),
@@ -72,7 +74,7 @@ export function ValidateDialog({
   }, [open, resetKey]);
 
   const estimate = useQuery({
-    queryKey: ["issues", "issue", issue.issue_id, "estimate", mode],
+    queryKey: issueKeys.estimate(issue.issue_id, mode),
     queryFn: () => estimateValidation(issue.issue_id, mode, idempotencyKey()),
     enabled: open,
     retry: false,
@@ -169,7 +171,7 @@ export function ValidateDialog({
               <Figure label="Affected calls">{report.affected_calls}</Figure>
               <Figure label="Guard calls">{report.guard_calls}</Figure>
               <Figure label="Simulations">{report.simulations}</Figure>
-              <Figure label="Estimated cost">{cost(report.estimated_cost_usd)}</Figure>
+              <Figure label="Estimated cost">{costUsd(report.estimated_cost_usd)}</Figure>
             </>
           )}
         </div>

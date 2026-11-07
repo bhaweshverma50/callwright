@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { LatencyChip, Logo, Reveal, RevealItem, Waveform, cn, focusRing } from "../../components";
 import { formatUsd } from "../../lib/money";
-import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "../../lib/sampleCall";
+import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "./sampleCall";
 import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
 
 const TURNS = SAMPLE_CALL.slice(0, 3);

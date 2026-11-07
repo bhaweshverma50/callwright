@@ -5,9 +5,8 @@ import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { KeyRound, Send } from "lucide-react";
-import { Button, Field, Input } from "../../components";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 
 /** Set a new password from the email link (T041, US1.4). Expired or used links say so. */

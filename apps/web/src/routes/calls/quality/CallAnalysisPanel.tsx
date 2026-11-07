@@ -7,8 +7,9 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { qualityKeys, rerunAnalysis, useCallAnalysis, type AnalysisValue } from "../../../api/quality";
 import { Button, Skeleton, ThinkingIndicator, toast } from "../../../components";
-import { AnalysisTable, SentimentBadge } from "../AnalysisTable";
+import { AnalysisTable } from "../AnalysisTable";
 import { SummaryText } from "./SummaryText";
+import { SentimentBadge } from "../../../components/callVocabulary";
 
 function show(v: AnalysisValue): string {
   if (v.value === null || v.value === undefined || v.value === "") return "not found";

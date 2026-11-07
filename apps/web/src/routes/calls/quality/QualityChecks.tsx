@@ -9,8 +9,8 @@ import { problemMessage } from "../../../api/problems";
 import { newIdempotencyKey, qualityKeys, rerunEvaluations, useCallEvaluations, type EvaluatorRun, type ResultItem } from "../../../api/quality";
 import { Badge, Button, Skeleton, cn, toast } from "../../../components";
 import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../agents/quality/evaluatorMeta";
-import { when } from "../format";
 import { withoutLineRefs } from "../../../lib/text";
+import { usd, when } from "../../../lib/format";
 
 export const RUNNING_TEXT = "Running checks, results appear as each one finishes";
 const TURN_PAGE = 20;
@@ -161,7 +161,7 @@ function RunCard({ run, defaultOpen }: { run: EvaluatorRun; defaultOpen: boolean
                 </span>
                 <span>{SCOPE_LABELS[run.scope ?? "call"]}</span>
                 {run.judge_model && <span>judge {run.judge_model}</span>}
-                {run.cost_usd != null && <span>${run.cost_usd.toFixed(4)}</span>}
+                {run.cost_usd != null && <span>{usd(run.cost_usd, 4)}</span>}
                 {snapshot && <span>{snapshot}</span>}
                 {run.completed_at && <span>{when(run.completed_at)}</span>}
               </p>

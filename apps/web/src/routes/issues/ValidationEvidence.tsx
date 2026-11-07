@@ -7,10 +7,9 @@ import { CircleStop, FlaskConical, History, Scale } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import type { EvaluatorEvidence, ValidationAttempt } from "../../api/issues";
-import { Badge, Button, Panel, Table, cn, type Column } from "../../components";
-import { relative } from "../calls/format";
-import { Figure, cost, deltaTone, pct } from "../simulations/shared";
-import { AttemptBadge, SET_LABELS, pp, reasonText } from "./shared";
+import { Badge, Button, cn, type Column, deltaTone, Figure, Panel, Table } from "../../components";
+import { AttemptBadge, SET_LABELS, reasonText } from "./shared";
+import { costUsd, pct, pp, timeAgo } from "../../lib/format";
 
 const SET_ORDER: Record<EvaluatorEvidence["set"], number> = { affected: 0, guard: 1, combined: 2 };
 
@@ -109,7 +108,7 @@ function Attempt({ a }: { a: ValidationAttempt }) {
           {rows.length > 0 && <Table caption="Checks by call set" columns={COLUMNS} rows={rows} rowKey={(r) => `${r.evaluator_id}-${r.set}`} />}
           <p className="px-5 py-3 text-[12px] text-fg-3">
             {a.treatment_runs_failed ?? 0} of {a.treatment_runs_total ?? 0} simulations with the fix failed to run. Cost{" "}
-            {cost(a.cost_usd ?? a.estimated_cost_usd)}.{a.finished_at && ` Finished ${relative(a.finished_at)}.`}
+            {costUsd(a.cost_usd ?? a.estimated_cost_usd)}.{a.finished_at && ` Finished ${timeAgo(a.finished_at)}.`}
           </p>
         </>
       )}
@@ -135,7 +134,7 @@ export function ValidationEvidence({
   return (
     <Panel
       title={`Validation ${shown.attempt} of revision ${shown.fix_revision}`}
-      description={`${shown.mode === "replay" ? "Replay" : "Persona"} simulations, started ${relative(shown.started_at)}${shown.auto ? " by draft and validate" : ""}.`}
+      description={`${shown.mode === "replay" ? "Replay" : "Persona"} simulations, started ${timeAgo(shown.started_at)}${shown.auto ? " by draft and validate" : ""}.`}
       icon={<Scale aria-hidden />}
       bodyClassName="p-0"
       actions={

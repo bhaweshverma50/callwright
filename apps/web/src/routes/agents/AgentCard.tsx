@@ -1,21 +1,12 @@
-import { BrainCircuit, Globe, MessageSquareText, Mic2, Radio, TriangleAlert, Workflow } from "lucide-react";
+import { BrainCircuit, Globe, Mic2, Radio, TriangleAlert } from "lucide-react";
 import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router";
 import type { AgentSummary } from "../../api/agents";
 import { Badge, Tooltip, TruncatedText, cn } from "../../components";
 import { AgentActions } from "./AgentActions";
 import { agentPath } from "../../lib/paths";
-
-export function relativeDate(iso: string): string {
-  const d = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
-  if (d <= 0) {
-    const h = Math.floor((Date.now() - Date.parse(iso)) / 3_600_000);
-    return h <= 0 ? "just now" : `${h} h ago`;
-  }
-  if (d === 1) return "yesterday";
-  if (d < 30) return `${d} days ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
+import { timeAgo } from "../../lib/format";
+import { AGENT_TYPES, AgentTypeBadge } from "./agentType";
 
 /**
  * One agent in the list (T051, FR-018): name and type, what it runs (model, voice, language),
@@ -37,8 +28,7 @@ export function AgentCard({
   onDelete: () => void;
   fresh?: boolean;
 }) {
-  const flow = agent.type === "flow";
-  const TypeIcon = flow ? Workflow : MessageSquareText;
+  const TypeIcon = AGENT_TYPES[agent.type].icon;
   const to = agentPath(agent);
   const navigate = useNavigate();
   return (
@@ -101,7 +91,7 @@ export function AgentCard({
 
         <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge icon={<TypeIcon />}>{flow ? "Flow" : "Single prompt"}</Badge>
+            <AgentTypeBadge type={agent.type} />
             {agent.published_version ? (
               <Badge tone="success" icon={<Radio />}>
                 Live, version {agent.published_version.version_number}
@@ -122,7 +112,7 @@ export function AgentCard({
           <span className="text-[12px] text-fg-3">
             <span className="sr-only">Updated </span>
             <time dateTime={agent.updated_at} title={new Date(agent.updated_at).toLocaleString()}>
-              {relativeDate(agent.updated_at)}
+              {timeAgo(agent.updated_at)}
             </time>
           </span>
         </div>

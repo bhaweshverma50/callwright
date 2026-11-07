@@ -33,6 +33,24 @@ export function agentPath(a: AgentRef): string {
   return a.type === "flow" ? `${AGENTS_PATH}/${a.id}/flow` : `${AGENTS_PATH}/${a.id}/edit`;
 }
 
+type CallsQuery = Record<string, string | readonly string[] | null | undefined>;
+
+/** Call History's address state: list values join with commas, empty values are left out. */
+export function callsSearch(query: CallsQuery): URLSearchParams {
+  const out = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    const v = typeof value === "string" ? value : value?.join(",");
+    if (v) out.set(key, v);
+  }
+  return out;
+}
+
+/** Call History filtered by `query`; no filters is plain `/calls`. */
+export function callsPath(query: CallsQuery = {}): string {
+  const s = callsSearch(query).toString();
+  return s ? `${CALLS_PATH}?${s}` : CALLS_PATH;
+}
+
 export const agentEditPath = (id: string) => `${AGENTS_PATH}/${id}/edit`;
 export const agentFlowPath = (id: string) => `${AGENTS_PATH}/${id}/flow`;
 export const agentTestingPath = (id: string) => `${AGENTS_PATH}/${id}/testing`;

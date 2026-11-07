@@ -49,12 +49,12 @@ import {
   type FlowNode,
   type Column,
 } from "../../components";
-import { WebCallPanel } from "../../components/WebCallPanel";
+import { WebCallPanel } from "../../webCall/WebCallPanel";
 import { SummaryText } from "../calls/quality/SummaryText";
 
 const SAMPLE_SUMMARY =
   "Acme Bank called Bhavesh Verma about a missed home loan instalment, and he paid it in full during the call. Details: name confirmed as Bhavesh Verma [3]; instalment of 650 due on the 15th [4]; aware of the missed payment [5]. Actions: explained the missed instalment; sent a secure SMS payment link [6-8]; stayed on the line while he paid. Outcome: payment of 650 received and the loan is up to date for this month. Next step: none; the agent closed the call after confirming.";
-import type { MockOptions } from "../../components/webCall";
+import type { MockOptions } from "../../webCall/webCall";
 import { formatUsd } from "../../lib/money";
 import { referenceBreakdown } from "../public/reference";
 

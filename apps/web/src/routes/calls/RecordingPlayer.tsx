@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Poin
 import { fetchRecordingLink, type RecordingLink } from "../../api/calls";
 import { isApiError } from "../../api/errors";
 import { IconButton, Skeleton, cn, focusRing, toast, waveHeights } from "../../components";
-import { mss } from "./format";
+import { mss } from "../../lib/format";
 
 type State = "idle" | "loading" | "ready" | "deleted" | "processing" | "missing" | "error";
 

@@ -122,7 +122,7 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
   const [decline, setDecline] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "paying" | "paid" | "leaving">("idle");
   const numberRef = useRef<HTMLInputElement>(null);
-  const amount = `$${Number(info.amount_usd).toFixed(2)}`;
+  const amount = formatUsd(info.amount_usd);
   const micros = toMicros(info.amount_usd) ?? 0n;
   const digits = form.number.replace(/\D/g, "");
   const brand = brandOf(digits);

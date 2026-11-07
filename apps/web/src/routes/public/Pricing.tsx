@@ -3,6 +3,7 @@ import { Button, COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard } from "..
 import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
 import { PricingCalculator } from "./PricingCalculator";
 import { REFERENCE_USAGE, referenceBreakdown } from "./reference";
+import { formatUsd } from "../../lib/money";
 
 const PARTS: { c: keyof typeof COMPONENT_LABELS; text: string }[] = [
   { c: "stt", text: "Turns the caller's speech into text, per minute of call." },
@@ -75,8 +76,8 @@ cost           = rate x billed minutes`}
             <span className="font-mono tnum">{Number(llm.billed_minutes).toFixed(2)}</span> minutes of bundle on a{" "}
             <span className="font-mono tnum">{Number(referenceBreakdown.duration_minutes).toFixed(2)}</span> minute call, so the model line bills at{" "}
             <span className="font-mono tnum">{Number(llm.bundle_multiplier).toFixed(2)}x</span> and adds{" "}
-            <span className="font-mono tnum">${Number(llm.surcharge_usd).toFixed(4)}</span>. The voice stayed inside its bundle and bills at the call
-            length.
+            <span className="font-mono tnum">{formatUsd(llm.surcharge_usd, { places: 4 })}</span>. The voice stayed inside its bundle and bills at the
+            call length.
           </p>
           <Button asChild variant="link" className="mt-7 text-[15px]">
             <Link to="/enterprise">Talk to us about volume</Link>

@@ -26,8 +26,10 @@ import {
 } from "../../../api/testing";
 import {
   Button,
+  Checkbox,
   ConfirmDialog,
   EmptyState,
+  FormAlert,
   IconButton,
   Menu,
   MenuContent,
@@ -38,13 +40,13 @@ import {
   Skeleton,
   toast,
 } from "../../../components";
-import { FormAlert } from "../../public/FormAlert";
-import { Checkbox, ProblemAlert, plural, problemText } from "../../simulations/shared";
 import { ALL_CATEGORIES, CategoryLabel, TestStatusBadge, categoryOptions } from "./categories";
 import { GenerateDialog } from "./GenerateDialog";
 import { ImportDialog } from "./ImportDialog";
 import { TestCaseEditor } from "./TestCaseEditor";
 import { TestRunPanel } from "./TestRunPanel";
+import { plural } from "../../../lib/format";
+import { ProblemAlert, problemText } from "../../../components/ProblemAlert";
 
 type Editing = { mode: "new" } | { mode: "edit"; tc: TestCase } | null;
 

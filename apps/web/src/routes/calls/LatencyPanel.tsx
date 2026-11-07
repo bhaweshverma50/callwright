@@ -2,7 +2,8 @@ import { Timer } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import type { LatencySummary, TurnLatency } from "../../api/calls";
 import { EmptyState, InfoTip, Skeleton, cn } from "../../components";
-import { latencyTone, ms } from "./format";
+import { latencyTone } from "./format";
+import { ms } from "../../lib/format";
 
 const PARTS = [
   { key: "stt_final_ms", label: "Speech to text", color: "var(--heat-1)" },

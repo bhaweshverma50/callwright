@@ -6,6 +6,7 @@ import { providerLabel } from "../lib/providers";
 import { cn } from "./cn";
 import { MoneyText } from "./Money";
 import { InfoTip, TruncatedText } from "./TruncatedText";
+import { mss } from "../lib/format";
 
 export const COMPONENT_LABELS: Record<string, string> = {
   stt: "Speech to text",
@@ -32,10 +33,6 @@ const UNIT_LABELS: Record<string, string> = {
   llm_output_tokens: "output tokens",
   tts_chars: "characters",
 };
-
-function mss(seconds: number) {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 /** Average per-minute price over the billed duration, 4 places: total / duration_minutes. */
 function avgPerMinute(b: CostBreakdownT): string {

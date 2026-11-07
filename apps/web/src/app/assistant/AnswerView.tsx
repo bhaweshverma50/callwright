@@ -19,7 +19,8 @@ import {
 } from "recharts";
 import type { components } from "../../api/schema";
 import { Badge, cn, focusRing, type Tone } from "../../components";
-import { mss, STATUS_TONES, usd, when } from "../../routes/calls/format";
+import { mss, usd, when } from "../../lib/format";
+import { STATUS_TONES } from "../../components/callVocabulary";
 
 export type ChatAnswer = components["schemas"]["ChatAnswer"];
 type Column = NonNullable<NonNullable<ChatAnswer["table"]>["columns"]>[number];

@@ -4,7 +4,7 @@
  * so the same machine runs against the API, the public demo endpoint or a scripted mock call.
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { Latency } from "./signal";
+import type { Latency } from "../components/signal";
 import {
   CONNECTION_FAILED,
   MIC_DENIED,

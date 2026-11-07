@@ -9,9 +9,9 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAgentOptions } from "../../api/calls";
 import { DATASETS_PAGE_SIZE, useDatasets, type Dataset } from "../../api/datasets";
 import { Button, EmptyState, PageHeader, Pagination, Select, Table, TruncatedText, type Column } from "../../components";
-import { relative } from "../calls/format";
-import { problemText } from "../simulations/shared";
 import { NewDatasetDialog } from "./NewDatasetDialog";
+import { timeAgo } from "../../lib/format";
+import { problemText } from "../../components/ProblemAlert";
 
 const ALL = "all";
 
@@ -40,7 +40,7 @@ const COLUMNS: Column<Dataset>[] = [
     key: "updated",
     header: "Updated",
     hideOnNarrow: true,
-    cell: (d) => <span className="whitespace-nowrap text-fg-2">{relative(d.updated_at)}</span>,
+    cell: (d) => <span className="whitespace-nowrap text-fg-2">{timeAgo(d.updated_at)}</span>,
   },
 ];
 

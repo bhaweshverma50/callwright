@@ -20,11 +20,11 @@ import {
   type TrialResult,
 } from "../../../api/quality";
 import { Badge, Button, Dialog, Field, Input, Segmented, Select, SwitchControl, Textarea, toast } from "../../../components";
-import { when } from "../../calls/format";
 import { CustomCheckTemplatePicker } from "./CustomCheckTemplatePicker";
 import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
 import { withoutLineRefs } from "../../../lib/text";
 import { NAME_RULE, toMachineName } from "../../../lib/machineName";
+import { usd, when } from "../../../lib/format";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };
@@ -191,7 +191,7 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
             <span className="flex items-center gap-2">
               <Badge tone={VERDICT_TONES[result.verdict]}>{VERDICT_LABELS[result.verdict]}</Badge>
               {result.score != null && <span className="font-mono text-[12px] text-fg-3 tnum">score {result.score}</span>}
-              {result.charged_usd ? <span className="ml-auto font-mono text-[12px] text-fg-3">charged ${result.charged_usd.toFixed(4)}</span> : null}
+              {result.charged_usd ? <span className="ml-auto font-mono text-[12px] text-fg-3">charged {usd(result.charged_usd, 4)}</span> : null}
             </span>
             <p className="text-[13px] leading-relaxed text-fg">{withoutLineRefs(result.rationale)}</p>
             {result.evidence?.quote && (

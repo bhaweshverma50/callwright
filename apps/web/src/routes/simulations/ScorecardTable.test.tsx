@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ScorecardRow } from "../../api/simulations";
 import { ScorecardTable } from "./ScorecardTable";
-import { pct, pp } from "./shared";
+import { pct, pp } from "../../lib/format";
 
 const row = (patch: Partial<ScorecardRow>): ScorecardRow => ({
   evaluator_id: "evl_01INTENT",

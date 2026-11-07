@@ -17,14 +17,14 @@ import { Link } from "react-router";
 import { env } from "../lib/env";
 import { formatUsd } from "../lib/money";
 import { SEED_PER_MINUTE_MICROS } from "../lib/stack";
-import { Badge } from "./Badge";
-import { Button, IconButton } from "./Button";
-import { cn } from "./cn";
-import { EASE_OUT } from "./motion";
-import { LatencyChip, OnAir, Waveform } from "./signal";
-import { Keypad } from "./Keypad";
+import { Badge } from "../components/Badge";
+import { Button, IconButton } from "../components/Button";
+import { cn } from "../components/cn";
+import { EASE_OUT } from "../components/motion";
+import { LatencyChip, OnAir, Waveform } from "../components/signal";
+import { Keypad } from "../components/Keypad";
 import { RingingPhone, isRinging, useRingback } from "./ringing";
-import { InfoTip } from "./TruncatedText";
+import { InfoTip } from "../components/TruncatedText";
 import {
   createMockDriver,
   type AgentActivity,
@@ -36,6 +36,7 @@ import {
 } from "./webCall";
 import { createLiveDriver } from "./webCallLive";
 import { useWebCall, type CallPhase, type CallSummary, type WebCallState } from "./useWebCall";
+import { mss } from "../lib/format";
 
 export type { CallPhase, CallSummary } from "./useWebCall";
 
@@ -54,11 +55,6 @@ export interface WebCallPanelProps {
   onEnded?: (summary: CallSummary) => void;
   className?: string;
 }
-
-const mss = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
 
 export function WebCallPanel({
   agentId,
@@ -100,7 +96,7 @@ export function WebCallPanel({
         <dl className="flex shrink-0 items-center gap-4 text-[12px] text-fg-3">
           <div className="flex items-center">
             <dt className="sr-only">Duration</dt>
-            <dd className="w-10 text-right font-mono text-[13px] text-fg tnum">{mss(elapsed)}</dd>
+            <dd className="w-10 text-right font-mono text-[13px] text-fg tnum">{mss(Math.floor(elapsed / 1000))}</dd>
           </div>
           <div className="flex items-center gap-1.5">
             <dt>Cost</dt>
@@ -227,7 +223,7 @@ function footerHint(s: WebCallState, elapsed: number, cost: bigint): string {
     case "ending":
       return s.muted ? "Muted: the agent cannot hear you." : "Talk as the caller. The agent hears your microphone.";
     case "ended":
-      return `Ended after ${mss(elapsed)}, about ${formatUsd(cost, { places: 4 })}.`;
+      return `Ended after ${mss(Math.floor(elapsed / 1000))}, about ${formatUsd(cost, { places: 4 })}.`;
     case "error":
       return s.problem?.kind === "connection" ? "The call was not connected, so it was not charged." : "Fix the cause above, then try again.";
   }

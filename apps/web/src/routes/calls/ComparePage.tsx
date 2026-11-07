@@ -15,9 +15,9 @@ import {
 } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, EmptyState, Input, PageHeader, Panel, Skeleton, TruncatedText, cn, focusRing } from "../../components";
-import { StatusBadge } from "./CallDetailDrawer";
-import { mss, usd, when } from "./format";
 import { transcriptRows, TurnLatencyChip } from "./Transcript";
+import { mss, usd, when } from "../../lib/format";
+import { CallStatusBadge } from "../../components/callVocabulary";
 
 function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "right"; kind: "call" | "simulation" }) {
   return (
@@ -26,7 +26,7 @@ function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "righ
         <Badge tone={side === "left" ? "neutral" : "accent"}>
           {side === "left" ? "Original" : kind === "simulation" ? "Simulated" : "Compared with"}
         </Badge>
-        <StatusBadge status={call.status} />
+        <CallStatusBadge status={call.status} />
       </div>
       <div className="min-w-0">
         <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-medium text-fg">

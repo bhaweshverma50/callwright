@@ -35,6 +35,7 @@ import {
 import { llmLabel } from "../editor/catalogs";
 import { usePublish } from "./PublishButton";
 import { VersionCompare } from "./VersionCompare";
+import { timeAgo } from "../../../lib/format";
 
 const SOURCE: Record<VersionSource, string> = {
   create: "Created",
@@ -45,16 +46,6 @@ const SOURCE: Record<VersionSource, string> = {
   flow_publish: "Published from the flow builder",
   test: "Snapshot for a test call",
 };
-
-function ago(iso: string): string {
-  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86_400) return `${Math.floor(s / 3600)} h ago`;
-  const d = Math.floor(s / 86_400);
-  if (d < 30) return `${d} ${d === 1 ? "day" : "days"} ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
 
 function VoiceName({ provider, id }: { provider: string; id: string }) {
   const voices = useProviderVoices(provider, {});
@@ -224,7 +215,7 @@ export function VersionDrawer({
                               {v.source === "restore" && v.restored_from_version_number
                                 ? `Restored from version ${v.restored_from_version_number}`
                                 : SOURCE[v.source]}
-                              , {ago(v.created_at)}
+                              , {timeAgo(v.created_at)}
                             </span>
                           </div>
                         </div>

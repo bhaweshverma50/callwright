@@ -8,10 +8,10 @@ import { problemMessage } from "../../api/problems";
 import { useCalibrationRows, useCalibrationSummary, type CalibrationRow, type VersionScope } from "../../api/quality";
 import { Badge, Button, EmptyState, PageHeader, Segmented, Select, Skeleton, cn, type Tone } from "../../components";
 import { COST_LABELS, evaluatorIcon } from "../agents/quality/evaluatorMeta";
+import { pct } from "../../lib/format";
 
 const LOOKBACKS = [30, 90, 180, 365] as const;
 const ALL_AGENTS = "all";
-const pct = (r: number | null | undefined) => (r == null ? "n/a" : `${Math.round(r * 100)}%`);
 
 export const READINGS: Record<CalibrationRow["reading"], { label: string; tone: Tone; body: string }> = {
   strong: { label: "Strong agreement", tone: "success", body: "Its verdicts match your labels on most calls. You can rely on it." },
@@ -102,7 +102,7 @@ function AgreementRing({ rate, low, high }: { rate: number | null | undefined; l
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         />
       </svg>
-      <span className="font-mono text-[15px] font-semibold text-fg tnum">{pct(rate)}</span>
+      <span className="font-mono text-[15px] font-semibold text-fg tnum">{pct(rate, 0)}</span>
     </div>
   );
 }
@@ -111,7 +111,7 @@ function thresholdHint(row: CalibrationRow): string | null {
   if (row.under_min_sample || row.best_threshold == null || row.current_threshold == null) return null;
   if (row.best_threshold === row.current_threshold) return `The current threshold ${row.current_threshold} already agrees best with your labels.`;
   const dir = row.best_threshold > row.current_threshold ? "Raise" : "Lower";
-  return `${dir} the threshold from ${row.current_threshold} to ${row.best_threshold}: agreement would be ${pct(row.best_threshold_agreement)} on the same calls.`;
+  return `${dir} the threshold from ${row.current_threshold} to ${row.best_threshold}: agreement would be ${pct(row.best_threshold_agreement, 0)} on the same calls.`;
 }
 
 function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; index: number }) {
@@ -170,7 +170,7 @@ function MatrixCard({ row, min, index }: { row: CalibrationRow; min: number; ind
               <span className="text-[13px] leading-relaxed text-fg-2">{reading.body}</span>
               {row.agreement_ci?.low != null && row.agreement_ci.high != null && (
                 <span className="font-mono text-[12px] text-fg-3 tnum">
-                  95% range {pct(row.agreement_ci.low)} to {pct(row.agreement_ci.high)}
+                  95% range {pct(row.agreement_ci.low, 0)} to {pct(row.agreement_ci.high, 0)}
                 </span>
               )}
             </div>

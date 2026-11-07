@@ -7,7 +7,7 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { deleteMyAnnotation, putMyAnnotation, qualityKeys, useAnnotations, type Annotation } from "../../../api/quality";
 import { Badge, Button, ConfirmDialog, Skeleton, Textarea, cn, focusRing, toast } from "../../../components";
-import { when } from "../format";
+import { when } from "../../../lib/format";
 
 export const NOTE_LIMIT = 2000;
 type Label = "good" | "bad";

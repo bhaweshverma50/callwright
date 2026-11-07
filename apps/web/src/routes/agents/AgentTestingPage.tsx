@@ -20,7 +20,7 @@ import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { useQuote } from "../../api/queries";
 import { Button, EmptyState, Field, Input, PageHeader, Panel, PanelLoader, Segmented, Skeleton, TabPanel, Tabs, WorkLayout } from "../../components";
-import { WebCallPanel } from "../../components/WebCallPanel";
+import { WebCallPanel } from "../../webCall/WebCallPanel";
 import { toMicros } from "../../lib/money";
 import { RecordNotFound } from "../NotFound";
 import { quoteRequestFor } from "./editor/CostCard";

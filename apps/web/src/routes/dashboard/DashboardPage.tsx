@@ -14,20 +14,18 @@ import {
   type DashboardPeriod,
 } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
-import { Button, Input, PageHeader, PanelLoader, Segmented, cn, focusRing } from "../../components";
+import { Button, chartVars, cn, focusRing, FormAlert, Input, PageHeader, PanelLoader, Segmented } from "../../components";
 import { openAsk } from "../../app/assistant/bus";
 import { useRegisterVoiceActions } from "../../app/copilot/actionRegistry";
-import { FormAlert } from "../public/FormAlert";
-import { viewerTimeZone } from "../calls/filters";
 import { CallsChart, DurationTrend, TalkTimeChart } from "./charts/ActivityCharts";
 import { ChannelSplit, DisconnectReasons, Distribution, Leaderboard, SentimentSplit } from "./charts/Breakdowns";
-import { chartVars } from "./charts/ChartFrame";
 import { CallDetailDrawer, type DrawerTab } from "../calls/CallDetailDrawer";
 import { LiveNowCard } from "../calls/live/LiveCalls";
 import { DashboardPlaceholder } from "./DashboardPlaceholder";
 import { KpiTiles } from "./KpiTiles";
 import { AgentHealthCard, QualityGrid } from "./QualitySection";
 import { isAgentId } from "../../lib/paths";
+import { viewerTimeZone } from "../../lib/format";
 
 export const PERIODS: { value: DashboardPeriod; label: string; long: string }[] = [
   { value: "last_7_days", label: "7d", long: "Last 7 days" },

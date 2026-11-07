@@ -21,10 +21,21 @@ import {
   type FixKind,
   type IssueSample,
 } from "../../api/issues";
-import { Badge, Button, EmptyState, PageHeader, Pagination, Panel, PanelLoader, Table, TruncatedText, toast, type Column } from "../../components";
+import {
+  Badge,
+  Button,
+  type Column,
+  EmptyState,
+  Figure,
+  PageHeader,
+  Pagination,
+  Panel,
+  PanelLoader,
+  Table,
+  toast,
+  TruncatedText,
+} from "../../components";
 import { RecordNotFound } from "../NotFound";
-import { relative } from "../calls/format";
-import { Figure, problemText, shortId } from "../simulations/shared";
 import { ApplyPanel } from "./ApplyPanel";
 import { DismissDialog } from "./DismissDialog";
 import { FixPanel } from "./FixPanel";
@@ -33,6 +44,8 @@ import { ValidationEvidence } from "./ValidationEvidence";
 import { DISMISS_LABELS, IssueStatusBadge, ORIGIN_LABELS } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
 import { agentPath } from "../../lib/paths";
+import { shortId, timeAgo } from "../../lib/format";
+import { problemText } from "../../components/ProblemAlert";
 
 const SAMPLE_COLUMNS: Column<IssueSample>[] = [
   {
@@ -70,7 +83,7 @@ const SAMPLE_COLUMNS: Column<IssueSample>[] = [
       </span>
     ),
   },
-  { key: "when", header: "When", hideOnNarrow: true, cell: (s) => <span className="whitespace-nowrap text-fg-2">{relative(s.failed_at)}</span> },
+  { key: "when", header: "When", hideOnNarrow: true, cell: (s) => <span className="whitespace-nowrap text-fg-2">{timeAgo(s.failed_at)}</span> },
 ];
 
 function Summary({ issue, agentName }: { issue: DetectedIssue; agentName: string }) {
@@ -98,8 +111,8 @@ function Summary({ issue, agentName }: { issue: DetectedIssue; agentName: string
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Figure label="Affected calls">{issue.affected_call_count}</Figure>
         <Figure label="On the published version">{issue.current_version_call_count}</Figure>
-        <Figure label="First seen">{issue.first_seen_at ? relative(issue.first_seen_at) : "n/a"}</Figure>
-        <Figure label="Last seen">{relative(issue.last_seen_at)}</Figure>
+        <Figure label="First seen">{issue.first_seen_at ? timeAgo(issue.first_seen_at) : "n/a"}</Figure>
+        <Figure label="Last seen">{timeAgo(issue.last_seen_at)}</Figure>
       </div>
       {issue.suspected_cause && (
         <p className="mt-4 border-t border-line pt-3 text-[13px] text-fg-2">
@@ -150,7 +163,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
           <div className="flex flex-col gap-1 text-[14px] text-fg-2">
             <p>
               <span className="font-medium text-fg">Dismissed{issue.dismiss_reason ? `: ${DISMISS_LABELS[issue.dismiss_reason]}` : ""}.</span>{" "}
-              {issue.dismissed_at && `${relative(issue.dismissed_at)}. `}Later detections update its counts and keep it dismissed.
+              {issue.dismissed_at && `${timeAgo(issue.dismissed_at)}. `}Later detections update its counts and keep it dismissed.
             </p>
             {issue.dismiss_note && <p className="text-fg">{issue.dismiss_note}</p>}
             {issue.duplicate_of && (

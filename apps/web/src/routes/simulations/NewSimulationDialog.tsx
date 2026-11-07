@@ -12,8 +12,8 @@ import { preflight, startSimulationRun, type PersonaBrief, type Preflight } from
 import { Button, Dialog, Field, Input, Select, toast } from "../../components";
 import { PersonaBriefEditor, cleanBrief, emptyBrief } from "./PersonaBriefEditor";
 import { PreflightStep } from "./PreflightDialog";
-import { ProblemAlert } from "./shared";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, type TargetChoice } from "./VariantEditor";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 function Target({ agentId, value, onChange }: { agentId: string; value: TargetChoice; onChange: (t: TargetChoice) => void }) {
   const sources = useTargetSources(agentId);

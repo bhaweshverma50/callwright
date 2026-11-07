@@ -6,10 +6,9 @@ import { Link, useNavigate } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { startSession } from "../../api/session";
-import { Button, Field, Input } from "../../components";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;

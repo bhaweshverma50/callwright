@@ -8,11 +8,11 @@ import { GitBranchPlus, Rocket, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { applyFix, issueKeys, type DetectedIssue } from "../../api/issues";
-import { Button, Dialog, Field, Panel, Segmented, Textarea, toast } from "../../components";
-import { relative } from "../calls/format";
-import { Figure, ProblemAlert, deltaTone, pct, shortId } from "../simulations/shared";
-import { BLOCKER_TEXT, pp } from "./shared";
+import { Button, deltaTone, Dialog, Field, Figure, Panel, Segmented, Textarea, toast } from "../../components";
+import { BLOCKER_TEXT } from "./shared";
 import { agentPath } from "../../lib/paths";
+import { pct, pp, shortId, timeAgo } from "../../lib/format";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 function ApplyDialog({ open, onOpenChange, issue }: { open: boolean; onOpenChange: (o: boolean) => void; issue: DetectedIssue }) {
   const qc = useQueryClient();
@@ -112,7 +112,7 @@ export function ApplyPanel({ issue }: { issue: DetectedIssue }) {
   if (issue.status === "applied") {
     const p = issue.post_apply;
     return (
-      <Panel title="Applied" icon={<TrendingUp aria-hidden />} description={issue.applied_at ? `Applied ${relative(issue.applied_at)}.` : undefined}>
+      <Panel title="Applied" icon={<TrendingUp aria-hidden />} description={issue.applied_at ? `Applied ${timeAgo(issue.applied_at)}.` : undefined}>
         <div className="flex flex-col gap-4">
           {issue.applied_agent_version_id && (
             <p className="text-[14px] text-fg-2">
