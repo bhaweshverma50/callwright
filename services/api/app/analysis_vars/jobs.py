@@ -29,7 +29,7 @@ from app.calls.short_call import too_short
 from app.core.errors import ProblemError
 from app.evaluators.context import build_context
 from app.evaluators.settings import default_judge_model
-from app.llms.client import billable_cost
+from app.llms.charges import charge_tokens
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
@@ -89,14 +89,12 @@ async def analyze_call(session: AsyncSession, call_id: str, *, rerun: bool = Fal
             return row
         raw = result.usage.raw_cost_usd.quantize(SIX)
         try:
-            charge = await billing.charge_feature(
+            charge = await charge_tokens(
                 session,
                 workspace_id=call.workspace_id,
                 feature_key="post_call_analysis",
-                quantity=Decimal(result.usage.input_tokens + result.usage.output_tokens),
-                unit="tokens",
-                raw_cost_usd=raw,
-                billable_cost_usd=billable_cost(result.usage.raw_cost_usd),
+                tokens=result.usage.input_tokens + result.usage.output_tokens,
+                raw_cost_usd=result.usage.raw_cost_usd,
                 idempotency_key=f"analysis:{call_id}:{row.attempt}",
                 ref_type="call",
                 ref_id=call_id,
@@ -108,9 +106,6 @@ async def analyze_call(session: AsyncSession, call_id: str, *, rerun: bool = Fal
             await session.flush()
             return row
         row.status = "completed"
-        row.summary = result.summary
-        row.sentiment = result.sentiment
-        row.values = result.values
         row.input_tokens = result.usage.input_tokens
         row.output_tokens = result.usage.output_tokens
         row.raw_cost_usd = raw

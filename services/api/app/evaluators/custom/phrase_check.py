@@ -8,12 +8,21 @@ speaker's lines; the rationale quotes the first match with its line number.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import re2
 
-from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, quote
+from app.core.errors import field_error
+from app.evaluators.base import (
+    CustomEvaluator,
+    EvalContext,
+    EvalOutcome,
+    EvalTools,
+    ItemResult,
+    quote,
+    unknown_fields,
+)
 
 MAX_PATTERN = 500
 MAX_TEXT = 10_000
@@ -40,13 +49,41 @@ def compile_pattern(pattern: str, *, is_regex: bool, case_sensitive: bool) -> An
         raise PatternError(f"This pattern is not valid: {detail}") from exc
 
 
-class PhraseCheck(Evaluator):
+class PhraseCheck(CustomEvaluator):
     name = "phrase_check"
     display_name = "Required or forbidden phrase"
     description = "Checks that a phrase or pattern is said, or never said, by the agent, the caller or both."
 
-    def __init__(self, config: Mapping[str, Any]) -> None:
-        self.config = dict(config)
+    @classmethod
+    def validate_config(
+        cls, config: Mapping[str, Any], judge_models: Sequence[str]
+    ) -> tuple[dict[str, Any], list[dict[str, str]]]:
+        errors: list[dict[str, str]] = []
+        out: dict[str, Any] = {
+            "pattern": config.get("pattern"),
+            "mode": config.get("mode"),
+            "target": config.get("target"),
+            "is_regex": config.get("is_regex", False),
+            "case_sensitive": config.get("case_sensitive", False),
+        }
+        if not isinstance(out["pattern"], str) or not out["pattern"]:
+            errors.append(field_error("/config/pattern", "required", "Enter a phrase or pattern"))
+        if out["mode"] not in ("required", "forbidden"):
+            errors.append(field_error("/config/mode", "invalid_format", "Choose required or forbidden"))
+        if out["target"] not in ("agent", "user", "both"):
+            errors.append(field_error("/config/target", "invalid_format", "Choose agent, caller or both"))
+        for flag in ("is_regex", "case_sensitive"):
+            if not isinstance(out[flag], bool):
+                errors.append(field_error(f"/config/{flag}", "invalid_format", "Choose on or off"))
+        if not errors:
+            try:
+                compile_pattern(
+                    out["pattern"], is_regex=out["is_regex"], case_sensitive=out["case_sensitive"]
+                )
+            except PatternError as exc:
+                errors.append(field_error("/config/pattern", "invalid_format", str(exc)))
+        errors += unknown_fields(config, {"pattern", "mode", "target", "is_regex", "case_sensitive"})
+        return out, errors
 
     async def evaluate(self, ctx: EvalContext, settings: Mapping[str, Any], tools: EvalTools) -> EvalOutcome:
         return check_phrase(ctx, self.config)

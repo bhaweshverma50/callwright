@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ProblemError, field_error, forbidden, not_found, validation_failed
 from app.core.ids import new_id
-from app.evaluators.custom.phrase_check import PatternError, compile_pattern
 from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.registry import BUILTINS, CUSTOM_TYPES
 from app.evaluators.settings import served_schema
@@ -120,62 +119,13 @@ def validate_config(
     evaluator_type: Any, config: Any, judge_models: Sequence[str]
 ) -> tuple[dict[str, Any], list[dict[str, str]]]:
     """Normalised config and field errors (pointers under ``/config``)."""
-    errors: list[dict[str, str]] = []
     if evaluator_type not in CUSTOM_TYPES:
         return {}, [
             field_error("/evaluator_type", "invalid_format", "Pick the phrase or judge question template")
         ]
     if not isinstance(config, Mapping):
         return {}, [field_error("/config", "required", "Fill in the check")]
-    if evaluator_type == "phrase_check":
-        allowed = {"pattern", "mode", "target", "is_regex", "case_sensitive"}
-        out: dict[str, Any] = {
-            "pattern": config.get("pattern"),
-            "mode": config.get("mode"),
-            "target": config.get("target"),
-            "is_regex": config.get("is_regex", False),
-            "case_sensitive": config.get("case_sensitive", False),
-        }
-        if not isinstance(out["pattern"], str) or not out["pattern"]:
-            errors.append(field_error("/config/pattern", "required", "Enter a phrase or pattern"))
-        if out["mode"] not in ("required", "forbidden"):
-            errors.append(field_error("/config/mode", "invalid_format", "Choose required or forbidden"))
-        if out["target"] not in ("agent", "user", "both"):
-            errors.append(field_error("/config/target", "invalid_format", "Choose agent, caller or both"))
-        for flag in ("is_regex", "case_sensitive"):
-            if not isinstance(out[flag], bool):
-                errors.append(field_error(f"/config/{flag}", "invalid_format", "Choose on or off"))
-        if not errors:
-            try:
-                compile_pattern(
-                    out["pattern"], is_regex=out["is_regex"], case_sensitive=out["case_sensitive"]
-                )
-            except PatternError as exc:
-                errors.append(field_error("/config/pattern", "invalid_format", str(exc)))
-    else:
-        allowed = {"question", "pass_when", "judge_model"}
-        out = {
-            "question": config.get("question"),
-            "pass_when": config.get("pass_when"),
-            "judge_model": config.get("judge_model") or judge_models[0],
-        }
-        question = out["question"]
-        if not isinstance(question, str) or not 5 <= len(question.strip()) <= 1000:
-            errors.append(
-                field_error("/config/question", "out_of_range", "Ask a question of 5 to 1,000 characters")
-            )
-        else:
-            out["question"] = question.strip()
-        if out["pass_when"] not in ("yes", "no"):
-            errors.append(field_error("/config/pass_when", "invalid_format", "Choose which answer passes"))
-        if out["judge_model"] not in judge_models:
-            errors.append(
-                field_error("/config/judge_model", "not_in_catalog", "Pick one of the listed judge models")
-            )
-    for key in config:
-        if key not in allowed:
-            errors.append(field_error(f"/config/{key}", "unknown_field", f"Unknown field {key}"))
-    return out, errors
+    return CUSTOM_TYPES[evaluator_type].validate_config(config, judge_models)
 
 
 async def _name_conflict(session: AsyncSession, name: str) -> None:
@@ -244,7 +194,7 @@ async def create_custom(
         display_name=display.strip(),
         description=description,
         scope="call",
-        cost_class="llm_judge" if evaluator_type == "llm_judge_custom" else "free",
+        cost_class=CUSTOM_TYPES[evaluator_type].cost_class,
         output_kind="class",
         agent_types=["single_prompt", "flow"],
         settings_schema={"fields": []},

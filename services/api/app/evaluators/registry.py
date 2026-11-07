@@ -18,7 +18,7 @@ from ulid import ULID
 
 from app.core.config import Settings
 from app.core.db import Database
-from app.evaluators.base import Evaluator, SettingsField
+from app.evaluators.base import CustomEvaluator, Evaluator, SettingsField
 from app.evaluators.builtins.anomaly_detection import AnomalyDetection
 from app.evaluators.builtins.audio_silence import AudioSilence
 from app.evaluators.builtins.factual_consistency import FactualConsistency
@@ -50,7 +50,10 @@ BUILTIN_CLASSES: tuple[type[Evaluator], ...] = (
     LatencySlo,
 )
 BUILTINS: dict[str, Evaluator] = {cls.name: cls() for cls in BUILTIN_CLASSES}
-CUSTOM_TYPES = ("phrase_check", "llm_judge_custom")
+CUSTOM_TYPES: dict[str, type[CustomEvaluator]] = {
+    "phrase_check": PhraseCheck,
+    "llm_judge_custom": LlmJudgeCustom,
+}
 
 
 def builtin_id(name: str) -> str:
@@ -123,11 +126,8 @@ async def sync_builtins(db: Database, settings: Settings) -> None:
 
 
 def instance_for(evaluator_type: str, definition: Mapping[str, Any]) -> Evaluator:
-    if evaluator_type == "phrase_check":
-        return PhraseCheck(definition)
-    if evaluator_type == "llm_judge_custom":
-        return LlmJudgeCustom(definition)
-    return BUILTINS[evaluator_type]
+    custom = CUSTOM_TYPES.get(evaluator_type)
+    return custom(definition) if custom is not None else BUILTINS[evaluator_type]
 
 
 def main(argv: list[str]) -> int:

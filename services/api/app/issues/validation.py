@@ -174,7 +174,7 @@ async def estimate_cost(
     model = settings.simulator_model
     per_run = await per_run_cost(session, agent.id, mode, model)
     if mode == "persona":
-        per_run += billable_cost(token_cost(model.partition("/")[2] or model, *EXTRACTION_TOKENS))
+        per_run += billable_cost(token_cost(model, *EXTRACTION_TOKENS))
     models = judge_models(settings)
     for r in await resolve_all(session, agent, models):
         if r.enabled:

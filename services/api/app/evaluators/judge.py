@@ -63,9 +63,7 @@ class Usage:
         self.model = model
         self.input_tokens += completion.input_tokens
         self.output_tokens += completion.output_tokens
-        self.raw_cost_usd += token_cost(
-            model.partition("/")[2] or model, completion.input_tokens, completion.output_tokens
-        )
+        self.raw_cost_usd += token_cost(model, completion.input_tokens, completion.output_tokens)
 
 
 @dataclass(frozen=True)

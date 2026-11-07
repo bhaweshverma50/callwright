@@ -64,7 +64,7 @@ def tools_missing_mock(config: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 def fallback_cost(mode: str, model: str) -> Decimal:
     inp, out = FALLBACK_TOKENS.get(mode, FALLBACK_TOKENS["replay"])
-    return billable_cost(token_cost(model.partition("/")[2] or model, inp, out))
+    return billable_cost(token_cost(model, inp, out))
 
 
 async def per_run_cost(session: AsyncSession, agent_id: str, mode: str, model: str) -> Decimal:
@@ -126,12 +126,7 @@ async def preflight(
     per_run = await per_run_cost(session, agent.id, mode, simulator_model)
     total = per_run * run_count
     if mode == "persona" and ids:
-        total += (
-            billable_cost(
-                token_cost(simulator_model.partition("/")[2] or simulator_model, *EXTRACTION_TOKENS)
-            )
-            * run_count
-        )
+        total += billable_cost(token_cost(simulator_model, *EXTRACTION_TOKENS)) * run_count
     return {
         "run_count": run_count,
         "tools_missing_mock": missing,

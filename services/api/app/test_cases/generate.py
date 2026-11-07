@@ -49,7 +49,7 @@ class GenerationUsage:
 
     @property
     def raw_cost_usd(self) -> Decimal:
-        return token_cost(self.model.partition("/")[2] or self.model, self.input_tokens, self.output_tokens)
+        return token_cost(self.model, self.input_tokens, self.output_tokens)
 
     def as_usage(self) -> dict[str, Any]:
         return {

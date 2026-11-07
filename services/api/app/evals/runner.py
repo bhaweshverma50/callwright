@@ -47,7 +47,7 @@ from app.evaluators.judge import Judge
 from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.registry import instance_for
 from app.evaluators.settings import default_judge_model, judge_models, settings_hash
-from app.llms.client import billable_cost
+from app.llms.charges import charge_tokens
 from app.llms.runtime import ModelRuntime, runtime
 
 logger = logging.getLogger(__name__)
@@ -224,10 +224,6 @@ class Planned:
     settings: dict[str, Any]
 
 
-def feature_key(row: EvaluatorRow) -> str:
-    return "eval.llm_judge_custom" if row.evaluator_type == "llm_judge_custom" else f"eval.{row.name}"
-
-
 def tools_for(db: Database, workspace_id: str, rt: ModelRuntime, settings: dict[str, Any]) -> EvalTools:
     async def neighbours(ctx: EvalContext, values: Any) -> embeddings.Neighbours:
         async with db.transaction(workspace_id=workspace_id) as session:
@@ -258,15 +254,13 @@ async def _write(db: Database, workspace_id: str, plan: Planned, outcome: EvalOu
         raw = outcome.raw_cost_usd.quantize(SIX)
         if plan.row.cost_class == "llm_judge" and (outcome.input_tokens or outcome.output_tokens):
             try:
-                charge = await billing.charge_feature(
+                charge = await charge_tokens(
                     session,
                     workspace_id=workspace_id,
-                    feature_key=feature_key(plan.row),
-                    quantity=Decimal(outcome.input_tokens + outcome.output_tokens),
-                    unit="tokens",
-                    raw_cost_usd=raw,
-                    billable_cost_usd=billable_cost(outcome.raw_cost_usd),
+                    feature_key=plan.evaluator.feature_key,
                     idempotency_key=f"eval_run:{run.id}",
+                    tokens=outcome.input_tokens + outcome.output_tokens,
+                    raw_cost_usd=outcome.raw_cost_usd,
                     ref_type="call",
                     ref_id=run.call_id,
                 )

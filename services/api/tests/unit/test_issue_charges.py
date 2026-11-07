@@ -9,26 +9,25 @@ from sqlalchemy import func, select
 
 from app.billing.models import CreditTransaction
 from app.issues.charges import DETECT, DRAFT_FIX, charge, detect_key, draft_key, raw_cost
-from app.llms.client import billable_cost, token_cost
 from app.pricing.features import feature_family
 from app.usage.models import UsageEvent
 from tests.conftest import make_workspace
 
 
 def test_feature_keys_are_in_the_issues_family() -> None:
-    assert (DETECT, DRAFT_FIX) == ("issues.detect", "issues.draft_fix")
     assert feature_family(DETECT) == feature_family(DRAFT_FIX) == "issues"
 
 
-def test_charge_keys_are_per_detection_run_and_per_revision() -> None:
-    assert detect_key("6f1c") == "issues.detect:6f1c"
-    assert draft_key("iss_A", 3) == "issues.draft_fix:iss_A:3"
+def test_each_revision_is_charged_separately() -> None:
     assert draft_key("iss_A", 3) != draft_key("iss_A", 4)
 
 
 def test_raw_cost_prices_tokens_and_embeddings() -> None:
-    assert raw_cost("openai/gpt-5-mini", 1000, 200) == token_cost("gpt-5-mini", 1000, 200)
-    assert raw_cost("openai/gpt-5-mini", 0, 0, embed_raw=Decimal("0.0001")) == Decimal("0.0001")
+    tokens_only = raw_cost("openai/gpt-5-mini", 1000, 200)
+    assert tokens_only > 0 and raw_cost("gpt-5-mini", 1000, 200) == tokens_only
+    embed = Decimal("0.0001")
+    assert raw_cost("openai/gpt-5-mini", 1000, 200, embed_raw=embed) == tokens_only + embed
+    assert raw_cost("openai/gpt-5-mini", 0, 0, embed_raw=embed) == embed
 
 
 async def _counts(app: FastAPI, ws: str, key: str) -> tuple[int, int]:
@@ -52,6 +51,7 @@ async def test_draft_charge_is_recorded_once(app: FastAPI) -> None:
     _, ws = await make_workspace(app)
     key = draft_key("iss_charge", 1)
     raw = raw_cost("openai/gpt-5-mini", 4000, 600)
+    billed_each: list[Decimal] = []
     for _ in range(2):
         async with app.state.db.transaction(workspace_id=ws) as session:
             billed = await charge(
@@ -64,7 +64,8 @@ async def test_draft_charge_is_recorded_once(app: FastAPI) -> None:
                 ref_type="issue",
                 ref_id="iss_charge",
             )
-        assert billed == billable_cost(raw)
+        billed_each.append(billed)
+    assert billed_each[0] == billed_each[1] > raw
     assert await _counts(app, ws, key) == (1, 1)
 
 

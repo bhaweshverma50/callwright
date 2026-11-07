@@ -13,12 +13,11 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.billing import service as billing
-from app.llms.client import billable_cost, token_cost
+from app.llms.charges import charge_tokens
+from app.llms.client import token_cost
 
 DETECT = "issues.detect"
 DRAFT_FIX = "issues.draft_fix"
-SIX = Decimal("0.000001")
 
 
 def detect_key(run_id: str) -> str:
@@ -34,7 +33,7 @@ def raw_cost(
 ) -> Decimal:
     raw = embed_raw
     if input_tokens or output_tokens:
-        raw += token_cost(model.partition("/")[2] or model, input_tokens, output_tokens)
+        raw += token_cost(model, input_tokens, output_tokens)
     return raw
 
 
@@ -50,16 +49,13 @@ async def charge(
     ref_id: str,
 ) -> Decimal:
     """Charge once per ``key``; returns the billed amount (raises ``insufficient_credit``)."""
-    billable = billable_cost(raw) if raw > 0 else Decimal(0)
-    result = await billing.charge_feature(
+    result = await charge_tokens(
         session,
         workspace_id=workspace_id,
         feature_key=feature_key,
-        quantity=Decimal(max(0, tokens)),
-        unit="tokens",
-        raw_cost_usd=raw.quantize(SIX),
-        billable_cost_usd=billable,
         idempotency_key=key,
+        tokens=tokens,
+        raw_cost_usd=raw,
         ref_type=ref_type,
         ref_id=ref_id,
     )

@@ -103,8 +103,6 @@ def analysis_view(call: Call, row: CallAnalysis | None, current: dict[str, Any])
             "skip_reason": None,
             "error": "The analysis stopped before it finished. Try re-running it.",
             "model": row.model,
-            "summary": row.summary,
-            "sentiment": row.sentiment,
             "values": [],
         }
     out_values = []
@@ -121,7 +119,7 @@ def analysis_view(call: Call, row: CallAnalysis | None, current: dict[str, Any])
                 "variable_id": var.get("id"),
                 "name": name,
                 "type": var["type"],
-                "value": (row.values or {}).get(name),
+                "value": (call.analysis or {}).get(name),
                 "status": status,
             }
         )
@@ -131,8 +129,8 @@ def analysis_view(call: Call, row: CallAnalysis | None, current: dict[str, Any])
         "skip_reason": row.skip_reason,
         "error": row.error,
         "model": row.model,
-        "summary": row.summary,
-        "sentiment": row.sentiment,
+        "summary": call.summary,
+        "sentiment": call.sentiment,
         "values": out_values if row.status == "completed" else [],
         "analyzed_at": row.analyzed_at.isoformat() if row.analyzed_at else None,
         # When the current attempt began, so a progress timer survives page and tab changes.

@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Any, ClassVar, Literal
 
 from app.calls.transcript import FlowTransition, Message, ToolEvent
+from app.core.errors import field_error
 from app.flows.compiled import compiled_view
 
 Verdict = Literal["pass", "fail", "not_applicable"]
@@ -25,6 +26,14 @@ OutputKind = Literal["class", "anomaly", "audio_quality", "process_reward"]
 AgentType = Literal["single_prompt", "flow"]
 ALL_AGENT_TYPES: tuple[AgentType, ...] = ("single_prompt", "flow")
 FLOW_ONLY: tuple[AgentType, ...] = ("flow",)
+
+
+def unknown_fields(config: Mapping[str, Any], allowed: set[str]) -> list[dict[str, str]]:
+    return [
+        field_error(f"/config/{key}", "unknown_field", f"Unknown field {key}")
+        for key in config
+        if key not in allowed
+    ]
 
 
 def judge_item_verdict(score: float, cutoff: float) -> Verdict:
@@ -197,10 +206,29 @@ class Evaluator:
     threshold_direction: ClassVar[Literal["below_fails", "above_fails"]] = "below_fails"
     rules: ClassVar[str] = ""  # what the version pins (prompt text or rule summary)
 
+    @property
+    def feature_key(self) -> str:
+        """The usage feature a judged run is charged under (``eval.<type>``)."""
+        return f"eval.{self.name}"
+
     def max_failed_items(self, settings: Mapping[str, Any]) -> int:
         return int(settings.get("max_failed_items", 0) or 0)
 
     async def evaluate(self, ctx: EvalContext, settings: Mapping[str, Any], tools: EvalTools) -> EvalOutcome:
+        raise NotImplementedError
+
+
+class CustomEvaluator(Evaluator):
+    """A workspace's own check from a template; ``config`` is its stored definition."""
+
+    def __init__(self, config: Mapping[str, Any]) -> None:
+        self.config = dict(config)
+
+    @classmethod
+    def validate_config(
+        cls, config: Mapping[str, Any], judge_models: Sequence[str]
+    ) -> tuple[dict[str, Any], list[dict[str, str]]]:
+        """Normalised config and field errors (pointers under ``/config``)."""
         raise NotImplementedError
 
 

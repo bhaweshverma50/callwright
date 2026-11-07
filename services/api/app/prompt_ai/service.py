@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -22,13 +21,13 @@ from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError, too_many_requests
 from app.core.rate_limit import RateLimiter
+from app.llms.charges import charge_tokens
 from app.llms.client import (
     ChatMessage,
     LlmClient,
     ModelError,
     ModelRef,
     ModelTimeout,
-    billable_cost,
     token_cost,
 )
 from app.pricing.engine import fmt6
@@ -108,22 +107,19 @@ async def generate(
             span.record_exception(exc)
             raise assistant_timeout() from exc
     reply, proposal = parse_answer(completion.text)
-    raw = token_cost(model_ref.model, completion.input_tokens, completion.output_tokens)
-    billable = billable_cost(raw)
     charge_key = f"prompt_ai:{idempotency_key or uuid.uuid4().hex}"
     async with db.transaction(workspace_id=workspace_id) as session:
-        await billing.charge_feature(
+        charge = await charge_tokens(
             session,
             workspace_id=workspace_id,
             feature_key="prompt_generation",
-            quantity=Decimal(completion.input_tokens + completion.output_tokens),
-            unit="tokens",
-            raw_cost_usd=raw.quantize(Decimal("0.000001")),
-            billable_cost_usd=billable,
             idempotency_key=charge_key,
+            tokens=completion.input_tokens + completion.output_tokens,
+            raw_cost_usd=token_cost(model_ref.model, completion.input_tokens, completion.output_tokens),
             ref_type="agent" if request.agent_id else None,
             ref_id=request.agent_id,
         )
+    billable = charge.usage_event.billable_cost_usd
     body = {"reply": reply, "proposal": proposal, "billed_usd": fmt6(billable)}
     if replay_key:
         await redis.set(replay_key, json.dumps(body), ex=REPLAY_TTL_S)

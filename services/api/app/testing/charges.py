@@ -1,6 +1,6 @@
 """Feature charges for test runs and simulations (008 T010; research R10, FR-030).
 
-One charge per run and feature through ``billing.charge_feature()``, keyed ``feature:<run id>``
+One charge per run and feature through ``llms.charges.charge_tokens``, keyed ``feature:<run id>``
 (``feature:<run id>:<part>`` for the extras: persona extraction and tool stand-ins), so a
 retried charge is a no-op. Usage arrives as tokens per role,
 ``{"agent": {"model": "provider/model", "input_tokens": n, "output_tokens": n}, ...}``, and is
@@ -17,8 +17,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.billing import service as billing
-from app.llms.client import billable_cost, token_cost
+from app.llms.charges import charge_tokens
+from app.llms.client import token_cost
 
 FEATURE_KEYS = frozenset(
     {
@@ -30,7 +30,6 @@ FEATURE_KEYS = frozenset(
         "simulation.tool_synth",
     }
 )
-SIX = Decimal("0.000001")
 
 
 @dataclass(frozen=True)
@@ -62,7 +61,7 @@ def usage_cost(usage: Mapping[str, Any], roles: Iterable[str] | None = None) -> 
         if entry.get("offline"):
             continue  # the runner's offline fallback answered: no vendor tokens were used
         model = str(entry.get("model") or "")
-        model = model.partition("/")[2] or model
+        model = model
         inp, out = _int(entry.get("input_tokens")), _int(entry.get("output_tokens"))
         if inp or out:
             raw += token_cost(model or "gpt-5-mini", inp, out)
@@ -102,16 +101,13 @@ async def charge_run(
     if feature_key not in FEATURE_KEYS:
         raise ValueError(f"not a testing or simulation feature: {feature_key!r}")
     raw, tokens = usage_cost(usage, roles)
-    billable = billable_cost(raw) if raw > 0 else Decimal(0)
-    charge = await billing.charge_feature(
+    charge = await charge_tokens(
         session,
         workspace_id=workspace_id,
         feature_key=feature_key,
-        quantity=Decimal(tokens),
-        unit="tokens",
-        raw_cost_usd=raw.quantize(SIX),
-        billable_cost_usd=billable,
         idempotency_key=charge_key(run_id, part),
+        tokens=tokens,
+        raw_cost_usd=raw,
         ref_type=ref_type,
         ref_id=ref_id,
     )

@@ -17,7 +17,6 @@ import json
 import re
 import uuid
 from collections.abc import Mapping, Sequence
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -32,13 +31,13 @@ from app.core.errors import ProblemError
 from app.flows import service, validation
 from app.flows.schemas import NODE_TYPES, AssistantRequest, FlowGraph
 from app.flows.starter import DEFAULT_LABELS, config_with_defaults, short_id
+from app.llms.charges import charge_tokens
 from app.llms.client import (
     ChatMessage,
     LlmClient,
     ModelError,
     ModelRef,
     ModelTimeout,
-    billable_cost,
     token_cost,
 )
 from app.pricing.engine import fmt6
@@ -392,21 +391,18 @@ async def ask(
                     n["position"] for n in proposed["nodes"] if n["id"] == op["node"]["id"]
                 )
 
-        raw = token_cost(model_ref.model, completion.input_tokens, completion.output_tokens)
-        billable = billable_cost(raw)
         async with db.transaction(workspace_id=workspace_id) as session:
-            await billing.charge_feature(
+            charge = await charge_tokens(
                 session,
                 workspace_id=workspace_id,
                 feature_key="flow_assistant",
-                quantity=Decimal(completion.input_tokens + completion.output_tokens),
-                unit="tokens",
-                raw_cost_usd=raw.quantize(Decimal("0.000001")),
-                billable_cost_usd=billable,
                 idempotency_key=f"flow_assistant:{uuid.uuid4().hex}",
+                tokens=completion.input_tokens + completion.output_tokens,
+                raw_cost_usd=token_cost(model_ref.model, completion.input_tokens, completion.output_tokens),
                 ref_type="agent",
                 ref_id=flow.agent_id,
             )
+        billable = charge.usage_event.billable_cost_usd
         return {
             "message": message,
             "flow_name": renamed or name,

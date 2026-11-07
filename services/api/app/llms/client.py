@@ -44,7 +44,9 @@ class ModelRef:
 
 
 def token_cost(model: str, input_tokens: int, output_tokens: int) -> Decimal:
-    """Vendor list price of one call (raw cost of a feature charge), unrounded."""
+    """Vendor list price of one call (raw cost of a feature charge), unrounded. ``model`` is a
+    ``provider/model`` reference or a bare model id; unknown models are priced as the fake's."""
+    model = model.partition("/")[2] or model
     prices = load_catalog().token_prices.get(model) or load_catalog().token_prices[FAKE_PRICE_MODEL]
     return (
         Decimal(input_tokens) * prices.input_per_mtok + Decimal(output_tokens) * prices.output_per_mtok

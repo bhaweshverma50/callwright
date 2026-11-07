@@ -78,7 +78,7 @@ def est_cost(row: EvaluatorRow, values: Mapping[str, Any], judge_models: Sequenc
     if row.cost_class != "llm_judge":
         return None
     model = str(values.get("judge_model") or judge_models[0])
-    raw = token_cost(model.partition("/")[2] or model, EST_INPUT_TOKENS, EST_OUTPUT_TOKENS)
+    raw = token_cost(model, EST_INPUT_TOKENS, EST_OUTPUT_TOKENS)
     return float(billable_cost(raw).quantize(Decimal("0.000001")))
 
 

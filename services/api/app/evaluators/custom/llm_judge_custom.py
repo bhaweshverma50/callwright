@@ -7,10 +7,18 @@ and 0 for a fail, so pass rates read the same as for every other check.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult
+from app.core.errors import field_error
+from app.evaluators.base import (
+    CustomEvaluator,
+    EvalContext,
+    EvalOutcome,
+    EvalTools,
+    ItemResult,
+    unknown_fields,
+)
 
 TASK = (
     "QUESTION: {question}\n"
@@ -19,14 +27,37 @@ TASK = (
 )
 
 
-class LlmJudgeCustom(Evaluator):
+class LlmJudgeCustom(CustomEvaluator):
     name = "llm_judge_custom"
     display_name = "Custom judge question"
     description = "Asks a judge model a yes or no question about the call."
     cost_class = "llm_judge"
 
-    def __init__(self, config: Mapping[str, Any]) -> None:
-        self.config = dict(config)
+    @classmethod
+    def validate_config(
+        cls, config: Mapping[str, Any], judge_models: Sequence[str]
+    ) -> tuple[dict[str, Any], list[dict[str, str]]]:
+        errors: list[dict[str, str]] = []
+        out: dict[str, Any] = {
+            "question": config.get("question"),
+            "pass_when": config.get("pass_when"),
+            "judge_model": config.get("judge_model") or judge_models[0],
+        }
+        question = out["question"]
+        if not isinstance(question, str) or not 5 <= len(question.strip()) <= 1000:
+            errors.append(
+                field_error("/config/question", "out_of_range", "Ask a question of 5 to 1,000 characters")
+            )
+        else:
+            out["question"] = question.strip()
+        if out["pass_when"] not in ("yes", "no"):
+            errors.append(field_error("/config/pass_when", "invalid_format", "Choose which answer passes"))
+        if out["judge_model"] not in judge_models:
+            errors.append(
+                field_error("/config/judge_model", "not_in_catalog", "Pick one of the listed judge models")
+            )
+        errors += unknown_fields(config, {"question", "pass_when", "judge_model"})
+        return out, errors
 
     async def evaluate(self, ctx: EvalContext, settings: Mapping[str, Any], tools: EvalTools) -> EvalOutcome:
         if not ctx.messages:

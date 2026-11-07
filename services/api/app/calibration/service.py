@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.calibration import math
 from app.evals.models import AgentEvalSetting
 from app.evals.views import current_runs_sql
-from app.evaluators.models import EvaluatorRow
+from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.settings import effective
 
 _CURRENT = current_runs_sql(
@@ -69,6 +69,13 @@ async def _current_threshold(session: AsyncSession, row: EvaluatorRow, agent_id:
         values, _ = effective(row.settings_schema or {}, setting.overrides if setting else None)
         return float(values["threshold"])
     return float(field["default"])
+
+
+async def _threshold_direction(session: AsyncSession, row: EvaluatorRow) -> math.Direction:
+    """The direction the evaluator's current version declared (``Evaluator.threshold_direction``)."""
+    version = await session.get(EvaluatorVersion, (row.id, row.current_version))
+    declared = (version.definition or {}).get("threshold_direction") if version is not None else None
+    return "above_fails" if declared == "above_fails" else "below_fails"
 
 
 def _row(
@@ -161,7 +168,7 @@ async def rows(
         row = _row(ev, ev_pairs, version_scope, min_sample)
         if _threshold_field(ev) is not None:
             current = await _current_threshold(session, ev, agent_id)
-            direction: math.Direction = "above_fails" if ev.output_kind == "anomaly" else "below_fails"
+            direction = await _threshold_direction(session, ev)
             row["current_threshold"] = current
             if row["n"] >= min_sample:
                 at_current = math.agreement_at(scored[evaluator_id], current, direction)

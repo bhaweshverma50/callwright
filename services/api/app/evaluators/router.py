@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
@@ -23,14 +22,13 @@ from app.evaluators import settings as eval_settings
 from app.evaluators.base import EvalTools, Unavailable
 from app.evaluators.context import build_context
 from app.evaluators.judge import Judge
-from app.evaluators.registry import instance_for
+from app.evaluators.registry import CUSTOM_TYPES, instance_for
 from app.evaluators.schemas import CustomInput, CustomPatch, TrialInput
-from app.llms.client import billable_cost
+from app.llms.charges import charge_tokens
 from app.llms.runtime import runtime
 
 router = APIRouter(tags=["evaluators"])
 EvaluatorId = Annotated[str, Depends(path_id("evl", "evaluator", "evaluator_id"))]
-SIX = Decimal("0.000001")
 
 
 def _models(request: Request) -> list[str]:
@@ -90,7 +88,7 @@ async def trial(
         if errors:
             raise validation_failed(errors)
         require_id(body.call_id, "call", "call")
-        judged = body.evaluator_type == "llm_judge_custom"
+        judged = CUSTOM_TYPES[body.evaluator_type].cost_class == "llm_judge"
         async with principal_tx(request, principal) as session:
             call = await session.get(Call, body.call_id)
             if call is None:
@@ -111,21 +109,18 @@ async def trial(
             raise ProblemError(504, "judge_unavailable", "Judge did not answer", str(exc)) from exc
         charged = None
         if judged and (outcome.input_tokens or outcome.output_tokens):
-            billable = billable_cost(outcome.raw_cost_usd)
             async with principal_tx(request, principal) as session:
-                await billing.charge_feature(
+                trial_charge = await charge_tokens(
                     session,
                     workspace_id=principal.workspace_id,
-                    feature_key="eval.llm_judge_custom",
-                    quantity=Decimal(outcome.input_tokens + outcome.output_tokens),
-                    unit="tokens",
-                    raw_cost_usd=outcome.raw_cost_usd.quantize(SIX),
-                    billable_cost_usd=billable,
+                    feature_key=evaluator.feature_key,
                     idempotency_key=f"eval_trial:{key}",
+                    tokens=outcome.input_tokens + outcome.output_tokens,
+                    raw_cost_usd=outcome.raw_cost_usd,
                     ref_type="call",
                     ref_id=call.id,
                 )
-            charged = float(billable)
+            charged = float(trial_charge.usage_event.billable_cost_usd)
         item = outcome.items[0]
         return 200, {
             "verdict": item.verdict,

@@ -251,11 +251,11 @@ async def test_finished_call_without_an_analysis_is_not_run_instead_of_pending_f
 async def test_a_full_length_summary_fits_the_table(
     client: httpx.AsyncClient, account: Account, runtime: Runtime, quality: FakeLlm
 ) -> None:
-    # The extractor allows SUMMARY_MAX characters; the database must accept that many.
+    # The extractor allows SUMMARY_MAX characters; the call row must accept that many.
     from app.analysis_vars.extractor import SUMMARY_MAX
 
     call = await scripted_call(runtime, account.workspace_id)
-    owner_sql("update call_analyses set summary = %s where call_id = %s", ("x" * SUMMARY_MAX, call.call_id))
+    owner_sql("update calls set summary = %s where id = %s", ("x" * SUMMARY_MAX, call.call_id))
     got = (await client.get(f"/v1/calls/{call.call_id}/analysis", headers=account.headers)).json()
     assert len(got["summary"]) == SUMMARY_MAX
 
