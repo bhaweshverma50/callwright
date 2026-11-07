@@ -4,6 +4,7 @@ import { api, unwrap } from "./client";
 import type { components } from "./schema";
 import type { QueryOf } from "./types";
 import { scalarLimits } from "../lib/contract.gen";
+import { saveBlob } from "../lib/download";
 
 type S = components["schemas"];
 
@@ -180,14 +181,7 @@ export async function downloadCallsCsv(search: URLSearchParams, columns: string[
   const blob = await unwrap(call);
   const { response } = await call;
   const name = /filename="?([^";]+)"?/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "calls.csv";
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  saveBlob(name, blob);
   return name;
 }
 

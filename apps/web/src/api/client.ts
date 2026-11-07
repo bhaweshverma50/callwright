@@ -129,3 +129,22 @@ export async function postForm<P extends FormPath>(
   );
   return readJson(res);
 }
+
+/** Rows per page when a loader reads a whole collection: the largest page the contract allows. */
+const ALL_PAGE_SIZE = 100;
+/** Page cap for whole-collection loaders (5,000 rows): past this a picker or menu is unusable anyway. */
+const MAX_PAGES = 50;
+
+/**
+ * Reads every page of a paged list, for pickers, menus and lists that need the whole collection.
+ * The one rule for "all": 100-row pages, stopping at the last page or after 50 pages.
+ */
+export async function fetchAll<T>(load: (page: { page: number; page_size: number }) => Promise<{ items: T[]; total_pages: number }>): Promise<T[]> {
+  const out: T[] = [];
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await load({ page, page_size: ALL_PAGE_SIZE });
+    out.push(...res.items);
+    if (page >= res.total_pages) break;
+  }
+  return out;
+}

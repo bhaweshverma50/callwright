@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FlowProblem, saveFlow, type AgentSettingsChange, type Flow, type FlowGraph } from "../../../api/flows";
+import { saveFlow, type AgentSettingsChange, type Flow, type FlowGraph } from "../../../api/flows";
 import { useUndoRedo } from "../canvas/useUndoRedo";
+import { isApiError } from "../../../api/errors";
+import { stable } from "../../../lib/stable";
 
 export type SaveOutcome =
   | { status: "saved"; flow: Flow }
@@ -8,20 +10,7 @@ export type SaveOutcome =
   | { status: "invalid"; message: string }
   | { status: "error"; error: unknown };
 
-function stable(v: unknown): string {
-  return JSON.stringify(v, (_k, value: unknown) =>
-    value && typeof value === "object" && !Array.isArray(value)
-      ? Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
-      : value,
-  );
-}
-
-/** Without positions or viewport: what makes a change worth saving. */
-function content(graph: Pick<FlowGraph, "nodes" | "edges">): string {
-  return stable({ nodes: graph.nodes, edges: graph.edges });
-}
-
-/** With positions but without the viewport: panning alone is not an unsaved change. */
+/** Steps and connections (positions included) without the viewport: panning alone is not an unsaved change. */
 function layout(graph: Pick<FlowGraph, "nodes" | "edges">): string {
   return stable({ nodes: graph.nodes, edges: graph.edges });
 }
@@ -40,7 +29,6 @@ export function useFlow(initial: Flow) {
   const [base, setBase] = useState(initial);
   const [name, setName] = useState(initial.name);
   const [saving, setSaving] = useState(false);
-  const savedContent = useRef(content(initial.graph));
   const savedLayout = useRef(layout(initial.graph));
   const viewport = useRef(initial.graph.viewport);
   const setViewport = useCallback((vp: FlowGraph["viewport"]) => {
@@ -52,7 +40,6 @@ export function useFlow(initial: Flow) {
   // connections change (never for a pan or zoom, which only replaces the viewport).
   const { nodes, edges } = graph;
   const graphDirty = useMemo(() => layout({ nodes, edges }) !== savedLayout.current, [nodes, edges]);
-  const meaningful = useMemo(() => content({ nodes, edges }) !== savedContent.current, [nodes, edges]);
   const nameDirty = name.trim() !== base.name;
   const dirty = graphDirty || nameDirty;
 
@@ -66,16 +53,15 @@ export function useFlow(initial: Flow) {
             ? { expected_draft_revision: settings.draftRevision, changes: settings.changes }
             : undefined;
         const saved = await saveFlow(base, name.trim(), { ...graph, viewport: viewport.current }, change);
-        savedContent.current = content(saved.graph);
         savedLayout.current = layout(saved.graph);
         setBase(saved);
         // Keep the canvas as it is: the server's copy only differs in masked secrets.
         history.set(saved.graph, false);
         return { status: "saved", flow: saved };
       } catch (e) {
-        if (e instanceof FlowProblem && e.status === 412)
+        if (isApiError(e) && e.status === 412)
           return { status: "conflict", code: e.code === "agent_draft_changed" ? "agent_draft_changed" : "flow_revision_conflict" };
-        if (e instanceof FlowProblem && e.status === 422) return { status: "invalid", message: e.problem.detail ?? e.problem.title };
+        if (isApiError(e) && e.status === 422) return { status: "invalid", message: e.problem.detail ?? e.problem.title };
         return { status: "error", error: e };
       } finally {
         setSaving(false);
@@ -86,7 +72,6 @@ export function useFlow(initial: Flow) {
 
   const resetTo = useCallback(
     (flow: Flow) => {
-      savedContent.current = content(flow.graph);
       savedLayout.current = layout(flow.graph);
       setBase(flow);
       setName(flow.name);
@@ -107,7 +92,6 @@ export function useFlow(initial: Flow) {
     name,
     setName,
     dirty,
-    meaningful,
     saving,
     save,
     resetTo,

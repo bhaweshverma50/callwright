@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, Radio, Rocket } from "lucide-react";
 import { useState } from "react";
-import { agentKeys, type ConfigIssue, type VersionRef } from "../../../api/agents";
-import { api } from "../../../api/client";
-import { ApiError, toProblem } from "../../../api/errors";
+import { agentChanged, type ConfigIssue, publishVersion, unpublishAgent, type VersionRef } from "../../../api/agents";
+import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, Dialog, Tooltip, toast } from "../../../components";
 import { labelFor } from "./versionLabels";
@@ -12,18 +11,10 @@ import { labelFor } from "./versionLabels";
 export function usePublish(agentId: string) {
   const qc = useQueryClient();
   const [blockers, setBlockers] = useState<ConfigIssue[] | null>(null);
-  const refresh = () => {
-    void qc.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
-    void qc.invalidateQueries({ queryKey: agentKeys.versions(agentId) });
-    void qc.invalidateQueries({ queryKey: agentKeys.lists });
-  };
+  const refresh = () => agentChanged(qc, agentId);
   const publish = useMutation({
     mutationFn: async (v: { id: string; number: number }) => {
-      const { response, error } = await api.PUT("/agents/{agent_id}/published-version", {
-        params: { path: { agent_id: agentId } },
-        body: { version_id: v.id },
-      });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
+      await publishVersion(agentId, v.id);
       return v;
     },
     onSuccess: (v) => {
@@ -35,16 +26,13 @@ export function usePublish(agentId: string) {
       });
     },
     onError: (e) => {
-      if (e instanceof ApiError && e.status === 422 && e.problem.errors?.length)
+      if (isApiError(e) && e.status === 422 && e.problem.errors?.length)
         setBlockers(e.problem.errors.map((x) => ({ pointer: x.pointer, code: x.code, message: x.message })));
       else toast({ tone: "error", title: "Not published", description: problemMessage(e, "version") });
     },
   });
   const unpublish = useMutation({
-    mutationFn: async () => {
-      const { response, error } = await api.DELETE("/agents/{agent_id}/published-version", { params: { path: { agent_id: agentId } } });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-    },
+    mutationFn: () => unpublishAgent(agentId),
     onSuccess: () => {
       refresh();
       toast({ tone: "success", title: "Agent unpublished", description: "Live channels refuse new calls until you publish a version." });

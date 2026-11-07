@@ -1,6 +1,6 @@
 import { Hourglass, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { isApiError } from "../../../api/errors";
+import { isApiError, problemAs } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Button, Dialog, OnAir } from "../../../components";
 
@@ -37,7 +37,7 @@ export function DeleteNumberDialog({
       onOpenChange(false);
     } catch (err) {
       if (isApiError(err) && err.status === 409) {
-        const n = (err.problem as unknown as { active_call_count?: number }).active_call_count;
+        const n = problemAs(err, "ActiveCallsProblem")?.active_call_count;
         if (n) {
           setCount(n);
           return;

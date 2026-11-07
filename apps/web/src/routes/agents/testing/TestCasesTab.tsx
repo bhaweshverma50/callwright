@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import type { AgentDetail } from "../../../api/agents";
 import { useFlowByAgent } from "../../../api/flows";
-import { downloadJson, isRetryable, useActionKey } from "../../../api/paid";
+import { isRetryable, useActionKey } from "../../../api/paid";
 import {
   CASES_PAGE_SIZE,
   deleteTestCase,
@@ -47,6 +47,7 @@ import { TestCaseEditor } from "./TestCaseEditor";
 import { TestRunPanel } from "./TestRunPanel";
 import { plural } from "../../../lib/format";
 import { ProblemAlert, problemText } from "../../../components/ProblemAlert";
+import { downloadJson } from "../../../lib/download";
 
 type Editing = { mode: "new" } | { mode: "edit"; tc: TestCase } | null;
 

@@ -3,9 +3,7 @@ import { Check, CircleAlert, MessageSquareText, RotateCcw, Undo2, Wallet } from 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { idempotencyKey, type PromptProposal } from "../../../api/agents";
-import { api } from "../../../api/client";
-import { ApiError, toProblem } from "../../../api/errors";
+import { generatePrompt, type PromptProposal } from "../../../api/agents";
 import { problemMessage } from "../../../api/problems";
 import { Button, Composer, Drawer, ThinkingIndicator, cn } from "../../../components";
 import { formatUsd } from "../../../lib/money";
@@ -14,6 +12,8 @@ import { DiffView } from "../versions/DiffView";
 import { syncVariables } from "./catalogs";
 import type { AgentDraft } from "./useAgentDraft";
 import { BILLING_PATH } from "../../../lib/paths";
+import { idempotencyKey } from "../../../lib/idempotency";
+import { isApiError } from "../../../api/errors";
 
 interface Turn {
   id: number;
@@ -53,10 +53,9 @@ export function AssistantPanel({
   const end = useRef<HTMLDivElement>(null);
 
   const ask = useMutation({
-    mutationFn: async (messages: { role: "user" | "assistant"; content: string }[]) => {
-      const { data, error, response } = await api.POST("/prompt-ai/generate", {
-        params: { header: { "Idempotency-Key": idempotencyKey() } },
-        body: {
+    mutationFn: (messages: { role: "user" | "assistant"; content: string }[]) =>
+      generatePrompt(
+        {
           ...(agentId && { agent_id: agentId }),
           language: draft.config.language,
           messages,
@@ -68,10 +67,8 @@ export function AssistantPanel({
               }
             : null,
         },
-      });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-      return data!;
-    },
+        idempotencyKey(),
+      ),
     onSuccess: (res) =>
       setTurns((t) => [...t, { id: ++seq.current, role: "assistant", content: res.reply, proposal: res.proposal, billed: res.billed_usd }]),
     onError: (e) =>
@@ -82,13 +79,10 @@ export function AssistantPanel({
           role: "assistant",
           content: "",
           error:
-            e instanceof ApiError && e.status === 402
+            isApiError(e) && e.status === 402
               ? { message: "Your balance is at zero, so the assistant cannot run. Add funds to continue.", credit: true }
               : {
-                  message:
-                    e instanceof ApiError && e.status === 504
-                      ? "The assistant took too long and you were not charged. Try again."
-                      : problemMessage(e),
+                  message: isApiError(e) && e.status === 504 ? "The assistant took too long and you were not charged. Try again." : problemMessage(e),
                 },
         },
       ]),

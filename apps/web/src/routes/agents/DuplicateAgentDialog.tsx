@@ -2,14 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Info, Minus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { type AgentDetail, agentKeys, type AgentSummary, idempotencyKey, useAgents, useAgentVersions } from "../../api/agents";
-import { api } from "../../api/client";
-import { ApiError, toProblem } from "../../api/errors";
+import { agentChanged, type AgentSummary, duplicateAgent, useAgents, useAgentVersions } from "../../api/agents";
 import { problemMessage } from "../../api/problems";
 import { Button, Dialog, Field, Input, Select, Skeleton, toast } from "../../components";
 import { agentPath } from "../../lib/paths";
 import { timeAgo } from "../../lib/format";
 import { AGENT_TYPES } from "./agentType";
+import { idempotencyKey } from "../../lib/idempotency";
 
 const DRAFT = "draft";
 const KEEPS = ["Prompt, greeting and variables", "Model, voice, speech and call settings", "Tools and knowledge bases, linked to the same ones"];
@@ -54,16 +53,9 @@ export function DuplicateAgentDialog({
   const nameError = name !== null && !name.trim() ? "Name the copy" : null;
 
   const duplicate = useMutation({
-    mutationFn: async () => {
-      const { data, error, response } = await api.POST("/agents/{agent_id}/duplicate", {
-        params: { path: { agent_id: source!.id }, header: { "Idempotency-Key": key.current } },
-        body: { name: copyName.trim(), ...(versionId !== DRAFT && { version_id: versionId }) },
-      });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-      return data as AgentDetail;
-    },
+    mutationFn: () => duplicateAgent(source!.id, key.current, { name: copyName.trim(), ...(versionId !== DRAFT && { version_id: versionId }) }),
     onSuccess: (copy) => {
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
+      agentChanged(qc, copy);
       onOpenChange(false);
       toast({ tone: "success", title: "Agent duplicated", description: `${copy.name} starts at version 1 and is not published.` });
       navigate(agentPath(copy));

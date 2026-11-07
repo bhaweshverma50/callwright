@@ -37,7 +37,7 @@ import {
   type StoredDetection,
   type StoredIssue,
 } from "./store";
-import { invalid, json, problem, url } from "../http";
+import { invalid, json, page, problem, url } from "../http";
 
 const notFound = () => problem(404, "not_found", "Not found", "No issue with that ID.");
 const VALIDATION_MS = 5_000;
@@ -301,15 +301,7 @@ export const issueHandlers = [
       .filter((i) => Date.parse(i.last_seen_at) >= since)
       .filter((i) => !appliedVersion || i.applied_agent_version_id === appliedVersion)
       .sort((a, b) => b.affected_call_count - a.affected_call_count || b.last_seen_at.localeCompare(a.last_seen_at));
-    const page = Math.max(1, Number(q.get("page") ?? 1));
-    const size = Math.min(100, Math.max(1, Number(q.get("page_size") ?? 20)));
-    return json({
-      items: rows.slice((page - 1) * size, page * size).map(summary),
-      total: rows.length,
-      page,
-      page_size: size,
-      total_pages: Math.max(1, Math.ceil(rows.length / size)),
-    });
+    return json(page(rows.map(summary), q));
   }),
 
   http.get(url("/issues/:id"), ({ request, params }) => {
@@ -323,16 +315,7 @@ export const issueHandlers = [
     log(request);
     const issue = find(String(params.id));
     if (!issue) return notFound();
-    const q = new URL(request.url).searchParams;
-    const page = Math.max(1, Number(q.get("page") ?? 1));
-    const size = Math.min(100, Math.max(1, Number(q.get("page_size") ?? 20)));
-    return json({
-      items: issue.samples.slice((page - 1) * size, page * size),
-      total: issue.samples.length,
-      page,
-      page_size: size,
-      total_pages: Math.max(1, Math.ceil(issue.samples.length / size)),
-    });
+    return json(page(issue.samples, request));
   }),
 
   http.get(url("/issues/:id/fixes"), ({ request, params }) => {

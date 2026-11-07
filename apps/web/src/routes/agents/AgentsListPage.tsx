@@ -20,19 +20,19 @@ import { AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Link } from "react-router";
 import {
-  agentKeys,
-  type AgentPage,
+  agentDeleted,
   type AgentSort,
   type AgentStatus,
   type AgentSummary,
   type AgentType,
+  deleteAgent,
   PAGE_SIZE,
   useAgents,
   useLlmCatalog,
   useVoiceCatalog,
 } from "../../api/agents";
-import { api } from "../../api/client";
-import { ApiError, toProblem } from "../../api/errors";
+import { problemFor } from "../../api/errors";
+import type { ProblemFor } from "../../api/types";
 import { problemMessage } from "../../api/problems";
 import {
   Badge,
@@ -97,11 +97,7 @@ const PARTS = [
   { key: "voice", label: "Voice", icon: <Volume2 aria-hidden /> },
   { key: "caller", label: "Caller", icon: <Phone aria-hidden /> },
 ];
-interface Attachment {
-  kind: string;
-  id: string;
-  label: string;
-}
+type Attachment = NonNullable<ProblemFor<"/agents/{agent_id}", "delete", 409>["attachments"]>[number];
 
 /**
  * Agents list (T051, US2): status tabs with counts (all, live, drafts, needs attention), search by
@@ -136,28 +132,20 @@ export function AgentsListPage() {
 
   const remove = useMutation({
     mutationFn: async (a: AgentSummary) => {
-      const { error, response } = await api.DELETE("/agents/{agent_id}", { params: { path: { agent_id: a.id } } });
-      if (!response.ok) {
-        // 409 agent_in_use carries the attachments to remove first; keep them next to the problem.
-        const attachments = (error as { attachments?: Attachment[] } | undefined)?.attachments ?? [];
-        throw Object.assign(new ApiError(response.status, toProblem(response.status, error)), { attachments });
-      }
+      await deleteAgent(a.id);
       return a;
     },
     onSuccess: (a) => {
       setDeleting(null);
-      qc.setQueriesData<AgentPage>({ queryKey: agentKeys.lists, predicate: (q) => !Array.isArray(q.state.data) }, (old) =>
-        old ? { ...old, items: old.items.filter((x) => x.id !== a.id), total: Math.max(0, old.total - 1) } : old,
-      );
-      qc.removeQueries({ queryKey: agentKeys.detail(a.id) });
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
+      agentDeleted(qc, a.id);
       toast({ tone: "success", title: "Agent deleted", description: `${a.name} is gone from the list. Past calls keep their configuration.` });
     },
     onError: (e, a) => {
       setDeleting(null);
-      if (e instanceof ApiError && e.status === 409) {
-        setInUse({ agent: a, attachments: (e as ApiError & { attachments?: Attachment[] }).attachments ?? [] });
-      } else toast({ tone: "error", title: "Not deleted", description: problemMessage(e, "agent") });
+      // 409 agent_in_use lists the attachments to remove first.
+      const conflict = problemFor(e, "/agents/{agent_id}", "delete", 409);
+      if (conflict) setInUse({ agent: a, attachments: conflict.attachments ?? [] });
+      else toast({ tone: "error", title: "Not deleted", description: problemMessage(e, "agent") });
     },
   });
 

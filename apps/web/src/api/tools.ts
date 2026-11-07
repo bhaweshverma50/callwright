@@ -3,7 +3,7 @@
  * schema.d.ts. A tool's config is the one its type names (`ConfigByType`).
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, unwrap } from "./client";
+import { api, fetchAll, unwrap } from "./client";
 import type { components } from "./schema";
 import type { BodyOf, ResponseOf } from "./types";
 import { schemaLimits } from "../lib/contract.gen";
@@ -66,13 +66,7 @@ export function useToolsByIds(ids: string[]) {
   return useQuery({
     queryKey: toolKeys.byIds(ids),
     queryFn: async () => {
-      const found = new Map<string, Tool>();
-      // The library is small (agents use at most 25 tools); page through it once.
-      for (let page = 1; page < 50; page++) {
-        const res = await unwrap(api.GET("/tools", { params: { query: { page, page_size: 100 } } }));
-        for (const t of res.items) found.set(t.id, t);
-        if (page >= res.total_pages) break;
-      }
+      const found = new Map((await fetchAll((query) => unwrap(api.GET("/tools", { params: { query } })))).map((t) => [t.id, t]));
       return ids.map((id) => found.get(id)).filter((t): t is Tool => Boolean(t));
     },
     placeholderData: keepPreviousData,

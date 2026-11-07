@@ -24,7 +24,7 @@ import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
 import { withoutLineRefs } from "../../../lib/text";
 import { NAME_RULE, toMachineName } from "../../../lib/machineName";
 import { usd, when } from "../../../lib/format";
-import { idempotencyKey } from "../../../api/agents";
+import { idempotencyKey } from "../../../lib/idempotency";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };

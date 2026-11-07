@@ -4,11 +4,10 @@
  * from specs/007-quality-evals/contracts; hooks are TanStack Query.
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { idempotencyKey } from "./agents";
 import { api, unwrap } from "./client";
-import { isApiError } from "./errors";
 import type { components } from "./schema";
 import type { BodyOf, QueryOf, ResponseOf } from "./types";
+import { idempotencyKey } from "../lib/idempotency";
 
 type S = components["schemas"];
 
@@ -57,19 +56,6 @@ export const qualityKeys = {
   calibrationRows: (agentId: string, lookback: number, scope: string) => ["quality", "calibration", "rows", agentId, lookback, scope] as const,
   calibrationSummary: (agentId: string, lookback: number) => ["quality", "calibration", "summary", agentId, lookback] as const,
 };
-
-/** Field message for a settings key from a 422, whether the server names it by JSON pointer
- * ("/overrides/sample_rate_pct") or by dotted field ("overrides.sample_rate_pct"). */
-export function settingErrors(err: unknown): Record<string, string> {
-  if (!isApiError(err)) return {};
-  const out: Record<string, string> = {};
-  for (const fe of (err.problem.errors ?? []) as { pointer?: string; field?: string; message: string }[]) {
-    const raw = fe.field ?? fe.pointer ?? "";
-    const key = raw.split(/[/.]/).filter(Boolean).pop() ?? "";
-    out[key] ??= fe.message;
-  }
-  return out;
-}
 
 // Analysis variables (US1) -------------------------------------------------------------------
 

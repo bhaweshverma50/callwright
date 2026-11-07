@@ -22,7 +22,7 @@ import {
 } from "./webCall";
 import { queryClient } from "../api/queryClient";
 import { callKeys } from "../api/calls";
-import { idempotencyKey } from "../api/agents";
+import { idempotencyKey } from "../lib/idempotency";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 

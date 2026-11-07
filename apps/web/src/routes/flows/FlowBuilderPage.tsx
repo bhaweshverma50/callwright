@@ -5,7 +5,7 @@ import { ChevronLeft, CircleAlert, History, ListChecks, MessageSquareText, Play,
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { type AgentDetail, agentKeys, useAgent } from "../../api/agents";
+import { type AgentDetail, agentChanged, useAgent } from "../../api/agents";
 import {
   fetchFlowByAgent,
   flowKeys,
@@ -35,7 +35,11 @@ import { PublishDialog } from "./panels/PublishDialog";
 import { ValidationPanel } from "./panels/ValidationPanel";
 import { FlowTestPanel } from "./test/FlowTestPanel";
 import { AGENTS_PATH, isAgentId } from "../../lib/paths";
-import { type Catalogs, LoadFailure, stable, useAgentDraft, useCatalogs, useSaveShortcut, VersionDrawer } from "../agents/config";
+import type { Catalogs } from "../agents/editor/catalogs";
+import { LoadFailure, useCatalogs, useSaveShortcut } from "../agents/editor/editorShell";
+import { useAgentDraft } from "../agents/editor/useAgentDraft";
+import { VersionDrawer } from "../agents/versions/VersionDrawer";
+import { stable } from "../../lib/stable";
 
 /**
  * Flow builder (T030, T108) at /agents/:id/flow: canvas, side panel and header. Loads the agent,
@@ -103,7 +107,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       qc.setQueryData(flowKeys.byAgent(agent.id), out.flow);
       const fresh = await live.refetch();
       if (fresh.data) settings.resetTo(fresh.data);
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
+      agentChanged(qc, fresh.data ?? agent.id);
       toast({
         tone: "success",
         title: "Saved",
@@ -396,8 +400,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
           setTab("problems");
         }}
         onPublished={() => {
-          void live.refetch();
-          void qc.invalidateQueries({ queryKey: agentKeys.versions(agent.id) });
+          agentChanged(qc, agent.id);
         }}
       />
       <GlobalSettingsDrawer

@@ -12,7 +12,7 @@ import { onOpenAsk } from "./bus";
 import { BILLING_PATH } from "../../lib/paths";
 import { viewerTimeZone } from "../../lib/format";
 import { isInsufficientCredit } from "../../api/paid";
-import { idempotencyKey } from "../../api/agents";
+import { idempotencyKey } from "../../lib/idempotency";
 
 type Turn = { role: "user"; content: string } | { role: "assistant"; content: string; answer: ChatAnswer };
 type Failure = { kind: "credit" | "busy" | "unavailable" | "other"; title: string; message: string };

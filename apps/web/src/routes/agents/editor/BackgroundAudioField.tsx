@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileAudio, Music4, Pause, Play, Trash2, Upload, Volume1 } from "lucide-react";
 import { useRef } from "react";
-import { agentKeys, useAmbientAudio, type AmbientAudioFile } from "../../../api/agents";
-import { api, postForm, unwrap } from "../../../api/client";
+import { agentKeys, deleteAmbientAudio, useAmbientAudio, type AmbientAudioFile } from "../../../api/agents";
+import { postForm } from "../../../api/client";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Button, FieldRow, IconButton, Select, SwitchControl, TruncatedText, toast } from "../../../components";
@@ -69,7 +69,7 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
       }),
   });
   const remove = useMutation({
-    mutationFn: (key: string) => unwrap(api.DELETE("/voices/ambient-audio", { params: { query: { key } } })),
+    mutationFn: deleteAmbientAudio,
     onSuccess: (_d, key) => {
       qc.setQueryData<{ items: AmbientAudioFile[] }>(agentKeys.ambient, (old) => ({ items: (old?.items ?? []).filter((u) => u.key !== key) }));
       toast({ tone: "success", title: "Sound deleted" });

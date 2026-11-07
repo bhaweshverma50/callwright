@@ -3,14 +3,13 @@ import { MailCheck, RefreshCw, UserPlus } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { register, resendVerification } from "../../api/auth";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { startSession } from "../../api/session";
 import { Button, Field, FormAlert, Input } from "../../components";
-import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
-import { mockVerifyToken } from "../../mocks/demoAccount";
+import { demoHints } from "../../lib/demoHints";
 import { AUTH_PAGES } from "../../lib/paths";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -25,9 +24,10 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
+  const hints = demoHints();
 
-  const register = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/register", { body: { email: email.trim(), password } })),
+  const signUp = useMutation({
+    mutationFn: () => register(email.trim(), password),
     onSuccess: (result) => {
       if (result.status !== "signed_in") return;
       startSession(result);
@@ -35,10 +35,10 @@ export function Register() {
     },
   });
   const resend = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/verify-email/resend", { body: { email: email.trim() } })),
+    mutationFn: () => resendVerification(email.trim()),
   });
 
-  const fe = fieldErrors(register.error);
+  const fe = fieldErrors(signUp.error);
   const emailErr = fe.email ?? (touched && !EMAIL.test(email.trim()) ? "Enter a valid email address." : undefined);
   const pwErr = fe.password ?? (touched && password.length < MIN_PASSWORD ? `Use at least ${MIN_PASSWORD} characters.` : undefined);
 
@@ -46,10 +46,10 @@ export function Register() {
     e.preventDefault();
     setTouched(true);
     if (!EMAIL.test(email.trim()) || password.length < MIN_PASSWORD) return;
-    register.mutate();
+    signUp.mutate();
   };
 
-  if (register.isSuccess && register.data.status !== "signed_in") {
+  if (signUp.isSuccess && signUp.data.status !== "signed_in") {
     const addr = email.trim().toLowerCase();
     return (
       <AuthLayout
@@ -75,16 +75,16 @@ export function Register() {
             >
               {resend.isSuccess ? "Link sent again" : "Send it again"}
             </Button>
-            <Button variant="ghost" onClick={() => register.reset()}>
+            <Button variant="ghost" onClick={() => signUp.reset()}>
               Use a different email
             </Button>
           </div>
-          {env.mocks && (
+          {hints && (
             <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
               <Link
                 className="link-underline text-accent-text"
-                to={`${AUTH_PAGES.verifyEmail}?token_hash=${encodeURIComponent(mockVerifyToken(addr))}`}
+                to={`${AUTH_PAGES.verifyEmail}?token_hash=${encodeURIComponent(hints.verifyToken(addr))}`}
               >
                 Open the verification link
               </Link>
@@ -95,7 +95,7 @@ export function Register() {
     );
   }
 
-  const formError = register.error && Object.keys(fe).length === 0 ? problemMessage(register.error) : null;
+  const formError = signUp.error && Object.keys(fe).length === 0 ? problemMessage(signUp.error) : null;
 
   return (
     <AuthLayout
@@ -143,7 +143,7 @@ export function Register() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={register.isPending} className="mt-1 w-full" icon={<UserPlus aria-hidden />}>
+        <Button type="submit" variant="primary" size="lg" pending={signUp.isPending} className="mt-1 w-full" icon={<UserPlus aria-hidden />}>
           Create account
         </Button>
         <p className="text-[12px] leading-relaxed text-fg-3">

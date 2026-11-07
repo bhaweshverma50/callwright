@@ -1,6 +1,6 @@
 import { CircleAlert, CircleCheck, Eye, Rocket, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { compileFlow, FlowProblem, publishFlow, type CompileResult, type FlowValidationResult, type ValidationIssue } from "../../../api/flows";
+import { compileFlow, publishFlow, publishIssues, type CompileResult, type FlowValidationResult, type ValidationIssue } from "../../../api/flows";
 import { problemMessage } from "../../../api/problems";
 import { Button, Dialog, Field, Skeleton, Textarea, toast } from "../../../components";
 import { CompilePreview } from "./CompilePreview";
@@ -48,7 +48,7 @@ export function PublishDialog({
       onPublished(out.version_number);
       onOpenChange(false);
     } catch (e) {
-      if (e instanceof FlowProblem && e.issues.length) onIssues(e.issues);
+      if (publishIssues(e).length) onIssues(publishIssues(e));
       toast({ tone: "error", title: "Not published", description: problemMessage(e, "flow") });
     } finally {
       setPending(false);

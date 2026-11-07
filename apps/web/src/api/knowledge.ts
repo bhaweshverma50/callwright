@@ -3,10 +3,11 @@
  * Uploads use XMLHttpRequest so the dialog can show upload progress.
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, apiUrl, readJson, sendAuthorized, unwrap } from "./client";
+import { api, apiUrl, fetchAll, readJson, sendAuthorized, unwrap } from "./client";
 import type { components } from "./schema";
 import type { ResponseOf } from "./types";
 import { operationExtensions, schemaLimits } from "../lib/contract.gen";
+import { isApiError } from "./errors";
 
 type S = components["schemas"];
 
@@ -45,15 +46,7 @@ export function useKnowledgeBases(search: string, page = 1, pageSize = 24) {
 export function useAllKnowledgeBases(enabled = true) {
   return useQuery({
     queryKey: kbKeys.attachable,
-    queryFn: async () => {
-      const out: KnowledgeBase[] = [];
-      for (let page = 1; page < 50; page++) {
-        const res = await unwrap(api.GET("/knowledge-bases", { params: { query: { page, page_size: 100 } } }));
-        out.push(...res.items);
-        if (page >= res.total_pages) break;
-      }
-      return out;
-    },
+    queryFn: () => fetchAll((query) => unwrap(api.GET("/knowledge-bases", { params: { query } }))),
     enabled,
   });
 }
@@ -129,4 +122,46 @@ export async function uploadDocument(kbId: string, file: File, opts: UploadOptio
 export async function documentUrl(kbId: string, docId: string): Promise<string> {
   const res = await unwrap(api.GET("/knowledge-bases/{kb_id}/documents/{doc_id}/url", { params: { path: { kb_id: kbId, doc_id: docId } } }));
   return res.url;
+}
+
+export async function deleteDocument(kbId: string, docId: string) {
+  await unwrap(api.DELETE("/knowledge-bases/{kb_id}/documents/{doc_id}", { params: { path: { kb_id: kbId, doc_id: docId } } }));
+}
+
+export function reprocessDocument(kbId: string, docId: string) {
+  return unwrap(api.POST("/knowledge-bases/{kb_id}/documents/{doc_id}/reprocess", { params: { path: { kb_id: kbId, doc_id: docId } } }));
+}
+
+/** An agent using a knowledge base, as the 409 `kb_in_use` lists them. */
+export interface KbUser {
+  agent_id: string;
+  agent_name: string;
+}
+
+/**
+ * Deletes a knowledge base. Without `confirm`, a base attached to agents answers 409 with the agents
+ * using it (read them with kbUsersOf).
+ */
+export async function deleteKnowledgeBase(kbId: string, confirm: boolean) {
+  await unwrap(api.DELETE("/knowledge-bases/{kb_id}", { params: { path: { kb_id: kbId }, query: { confirm } } }));
+}
+
+/**
+ * The agents a 409 from deleteKnowledgeBase lists, or null for any other error. The contract does
+ * not declare this field yet (the API sends it), so its shape is checked here.
+ */
+export function kbUsersOf(err: unknown): KbUser[] | null {
+  if (!isApiError(err) || err.status !== 409) return null;
+  const agents = err.problem.agents;
+  return Array.isArray(agents) ? agents.filter((a): a is KbUser => typeof a?.agent_id === "string" && typeof a?.agent_name === "string") : [];
+}
+
+export function saveKnowledgeBase(existingId: string | null, body: { name: string; description: string }) {
+  return unwrap(
+    existingId ? api.PATCH("/knowledge-bases/{kb_id}", { params: { path: { kb_id: existingId } }, body }) : api.POST("/knowledge-bases", { body }),
+  );
+}
+
+export function searchKnowledgeBase(kbId: string, query: string) {
+  return unwrap(api.POST("/knowledge-bases/{kb_id}/search", { params: { path: { kb_id: kbId } }, body: { query, top_k: 4 } }));
 }

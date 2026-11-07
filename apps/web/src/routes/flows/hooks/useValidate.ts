@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useCallback, useMemo, useRef } from "react";
 import { flowKeys, validateFlow, type FlowGraph, type FlowValidationResult } from "../../../api/flows";
 import { useDebounced } from "../../../lib/useDebounced";
-import { stable } from "../../agents/config";
+import { stable } from "../../../lib/stable";
 
 export const VALIDATE_DEBOUNCE_MS = 600;
 

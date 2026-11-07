@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import {
   type AgentDetail,
-  agentKeys,
-  etag,
+  agentChanged,
+  restoreVersion,
   type SaveResult,
   useAgentVersions,
   useLlmCatalog,
@@ -13,8 +13,6 @@ import {
   type VersionSource,
   type VersionSummary,
 } from "../../../api/agents";
-import { api } from "../../../api/client";
-import { ApiError, toProblem } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import {
   Badge,
@@ -36,6 +34,7 @@ import { llmLabel } from "../editor/catalogs";
 import { usePublish } from "./PublishButton";
 import { VersionCompare } from "./VersionCompare";
 import { timeAgo } from "../../../lib/format";
+import { isApiError } from "../../../api/errors";
 
 const SOURCE: Record<VersionSource, string> = {
   create: "Created",
@@ -84,20 +83,15 @@ export function VersionDrawer({
   const live = items.find((v) => v.is_published);
 
   const restore = useMutation({
-    mutationFn: async ({ v, andPublish }: { v: VersionSummary; andPublish: boolean }) => {
-      const { data, error, response } = await api.POST("/agents/{agent_id}/versions/{version_id}/restore", {
-        params: { path: { agent_id: agent.id, version_id: v.id }, header: { "If-Match": etag(revision) } },
-        body: { publish: andPublish },
-      });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-      return { result: data as SaveResult, v, andPublish };
-    },
+    mutationFn: async ({ v, andPublish }: { v: VersionSummary; andPublish: boolean }) => ({
+      result: await restoreVersion(agent.id, v.id, revision, andPublish),
+      v,
+      andPublish,
+    }),
     onSuccess: ({ result, v, andPublish }) => {
       setRestoring(null);
       onRestored(result);
-      qc.setQueryData(agentKeys.detail(agent.id), result.agent);
-      void qc.invalidateQueries({ queryKey: agentKeys.versions(agent.id) });
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
+      agentChanged(qc, result.agent);
       toast({
         tone: "success",
         title: `Version ${v.version_number} restored as version ${result.version.version_number}`,
@@ -113,8 +107,7 @@ export function VersionDrawer({
       toast({
         tone: "error",
         title: "Not restored",
-        description:
-          e instanceof ApiError && e.status === 412 ? "This agent changed in another tab. Reload it, then restore." : problemMessage(e, "version"),
+        description: isApiError(e) && e.status === 412 ? "This agent changed in another tab. Reload it, then restore." : problemMessage(e, "version"),
       });
     },
   });

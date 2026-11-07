@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { FileSearch, Search, SearchX, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { api, unwrap } from "../../api/client";
+import { searchKnowledgeBase } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, Input, Panel } from "../../components";
 
@@ -23,8 +23,7 @@ function pages(from?: number | null, to?: number | null): string | null {
 export function SearchPreviewPanel({ kbId, disabled }: { kbId: string; disabled?: boolean }) {
   const [query, setQuery] = useState("");
   const search = useMutation({
-    mutationFn: (q: string) =>
-      unwrap(api.POST("/knowledge-bases/{kb_id}/search", { params: { path: { kb_id: kbId } }, body: { query: q, top_k: 4 } })),
+    mutationFn: (q: string) => searchKnowledgeBase(kbId, q),
   });
   const data = search.data;
   return (

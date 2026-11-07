@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { createAgentFromTemplate, idempotencyKey, useAgents } from "../../api/agents";
+import { createAgentFromTemplate, useAgents } from "../../api/agents";
 import { api, unwrap } from "../../api/client";
 import { useSaveOnboarding, usePreferences } from "../../api/preferences";
 import { problemMessage } from "../../api/problems";
@@ -12,6 +12,7 @@ import { ResumeChip } from "./ResumeChip";
 import { COUNTED, STEPS, agentInPath, onStepPage, stepPath } from "./steps";
 import { TourOverlay, type StepProgress } from "./TourOverlay";
 import { WelcomeCard } from "./WelcomeCard";
+import { idempotencyKey } from "../../lib/idempotency";
 
 const AGENT_KEY = "cw.tour.agent";
 /** Pause after the real action before moving on, so the user sees what they did land. */

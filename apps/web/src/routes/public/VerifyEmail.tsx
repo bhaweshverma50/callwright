@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { resendVerification, verifyEmail } from "../../api/auth";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import type { Session } from "../../api/types";
@@ -16,7 +16,7 @@ const inflight = new Map<string, Promise<Session>>();
 function verifyOnce(token_hash: string) {
   let p = inflight.get(token_hash);
   if (!p) {
-    p = unwrap(api.POST("/auth/verify-email", { body: { token_hash } }));
+    p = verifyEmail(token_hash);
     inflight.set(token_hash, p);
   }
   return p;
@@ -78,7 +78,7 @@ export function VerifyEmail() {
 function ResendForm() {
   const [email, setEmail] = useState("");
   const resend = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/verify-email/resend", { body: { email: email.trim() } })),
+    mutationFn: () => resendVerification(email.trim()),
   });
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();

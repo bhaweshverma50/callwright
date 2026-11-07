@@ -6,21 +6,22 @@
  */
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { api } from "../../../api/client";
-import { ApiError } from "../../../api/errors";
-import { toProblem } from "../../../api/errors";
+import { isApiError, problemAs } from "../../../api/errors";
 import {
+  agentChanged,
   type AgentConfig,
   type AgentDetail,
   agentKeys,
   type AgentType,
   type ConfigIssue,
   type ConfigValidationResult,
-  etag,
-  idempotencyKey,
-  type SaveResult,
+  createAgent,
+  saveAgentDraft,
+  validateAgentConfig,
 } from "../../../api/agents";
 import { useDebounced } from "../../../lib/useDebounced";
+import { idempotencyKey } from "../../../lib/idempotency";
+import { stable } from "../../../lib/stable";
 
 export interface DraftBase {
   id: string | null;
@@ -44,26 +45,6 @@ export function nameProblem(name: string): string | null {
   return null;
 }
 
-/** JSON with sorted keys, so two configs with the same content compare equal. */
-export function stable(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
-  if (v && typeof v === "object")
-    return `{${Object.keys(v)
-      .sort()
-      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
-      .map((k) => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`)
-      .join(",")}}`;
-  return JSON.stringify(v ?? null);
-}
-
-async function validate(type: AgentType, config: AgentConfig, agentId: string | null): Promise<ConfigValidationResult> {
-  const { data, error, response } = await api.POST("/agents/validate", {
-    body: { type, config: config, ...(agentId && { agent_id: agentId }) },
-  });
-  if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-  return data as ConfigValidationResult;
-}
-
 export function useAgentDraft(initial: DraftBase, type: AgentType) {
   const qc = useQueryClient();
   const [base, setBase] = useState(initial);
@@ -80,7 +61,7 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
 
   const validation = useQuery({
     queryKey: agentKeys.validate(type, base.id, debouncedKey),
-    queryFn: () => validate(type, debouncedConfig, base.id),
+    queryFn: () => validateAgentConfig(type, debouncedConfig, base.id),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
@@ -159,7 +140,7 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
       setSubmitted(true);
       let fresh: ConfigValidationResult;
       try {
-        fresh = await validate(type, config, base.id);
+        fresh = await validateAgentConfig(type, config, base.id);
       } catch (error) {
         return { status: "error", error };
       }
@@ -171,39 +152,26 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
       if (all.length) return { status: "invalid", issues: all };
 
       const cfg = fresh.normalized_config;
-      let res: Awaited<ReturnType<typeof api.POST>> | Awaited<ReturnType<typeof api.PUT>>;
+      let saved: { detail: AgentDetail; created: boolean; versionNumber: number };
       try {
-        res = base.id
-          ? await api.PUT("/agents/{agent_id}/draft", {
-              params: { path: { agent_id: base.id }, header: { "If-Match": etag(base.revision) } },
-              body: { config: cfg, name: name.trim(), ...(note?.trim() && { note: note.trim() }) },
-            })
-          : await api.POST("/agents", {
-              params: { header: { "Idempotency-Key": createKey.current } },
-              body: { name: name.trim(), type, language: cfg.language, config: cfg },
-            });
+        if (base.id) {
+          const out = await saveAgentDraft(base.id, base.revision, { config: cfg, name: name.trim(), ...(note?.trim() && { note: note.trim() }) });
+          saved = { detail: out.agent, created: out.created, versionNumber: out.version.version_number };
+        } else {
+          const detail = await createAgent({ name: name.trim(), type, language: cfg.language, config: cfg }, createKey.current);
+          saved = { detail, created: true, versionNumber: detail.draft_version.version_number };
+        }
       } catch (error) {
+        if (isApiError(error) && error.status === 412)
+          return { status: "conflict", currentRevision: problemAs(error, "RevisionConflictProblem")?.current_revision ?? null };
+        if (isApiError(error) && error.status === 422)
+          return { status: "invalid", issues: (error.problem.errors ?? []).map((e) => ({ pointer: e.pointer, code: e.code, message: e.message })) };
         return { status: "error", error };
       }
-      const { response, data, error } = res as { response: Response; data?: unknown; error?: unknown };
-      if (response.status === 412) {
-        const p = error as { current_revision?: number } | undefined;
-        return { status: "conflict", currentRevision: p?.current_revision ?? null };
-      }
-      if (response.status === 422) {
-        const problem = toProblem(422, error);
-        return { status: "invalid", issues: (problem.errors ?? []).map((e) => ({ pointer: e.pointer, code: e.code, message: e.message })) };
-      }
-      if (!response.ok) return { status: "error", error: new ApiError(response.status, toProblem(response.status, error)) };
-
-      const detail = base.id ? (data as SaveResult).agent : (data as AgentDetail);
-      const created = base.id ? (data as SaveResult).created : true;
-      const versionNumber = base.id ? (data as SaveResult).version.version_number : detail.draft_version.version_number;
+      const { detail, created, versionNumber } = saved;
       createKey.current = idempotencyKey();
       resetTo(detail);
-      qc.setQueryData(agentKeys.detail(detail.id), detail);
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
-      void qc.invalidateQueries({ queryKey: agentKeys.versions(detail.id) });
+      agentChanged(qc, detail);
       return { status: "saved", detail, created, versionNumber };
     },
     [type, config, base, name, nameError, local, qc, configKey, resetTo],

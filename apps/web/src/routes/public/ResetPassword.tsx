@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { confirmPasswordReset } from "../../api/auth";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { KeyRound, Send } from "lucide-react";
@@ -19,7 +19,7 @@ export function ResetPassword() {
   const [touched, setTouched] = useState(false);
 
   const reset = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/password-reset/confirm", { body: { token_hash: token, new_password: pw } })),
+    mutationFn: () => confirmPasswordReset(token, pw),
     onSuccess: () => navigate("/login?reset=1", { replace: true }),
   });
 

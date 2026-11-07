@@ -6,7 +6,7 @@
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { callKeys } from "./calls";
-import { api, postForm, unwrap } from "./client";
+import { api, fetchAll, postForm, unwrap } from "./client";
 import type { components } from "./schema";
 import type { ResponseOf } from "./types";
 
@@ -115,7 +115,7 @@ export const waKeys = {
 export function useWhatsAppChannels() {
   return useQuery({
     queryKey: waKeys.list,
-    queryFn: () => unwrap(api.GET("/whatsapp/channels", { params: { query: { page: 1, page_size: 100 } } })),
+    queryFn: async () => ({ items: await fetchAll((query) => unwrap(api.GET("/whatsapp/channels", { params: { query } }))) }),
     refetchInterval: (q) => (q.state.data?.items.some((c) => c.status === "setup_incomplete" || c.status === "draining") ? 5000 : false),
   });
 }

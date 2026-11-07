@@ -4,7 +4,7 @@
  * the server creates and charges one record; a new action gets a new key.
  */
 import { useCallback, useRef } from "react";
-import { idempotencyKey } from "./agents";
+import { idempotencyKey } from "../lib/idempotency";
 import { isApiError } from "./errors";
 
 export interface ActionKey {
@@ -31,17 +31,4 @@ export function isInsufficientCredit(err: unknown): boolean {
 /** A retry is worth reusing the key for: the request may have reached the server. */
 export function isRetryable(err: unknown): boolean {
   return !isApiError(err) || err.status === 0 || err.status >= 500;
-}
-
-/** Saves a JSON value as a file download. */
-export function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const href = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(href), 1_000);
 }

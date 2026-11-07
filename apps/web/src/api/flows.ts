@@ -5,7 +5,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
-import { ApiError, toProblem } from "./errors";
+import { isApiError, problemAs } from "./errors";
 import type { components } from "./schema";
 import type { BodyOf } from "./types";
 
@@ -86,23 +86,13 @@ export async function createFlowAgent(name: string, language: string) {
   return { ...body, flow: typedFlow(body.flow) };
 }
 
-/** A failed call that keeps the validation issues the problem body carried (publish). */
-export class FlowProblem extends ApiError {
-  readonly issues: ValidationIssue[];
-  constructor(status: number, body: unknown) {
-    super(status, toProblem(status, body));
-    this.issues = body && typeof body === "object" && "issues" in body && Array.isArray(body.issues) ? body.issues : [];
-  }
-}
-
-async function keep<T>(call: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
-  const { data, error, response } = await call;
-  if (response.ok) return data as T;
-  throw new FlowProblem(response.status, error);
+/** The validation issues a failed publish carried (FlowErrorsProblem), or none. */
+export function publishIssues(err: unknown): ValidationIssue[] {
+  return (isApiError(err) && problemAs(err, "FlowErrorsProblem")?.issues) || [];
 }
 
 export async function saveFlow(flow: { id: string; revision: number }, name: string, graph: FlowGraph, agentSettings?: AgentSettingsChange) {
-  const body = await keep(
+  const body = await unwrap(
     api.PUT("/flows/{flow_id}", {
       params: { path: { flow_id: flow.id }, header: { "If-Match": `"${flow.revision}"` } },
       body: { name, graph, ...(agentSettings ? { agent_settings: agentSettings } : {}) },
@@ -120,7 +110,7 @@ export async function compileFlow(flowId: string) {
 }
 
 export async function publishFlow(flowId: string, expectedRevision: number, releaseNotes: string) {
-  return keep(
+  return unwrap(
     api.POST("/flows/{flow_id}/publish", {
       params: { path: { flow_id: flowId } },
       body: { expected_revision: expectedRevision, ...(releaseNotes.trim() ? { release_notes: releaseNotes.trim() } : {}) },
@@ -129,7 +119,7 @@ export async function publishFlow(flowId: string, expectedRevision: number, rele
 }
 
 export async function askAssistant(flowId: string, messages: ChatTurn[], baseRevision: number, graph: FlowGraph | null, signal?: AbortSignal) {
-  const out = await keep(
+  const out = await unwrap(
     api.POST("/flows/{flow_id}/assistant", {
       params: { path: { flow_id: flowId } },
       body: { messages, base_revision: baseRevision, ...(graph ? { graph } : {}) },

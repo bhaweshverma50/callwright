@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, ChevronLeft, Languages, Tag } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { agentKeys, useVoiceCatalog } from "../../api/agents";
+import { agentChanged, useVoiceCatalog } from "../../api/agents";
 import { createFlowAgent } from "../../api/flows";
 import { problemMessage } from "../../api/problems";
 import { Button, Field, Input, Select, Skeleton, cn, toast } from "../../components";
@@ -36,7 +36,7 @@ export function NewFlowAgentPage() {
     setPending(true);
     try {
       const out = await createFlowAgent(name.trim(), language);
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
+      agentChanged(qc, out.agent_id);
       for (const w of out.warnings ?? []) toast({ title: "Language defaults", description: w });
       navigate(agentFlowPath(out.agent_id), { replace: true });
     } catch (e) {

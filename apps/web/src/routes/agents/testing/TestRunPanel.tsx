@@ -7,7 +7,6 @@ import { ClipboardText } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleStop, Download, History } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { downloadJson } from "../../../api/paid";
 import {
   cancelTestRun,
   exportTestRun,
@@ -23,6 +22,7 @@ import { Badge, Button, EmptyState, Figure, Panel, ProgressBar, Segmented, Selec
 import { ResultRow } from "./ResultRow";
 import { costUsd, timeAgo } from "../../../lib/format";
 import { problemText } from "../../../components/ProblemAlert";
+import { downloadJson } from "../../../lib/download";
 
 type Filter = "all" | "failed" | "error" | "manual";
 

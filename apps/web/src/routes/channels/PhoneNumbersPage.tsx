@@ -345,7 +345,7 @@ export function PhoneNumbersPage() {
         aria-label="Channels"
         items={[
           { value: "numbers", label: "Numbers", icon: <PhoneCall aria-hidden />, count: numbers.data?.total },
-          { value: "whatsapp", label: "WhatsApp", icon: <MessageCircle aria-hidden />, count: channels.data?.total },
+          { value: "whatsapp", label: "WhatsApp", icon: <MessageCircle aria-hidden />, count: channels.data?.items.length },
           { value: "compliance", label: "Compliance", icon: <ShieldCheck aria-hidden /> },
         ]}
       >

@@ -3,16 +3,8 @@ import { ChevronDown, CircleDollarSign, Minus, Pencil, Plus, RotateCcw, Star, Tr
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useMemo, useState } from "react";
 import { isApiError } from "../../../api/errors";
-import { problemMessage } from "../../../api/problems";
-import {
-  putEvalSetting,
-  qualityKeys,
-  settingErrors,
-  type AgentEvalSetting,
-  type EvalSettingBody,
-  type JudgeModel,
-  type SettingsField,
-} from "../../../api/quality";
+import { fieldErrors, problemMessage } from "../../../api/problems";
+import { putEvalSetting, qualityKeys, type AgentEvalSetting, type EvalSettingBody, type JudgeModel, type SettingsField } from "../../../api/quality";
 import { Badge, Button, IconButton, Input, Select, SwitchControl, Textarea, Tooltip, cn, focusRing, toast } from "../../../components";
 import { COST_LABELS, SCOPE_LABELS, evaluatorIcon } from "./evaluatorMeta";
 import { displayValue, fieldError, fmtNumber, helperText, optionsFor, parseFieldValue, schemaFields } from "../../../api/evaluatorSettings";
@@ -231,7 +223,7 @@ export function EvaluatorCard({
       return true;
     } catch (e) {
       if (isApiError(e) && e.status === 422 && kind === "save") {
-        setServerErrors(settingErrors(e));
+        setServerErrors(fieldErrors(e));
         setOpen(true);
       } else if (isApiError(e) && e.status === 409) {
         setCardError(e.problem.detail ?? HEADLINE_LIMIT_MESSAGE);
