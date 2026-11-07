@@ -2,7 +2,7 @@
  * the billing page update together (R12). */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
-import type { QuoteRequest, TransactionType } from "./types";
+import type { BodyOf, QuoteRequest, TransactionType } from "./types";
 import { session } from "./session";
 
 export const qk = {
@@ -79,4 +79,13 @@ export function useQuote(req: QuoteRequest | null) {
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
+}
+
+/** Starts a top-up checkout; paid, so the caller keeps one key per amount. */
+export function createCheckoutSession(amountUsd: string, key: string) {
+  return unwrap(api.POST("/billing/checkout-sessions", { body: { amount_usd: amountUsd }, params: { header: { "Idempotency-Key": key } } }));
+}
+
+export function updateWorkspace(body: BodyOf<"/workspaces/current", "patch">) {
+  return unwrap(api.PATCH("/workspaces/current", { body }));
 }

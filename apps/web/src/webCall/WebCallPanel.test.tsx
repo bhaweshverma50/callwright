@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { env } from "../lib/env";
+import { problemDetail } from "../mocks/http";
 import { server } from "../mocks/node";
 import { TooltipProvider } from "../components/Tooltip";
 import { WebCallPanel, type WebCallPanelProps } from "./WebCallPanel";
@@ -54,6 +55,15 @@ function spy(inner: WebCallDriver) {
     },
   };
   return { driver, calls };
+}
+
+/** The scripted call, but the session request goes to the (mock) API, so refusals are served bodies. */
+function servedSession(): WebCallDriver {
+  return { ...createMockDriver(FAST), createSession: createLiveDriver().createSession };
+}
+
+function serveRefusal(status: number, code: string, detail: string) {
+  server.use(http.post(`${env.apiBaseUrl}/sessions/web-call`, () => problemDetail(status, code, detail)));
 }
 
 afterEach(() => {
@@ -117,7 +127,8 @@ describe("WebCallPanel", () => {
 
   it("shows a credit refusal with a link to add funds", async () => {
     const user = userEvent.setup();
-    renderPanel({ mockOptions: { ...FAST, refuseWith: 402 } });
+    serveRefusal(402, "insufficient_credit", "Your balance is too low to start a call.");
+    renderPanel({ driver: servedSession() });
     await user.click(screen.getByRole("button", { name: "Start test call" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Not enough credit");
@@ -126,7 +137,8 @@ describe("WebCallPanel", () => {
 
   it("shows the server's words for a concurrency refusal", async () => {
     const user = userEvent.setup();
-    renderPanel({ mockOptions: { ...FAST, refuseWith: 429 } });
+    serveRefusal(429, "concurrency_limit", "Your workspace allows 5 calls at once and 5 are running. End one or wait, then try again.");
+    renderPanel({ driver: servedSession() });
     await user.click(screen.getByRole("button", { name: "Start test call" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/5 calls at once/);
   });
@@ -308,10 +320,10 @@ describe("live driver", () => {
     const enc = (v: unknown) => new TextEncoder().encode(typeof v === "string" ? v : JSON.stringify(v));
     // The worker's payload (worker/metrics.py latency_payload): extra fields are fine.
     expect(parseLatencyMessage(enc({ turn_index: 1, stt_ms: 200, llm_ms: 300.4, tts_ms: 150, e2e_ms: 650 }))).toEqual({
-      turnId: null,
-      latency: { stt: 200, llm: 300, tts: 150 },
+      stt: 200,
+      llm: 300,
+      tts: 150,
     });
-    expect(parseLatencyMessage(enc({ segment_id: "SG_1", stt_ms: 1, llm_ms: 2, tts_ms: 3 }))?.turnId).toBe("SG_1");
     expect(parseLatencyMessage(enc("not json"))).toBeNull();
     expect(parseLatencyMessage(enc({ stt_ms: "1", llm_ms: 2, tts_ms: 3 }))).toBeNull();
     expect(parseLatencyMessage(enc({ stt_ms: 0, llm_ms: 0, tts_ms: 0 }))).toBeNull();

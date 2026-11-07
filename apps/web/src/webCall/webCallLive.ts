@@ -3,9 +3,10 @@
  * LiveKit room (research R17). `livekit-client` loads on first use so pages that only show the
  * panel never pay for it.
  */
-import { api, unwrap } from "../api/client";
+import { startDemoCall, startWebCall } from "../api/calls";
 import type { Latency } from "../components/signal";
-import { DTMF_CODES, LATENCY_TOPIC, type AgentActivity, type MicCheck, type WebCallDriver } from "./webCall";
+import { publishRoomData, ROOM_TOPICS } from "./roomData";
+import { DTMF_CODES, type AgentActivity, type MicCheck, type WebCallDriver } from "./webCall";
 
 const AGENT_JOIN_TIMEOUT_MS = 20_000;
 
@@ -31,11 +32,11 @@ export async function checkMicrophone(): Promise<MicCheck> {
 }
 
 /**
- * One `cw.turn_latency` message from the voice worker (worker/metrics.py `latency_payload`):
- * `{turn_index, stt_ms, llm_ms, tts_ms, e2e_ms?, segment_id?}`. Without a segment id the chip goes
+ * One latency message from the voice worker (worker/metrics.py `latency_payload`):
+ * `{turn_index, stt_ms, llm_ms, tts_ms, e2e_ms?}`. It names no transcript segment, so the chip goes
  * on the latest agent turn. Null for anything malformed.
  */
-export function parseLatencyMessage(payload: Uint8Array): { turnId: string | null; latency: Latency } | null {
+export function parseLatencyMessage(payload: Uint8Array): Latency | null {
   try {
     const m = JSON.parse(new TextDecoder().decode(payload)) as Record<string, unknown>;
     const ms = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
@@ -43,7 +44,7 @@ export function parseLatencyMessage(payload: Uint8Array): { turnId: string | nul
     const llm = ms(m.llm_ms);
     const tts = ms(m.tts_ms);
     if (stt === null || llm === null || tts === null || stt + llm + tts === 0) return null;
-    return { turnId: typeof m.segment_id === "string" ? m.segment_id : null, latency: { stt, llm, tts } };
+    return { stt, llm, tts };
   } catch {
     return null;
   }
@@ -57,19 +58,13 @@ const ACTIVITY: Record<string, AgentActivity> = {
   speaking: "speaking",
 };
 
-/** DOM event carrying `{topic, payload}` for room data on topics the panel does not handle. */
-export const ROOM_DATA_EVENT = "cw:room-data";
-
 export function createLiveDriver(): WebCallDriver {
-  return liveDriver(async (req, idempotencyKey) => {
-    const body = { ...req, version: req.version ?? "draft" };
-    return unwrap(api.POST("/sessions/web-call", { params: { header: { "Idempotency-Key": idempotencyKey } }, body }));
-  });
+  return liveDriver((req, key) => startWebCall({ ...req, version: req.version ?? "draft" }, key));
 }
 
 /** The home page playground: no account, the demo agent of one scenario (`POST /v1/public/demo-calls`). */
 export function createDemoDriver(scenario: string): WebCallDriver {
-  return liveDriver(async () => unwrap(api.POST("/public/demo-calls", { body: { agent: scenario } })));
+  return liveDriver(() => startDemoCall(scenario));
 }
 
 function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDriver {
@@ -113,7 +108,7 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
             listener.turn({ id, who, text, final: false });
           }
           listener.turn({ id, who, text: segments.get(id) ?? text, final: who === "agent" || attrs["lk.transcription_final"] === "true" });
-        })().catch(() => {});
+        })().catch((e: unknown) => console.warn("A transcript stream ended early.", e));
       });
 
       room.on(lk.RoomEvent.TrackSubscribed, (track) => {
@@ -128,10 +123,12 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
         if (p.isAgent && state) listener.activity(ACTIVITY[state] ?? "listening");
       });
       room.on(lk.RoomEvent.DataReceived, (payload, _p, _kind, topic) => {
-        // Other topics (004's callwright.flow node announcements) go to whoever listens.
-        if (topic !== LATENCY_TOPIC) return void window.dispatchEvent(new CustomEvent(ROOM_DATA_EVENT, { detail: { topic, payload } }));
-        const m = parseLatencyMessage(payload);
-        if (m) listener.latency(m.turnId, m.latency);
+        if (topic === ROOM_TOPICS.latency) {
+          const latency = parseLatencyMessage(payload);
+          if (latency) listener.latency(null, latency);
+        }
+        // Every topic also reaches onRoomData listeners (the flow builder's node highlight).
+        publishRoomData(topic, payload);
       });
       room.on(lk.RoomEvent.ParticipantDisconnected, (p) => {
         if (!p.isAgent) return;
@@ -149,7 +146,8 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
         finish("connection_lost");
         void room.disconnect();
       });
-      void room.startAudio().catch(() => {});
+      // Autoplay may be blocked until the next click; the call still runs and audio starts then.
+      void room.startAudio().catch((e: unknown) => console.warn("Call audio is waiting for a click to start.", e));
       const initial = agent()?.attributes["lk.agent.state"];
       listener.activity(initial ? (ACTIVITY[initial] ?? "listening") : "joining");
 

@@ -10,8 +10,8 @@ import { DATASETS_PAGE_SIZE, useDatasets, type Dataset } from "../../api/dataset
 import { Button, EmptyState, PageHeader, Pagination, Select, Table, TruncatedText, type Column } from "../../components";
 import { NewDatasetDialog } from "./NewDatasetDialog";
 import { timeAgo } from "../../lib/format";
-import { problemText } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
 
 const ALL = "all";
 

@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { Clock, CloudOff, Maximize2, MessageSquareText, Minimize2, RotateCcw, SquarePen, Wallet, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { askAnalytics, useAnalyticsCatalog } from "../../api/assistants";
 import { isApiError } from "../../api/errors";
 import { Button, chartVars, cn, Composer, focusRing, IconButton, ThinkingIndicator } from "../../components";
 import { AnswerView, SuggestionChips, type ChatAnswer } from "./AnswerView";
@@ -53,12 +52,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
   const keyFor = useRef<{ question: string; key: string } | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const catalog = useQuery({
-    queryKey: ["analytics", "catalog"],
-    queryFn: () => unwrap(api.GET("/analytics/catalog")),
-    enabled: open,
-    staleTime: 10 * 60_000,
-  });
+  const catalog = useAnalyticsCatalog(open);
 
   useEffect(
     () =>
@@ -83,12 +77,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
     setPending(true);
     setFailure(null);
     try {
-      const answer = await unwrap(
-        api.POST("/analytics/chat", {
-          params: { header: { "Idempotency-Key": keyFor.current.key } },
-          body: { messages: [...history, { role: "user", content: q }], timezone: viewerTimeZone() },
-        }),
-      );
+      const answer = await askAnalytics({ messages: [...history, { role: "user", content: q }], timezone: viewerTimeZone() }, keyFor.current.key);
       setTurns((t) => [...t, { role: "user", content: q }, { role: "assistant", content: answer.content, answer }]);
       setDraft("");
       keyFor.current = null;

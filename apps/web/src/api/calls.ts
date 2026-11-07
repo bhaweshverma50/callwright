@@ -2,7 +2,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
-import type { QueryOf } from "./types";
+import type { BodyOf, QueryOf, ResponseOf } from "./types";
 import { scalarLimits } from "../lib/contract.gen";
 import { saveBlob } from "../lib/download";
 
@@ -217,5 +217,28 @@ export function useAgentHealth(search: URLSearchParams) {
     queryFn: () => unwrap(api.GET("/dashboard/agent-health", { querySerializer: sendAsIs(query) })),
     placeholderData: keepPreviousData,
     refetchInterval: DASHBOARD_POLL_MS,
+  });
+}
+
+export type WebCallRequest = BodyOf<"/sessions/web-call", "post">;
+export type WebCallSession = ResponseOf<"/sessions/web-call", "post">;
+
+/** Starts a browser test call (admission, room, worker dispatch); paid, so one key per attempt. */
+export function startWebCall(body: WebCallRequest, key: string) {
+  return unwrap(api.POST("/sessions/web-call", { params: { header: { "Idempotency-Key": key } }, body }));
+}
+
+/** A visitor's call to a demo agent from the home page (no account). */
+export function startDemoCall(agent: string) {
+  return unwrap(api.POST("/public/demo-calls", { body: { agent } }));
+}
+
+/** The demo agents the home page playground can call (none when the API has no demo set up). */
+export function usePublicDemo() {
+  return useQuery({
+    queryKey: ["public", "demo"],
+    queryFn: () => unwrap(api.GET("/public/demo")),
+    staleTime: 5 * 60_000,
+    retry: false,
   });
 }

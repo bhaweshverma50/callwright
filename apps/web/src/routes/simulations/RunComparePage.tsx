@@ -43,7 +43,8 @@ import { PersonaBriefView } from "./PersonaBriefEditor";
 import { ANSWER_SOURCES, AnswerSourceBadge, CHANGE, END_REASONS, MODE_LABELS, SimStatusBadge, VerdictBadge, targetText } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
 import { costUsd, whenLong } from "../../lib/format";
-import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { ProblemAlert } from "../../components/ProblemAlert";
+import { problemText } from "../../api/problems";
 
 /** 1-based caller turn number for each user message, so divergence can be marked. */
 function callerTurns(items: SimTranscriptItem[]): Map<number, number> {

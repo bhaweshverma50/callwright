@@ -21,8 +21,8 @@ import {
 import { Badge, Button, EmptyState, Figure, Panel, ProgressBar, Segmented, Select, Skeleton, toast } from "../../../components";
 import { ResultRow } from "./ResultRow";
 import { costUsd, timeAgo } from "../../../lib/format";
-import { problemText } from "../../../components/ProblemAlert";
 import { downloadJson } from "../../../lib/download";
+import { problemText } from "../../../api/problems";
 
 type Filter = "all" | "failed" | "error" | "manual";
 

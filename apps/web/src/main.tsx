@@ -6,7 +6,7 @@ import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import { queryClient } from "./api/queryClient";
+import { createQueryClient } from "./api/queryClient";
 import { wireCrossTabAuth } from "./api/session";
 import { createRouter } from "./router";
 import { initTheme } from "./app/theme";
@@ -27,6 +27,7 @@ async function boot() {
     installDemoHints({ email: demo.DEMO_EMAIL, password: demo.DEMO_PASSWORD, verifyToken: demo.mockVerifyToken, resetToken: demo.mockResetToken });
   }
   const router = createRouter();
+  const queryClient = createQueryClient();
   root.render(
     <StrictMode>
       <App router={router} queryClient={queryClient} />

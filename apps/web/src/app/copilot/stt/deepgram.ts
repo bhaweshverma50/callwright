@@ -3,14 +3,7 @@
  * listen-only token valid for at most 60 s; the socket authenticates with it as a WebSocket
  * subprotocol. Final segments are joined; `finish()` closes the stream and resolves with the text.
  */
-export interface StreamCredential {
-  provider: string;
-  stream_url: string;
-  auth_scheme: string;
-  token: string;
-  expires_at: string;
-  encoding: string;
-}
+import type { StreamCredential } from "../../../api/assistants";
 
 export interface LiveTranscriber {
   send: (chunk: Blob) => void;

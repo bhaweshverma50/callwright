@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileAudio, Music4, Pause, Play, Trash2, Upload, Volume1 } from "lucide-react";
 import { useRef } from "react";
-import { agentKeys, deleteAmbientAudio, useAmbientAudio, type AmbientAudioFile } from "../../../api/agents";
-import { postForm } from "../../../api/client";
+import { agentKeys, deleteAmbientAudio, uploadAmbientAudio, useAmbientAudio, type AmbientAudioFile } from "../../../api/agents";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Button, FieldRow, IconButton, Select, SwitchControl, TruncatedText, toast } from "../../../components";
@@ -23,12 +22,6 @@ const UPLOAD_ERRORS: Record<number, string> = {
   413: `That file is larger than ${MAX_MB} MB.`,
   415: "Use an mp3, wav, ogg, flac, aac or opus file.",
 };
-
-function upload(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  return postForm("/voices/ambient-audio", form);
-}
 
 function sizeLabel(bytes: number) {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -55,7 +48,7 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
         : null;
 
   const add = useMutation({
-    mutationFn: upload,
+    mutationFn: uploadAmbientAudio,
     onSuccess: (file) => {
       qc.setQueryData<{ items: AmbientAudioFile[] }>(agentKeys.ambient, (old) => ({ items: [...(old?.items ?? []), file] }));
       draft.update((c) => void (c.advanced.background_audio.source = { kind: "upload", key: file.key }));

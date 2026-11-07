@@ -33,6 +33,7 @@ export function problemMessage(err: unknown, recordKind = "record"): string {
   const byCode = p.code ? BY_CODE[p.code] : undefined;
   if (byCode) return byCode(p, recordKind);
   if (err.status === 0) return BY_CODE.network!(p, recordKind);
+  if (err.status === 402) return BY_CODE.insufficient_credit!(p, recordKind);
   if (err.status === 404) return BY_CODE.not_found!(p, recordKind);
   if (err.status === 429) return `Too many attempts. Try again in ${minutesFrom(p.retry_after_s)}.`;
   if (err.status === 422) return "Some fields need attention.";
@@ -44,6 +45,15 @@ export function problemMessage(err: unknown, recordKind = "record"): string {
       : "Something went wrong on our side. Try again in a moment.";
   }
   return "That did not work. Check the details and try again.";
+}
+
+/**
+ * Message for a toast or an inline error: the server's own `detail` when it wrote one for people
+ * (except for credit, which always says how to add funds), otherwise problemMessage.
+ */
+export function problemText(err: unknown, recordKind = "record"): string {
+  if (isApiError(err) && err.status !== 402 && err.code !== "insufficient_credit" && err.problem.detail) return err.problem.detail;
+  return problemMessage(err, recordKind);
 }
 
 /** Field errors keyed by the last segment of the JSON pointer ("/amount_usd" -> "amount_usd"). */

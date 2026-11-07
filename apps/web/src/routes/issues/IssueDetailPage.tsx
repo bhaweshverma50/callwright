@@ -44,8 +44,8 @@ import { DISMISS_LABELS, IssueStatusBadge, ORIGIN_LABELS } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
 import { agentPath } from "../../lib/paths";
 import { shortId, timeAgo } from "../../lib/format";
-import { problemText } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
 
 const SAMPLE_COLUMNS: Column<IssueSample>[] = [
   {

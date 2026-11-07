@@ -46,8 +46,9 @@ import { ImportDialog } from "./ImportDialog";
 import { TestCaseEditor } from "./TestCaseEditor";
 import { TestRunPanel } from "./TestRunPanel";
 import { plural } from "../../../lib/format";
-import { ProblemAlert, problemText } from "../../../components/ProblemAlert";
+import { ProblemAlert } from "../../../components/ProblemAlert";
 import { downloadJson } from "../../../lib/download";
+import { problemText } from "../../../api/problems";
 
 type Editing = { mode: "new" } | { mode: "edit"; tc: TestCase } | null;
 

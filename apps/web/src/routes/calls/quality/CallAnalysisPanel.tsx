@@ -8,7 +8,7 @@ import { Button, Skeleton, ThinkingIndicator, toast } from "../../../components"
 import { AnalysisTable } from "../AnalysisTable";
 import { SummaryText } from "./SummaryText";
 import { SentimentBadge } from "../../../components/callVocabulary";
-import { problemText } from "../../../components/ProblemAlert";
+import { problemText } from "../../../api/problems";
 
 const SKIPPED: Record<NonNullable<CallAnalysis["skip_reason"]>, string> = {
   insufficient_credit: "Analysis skipped: insufficient credit. Re-run it after a top-up.",

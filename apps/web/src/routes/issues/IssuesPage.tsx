@@ -28,8 +28,9 @@ import { useActionKey } from "../../api/paid";
 import { Badge, Button, EmptyState, PageHeader, Pagination, Segmented, Select, Table, TruncatedText, cn, type Column } from "../../components";
 import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILTER_OPTIONS, windowRange } from "./shared";
 import { plural, timeAgo } from "../../lib/format";
-import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { ProblemAlert } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
 
 const ALL = "all";
 const DETECT_HINT = "Choose an agent to run detection";

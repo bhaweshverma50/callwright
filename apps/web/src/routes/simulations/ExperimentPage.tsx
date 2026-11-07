@@ -44,7 +44,8 @@ import { RecordNotFound } from "../NotFound";
 import { ScorecardTable } from "./ScorecardTable";
 import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
 import { costUsd, plural, shortId, timeAgo, whenLong } from "../../lib/format";
-import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { ProblemAlert } from "../../components/ProblemAlert";
+import { problemText } from "../../api/problems";
 
 const RUN_COLUMNS: Column<SimulationRun>[] = [
   {

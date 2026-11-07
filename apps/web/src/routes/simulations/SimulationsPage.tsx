@@ -13,8 +13,8 @@ import { Button, type Column, EmptyState, PageHeader, Pagination, ProgressBar, S
 import { NewSimulationDialog } from "./NewSimulationDialog";
 import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
 import { costUsd, timeAgo } from "../../lib/format";
-import { problemText } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
 
 const ALL = "all";
 type Tab = "batches" | "runs";

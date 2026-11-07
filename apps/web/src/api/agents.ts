@@ -3,7 +3,7 @@
  * assistant), typed from the generated contract (schema.d.ts).
  */
 import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
-import { api, fetchAll, unwrap } from "./client";
+import { api, fetchAll, postForm, unwrap } from "./client";
 import type { components } from "./schema";
 import type { BodyOf, QueryOf, ResponseOf } from "./types";
 
@@ -330,4 +330,26 @@ export function generatePrompt(body: PromptAiRequest, key: string) {
 
 export async function deleteAmbientAudio(key: string) {
   await unwrap(api.DELETE("/voices/ambient-audio", { params: { query: { key } } }));
+}
+
+/**
+ * The most recently updated agent for the guided tour, preferring a single-prompt agent (the tour's
+ * agent steps edit a prompt); null when the workspace has none.
+ */
+export async function newestAgentId(): Promise<string | null> {
+  const newest = (type?: AgentType) =>
+    unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: 1, sort: "updated", ...(type && { type }) } } }));
+  return (await newest("single_prompt")).items[0]?.id ?? (await newest()).items[0]?.id ?? null;
+}
+
+/** The first template in the gallery, with its full config. */
+export async function firstTemplate(): Promise<TemplateDetail | null> {
+  const first = (await unwrap(api.GET("/templates"))).items[0];
+  return first ? unwrap(api.GET("/templates/{template_id}", { params: { path: { template_id: first.id } } })) : null;
+}
+
+export function uploadAmbientAudio(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return postForm("/voices/ambient-audio", form);
 }

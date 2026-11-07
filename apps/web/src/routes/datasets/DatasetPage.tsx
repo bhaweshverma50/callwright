@@ -23,7 +23,7 @@ import {
 } from "../../api/datasets";
 import { isApiError } from "../../api/errors";
 import { isRetryable, useActionKey } from "../../api/paid";
-import { fieldErrors } from "../../api/problems";
+import { fieldErrors, problemText } from "../../api/problems";
 import {
   Badge,
   Button,
@@ -52,7 +52,7 @@ import { RecordNotFound } from "../NotFound";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { mss, plural, shortId, timeAgo, when } from "../../lib/format";
 import { CallStatusBadge, SentimentBadge } from "../../components/callVocabulary";
-import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 // The call's evaluation status from 007: its current checks passed, one failed, still running,
 // none ran, or a check errored.

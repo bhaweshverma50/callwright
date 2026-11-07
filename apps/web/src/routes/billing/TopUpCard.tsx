@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink, Lock } from "lucide-react";
 import { useRef, useState, type FormEvent, type Ref } from "react";
-import { api, unwrap } from "../../api/client";
+import { idempotencyKey } from "../../lib/idempotency";
 import { fieldErrors, problemMessage } from "../../api/problems";
-import { qk } from "../../api/queries";
+import { createCheckoutSession, qk } from "../../api/queries";
 import type { Balance } from "../../api/types";
 import { Button, Chip, Field, Input, Panel, Tooltip } from "../../components";
 import { checkTopUpAmount, formatUsd } from "../../lib/money";
@@ -13,10 +13,6 @@ export const PRESETS = ["25", "100", "500", "1000"] as const;
 
 /** Balance before checkout, so the return page can tell when the new credit has landed. */
 export const CHECKOUT_BEFORE_KEY = "cw.checkout.before";
-
-function newKey() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 /**
  * Add funds (T057, T101, US2.5, US2.6, FR-008). Presets only fill the amount; checkout starts
@@ -36,13 +32,8 @@ export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLIn
 
   const checkout = useMutation({
     mutationFn: async (normalized: string) => {
-      if (keyRef.current?.amount !== normalized) keyRef.current = { amount: normalized, key: newKey() };
-      return unwrap(
-        api.POST("/billing/checkout-sessions", {
-          body: { amount_usd: normalized },
-          params: { header: { "Idempotency-Key": keyRef.current.key } },
-        }),
-      );
+      if (keyRef.current?.amount !== normalized) keyRef.current = { amount: normalized, key: idempotencyKey() };
+      return createCheckoutSession(normalized, keyRef.current.key);
     },
     onSuccess: (s) => {
       const before = qc.getQueryData<Balance>(qk.balance)?.balance_usd;

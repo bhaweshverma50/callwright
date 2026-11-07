@@ -20,9 +20,9 @@ import {
   type WebCallDriver,
   type WebCallRequest,
 } from "./webCall";
-import { queryClient } from "../api/queryClient";
 import { callKeys } from "../api/calls";
 import { idempotencyKey } from "../lib/idempotency";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 
@@ -126,6 +126,7 @@ export function useWebCall(
   /** Rewords a refused session for this surface; falls back to `problemFromError`. */
   problemFor?: (e: unknown) => CallProblem | undefined,
 ) {
+  const qc = useQueryClient();
   const [s, dispatch] = useReducer(reducer, INITIAL);
   const run = useRef(0);
   const conn = useRef<CallConnection | null>(null);
@@ -147,8 +148,8 @@ export function useWebCall(
   // The shell's live-calls badge and the dashboard card pick the call up (and drop it) at once
   // instead of on their next idle poll.
   useEffect(() => {
-    if (s.phase === "live" || s.phase === "ended") void queryClient.invalidateQueries({ queryKey: callKeys.live });
-  }, [s.phase]);
+    if (s.phase === "live" || s.phase === "ended") void qc.invalidateQueries({ queryKey: callKeys.live });
+  }, [s.phase, qc]);
 
   const reported = useRef<number | null>(null);
   useEffect(() => {
@@ -161,7 +162,9 @@ export function useWebCall(
   useEffect(
     () => () => {
       run.current += 1;
-      void conn.current?.hangUp().catch(() => {});
+      void conn.current
+        ?.hangUp()
+        .catch((e: unknown) => console.warn("Hanging up on leave failed; the server ends the call when the room empties.", e));
       conn.current = null;
     },
     [],
@@ -206,7 +209,7 @@ export function useWebCall(
       return;
     }
     if (stale()) {
-      void c.hangUp().catch(() => {});
+      void c.hangUp().catch((e: unknown) => console.warn("Hanging up a superseded call failed.", e));
       return;
     }
     conn.current = c;
@@ -235,7 +238,7 @@ export function useWebCall(
   }, [s.muted]);
 
   const sendDigit = useCallback((digit: string) => {
-    void conn.current?.sendDigit?.(digit).catch(() => {});
+    void conn.current?.sendDigit?.(digit).catch((e: unknown) => console.warn(`Key ${digit} was not sent.`, e));
   }, []);
 
   const elapsed = s.startedAt ? (s.endedAt ?? now) - s.startedAt : 0;

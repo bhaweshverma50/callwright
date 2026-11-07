@@ -14,6 +14,7 @@ import type { AgentDraft } from "./useAgentDraft";
 import { BILLING_PATH } from "../../../lib/paths";
 import { idempotencyKey } from "../../../lib/idempotency";
 import { isApiError } from "../../../api/errors";
+import { isInsufficientCredit } from "../../../api/paid";
 
 interface Turn {
   id: number;
@@ -78,12 +79,11 @@ export function AssistantPanel({
           id: ++seq.current,
           role: "assistant",
           content: "",
-          error:
-            isApiError(e) && e.status === 402
-              ? { message: "Your balance is at zero, so the assistant cannot run. Add funds to continue.", credit: true }
-              : {
-                  message: isApiError(e) && e.status === 504 ? "The assistant took too long and you were not charged. Try again." : problemMessage(e),
-                },
+          error: isInsufficientCredit(e)
+            ? { message: problemMessage(e), credit: true }
+            : {
+                message: isApiError(e) && e.status === 504 ? "The assistant took too long and you were not charged. Try again." : problemMessage(e),
+              },
         },
       ]),
   });
