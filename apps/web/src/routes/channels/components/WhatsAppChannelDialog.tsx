@@ -5,8 +5,8 @@ import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Dialog, Field, Input } from "../../../components";
 import { useAgentOptions } from "../hooks/usePhoneNumbers";
 import { useCreateWhatsApp, useWhatsAppSettings, type WhatsAppChannel } from "../hooks/useWhatsAppChannels";
-import { E164_EXAMPLE, e164Error } from "../validation";
 import { AgentSelect } from "./shared";
+import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
 
 export const SETUP_GUIDE = "https://developers.facebook.com/docs/whatsapp/cloud-api/calling";
 

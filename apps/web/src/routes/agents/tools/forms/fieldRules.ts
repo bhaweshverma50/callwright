@@ -4,8 +4,8 @@
  */
 import type { HttpToolConfig, PressDigitConfig, ToolConfig, ToolDraft, TransferConfig } from "../../../../api/tools";
 import { isMachineName, NAME_RULE } from "../../../../lib/machineName";
+import { e164Error } from "../../../../lib/e164";
 
-const E164 = /^\+[1-9]\d{6,14}$/;
 const HEADER = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/;
 const PLACEHOLDER = /\{\{\s*[A-Za-z_][A-Za-z0-9_.]*\s*\}\}/g;
 
@@ -17,11 +17,6 @@ export function nameError(name: string): string | null {
   if (name === "kb_search") return "kb_search is reserved for knowledge search.";
   if (name.startsWith("route_to_")) return "Names starting with route_to_ are reserved for flows.";
   return null;
-}
-
-export function e164Error(value: string | undefined, required = true): string | null {
-  if (!value) return required ? "Enter the number in +E.164 form, for example +14155550100." : null;
-  return E164.test(value) ? null : "Use +E.164 form: a plus, the country code and the number, for example +14155550100.";
 }
 
 /** Absolute https URL (http only in development), placeholders only in the path and query. */

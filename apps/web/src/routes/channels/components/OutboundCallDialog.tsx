@@ -8,8 +8,8 @@ import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Dialog, Field, Input, cn } from "../../../components";
 import { usePlaceCall, type OutboundCallAccepted } from "../hooks/useOutboundCompliance";
 import { useAgentOptions, type PhoneNumber } from "../hooks/usePhoneNumbers";
-import { E164_EXAMPLE, e164Error } from "../validation";
 import { AgentSelect } from "./shared";
+import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
 
 interface Block {
   reason: "dnc_listed" | "outside_calling_hours";

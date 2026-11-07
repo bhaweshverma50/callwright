@@ -1,8 +1,8 @@
 import type { TransferNodeConfig } from "../../../../api/flows";
 import type { Errors } from "../../../agents/tools/forms/fieldRules";
 import { TransferForm } from "../../../agents/tools/forms/TransferForm";
-import { e164Error } from "./fieldRules";
 import { issueFor, type FormProps } from "./shared";
+import { e164Error } from "../../../../lib/e164";
 
 /**
  * Transfer node (FR-017, T028): 005's transfer settings (fixed or model-chosen destination, cold

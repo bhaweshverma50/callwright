@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { categoryNameError, e164Error, fieldNameError, jsonError, maxRoundsError, timeoutError, urlError } from "./fieldRules";
+import { urlError } from "../../../agents/tools/forms/fieldRules";
+import { categoryNameError, fieldNameError, jsonError, maxRoundsError, timeoutError } from "./fieldRules";
 
 describe("node field rules (T104)", () => {
   it("checks max rounds 1 to 20", () => {
@@ -7,11 +8,6 @@ describe("node field rules (T104)", () => {
     expect(maxRoundsError(0)).toMatch(/1 to 20/);
     expect(maxRoundsError(25)).toMatch(/1 to 20/);
     expect(maxRoundsError(2.5)).toMatch(/whole number/);
-  });
-
-  it("checks international numbers", () => {
-    expect(e164Error("+14155550100")).toBeNull();
-    expect(e164Error("12345")).toMatch(/\+14155550100/);
   });
 
   it("wants absolute https URLs", () => {

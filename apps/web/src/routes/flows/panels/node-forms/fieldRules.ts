@@ -2,10 +2,7 @@
  * Inline checks for node panels (FR-045, T104). They mirror the API validator (flows/validation.py)
  * so problems show next to the field while typing; the same checks block publishing on the server.
  */
-import { e164Error, urlError } from "../../../agents/tools/forms/fieldRules";
 import { FLOW_FIELD_NAME_MAX, isMachineName, NAME_RULE } from "../../../../lib/machineName";
-
-export { e164Error, urlError };
 
 const CATEGORY = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$/;
 const REASON = /^[a-z_]{1,40}$/;
@@ -131,7 +128,6 @@ export function fieldNameError(name: string, others: string[]): string | null {
   if (others.includes(name)) return `${name} is already used.`;
   return null;
 }
-
 
 export function reasonError(reason: string): string | null {
   return REASON.test(reason) ? null : "Use lowercase letters and underscores, up to 40 characters.";
