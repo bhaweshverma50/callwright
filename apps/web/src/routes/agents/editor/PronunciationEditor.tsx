@@ -12,7 +12,6 @@ import { fieldId } from "../config/fields";
  */
 export function PronunciationEditor({ draft }: { draft: AgentDraft }) {
   const rows = draft.config.advanced.pronunciation;
-  // Stable keys for rows while words are being typed.
   const keys = useRef<number[]>([]);
   const seq = useRef(0);
   while (keys.current.length < rows.length) keys.current.push(++seq.current);

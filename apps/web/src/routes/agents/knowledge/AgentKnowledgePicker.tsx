@@ -11,6 +11,7 @@ import type { EditorPanelProps } from "../editor/panels";
 import { CreateKbDialog } from "../../knowledge/CreateKbDialog";
 import { KbStatusBadge } from "../../knowledge/kbStatus";
 import { UploadDialog } from "../../knowledge/UploadDialog";
+import { PickTile } from "../PickTile";
 
 function sameSet(a: string[], b: string[]) {
   return a.length === b.length && a.every((x) => b.includes(x));
@@ -30,23 +31,11 @@ function KbOption({
   onToggle: () => void;
 }) {
   return (
-    <li>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={on}
-        aria-disabled={disabled || undefined}
-        disabled={disabled}
-        onClick={onToggle}
-        className={cn(
-          "flex w-full min-w-0 items-center gap-3 rounded-panel border px-3.5 py-3 text-left transition-[background-color,border-color,box-shadow] duration-150",
-          on
-            ? "border-accent bg-accent-soft/45 shadow-[0_0_0_1px_var(--accent)]"
-            : "border-line bg-surface hover:border-accent/45 hover:bg-surface-2/60",
-          disabled && "cursor-not-allowed opacity-60 hover:border-line hover:bg-surface",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        )}
-      >
+    <PickTile
+      checked={on}
+      disabled={disabled}
+      onToggle={onToggle}
+      icon={
         <span
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-control [&_svg]:size-4",
@@ -55,27 +44,14 @@ function KbOption({
         >
           <BookOpen aria-hidden />
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-[14px] font-medium text-fg">{kb.name}</span>
-          <span className="truncate text-[12px] text-fg-3">
-            {reason ?? `${kb.ready_count} of ${kb.document_count} ${kb.document_count === 1 ? "document" : "documents"} ready`}
-          </span>
-        </span>
-        {disabled ? (
-          <KbStatusBadge status={kb.status} />
-        ) : (
-          <span
-            aria-hidden
-            className={cn(
-              "grid size-5 shrink-0 place-items-center rounded-full border transition-[background-color,border-color,transform] duration-200",
-              on ? "scale-100 border-transparent bg-accent text-white" : "scale-90 border-line-strong bg-surface text-transparent",
-            )}
-          >
-            <Check strokeWidth={3} className="size-3" />
-          </span>
-        )}
-      </button>
-    </li>
+      }
+      status={disabled ? <KbStatusBadge status={kb.status} /> : undefined}
+    >
+      <span className="truncate text-[14px] font-medium text-fg">{kb.name}</span>
+      <span className="truncate text-[12px] text-fg-3">
+        {reason ?? `${kb.ready_count} of ${kb.document_count} ${kb.document_count === 1 ? "document" : "documents"} ready`}
+      </span>
+    </PickTile>
   );
 }
 

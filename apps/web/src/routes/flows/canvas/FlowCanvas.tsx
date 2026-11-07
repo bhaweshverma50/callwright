@@ -416,7 +416,6 @@ function Canvas(props: CanvasProps) {
     window.setTimeout(() => void flow.fitView({ ...fitOptions(), duration: 360 }).then(remember), 40);
   }, [flow, locked, onLockedAttempt, remember, setGraph]);
 
-  // Keyboard: Delete or Backspace removes the selection (never while typing), undo and redo.
   const keys = useRef({ deleteSelection, duplicate, locked, onLockedAttempt, undo, redo });
   keys.current = { deleteSelection, duplicate, locked, onLockedAttempt, undo, redo };
   useEffect(() => {
