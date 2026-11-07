@@ -5,7 +5,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { problemMessage } from "../../../api/problems";
 import { deleteCustomEvaluator, qualityKeys, useEvalSettings, useEvaluators, useJudgeModels, type Evaluator } from "../../../api/quality";
 import { Button, ConfirmDialog, Skeleton, toast } from "../../../components";
-import { CustomEvaluatorDialog } from "../../evaluators/CustomEvaluatorDialog";
+import { CustomEvaluatorDialog } from "./CustomEvaluatorDialog";
 import { TabHeader } from "../tools/TabHeader";
 import { EvaluatorCard, HEADLINE_LIMIT } from "./EvaluatorCard";
 

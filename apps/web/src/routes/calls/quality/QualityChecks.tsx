@@ -8,7 +8,7 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { newIdempotencyKey, qualityKeys, rerunEvaluations, useCallEvaluations, type EvaluatorRun, type ResultItem } from "../../../api/quality";
 import { Badge, Button, Skeleton, cn, toast } from "../../../components";
-import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../evaluators/evaluatorMeta";
+import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../agents/quality/evaluatorMeta";
 import { when } from "../format";
 import { withoutLineRefs } from "../../../lib/text";
 

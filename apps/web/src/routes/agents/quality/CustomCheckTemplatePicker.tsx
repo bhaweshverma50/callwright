@@ -1,7 +1,7 @@
 import { ArrowRight, CircleDollarSign, MessageCircleQuestion, TextSearch } from "lucide-react";
 import { motion } from "motion/react";
-import type { CustomType } from "../../api/quality";
-import { Badge, cn, focusRing } from "../../components";
+import type { CustomType } from "../../../api/quality";
+import { Badge, cn, focusRing } from "../../../components";
 
 const TEMPLATES: { type: CustomType; title: string; body: string; example: string; icon: typeof TextSearch; free: boolean }[] = [
   {

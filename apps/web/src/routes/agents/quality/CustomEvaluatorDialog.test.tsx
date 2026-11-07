@@ -3,10 +3,10 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../api/queryClient";
-import { Toaster, TooltipProvider } from "../../components";
-import { seedMockCalls } from "../../mocks/calls/handlers";
-import { qualityStore } from "../../mocks/quality/handlers";
+import { createQueryClient } from "../../../api/queryClient";
+import { Toaster, TooltipProvider } from "../../../components";
+import { seedMockCalls } from "../../../mocks/calls/handlers";
+import { qualityStore } from "../../../mocks/quality/handlers";
 import { CustomEvaluatorDialog } from "./CustomEvaluatorDialog";
 
 function renderDialog() {

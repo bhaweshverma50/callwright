@@ -7,7 +7,7 @@ import { useAgentOptions } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
 import { useCalibrationRows, useCalibrationSummary, type CalibrationRow, type VersionScope } from "../../api/quality";
 import { Badge, Button, EmptyState, PageHeader, Segmented, Select, Skeleton, cn, type Tone } from "../../components";
-import { COST_LABELS, evaluatorIcon } from "../evaluators/evaluatorMeta";
+import { COST_LABELS, evaluatorIcon } from "../agents/quality/evaluatorMeta";
 
 const LOOKBACKS = [30, 90, 180, 365] as const;
 const ALL_AGENTS = "all";

@@ -17,10 +17,11 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import type { EvaluatorRun, Verdict } from "../../api/quality";
-import type { Tone } from "../../components";
+import type { CalibrationRow, CustomType, EvaluatorRun, Verdict } from "../../../api/quality";
+import type { Tone } from "../../../components";
 
-const ICONS: Record<string, LucideIcon> = {
+/** Built-in checks by name. */
+const BUILTIN_ICONS: Record<string, LucideIcon> = {
   anomaly_detection: Radar,
   factual_consistency: BookCheck,
   flow_completion: Flag,
@@ -33,16 +34,19 @@ const ICONS: Record<string, LucideIcon> = {
   tool_call_correctness: Wrench,
   transition_correctness: GitBranch,
   latency_slo: Timer,
+};
+
+const CUSTOM_ICONS: Record<CustomType, LucideIcon> = {
   phrase_check: TextSearch,
   llm_judge_custom: MessageCircleQuestion,
 };
 
 /** Icon for a check by built-in name or custom type. */
-export function evaluatorIcon(nameOrType: string, type?: string): LucideIcon {
-  return ICONS[nameOrType] ?? (type ? ICONS[type] : undefined) ?? ShieldCheck;
+export function evaluatorIcon(nameOrType: string): LucideIcon {
+  return BUILTIN_ICONS[nameOrType] ?? CUSTOM_ICONS[nameOrType as CustomType] ?? ShieldCheck;
 }
 
-export const SCOPE_LABELS = { call: "Whole call", turn: "Each turn", flow_node: "Each node" } as const;
+export const SCOPE_LABELS: Record<CalibrationRow["scope"], string> = { call: "Whole call", turn: "Each turn", flow_node: "Each node" };
 
 export const VERDICT_LABELS: Record<Verdict, string> = { pass: "Passed", fail: "Failed", not_applicable: "Not applicable" };
 export const VERDICT_TONES: Record<Verdict, Tone> = { pass: "success", fail: "danger", not_applicable: "neutral" };
@@ -75,4 +79,4 @@ export function runTone(run: EvaluatorRun): Tone {
 }
 
 /** "Model judge" checks spend credit on every judged call. */
-export const COST_LABELS = { free: "Free", llm_judge: "Model judge" } as const;
+export const COST_LABELS: Record<CalibrationRow["cost_class"], string> = { free: "Free", llm_judge: "Model judge" };

@@ -2,9 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, FlaskConical, MessageCircleQuestion, ShieldPlus, TextSearch } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
-import { useCalls } from "../../api/calls";
-import { isApiError } from "../../api/errors";
-import { problemMessage } from "../../api/problems";
+import { useCalls } from "../../../api/calls";
+import { isApiError } from "../../../api/errors";
+import { problemMessage } from "../../../api/problems";
 import {
   createCustomEvaluator,
   newIdempotencyKey,
@@ -18,13 +18,13 @@ import {
   type JudgeQuestionConfig,
   type PhraseCheckConfig,
   type TrialResult,
-} from "../../api/quality";
-import { Badge, Button, Dialog, Field, Input, Segmented, Select, SwitchControl, Textarea, toast } from "../../components";
-import { when } from "../calls/format";
+} from "../../../api/quality";
+import { Badge, Button, Dialog, Field, Input, Segmented, Select, SwitchControl, Textarea, toast } from "../../../components";
+import { when } from "../../calls/format";
 import { CustomCheckTemplatePicker } from "./CustomCheckTemplatePicker";
 import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
-import { withoutLineRefs } from "../../lib/text";
-import { NAME_RULE, toMachineName } from "../../lib/machineName";
+import { withoutLineRefs } from "../../../lib/text";
+import { NAME_RULE, toMachineName } from "../../../lib/machineName";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };

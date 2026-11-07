@@ -14,7 +14,7 @@ import {
   type SettingsField,
 } from "../../../api/quality";
 import { Badge, Button, IconButton, Input, Select, SwitchControl, Textarea, Tooltip, cn, focusRing, toast } from "../../../components";
-import { COST_LABELS, SCOPE_LABELS, evaluatorIcon } from "../../evaluators/evaluatorMeta";
+import { COST_LABELS, SCOPE_LABELS, evaluatorIcon } from "./evaluatorMeta";
 import { displayValue, fieldError, fmtNumber, helperText, optionsFor, parseFieldValue, schemaFields } from "../../../api/evaluatorSettings";
 
 export const HEADLINE_LIMIT = 4;
