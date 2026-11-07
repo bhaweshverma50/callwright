@@ -90,7 +90,7 @@ paths:
         - { name: origin, in: query, schema: { type: string, default: "live,test" } }
         - name: columns
           in: query
-          description: Comma-separated column keys in display order; defaults to all list columns.
+          description: Comma-separated ExportColumn keys in display order; unknown keys are ignored. Defaults to every column.
           schema: { type: string }
       responses:
         "401": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized" }
@@ -224,11 +224,17 @@ components:
       description: IANA timezone used to resolve start_date and end_date.
       schema: { type: string, default: UTC, examples: [Asia/Kolkata] }
   schemas:
+    ExportColumn:
+      type: string
+      description: A CSV column of exportCalls.
+      enum: [call_id, started_at, agent_id, agent_name, from_number, to_number, channel, origin, disconnect_reason, duration_s, status, cost_usd, latency_avg_ms, has_recording, summary, sentiment, analysis_values, eval_status, label]
     Channel: { type: string, enum: [web, sip_inbound, sip_outbound, whatsapp] }
     Origin: { type: string, enum: [live, test, simulation] }
     CallStatus:
       type: string
       enum: [queued, ringing, in_progress, ended, processing, completed, failed, no_answer, busy, voicemail]
+      x-on-air: [queued, ringing, in_progress]
+      x-still-changing: [queued, ringing, in_progress, ended, processing]
     DisconnectReason:
       type: string
       enum: [user_hangup, agent_hangup, call_transfer, voicemail_reached, inactivity, max_duration_reached, error, concurrency_limit, insufficient_credit]

@@ -19,7 +19,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { ApiError, isApiError, toProblem } from "../../api/errors";
-import { documentUrl, formatBytes, useDocuments, useKnowledgeBase, type KbDocument, type KnowledgeBase } from "../../api/knowledge";
+import { documentUrl, formatBytes, type KbDocument, type KnowledgeBase, MAX_FILE_MB, useDocuments, useKnowledgeBase } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import {
   Badge,
@@ -154,7 +154,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
         </Button>
       }
     >
-      Upload a PDF or Word (.docx) file up to 20 MB. It becomes searchable once it is processed.
+      Upload a PDF or Word (.docx) file up to {MAX_FILE_MB} MB. It becomes searchable once it is processed.
     </EmptyState>
   );
 

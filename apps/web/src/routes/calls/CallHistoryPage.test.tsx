@@ -42,6 +42,12 @@ describe("call list URL state (FR-005, FR-036 to FR-038)", () => {
     expect(checkSimulation(mixed)).toEqual({ ok: false, reason: "Select calls from a single agent to run a simulation" });
     expect(checkSimulation(new Map([["call_1", "agt_a"]]))).toEqual({ ok: true, agentId: "agt_a" });
   });
+
+  it("allows no more calls than one batch takes (the API caps base_call_ids at 100)", () => {
+    const calls = (n: number) => new Map(Array.from({ length: n }, (_, i) => [`call_${i}`, "agt_a"]));
+    expect(checkSimulation(calls(100))).toEqual({ ok: true, agentId: "agt_a" });
+    expect(checkSimulation(calls(101))).toEqual({ ok: false, reason: "Select at most 100 calls to run a simulation." });
+  });
 });
 
 describe("CallHistoryPage (006 US1)", () => {

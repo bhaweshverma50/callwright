@@ -21,8 +21,10 @@ import { problemMessage } from "../../api/problems";
 import { useUsage } from "../../api/queries";
 import type { FeatureFamily } from "../../api/types";
 import { EmptyState, Field, InfoTip, Input, MoneyText, Skeleton, TruncatedText, cn, focusRing } from "../../components";
+import { operationExtensions } from "../../lib/contract.gen";
 
-export const MAX_WINDOW_DAYS = 366;
+/** Calendar days a usage window may cover, both ends included (usage.yaml). */
+export const MAX_WINDOW_DAYS = operationExtensions["GET /usage"]["x-max-window-days"];
 
 /** Every family in usage.yaml FeatureFamily (T090), named the way users see the feature. */
 export const FAMILY_LABELS: Record<FeatureFamily, string> = {
@@ -87,7 +89,7 @@ export function defaultWindow(now = new Date()) {
 export function windowError(from: string, to: string): string | null {
   if (!from || !to) return "Pick both dates.";
   if (to < from) return "The end date must be on or after the start date.";
-  const days = (Date.parse(to) - Date.parse(from)) / 86_400_000;
+  const days = (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1;
   if (days > MAX_WINDOW_DAYS) return `Pick a window of ${MAX_WINDOW_DAYS} days or less.`;
   return null;
 }

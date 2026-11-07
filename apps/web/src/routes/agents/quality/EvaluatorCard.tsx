@@ -16,9 +16,10 @@ import {
 import { Badge, Button, IconButton, Input, Select, SwitchControl, Textarea, Tooltip, cn, focusRing, toast } from "../../../components";
 import { COST_LABELS, SCOPE_LABELS, evaluatorIcon } from "./evaluatorMeta";
 import { displayValue, fieldError, fmtNumber, helperText, optionsFor, parseFieldValue, schemaFields } from "../../../api/evaluatorSettings";
+import { schemaLimits } from "../../../lib/contract.gen";
 
-export const HEADLINE_LIMIT = 4;
-export const HEADLINE_LIMIT_MESSAGE = "Up to 4 headline checks per agent";
+export const HEADLINE_LIMIT = schemaLimits.AgentEvalSetting.headline_position.maximum;
+export const HEADLINE_LIMIT_MESSAGE = `Up to ${HEADLINE_LIMIT} headline checks per agent`;
 
 type FormValues = Record<string, unknown>;
 

@@ -3699,12 +3699,12 @@ export interface components {
         };
         CallUsageMeters: {
             duration_ms: number;
-            /** @default 0 */
-            llm_input_tokens: number;
-            /** @default 0 */
-            llm_output_tokens: number;
-            /** @default 0 */
-            tts_chars: number;
+            /** @description Default: 0 */
+            llm_input_tokens?: number;
+            /** @description Default: 0 */
+            llm_output_tokens?: number;
+            /** @description Default: 0 */
+            tts_chars?: number;
         };
         QuoteLine: {
             component: components["schemas"]["Component"];
@@ -3942,6 +3942,7 @@ export interface components {
             model: string;
         };
         DynamicVariable: {
+            /** @description Built-in names are filled by the platform and cannot be declared. */
             name: string;
             default?: string | null;
             description?: string | null;
@@ -4127,13 +4128,34 @@ export interface components {
             language?: string;
         };
         TemplateDetail: components["schemas"]["TemplateSummary"] & {
-            /**
-             * @description Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
-             *     llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
-             *     tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
-             *     fixed-temperature model, nor tts.voice_id (the language default voice applies).
-             */
-            config: Record<string, never>;
+            config: components["schemas"]["TemplateConfig"];
+        };
+        /**
+         * @description Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+         *     llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
+         *     tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
+         *     fixed-temperature model, nor tts.voice_id (the language default voice applies).
+         */
+        TemplateConfig: {
+            agent_name: string;
+            language: string;
+            llm: {
+                provider: string;
+                model: string;
+            };
+            prompt: string;
+            begin_message: string | null;
+            /** @enum {string} */
+            start_speaker: "agent" | "user";
+            stt: {
+                provider: string;
+                model?: string | null;
+            };
+            tts: {
+                provider: string;
+                model: string;
+            };
+            dynamic_variables: components["schemas"]["DynamicVariable"][];
         };
         /** @description null means price unavailable */
         PricePerMin: components["schemas"]["MoneyUsd"] | null;
@@ -4695,11 +4717,8 @@ export interface components {
         };
         WebCallRequest: {
             agent_id: string;
-            /**
-             * @description `draft` (default), `published`, or a specific `agv_` id of this agent.
-             * @default draft
-             */
-            version: string;
+            /** @description `draft` (default), `published`, or a specific `agv_` id of this agent.. Default: "draft" */
+            version?: string;
             dynamic_variables?: components["schemas"]["DynamicVariables"];
             /** @description Passthrough echoed in webhooks; max 4 KB serialized, max 20 keys. */
             metadata?: {
@@ -4891,7 +4910,9 @@ export interface components {
         AgentSettingsChange: {
             expected_draft_revision: number;
             /** @description Partial AgentConfig (002 agents.yaml AgentConfig), deep-merged into the draft. start_speaker and begin_message are rejected for flow agents (the Start node owns them). */
-            changes: Record<string, never>;
+            changes: {
+                [key: string]: unknown;
+            };
         };
         FlowGraph: {
             nodes: components["schemas"]["Node"][];
@@ -4935,18 +4956,20 @@ export interface components {
             llm?: {
                 provider?: string;
                 model?: string;
-                temperature?: number;
+                temperature?: number | null;
             } | null;
+            /** @description Numbers are checked against the 002 controls range table (validate_override) */
             tts?: {
                 provider?: string;
-                model?: string;
+                model?: string | null;
                 voice_id?: string;
-                speed?: number;
-                stability?: number;
+                speed?: number | null;
+                volume?: number | null;
+                expressiveness?: number | null;
             } | null;
             stt?: {
                 provider?: string;
-                model?: string;
+                model?: string | null;
             } | null;
             language?: string | null;
         };
@@ -4975,6 +4998,7 @@ export interface components {
         /** task */
         TaskConfig: {
             instructions: string;
+            begin_message?: string | null;
             fields: components["schemas"]["TaskField"][];
             /** @default 5 */
             max_rounds: number;
@@ -5203,13 +5227,6 @@ export interface components {
             engine_ms?: number;
             model_ms?: number | null;
         };
-        Page: {
-            items: unknown[];
-            total: number;
-            page: number;
-            page_size: number;
-            total_pages: number;
-        };
         KnowledgeBaseWrite: {
             name?: string;
             description?: string;
@@ -5404,7 +5421,9 @@ export interface components {
              *       "required": []
              *     }
              */
-            parameters: Record<string, never>;
+            parameters: {
+                [key: string]: unknown;
+            };
         };
         AgentToolSet: {
             agent_id: string;
@@ -5566,6 +5585,11 @@ export interface components {
             suggestions?: string[];
             charged_usd?: number | null;
         };
+        /**
+         * @description A CSV column of exportCalls.
+         * @enum {string}
+         */
+        ExportColumn: "call_id" | "started_at" | "agent_id" | "agent_name" | "from_number" | "to_number" | "channel" | "origin" | "disconnect_reason" | "duration_s" | "status" | "cost_usd" | "latency_avg_ms" | "has_recording" | "summary" | "sentiment" | "analysis_values" | "eval_status" | "label";
         /** @enum {string} */
         Channel: "web" | "sip_inbound" | "sip_outbound" | "whatsapp";
         /** @enum {string} */
@@ -5940,7 +5964,9 @@ export interface components {
             key: string;
             label: string;
             /** @description JSON Schema for the action's params. */
-            params_schema?: Record<string, never> | null;
+            params_schema?: {
+                [key: string]: unknown;
+            } | null;
         };
         VisualState: {
             /** @example /dashboard */
@@ -6320,8 +6346,8 @@ export interface components {
             /** Format: date-time */
             started_at?: string | null;
             duration_s?: number | null;
-            call_status?: string | null;
-            eval_status?: string | null;
+            call_status?: components["schemas"]["CallStatus"] | null;
+            eval_status?: components["schemas"]["EvalStatus"] | null;
             /** @enum {string|null} */
             sentiment?: "positive" | "neutral" | "negative" | null;
         };
@@ -6820,23 +6846,23 @@ export interface components {
             created_at: string;
         };
         ValidationRequest: {
-            /** @default false */
-            dry_run: boolean;
+            /** @description Default: false */
+            dry_run?: boolean;
             /**
-             * @default persona
+             * @description Default: "persona"
              * @enum {string}
              */
-            mode: "persona" | "replay";
-            /** @default 20 */
-            affected_limit: number;
-            /** @default 10 */
-            guard_limit: number;
-            /** @default 10 */
-            min_improvement_pp: number;
-            /** @default 5 */
-            max_regression_pp: number;
-            /** @default 5 */
-            min_sample: number;
+            mode?: "persona" | "replay";
+            /** @description Default: 20 */
+            affected_limit?: number;
+            /** @description Default: 10 */
+            guard_limit?: number;
+            /** @description Default: 10 */
+            min_improvement_pp?: number;
+            /** @description Default: 5 */
+            max_regression_pp?: number;
+            /** @description Default: 5 */
+            min_sample?: number;
         };
         ValidationEstimate: {
             affected_calls: number;
@@ -6935,8 +6961,8 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
-            /** @default 30 */
-            ring_timeout_s: number;
+            /** @description Default: 30 */
+            ring_timeout_s?: number;
             /** @description IANA timezone name (for example `America/New_York`) used for the calling-hour check instead of the zone derived from `to_number`. Unknown names are rejected with `invalid-timezone`. */
             recipient_timezone?: string;
         };
@@ -7271,8 +7297,8 @@ export interface components {
             scheduled_at: string;
             /** @description IANA zone overriding the one derived from the destination number. */
             recipient_timezone?: string;
-            /** @default  */
-            note: string;
+            /** @description Default: "" */
+            note?: string;
             dynamic_variables?: {
                 [key: string]: string;
             };
@@ -7285,8 +7311,8 @@ export interface components {
              */
             at?: string;
             in_minutes?: number;
-            /** @default  */
-            note: string;
+            /** @description Default: "" */
+            note?: string;
         };
         CallbackBooked: {
             /** @constant */
@@ -8340,7 +8366,7 @@ export interface operations {
             content: {
                 "application/json": {
                     note?: string;
-                    /** @default false */
+                    /** @description Default: false */
                     publish?: boolean;
                 };
             };
@@ -8496,7 +8522,9 @@ export interface operations {
                     /** @description Overlay this template on the defaults (single_prompt only) */
                     template_id?: string;
                     /** @description Optional partial config overlaid on defaults (and on the template if given) */
-                    config?: Record<string, never>;
+                    config?: {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -8559,7 +8587,10 @@ export interface operations {
             content: {
                 "application/json": {
                     type: components["schemas"]["AgentType"];
-                    config: Record<string, never>;
+                    /** @description A whole AgentConfig as edited; validation reports what is wrong with it */
+                    config: {
+                        [key: string]: unknown;
+                    };
                     /** @description Optional; lets attachment validators check workspace references */
                     agent_id?: components["schemas"]["AgentId"];
                 };
@@ -8796,7 +8827,7 @@ export interface operations {
                 "application/json": {
                     /** @description Optional; recorded as the usage reference */
                     agent_id?: components["schemas"]["AgentId"];
-                    /** @default en-US */
+                    /** @description Default: "en-US" */
                     language?: string;
                     messages: {
                         /** @enum {string} */
@@ -9527,7 +9558,7 @@ export interface operations {
                 "application/json": {
                     /** Format: uri */
                     url: string;
-                    /** @default 3000 */
+                    /** @description Default: 3000 */
                     timeout_ms?: number;
                 };
             };
@@ -9875,8 +9906,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page"] & {
-                        items?: components["schemas"]["KnowledgeBase"][];
+                    "application/json": components["schemas"]["PageMeta"] & {
+                        items: components["schemas"]["KnowledgeBase"][];
                     };
                 };
             };
@@ -10019,8 +10050,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page"] & {
-                        items?: components["schemas"]["Document"][];
+                    "application/json": components["schemas"]["PageMeta"] & {
+                        items: components["schemas"]["Document"][];
                     };
                 };
             };
@@ -10044,10 +10075,7 @@ export interface operations {
                     display_name?: string;
                     /** @description Replace this document once the new one is ready. */
                     replace_doc_id?: string;
-                    /**
-                     * @description Proceed although the same content exists in another KB.
-                     * @default false
-                     */
+                    /** @description Proceed although the same content exists in another KB.. Default: false */
                     acknowledge_duplicate?: boolean;
                 };
             };
@@ -10256,7 +10284,7 @@ export interface operations {
             content: {
                 "application/json": {
                     query: string;
-                    /** @default 4 */
+                    /** @description Default: 4 */
                     top_k?: number;
                 };
             };
@@ -10355,7 +10383,7 @@ export interface operations {
                     call_id: string;
                     query: string;
                     kb_ids: string[];
-                    /** @default 4 */
+                    /** @description Default: 4 */
                     top_k?: number;
                 };
             };
@@ -10394,8 +10422,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page"] & {
-                        items?: components["schemas"]["Tool"][];
+                    "application/json": components["schemas"]["PageMeta"] & {
+                        items: components["schemas"]["Tool"][];
                     };
                 };
             };
@@ -10605,11 +10633,11 @@ export interface operations {
                 "application/json": {
                     tool_id?: string;
                     tool?: components["schemas"]["ToolCreate"];
-                    /** @default {} */
+                    /** @description Default: {} */
                     arguments?: {
                         [key: string]: unknown;
                     };
-                    /** @default {} */
+                    /** @description Default: {} */
                     dynamic_variables?: {
                         [key: string]: string;
                     };
@@ -10932,7 +10960,7 @@ export interface operations {
                 label?: string;
                 eval_status?: string;
                 origin?: string;
-                /** @description Comma-separated column keys in display order; defaults to all list columns. */
+                /** @description Comma-separated ExportColumn keys in display order; unknown keys are ignored. Defaults to every column. */
                 columns?: string;
             };
             header?: never;
@@ -11750,7 +11778,7 @@ export interface operations {
                     overrides?: {
                         [key: string]: unknown;
                     };
-                    /** @default false */
+                    /** @description Default: false */
                     is_headline?: boolean;
                 };
             };
@@ -12429,10 +12457,7 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /**
-                     * @description Skip calls that already have results from the current evaluator versions
-                     * @default false
-                     */
+                    /** @description Skip calls that already have results from the current evaluator versions. Default: false */
                     only_missing?: boolean;
                 };
             };
@@ -12962,8 +12987,11 @@ export interface operations {
                     name: string;
                     /** @description Derived from name when omitted. */
                     slug?: string;
-                    /** @description One of the palette colours; defaults to the first unused palette colour */
-                    color?: string;
+                    /**
+                     * @description One of the palette colours; defaults to the first unused palette colour
+                     * @enum {string}
+                     */
+                    color?: "#3346e8" | "#7a3cff" | "#e0457b" | "#e89a1c" | "#12805c" | "#0e8fb3" | "#c2281b" | "#5e6287";
                 };
             };
         };
@@ -13149,7 +13177,7 @@ export interface operations {
             content: {
                 "application/json": {
                     agent_id: string;
-                    /** @default false */
+                    /** @description Default: false */
                     dry_run?: boolean;
                     /** @constant */
                     format?: "callwright.test_cases.v1";
@@ -13220,7 +13248,7 @@ export interface operations {
                     agent_id: string;
                     /** @description Slug */
                     category?: string | null;
-                    /** @default 5 */
+                    /** @description Default: 5 */
                     count?: number;
                     guidance?: string | null;
                 };
@@ -13549,11 +13577,11 @@ export interface operations {
                 "application/json": {
                     agent_id: string;
                     /**
-                     * @default 14
+                     * @description Default: 14
                      * @enum {integer}
                      */
                     window_days?: 7 | 14 | 30 | 90;
-                    /** @default false */
+                    /** @description Default: false */
                     include_simulated?: boolean;
                 };
             };
@@ -13960,10 +13988,7 @@ export interface operations {
                 "application/json": {
                     /** @description Must equal the current revision when given */
                     fix_revision?: number;
-                    /**
-                     * @description false creates the version without publishing
-                     * @default true
-                     */
+                    /** @description false creates the version without publishing. Default: true */
                     publish?: boolean;
                     release_notes_extra?: string | null;
                 };

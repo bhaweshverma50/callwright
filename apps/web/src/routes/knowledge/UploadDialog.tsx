@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import {
   ACCEPT,
   MAX_FILE_BYTES,
+  MAX_FILE_MB,
   checkDuplicate,
   formatBytes,
   sha256Hex,
@@ -20,7 +21,7 @@ const TYPES = /\.(pdf|docx)$/i;
 
 export function fileProblem(file: File): string | null {
   if (!TYPES.test(file.name)) return "Only PDF and Word (.docx) files can be uploaded.";
-  if (file.size > MAX_FILE_BYTES) return `This file is ${formatBytes(file.size)}; the limit is 20 MB.`;
+  if (file.size > MAX_FILE_BYTES) return `This file is ${formatBytes(file.size)}; the limit is ${MAX_FILE_MB} MB.`;
   if (file.size === 0) return "This file is empty.";
   return null;
 }
@@ -28,7 +29,7 @@ export function fileProblem(file: File): string | null {
 type Check = { state: "idle" } | { state: "checking" } | { state: "done"; verdict: DuplicateVerdict; matches: DuplicateMatch[] } | { state: "error" };
 
 /**
- * Upload one document (T067, T098): PDF or DOCX up to 20 MB, checked in the browser first; the
+ * Upload one document (T067, T098): PDF or DOCX up to the size limit, checked in the browser first; the
  * SHA-256 is computed locally so a duplicate is caught before the file is sent. Same content in
  * this knowledge base is refused; elsewhere, or a file with the same name, asks what to do.
  */
@@ -117,7 +118,7 @@ export function UploadDialog({
       onOpenChange(false);
     } catch (e) {
       setProgress(null);
-      if (isApiError(e) && e.status === 413) setFailure("This file is larger than 20 MB.");
+      if (isApiError(e) && e.status === 413) setFailure(`This file is larger than ${MAX_FILE_MB} MB.`);
       else if (isApiError(e) && e.status === 415) setFailure("This is not a PDF or Word document, whatever its name says.");
       else if (isApiError(e) && e.code === "quota_exceeded") setFailure(e.problem.detail ?? "A storage limit was reached.");
       else if (isApiError(e) && e.code === "duplicate_document") setFailure("This knowledge base already has a document with the same content.");
@@ -137,7 +138,7 @@ export function UploadDialog({
       onOpenChange={(o) => !uploading && onOpenChange(o)}
       icon={<CloudUpload />}
       title={`Upload to ${kbName}`}
-      description="PDF or Word (.docx), up to 20 MB. Text is read, split into passages and indexed for search."
+      description={`PDF or Word (.docx), up to ${MAX_FILE_MB} MB. Text is read, split into passages and indexed for search.`}
       footer={
         <>
           <Button onClick={() => onOpenChange(false)} disabled={uploading}>
@@ -185,7 +186,7 @@ export function UploadDialog({
             </span>
             <span className="relative flex flex-col gap-0.5">
               <span className="text-[14px] font-medium text-fg">Drop a file here, or choose one</span>
-              <span className="text-[13px] text-fg-3">PDF or DOCX, up to 20 MB</span>
+              <span className="text-[13px] text-fg-3">PDF or DOCX, up to {MAX_FILE_MB} MB</span>
             </span>
           </button>
         ) : (

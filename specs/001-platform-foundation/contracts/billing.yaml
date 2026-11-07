@@ -46,6 +46,8 @@ paths:
               properties:
                 amount_usd:
                   $ref: './core.yaml#/components/schemas/MoneyUsd'
+                  x-minimum-usd: '5.00'
+                  x-maximum-usd: '10000.00'
                   description: Minimum 5.00, maximum 10000.00, at most two decimal places (FR-008). Out-of-range or over-precise amounts return 422 with a field error. Presets in the UI are 25, 100, 500, 1000 and only fill the amount.
       responses:
         '201':

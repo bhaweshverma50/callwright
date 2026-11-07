@@ -3,7 +3,7 @@ import { BookOpen, Bot, FileText, HardDrive, Plus, Search, Upload, X } from "luc
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { formatBytes, useKnowledgeBases, type KnowledgeBase } from "../../api/knowledge";
+import { formatBytes, type KnowledgeBase, MAX_FILE_MB, useKnowledgeBases } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Button, EmptyState, FlowChain, IconButton, Input, PageHeader, Pagination, Skeleton, TruncatedText, cn } from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
@@ -143,7 +143,7 @@ export function KnowledgeListPage() {
                 </Button>
               }
             >
-              Upload PDF and Word (.docx) documents up to 20 MB each. They are indexed in the background; attach the knowledge base to an agent and it
+              Upload PDF and Word (.docx) documents up to {MAX_FILE_MB} MB each. They are indexed in the background; attach the knowledge base to an agent and it
               looks things up while it talks.
             </EmptyState>
             <div className="rounded-panel border border-line bg-surface-2/70 px-5 py-6">

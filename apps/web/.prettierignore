@@ -5,6 +5,7 @@ playwright-report
 test-results
 public/mockServiceWorker.js
 src/api/schema.d.ts
+src/lib/contract.gen.ts
 pnpm-lock.yaml
 docs/screens
 *.md

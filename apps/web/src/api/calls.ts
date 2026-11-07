@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import { isApiError } from "./errors";
 import type { components } from "./schema";
+import { scalarLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -67,8 +68,9 @@ export const POLL_IDLE_MS = 15_000;
 /** Dashboard figures move with every finished call and evaluation; a slow refresh keeps them honest. */
 export const DASHBOARD_POLL_MS = 60_000;
 /** Statuses that will still change on their own: ringing, live, or being processed after the call. */
-const ACTIVE_STATUSES = new Set<CallStatus>(["queued", "ringing", "in_progress", "ended", "processing"]);
-export const LIVE_STATUSES = new Set<CallStatus>(["queued", "ringing", "in_progress"]);
+const ACTIVE_STATUSES = new Set<CallStatus>(scalarLimits.CallStatus["x-still-changing"]);
+/** Ringing or connected: what GET /calls/live lists. */
+export const LIVE_STATUSES = new Set<CallStatus>(scalarLimits.CallStatus["x-on-air"]);
 export const isOnAir = (status: CallStatus) => LIVE_STATUSES.has(status);
 
 /** Call list: fast while any row is still changing, slow otherwise (only while the tab is visible). */

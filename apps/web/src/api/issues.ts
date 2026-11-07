@@ -6,6 +6,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
+import { operationExtensions, schemaLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -50,6 +51,8 @@ export interface ApplyResult {
 export interface IssueFilters {
   agentId: string | null;
   status: StatusFilter;
+const VALIDATION = schemaLimits.ValidationRequest;
+const range = (c: { minimum: number; maximum: number; default: number }) => ({ min: c.minimum, max: c.maximum, default: c.default });
   scope: IssueScope;
   windowDays: WindowDays;
   page: number;
@@ -62,10 +65,12 @@ export const DEFAULT_WINDOW: WindowDays = 14;
 
 /** Threshold ranges the API accepts (FR-015). */
 export const THRESHOLDS = {
-  min_improvement_pp: { min: 5, max: 50, default: 10 },
-  max_regression_pp: { min: 0, max: 20, default: 5 },
-  min_sample: { min: 3, max: 50, default: 5 },
-} as const;
+  min_improvement_pp: range(VALIDATION.min_improvement_pp),
+  max_regression_pp: range(VALIDATION.max_regression_pp),
+  min_sample: range(VALIDATION.min_sample),
+};
+/** Above this share of failed simulations a validation is inconclusive. */
+export const MAX_FAILED_RUN_SHARE = operationExtensions["POST /issues/{issue_id}/validate"]["x-max-failed-run-share"];
 
 export const issueKeys = {
   all: ["issues"] as const,

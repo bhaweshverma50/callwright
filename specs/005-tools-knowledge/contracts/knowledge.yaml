@@ -138,6 +138,7 @@ paths:
       operationId: uploadDocument
       description: |
         Multipart upload, PDF or DOCX by content, at most 20,971,520 bytes. Returns 202 with the
+      x-max-file-bytes: 20971520
         document in status `uploaded`; ingestion runs in the background.
       requestBody:
         required: true

@@ -1,11 +1,12 @@
 /**
- * Cross-page call selection for "Run simulation" (FR-006): up to 200 calls, kept while paging,
- * from a single agent. The selection opens the 008 start dialog in place (one call starts an
- * individual run, 2 to 100 a batch).
+ * Cross-page call selection for "Run simulation" (FR-006): kept while paging, from a single agent,
+ * and no more calls than one batch takes. The selection opens the 008 start dialog in place (one
+ * call starts an individual run, more start a batch).
  */
 import { useCallback, useState } from "react";
+import { bodyLimits } from "../../lib/contract.gen";
 
-export const MAX_SELECTION = 200;
+export const MAX_SELECTION = bodyLimits["POST /experiments"].base_call_ids.maxItems;
 
 export type Selection = ReadonlyMap<string, string>; // call id -> agent id
 

@@ -16,6 +16,7 @@ import type {
   ValidationReason,
 } from "../../api/issues";
 import { Badge, type Tone } from "../../components";
+import { MAX_FAILED_RUN_SHARE } from "../../api/issues";
 
 export const STATUS_LABELS: Record<IssueStatus, string> = {
   open: "Open",
@@ -145,7 +146,7 @@ export function reasonText(r: ValidationReason, names: Record<string, string>, t
     case "insufficient_sample":
       return `Too few affected calls finished with a verdict in both batches${r.n != null ? ` (${r.n})` : ""}. At least ${t.min_sample} are needed.`;
     case "too_many_failed_runs":
-      return "More than 20% of the simulations with the fix failed to run, so the result cannot be trusted.";
+      return `More than ${Math.round(MAX_FAILED_RUN_SHARE * 100)}% of the simulations with the fix failed to run, so the result cannot be trusted.`;
     case "improvement_below_threshold":
       return `${check} improved by ${delta ?? "less than needed"}, below the ${t.min_improvement_pp} pp needed.`;
     case "regression":

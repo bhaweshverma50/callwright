@@ -5,17 +5,24 @@
 import type { HttpToolConfig, PressDigitConfig, ToolConfig, ToolDraft, TransferConfig } from "../../../../api/tools";
 import { isMachineName, NAME_RULE } from "../../../../lib/machineName";
 import { e164Error } from "../../../../lib/e164";
+import { scalarLimits } from "../../../../lib/contract.gen";
 
 const HEADER = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/;
 const PLACEHOLDER = /\{\{\s*[A-Za-z_][A-Za-z0-9_.]*\s*\}\}/g;
+
+const RESERVED_NAMES: Record<string, string> = scalarLimits.ToolName["x-reserved-names"];
+const RESERVED_PREFIXES: Record<string, string> = scalarLimits.ToolName["x-reserved-prefixes"];
 
 export type Errors = Record<string, string>;
 
 export function nameError(name: string): string | null {
   if (!name) return "Enter a name.";
   if (!isMachineName(name)) return `${NAME_RULE}.`;
-  if (name === "kb_search") return "kb_search is reserved for knowledge search.";
-  if (name.startsWith("route_to_")) return "Names starting with route_to_ are reserved for flows.";
+  const reservedFor = RESERVED_NAMES[name];
+  if (reservedFor) return `${name} is reserved for ${reservedFor}.`;
+  for (const [prefix, owner] of Object.entries(RESERVED_PREFIXES)) {
+    if (name.startsWith(prefix)) return `Names starting with ${prefix} are reserved for ${owner}.`;
+  }
   return null;
 }
 

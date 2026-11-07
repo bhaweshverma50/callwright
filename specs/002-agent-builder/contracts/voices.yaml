@@ -97,6 +97,8 @@ paths:
         '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
     post:
       operationId: uploadAmbientAudio
+      x-max-file-bytes: 10485760
+      x-max-uploads: 20
       tags: [voices]
       security: [{bearerAuth: []}]
       requestBody:

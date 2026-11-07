@@ -6,6 +6,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
+import { bodyLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -28,11 +29,8 @@ export type GenerateResult = { drafts: TestCaseImportRow[]; cost_usd: number };
 export const TEST_POLL_MS = 3_000;
 export const CASES_PAGE_SIZE = 50;
 
-/**
- * Palette for custom categories (FR-032). Seeds have fixed entries chosen by the API; a new
- * category picks one of these. Kept in step with CATEGORY_PALETTE in services/api.
- */
-export const CATEGORY_PALETTE = ["#3346e8", "#7a3cff", "#e0457b", "#e89a1c", "#12805c", "#0e8fb3", "#c2281b", "#5e6287"] as const;
+/** Palette for custom categories (FR-032): a new category picks one of these; seeds have fixed entries. */
+export const CATEGORY_PALETTE = bodyLimits["POST /test-categories"].color.enum;
 
 export const testingKeys = {
   all: ["testing"] as const,
@@ -54,8 +52,10 @@ export function useTestCategories() {
   });
 }
 
-export function createTestCategory(body: { name: string; color?: string }) {
-  return unwrap(api.POST("/test-categories", { body })) as Promise<TestCategory>;
+export type CategoryColor = (typeof CATEGORY_PALETTE)[number];
+
+export function createTestCategory(body: { name: string; color?: CategoryColor }) {
+  return unwrap(api.POST("/test-categories", { body }));
 }
 
 export function useTestCases(agentId: string, category: string | null, page: number) {

@@ -283,7 +283,8 @@ const ORDER = [
 ];
 export const COLUMNS: CallColumn[] = ORDER.map((k) => ALL.find((c) => c.key === k)!);
 
-export const EXPORT_KEYS: Record<string, string[]> = {
+/** The CSV columns each list column exports (calls.yaml ExportColumn). */
+export const EXPORT_KEYS: Record<string, components["schemas"]["ExportColumn"][]> = {
   call_id: ["call_id"],
   started_at: ["started_at"],
   agent: ["agent_id", "agent_name"],

@@ -331,6 +331,8 @@ components:
         page_size: {type: integer}
         total_pages: {type: integer}
 
+      x-reserved-names: {kb_search: knowledge search}
+      x-reserved-prefixes: {route_to_: flows}
     ToolType:
       type: string
       enum: [end_call, transfer_call, press_digit, http]

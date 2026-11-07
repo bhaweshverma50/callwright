@@ -1,5 +1,5 @@
 /**
- * Generate dialog (US1, T040, FR-033): drafts 1 to 20 test cases with an LLM for one category or
+ * Generate dialog (US1, T040, FR-033): drafts a few test cases with an LLM for one category or
  * all of them, with optional guidance. Out-of-range counts are corrected to the nearest bound as
  * typed. Drafts are reviewed here and only the kept ones are saved (through the import endpoint).
  * Drafting is charged once per action (Idempotency-Key).
@@ -12,12 +12,14 @@ import { generateTestCases, importTestCases, testingKeys, type TestCaseImportRow
 import { Button, Dialog, Field, Input, Select, Textarea, ThinkingIndicator, cn, toast } from "../../../components";
 import { ProblemAlert, cost, plural } from "../../simulations/shared";
 import { ALL_CATEGORIES, CategoryLabel, categoryOptions } from "./categories";
+import { bodyLimits } from "../../../lib/contract.gen";
 
-export const MIN_COUNT = 1;
-export const MAX_COUNT = 20;
-const DEFAULT_COUNT = 5;
+const COUNT = bodyLimits["POST /test-cases/generate"].count;
+export const MIN_COUNT = COUNT.minimum;
+export const MAX_COUNT = COUNT.maximum;
+const DEFAULT_COUNT = COUNT.default;
 
-/** Typed text to the count shown: digits only, clamped to 1..20; empty stays empty while typing. */
+/** Typed text to the count shown: digits only, clamped to the allowed range; empty stays empty while typing. */
 export function clampCount(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits === "") return "";
@@ -208,7 +210,7 @@ export function GenerateDialog({
                 />
               )}
             </Field>
-            <Field label="How many" hint="1 to 20">
+            <Field label="How many" hint={`${MIN_COUNT} to ${MAX_COUNT}`}>
               {({ id, describedBy }) => (
                 <Input
                   id={id}

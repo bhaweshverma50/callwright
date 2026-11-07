@@ -11,6 +11,7 @@ paths:
       tags: [usage]
       security: [{bearerAuth: []}]
       summary: Raw and billable cost per feature for a date window (FR-014)
+      x-max-window-days: 366
       parameters:
         - name: from
           in: query

@@ -11,6 +11,7 @@ import type { DynamicVariable } from "../../../api/agents";
 import { fieldErrors } from "../../../api/problems";
 import {
   CATEGORY_PALETTE,
+  type CategoryColor,
   createTestCase,
   createTestCategory,
   testingKeys,
@@ -36,7 +37,7 @@ function NewCategory({ categories, onCreated }: { categories: TestCategory[]; on
   const qc = useQueryClient();
   const used = new Set(categories.map((c) => c.color));
   const [name, setName] = useState("");
-  const [color, setColor] = useState<string>(CATEGORY_PALETTE.find((p) => !used.has(p)) ?? CATEGORY_PALETTE[0]);
+  const [color, setColor] = useState<CategoryColor>(CATEGORY_PALETTE.find((p) => !used.has(p)) ?? CATEGORY_PALETTE[0]);
   const [error, setError] = useState<unknown>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

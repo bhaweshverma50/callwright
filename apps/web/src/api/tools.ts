@@ -5,6 +5,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
+import { schemaLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -97,7 +98,7 @@ export interface ToolUsage {
   published_version_ids: string[];
 }
 
-export const MAX_TOOLS_PER_AGENT = 25;
+export const MAX_TOOLS_PER_AGENT = schemaLimits.AgentConfig.tool_ids.maxItems;
 
 export const toolKeys = {
   all: ["tools"] as const,

@@ -6,6 +6,7 @@
  */
 import type { CallOrigin, CallStatus, Channel, DisconnectReason, EvalStatus, Sentiment } from "../../api/calls";
 import { isAgentId } from "../../lib/paths";
+import { enums, queryLimits } from "../../lib/contract.gen";
 
 export const STATUS_LABELS: Record<CallStatus, string> = {
   queued: "Queued",
@@ -53,10 +54,15 @@ export const EVAL_LABELS: Record<EvalStatus, string> = {
 };
 
 export type OwnLabel = keyof typeof LABEL_LABELS;
-export type SortKey = "started_at" | "duration_s" | "cost_usd" | "latency_avg_ms";
-export const SORTS: SortKey[] = ["started_at", "duration_s", "cost_usd", "latency_avg_ms"];
-export const PAGE_SIZES = [10, 20, 50, 100] as const;
-export const DEFAULT_ORIGINS: CallOrigin[] = ["live", "test"];
+/** Sorts, page size bounds, default origins and the shortest call id prefix, as GET /calls takes them. */
+const LIST_QUERY = queryLimits["GET /calls"];
+export type SortKey = (typeof LIST_QUERY.sort.enum)[number];
+export const SORTS: readonly SortKey[] = LIST_QUERY.sort.enum;
+const DEFAULT_SORT = LIST_QUERY.sort.default;
+const DEFAULT_PAGE_SIZE = LIST_QUERY.page_size.default;
+export const PAGE_SIZES = [10, DEFAULT_PAGE_SIZE, 50, LIST_QUERY.page_size.maximum] as const;
+export const DEFAULT_ORIGINS: CallOrigin[] = enums.Origin.filter((o) => LIST_QUERY.origin.default.split(",").includes(o));
+const MIN_CALL_ID_PREFIX = LIST_QUERY.call_id.minLength;
 
 export interface CallFilters {
   status: CallStatus[];
@@ -141,11 +147,11 @@ export function parseListState(params: URLSearchParams): { state: ListState; dro
     filters[key] = raw;
   }
   const sortRaw = params.get("sort");
-  const sort = SORTS.includes(sortRaw as SortKey) ? (sortRaw as SortKey) : "started_at";
+  const sort = SORTS.find((s) => s === sortRaw) ?? DEFAULT_SORT;
   const order = params.get("order") === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
-  const sizeRaw = Number.parseInt(params.get("page_size") ?? "20", 10);
-  const pageSize = (PAGE_SIZES as readonly number[]).includes(sizeRaw) ? sizeRaw : 20;
+  const sizeRaw = Number.parseInt(params.get("page_size") ?? "", 10);
+  const pageSize = PAGE_SIZES.find((s) => s === sizeRaw) ?? DEFAULT_PAGE_SIZE;
   return { state: { filters, sort, order, page, pageSize }, dropped };
 }
 
@@ -163,10 +169,10 @@ export function toSearchParams(state: ListState, keep?: URLSearchParams): URLSea
     } else if (f[key].length) out.set(key, f[key].join(","));
   }
   for (const key of TEXT_KEYS) if (f[key]) out.set(key, f[key]);
-  if (state.sort !== "started_at") out.set("sort", state.sort);
+  if (state.sort !== DEFAULT_SORT) out.set("sort", state.sort);
   if (state.order !== "desc") out.set("order", state.order);
   if (state.page > 1) out.set("page", String(state.page));
-  if (state.pageSize !== 20) out.set("page_size", String(state.pageSize));
+  if (state.pageSize !== DEFAULT_PAGE_SIZE) out.set("page_size", String(state.pageSize));
   return out;
 }
 
@@ -179,7 +185,7 @@ export function toApiQuery(state: ListState, tz: string): URLSearchParams {
   q.set("order", state.order);
   const f = state.filters;
   for (const key of MULTI_KEYS) if (f[key].length) q.set(key, f[key].join(","));
-  if (f.call_id.length >= 8) q.set("call_id", f.call_id);
+  if (f.call_id.length >= MIN_CALL_ID_PREFIX) q.set("call_id", f.call_id);
   if (f.from_number) q.set("from_number", f.from_number);
   if (f.to_number) q.set("to_number", f.to_number);
   if (f.start_date) q.set("start_date", f.start_date);

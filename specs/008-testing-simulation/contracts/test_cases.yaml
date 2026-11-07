@@ -48,7 +48,7 @@ paths:
                   description: Derived from name when omitted.
                 color:
                   type: string
-                  pattern: '^#[0-9a-f]{6}$'
+                  enum: ['#3346e8', '#7a3cff', '#e0457b', '#e89a1c', '#12805c', '#0e8fb3', '#c2281b', '#5e6287']
                   description: One of the palette colours; defaults to the first unused palette colour
       responses:
         '201':

@@ -375,7 +375,11 @@ components:
       type: object
       required: [name]
       properties:
-        name: {type: string, pattern: '^[A-Za-z_][A-Za-z0-9_]{0,63}$'}
+        name:
+          type: string
+          pattern: '^[A-Za-z_][A-Za-z0-9_]{0,63}$'
+          description: Built-in names are filled by the platform and cannot be declared.
+          x-reserved: [call_id, channel, direction, user_number, agent_number, timezone, current_time, current_date, current_datetime]
         default: {type: [string, 'null'], maxLength: 2000}
         description: {type: [string, 'null'], maxLength: 200}
     BackgroundAudioSource:

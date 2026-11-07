@@ -5,6 +5,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, apiUrl, readJson, sendAuthorized, unwrap } from "./client";
 import type { components } from "./schema";
+import { operationExtensions, schemaLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -36,8 +37,9 @@ export interface DuplicateMatch {
   reason: "same_content" | "same_name";
 }
 
-export const MAX_FILE_BYTES = 20 * 1024 * 1024;
-export const MAX_KBS_PER_AGENT = 10;
+export const MAX_FILE_BYTES = operationExtensions["POST /knowledge-bases/{kb_id}/documents"]["x-max-file-bytes"];
+export const MAX_FILE_MB = MAX_FILE_BYTES / (1024 * 1024);
+export const MAX_KBS_PER_AGENT = schemaLimits.AgentConfig.kb_ids.maxItems;
 export const ACCEPT = ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export const kbKeys = {

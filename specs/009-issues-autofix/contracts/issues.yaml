@@ -188,6 +188,7 @@ paths:
     post:
       tags: [issues]
       operationId: validateIssueFix
+      x-max-failed-run-share: 0.2
       summary: Validate the current revision (control and treatment batches). dry_run returns the estimate only.
       parameters:
         - { $ref: '#/components/parameters/IssueId' }
