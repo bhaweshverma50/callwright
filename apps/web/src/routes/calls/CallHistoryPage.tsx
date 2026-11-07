@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Check, Columns3, Download, FlaskConica
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { downloadCallsCsv, useAgentOptions, useCalls, type CallListItem } from "../../api/calls";
+import { downloadCallsCsv, useCalls, type CallListItem } from "../../api/calls";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import {
@@ -35,6 +35,7 @@ import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { summaryHeadline } from "./quality/SummaryText";
 import { mss, usd, viewerTimeZone, when } from "../../lib/format";
 import { CallStatusBadge, CHANNEL_LABELS, STATUS_LABELS } from "../../components/callVocabulary";
+import { useAllAgents } from "../../api/agents";
 
 function SortHeader({ column, state, onSort }: { column: CallColumn; state: ListState; onSort: (c: CallColumn) => void }) {
   if (!column.sort) return <>{column.label}</>;
@@ -168,7 +169,7 @@ export function CallHistoryPage() {
   const tz = useMemo(viewerTimeZone, []);
   const apiQuery = useMemo(() => toApiQuery(state, tz), [state, tz]);
   const calls = useCalls(apiQuery);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const { hidden, toggle: toggleColumn, visible } = useColumnVisibility();
   const { selection, toggle, togglePage, clear, limitHit } = useCallSelection();
   const [simError, setSimError] = useState<string | null>(null);

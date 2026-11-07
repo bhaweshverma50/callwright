@@ -8,13 +8,13 @@ import { Flask } from "@phosphor-icons/react";
 import { Layers, UserRoundPlus, Workflow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { SIM_PAGE_SIZE, useExperiments, useStandaloneRuns, type Experiment, type SimulationRun } from "../../api/simulations";
 import { Button, type Column, EmptyState, PageHeader, Pagination, ProgressBar, Select, Table, TabPanel, Tabs, TruncatedText } from "../../components";
 import { NewSimulationDialog } from "./NewSimulationDialog";
 import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
 import { costUsd, timeAgo } from "../../lib/format";
 import { problemText } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 const ALL = "all";
 type Tab = "batches" | "runs";
@@ -121,7 +121,7 @@ export function SimulationsPage() {
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
   const batches = useExperiments(agentId, tab === "batches" ? page : 1);
   const runs = useStandaloneRuns(agentId, tab === "runs" ? page : 1);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [creating, setCreating] = useState(false);
 
   const set = (patch: Record<string, string | null>) => {

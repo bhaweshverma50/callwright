@@ -3,9 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AudioLines, BrainCircuit, Braces, Captions, MessageSquareQuote, PhoneIncoming, PhoneOutgoing, Wand2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { agentKeys, idempotencyKey, useLlmCatalog, useTemplate, useVoiceCatalog, type AgentDetail, type TemplateSummary } from "../../api/agents";
-import { api } from "../../api/client";
-import { ApiError, toProblem } from "../../api/errors";
+import { createAgentFromTemplate, idempotencyKey, useLlmCatalog, useTemplate, useVoiceCatalog, type TemplateSummary } from "../../api/agents";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, Dialog, Skeleton, TruncatedText, cn, toast } from "../../components";
 import { languageLabel, llmLabel } from "./editor/catalogs";
@@ -55,18 +53,8 @@ export function TemplatePreviewDialog({
   }, [template?.id]);
 
   const use = useMutation({
-    mutationFn: async () => {
-      const t = detail.data!;
-      const { data, error, response } = await api.POST("/agents", {
-        params: { header: { "Idempotency-Key": key.current } },
-        body: { name: t.config.agent_name ?? t.name, type: "single_prompt", template_id: t.id, language: t.config.language },
-      });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-      return data as AgentDetail;
-    },
+    mutationFn: () => createAgentFromTemplate(qc, detail.data!, key.current),
     onSuccess: (agent) => {
-      qc.setQueryData(agentKeys.detail(agent.id), agent);
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
       const replaced = agent.warnings.find((w) => w.code === "component_replaced");
       toast({
         tone: "success",

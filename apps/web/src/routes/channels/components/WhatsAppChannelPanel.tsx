@@ -4,7 +4,7 @@ import { useState } from "react";
 import { isApiError } from "../../../api/errors";
 import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Drawer, Field, Input, cn, toast } from "../../../components";
-import { useAgentOptions, useSendTestEvent } from "../hooks/usePhoneNumbers";
+import { useSendTestEvent } from "../../../api/channels";
 import {
   useDeleteWhatsApp,
   useRetryWhatsApp,
@@ -12,13 +12,14 @@ import {
   useWhatsAppSettings,
   type WhatsAppChannel,
   type WhatsAppChannelUpdate,
-} from "../hooks/useWhatsAppChannels";
+} from "../../../api/channels";
 import { webhookUrlError } from "../validation";
 import { CallerRoutesTable } from "./CallerRoutesTable";
 import { DeleteNumberDialog } from "./DeleteNumberDialog";
 import { Section } from "./NumberDetailPanel";
 import { ActiveCalls, AgentSelect, ChannelStatusBadge } from "./shared";
 import { timeAgo } from "../../../lib/format";
+import { useAllAgents } from "../../../api/agents";
 
 function Step({ done, title, detail, index }: { done: boolean; title: string; detail: string; index: number }) {
   return (
@@ -72,7 +73,7 @@ export function WhatsAppChannelPanel({
 
 function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClosed: () => void }) {
   const settings = useWhatsAppSettings();
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const update = useUpdateWhatsApp(channel.id);
   const retry = useRetryWhatsApp(channel.id);
   const remove = useDeleteWhatsApp(channel.id);

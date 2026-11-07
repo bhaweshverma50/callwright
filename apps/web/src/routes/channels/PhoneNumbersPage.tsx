@@ -15,7 +15,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import type { AgentSummary } from "../../api/agents";
+import { useAllAgents, type AgentSummary } from "../../api/agents";
 import { problemMessage } from "../../api/problems";
 import { Button, EmptyState, FlowChain, PageHeader, Skeleton, TabPanel, Tabs, WorkLayout, cn, toast } from "../../components";
 import { ComplianceTab } from "./components/ComplianceTab";
@@ -25,8 +25,7 @@ import { ActiveCalls, ChannelStatusBadge, TelephonyNotice } from "./components/s
 import { SipSettingsCard } from "./components/SipSettingsCard";
 import { WhatsAppChannelDialog } from "./components/WhatsAppChannelDialog";
 import { WhatsAppChannelPanel } from "./components/WhatsAppChannelPanel";
-import { agentName, useAgentOptions, usePhoneNumbers, useSipSettings, type PhoneNumber } from "./hooks/usePhoneNumbers";
-import { useWhatsAppChannels, type WhatsAppChannel } from "./hooks/useWhatsAppChannels";
+import { usePhoneNumbers, useSipSettings, useWhatsAppChannels, type PhoneNumber, type WhatsAppChannel } from "../../api/channels";
 
 type Tab = "numbers" | "whatsapp" | "compliance";
 
@@ -40,6 +39,11 @@ const WA_FLOW = [
   { key: "route", label: "Caller route", icon: <Route aria-hidden /> },
   { key: "agent", label: "Agent", icon: <Bot aria-hidden /> },
 ];
+
+export function agentName(agents: AgentSummary[] | undefined, id: string | null | undefined): string | null {
+  if (!id) return null;
+  return agents?.find((a) => a.id === id)?.name ?? "Unknown agent";
+}
 
 function AgentLine({ icon, label, name, empty }: { icon: ReactNode; label: string; name: string | null; empty: string }) {
   return (
@@ -303,7 +307,7 @@ export function PhoneNumbersPage() {
   const numbers = usePhoneNumbers();
   const channels = useWhatsAppChannels();
   const sip = useSipSettings();
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [importing, setImporting] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [openNumber, setOpenNumber] = useState<string | null>(null);

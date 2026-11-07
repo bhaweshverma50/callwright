@@ -4,15 +4,7 @@ import { Bot, Check, ChevronDown, PhoneCall, RefreshCw, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import {
-  callKeys,
-  useAgentHealth,
-  useAgentOptions,
-  useDashboardQuality,
-  useDashboardStats,
-  useHasCalls,
-  type DashboardPeriod,
-} from "../../api/calls";
+import { callKeys, useAgentHealth, useDashboardQuality, useDashboardStats, useHasCalls, type DashboardPeriod } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
 import { Button, chartVars, cn, focusRing, FormAlert, Input, PageHeader, PanelLoader, Segmented } from "../../components";
 import { openAsk } from "../../app/assistant/bus";
@@ -26,6 +18,7 @@ import { KpiTiles } from "./KpiTiles";
 import { AgentHealthCard, QualityGrid } from "./QualitySection";
 import { isAgentId } from "../../lib/paths";
 import { viewerTimeZone } from "../../lib/format";
+import { useAllAgents } from "../../api/agents";
 
 export const PERIODS: { value: DashboardPeriod; label: string; long: string }[] = [
   { value: "last_7_days", label: "7d", long: "Last 7 days" },
@@ -204,7 +197,7 @@ function Dashboard() {
   const stats = useDashboardStats(query);
   const quality = useDashboardQuality(query);
   const health = useAgentHealth(query);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [openCall, setOpenCall] = useState<{ id: string; tab: DrawerTab } | null>(null);

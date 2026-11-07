@@ -8,7 +8,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Archive, ChevronLeft, ListChecks, Repeat, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { isApiError } from "../../api/errors";
 import {
   ISSUE_PAGE_SIZE,
@@ -46,6 +45,7 @@ import { withoutLineRefs } from "../../lib/text";
 import { agentPath } from "../../lib/paths";
 import { shortId, timeAgo } from "../../lib/format";
 import { problemText } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 const SAMPLE_COLUMNS: Column<IssueSample>[] = [
   {
@@ -186,7 +186,7 @@ export function IssueDetailPage() {
   const validations = useIssueValidations(id, validating);
   const [samplePage, setSamplePage] = useState(1);
   const samples = useIssueSamples(id, samplePage);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [validate, setValidate] = useState<{ draft: { kind: FixKind; guidance: string | null } | null } | null>(null);
   const [dismissing, setDismissing] = useState(false);
   const [cancelling, setCancelling] = useState(false);

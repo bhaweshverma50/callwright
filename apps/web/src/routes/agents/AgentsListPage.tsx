@@ -21,14 +21,15 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   agentKeys,
-  PAGE_SIZE,
-  useAgents,
-  useLlmCatalog,
-  useVoiceCatalog,
+  type AgentPage,
   type AgentSort,
   type AgentStatus,
   type AgentSummary,
   type AgentType,
+  PAGE_SIZE,
+  useAgents,
+  useLlmCatalog,
+  useVoiceCatalog,
 } from "../../api/agents";
 import { api } from "../../api/client";
 import { ApiError, toProblem } from "../../api/errors";
@@ -145,11 +146,11 @@ export function AgentsListPage() {
     },
     onSuccess: (a) => {
       setDeleting(null);
-      qc.setQueriesData<{ items: AgentSummary[]; total: number }>({ queryKey: ["agents", "list"] }, (old) =>
+      qc.setQueriesData<AgentPage>({ queryKey: agentKeys.lists, predicate: (q) => !Array.isArray(q.state.data) }, (old) =>
         old ? { ...old, items: old.items.filter((x) => x.id !== a.id), total: Math.max(0, old.total - 1) } : old,
       );
       qc.removeQueries({ queryKey: agentKeys.detail(a.id) });
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+      void qc.invalidateQueries({ queryKey: agentKeys.lists });
       toast({ tone: "success", title: "Agent deleted", description: `${a.name} is gone from the list. Past calls keep their configuration.` });
     },
     onError: (e, a) => {

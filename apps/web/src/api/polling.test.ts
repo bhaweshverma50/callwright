@@ -1,7 +1,7 @@
 /** Refresh decisions: how often each live surface polls, keyed on what is still changing. */
 import { describe, expect, it } from "vitest";
 import { POLL_IDLE_MS, POLL_LIVE_MS, POLL_PENDING_MS, callDetailInterval, callsListInterval, liveDetailInterval, type CallStatus } from "./calls";
-import { LIVE_IDLE_MS, LIVE_POLL_MS, diffLive, liveCallsInterval } from "./live";
+import { diffLive, liveCallsInterval } from "./live";
 
 const rows = (...s: CallStatus[]) => s.map((status) => ({ status }));
 
@@ -36,11 +36,9 @@ describe("call detail", () => {
 
 describe("calls on air", () => {
   it("polls every few seconds while a call is on air and slowly when none is", () => {
-    expect(liveCallsInterval({ count: 2 })).toBe(LIVE_POLL_MS);
-    expect(liveCallsInterval({ count: 0 })).toBe(LIVE_IDLE_MS);
-    expect(liveCallsInterval(undefined)).toBe(LIVE_IDLE_MS);
-    expect(LIVE_POLL_MS).toBeLessThanOrEqual(4_000);
-    expect(LIVE_IDLE_MS).toBe(15_000);
+    expect(liveCallsInterval({ count: 2 })).toBe(POLL_LIVE_MS);
+    expect(liveCallsInterval({ count: 0 })).toBe(POLL_IDLE_MS);
+    expect(liveCallsInterval(undefined)).toBe(POLL_IDLE_MS);
   });
 
   it("reports calls that started, connected and ended between polls", () => {

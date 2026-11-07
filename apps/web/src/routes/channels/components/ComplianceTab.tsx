@@ -5,7 +5,7 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, IconButton, Input, Pagination, Panel, Select, Skeleton } from "../../../components";
 import { useDebounced } from "../../../lib/useDebounced";
-import { useDecisions, useDncEntries, useDncMutations } from "../hooks/useOutboundCompliance";
+import { useDecisions, useDncEntries, useDncMutations } from "../../../api/channels";
 import { CallingHoursEditor } from "./CallingHoursEditor";
 import { DncImportDialog, REGIONS } from "./DncImportDialog";
 import { timeAgo } from "../../../lib/format";

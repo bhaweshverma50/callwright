@@ -6,12 +6,12 @@ import { Database as DatabaseDuo } from "@phosphor-icons/react";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { DATASETS_PAGE_SIZE, useDatasets, type Dataset } from "../../api/datasets";
 import { Button, EmptyState, PageHeader, Pagination, Select, Table, TruncatedText, type Column } from "../../components";
 import { NewDatasetDialog } from "./NewDatasetDialog";
 import { timeAgo } from "../../lib/format";
 import { problemText } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 const ALL = "all";
 
@@ -51,7 +51,7 @@ export function DatasetsPage() {
   const agentId = agentParam === ALL ? null : agentParam;
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
   const datasets = useDatasets(agentId, page);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [creating, setCreating] = useState(false);
   const agentOptions = useMemo(
     () => [{ value: ALL, label: "All agents" }, ...(agents.data ?? []).map((a) => ({ value: a.id, label: a.name }))],

@@ -5,9 +5,9 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, IconButton, Input, Skeleton, Tooltip, toast } from "../../../components";
 import { useDebounced } from "../../../lib/useDebounced";
-import { useAgentOptions } from "../hooks/usePhoneNumbers";
-import { useCallerRoutes, useRouteMutations } from "../hooks/useWhatsAppChannels";
+import { useCallerRoutes, useRouteMutations } from "../../../api/channels";
 import { AgentSelect } from "./shared";
+import { useAllAgents } from "../../../api/agents";
 
 /**
  * Caller routes of one WhatsApp channel (010 T060, FR-028): search, add, change the agent,
@@ -17,7 +17,7 @@ export function CallerRoutesTable({ channelId, disabled }: { channelId: string; 
   const [search, setSearch] = useState("");
   const q = useDebounced(search.trim(), 250);
   const routes = useCallerRoutes(channelId, q);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const { create, update, remove } = useRouteMutations(channelId);
   const [caller, setCaller] = useState("");
   const [agent, setAgent] = useState<string | null>(null);

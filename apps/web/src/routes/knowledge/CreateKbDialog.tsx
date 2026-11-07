@@ -6,6 +6,7 @@ import { isApiError } from "../../api/errors";
 import type { KnowledgeBase } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Button, Dialog, Field, Input, Textarea } from "../../components";
+import { kbKeys } from "../../api/knowledge";
 
 /** Create (or rename) a knowledge base. The description helps the agent decide when to search it. */
 export function CreateKbDialog({
@@ -39,7 +40,7 @@ export function CreateKbDialog({
       )) as KnowledgeBase;
     },
     onSuccess: (kb) => {
-      void qc.invalidateQueries({ queryKey: ["knowledge"] });
+      void qc.invalidateQueries({ queryKey: kbKeys.all });
       onCreated(kb);
       onOpenChange(false);
     },

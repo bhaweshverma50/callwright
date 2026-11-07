@@ -2,12 +2,12 @@ import { CalendarClock, CircleCheck, Globe2, PhoneOutgoing, ShieldBan } from "lu
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { useAgent } from "../../../api/agents";
+import { useAgent, useAllAgents } from "../../../api/agents";
 import { isApiError } from "../../../api/errors";
 import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Dialog, Field, Input, cn } from "../../../components";
-import { usePlaceCall, type OutboundCallAccepted } from "../hooks/useOutboundCompliance";
-import { useAgentOptions, type PhoneNumber } from "../hooks/usePhoneNumbers";
+import { usePlaceCall, type OutboundCallAccepted } from "../../../api/channels";
+import { type PhoneNumber } from "../../../api/channels";
 import { AgentSelect } from "./shared";
 import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
 
@@ -53,7 +53,7 @@ function formatNext(iso: string | null): string {
  */
 export function OutboundCallDialog({ open, onOpenChange, number }: { open: boolean; onOpenChange: (o: boolean) => void; number: PhoneNumber }) {
   const place = usePlaceCall();
-  const agents = useAgentOptions(open);
+  const agents = useAllAgents(open);
   const [to, setTo] = useState("");
   const [agentId, setAgentId] = useState<string | null>(number.outbound_agent_id ?? null);
   const [vars, setVars] = useState<Record<string, string>>({});

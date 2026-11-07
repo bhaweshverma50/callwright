@@ -15,7 +15,7 @@ export function usePublish(agentId: string) {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
     void qc.invalidateQueries({ queryKey: agentKeys.versions(agentId) });
-    void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+    void qc.invalidateQueries({ queryKey: agentKeys.lists });
   };
   const publish = useMutation({
     mutationFn: async (v: { id: string; number: number }) => {

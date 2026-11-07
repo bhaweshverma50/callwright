@@ -1,8 +1,8 @@
 /** Calls read side and dashboard (spec 006): types from the contracts and TanStack Query hooks. */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
-import { isApiError } from "./errors";
 import type { components } from "./schema";
+import type { QueryOf } from "./types";
 import { scalarLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
@@ -15,32 +15,25 @@ export type Sentiment = S["Sentiment"];
 export type EvalStatus = S["EvalStatus"];
 export type CallListItem = S["CallListItem"];
 export type CallPage = S["CallPage"];
-export type CallDetail = S["CallListItem"] & {
-  agent_version_id: string;
-  agent_version_label?: string | null;
-  ended_at?: string | null;
-  latency: S["LatencySummary"];
-  cost?: S["CostView"] | null;
-  processing_state: "pending" | "done";
-  /** The recording is still uploading after the call ended. */
-  recording_pending?: boolean;
-};
+export type CallDetail = S["CallDetail"];
 export type CostView = S["CostView"];
-export type TranscriptItem = S["TranscriptMessage"] | S["TranscriptToolCall"] | S["TranscriptToolResult"];
+export type TranscriptItem = S["CallTranscriptItem"];
 export type TranscriptMessage = S["TranscriptMessage"];
 export type TurnLatency = S["TurnLatency"];
 export type LatencySummary = S["LatencySummary"];
 export type FlowTransition = S["FlowTransition"];
 export type RecordingLink = S["RecordingLink"];
-export type CallComparison = Omit<S["CallComparison"], "left" | "right"> & { left: CallDetail; right: CallDetail };
+export type CallComparison = S["CallComparison"];
 export type DashboardStats = S["DashboardStats"];
 export type DashboardQuality = S["DashboardQuality"];
 export type AgentHealth = S["AgentHealth"];
-export type DashboardPeriod = "all_time" | "last_7_days" | "last_30_days" | "last_90_days" | "custom";
+export type DashboardPeriod = NonNullable<QueryOf<"/dashboard/stats", "get">["period"]>;
 
 export const callKeys = {
   all: ["calls"] as const,
+  lists: ["calls", "list"] as const,
   list: (query: string) => ["calls", "list", query] as const,
+  live: ["calls", "live"] as const,
   detail: (id: string) => ["calls", "detail", id] as const,
   transcript: (id: string) => ["calls", "transcript", id] as const,
   latencies: (id: string) => ["calls", "latencies", id] as const,
@@ -48,7 +41,6 @@ export const callKeys = {
   recording: (id: string) => ["calls", "recording", id] as const,
   compare: (id: string, other: string) => ["calls", "compare", id, other] as const,
   any: ["calls", "any"] as const,
-  agents: ["calls", "agent-options"] as const,
   dashboard: ["dashboard"] as const,
   stats: (query: string) => ["dashboard", "stats", query] as const,
   quality: (query: string) => ["dashboard", "quality", query] as const,
@@ -56,9 +48,7 @@ export const callKeys = {
 };
 
 /** Every list query is built with URLSearchParams so "+1555" arrives as %2B (FR-037). */
-function queryObject(search: URLSearchParams): Record<string, string> {
-  return Object.fromEntries(search.entries());
-}
+const sendAsIs = (search: URLSearchParams) => () => search.toString();
 
 export const POLL_PENDING_MS = 4_000;
 /** A ringing or live call: ringing, answer and hang-up show within a few seconds. */
@@ -94,7 +84,7 @@ export function useCalls(search: URLSearchParams) {
   const key = search.toString();
   return useQuery({
     queryKey: callKeys.list(key),
-    queryFn: () => unwrap(api.GET("/calls", { params: { query: queryObject(search) as never } })) as Promise<CallPage>,
+    queryFn: () => unwrap(api.GET("/calls", { querySerializer: sendAsIs(search) })),
     placeholderData: keepPreviousData,
     // Polls only while the tab is visible (React Query pauses intervals in the background).
     refetchInterval: (q) => callsListInterval(q.state.data?.items),
@@ -107,7 +97,7 @@ export function useHasCalls(origin = "live") {
   return useQuery({
     queryKey: [...callKeys.any, origin],
     queryFn: async () => {
-      const page = (await unwrap(api.GET("/calls", { params: { query: { page_size: 1, origin } } }))) as CallPage;
+      const page = await unwrap(api.GET("/calls", { params: { query: { page_size: 1, origin } } }));
       return page.total > 0;
     },
     staleTime: 60_000,
@@ -120,7 +110,7 @@ export function useHasCalls(origin = "live") {
 export function useCall(id: string | null) {
   return useQuery({
     queryKey: callKeys.detail(id ?? ""),
-    queryFn: () => unwrap(api.GET("/calls/{call_id}", { params: { path: { call_id: id! } } })) as Promise<CallDetail>,
+    queryFn: () => unwrap(api.GET("/calls/{call_id}", { params: { path: { call_id: id! } } })),
     enabled: Boolean(id),
     // Ringing, answering and hanging up show at once; post-call analysis lands without a reload.
     refetchInterval: (q) => callDetailInterval(q.state.data),
@@ -146,21 +136,12 @@ export function useTurnLatencies(id: string | null, live = false) {
   });
 }
 
-/** Flow path from 004. Until 004 serves it (or for single-prompt calls) the section is hidden. */
+/** Flow path from 004 (empty for single-prompt calls). */
 export function useFlowTransitions(id: string | null, live = false) {
   return useQuery({
     queryKey: callKeys.flow(id ?? ""),
-    queryFn: async () => {
-      try {
-        const body = await unwrap(api.GET("/calls/{call_id}/flow-transitions", { params: { path: { call_id: id! } } }));
-        return (body as { items?: FlowTransition[] }).items ?? [];
-      } catch (e) {
-        if (isApiError(e) && (e.status === 404 || e.status === 405)) return [];
-        throw e;
-      }
-    },
+    queryFn: async () => (await unwrap(api.GET("/calls/{call_id}/flow-transitions", { params: { path: { call_id: id! } } }))).items,
     enabled: Boolean(id),
-    retry: false,
     staleTime: live ? 0 : 5 * 60_000,
     // A flow agent moves between nodes during the call; the path is fixed once it ends.
     refetchInterval: liveDetailInterval(live),
@@ -183,21 +164,9 @@ export function useCompare(id: string, other: { withCall?: string | null; sim?: 
             query: other.withCall ? { with_call_id: other.withCall } : { with_simulation_run_id: other.sim ?? undefined },
           },
         }),
-      ) as Promise<CallComparison>,
+      ),
     enabled: Boolean(other.withCall || other.sim),
     retry: false,
-  });
-}
-
-/** Agents for the filter menus (one page of up to 100, names included). */
-export function useAgentOptions() {
-  return useQuery({
-    queryKey: callKeys.agents,
-    queryFn: async () => {
-      const page = await unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: 100 } } }));
-      return (page as { items: { id: string; name: string }[] }).items.map((a) => ({ id: a.id, name: a.name }));
-    },
-    staleTime: 60_000,
   });
 }
 
@@ -207,12 +176,11 @@ export async function downloadCallsCsv(search: URLSearchParams, columns: string[
   query.delete("page");
   query.delete("page_size");
   query.set("columns", columns.join(","));
-  const { data, error, response } = await api.GET("/calls/export", { params: { query: queryObject(query) as never }, parseAs: "blob" });
-  if (!response.ok) {
-    await unwrap(Promise.resolve({ data, error, response }));
-  }
+  const call = api.GET("/calls/export", { querySerializer: sendAsIs(query), parseAs: "blob" });
+  const blob = await unwrap(call);
+  const { response } = await call;
   const name = /filename="?([^";]+)"?/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "calls.csv";
-  const url = URL.createObjectURL(data as Blob);
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
@@ -227,7 +195,7 @@ export function useDashboardStats(search: URLSearchParams) {
   const key = search.toString();
   return useQuery({
     queryKey: callKeys.stats(key),
-    queryFn: () => unwrap(api.GET("/dashboard/stats", { params: { query: queryObject(search) as never } })) as Promise<DashboardStats>,
+    queryFn: () => unwrap(api.GET("/dashboard/stats", { querySerializer: sendAsIs(search) })),
     placeholderData: keepPreviousData,
     refetchInterval: DASHBOARD_POLL_MS,
   });
@@ -237,7 +205,7 @@ export function useDashboardQuality(search: URLSearchParams) {
   const key = search.toString();
   return useQuery({
     queryKey: callKeys.quality(key),
-    queryFn: () => unwrap(api.GET("/dashboard/quality", { params: { query: queryObject(search) as never } })) as Promise<DashboardQuality>,
+    queryFn: () => unwrap(api.GET("/dashboard/quality", { querySerializer: sendAsIs(search) })),
     placeholderData: keepPreviousData,
     refetchInterval: DASHBOARD_POLL_MS,
   });
@@ -252,7 +220,7 @@ export function useAgentHealth(search: URLSearchParams) {
   const key = query.toString();
   return useQuery({
     queryKey: callKeys.health(key),
-    queryFn: () => unwrap(api.GET("/dashboard/agent-health", { params: { query: queryObject(query) as never } })) as Promise<AgentHealth>,
+    queryFn: () => unwrap(api.GET("/dashboard/agent-health", { querySerializer: sendAsIs(query) })),
     placeholderData: keepPreviousData,
     refetchInterval: DASHBOARD_POLL_MS,
   });

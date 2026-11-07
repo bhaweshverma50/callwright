@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Radar, Repeat, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { isApiError } from "../../api/errors";
 import {
   DEFAULT_WINDOW,
@@ -30,6 +29,7 @@ import { Badge, Button, EmptyState, PageHeader, Pagination, Segmented, Select, T
 import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILTER_OPTIONS, windowRange } from "./shared";
 import { plural, timeAgo } from "../../lib/format";
 import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 const ALL = "all";
 const DETECT_HINT = "Choose an agent to run detection";
@@ -156,7 +156,7 @@ export function IssuesPage() {
 
   const filters = useMemo(() => ({ agentId, status, scope, windowDays, page }), [agentId, status, scope, windowDays, page]);
   const issues = useIssues(filters);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const detection = useLatestDetection(agentId);
   const action = useActionKey();
   const [detectError, setDetectError] = useState<unknown>(null);

@@ -3,13 +3,13 @@ import { BookOpen, BrainCircuit, ChevronLeft, CircleAlert, GitCompareArrows, His
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import {
+  type AgentDetail,
   agentKeys,
   etag,
+  type SaveResult,
   useAgentVersions,
   useLlmCatalog,
   useProviderVoices,
-  type AgentDetail,
-  type SaveResult,
   type VersionSource,
   type VersionSummary,
 } from "../../../api/agents";
@@ -97,7 +97,7 @@ export function VersionDrawer({
       onRestored(result);
       qc.setQueryData(agentKeys.detail(agent.id), result.agent);
       void qc.invalidateQueries({ queryKey: agentKeys.versions(agent.id) });
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+      void qc.invalidateQueries({ queryKey: agentKeys.lists });
       toast({
         tone: "success",
         title: `Version ${v.version_number} restored as version ${result.version.version_number}`,

@@ -4,7 +4,6 @@ import { isApiError } from "../../../api/errors";
 import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Drawer, Field, Input, Segmented, Textarea, Tooltip, cn, toast } from "../../../components";
 import {
-  useAgentOptions,
   useDeleteNumber,
   useRetryNumber,
   useSendTestEvent,
@@ -13,11 +12,12 @@ import {
   type PhoneNumber,
   type PhoneNumberUpdate,
   type Transport,
-} from "../hooks/usePhoneNumbers";
+} from "../../../api/channels";
 import { parseCidrs, stripScheme, terminationError, webhookUrlError } from "../validation";
 import { DeleteNumberDialog } from "./DeleteNumberDialog";
 import { OutboundCallDialog } from "./OutboundCallDialog";
 import { ActiveCalls, AgentSelect, ChannelStatusBadge } from "./shared";
+import { useAllAgents } from "../../../api/agents";
 
 const TRANSPORTS: { value: Transport; label: string }[] = [
   { value: "auto", label: "Automatic" },
@@ -102,7 +102,7 @@ export function NumberDetailPanel({ number, open, onOpenChange }: { number: Phon
 }
 
 function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () => void }) {
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const sip = useSipSettings();
   const update = useUpdateNumber(number.id);
   const retry = useRetryNumber(number.id);

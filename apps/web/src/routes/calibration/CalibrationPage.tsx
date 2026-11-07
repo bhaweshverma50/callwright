@@ -3,12 +3,12 @@ import { ArrowRight, Crosshair as CrosshairIcon, Info, Scale, SlidersHorizontal,
 import { motion } from "motion/react";
 import { useMemo, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
 import { useCalibrationRows, useCalibrationSummary, type CalibrationRow, type VersionScope } from "../../api/quality";
 import { Badge, Button, EmptyState, PageHeader, Segmented, Select, Skeleton, cn, type Tone } from "../../components";
 import { COST_LABELS, evaluatorIcon } from "../agents/quality/evaluatorMeta";
 import { pct } from "../../lib/format";
+import { useAllAgents } from "../../api/agents";
 
 const LOOKBACKS = [30, 90, 180, 365] as const;
 const ALL_AGENTS = "all";
@@ -218,7 +218,7 @@ export function CalibrationPage() {
   const scope = (params.get("versions") === "all" ? "all" : "current") as VersionScope;
   const rows = useCalibrationRows(agentId, lookback, scope);
   const summary = useCalibrationSummary(agentId, lookback);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const set = (k: string, v: string | null) => {
     const p = new URLSearchParams(params);
     if (v === null) p.delete(k);

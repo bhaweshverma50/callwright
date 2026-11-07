@@ -11,7 +11,7 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import { useEffect, useRef } from "react";
 import { session } from "./session";
 import { callbackKeys } from "./callbacks";
-import { callKeys } from "./calls";
+import { callKeys, POLL_IDLE_MS, POLL_LIVE_MS } from "./calls";
 import { api, unwrap } from "./client";
 import { qk } from "./queries";
 import type { components } from "./schema";
@@ -20,17 +20,11 @@ type S = components["schemas"];
 export type LiveCall = S["LiveCall"];
 export type LiveCallList = S["LiveCallList"];
 
-export const liveKeys = { all: ["calls", "live"] as const };
-
-/** While a call rings or is live: fast enough that ringing, answering and hanging up show at once. */
-export const LIVE_POLL_MS = 3_000;
-/** Nothing on air: a new call still shows up within this long on every page. */
-export const LIVE_IDLE_MS = 15_000;
 /** Pricing and analysis land a few seconds after a call ends; balance and dashboard refresh again then. */
 export const SETTLE_REFRESH_MS = 20_000;
 
 export function liveCallsInterval(data: Pick<LiveCallList, "count"> | undefined): number {
-  return data && data.count > 0 ? LIVE_POLL_MS : LIVE_IDLE_MS;
+  return data && data.count > 0 ? POLL_LIVE_MS : POLL_IDLE_MS;
 }
 
 /** Server clock minus this browser's clock, so ticking durations match the server's. */
@@ -43,9 +37,9 @@ export function setClockSkew(serverTime: string, receivedAt = Date.now()) {
 
 export function useLiveCalls() {
   return useQuery({
-    queryKey: liveKeys.all,
+    queryKey: callKeys.live,
     queryFn: async () => {
-      const body = (await unwrap(api.GET("/calls/live"))) as LiveCallList;
+      const body = await unwrap(api.GET("/calls/live"));
       setClockSkew(body.server_time);
       return body;
     },
@@ -80,7 +74,7 @@ function refreshAfterEnd(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: callKeys.dashboard });
   void qc.invalidateQueries({ queryKey: qk.balance });
   void qc.invalidateQueries({ queryKey: qk.transactionsAll });
-  void qc.invalidateQueries({ queryKey: ["usage"] });
+  void qc.invalidateQueries({ queryKey: qk.usageAll });
 }
 
 /** Mounted once in the shell: turns live-list changes into targeted refreshes elsewhere. */
@@ -98,7 +92,7 @@ export function useLiveCallSync() {
     const d = diffLive(prev.current, items);
     prev.current = new Map(items.map((c) => [c.call_id, c.status]));
     if (d.started.length) {
-      void qc.invalidateQueries({ queryKey: ["calls", "list"] });
+      void qc.invalidateQueries({ queryKey: callKeys.lists });
       void qc.invalidateQueries({ queryKey: callKeys.any });
     }
     for (const id of [...d.connected, ...d.ended]) {
@@ -106,7 +100,7 @@ export function useLiveCallSync() {
       void qc.invalidateQueries({ queryKey: callKeys.transcript(id) });
     }
     if (d.ended.length) {
-      void qc.invalidateQueries({ queryKey: ["calls", "list"] });
+      void qc.invalidateQueries({ queryKey: callKeys.lists });
       void qc.invalidateQueries({ queryKey: callbackKeys.all });
       refreshAfterEnd(qc);
       window.clearTimeout(settle.current);

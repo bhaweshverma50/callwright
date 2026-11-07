@@ -2,7 +2,19 @@ import { Clock3, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, Panel, Select, Skeleton, SwitchControl, cn, toast } from "../../../components";
-import { DAYS, DAY_LABELS, useCallingHours, useSaveCallingHours, type Day, type WeeklyWindows } from "../hooks/useOutboundCompliance";
+import { useCallingHours, useSaveCallingHours, type WeeklyWindows } from "../../../api/channels";
+
+export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+export type Day = (typeof DAYS)[number];
+export const DAY_LABELS: Record<Day, string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
 
 const STARTS = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 const ENDS = [...STARTS.slice(1), "24:00"];

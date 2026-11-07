@@ -5,8 +5,7 @@ import { Link } from "react-router";
 import { useAgents } from "../../api/agents";
 import { useHasCalls } from "../../api/calls";
 import { useMe } from "../../api/queries";
-import { usePhoneNumbers } from "../channels/hooks/usePhoneNumbers";
-import { useWhatsAppChannels } from "../channels/hooks/useWhatsAppChannels";
+import { usePhoneNumbers, useWhatsAppChannels } from "../../api/channels";
 import {
   Badge,
   Button,
