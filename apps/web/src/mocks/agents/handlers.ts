@@ -5,7 +5,7 @@
  * - GET /voices/elevenlabs/voices?search=offline returns 503 catalog_unavailable (retry path)
  * - deleting an agent whose name contains "Billing" returns 409 agent_in_use with a phone number
  */
-import { delay, http, HttpResponse, type JsonBodyType } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import type {
   AgentConfig,
   AgentPage,
@@ -19,8 +19,6 @@ import type {
   VersionDetail,
   VersionPage,
 } from "../../api/agents";
-import type { Problem } from "../../api/types";
-import { env } from "../../lib/env";
 import { scanPlaceholders } from "../../lib/agentVariables";
 import { appendTransaction, balanceOf, db, mockId, save } from "../db";
 import { chimeDataUri } from "./audio";
@@ -30,17 +28,7 @@ import { defaultConfig, overlay, validateConfig } from "./rules";
 import { insertAgent, saveDraft, store, toDetail, toSummary, toVersionSummary, versionById, workspaceUploadKeys, type MockAgent } from "./store";
 import { CATEGORY_LABELS, TEMPLATES } from "./templates";
 import { VOICES } from "./voices";
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200, headers: Record<string, string> = {}) =>
-  HttpResponse.json(body as unknown as JsonBodyType, { status, headers });
-
-function problem(status: number, code: string, title: string, extra: Partial<Problem> & Record<string, unknown> = {}) {
-  const body = { type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title, status, code, ...extra };
-  const headers: Record<string, string> = { "content-type": "application/problem+json" };
-  if (extra.retry_after_s) headers["retry-after"] = String(extra.retry_after_s);
-  return HttpResponse.json(body as unknown as JsonBodyType, { status, headers });
-}
+import { json, page, problem, unauthorized, url } from "../http";
 
 function workspaceOf(request: Request): string | null {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -49,7 +37,6 @@ function workspaceOf(request: Request): string | null {
   return db().users.find((u) => u.id === id)?.workspace_id ?? null;
 }
 
-const unauthorized = () => problem(401, "unauthorized", "Sign in required");
 const notFound = (what = "Agent") => problem(404, "not_found", `${what} not found`);
 const etagOf = (a: MockAgent) => ({ etag: `"${a.draft_revision}"` });
 
@@ -208,8 +195,6 @@ export const agentHandlers = [
     const ws = workspaceOf(request);
     if (!ws) return unauthorized();
     const q = new URL(request.url).searchParams;
-    const page = Math.max(1, Number(q.get("page") ?? 1));
-    const pageSize = Math.min(100, Math.max(1, Number(q.get("page_size") ?? 20)));
     const search = (q.get("search") ?? "").trim();
     const type = q.get("type");
     const status = q.get("status") as "live" | "draft" | "attention" | null;
@@ -240,11 +225,7 @@ export const agentHandlers = [
         draft: matched.filter(is.draft).length,
         attention: matched.filter(is.attention).length,
       },
-      items: rows.slice((page - 1) * pageSize, page * pageSize),
-      total: rows.length,
-      page,
-      page_size: pageSize,
-      total_pages: Math.ceil(rows.length / pageSize),
+      ...page(rows, q),
     });
   }),
 
@@ -392,19 +373,16 @@ export const agentHandlers = [
     if (!a) return notFound();
     const q = new URL(request.url).searchParams;
     const includeTest = q.get("include_test") === "true";
-    const page = Math.max(1, Number(q.get("page") ?? 1));
-    const pageSize = Math.min(100, Math.max(1, Number(q.get("page_size") ?? 20)));
     await delay(140);
     const rows = store()
       .versions.filter((v) => v.agent_id === a.id && (includeTest || v.source !== "test"))
       .sort((x, y) => y.version_number - x.version_number);
-    return json<VersionPage>({
-      items: rows.slice((page - 1) * pageSize, page * pageSize).map((v) => toVersionSummary(v, a)),
-      total: rows.length,
-      page,
-      page_size: pageSize,
-      total_pages: Math.ceil(rows.length / pageSize),
-    });
+    return json<VersionPage>(
+      page(
+        rows.map((v) => toVersionSummary(v, a)),
+        q,
+      ),
+    );
   }),
 
   http.get(url("/agents/:agent_id/versions/:version_id"), ({ request, params }) => {

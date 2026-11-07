@@ -2,12 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Info, Minus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { idempotencyKey, useAgents, useAgentVersions, type AgentDetail, type AgentSummary } from "../../api/agents";
+import { type AgentDetail, agentKeys, type AgentSummary, idempotencyKey, useAgents, useAgentVersions } from "../../api/agents";
 import { api } from "../../api/client";
 import { ApiError, toProblem } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { Button, Dialog, Field, Input, Select, Skeleton, toast } from "../../components";
-import { relativeDate } from "./AgentCard";
+import { agentPath } from "../../lib/paths";
+import { timeAgo } from "../../lib/format";
+import { AGENT_TYPES } from "./agentType";
 
 const DRAFT = "draft";
 const KEEPS = ["Prompt, greeting and variables", "Model, voice, speech and call settings", "Tools and knowledge bases, linked to the same ones"];
@@ -61,10 +63,10 @@ export function DuplicateAgentDialog({
       return data as AgentDetail;
     },
     onSuccess: (copy) => {
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+      void qc.invalidateQueries({ queryKey: agentKeys.lists });
       onOpenChange(false);
       toast({ tone: "success", title: "Agent duplicated", description: `${copy.name} starts at version 1 and is not published.` });
-      navigate(copy.type === "flow" ? `/agents/${copy.id}/flow` : `/agents/${copy.id}/edit`);
+      navigate(agentPath(copy));
     },
     onError: (e) => toast({ tone: "error", title: "Not duplicated", description: problemMessage(e, "agent") }),
   });
@@ -75,7 +77,7 @@ export function DuplicateAgentDialog({
     ...saved.map((v) => ({
       value: v.id,
       label: `Version ${v.version_number}${v.is_published ? " · live" : ""}`,
-      meta: relativeDate(v.created_at),
+      meta: timeAgo(v.created_at),
     })),
   ];
 
@@ -118,7 +120,11 @@ export function DuplicateAgentDialog({
                       setVersionId(DRAFT);
                       setName(null);
                     }}
-                    options={picker.data.items.map((a) => ({ value: a.id, label: a.name, meta: a.type === "flow" ? "Flow" : undefined }))}
+                    options={picker.data.items.map((a) => ({
+                      value: a.id,
+                      label: a.name,
+                      meta: a.type === "flow" ? AGENT_TYPES.flow.label : undefined,
+                    }))}
                     placeholder={picker.data.items.length ? "Choose an agent" : "No agents yet"}
                   />
                 ) : (

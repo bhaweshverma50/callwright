@@ -3,19 +3,8 @@ import { Check, ListFilter, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useState, type ComponentProps, type ReactNode } from "react";
 import { Button, Input, cn, focusRing } from "../../components";
-import {
-  CHANNEL_LABELS,
-  EVAL_LABELS,
-  LABEL_LABELS,
-  ORIGIN_LABELS,
-  REASON_LABELS,
-  SENTIMENT_LABELS,
-  STATUS_LABELS,
-  emptyFilters,
-  type CallFilters as Filters,
-  type FilterChip,
-  type MultiKey,
-} from "./filters";
+import { LABEL_LABELS, emptyFilters, type CallFilters as Filters, type FilterChip, type MultiKey } from "./filters";
+import { CHANNEL_LABELS, EVAL_LABELS, ORIGIN_LABELS, REASON_LABELS, SENTIMENT_LABELS, STATUS_LABELS } from "../../components/callVocabulary";
 
 function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (

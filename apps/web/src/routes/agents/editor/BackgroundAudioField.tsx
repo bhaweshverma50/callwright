@@ -2,38 +2,32 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileAudio, Music4, Pause, Play, Trash2, Upload, Volume1 } from "lucide-react";
 import { useRef } from "react";
 import { agentKeys, useAmbientAudio, type AmbientAudioFile } from "../../../api/agents";
-import { api } from "../../../api/client";
-import { ApiError, toProblem } from "../../../api/errors";
+import { api, postForm, unwrap } from "../../../api/client";
+import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Button, FieldRow, IconButton, Select, SwitchControl, TruncatedText, toast } from "../../../components";
-import { env } from "../../../lib/env";
-import { session } from "../../../app/session";
-import { fieldId } from "../versions/versionLabels";
 import type { Catalogs } from "./catalogs";
 import { controlFor, FieldError, SliderRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { usePreview } from "./usePreview";
+import { fieldId, fieldLabel } from "../config/fields";
+import { operationExtensions } from "../../../lib/contract.gen";
 
 const ACCEPT = ".mp3,.wav,.ogg,.flac,.aac,.opus";
-const MAX_BYTES = 10 * 1024 * 1024;
+const UPLOAD = operationExtensions["POST /voices/ambient-audio"];
+const MAX_BYTES = UPLOAD["x-max-file-bytes"];
+const MAX_MB = MAX_BYTES / (1024 * 1024);
 
 const UPLOAD_ERRORS: Record<number, string> = {
-  409: "You already have 20 uploads. Delete one to add another.",
-  413: "That file is larger than 10 MB.",
+  409: `You already have ${UPLOAD["x-max-uploads"]} uploads. Delete one to add another.`,
+  413: `That file is larger than ${MAX_MB} MB.`,
   415: "Use an mp3, wav, ogg, flac, aac or opus file.",
 };
 
-async function upload(file: File): Promise<AmbientAudioFile> {
+function upload(file: File) {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${env.apiBaseUrl}/voices/ambient-audio`, {
-    method: "POST",
-    body: form,
-    headers: { authorization: `Bearer ${session.accessToken() ?? ""}` },
-  });
-  const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, toProblem(res.status, body));
-  return body as AmbientAudioFile;
+  return postForm("/voices/ambient-audio", form);
 }
 
 function sizeLabel(bytes: number) {
@@ -42,7 +36,7 @@ function sizeLabel(bytes: number) {
 
 /**
  * Background audio (T043, FR-012): built-in ambience or the workspace's own uploads (common audio
- * formats, 10 MB each), with a preview and a volume shown as percent of normal (0.8 is 80%).
+ * formats, size-limited), with a preview and a volume shown as percent of normal (0.8 is 80%).
  */
 export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; catalogs: Catalogs }) {
   const bg = draft.config.advanced.background_audio;
@@ -71,14 +65,11 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
       toast({
         tone: "error",
         title: "Upload failed",
-        description: e instanceof ApiError ? (UPLOAD_ERRORS[e.status] ?? problemMessage(e)) : problemMessage(e),
+        description: isApiError(e) ? (UPLOAD_ERRORS[e.status] ?? problemMessage(e)) : problemMessage(e),
       }),
   });
   const remove = useMutation({
-    mutationFn: async (key: string) => {
-      const { response, error } = await api.DELETE("/voices/ambient-audio", { params: { query: { key } } });
-      if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-    },
+    mutationFn: (key: string) => unwrap(api.DELETE("/voices/ambient-audio", { params: { query: { key } } })),
     onSuccess: (_d, key) => {
       qc.setQueryData<{ items: AmbientAudioFile[] }>(agentKeys.ambient, (old) => ({ items: (old?.items ?? []).filter((u) => u.key !== key) }));
       toast({ tone: "success", title: "Sound deleted" });
@@ -87,8 +78,7 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
       toast({
         tone: "error",
         title: "Sound not deleted",
-        description:
-          e instanceof ApiError && e.status === 409 ? "An agent still uses this sound. Choose another sound there first." : problemMessage(e),
+        description: isApiError(e) && e.status === 409 ? "An agent still uses this sound. Choose another sound there first." : problemMessage(e),
       }),
   });
 
@@ -98,7 +88,7 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
       <FieldRow
         inline
         icon={<Music4 />}
-        label="Play background audio"
+        label={fieldLabel("/advanced/background_audio/enabled")}
         htmlFor={fieldId("/advanced/background_audio/enabled")}
         description="Plays a quiet sound under the call, such as office ambience."
       >
@@ -118,9 +108,9 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
         <>
           <FieldRow
             icon={<FileAudio />}
-            label="Sound"
+            label={fieldLabel("/advanced/background_audio/source")}
             htmlFor={sourceId}
-            description="Built-in sounds, or your own file (mp3, wav, ogg, flac, aac or opus, up to 10 MB)."
+            description={`Built-in sounds, or your own file (mp3, wav, ogg, flac, aac or opus, up to ${MAX_MB} MB).`}
           >
             <div className="flex w-full items-center gap-2">
               <Select

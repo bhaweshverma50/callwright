@@ -6,18 +6,10 @@
  * Every other call stayed in the agent's language. `deleted` records each forget request so
  * tests can check what reached the server.
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http, HttpResponse } from "msw";
 import type { CallLanguage, CallerPreference, LanguageRef } from "../../api/callerLanguage";
 import type { CallListItem } from "../../api/calls";
-import { env } from "../../lib/env";
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-const problem = (status: number, code: string, detail: string) =>
-  HttpResponse.json({ type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title: "Error", status, code, detail } as JsonBodyType, {
-    status,
-    headers: { "content-type": "application/problem+json" },
-  });
+import { json, page, problemDetail, url } from "../http";
 
 const ENGLISH: LanguageRef = { code: "en-US", label: "English (US)" };
 const HINDI: LanguageRef = { code: "hi", label: "Hindi" };
@@ -96,7 +88,7 @@ const preferenceFor = (number: string | null) => (number ? (store.preferences.fi
 export const callerLanguageHandlers = [
   http.get(url("/calls/:id/language"), ({ params }) => {
     const row = store.calls.get(String(params.id));
-    if (!row) return problem(404, "not_found", "No call with that id exists in this workspace.");
+    if (!row) return problemDetail(404, "not_found", "No call with that id exists in this workspace.");
     const number = callerNumber(row.call);
     const body: CallLanguage = {
       call_id: row.call.call_id,
@@ -115,20 +107,13 @@ export const callerLanguageHandlers = [
     const rows = store.preferences
       .filter((p) => !phone || p.phone_number === phone)
       .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
-    const page = Number(q.get("page") ?? 1);
-    const size = Number(q.get("page_size") ?? 50);
-    return json({
-      items: rows.slice((page - 1) * size, page * size),
-      total: rows.length,
-      page,
-      page_size: size,
-      total_pages: Math.ceil(rows.length / size),
-    });
+    return json(page(rows, q, 50));
   }),
   http.delete(url("/caller-preferences/:id"), ({ params }) => {
     const id = String(params.id);
     store.deleted.push(id);
-    if (!store.preferences.some((p) => p.id === id)) return problem(404, "not_found", "No saved language with that id exists in this workspace.");
+    if (!store.preferences.some((p) => p.id === id))
+      return problemDetail(404, "not_found", "No saved language with that id exists in this workspace.");
     store.preferences = store.preferences.filter((p) => p.id !== id);
     return new HttpResponse(null, { status: 204 });
   }),

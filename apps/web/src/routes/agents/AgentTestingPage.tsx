@@ -20,13 +20,12 @@ import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { useQuote } from "../../api/queries";
 import { Button, EmptyState, Field, Input, PageHeader, Panel, PanelLoader, Segmented, Skeleton, TabPanel, Tabs, WorkLayout } from "../../components";
-import { WebCallPanel } from "../../components/WebCallPanel";
+import { WebCallPanel } from "../../webCall/WebCallPanel";
 import { toMicros } from "../../lib/money";
 import { RecordNotFound } from "../NotFound";
 import { quoteRequestFor } from "./editor/CostCard";
 import { TestCasesTab } from "./testing/TestCasesTab";
-
-const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+import { isAgentId } from "../../lib/paths";
 
 export type TestTarget = "draft" | "published";
 
@@ -44,7 +43,7 @@ export function AgentTestingPage() {
   const { id = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") === "cases" ? "cases" : "call";
-  const valid = ULID.test(id);
+  const valid = isAgentId(id);
   const agent = useAgent(valid ? id : undefined);
   const [target, setTarget] = useState<TestTarget>("draft");
   const [values, setValues] = useState<Record<string, string>>({});

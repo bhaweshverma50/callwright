@@ -4,7 +4,7 @@ import { useVersionDiff, useVoiceCatalog, type VersionChange, type VersionSummar
 import { problemMessage } from "../../../api/problems";
 import { Badge, Select, Skeleton, TruncatedText } from "../../../components";
 import { DiffView } from "./DiffView";
-import { lineDiff } from "./lineDiff";
+import { lineDiff } from "../../../lib/lineDiff";
 import { formatValue, isLongText, labelFor, objectFields, readableChanges } from "./versionLabels";
 
 const OPS = {

@@ -38,9 +38,11 @@ export function HttpRequestFields({
   allowHttp?: boolean;
 }) {
   const set = (patch: Partial<HttpRequestConfig>) => onChange({ ...value, ...patch });
-  const setHeader = (i: number, patch: Partial<HeaderSpec>) => set({ headers: value.headers.map((h, j) => (j === i ? { ...h, ...patch } : h)) });
+  const headers = value.headers ?? [];
+  const mappings = value.response_mappings ?? [];
+  const setHeader = (i: number, patch: Partial<HeaderSpec>) => set({ headers: headers.map((h, j) => (j === i ? { ...h, ...patch } : h)) });
   const setMapping = (i: number, patch: Partial<ResponseMapping>) =>
-    set({ response_mappings: value.response_mappings.map((m, j) => (j === i ? { ...m, ...patch } : m)) });
+    set({ response_mappings: mappings.map((m, j) => (j === i ? { ...m, ...patch } : m)) });
   const liveUrlError = value.url ? urlError(value.url, allowHttp) : null;
   const queryMethod = value.method === "GET" || value.method === "DELETE";
 
@@ -104,19 +106,19 @@ export function HttpRequestFields({
           <Button
             size="sm"
             icon={<Plus aria-hidden />}
-            disabled={value.headers.length >= 20}
-            onClick={() => set({ headers: [...value.headers, { name: "", value: "", secret: false }] })}
+            disabled={headers.length >= 20}
+            onClick={() => set({ headers: [...headers, { name: "", value: "", secret: false }] })}
           >
             Add header
           </Button>
         }
       >
-        {value.headers.length === 0 ? (
+        {headers.length === 0 ? (
           <p className="rounded-control bg-surface-2/70 px-3 py-2.5 text-[13px] text-fg-3">No headers. Add one for an API key or a content type.</p>
         ) : (
           <ul className="flex flex-col gap-2" aria-label="Headers">
             <AnimatePresence initial={false}>
-              {value.headers.map((h, i) => (
+              {headers.map((h, i) => (
                 <motion.li
                   key={i}
                   {...rowMotion}
@@ -173,7 +175,7 @@ export function HttpRequestFields({
                     <IconButton
                       label={`Remove header ${h.name || i + 1}`}
                       className="hover:bg-danger-soft hover:text-danger-text"
-                      onClick={() => set({ headers: value.headers.filter((_, j) => j !== i) })}
+                      onClick={() => set({ headers: headers.filter((_, j) => j !== i) })}
                     >
                       <Trash2 className="size-4" aria-hidden />
                     </IconButton>
@@ -218,17 +220,17 @@ export function HttpRequestFields({
           <Button
             size="sm"
             icon={<Plus aria-hidden />}
-            disabled={value.response_mappings.length >= 20}
-            onClick={() => set({ response_mappings: [...value.response_mappings, { variable_name: "", json_path: "" }] })}
+            disabled={mappings.length >= 20}
+            onClick={() => set({ response_mappings: [...mappings, { variable_name: "", json_path: "" }] })}
           >
             Add mapping
           </Button>
         }
       >
-        {value.response_mappings.length > 0 && (
+        {mappings.length > 0 && (
           <ul className="flex flex-col gap-2" aria-label="Response mappings">
             <AnimatePresence initial={false}>
-              {value.response_mappings.map((m, i) => (
+              {mappings.map((m, i) => (
                 <motion.li
                   key={i}
                   {...rowMotion}
@@ -262,7 +264,7 @@ export function HttpRequestFields({
                   <IconButton
                     label={`Remove mapping ${m.variable_name || i + 1}`}
                     className="hover:bg-danger-soft hover:text-danger-text"
-                    onClick={() => set({ response_mappings: value.response_mappings.filter((_, j) => j !== i) })}
+                    onClick={() => set({ response_mappings: mappings.filter((_, j) => j !== i) })}
                   >
                     <Trash2 className="size-4" aria-hidden />
                   </IconButton>

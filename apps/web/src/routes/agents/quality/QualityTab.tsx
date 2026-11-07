@@ -1,6 +1,6 @@
 import { ShieldCheck } from "@phosphor-icons/react";
 import { EmptyState } from "../../../components";
-import type { EditorPanelProps } from "../editor/panelSlots";
+import type { EditorPanelProps } from "../editor/panels";
 import { AnalysisVariablesEditor } from "./AnalysisVariablesEditor";
 import { EvaluatorCatalog } from "./EvaluatorCatalog";
 

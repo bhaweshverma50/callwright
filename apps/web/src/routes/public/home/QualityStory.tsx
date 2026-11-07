@@ -2,6 +2,7 @@ import { CircleCheck, CircleX, LoaderCircle } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LatencyChip, OnAir, Ticker, cn } from "../../../components";
+import { usd } from "../../../lib/format";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -87,8 +88,6 @@ function StoryStep({ index, active, onEnter, children }: { index: number; active
 function Frame({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("min-h-[380px] rounded-feature border border-line bg-surface p-5 shadow-2 sm:p-6", className)}>{children}</div>;
 }
-
-const usd = (n: number) => `$${n.toFixed(4)}`;
 
 function CallsScene(_: { active?: boolean }) {
   const reduce = useReducedMotion();

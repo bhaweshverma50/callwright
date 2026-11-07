@@ -6,16 +6,17 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import {
   createTool,
-  updateTool,
-  useToolPresets,
   type EndCallConfig,
   type HttpToolConfig,
   type PressDigitConfig,
   type Tool,
   type ToolDraft,
+  toolKeys,
   type ToolPreset,
   type ToolType,
   type TransferConfig,
+  updateTool,
+  useToolPresets,
 } from "../../../api/tools";
 import { Button, Drawer, Field, Input, Skeleton, Textarea, cn, toast } from "../../../components";
 import { EndCallForm } from "./forms/EndCallForm";
@@ -61,7 +62,7 @@ function payload(draft: ToolDraft, parametersText: string, bodyText: string): To
     ...c,
     parameters: JSON.parse(parametersText) as Record<string, unknown>,
     body_template: bodyText.trim() ? (JSON.parse(bodyText) as unknown) : null,
-    headers: c.headers.map((h) =>
+    headers: (c.headers ?? []).map((h) =>
       h.secret
         ? { name: h.name, secret: true, ...(h.value ? { value: h.value } : { secret_ref: h.secret_ref }) }
         : { name: h.name, value: h.value ?? "", secret: false },
@@ -182,7 +183,7 @@ export function ToolEditorDialog({
       return tool ? updateTool(tool.id, body) : createTool(body);
     },
     onSuccess: (saved) => {
-      void qc.invalidateQueries({ queryKey: ["tools"] });
+      void qc.invalidateQueries({ queryKey: toolKeys.all });
       toast({ tone: "success", title: tool ? "Tool saved" : "Tool created", description: `${saved.name} is ready to use.` });
       onSaved(saved, !tool);
       onOpenChange(false);

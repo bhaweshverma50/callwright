@@ -3,10 +3,9 @@ import { FlowArrow } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, CircleAlert, History, ListChecks, MessageSquareText, Play, RefreshCw, Rocket, Save, Settings2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { agentKeys, useAgent, useLlmCatalog, useVoiceCatalog, type AgentDetail, type LlmCatalog, type VoiceCatalog } from "../../api/agents";
-import { isApiError } from "../../api/errors";
+import { type AgentDetail, agentKeys, useAgent } from "../../api/agents";
 import {
   fetchFlowByAgent,
   flowKeys,
@@ -19,10 +18,8 @@ import {
   type ValidationIssue,
 } from "../../api/flows";
 import { problemMessage } from "../../api/problems";
-import { Badge, Button, CopyButton, Dialog, EmptyState, IconButton, Input, LeaveGuard, Skeleton, TabPanel, Tabs, cn, toast } from "../../components";
+import { Badge, Button, CopyButton, Dialog, IconButton, Input, LeaveGuard, Skeleton, TabPanel, Tabs, cn, toast } from "../../components";
 import { RecordNotFound } from "../NotFound";
-import { useAgentDraft, stable } from "../agents/editor/useAgentDraft";
-import { VersionDrawer } from "../agents/versions/VersionDrawer";
 import { AssistantPanel } from "./assistant/AssistantPanel";
 import { ProposalBar, approveProposal, type Proposal } from "./assistant/ProposalBar";
 import { diffGraphs } from "./canvas/diffOverlay";
@@ -37,8 +34,8 @@ import { NodePanel } from "./panels/NodePanel";
 import { PublishDialog } from "./panels/PublishDialog";
 import { ValidationPanel } from "./panels/ValidationPanel";
 import { FlowTestPanel } from "./test/FlowTestPanel";
-
-const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+import { AGENTS_PATH, isAgentId } from "../../lib/paths";
+import { type Catalogs, LoadFailure, stable, useAgentDraft, useCatalogs, useSaveShortcut, VersionDrawer } from "../agents/config";
 
 /**
  * Flow builder (T030, T108) at /agents/:id/flow: canvas, side panel and header. Loads the agent,
@@ -46,29 +43,20 @@ const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
  */
 export function FlowBuilderPage() {
   const { id = "" } = useParams();
-  const valid = ULID.test(id);
+  const valid = isAgentId(id);
   const agent = useAgent(valid ? id : undefined);
   const flow = useFlowByAgent(valid ? id : undefined);
-  const llm = useLlmCatalog();
-  const voice = useVoiceCatalog();
-  const catalogs = useMemo(() => (llm.data && voice.data ? { llm: llm.data, voice: voice.data } : null), [llm.data, voice.data]);
-  if (!valid) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
-  const failed = agent.error ?? flow.error;
-  if (failed) {
-    if (isApiError(failed) && failed.status === 404) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
-    return (
-      <EmptyState icon={<FlowArrow weight="duotone" />} title="The flow did not load">
-        {problemMessage(failed, "flow")}
-      </EmptyState>
-    );
-  }
+  const { catalogs, error: catalogError } = useCatalogs();
+  if (!valid) return <RecordNotFound kind="agent" backTo={AGENTS_PATH} backLabel="Back to Agents" />;
+  const failed = agent.error ?? flow.error ?? catalogError;
+  if (failed) return <LoadFailure error={failed} icon={<FlowArrow weight="duotone" />} what="flow" />;
   if (!agent.data || !flow.data || !catalogs) return <BuilderSkeleton />;
   return <Builder key={flow.data.id} agent={agent.data} initial={flow.data} catalogs={catalogs} />;
 }
 
 type SideTab = "assistant" | "test" | "problems";
 
-function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Flow; catalogs: { llm: LlmCatalog; voice: VoiceCatalog } }) {
+function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Flow; catalogs: Catalogs }) {
   const qc = useQueryClient();
   const draft = useFlow(initial);
   const settings = useAgentDraft(
@@ -93,9 +81,8 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
 
   const changedKeys = useMemo(() => {
     const out = new Set<string>();
-    const before = settings.base.config as unknown as Record<string, unknown>;
-    const now = settings.config as unknown as Record<string, unknown>;
-    for (const k of Object.keys(now)) if (stable(now[k]) !== stable(before[k])) out.add(k);
+    const before = new Map<string, unknown>(Object.entries(settings.base.config));
+    for (const [k, v] of Object.entries(settings.config)) if (stable(v) !== stable(before.get(k))) out.add(k);
     return out;
   }, [settings.base.config, settings.config]);
   const dirty = draft.dirty || changedKeys.size > 0;
@@ -109,15 +96,14 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       toast({ tone: "error", title: "Not saved", description: nameError });
       return false;
     }
-    const changes: Record<string, unknown> = {};
-    for (const k of changedKeys) changes[k] = (settings.config as unknown as Record<string, unknown>)[k];
+    const changes = Object.fromEntries(Object.entries(settings.config).filter(([k]) => changedKeys.has(k)));
     const out = await draft.save(changedKeys.size ? { changes, draftRevision: settings.base.revision } : undefined);
     if (out.status === "saved") {
       validation.setResult(out.flow.last_validation);
       qc.setQueryData(flowKeys.byAgent(agent.id), out.flow);
       const fresh = await live.refetch();
       if (fresh.data) settings.resetTo(fresh.data);
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+      void qc.invalidateQueries({ queryKey: agentKeys.lists });
       toast({
         tone: "success",
         title: "Saved",
@@ -133,17 +119,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
     return false;
   }, [agent.id, changedKeys, draft, live, nameError, qc, settings, validation]);
 
-  // Cmd or Ctrl + S saves.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        if (!draft.saving && dirty) void save();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [dirty, draft.saving, save]);
+  useSaveShortcut(save, !draft.saving && dirty);
 
   const locked = proposal !== null;
   const lockedNotice = useCallback(() => toast({ title: "Approve or decline the pending changes first" }), []);
@@ -487,7 +463,7 @@ function variableNames(nodes: FlowNode[]): string[] {
   for (const n of nodes) {
     if (n.type === "extract_variable") out.push(...(n.config as ConfigByNode["extract_variable"]).fields.map((f) => f.name));
     if (n.type === "task") out.push(...(n.config as ConfigByNode["task"]).fields.map((f) => `task_result.${f.name}`));
-    if (n.type === "webhook") out.push(...(n.config as ConfigByNode["webhook"]).request.response_mappings.map((m) => m.variable_name));
+    if (n.type === "webhook") out.push(...((n.config as ConfigByNode["webhook"]).request.response_mappings?.map((m) => m.variable_name) ?? []));
   }
   return [...new Set(out)];
 }

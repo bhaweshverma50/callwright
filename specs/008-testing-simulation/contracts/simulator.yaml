@@ -405,7 +405,7 @@ components:
       properties:
         type: { type: string, enum: [published, draft, version, variant], default: published }
         agent_version_id: { type: string, pattern: '^agv_', description: Required for version; base version for variant }
-        config: { type: object, description: Full agent snapshot (config, tools, flow, knowledge ids); required for variant }
+        config: { type: object, additionalProperties: true, description: Full agent snapshot (config, tools, flow, knowledge ids); required for variant }
         label: { type: string, maxLength: 60, description: Display name for a variant }
     SimSettings:
       type: object

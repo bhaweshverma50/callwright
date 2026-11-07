@@ -3,7 +3,6 @@ import { FileSearch, Search, SearchX, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { api, unwrap } from "../../api/client";
-import type { SearchResponse } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, Input, Panel } from "../../components";
 
@@ -25,9 +24,7 @@ export function SearchPreviewPanel({ kbId, disabled }: { kbId: string; disabled?
   const [query, setQuery] = useState("");
   const search = useMutation({
     mutationFn: (q: string) =>
-      unwrap(
-        api.POST("/knowledge-bases/{kb_id}/search", { params: { path: { kb_id: kbId } }, body: { query: q, top_k: 4 } }),
-      ) as Promise<SearchResponse>,
+      unwrap(api.POST("/knowledge-bases/{kb_id}/search", { params: { path: { kb_id: kbId } }, body: { query: q, top_k: 4 } })),
   });
   const data = search.data;
   return (

@@ -10,8 +10,8 @@ import { Link } from "react-router";
 import { useLiveCalls, type LiveCall } from "../../../api/live";
 import { Badge, Button, OnAir, TruncatedText, Waveform, cn, focusRing } from "../../../components";
 import { CHANNEL_ICONS } from "../columns";
-import { phone } from "../format";
 import { LiveDuration } from "./LiveDuration";
+import { phone } from "../../../lib/format";
 
 /** Who is on the line, as people say it: the outside number, or a browser call. */
 export function liveParty(c: Pick<LiveCall, "channel" | "direction" | "from_number" | "to_number">): string {

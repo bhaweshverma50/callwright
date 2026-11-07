@@ -4,10 +4,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, toProblem } from "../../api/errors";
-import { Button, Field, Input, Logo, PanelLoader, cn, focusRing } from "../../components";
+import { Button, cn, Field, focusRing, Input, Logo, PanelLoader, TalkMinutes } from "../../components";
 import { env } from "../../lib/env";
 import { formatUsd, toMicros } from "../../lib/money";
-import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
+import { BILLING_PATH } from "../../lib/paths";
 
 /** The fake gateway's checkout session (services/api/app/dev/router.py). */
 interface TestCard {
@@ -94,7 +94,7 @@ function Notice({ icon, tone, title, text }: { icon: ReactNode; tone: "danger" |
       <h1 className="font-display text-[22px] tracking-[-0.02em] text-fg">{title}</h1>
       <p className="text-[14px] text-fg-2">{text}</p>
       <Button asChild variant="secondary" icon={<ArrowLeft aria-hidden />}>
-        <Link to="/billing">Back to Billing</Link>
+        <Link to={BILLING_PATH}>Back to Billing</Link>
       </Button>
     </div>
   );
@@ -121,7 +121,7 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
   const [decline, setDecline] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "paying" | "paid" | "leaving">("idle");
   const numberRef = useRef<HTMLInputElement>(null);
-  const amount = `$${Number(info.amount_usd).toFixed(2)}`;
+  const amount = formatUsd(info.amount_usd);
   const micros = toMicros(info.amount_usd) ?? 0n;
   const digits = form.number.replace(/\D/g, "");
   const brand = brandOf(digits);
@@ -205,8 +205,11 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
           <p className="text-[14px] text-fg-2">Add funds to {info.workspace_name ?? "your workspace"}</p>
           <p className="mt-2 font-mono text-[40px] font-semibold leading-none tracking-[-0.02em] text-fg tnum">{amount}</p>
           <p className="mt-3 text-[14px] text-fg-3">
-            About <span className="font-mono text-fg-2 tnum">{talkMinutes(micros, SEED_PER_MINUTE_MICROS)}</span> minutes of calls on the default
-            stack.
+            About{" "}
+            <span className="font-mono text-fg-2 tnum">
+              <TalkMinutes micros={micros} />
+            </span>{" "}
+            minutes of calls on the default stack.
           </p>
         </div>
         <dl className="flex flex-col gap-3 border-t border-line pt-5 text-[14px]">

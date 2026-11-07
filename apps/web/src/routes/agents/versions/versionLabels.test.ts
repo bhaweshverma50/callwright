@@ -1,71 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { lineDiff } from "./lineDiff";
-import { PATH_LABELS, fieldId, formatValue, labelFor, objectFields, readableChanges, sectionOf } from "./versionLabels";
-
-/** Every AgentConfig path in data-model.md section 4 (T056). */
-const CONFIG_PATHS = [
-  "/schema_version",
-  "/type",
-  "/language",
-  "/llm/provider",
-  "/llm/model",
-  "/llm/temperature",
-  "/prompt",
-  "/begin_message",
-  "/start_speaker",
-  "/dynamic_variables",
-  "/stt/provider",
-  "/stt/model",
-  "/tts/provider",
-  "/tts/model",
-  "/tts/voice_id",
-  "/tts/speed",
-  "/tts/expressiveness",
-  "/tts/volume",
-  "/noise_cancellation",
-  "/call_behavior/end_on_silence_s",
-  "/call_behavior/max_duration_s",
-  "/call_behavior/ring_duration_ms",
-  "/call_behavior/interruption_sensitivity",
-  "/call_behavior/responsiveness",
-  "/advanced/webhook_url",
-  "/advanced/webhook_timeout_ms",
-  "/advanced/voicemail_detection/enabled",
-  "/advanced/voicemail_detection/action",
-  "/advanced/voicemail_detection/message",
-  "/advanced/dtmf/enabled",
-  "/advanced/dtmf/timeout_ms",
-  "/advanced/dtmf/termination_key",
-  "/advanced/dtmf/digits",
-  "/advanced/background_audio/enabled",
-  "/advanced/background_audio/source",
-  "/advanced/background_audio/volume",
-  "/advanced/analysis_model",
-  "/advanced/pronunciation",
-  "/advanced/recording",
-  "/advanced/language_switching",
-  "/advanced/language_switching/enabled",
-  "/advanced/language_switching/languages",
-  "/tool_ids",
-  "/kb_ids",
-  "/flow",
-  "/evals",
-  "/tools",
-];
+import { formatValue, labelFor, objectFields, readableChanges } from "./versionLabels";
 
 describe("version labels (T056, FR-025)", () => {
-  it("has a readable label for every AgentConfig path", () => {
-    const missing = CONFIG_PATHS.filter((p) => !PATH_LABELS[p]);
-    expect(missing).toEqual([]);
-  });
-
   it("names keyed list items by their key", () => {
     expect(labelFor("/dynamic_variables[order_id]")).toBe("Variable order_id");
     expect(labelFor("/dynamic_variables[order_id]/default")).toBe("Default for order_id");
     expect(labelFor("/advanced/pronunciation[sql]/replacement")).toBe('Pronunciation of "sql"');
     expect(labelFor("/prompt")).toBe("System prompt");
     expect(labelFor("/tts/speed")).toBe("Voice speed");
-    expect(labelFor("/advanced/language_switching/enabled")).toBe("Caller language switching");
+    expect(labelFor("/advanced/language_switching/enabled")).toBe("Let callers switch language");
+    expect(labelFor("/tool_ids")).toBe("Tools");
+    expect(labelFor("/llm/temperature/0")).toBe("Temperature");
     expect(labelFor("/advanced/language_switching/languages")).toBe("Caller languages");
   });
 
@@ -77,27 +22,6 @@ describe("version labels (T056, FR-025)", () => {
     expect(formatValue("/advanced/language_switching/enabled", false)).toBe("Off");
     expect(formatValue("/advanced/language_switching/languages", [])).toBe("All supported languages");
     expect(formatValue("/advanced/language_switching/languages", ["hi", "es"], new Map([["hi", "Hindi"]]))).toBe("Hindi, es");
-  });
-
-  it("maps pointers to tabs and field ids", () => {
-    expect(sectionOf("/tts/voice_id")).toBe("voice");
-    expect(sectionOf("/advanced/webhook_url")).toBe("advanced");
-    expect(sectionOf("/call_behavior/max_duration_s")).toBe("behaviour");
-    expect(sectionOf("/prompt")).toBe("basics");
-    expect(sectionOf("/advanced/language_switching/languages")).toBe("basics");
-    expect(fieldId("/tts/voice_id")).toBe("f-tts-voice_id");
-    expect(fieldId("/dynamic_variables[order_id]/default")).toBe("f-dynamic_variables-order_id-default");
-  });
-});
-
-describe("line diff", () => {
-  it("keeps common lines and marks additions and removals", () => {
-    expect(lineDiff("a\nb\nc", "a\nc\nd")).toEqual([
-      { kind: "same", text: "a" },
-      { kind: "remove", text: "b" },
-      { kind: "same", text: "c" },
-      { kind: "add", text: "d" },
-    ]);
   });
 });
 

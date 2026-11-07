@@ -1,61 +1,41 @@
 import * as DM from "@radix-ui/react-dropdown-menu";
 import { MagnifyingGlass, PhoneList } from "@phosphor-icons/react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, Columns3, Download, FlaskConical, Minus, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Columns3, Download, FlaskConical, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { downloadCallsCsv, useAgentOptions, useCalls, type CallListItem } from "../../api/calls";
+import { downloadCallsCsv, useCalls, type CallListItem } from "../../api/calls";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
-import { Button, EmptyState, MenuContent, PageHeader, Pagination, Select, Skeleton, cn, focusRing, toast } from "../../components";
+import {
+  Button,
+  Checkbox,
+  cn,
+  EmptyState,
+  focusRing,
+  FormAlert,
+  MenuContent,
+  PageHeader,
+  Pagination,
+  Select,
+  Skeleton,
+  toast,
+} from "../../components";
 import { useRegisterVoiceActions } from "../../app/copilot/actionRegistry";
-import { FormAlert } from "../public/FormAlert";
-import { CallDetailDrawer, StatusBadge, type DrawerTab } from "./CallDetailDrawer";
+import { CallDetailDrawer, type DrawerTab } from "./CallDetailDrawer";
 import { CallsTabs } from "./CallsTabs";
 import { OnAirStrip } from "./live/LiveCalls";
 import { LiveDuration } from "./live/LiveDuration";
 import { DebouncedInput, FilterButton, FilterChips } from "./CallFilters";
 import { CHANNEL_ICONS, COLUMNS, EXPORT_KEYS, useColumnVisibility, type CallColumn } from "./columns";
-import {
-  CHANNEL_LABELS,
-  PAGE_SIZES,
-  STATUS_LABELS,
-  emptyFilters,
-  filterChips,
-  parseListState,
-  toApiQuery,
-  toSearchParams,
-  viewerTimeZone,
-  type CallFilters,
-  type ListState,
-} from "./filters";
-import { mss, usd, when } from "./format";
+import { PAGE_SIZES, emptyFilters, filterChips, parseListState, toApiQuery, toSearchParams, type CallFilters, type ListState } from "./filters";
 import { MAX_SELECTION, checkSimulation, useCallSelection } from "./selection";
 import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { summaryHeadline } from "./quality/SummaryText";
-
-function Checkbox({ checked, onChange, label, mixed }: { checked: boolean; mixed?: boolean; onChange: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={mixed ? "mixed" : checked}
-      aria-label={label}
-      onClick={(e) => {
-        e.stopPropagation();
-        onChange();
-      }}
-      className={cn(
-        "grid size-[18px] cursor-pointer place-items-center rounded-[5px] border transition-[background-color,border-color,transform] duration-150 active:scale-90",
-        checked || mixed ? "bg-accent border-transparent text-white" : "border-line-strong bg-surface hover:border-accent",
-        focusRing,
-      )}
-    >
-      {mixed ? <Minus className="size-3" strokeWidth={3} aria-hidden /> : checked ? <Check className="size-3" strokeWidth={3} aria-hidden /> : null}
-    </button>
-  );
-}
+import { mss, usd, viewerTimeZone, when } from "../../lib/format";
+import { CallStatusBadge, CHANNEL_LABELS, STATUS_LABELS } from "../../components/callVocabulary";
+import { useAllAgents } from "../../api/agents";
 
 function SortHeader({ column, state, onSort }: { column: CallColumn; state: ListState; onSort: (c: CallColumn) => void }) {
   if (!column.sort) return <>{column.label}</>;
@@ -135,7 +115,7 @@ function MobileRow({ row, selected, onToggle, onOpen }: { row: CallListItem; sel
       >
         <span className="flex items-center justify-between gap-2">
           <span className="truncate text-[14px] font-medium text-fg">{row.agent.name}</span>
-          <StatusBadge status={row.status} />
+          <CallStatusBadge status={row.status} />
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-fg-3">
           <span>{when(row.started_at)}</span>
@@ -189,7 +169,7 @@ export function CallHistoryPage() {
   const tz = useMemo(viewerTimeZone, []);
   const apiQuery = useMemo(() => toApiQuery(state, tz), [state, tz]);
   const calls = useCalls(apiQuery);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const { hidden, toggle: toggleColumn, visible } = useColumnVisibility();
   const { selection, toggle, togglePage, clear, limitHit } = useCallSelection();
   const [simError, setSimError] = useState<string | null>(null);

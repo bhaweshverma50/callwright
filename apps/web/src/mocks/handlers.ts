@@ -3,14 +3,10 @@
  * generated schema types, status codes follow the contract files, and errors are RFC 9457
  * problems. Enabled with VITE_API_MOCKS=true (pnpm dev:mock) and always in Vitest.
  *
- * Demo account: ops@halcyon-dental.com / correct-horse-9 (verified, seeded ledger).
- * Behaviour switches for manual testing:
- * - sign-in with any email containing "unverified" returns 403 email_unverified
- * - 5 wrong passwords within 15 minutes return 429 with retry_after_s
- * - verify-email / password-reset tokens "expired" return 400
- * - GET /billing/transactions/txn_00000000000000000000000500 returns a 500 with trace_id
+ * Demo account: DEMO_EMAIL / DEMO_PASSWORD (demoAccount.ts; verified, seeded ledger). The
+ * behaviour switches for manual testing are the constants below.
  */
-import { delay, http, HttpResponse, type JsonBodyType } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import type {
   Balance,
   Catalog,
@@ -19,38 +15,33 @@ import type {
   Me,
   OnboardingStatus,
   Preferences,
-  Problem,
   Quote,
   QuoteRequest,
   Session,
   Transaction,
-  TransactionPage,
   UsageReport,
   UsageRow,
   Workspace,
   FeatureFamily,
 } from "../api/types";
-import { env } from "../lib/env";
 import { checkTopUpAmount, microsToDecimal, toMicros } from "../lib/money";
-import { priceQuote } from "../lib/pricing";
-import { catalogCurrent } from "./catalog";
+import { priceQuote } from "./pricing/engine";
+import { catalogCurrent } from "./pricing/catalog";
 import { appendTransaction, balanceOf, db, mockId, save, type MockUser } from "./db";
+import { json, page, problem, unauthorized, url, validation } from "./http";
+import { mockResetToken, mockVerifyToken } from "./demoAccount";
 
-const base = env.apiBaseUrl;
-const url = (path: string) => `${base}${path}`;
-
-function problem(status: number, code: string, title: string, extra: Partial<Problem> = {}) {
-  const body: Problem = { type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title, status, code, ...extra };
-  const headers: Record<string, string> = { "content-type": "application/problem+json" };
-  if (extra.retry_after_s) headers["retry-after"] = String(extra.retry_after_s);
-  return HttpResponse.json(body as unknown as JsonBodyType, { status, headers });
-}
-
-function validation(errors: FieldError[]) {
-  return problem(422, "validation_failed", "Request failed validation", { errors });
-}
-
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
+/** Sign-in with an email containing this returns 403 email_unverified. */
+const UNVERIFIED_MARKER = "unverified";
+/** A verify-email or password-reset token with this value is expired (400 link_invalid). */
+const EXPIRED_TOKEN = "expired";
+/** The API's per-account sign-in throttle (auth/service.py): 5 failures in 15 minutes, then 429. */
+const MAX_FAILED_SIGN_INS = 5;
+const FAILED_SIGN_IN_WINDOW_MS = 15 * 60_000;
+/** GET /billing/transactions/<this id> answers 500 with a trace id, to show the server-error state. */
+const FAILING_TRANSACTION_ID = "txn_00000000000000000000000500";
+/** Usage windows cover at most this many days, both ends included (usage/service.py MAX_DAYS). */
+const MAX_USAGE_DAYS = 366;
 
 function issueSession(user: MockUser): Session {
   const access = `mock-access.${user.id}.${mockId("tok")}`;
@@ -88,8 +79,6 @@ function settlePending() {
   for (const p of due) appendTransaction(db(), p.workspace_id, "top_up", p.amount, "Top-up via card ending 4242");
   save();
 }
-
-const unauthorized = () => problem(401, "unauthorized", "Sign in required");
 
 function bootstrapWorkspace(user: MockUser) {
   if (user.workspace_id) return;
@@ -190,7 +179,7 @@ export const handlers = [
     if (!db().users.some((u) => u.email === email)) {
       db().users.push({ id: mockId("usr"), email, password: body.password!, email_verified: false, is_admin: false, workspace_id: null });
     }
-    db().verifyTokens[`verify-${email}`] = email;
+    db().verifyTokens[mockVerifyToken(email)] = email;
     save();
     await delay(250);
     return json({ status: "verification_sent" }, 202);
@@ -200,7 +189,7 @@ export const handlers = [
     const { token_hash } = (await request.json()) as { token_hash: string };
     const email = db().verifyTokens[token_hash];
     const user = db().users.find((u) => u.email === email);
-    if (!email || !user || token_hash === "expired") return problem(400, "link_invalid", "Link invalid, used or expired");
+    if (!email || !user || token_hash === EXPIRED_TOKEN) return problem(400, "link_invalid", "Link invalid, used or expired");
     user.email_verified = true;
     bootstrapWorkspace(user);
     delete db().verifyTokens[token_hash];
@@ -218,16 +207,15 @@ export const handlers = [
     await delay(300);
     const key = email.toLowerCase();
     const f = db().failures[key];
-    const windowMs = 15 * 60_000;
-    if (f && f.count >= 5 && Date.now() - f.first < windowMs) {
+    if (f && f.count >= MAX_FAILED_SIGN_INS && Date.now() - f.first < FAILED_SIGN_IN_WINDOW_MS) {
       return problem(429, "too_many_attempts", "Too many sign-in attempts", {
-        retry_after_s: Math.ceil((f.first + windowMs - Date.now()) / 1000),
+        retry_after_s: Math.ceil((f.first + FAILED_SIGN_IN_WINDOW_MS - Date.now()) / 1000),
       });
     }
-    if (key.includes("unverified")) return problem(403, "email_unverified", "Email not verified");
+    if (key.includes(UNVERIFIED_MARKER)) return problem(403, "email_unverified", "Email not verified");
     const user = db().users.find((u) => u.email === key);
     if (!user || user.password !== password) {
-      const prev = f && Date.now() - f.first < windowMs ? f : { count: 0, first: Date.now() };
+      const prev = f && Date.now() - f.first < FAILED_SIGN_IN_WINDOW_MS ? f : { count: 0, first: Date.now() };
       db().failures[key] = { count: prev.count + 1, first: prev.first };
       save();
       return problem(401, "invalid_credentials", "Wrong email or password");
@@ -258,7 +246,7 @@ export const handlers = [
     const { email = "" } = (await request.json()) as { email?: string };
     const key = email.toLowerCase();
     if (db().users.some((u) => u.email === key)) {
-      db().resetTokens[`reset-${key}`] = { email: key, used: false, expires: Date.now() + 3_600_000 };
+      db().resetTokens[mockResetToken(key)] = { email: key, used: false, expires: Date.now() + 3_600_000 };
       save();
     }
     await delay(250);
@@ -268,7 +256,7 @@ export const handlers = [
   http.post(url("/auth/password-reset/confirm"), async ({ request }) => {
     const { token_hash, new_password = "" } = (await request.json()) as { token_hash: string; new_password?: string };
     const t = db().resetTokens[token_hash];
-    if (!t || t.used || t.expires < Date.now() || token_hash === "expired") return problem(400, "link_invalid", "Link invalid, used or expired");
+    if (!t || t.used || t.expires < Date.now() || token_hash === EXPIRED_TOKEN) return problem(400, "link_invalid", "Link invalid, used or expired");
     if (new_password.length < 10) return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
     const user = db().users.find((u) => u.email === t.email);
     if (user) user.password = new_password;
@@ -416,30 +404,25 @@ export const handlers = [
     if (!user?.workspace_id) return unauthorized();
     settlePending();
     const q = new URL(request.url).searchParams;
-    const page = Math.max(1, Number(q.get("page") ?? 1));
-    const pageSize = Math.min(100, Math.max(1, Number(q.get("page_size") ?? 20)));
     const type = q.get("type");
     const rows = db()
       .transactions.filter((t) => t.workspace_id === user.workspace_id && (!type || t.type === type))
       .slice()
       .reverse();
     await delay(180);
-    const items: Transaction[] = rows.slice((page - 1) * pageSize, page * pageSize).map(({ workspace_id: _ws, ...t }) => t);
-    return json<TransactionPage>({
-      items,
-      total: rows.length,
-      page,
-      page_size: pageSize,
-      total_pages: Math.ceil(rows.length / pageSize),
-    });
+    return json(
+      page(
+        rows.map(({ workspace_id: _ws, ...t }): Transaction => t),
+        q,
+      ),
+    );
   }),
 
   http.get(url("/billing/transactions/:transaction_id"), ({ request, params }) => {
     const user = currentUser(request);
     if (!user?.workspace_id) return unauthorized();
     const id = String(params.transaction_id);
-    if (id === "txn_00000000000000000000000500")
-      return problem(500, "internal", "Something went wrong", { trace_id: "4f1c9e0a7b2d4e83a6c15d0f9b7e2a41" });
+    if (id === FAILING_TRANSACTION_ID) return problem(500, "internal", "Something went wrong", { trace_id: "4f1c9e0a7b2d4e83a6c15d0f9b7e2a41" });
     if (!/^txn_[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) return problem(404, "not_found", "Not found");
     const t = db().transactions.find((x) => x.id === id && x.workspace_id === user.workspace_id);
     if (!t) return problem(404, "not_found", "Not found");
@@ -451,9 +434,7 @@ export const handlers = [
   http.get(url("/public/demo"), () => json({ agents: ["clinic", "roadside", "loan"] })),
 
   // --- pricing -------------------------------------------------------------
-  http.get(url("/pricing/catalog"), () =>
-    HttpResponse.json(catalogCurrent satisfies Catalog as unknown as JsonBodyType, { headers: { "cache-control": "public, max-age=300" } }),
-  ),
+  http.get(url("/pricing/catalog"), () => json(catalogCurrent satisfies Catalog, 200, { "cache-control": "public, max-age=300" })),
 
   http.post(url("/pricing/quote"), async ({ request }) => {
     const body = (await request.json()) as QuoteRequest;
@@ -472,8 +453,9 @@ export const handlers = [
     const to = q.get("to") ?? today();
     const from = q.get("from") ?? addDays(to, -30);
     if (from > to) return validation([{ pointer: "/to", code: "out_of_range", message: "The end date must be on or after the start date." }]);
-    const span = (Date.parse(to) - Date.parse(from)) / 86_400_000;
-    if (span > 366) return validation([{ pointer: "/from", code: "out_of_range", message: "Pick a window of 366 days or less." }]);
+    const days = (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1;
+    if (days > MAX_USAGE_DAYS)
+      return validation([{ pointer: "/from", code: "out_of_range", message: `The window can cover at most ${MAX_USAGE_DAYS} days.` }]);
     await delay(200);
     const inWindow = db().usage.filter((u) => u.workspace_id === user.workspace_id && u.at.slice(0, 10) >= from && u.at.slice(0, 10) <= to);
     const rows = new Map<FeatureFamily, UsageRow>();

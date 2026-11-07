@@ -5,7 +5,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
-import type { Paged } from "./simulations";
 
 type S = components["schemas"];
 
@@ -25,21 +24,11 @@ export const datasetKeys = {
   items: (id: string, page: number) => ["datasets", "items", id, page] as const,
 };
 
-export const INVALID_REASONS: Record<InvalidReason, string> = {
-  not_found: "Call not found",
-  wrong_agent: "Belongs to another agent",
-  simulated_call: "Simulated calls cannot be added",
-  not_completed: "The call did not complete",
-  unavailable: "Transcript removed by retention",
-};
-
 export function useDatasets(agentId: string | null, page: number) {
   return useQuery({
     queryKey: datasetKeys.list(agentId ?? "", page),
     queryFn: () =>
-      unwrap(api.GET("/datasets", { params: { query: { page, page_size: DATASETS_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } } })) as Promise<
-        Paged<Dataset>
-      >,
+      unwrap(api.GET("/datasets", { params: { query: { page, page_size: DATASETS_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } } })),
     placeholderData: keepPreviousData,
   });
 }
@@ -48,8 +37,7 @@ export function useDatasets(agentId: string | null, page: number) {
 export function useAgentDatasets(agentId: string | null, enabled = true) {
   return useQuery({
     queryKey: datasetKeys.forAgent(agentId ?? ""),
-    queryFn: async () =>
-      ((await unwrap(api.GET("/datasets", { params: { query: { agent_id: agentId!, page: 1, page_size: 100 } } }))) as Paged<Dataset>).items,
+    queryFn: async () => (await unwrap(api.GET("/datasets", { params: { query: { agent_id: agentId!, page: 1, page_size: 100 } } }))).items,
     enabled: enabled && Boolean(agentId),
     staleTime: 15_000,
   });
@@ -58,7 +46,7 @@ export function useAgentDatasets(agentId: string | null, enabled = true) {
 export function useDataset(id: string | undefined) {
   return useQuery({
     queryKey: datasetKeys.detail(id ?? ""),
-    queryFn: () => unwrap(api.GET("/datasets/{dataset_id}", { params: { path: { dataset_id: id! } } })) as Promise<Dataset>,
+    queryFn: () => unwrap(api.GET("/datasets/{dataset_id}", { params: { path: { dataset_id: id! } } })),
     enabled: Boolean(id),
     retry: false,
   });
@@ -68,20 +56,18 @@ export function useDatasetItems(id: string | undefined, page: number) {
   return useQuery({
     queryKey: datasetKeys.items(id ?? "", page),
     queryFn: () =>
-      unwrap(
-        api.GET("/datasets/{dataset_id}/items", { params: { path: { dataset_id: id! }, query: { page, page_size: ITEMS_PAGE_SIZE } } }),
-      ) as Promise<Paged<DatasetItem>>,
+      unwrap(api.GET("/datasets/{dataset_id}/items", { params: { path: { dataset_id: id! }, query: { page, page_size: ITEMS_PAGE_SIZE } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
   });
 }
 
 export function createDataset(body: { name: string; agent_id: string; description?: string | null; call_ids?: string[] }) {
-  return unwrap(api.POST("/datasets", { body })) as Promise<Dataset & { add_result?: AddItemsResult }>;
+  return unwrap(api.POST("/datasets", { body }));
 }
 
 export function updateDataset(id: string, body: { name?: string; description?: string | null }) {
-  return unwrap(api.PATCH("/datasets/{dataset_id}", { params: { path: { dataset_id: id } }, body })) as Promise<Dataset>;
+  return unwrap(api.PATCH("/datasets/{dataset_id}", { params: { path: { dataset_id: id } }, body }));
 }
 
 export function deleteDataset(id: string) {
@@ -89,9 +75,7 @@ export function deleteDataset(id: string) {
 }
 
 export function addDatasetItems(id: string, callIds: string[]) {
-  return unwrap(
-    api.POST("/datasets/{dataset_id}/items", { params: { path: { dataset_id: id } }, body: { call_ids: callIds } }),
-  ) as Promise<AddItemsResult>;
+  return unwrap(api.POST("/datasets/{dataset_id}/items", { params: { path: { dataset_id: id } }, body: { call_ids: callIds } }));
 }
 
 export function removeDatasetItem(id: string, callId: string) {
@@ -104,16 +88,5 @@ export function evaluateDataset(id: string, onlyMissing: boolean, key: string) {
       params: { path: { dataset_id: id }, header: { "Idempotency-Key": key } },
       body: { only_missing: onlyMissing },
     }),
-  ) as Promise<{ enqueued: number; skipped_up_to_date?: number; skipped_unavailable: number }>;
-}
-
-/** "3 added, 1 already in the dataset, 1 skipped: Belongs to another agent". */
-export function describeAddResult(r: AddItemsResult): string {
-  const parts = [`${r.added} added`];
-  if (r.skipped_duplicates) parts.push(`${r.skipped_duplicates} already in the dataset`);
-  if (r.skipped_invalid) {
-    const reasons = [...new Set(r.invalid.map((i) => INVALID_REASONS[i.reason]))];
-    parts.push(`${r.skipped_invalid} skipped: ${reasons.join("; ").toLowerCase()}`);
-  }
-  return parts.join(", ");
+  );
 }

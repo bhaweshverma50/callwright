@@ -4,8 +4,9 @@ import { AlertTriangle, Bot, CheckCircle2, ChevronDown, Scissors, User, Wrench }
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { TranscriptItem, TurnLatency } from "../../api/calls";
-import { Badge, CopyButton, EmptyState, OnAir, Skeleton, Tooltip, Waveform, cn, focusRing } from "../../components";
-import { mss } from "./format";
+import { Badge, cn, CopyButton, EmptyState, focusRing, OnAir, Skeleton, type Tone, Tooltip, Waveform } from "../../components";
+import { mss } from "../../lib/format";
+import { latencyTone } from "./format";
 
 const VIRTUAL_AFTER = 500;
 
@@ -37,12 +38,20 @@ const PARTS: [keyof TurnLatency, string, string][] = [
   ["tts_ttfb_ms", "Voice first audio", "var(--heat-3)"],
 ];
 
+const LATENCY_TEXT: Record<Tone, string> = {
+  success: "text-success-text",
+  warning: "text-warning-text",
+  danger: "text-danger-text",
+  neutral: "text-fg-3",
+  accent: "text-fg-3",
+};
+
 /** End-to-end latency of one agent turn with its measured parts; a missing part reads "n/a". */
 export function TurnLatencyChip({ turn }: { turn: TurnLatency }) {
   const known = PARTS.map(([k]) => turn[k] as number | null | undefined);
   const sum = known.reduce<number>((a, v) => a + (v ?? 0), 0);
   const e2e = turn.e2e_ms ?? null;
-  const tone = e2e === null ? "text-fg-3" : e2e <= 1000 ? "text-success-text" : e2e <= 1600 ? "text-warning-text" : "text-danger-text";
+  const tone = LATENCY_TEXT[latencyTone(e2e)];
   const label = `Answered in ${e2e === null ? "n/a" : `${e2e} milliseconds`}: ${PARTS.map(
     ([k, name]) => `${name.toLowerCase()} ${turn[k] ?? "n/a"}`,
   ).join(", ")}`;

@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { DEMO_PASSWORD } from "../../src/mocks/demoAccount";
 
 // Spec 013: the guided setup tour, against the mock API. A fresh account gets the welcome card.
 async function signUpFresh(page: Page) {
   const email = `tour.${Date.now()}@example.com`;
   await page.goto("/register");
   await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("correct-horse-9");
+  await page.getByLabel("Password", { exact: true }).fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText(/check your email|we sent/i).first()).toBeVisible();
   await page.goto(`/verify-email?token_hash=verify-${email}`);
@@ -14,6 +15,13 @@ async function signUpFresh(page: Page) {
 
 const title = (page: Page) => page.locator("#tour-title");
 const next = (page: Page) => page.getByRole("button", { name: "Next", exact: true }).click();
+
+/** Reloads and waits for the saved tour progress: the tour decides whether to show right after it arrives. */
+async function reloadWithPreferences(page: Page) {
+  const loaded = page.waitForResponse((r) => r.url().endsWith("/me/preferences") && r.request().method() === "GET");
+  await page.reload();
+  await loaded;
+}
 
 test("a new user follows the tour from the welcome card to the recap", async ({ page }) => {
   test.setTimeout(90_000);
@@ -57,9 +65,8 @@ test("a new user follows the tour from the welcome card to the recap", async ({ 
   await expect(title(page)).toHaveCount(0);
 
   // Completed is saved on the server: a reload offers nothing.
-  await page.reload();
+  await reloadWithPreferences(page);
   await expect(page.getByRole("heading", { name: "Review" })).toBeVisible();
-  await page.waitForTimeout(800);
   await expect(page.getByRole("dialog", { name: "Set up your first agent" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Guided setup paused" })).toHaveCount(0);
 });
@@ -73,9 +80,8 @@ test("a new user skips the tour, and can start it again from the account menu", 
   await page.getByRole("button", { name: "Skip tour" }).click();
   await expect(title(page)).toHaveCount(0);
 
-  await page.reload();
+  await reloadWithPreferences(page);
   await expect(page.getByRole("heading", { name: "Start a single-prompt agent" })).toBeVisible();
-  await page.waitForTimeout(800);
   await expect(page.getByRole("dialog", { name: "Set up your first agent" })).toHaveCount(0);
   await expect(title(page)).toHaveCount(0);
 

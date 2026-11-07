@@ -8,11 +8,12 @@ import { Download, FileJson, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { downloadJson } from "../../../api/paid";
 import { exportTestCases, importTestCases, testingKeys, type ImportOutcome, type TestCaseImportRow } from "../../../api/testing";
-import { Button, Dialog, Field, Textarea, toast } from "../../../components";
-import { FormAlert } from "../../public/FormAlert";
-import { ProblemAlert, plural, problemText } from "../../simulations/shared";
+import { Button, Dialog, Field, FormAlert, Textarea, toast } from "../../../components";
+import { plural } from "../../../lib/format";
+import { ProblemAlert, problemText } from "../../../components/ProblemAlert";
+import { bodyLimits } from "../../../lib/contract.gen";
 
-export const MAX_IMPORT_ROWS = 500;
+export const MAX_IMPORT_ROWS = bodyLimits["POST /test-cases/import"].test_cases.maxItems;
 
 /** Parses the wrapped format or a bare list; a message when the text is not usable. */
 export function parseImport(text: string): { rows: TestCaseImportRow[] } | { error: string } {
@@ -25,7 +26,8 @@ export function parseImport(text: string): { rows: TestCaseImportRow[] } | { err
   const rows = Array.isArray(data) ? data : data && typeof data === "object" ? (data as { test_cases?: unknown }).test_cases : undefined;
   if (!Array.isArray(rows)) return { error: 'Expected a list of test cases, or an object with a "test_cases" list.' };
   if (rows.length === 0) return { error: "The file has no test cases." };
-  if (rows.length > MAX_IMPORT_ROWS) return { error: `The file has ${rows.length.toLocaleString()} test cases. Import at most 500 at a time.` };
+  if (rows.length > MAX_IMPORT_ROWS)
+    return { error: `The file has ${rows.length.toLocaleString()} test cases. Import at most ${MAX_IMPORT_ROWS} at a time.` };
   return { rows: rows as TestCaseImportRow[] };
 }
 
@@ -114,7 +116,7 @@ export function ImportDialog({ open, onOpenChange, agentId }: { open: boolean; o
       size="lg"
       icon={<Upload aria-hidden />}
       title="Import test cases"
-      description="A JSON file of up to 500 test cases. Each needs what the caller says and the expected behaviour; name and category are optional."
+      description={`A JSON file of up to ${MAX_IMPORT_ROWS} test cases. Each needs what the caller says and the expected behaviour; name and category are optional.`}
       footer={
         <>
           <Button variant="ghost" icon={<Download aria-hidden />} onClick={() => void template()} className="mr-auto">

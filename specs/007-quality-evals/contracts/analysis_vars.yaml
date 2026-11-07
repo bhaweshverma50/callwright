@@ -28,6 +28,7 @@ paths:
         "404": { $ref: "../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem" }
     post:
       operationId: createAnalysisVariable
+      x-max-per-agent: 25
       requestBody:
         required: true
         content:

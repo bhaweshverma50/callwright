@@ -1,3 +1,4 @@
+import { bodyLimits } from "./contract.gen";
 /**
  * Money helpers. The API sends USD as decimal strings with up to 6 fractional digits
  * (core.yaml MoneyUsd). Display never goes through floats for rounding decisions that matter;
@@ -5,6 +6,9 @@
  */
 
 const MICRO = 1_000_000n;
+
+/** Below this the balance chip and the talk-time gauge warn that calls may soon be refused. */
+export const LOW_BALANCE_MICROS = MICRO;
 
 /** Parses "12.5", "-0.477000", "5" into micro-dollars. Returns null for anything else. */
 export function toMicros(value: string): bigint | null {
@@ -66,22 +70,24 @@ export function formatCentsPerMin(rate: string): string {
 
 export type AmountCheck = { ok: true; micros: bigint; normalized: string } | { ok: false; reason: string };
 
-export const TOP_UP_MIN = 5n * MICRO;
-export const TOP_UP_MAX = 10_000n * MICRO;
+const TOP_UP = bodyLimits["POST /billing/checkout-sessions"].amount_usd;
+export const TOP_UP_MIN = toMicros(TOP_UP["x-minimum-usd"])!;
+export const TOP_UP_MAX = toMicros(TOP_UP["x-maximum-usd"])!;
+const whole = (micros: bigint) => formatUsd(micros, { places: 0 });
 
 /**
- * Validates a custom top-up amount typed by the user (FR-008): $5 to $10,000, whole cents.
- * Accepts an optional leading "$" and thousands commas.
+ * Validates a custom top-up amount typed by the user (FR-008): within the contract's range, whole
+ * cents. Accepts an optional leading "$" and thousands commas.
  */
 export function checkTopUpAmount(input: string): AmountCheck {
   const cleaned = input.trim().replace(/^\$/, "").replace(/,/g, "");
-  if (cleaned === "") return { ok: false, reason: "Enter an amount between $5 and $10,000." };
+  if (cleaned === "") return { ok: false, reason: `Enter an amount between ${whole(TOP_UP_MIN)} and ${whole(TOP_UP_MAX)}.` };
   if (!/^\d+(\.\d+)?$/.test(cleaned)) return { ok: false, reason: "Use numbers only, like 25 or 99.50." };
   const frac = cleaned.split(".")[1] ?? "";
   if (frac.length > 2) return { ok: false, reason: "Use whole cents: at most two digits after the point." };
   const micros = toMicros(cleaned);
   if (micros === null) return { ok: false, reason: "Use numbers only, like 25 or 99.50." };
-  if (micros < TOP_UP_MIN) return { ok: false, reason: "The minimum top-up is $5." };
-  if (micros > TOP_UP_MAX) return { ok: false, reason: "The maximum top-up is $10,000. Contact sales for larger amounts." };
+  if (micros < TOP_UP_MIN) return { ok: false, reason: `The minimum top-up is ${whole(TOP_UP_MIN)}.` };
+  if (micros > TOP_UP_MAX) return { ok: false, reason: `The maximum top-up is ${whole(TOP_UP_MAX)}. Contact sales for larger amounts.` };
   return { ok: true, micros, normalized: microsToDecimal(micros, 2) };
 }

@@ -4,10 +4,11 @@ import { Link, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { problemMessage } from "../../api/problems";
 import { Send } from "lucide-react";
-import { Button, Field, Input } from "../../components";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
+import { mockResetToken } from "../../mocks/demoAccount";
+import { AUTH_PAGES } from "../../lib/paths";
 
 /** Request a reset link (T041, US1.4). The answer never reveals whether the account exists. */
 export function ForgotPassword() {
@@ -42,7 +43,10 @@ export function ForgotPassword() {
         {env.mocks && (
           <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
             Demo data is on, so no email is sent.{" "}
-            <Link className="link-underline text-accent-text" to={`/reset-password?token_hash=${encodeURIComponent(`reset-${addr}`)}`}>
+            <Link
+              className="link-underline text-accent-text"
+              to={`${AUTH_PAGES.resetPassword}?token_hash=${encodeURIComponent(mockResetToken(addr))}`}
+            >
               Open the reset link
             </Link>
           </p>

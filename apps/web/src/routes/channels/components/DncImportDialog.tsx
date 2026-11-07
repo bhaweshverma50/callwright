@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { problemMessage } from "../../../api/problems";
 import { Button, Dialog, Field, Select, cn, focusRing } from "../../../components";
-import { useDncImport, type DncImportResult } from "../hooks/useOutboundCompliance";
+import { useDncImport, type DncImportResult } from "../../../api/channels";
+import { operationExtensions } from "../../../lib/contract.gen";
 
 export const REGIONS = [
   { value: "none", label: "None (numbers include +country code)" },
@@ -21,7 +22,9 @@ export const REGIONS = [
   { value: "AE", label: "United Arab Emirates (AE)" },
 ];
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const IMPORT = operationExtensions["POST /dnc-entries/import"];
+const MAX_BYTES = IMPORT["x-max-file-bytes"];
+const MAX_MB = MAX_BYTES / (1024 * 1024);
 
 /** Bulk do-not-call import from CSV (010 T078, FR-035): counts and the invalid rows. */
 export function DncImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -45,7 +48,7 @@ export function DncImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
     setError(null);
     setResult(null);
     if (f && f.size > MAX_BYTES) {
-      setError("The file is over 10 MB. Split it and import each part.");
+      setError(`The file is over ${MAX_MB} MB. Split it and import each part.`);
       return;
     }
     setFile(f);
@@ -143,7 +146,9 @@ export function DncImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
               <FileUp className="size-5" aria-hidden />
             </span>
             <span className="text-[14px] font-medium text-fg">{file ? file.name : "Choose a CSV file"}</span>
-            <span className="text-[12px] text-fg-3">{file ? `${(file.size / 1024).toFixed(1)} KB` : "Up to 100,000 rows and 10 MB, UTF-8"}</span>
+            <span className="text-[12px] text-fg-3">
+              {file ? `${(file.size / 1024).toFixed(1)} KB` : `Up to ${IMPORT["x-max-rows"].toLocaleString("en-US")} rows and ${MAX_MB} MB, UTF-8`}
+            </span>
           </button>
           <input ref={input} type="file" accept=".csv,text/csv" hidden aria-label="CSV file" onChange={(e) => choose(e.target.files?.[0] ?? null)} />
           <Field label="Default region" hint="For numbers written without a country code, such as (415) 555-0199.">

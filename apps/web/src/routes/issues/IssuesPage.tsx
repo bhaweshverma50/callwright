@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Radar, Repeat, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { isApiError } from "../../api/errors";
 import {
   DEFAULT_WINDOW,
@@ -27,9 +26,10 @@ import {
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
 import { Badge, Button, EmptyState, PageHeader, Pagination, Segmented, Select, Table, TruncatedText, cn, type Column } from "../../components";
-import { relative } from "../calls/format";
-import { ProblemAlert, plural, problemText } from "../simulations/shared";
 import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILTER_OPTIONS, windowRange } from "./shared";
+import { plural, timeAgo } from "../../lib/format";
+import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 const ALL = "all";
 const DETECT_HINT = "Choose an agent to run detection";
@@ -98,7 +98,7 @@ const columns = (agentNames: Record<string, string>, showAgent: boolean): Column
     key: "seen",
     header: "Last seen",
     hideOnNarrow: true,
-    cell: (i) => <span className="whitespace-nowrap text-fg-2">{relative(i.last_seen_at)}</span>,
+    cell: (i) => <span className="whitespace-nowrap text-fg-2">{timeAgo(i.last_seen_at)}</span>,
   },
 ];
 
@@ -129,7 +129,7 @@ function DetectionStatus({ detection }: { detection: Detection }) {
         </>
       ) : (
         <>
-          Last detection {detection.finished_at ? relative(detection.finished_at) : ""}: scanned {plural(detection.calls_scanned ?? 0, "call")} and{" "}
+          Last detection {detection.finished_at ? timeAgo(detection.finished_at) : ""}: scanned {plural(detection.calls_scanned ?? 0, "call")} and{" "}
           {plural(detection.failures_scanned ?? 0, "failure")}
           {range && ` from ${range}`}, created {plural(detection.issues_created ?? 0, "issue")} and updated {detection.issues_updated ?? 0}.
         </>
@@ -156,7 +156,7 @@ export function IssuesPage() {
 
   const filters = useMemo(() => ({ agentId, status, scope, windowDays, page }), [agentId, status, scope, windowDays, page]);
   const issues = useIssues(filters);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const detection = useLatestDetection(agentId);
   const action = useActionKey();
   const [detectError, setDetectError] = useState<unknown>(null);

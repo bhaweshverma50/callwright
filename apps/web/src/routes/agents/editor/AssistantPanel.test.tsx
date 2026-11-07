@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { TooltipProvider } from "../../../components";
 import { env } from "../../../lib/env";
 import { defaultConfig } from "../../../mocks/agents/rules";

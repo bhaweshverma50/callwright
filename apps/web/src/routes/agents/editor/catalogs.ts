@@ -32,10 +32,6 @@ export function languageLabel(cat: VoiceCatalog | undefined, code: string): stri
   return cat?.languages.find((l) => l.code === code)?.label ?? code;
 }
 
-export function sttCovers(languages: string[], code: string) {
-  return languages.includes(code);
-}
-
 /** Adds every `{{name}}` used in the prompt or greeting to the variables list (US1.4). */
 export function syncVariables(c: AgentConfig) {
   const scan = scanPlaceholders(c.prompt, c.begin_message);

@@ -6,18 +6,20 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
-import { Button, Composer, IconButton, ThinkingIndicator, cn, focusRing } from "../../components";
-import { viewerTimeZone } from "../../routes/calls/filters";
-import { chartVars } from "../../routes/dashboard/charts/ChartFrame";
+import { Button, chartVars, cn, Composer, focusRing, IconButton, ThinkingIndicator } from "../../components";
 import { AnswerView, SuggestionChips, type ChatAnswer } from "./AnswerView";
 import { onOpenAsk } from "./bus";
+import { BILLING_PATH } from "../../lib/paths";
+import { viewerTimeZone } from "../../lib/format";
+import { isInsufficientCredit } from "../../api/paid";
+import { idempotencyKey } from "../../api/agents";
 
 type Turn = { role: "user"; content: string } | { role: "assistant"; content: string; answer: ChatAnswer };
 type Failure = { kind: "credit" | "busy" | "unavailable" | "other"; title: string; message: string };
 
 function failureOf(e: unknown): Failure {
   if (isApiError(e)) {
-    if (e.status === 402)
+    if (isInsufficientCredit(e))
       return { kind: "credit", title: "Out of credit", message: "You're out of credit, so the assistant can't answer. Add funds to keep asking." };
     if (e.status === 429)
       return { kind: "busy", title: "Too many questions", message: "That's a lot of questions in a minute. Wait a moment, then try again." };
@@ -76,17 +78,17 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
   const ask = async (question: string) => {
     const q = question.trim();
     if (!q || pending) return;
-    if (keyFor.current?.question !== q) keyFor.current = { question: q, key: crypto.randomUUID() };
+    if (keyFor.current?.question !== q) keyFor.current = { question: q, key: idempotencyKey() };
     const history = turns.map((t) => ({ role: t.role, content: t.content })).slice(-18);
     setPending(true);
     setFailure(null);
     try {
-      const answer = (await unwrap(
+      const answer = await unwrap(
         api.POST("/analytics/chat", {
           params: { header: { "Idempotency-Key": keyFor.current.key } },
           body: { messages: [...history, { role: "user", content: q }], timezone: viewerTimeZone() },
         }),
-      )) as ChatAnswer;
+      );
       setTurns((t) => [...t, { role: "user", content: q }, { role: "assistant", content: answer.content, answer }]);
       setDraft("");
       keyFor.current = null;
@@ -236,7 +238,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
                     </div>
                     {failure.kind === "credit" ? (
                       <Button asChild size="sm" variant="secondary" icon={<Wallet aria-hidden />}>
-                        <Link to="/billing">Add funds</Link>
+                        <Link to={BILLING_PATH}>Add funds</Link>
                       </Button>
                     ) : (
                       <Button size="sm" variant="secondary" icon={<RotateCcw aria-hidden />} onClick={() => void ask(draft)}>

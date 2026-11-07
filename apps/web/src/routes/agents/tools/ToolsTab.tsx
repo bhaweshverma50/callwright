@@ -14,7 +14,7 @@ import {
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, EmptyState, IconButton, Panel, Skeleton, Tooltip, toast } from "../../../components";
 import { TabHeader } from "./TabHeader";
-import type { EditorPanelProps } from "../editor/panelSlots";
+import type { EditorPanelProps } from "../editor/panels";
 import { AttachToolsDialog } from "./AttachToolsDialog";
 import { ToolEditorDialog } from "./ToolEditorDialog";
 import { TOOL_META, ToolTile } from "./toolMeta";

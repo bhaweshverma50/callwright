@@ -6,7 +6,6 @@ import {
   FileText,
   LayoutGrid,
   LayoutTemplate,
-  MessageSquareText,
   Phone,
   Plus,
   Radio,
@@ -15,7 +14,6 @@ import {
   Trash2,
   TriangleAlert,
   Volume2,
-  Workflow,
   X,
 } from "lucide-react";
 import { AnimatePresence } from "motion/react";
@@ -23,14 +21,15 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   agentKeys,
-  PAGE_SIZE,
-  useAgents,
-  useLlmCatalog,
-  useVoiceCatalog,
+  type AgentPage,
   type AgentSort,
   type AgentStatus,
   type AgentSummary,
   type AgentType,
+  PAGE_SIZE,
+  useAgents,
+  useLlmCatalog,
+  useVoiceCatalog,
 } from "../../api/agents";
 import { api } from "../../api/client";
 import { ApiError, toProblem } from "../../api/errors";
@@ -60,10 +59,13 @@ import {
   type Column,
 } from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
-import { AgentActions, agentPath } from "./AgentActions";
-import { AgentCard, relativeDate } from "./AgentCard";
+import { AgentActions } from "./AgentActions";
+import { AgentCard } from "./AgentCard";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { languageLabel, llmLabel } from "./editor/catalogs";
+import { agentPath } from "../../lib/paths";
+import { timeAgo } from "../../lib/format";
+import { AGENT_TYPES, AgentTypeBadge } from "./agentType";
 
 type Filter = "all" | AgentType;
 type Status = "all" | AgentStatus;
@@ -144,11 +146,11 @@ export function AgentsListPage() {
     },
     onSuccess: (a) => {
       setDeleting(null);
-      qc.setQueriesData<{ items: AgentSummary[]; total: number }>({ queryKey: ["agents", "list"] }, (old) =>
+      qc.setQueriesData<AgentPage>({ queryKey: agentKeys.lists, predicate: (q) => !Array.isArray(q.state.data) }, (old) =>
         old ? { ...old, items: old.items.filter((x) => x.id !== a.id), total: Math.max(0, old.total - 1) } : old,
       );
       qc.removeQueries({ queryKey: agentKeys.detail(a.id) });
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+      void qc.invalidateQueries({ queryKey: agentKeys.lists });
       toast({ tone: "success", title: "Agent deleted", description: `${a.name} is gone from the list. Past calls keep their configuration.` });
     },
     onError: (e, a) => {
@@ -182,7 +184,7 @@ export function AgentsListPage() {
       key: "type",
       header: "Type",
       hideOnNarrow: true,
-      cell: (a) => <Badge icon={a.type === "flow" ? <Workflow /> : <MessageSquareText />}>{a.type === "flow" ? "Flow" : "Single prompt"}</Badge>,
+      cell: (a) => <AgentTypeBadge type={a.type} />,
     },
     {
       key: "status",
@@ -211,7 +213,7 @@ export function AgentsListPage() {
       header: "Last edited",
       cell: (a) => (
         <time className="whitespace-nowrap text-fg-2" dateTime={a.updated_at} title={new Date(a.updated_at).toLocaleString()}>
-          {relativeDate(a.updated_at)}
+          {timeAgo(a.updated_at)}
         </time>
       ),
     },
@@ -303,8 +305,10 @@ export function AgentsListPage() {
               }}
               options={[
                 { value: "all", label: "All types" },
-                { value: "single_prompt", label: "Single prompt", icon: <MessageSquareText aria-hidden /> },
-                { value: "flow", label: "Flow", icon: <Workflow aria-hidden /> },
+                ...(["single_prompt", "flow"] as const).map((type) => {
+                  const { label, icon: Icon } = AGENT_TYPES[type];
+                  return { value: type, label, icon: <Icon aria-hidden /> };
+                }),
               ]}
             />
             <div className="flex items-center gap-2 md:ml-auto">

@@ -6,13 +6,14 @@
 import { Info, TriangleAlert, Wrench } from "lucide-react";
 import { Link } from "react-router";
 import type { AgentType } from "../../api/agents";
-import { INVALID_REASONS } from "../../api/datasets";
 import type { Preflight } from "../../api/simulations";
-import { Button } from "../../components";
-import { Figure, cost, plural } from "./shared";
+import { Button, Figure } from "../../components";
+import { agentEditPath, agentFlowPath } from "../../lib/paths";
+import { costUsd, plural } from "../../lib/format";
+import { INVALID_REASONS } from "./invalidCalls";
 
 export function configureMocksPath(agentId: string, type: AgentType | undefined) {
-  return type === "flow" ? `/agents/${agentId}/flow` : `/agents/${agentId}/edit?tab=tools`;
+  return type === "flow" ? agentFlowPath(agentId) : `${agentEditPath(agentId)}?tab=tools`;
 }
 
 export function PreflightStep({ report, agentId, agentType }: { report: Preflight; agentId: string; agentType: AgentType | undefined }) {
@@ -21,7 +22,7 @@ export function PreflightStep({ report, agentId, agentType }: { report: Prefligh
     <div className="flex flex-col gap-4" aria-label="Pre-flight check" role="group">
       <div className="grid grid-cols-2 gap-4 rounded-control border border-line px-4 py-3">
         <Figure label="Runs to start">{report.run_count}</Figure>
-        <Figure label="Estimated cost">{cost(report.estimated_cost_usd)}</Figure>
+        <Figure label="Estimated cost">{costUsd(report.estimated_cost_usd)}</Figure>
       </div>
 
       {missing.length > 0 && (

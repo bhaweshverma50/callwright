@@ -3,13 +3,13 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../../../api/agents";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { Toaster, TooltipProvider } from "../../../components";
 import { defaultConfig } from "../../../mocks/agents/rules";
-import { resetToolStore, seedTool } from "../../../mocks/tools";
-import { draftErrors, e164Error, nameError, urlError } from "./forms/fieldRules";
+import { seedTool } from "../../../mocks/tools";
+import { draftErrors, nameError, urlError } from "./forms/fieldRules";
 import { ToolsTab, toolSummary } from "./ToolsTab";
 
 function Harness({ initial }: { initial: string[] }) {
@@ -64,8 +64,6 @@ const http = (name: string, mock: string | null = null) =>
       execution_message: "One moment.",
     },
   });
-
-beforeEach(() => resetToolStore());
 
 describe("ToolsTab (005 T030, T033, T088)", () => {
   it("shows an empty state with both ways to add a tool", async () => {
@@ -122,7 +120,7 @@ describe("ToolsTab (005 T030, T033, T088)", () => {
     const save = screen.getByRole("button", { name: "Create tool" });
     expect(save).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Phone number"), "555-0100");
-    expect(await screen.findByText(/Use \+E\.164 form/)).toBeInTheDocument();
+    expect(await screen.findByText(/Start with \+ and the country code/)).toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Phone number"));
     await userEvent.type(screen.getByLabelText("Phone number"), "+14155550100");
     expect(save).toBeEnabled();
@@ -135,8 +133,6 @@ describe("field rules (T095)", () => {
     expect(nameError("route_to_sales")).toMatch(/reserved/);
     expect(nameError("Bad Name")).toMatch(/lowercase/);
     expect(nameError("ok_name")).toBeNull();
-    expect(e164Error("+14155550100")).toBeNull();
-    expect(e164Error("14155550100")).toMatch(/E\.164/);
     expect(urlError("http://api.example.com")).toMatch(/https/);
     expect(urlError("http://api.example.com", true)).toBeNull();
     expect(urlError("https://{{host}}.example.com/x")).toMatch(/path and query/);

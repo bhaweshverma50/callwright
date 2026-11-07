@@ -3,8 +3,9 @@ import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { FlowChain, LatencyChip, OnAir, Tooltip, Waveform, cn, focusRing, type FlowNode } from "../../components";
 import { formatUsd } from "../../lib/money";
-import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "../../lib/sampleCall";
-import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
+import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "./sampleCall";
+import { mss } from "../../lib/format";
+import { useStackRate } from "../../api/pricing";
 
 const NODES: FlowNode[] = [
   { key: "caller", label: "Caller", icon: <Mic aria-hidden /> },
@@ -27,8 +28,6 @@ function activeLink(t: number): string | null {
   }
   return t < SAMPLE_CALL_SECONDS ? "caller" : null;
 }
-
-const mss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 /**
  * Home hero signature moment (docs/DESIGN.md section 6): one live call plays out once. Turns
@@ -61,7 +60,8 @@ export function LiveCall({ className }: { className?: string }) {
   }, [inView, reduce, run]);
 
   const ended = t >= SAMPLE_CALL_SECONDS;
-  const costMicros = (SEED_PER_MINUTE_MICROS * BigInt(Math.round(t * 1000))) / 60_000n;
+  const rate = useStackRate();
+  const costMicros = ((rate ?? 0n) * BigInt(Math.round(t * 1000))) / 60_000n;
   const link = ended ? null : activeLink(t);
 
   return (
@@ -83,7 +83,7 @@ export function LiveCall({ className }: { className?: string }) {
             <dl className="flex items-center gap-4 text-[12px] text-console-fg-2">
               <div className="flex items-center gap-1.5">
                 <dt className="sr-only">Duration</dt>
-                <dd className="w-9 text-right font-mono text-console-fg tnum">{mss(t)}</dd>
+                <dd className="w-9 text-right font-mono text-console-fg tnum">{mss(Math.floor(t))}</dd>
               </div>
               <div className="flex items-center gap-1.5">
                 <dt>Cost so far</dt>

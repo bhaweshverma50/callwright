@@ -3,8 +3,8 @@ import { useState } from "react";
 import type { WebhookConfig } from "../../../../api/flows";
 import { Field, Textarea } from "../../../../components";
 import { HttpRequestFields } from "../../../agents/tools/forms/HttpRequestFields";
-import type { Errors } from "../../../agents/tools/forms/fieldRules";
-import { jsonError, timeoutError, urlError } from "./fieldRules";
+import { urlError, type Errors } from "../../../agents/tools/forms/fieldRules";
+import { jsonError, timeoutError } from "./fieldRules";
 import { Group, issueFor, type FormProps } from "./shared";
 
 function bodyText(value: unknown): string {

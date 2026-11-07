@@ -14,15 +14,16 @@ import {
 import { useCallback, useState, type ReactNode } from "react";
 import type { CallListItem, Channel } from "../../api/calls";
 import { Badge, IconButton, Tooltip, TruncatedText, cn, focusRing } from "../../components";
-import { SentimentBadge } from "./AnalysisTable";
-import { StatusBadge } from "./CallDetailDrawer";
 import { CostCell } from "./CostBreakdown";
-import { CHANNEL_LABELS, EVAL_LABELS, REASON_LABELS, type SortKey } from "./filters";
-import { latencyTone, mss, phone, when } from "./format";
+import { type SortKey } from "./filters";
+import { latencyTone } from "./format";
 import type { DrawerTab } from "./CallDetailDrawer";
 import { LiveDuration } from "./live/LiveDuration";
 import { RecordingPlayer } from "./RecordingPlayer";
 import { summaryHeadline } from "./quality/SummaryText";
+import { mss, phone, when } from "../../lib/format";
+import { CallStatusBadge, CHANNEL_LABELS, EVAL_LABELS, REASON_LABELS, SentimentBadge } from "../../components/callVocabulary";
+import type { components } from "../../api/schema";
 
 export const CHANNEL_ICONS: Record<Channel, LucideIcon> = {
   web: Globe,
@@ -210,7 +211,7 @@ const ALL: CallColumn[] = [
         mss(r.duration_s)
       ),
   },
-  { key: "status", label: "Status", required: true, cell: (r) => <StatusBadge status={r.status} /> },
+  { key: "status", label: "Status", required: true, cell: (r) => <CallStatusBadge status={r.status} /> },
   { key: "cost_usd", label: "Cost", sort: "cost_usd", numeric: true, cell: (r) => <CostCell callId={r.call_id} value={r.cost_usd} /> },
   {
     key: "latency_avg_ms",
@@ -283,7 +284,8 @@ const ORDER = [
 ];
 export const COLUMNS: CallColumn[] = ORDER.map((k) => ALL.find((c) => c.key === k)!);
 
-export const EXPORT_KEYS: Record<string, string[]> = {
+/** The CSV columns each list column exports (calls.yaml ExportColumn). */
+export const EXPORT_KEYS: Record<string, components["schemas"]["ExportColumn"][]> = {
   call_id: ["call_id"],
   started_at: ["started_at"],
   agent: ["agent_id", "agent_name"],

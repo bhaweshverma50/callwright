@@ -5,8 +5,8 @@
  * inside their container.
  */
 import type { ScorecardRow } from "../../api/simulations";
-import { Table, Tooltip, cn, type Column } from "../../components";
-import { deltaTone, pct, pp } from "./shared";
+import { cn, type Column, deltaTone, Table, Tooltip } from "../../components";
+import { pct, pp } from "../../lib/format";
 
 function Rate({ rate, passes, n }: { rate: number | null | undefined; passes: number; n: number }) {
   return (

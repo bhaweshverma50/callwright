@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { QuoteRequest, TransactionType } from "./types";
-import { session } from "../app/session";
+import { session } from "./session";
 
 export const qk = {
   me: ["me"] as const,
@@ -11,6 +11,7 @@ export const qk = {
   transactions: (page: number, pageSize: number, type?: TransactionType) =>
     ["billing", "transactions", { page, pageSize, type: type ?? null }] as const,
   transactionsAll: ["billing", "transactions"] as const,
+  usageAll: ["usage"] as const,
   usage: (from: string, to: string) => ["usage", { from, to }] as const,
   catalog: ["pricing", "catalog"] as const,
   quote: (req: QuoteRequest) => ["pricing", "quote", req] as const,

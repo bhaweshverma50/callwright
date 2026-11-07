@@ -1,9 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { PAGE_SIZE, agentKeys, idempotencyKey, type AgentDetail, type AgentPage, type TemplateDetail } from "../../api/agents";
+import { createAgentFromTemplate, idempotencyKey, useAgents } from "../../api/agents";
 import { api, unwrap } from "../../api/client";
-import { ApiError, toProblem } from "../../api/errors";
 import { useSaveOnboarding, usePreferences } from "../../api/preferences";
 import { problemMessage } from "../../api/problems";
 import { toast } from "../../components";
@@ -42,11 +41,7 @@ function writeAgent(id: string | null) {
 export function TourProvider({ children }: { children: ReactNode }) {
   const prefs = usePreferences();
   // Only someone who never started needs the agent count (the welcome is for empty workspaces).
-  const agents = useQuery({
-    queryKey: agentKeys.list("", null, 1),
-    queryFn: () => unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: PAGE_SIZE } } })) as Promise<AgentPage>,
-    enabled: prefs.data?.onboarding.status === "not_started",
-  });
+  const agents = useAgents("", null, 1, { enabled: prefs.data?.onboarding.status === "not_started" });
   const save = useSaveOnboarding();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -102,7 +97,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       try {
-        const page = (await unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: 1 } } }))) as AgentPage;
+        const page = await unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: 1 } } }));
         if (cancelled) return;
         const first = page.items.find((a) => a.type === "single_prompt") ?? page.items[0];
         if (first) {
@@ -182,18 +177,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const [doing, setDoing] = useState(false);
   const createAgent = useCallback(async () => {
-    const list = (await unwrap(api.GET("/templates", { params: { query: {} } }))) as { items: { id: string }[] };
+    const list = await unwrap(api.GET("/templates"));
     const first = list.items[0];
     if (!first) throw new Error("No templates are available.");
-    const t = (await unwrap(api.GET("/templates/{template_id}", { params: { path: { template_id: first.id } } }))) as TemplateDetail;
-    const { data, error, response } = await api.POST("/agents", {
-      params: { header: { "Idempotency-Key": idempotencyKey() } },
-      body: { name: t.config.agent_name ?? t.name, type: "single_prompt", template_id: t.id, language: t.config.language },
-    });
-    if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
-    const agent = data as AgentDetail;
-    qc.setQueryData(agentKeys.detail(agent.id), agent);
-    void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+    const t = await unwrap(api.GET("/templates/{template_id}", { params: { path: { template_id: first.id } } }));
+    const agent = await createAgentFromTemplate(qc, t, idempotencyKey());
     toast({ tone: "success", title: "Agent created from template", description: `${agent.name} is saved as version 1.` });
     navigate(`/agents/${agent.id}/edit`);
   }, [qc, navigate]);

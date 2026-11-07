@@ -1,7 +1,7 @@
 /** Per-user preferences (spec 013): the guided setup tour's progress, saved on the server so it
  * follows the user across browsers. */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { session } from "../app/session";
+import { session } from "./session";
 import { api, unwrap } from "./client";
 import type { Onboarding, Preferences } from "./types";
 
@@ -10,7 +10,7 @@ export const preferencesKey = ["me", "preferences"] as const;
 export function usePreferences() {
   return useQuery({
     queryKey: preferencesKey,
-    queryFn: () => unwrap(api.GET("/me/preferences")) as Promise<Preferences>,
+    queryFn: () => unwrap(api.GET("/me/preferences")),
     enabled: session.isSignedIn(),
     staleTime: 5 * 60_000,
   });
@@ -27,7 +27,7 @@ export function useSaveOnboarding() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: preferencesKey,
-    mutationFn: (patch: OnboardingPatch) => unwrap(api.PATCH("/me/preferences", { body: { onboarding: patch } })) as Promise<Preferences>,
+    mutationFn: (patch: OnboardingPatch) => unwrap(api.PATCH("/me/preferences", { body: { onboarding: patch } })),
     onMutate: (patch) => {
       qc.setQueryData<Preferences>(preferencesKey, (old) =>
         old ? { onboarding: { ...old.onboarding, ...patch, updated_at: new Date().toISOString() } } : old,

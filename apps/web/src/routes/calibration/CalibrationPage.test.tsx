@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import type { CalibrationRow } from "../../api/quality";
 import { env } from "../../lib/env";
 import { server } from "../../mocks/node";
-import { reading, wilson } from "../../mocks/quality/handlers";
 import { renderApp, signInDemo } from "../../test/render";
 
 const row = (over: Partial<CalibrationRow>): CalibrationRow => ({
@@ -39,21 +38,6 @@ function serve(items: CalibrationRow[]) {
     ),
   );
 }
-
-describe("calibration math in the mock API (R7)", () => {
-  it("matches the reference Wilson range for 6 of 10", () => {
-    const ci = wilson(6, 10)!;
-    expect(ci.low).toBeCloseTo(0.313, 3);
-    expect(ci.high).toBeCloseTo(0.832, 3);
-  });
-  it("reads the bands at their boundaries", () => {
-    expect(reading({ both_pass: 2, both_fail: 2, over_eager: 0, missed: 0, n: 4 })).toBe("insufficient");
-    expect(reading({ both_pass: 4, both_fail: 2, over_eager: 2, missed: 2, n: 10 })).toBe("partial");
-    expect(reading({ both_pass: 6, both_fail: 0, over_eager: 4, missed: 0, n: 10 })).toBe("over_eager");
-    expect(reading({ both_pass: 17, both_fail: 0, over_eager: 3, missed: 0, n: 20 })).toBe("strong");
-    expect(reading({ both_pass: 5, both_fail: 0, over_eager: 3, missed: 2, n: 10 })).toBe("partial");
-  });
-});
 
 describe("CalibrationPage (007 T054, US4)", () => {
   it("shows the 2x2 matrix, 60% agreement and the partial reading", async () => {

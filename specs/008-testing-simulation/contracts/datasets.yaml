@@ -239,8 +239,14 @@ components:
         available: { type: boolean, description: false when the transcript was purged by retention }
         started_at: { type: [string, 'null'], format: date-time }
         duration_s: { type: [integer, 'null'] }
-        call_status: { type: [string, 'null'] }
-        eval_status: { type: [string, 'null'] }
+        call_status:
+          oneOf:
+            - { $ref: '../../006-calls-analytics/contracts/calls.yaml#/components/schemas/CallStatus' }
+            - { type: 'null' }
+        eval_status:
+          oneOf:
+            - { $ref: '../../006-calls-analytics/contracts/calls.yaml#/components/schemas/EvalStatus' }
+            - { type: 'null' }
         sentiment: { type: [string, 'null'], enum: [positive, neutral, negative, null] }
     AddItemsResult:
       type: object

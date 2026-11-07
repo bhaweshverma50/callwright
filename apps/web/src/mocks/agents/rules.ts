@@ -6,7 +6,7 @@
  */
 import type { AgentConfig, AgentType, ConfigIssue, ConfigValidationResult } from "../../api/agents";
 import { MAX_VARIABLES, VARIABLE_NAME, isReserved, scanPlaceholders } from "../../lib/agentVariables";
-import { supportedLanguages } from "../../lib/callerLanguages";
+import { supportedLanguages } from "../../api/languageSwitching";
 import { llmCatalog, sttAutoPrice, voiceCatalog } from "./catalog";
 import { findVoice } from "./voices";
 

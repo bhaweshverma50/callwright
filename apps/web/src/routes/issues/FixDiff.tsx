@@ -7,38 +7,11 @@ import { ArrowRight, BookX, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import type { FixKind, FixPayload } from "../../api/issues";
 import { cn } from "../../components";
-
-export type DiffLine = { op: "same" | "add" | "remove"; text: string };
-
-/** Line diff by longest common subsequence (prompts are short, so O(n*m) is fine). */
-export function lineDiff(before: string, after: string): DiffLine[] {
-  const a = before.split("\n");
-  const b = after.split("\n");
-  const n = a.length;
-  const m = b.length;
-  const lcs: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
-  for (let i = n - 1; i >= 0; i--)
-    for (let j = m - 1; j >= 0; j--) lcs[i]![j] = a[i] === b[j] ? lcs[i + 1]![j + 1]! + 1 : Math.max(lcs[i + 1]![j]!, lcs[i]![j + 1]!);
-  const out: DiffLine[] = [];
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      out.push({ op: "same", text: a[i]! });
-      i++;
-      j++;
-    } else if (lcs[i + 1]![j]! >= lcs[i]![j + 1]!) out.push({ op: "remove", text: a[i++]! });
-    else out.push({ op: "add", text: b[j++]! });
-  }
-  while (i < n) out.push({ op: "remove", text: a[i++]! });
-  while (j < m) out.push({ op: "add", text: b[j++]! });
-  return out;
-}
+import { diffStats, lineDiff } from "../../lib/lineDiff";
 
 export function TextDiff({ before, after, label }: { before: string; after: string; label: string }) {
   const lines = lineDiff(before, after);
-  const added = lines.filter((l) => l.op === "add").length;
-  const removed = lines.filter((l) => l.op === "remove").length;
+  const { added, removed } = diffStats(lines);
   return (
     <figure className="flex min-w-0 flex-col gap-1.5">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2 text-[13px] text-fg-3">
@@ -58,17 +31,17 @@ export function TextDiff({ before, after, label }: { before: string; after: stri
             key={k}
             className={cn(
               "grid grid-cols-[20px_minmax(0,1fr)] gap-1 px-2 py-[3px] leading-relaxed",
-              l.op === "add" && "bg-success-soft text-success-text",
-              l.op === "remove" && "bg-danger-soft text-danger-text",
-              l.op === "same" && "text-fg-2",
+              l.kind === "add" && "bg-success-soft text-success-text",
+              l.kind === "remove" && "bg-danger-soft text-danger-text",
+              l.kind === "same" && "text-fg-2",
             )}
           >
             <span
               role="cell"
-              aria-label={l.op === "add" ? "Added" : l.op === "remove" ? "Removed" : "Unchanged"}
+              aria-label={l.kind === "add" ? "Added" : l.kind === "remove" ? "Removed" : "Unchanged"}
               className="select-none text-center opacity-70"
             >
-              {l.op === "add" ? "+" : l.op === "remove" ? "-" : " "}
+              {l.kind === "add" ? "+" : l.kind === "remove" ? "-" : " "}
             </span>
             <span role="cell" className="whitespace-pre-wrap break-words">
               {l.text || " "}

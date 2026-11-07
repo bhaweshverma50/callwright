@@ -7,10 +7,9 @@ export function nodeSummary(node: FlowNode, modelLabel?: LlmLabeler): string {
   switch (node.type) {
     case "start": {
       const s = c as ConfigByNode["start"];
-      if (s.start_speaker === "user") return s.greeting.trim() ? `Caller first, after "${s.greeting.trim()}"` : "Caller speaks first";
-      return s.greeting_type === "generated"
-        ? "Agent first, greeting written by the next step"
-        : `Agent: "${s.greeting.trim() || "no greeting yet"}"`;
+      const greeting = s.greeting?.trim() ?? "";
+      if (s.start_speaker === "user") return greeting ? `Caller first, after "${greeting}"` : "Caller speaks first";
+      return s.greeting_type === "generated" ? "Agent first, greeting written by the next step" : `Agent: "${greeting || "no greeting yet"}"`;
     }
     case "agent":
     case "task": {
@@ -21,14 +20,16 @@ export function nodeSummary(node: FlowNode, modelLabel?: LlmLabeler): string {
         const t = c as ConfigByNode["task"];
         parts.push(`${t.fields.length} field${t.fields.length === 1 ? "" : "s"}, up to ${t.max_rounds} rounds`);
       }
-      if (llm) parts.push(modelLabel?.(llm.provider, llm.model) ?? llm.model);
+      if (llm?.provider && llm.model) parts.push(modelLabel?.(llm.provider, llm.model) ?? llm.model);
       if (a.overrides?.language) parts.push(a.overrides.language);
       if (!parts.length) parts.push(a.instructions.trim() ? a.instructions.trim() : "No instructions yet");
       return parts.join(" · ");
     }
     case "condition": {
       const k = c as ConfigByNode["condition"];
-      return k.kind === "rule" ? "Rules on variables, then otherwise" : `Classify: ${k.categories.map((x) => x.name).join(", ") || "no categories"}`;
+      return k.kind === "rule"
+        ? "Rules on variables, then otherwise"
+        : `Classify: ${(k.categories ?? []).map((x) => x.name).join(", ") || "no categories"}`;
     }
     case "say": {
       const s = c as ConfigByNode["say"];

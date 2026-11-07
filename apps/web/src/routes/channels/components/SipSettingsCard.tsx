@@ -1,6 +1,6 @@
 import { ArrowDownToLine, Network, Server } from "lucide-react";
 import { CopyButton, Panel, Skeleton } from "../../../components";
-import { useSipSettings } from "../hooks/usePhoneNumbers";
+import { useSipSettings } from "../../../api/channels";
 
 function AddressRow({ icon, label, value, help }: { icon: React.ReactNode; label: string; value: string; help: string }) {
   return (

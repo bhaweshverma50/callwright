@@ -2,11 +2,10 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { LatencyChip, Logo, Reveal, RevealItem, Waveform, cn, focusRing } from "../../components";
 import { formatUsd } from "../../lib/money";
-import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "../../lib/sampleCall";
-import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
+import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "./sampleCall";
+import { useStackRate } from "../../api/pricing";
 
 const TURNS = SAMPLE_CALL.slice(0, 3);
-const COST = formatUsd((SEED_PER_MINUTE_MICROS * BigInt(SAMPLE_CALL_SECONDS)) / 60n, { places: 4 });
 
 /**
  * Split layout for sign-in, register and password pages (docs/DESIGN.md section 6): the form on
@@ -14,6 +13,7 @@ const COST = formatUsd((SEED_PER_MINUTE_MICROS * BigInt(SAMPLE_CALL_SECONDS)) / 
  * with their latency, and what the call cost.
  */
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle?: ReactNode; children: ReactNode; footer?: ReactNode }) {
+  const rate = useStackRate();
   return (
     <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       <div className="flex flex-col px-5 py-6 sm:px-12">
@@ -75,7 +75,9 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
             </ol>
             <div className="mt-5 flex items-center justify-between border-t border-console-line pt-4 text-[13px] text-console-fg-2">
               <span>Whole call</span>
-              <span className="font-mono text-[14px] text-console-fg tnum">{COST}</span>
+              <span className="font-mono text-[14px] text-console-fg tnum">
+                {rate === undefined ? "" : formatUsd((rate * BigInt(SAMPLE_CALL_SECONDS)) / 60n, { places: 4 })}
+              </span>
             </div>
           </div>
         </div>

@@ -114,6 +114,7 @@ components:
         label: { type: string }
         params_schema:
           type: [object, "null"]
+          additionalProperties: true
           description: JSON Schema for the action's params.
     VisualState:
       type: object

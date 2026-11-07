@@ -10,7 +10,7 @@
  * - A dataset name already in use (any case) answers 409.
  * - Agents named with no prompt answer 409 on test runs and generation.
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http, HttpResponse } from "msw";
 import type { AddItemsResult, Dataset, DatasetItem } from "../../api/datasets";
 import type { Experiment, InvalidCall, PersonaBrief, Scorecard, SimTarget, SimulationRun } from "../../api/simulations";
 import type { TestCase, TestCaseImportRow, TestCategory, TestResult, TestRun } from "../../api/testing";
@@ -32,24 +32,8 @@ import {
   type StoredRun,
   type StoredSrun,
 } from "./store";
+import { invalid, json, page, problem, url } from "../http";
 
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-function problem(status: number, code: string, title: string, detail?: string, errors?: { pointer: string; code: string; message: string }[]) {
-  return HttpResponse.json(
-    {
-      type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`,
-      title,
-      status,
-      code,
-      ...(detail && { detail }),
-      ...(errors && { errors }),
-    } as JsonBodyType,
-    { status, headers: { "content-type": "application/problem+json" } },
-  );
-}
-const invalid = (pointer: string, message: string, code = "invalid") =>
-  problem(422, "validation_failed", "Request failed validation", message, [{ pointer, code, message }]);
 const notFound = (kind: string) => problem(404, "not_found", "Not found", `No ${kind} with that ID.`);
 const nowIso = () => new Date().toISOString();
 
@@ -83,18 +67,6 @@ function remembered<T>(request: Request, make: () => T): T {
   const s = sim();
   if (!(key in s.idem)) s.idem[key] = make();
   return s.idem[key] as T;
-}
-
-function page<T>(rows: T[], q: URLSearchParams, defaultSize = 20) {
-  const pageNo = Math.max(1, Number(q.get("page") ?? 1));
-  const size = Math.min(100, Math.max(1, Number(q.get("page_size") ?? defaultSize)));
-  return {
-    items: rows.slice((pageNo - 1) * size, pageNo * size),
-    total: rows.length,
-    page: pageNo,
-    page_size: size,
-    total_pages: Math.ceil(rows.length / size),
-  };
 }
 
 function agentConfig(agentId: string) {
@@ -356,7 +328,7 @@ function missingMocks(agentId: string) {
     .filter((t) => ids.includes(t.id) && !t.mock_response)
     .map((t) => ({ tool_id: t.id, node_id: null, name: t.name, kind: "tool" as const }));
   if (fromLibrary.length || ids.length) return fromLibrary;
-  if (a?.name === "Front desk agent" || agentId.startsWith("agt_01MOCKAGENTORDERDESK"))
+  if (a?.name === "Front desk agent" || agentId === "agt_01HMCKAGENT0RDERDESK000001")
     return [{ tool_id: "tool_01MOCKCHECKINSURANCE000001", node_id: null, name: "check_insurance", kind: "tool" as const }];
   return [];
 }
@@ -991,17 +963,10 @@ export const simHandlers = [
       );
     const bad = invalidCalls(body.agent_id, calls);
     if (bad.length)
-      return HttpResponse.json(
-        {
-          type: "https://callwright.dev/problems/invalid-calls",
-          title: "Some calls cannot be simulated",
-          status: 422,
-          code: "invalid_calls",
-          detail: `${bad.length} of the selected calls cannot be simulated. Remove them and try again.`,
-          invalid_calls: bad,
-        } as JsonBodyType,
-        { status: 422, headers: { "content-type": "application/problem+json" } },
-      );
+      return problem(422, "invalid_calls", "Some calls cannot be simulated", {
+        detail: `${bad.length} of the selected calls cannot be simulated. Remove them and try again.`,
+        invalid_calls: bad,
+      });
     const exp = remembered(request, () => {
       const target = body.target ?? { type: "published" as const };
       const e: StoredExperiment = {
@@ -1107,9 +1072,10 @@ export const simHandlers = [
     if (name.length > 80) return invalid("/name", "Keep the name to 80 characters or fewer.", "too_long");
     if (!body.agent_id) return invalid("/agent_id", "Choose an agent.", "required");
     if (nameTaken(name))
-      return problem(409, "name_taken", "Name already in use", `A dataset named "${name}" already exists. Choose another name.`, [
-        { pointer: "/name", code: "name_taken", message: "That name is already in use. Choose another name." },
-      ]);
+      return problem(409, "name_taken", "Name already in use", {
+        detail: `A dataset named "${name}" already exists. Choose another name.`,
+        errors: [{ pointer: "/name", code: "name_taken", message: "That name is already in use. Choose another name." }],
+      });
     const d: Dataset = {
       dataset_id: simId("ds"),
       name,
@@ -1141,9 +1107,10 @@ export const simHandlers = [
       const name = body.name.trim();
       if (!name) return invalid("/name", "Enter a name.", "required");
       if (nameTaken(name, d.dataset_id))
-        return problem(409, "name_taken", "Name already in use", `A dataset named "${name}" already exists. Choose another name.`, [
-          { pointer: "/name", code: "name_taken", message: "That name is already in use. Choose another name." },
-        ]);
+        return problem(409, "name_taken", "Name already in use", {
+          detail: `A dataset named "${name}" already exists. Choose another name.`,
+          errors: [{ pointer: "/name", code: "name_taken", message: "That name is already in use. Choose another name." }],
+        });
       d.name = name;
     }
     if (body.description !== undefined) d.description = body.description?.trim() || null;

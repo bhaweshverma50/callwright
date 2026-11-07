@@ -5,10 +5,10 @@ import "./index.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./app/App";
-import { wireCrossTabAuth } from "./app/auth";
-import { queryClient } from "./app/queryClient";
-import { createRouter } from "./app/router";
+import { App } from "./App";
+import { queryClient } from "./api/queryClient";
+import { wireCrossTabAuth } from "./api/session";
+import { createRouter } from "./router";
 import { initTheme } from "./app/theme";
 import { FullPageLoader } from "./components";
 import { env } from "./lib/env";

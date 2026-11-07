@@ -113,5 +113,3 @@ export function useFlow(initial: Flow) {
     resetTo,
   };
 }
-
-export type FlowDraft = ReturnType<typeof useFlow>;

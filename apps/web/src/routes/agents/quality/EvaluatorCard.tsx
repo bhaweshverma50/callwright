@@ -14,11 +14,13 @@ import {
   type SettingsField,
 } from "../../../api/quality";
 import { Badge, Button, IconButton, Input, Select, SwitchControl, Textarea, Tooltip, cn, focusRing, toast } from "../../../components";
-import { COST_LABELS, SCOPE_LABELS, evaluatorIcon } from "../../evaluators/evaluatorMeta";
-import { displayValue, fieldError, fmtNumber, helperText, optionsFor, parseFieldValue, schemaFields } from "./settingsSchema";
+import { COST_LABELS, SCOPE_LABELS, evaluatorIcon } from "./evaluatorMeta";
+import { displayValue, fieldError, fmtNumber, helperText, optionsFor, parseFieldValue, schemaFields } from "../../../api/evaluatorSettings";
+import { usd } from "../../../lib/format";
+import { schemaLimits } from "../../../lib/contract.gen";
 
-export const HEADLINE_LIMIT = 4;
-export const HEADLINE_LIMIT_MESSAGE = "Up to 4 headline checks per agent";
+export const HEADLINE_LIMIT = schemaLimits.AgentEvalSetting.headline_position.maximum;
+export const HEADLINE_LIMIT_MESSAGE = `Up to ${HEADLINE_LIMIT} headline checks per agent`;
 
 type FormValues = Record<string, unknown>;
 
@@ -292,7 +294,7 @@ export function EvaluatorCard({
           {judge && (
             <p className="text-[12px] text-warning-text">
               Costs credit per call
-              {setting.est_cost_per_call_usd != null ? `, about $${setting.est_cost_per_call_usd.toFixed(4)} each` : ""}.
+              {setting.est_cost_per_call_usd != null ? `, about ${usd(setting.est_cost_per_call_usd, 4)} each` : ""}.
             </p>
           )}
           {cardError && (

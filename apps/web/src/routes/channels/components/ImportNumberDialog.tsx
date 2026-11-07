@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { isApiError } from "../../../api/errors";
 import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, Dialog, Field, Input, Segmented, Textarea, cn, focusRing } from "../../../components";
-import { useAgentOptions, useImportNumber, type PhoneNumber, type Transport } from "../hooks/usePhoneNumbers";
-import { E164_EXAMPLE, e164Error, parseCidrs, stripScheme, terminationError } from "../validation";
+import { useImportNumber, type PhoneNumber, type Transport } from "../../../api/channels";
+import { parseCidrs, stripScheme, terminationError } from "../validation";
 import { AgentSelect } from "./shared";
+import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
+import { useAllAgents } from "../../../api/agents";
 
 type Errors = Partial<Record<"e164" | "label" | "termination_address" | "inbound_allowed_cidrs" | "form", string>>;
 
@@ -31,7 +33,7 @@ export function ImportNumberDialog({
   onImported: (n: PhoneNumber) => void;
 }) {
   const save = useImportNumber();
-  const agents = useAgentOptions(open);
+  const agents = useAllAgents(open);
   const [e164, setE164] = useState("");
   const [label, setLabel] = useState("");
   const [address, setAddress] = useState("");

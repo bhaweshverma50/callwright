@@ -2,8 +2,9 @@ import { Braces, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ExtractConfig, ExtractField } from "../../../../api/flows";
 import { Button, Field, IconButton, Input, Select, Textarea } from "../../../../components";
-import { fieldNameError, toVariableName } from "./fieldRules";
+import { fieldNameError } from "./fieldRules";
 import { Group, issueFor, type FormProps } from "./shared";
+import { FLOW_FIELD_NAME_MAX, toMachineName } from "../../../../lib/machineName";
 
 const TYPES = [
   { value: "string", label: "Text" },
@@ -19,7 +20,7 @@ const TYPES = [
 export function ExtractForm({ config, onChange, issues, takenNames }: FormProps<ExtractConfig> & { takenNames: string[] }) {
   const set = (patch: Partial<ExtractConfig>) => onChange({ ...config, ...patch });
   const [typed, setTyped] = useState("");
-  const converted = toVariableName(typed);
+  const converted = toMachineName(typed, FLOW_FIELD_NAME_MAX);
   const own = config.fields.map((f) => f.name);
   const error = typed.trim() ? fieldNameError(converted, [...own, ...takenNames]) : null;
   const setField = (i: number, patch: Partial<ExtractField>) => set({ fields: config.fields.map((f, j) => (j === i ? { ...f, ...patch } : f)) });

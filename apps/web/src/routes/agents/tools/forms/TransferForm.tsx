@@ -3,8 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import type { TransferConfig, WarmTransfer } from "../../../../api/tools";
 import { Button, ChoiceGroup, Field, IconButton, Input, Segmented, Textarea } from "../../../../components";
-import { e164Error, type Errors } from "./fieldRules";
+import type { Errors } from "./fieldRules";
 import { FormSection } from "./FormSection";
+import { e164Error } from "../../../../lib/e164";
 
 const DEFAULT_WARM: WarmTransfer = { handoff_type: "private", briefing_message_type: "static", briefing_message: "" };
 

@@ -6,12 +6,13 @@
  */
 import { Database } from "lucide-react";
 import { useState } from "react";
-import { useAgentOptions } from "../../api/calls";
-import { createDataset, describeAddResult, type Dataset } from "../../api/datasets";
+import { createDataset, type Dataset } from "../../api/datasets";
 import { isApiError } from "../../api/errors";
 import { fieldErrors } from "../../api/problems";
 import { Button, Dialog, Field, Input, Select, Textarea, toast } from "../../components";
-import { ProblemAlert } from "../simulations/shared";
+import { ProblemAlert } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
+import { describeAddResult } from "../simulations/invalidCalls";
 
 type Errors = { name?: string; agent?: string; description?: string };
 
@@ -31,7 +32,7 @@ export function NewDatasetDialog({
   callIds?: string[];
   onCreated: (d: Dataset) => void;
 }) {
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [name, setName] = useState("");
   const [agentId, setAgentId] = useState(defaultAgentId ?? "");
   const [description, setDescription] = useState("");

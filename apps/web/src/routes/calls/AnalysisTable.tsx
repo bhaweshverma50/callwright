@@ -1,21 +1,7 @@
-import { Frown, Meh, Smile, CircleHelp } from "lucide-react";
-import type { CallDetail, Sentiment } from "../../api/calls";
-import { Badge, Skeleton } from "../../components";
-import { SENTIMENT_LABELS } from "./filters";
-import { SENTIMENT_TONES } from "./format";
+import type { CallDetail } from "../../api/calls";
+import { Skeleton } from "../../components";
 import { SummaryText } from "./quality/SummaryText";
-
-const SENTIMENT_ICONS = { positive: Smile, neutral: Meh, negative: Frown, unknown: CircleHelp } as const;
-
-export function SentimentBadge({ value }: { value: Sentiment | null | undefined }) {
-  if (!value) return <span className="text-fg-3">n/a</span>;
-  const Icon = SENTIMENT_ICONS[value];
-  return (
-    <Badge tone={SENTIMENT_TONES[value]} icon={<Icon aria-hidden />}>
-      {SENTIMENT_LABELS[value]}
-    </Badge>
-  );
-}
+import { SentimentBadge } from "../../components/callVocabulary";
 
 function show(value: unknown): string {
   if (value === null || value === undefined || value === "") return "n/a";

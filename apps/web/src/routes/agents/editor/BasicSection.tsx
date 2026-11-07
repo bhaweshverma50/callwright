@@ -1,7 +1,6 @@
 import { Bot, FileText, Globe, Hand, MessageSquareQuote, PenLine, Tag, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Button, FieldRow, Input, Segmented, Select, Textarea, cn } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { CallerLanguageField } from "./CallerLanguageField";
 import { syncVariables, type Catalogs } from "./catalogs";
 import { FieldError, Note, Section, StackRow } from "./fields";
@@ -10,6 +9,7 @@ import { countWords } from "./surchargeRisk";
 import { TemperatureControl } from "./TemperatureControl";
 import type { AgentDraft } from "./useAgentDraft";
 import { VariablesEditor } from "./VariablesEditor";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const PROMPT_MAX = 50_000;
 const GREETING_MAX = 1000;
@@ -62,7 +62,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
         title="Identity and model"
         description="What the agent is called, the language it speaks and the model that decides what it says."
       >
-        <FieldRow icon={<Tag />} label="Agent name" htmlFor={fieldId("/name")} description="Shown in the agent list, calls and reports.">
+        <FieldRow icon={<Tag />} label={fieldLabel("/name")} htmlFor={fieldId("/name")} description="Shown in the agent list, calls and reports.">
           <Input
             id={fieldId("/name")}
             className="w-full"
@@ -77,7 +77,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
         </FieldRow>
         <FieldRow
           icon={<Globe />}
-          label="Language"
+          label={fieldLabel("/language")}
           htmlFor={fieldId("/language")}
           description="The language callers speak. Speech recognition and voice defaults follow it."
         >
@@ -99,7 +99,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
       <Section icon={<FileText />} title="Prompt and greeting" description="How the agent behaves, and the first thing callers hear.">
         <StackRow
           icon={<FileText />}
-          label="System prompt"
+          label={fieldLabel("/prompt")}
           htmlFor={fieldId("/prompt")}
           description="Instructions the agent follows on every call: its role, what to collect, what never to do."
           actions={
@@ -136,7 +136,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
 
         <FieldRow
           icon={<Hand />}
-          label="Who speaks first"
+          label={fieldLabel("/start_speaker")}
           htmlFor={fieldId("/start_speaker")}
           description={userFirst ? "The agent waits for the caller to speak." : "The agent opens the call with the greeting."}
         >
@@ -155,7 +155,7 @@ export function BasicSection({ draft, catalogs, onOpenAssistant }: { draft: Agen
 
         <StackRow
           icon={<MessageSquareQuote />}
-          label="Greeting"
+          label={fieldLabel("/begin_message")}
           htmlFor={fieldId("/begin_message")}
           description="The agent's first line. Variables work here too."
         >

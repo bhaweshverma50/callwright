@@ -6,14 +6,14 @@
 import { UserRoundPlus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { isRetryable, useActionKey } from "../../api/paid";
 import { preflight, startSimulationRun, type PersonaBrief, type Preflight } from "../../api/simulations";
 import { Button, Dialog, Field, Input, Select, toast } from "../../components";
 import { PersonaBriefEditor, cleanBrief, emptyBrief } from "./PersonaBriefEditor";
 import { PreflightStep } from "./PreflightDialog";
-import { ProblemAlert } from "./shared";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, type TargetChoice } from "./VariantEditor";
+import { ProblemAlert } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 function Target({ agentId, value, onChange }: { agentId: string; value: TargetChoice; onChange: (t: TargetChoice) => void }) {
   const sources = useTargetSources(agentId);
@@ -44,7 +44,7 @@ export function NewSimulationDialog({
 }) {
   const navigate = useNavigate();
   const key = useActionKey();
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [agentId, setAgentId] = useState(defaultAgentId ?? "");
   const [target, setTarget] = useState<TargetChoice>(defaultTarget);
   const [brief, setBrief] = useState<PersonaBrief>(emptyBrief);

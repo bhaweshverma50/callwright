@@ -5,18 +5,10 @@
  * one, and the callback placed for call 13 is call 9, turned into an outbound call here.
  * `cancelled` records each cancel request so tests can check what reached the server.
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http } from "msw";
 import type { Callback } from "../../api/callbacks";
 import type { CallListItem } from "../../api/calls";
-import { env } from "../../lib/env";
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-const problem = (status: number, code: string, detail: string) =>
-  HttpResponse.json({ type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title: "Error", status, code, detail } as JsonBodyType, {
-    status,
-    headers: { "content-type": "application/problem+json" },
-  });
+import { json, page, problemDetail, url } from "../http";
 
 interface Store {
   callbacks: Callback[];
@@ -52,7 +44,7 @@ interface Seed {
   cancelledAt?: string;
 }
 
-const API_AGENT = { id: "agt_01MOCKAGENTSCHEDULER000002", name: "Clinic scheduler" };
+const API_AGENT = { id: "agt_01HMCKAGENTSCHEDVR00000002", name: "Clinic scheduler" };
 
 const SEEDS: Seed[] = [
   {
@@ -119,7 +111,7 @@ const SEEDS: Seed[] = [
     source: null,
     placed: null,
     to: "+442079460958",
-    agent: { id: "agt_01MOCKAGENTORDERDESK0000001", name: "Order desk" },
+    agent: { id: "agt_01HMCKAGENT0RDERDESK000001", name: "Order desk" },
     timezone: "Europe/London",
     local: "2026-10-16T09:00:00",
     offset: 1,
@@ -203,27 +195,19 @@ export const callbackHandlers = [
     const rows = store.callbacks
       .filter((c) => (!status || c.status === status) && (!source || c.source_call_id === source))
       .sort((a, b) => (status === "scheduled" ? 1 : -1) * (Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at)));
-    const page = Number(q.get("page") ?? 1);
-    const size = Number(q.get("page_size") ?? 50);
-    return json({
-      items: rows.slice((page - 1) * size, page * size),
-      total: rows.length,
-      page,
-      page_size: size,
-      total_pages: Math.ceil(rows.length / size),
-    });
+    return json(page(rows, q, 50));
   }),
   http.get(url("/callbacks/:id"), ({ params }) => {
     const cb = store.callbacks.find((c) => c.id === params.id);
-    return cb ? json(cb) : problem(404, "not_found", "No callback with that id exists in this workspace.");
+    return cb ? json(cb) : problemDetail(404, "not_found", "No callback with that id exists in this workspace.");
   }),
   http.post(url("/callbacks/:id/cancel"), ({ params }) => {
     const cb = store.callbacks.find((c) => c.id === params.id);
     store.cancelled.push(String(params.id));
-    if (!cb) return problem(404, "not_found", "No callback with that id exists in this workspace.");
+    if (!cb) return problemDetail(404, "not_found", "No callback with that id exists in this workspace.");
     if (cb.status === "cancelled") return json(cb);
     if (cb.status !== "scheduled")
-      return problem(409, "callback_not_scheduled", "This callback is already being placed, was placed or failed, so it cannot be cancelled.");
+      return problemDetail(409, "callback_not_scheduled", "This callback is already being placed, was placed or failed, so it cannot be cancelled.");
     const now = new Date().toISOString();
     Object.assign(cb, { status: "cancelled", cancelled_at: now, updated_at: now });
     return json(cb);

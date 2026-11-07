@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { WebCallPanelProps } from "../../components/WebCallPanel";
+import type { WebCallPanelProps } from "../../webCall/WebCallPanel";
 import { store } from "../../mocks/agents/store";
 import { renderApp, signInDemo } from "../../test/render";
 import { variablesToSend } from "./AgentTestingPage";
@@ -9,7 +9,7 @@ import { variablesToSend } from "./AgentTestingPage";
 // The call panel has its own tests (WebCallPanel.test.tsx); here it records what the page asks
 // it to call.
 const panelProps: WebCallPanelProps[] = [];
-vi.mock("../../components/WebCallPanel", () => ({
+vi.mock("../../webCall/WebCallPanel", () => ({
   WebCallPanel: (props: WebCallPanelProps) => {
     panelProps.push(props);
     return (

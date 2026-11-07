@@ -2,15 +2,18 @@ import { AudioLines, BookOpen, CircleDot, Clock4, Cpu, FileText, MessageSquareQu
 import { useState, type ReactNode } from "react";
 import type { StartConfig } from "../../../api/flows";
 import { Badge, Drawer, FieldRow, Panel, PanelRows, Segmented, cn, focusRing } from "../../../components";
-import { AdvancedSection } from "../../agents/editor/AdvancedSection";
-import type { Catalogs } from "../../agents/editor/catalogs";
-import { CallBehaviorSection } from "../../agents/editor/CallBehaviorSection";
-import { ModelPicker } from "../../agents/editor/ModelPicker";
-import { TemperatureControl } from "../../agents/editor/TemperatureControl";
-import { editorPanels } from "../../agents/editor/panelSlots";
-import type { AgentDraft } from "../../agents/editor/useAgentDraft";
-import { VoiceSection } from "../../agents/editor/VoiceSection";
 import { ExpandEditor } from "./node-forms/ExpandEditor";
+import {
+  AdvancedSection,
+  type AgentDraft,
+  CallBehaviorSection,
+  type Catalogs,
+  EDITOR_PANELS,
+  ModelPicker,
+  sectionKeys,
+  TemperatureControl,
+  VoiceSection,
+} from "../../agents/config";
 
 export const SECTIONS = ["model", "voice", "call-behavior", "functions", "advanced", "knowledge-base", "quality-checks"] as const;
 export type SettingsSection = (typeof SECTIONS)[number];
@@ -25,11 +28,12 @@ const META: Record<SettingsSection, { label: string; icon: ReactNode; saves: "dr
   "quality-checks": { label: "Quality checks", icon: <ShieldCheck aria-hidden />, saves: "later" },
 };
 
-const DRAFT_KEYS: Record<string, readonly string[]> = {
+/** Top-level config keys each draft section edits, so a section can show it has unsaved changes. */
+const DRAFT_KEYS: Partial<Record<SettingsSection, readonly string[]>> = {
   model: ["llm", "prompt", "language"],
-  voice: ["tts", "stt", "noise_cancellation"],
-  "call-behavior": ["call_behavior"],
-  advanced: ["advanced", "dynamic_variables"],
+  voice: sectionKeys("voice"),
+  "call-behavior": sectionKeys("behaviour"),
+  advanced: [...sectionKeys("advanced"), "dynamic_variables"],
 };
 
 /**
@@ -61,7 +65,6 @@ export function GlobalSettingsDrawer({
   onStart: (patch: Partial<StartConfig>) => void;
 }) {
   const [clamp, setClamp] = useState<string | null>(null);
-  const panels = editorPanels("flow");
   const unsaved = (s: SettingsSection) => (DRAFT_KEYS[s] ?? []).some((k) => changedKeys.has(k));
   const meta = META[section];
   return (
@@ -152,9 +155,9 @@ export function GlobalSettingsDrawer({
           {section === "call-behavior" && <CallBehaviorSection draft={draft} catalogs={catalogs} />}
           {section === "advanced" && <AdvancedSection draft={draft} catalogs={catalogs} />}
           {(section === "functions" || section === "knowledge-base") &&
-            panels
-              .filter((p) => p.id === (section === "functions" ? "tools" : "knowledge"))
-              .map((p) => <p.component key={p.id} agentId={draft.base.id} agentType="flow" config={draft.config} update={draft.update} />)}
+            EDITOR_PANELS.filter((p) => p.id === (section === "functions" ? "tools" : "knowledge")).map((p) => (
+              <p.component key={p.id} agentId={draft.base.id} agentType="flow" config={draft.config} update={draft.update} />
+            ))}
           {section === "quality-checks" && (
             <Panel title="Quality checks" icon={<ShieldCheck />}>
               <p className="text-[13px] leading-relaxed text-fg-2">

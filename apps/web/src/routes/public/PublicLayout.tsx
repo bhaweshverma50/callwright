@@ -1,7 +1,7 @@
 import { LayoutDashboard, LogIn, Menu } from "lucide-react";
 import { Suspense, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
-import { useSignedIn } from "../../app/auth";
+import { useSignedIn } from "../../api/session";
 import { Button, Drawer, IconButton, Logo, PageTransition, PanelLoader, cn, focusRing } from "../../components";
 
 const navLink = ({ isActive }: { isActive: boolean }) =>

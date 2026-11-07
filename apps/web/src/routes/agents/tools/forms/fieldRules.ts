@@ -3,26 +3,27 @@
  * so Save stays disabled while a field is invalid; the server remains the authority.
  */
 import type { HttpToolConfig, PressDigitConfig, ToolConfig, ToolDraft, TransferConfig } from "../../../../api/tools";
+import { isMachineName, NAME_RULE } from "../../../../lib/machineName";
+import { e164Error } from "../../../../lib/e164";
+import { scalarLimits } from "../../../../lib/contract.gen";
 
-const NAME = /^[a-z][a-z0-9_]{0,63}$/;
-const E164 = /^\+[1-9]\d{6,14}$/;
 const HEADER = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/;
-const VARIABLE = /^[a-z][a-z0-9_]{0,63}$/;
 const PLACEHOLDER = /\{\{\s*[A-Za-z_][A-Za-z0-9_.]*\s*\}\}/g;
+
+const RESERVED_NAMES: Record<string, string> = scalarLimits.ToolName["x-reserved-names"];
+const RESERVED_PREFIXES: Record<string, string> = scalarLimits.ToolName["x-reserved-prefixes"];
 
 export type Errors = Record<string, string>;
 
 export function nameError(name: string): string | null {
   if (!name) return "Enter a name.";
-  if (!NAME.test(name)) return "Use lowercase letters, digits and underscores, starting with a letter.";
-  if (name === "kb_search") return "kb_search is reserved for knowledge search.";
-  if (name.startsWith("route_to_")) return "Names starting with route_to_ are reserved for flows.";
+  if (!isMachineName(name)) return `${NAME_RULE}.`;
+  const reservedFor = RESERVED_NAMES[name];
+  if (reservedFor) return `${name} is reserved for ${reservedFor}.`;
+  for (const [prefix, owner] of Object.entries(RESERVED_PREFIXES)) {
+    if (name.startsWith(prefix)) return `Names starting with ${prefix} are reserved for ${owner}.`;
+  }
   return null;
-}
-
-export function e164Error(value: string | undefined, required = true): string | null {
-  if (!value) return required ? "Enter the number in +E.164 form, for example +14155550100." : null;
-  return E164.test(value) ? null : "Use +E.164 form: a plus, the country code and the number, for example +14155550100.";
 }
 
 /** Absolute https URL (http only in development), placeholders only in the path and query. */
@@ -99,7 +100,7 @@ export function httpErrors(c: HttpToolConfig, texts: { parameters?: string; body
     if (b) out.body_template = b;
   }
   const seen = new Set<string>();
-  c.headers.forEach((h, i) => {
+  (c.headers ?? []).forEach((h, i) => {
     if (!HEADER.test(h.name)) out[`headers.${i}.name`] = "Letters, digits and - only.";
     else if (seen.has(h.name.toLowerCase())) out[`headers.${i}.name`] = "This header is listed twice.";
     seen.add(h.name.toLowerCase());
@@ -107,8 +108,8 @@ export function httpErrors(c: HttpToolConfig, texts: { parameters?: string; body
     if (!h.secret && !h.value) out[`headers.${i}.value`] = "Enter a value.";
   });
   const vars = new Set<string>();
-  c.response_mappings.forEach((m, i) => {
-    if (!VARIABLE.test(m.variable_name)) out[`mappings.${i}.variable_name`] = "Lowercase letters, digits and underscores.";
+  (c.response_mappings ?? []).forEach((m, i) => {
+    if (!isMachineName(m.variable_name)) out[`mappings.${i}.variable_name`] = "Lowercase letters, digits and underscores.";
     else if (vars.has(m.variable_name)) out[`mappings.${i}.variable_name`] = "Mapped twice.";
     vars.add(m.variable_name);
     if (!m.json_path.trim()) out[`mappings.${i}.json_path`] = "Enter a path such as data.slots[0].time.";

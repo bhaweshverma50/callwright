@@ -3,8 +3,7 @@ import { ChevronLeft, CircleDot, History, MessageSquareText, Play, RefreshCw, Sa
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { useAgent, useAgentDefaults, useLlmCatalog, useVoiceCatalog, type AgentDetail, type ConfigIssue } from "../../../api/agents";
-import { isApiError } from "../../../api/errors";
+import { useAgent, useAgentDefaults, type AgentDetail, type ConfigIssue } from "../../../api/agents";
 import { problemMessage } from "../../../api/problems";
 import {
   Badge,
@@ -28,7 +27,7 @@ import {
 import { RecordNotFound } from "../../NotFound";
 import { PublishButton } from "../versions/PublishButton";
 import { VersionDrawer } from "../versions/VersionDrawer";
-import { fieldId, labelFor, sectionOf, type EditorSection } from "../versions/versionLabels";
+import { labelFor } from "../versions/versionLabels";
 import { AdvancedSection } from "./AdvancedSection";
 import { AssistantPanel } from "./AssistantPanel";
 import { BasicSection } from "./BasicSection";
@@ -36,11 +35,12 @@ import { CallBehaviorSection } from "./CallBehaviorSection";
 import type { Catalogs } from "./catalogs";
 import { ChecksCard } from "./ChecksCard";
 import { CostCard } from "./CostCard";
-import { editorPanels } from "./panelSlots";
+import { EDITOR_PANELS } from "./panels";
 import { useAgentDraft, type DraftBase } from "./useAgentDraft";
 import { VoiceSection } from "./VoiceSection";
-
-const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+import { agentEditPath, agentFlowPath, AGENTS_PATH, agentTestingPath, isAgentId } from "../../../lib/paths";
+import { type EditorSection, fieldId, sectionOf } from "../config/fields";
+import { LoadFailure, useCatalogs, useSaveShortcut } from "./editorShell";
 
 /**
  * Single-prompt agent editor (T039), at /agents/new/single (never saved) and /agents/:id/edit.
@@ -50,30 +50,21 @@ const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
 export function AgentEditorPage() {
   const { id } = useParams();
   const isNew = !id;
-  const valid = isNew || ULID.test(id);
+  const valid = isNew || isAgentId(id);
   const agent = useAgent(valid && !isNew ? id : undefined);
   const defaults = useAgentDefaults("en-US", isNew);
-  const llm = useLlmCatalog();
-  const voice = useVoiceCatalog();
+  const { catalogs, error: catalogError } = useCatalogs();
 
-  if (!valid) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
-  const failed = agent.error ?? defaults.error ?? llm.error ?? voice.error;
-  if (failed) {
-    if (isApiError(failed) && failed.status === 404) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
-    return (
-      <EmptyState icon={<Robot weight="duotone" />} title="The agent did not load">
-        {problemMessage(failed, "agent")}
-      </EmptyState>
-    );
-  }
-  const ready = llm.data && voice.data && (isNew ? defaults.data : agent.data);
-  if (!ready) return <EditorSkeleton />;
+  if (!valid) return <RecordNotFound kind="agent" backTo={AGENTS_PATH} backLabel="Back to Agents" />;
+  const failed = agent.error ?? defaults.error ?? catalogError;
+  if (failed) return <LoadFailure error={failed} icon={<Robot weight="duotone" />} what="agent" />;
+  if (!catalogs || !(isNew ? defaults.data : agent.data)) return <EditorSkeleton />;
   if (!isNew && agent.data!.type === "flow") return <FlowAgentNotice agent={agent.data!} />;
 
   const initial: DraftBase = isNew
     ? { id: null, name: "", config: defaults.data!, revision: 0, detail: null }
     : { id: agent.data!.id, name: agent.data!.name, config: agent.data!.draft_config, revision: agent.data!.draft_revision, detail: agent.data! };
-  return <Editor key={id ?? "new"} initial={initial} catalogs={{ llm: llm.data!, voice: voice.data! }} />;
+  return <Editor key={id ?? "new"} initial={initial} catalogs={catalogs} />;
 }
 
 type Tab = EditorSection | string;
@@ -101,25 +92,30 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
     if (params.has("describe") || params.has("history")) setParams((p) => (p.delete("describe"), p.delete("history"), p), { replace: true });
   }, [params, setParams]);
   const [note, setNote] = useState("");
-  const [goTo, setGoTo] = useState<string | null>(null);
-  const panels = editorPanels("single_prompt");
+  const [goTo, setGoTo] = useState<{ to: string; replace: boolean } | null>(null);
+  const [focusPointer, setFocusPointer] = useState<string | null>(null);
 
   // Navigate only after the saved state has rendered, so the leave guard sees a clean form.
   useEffect(() => {
     if (goTo && !draft.dirty) {
-      navigate(goTo, { replace: goTo.endsWith("/edit") });
+      navigate(goTo.to, { replace: goTo.replace });
       setGoTo(null);
     }
   }, [goTo, draft.dirty, navigate]);
 
+  // Focus a field once its tab has rendered (the jump from the checks card opens the tab first).
+  useEffect(() => {
+    const el = focusPointer ? document.getElementById(fieldId(focusPointer)) : null;
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
+    setFocusPointer(null);
+  }, [focusPointer, tab]);
+
   const jump = useCallback(
     (pointer: string) => {
       setTab(sectionOf(pointer));
-      window.setTimeout(() => {
-        const el = document.getElementById(fieldId(pointer));
-        el?.scrollIntoView({ block: "center", behavior: "smooth" });
-        el?.focus({ preventScroll: true });
-      }, 120);
+      setFocusPointer(pointer);
     },
     [setTab],
   );
@@ -146,23 +142,13 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             : undefined
           : "Nothing in the configuration changed, so no new version was recorded.",
       });
-      if (then === "test") setGoTo(`/agents/${out.detail.id}/testing`);
-      else if (!draft.base.id) setGoTo(`/agents/${out.detail.id}/edit`);
+      if (then === "test") setGoTo({ to: agentTestingPath(out.detail.id), replace: false });
+      else if (!draft.base.id) setGoTo({ to: agentEditPath(out.detail.id), replace: true });
     },
     [draft, note, initial.id],
   );
 
-  // Cmd or Ctrl + S saves.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        if (!saving) void save();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [save, saving]);
+  useSaveShortcut(save, !saving);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -179,13 +165,11 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
   const blockers = draft.validation?.publish_blockers ?? [];
 
   // Short labels and no icons keep seven tabs readable; Advanced goes last, where people look for it.
-  const PANEL_ORDER = ["tools", "knowledge", "quality"];
-  const rank = (id: string) => PANEL_ORDER.indexOf(id) + 1 || PANEL_ORDER.length + 1;
   const tabs = [
     { value: "basics", label: "Basics", alerts: counts.basics },
     { value: "voice", label: "Voice", alerts: counts.voice },
     { value: "behaviour", label: "Behaviour", alerts: counts.behaviour },
-    ...[...panels].sort((a, b) => rank(a.id) - rank(b.id)).map((p) => ({ value: p.id, label: p.label })),
+    ...EDITOR_PANELS.map((p) => ({ value: p.id, label: p.label })),
     { value: "advanced", label: "Advanced", alerts: counts.advanced },
   ];
 
@@ -234,7 +218,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             icon={<Play aria-hidden />}
             pending={saving === "test"}
             disabled={saving === "save"}
-            onClick={() => (draft.dirty || isNew ? void save("test") : navigate(`/agents/${draft.base.id}/testing`))}
+            onClick={() => (draft.dirty || !draft.base.id ? void save("test") : navigate(agentTestingPath(draft.base.id)))}
           >
             Test agent
           </Button>
@@ -265,7 +249,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             <TabPanel value="advanced">
               <AdvancedSection draft={draft} catalogs={catalogs} />
             </TabPanel>
-            {panels.map((p) => (
+            {EDITOR_PANELS.map((p) => (
               <TabPanel key={p.id} value={p.id}>
                 <p.component agentId={draft.base.id} agentType="single_prompt" config={draft.config} update={draft.update} />
               </TabPanel>
@@ -477,7 +461,7 @@ function FlowAgentNotice({ agent }: { agent: AgentDetail }) {
         title={`${agent.name} is a flow agent`}
         actions={
           <Button asChild variant="primary" icon={<FlowArrow aria-hidden />}>
-            <Link to={`/agents/${agent.id}/flow`}>Open the flow builder</Link>
+            <Link to={agentFlowPath(agent.id)}>Open the flow builder</Link>
           </Button>
         }
       >

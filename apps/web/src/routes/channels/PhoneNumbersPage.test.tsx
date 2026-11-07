@@ -1,12 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetMockChannels, seedMockChannels } from "../../mocks/channels/handlers";
+import { seedMockChannels } from "../../mocks/channels/handlers";
 import { renderApp, signInDemo } from "../../test/render";
 
 describe("Channels page (T023, T082)", () => {
   beforeEach(async () => {
-    resetMockChannels();
     await signInDemo();
   });
 

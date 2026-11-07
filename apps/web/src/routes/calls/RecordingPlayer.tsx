@@ -2,8 +2,8 @@ import { Download, Pause, Play, Trash2, Hourglass, MicOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { fetchRecordingLink, type RecordingLink } from "../../api/calls";
 import { isApiError } from "../../api/errors";
-import { IconButton, Skeleton, cn, focusRing, toast, waveHeights } from "../../components";
-import { mss } from "./format";
+import { IconButton, cn, focusRing, toast, waveHeights } from "../../components";
+import { mss } from "../../lib/format";
 
 type State = "idle" | "loading" | "ready" | "deleted" | "processing" | "missing" | "error";
 
@@ -316,8 +316,4 @@ function SeekWave({ progress, onSeek, playing, seed }: { progress: number; onSee
       })}
     </div>
   );
-}
-
-export function RecordingPlayerSkeleton() {
-  return <Skeleton className="h-[58px] w-full rounded-panel" />;
 }

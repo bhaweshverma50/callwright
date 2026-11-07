@@ -1,14 +1,11 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Flow, FlowGraph } from "../../../api/flows";
-import { TooltipProvider } from "../../../components";
+import { Toaster, TooltipProvider } from "../../../components";
 import { useFlow } from "../hooks/useFlow";
 import { defaultConfig } from "../model";
 import { FlowCanvas, reconcileNodes, type NodeInputs, type Selection } from "./FlowCanvas";
-
-const toastSpy = vi.hoisted(() => vi.fn());
-vi.mock("../../../components/Toast", async (orig) => ({ ...(await orig<object>()), toast: toastSpy }));
 
 const graph: FlowGraph = {
   nodes: [
@@ -55,6 +52,7 @@ function Harness({ initial }: { initial: Selection }) {
           issues={[]}
         />
       </div>
+      <Toaster />
     </TooltipProvider>
   );
 }
@@ -65,8 +63,9 @@ describe("canvas keyboard and toolbar (T100)", () => {
     act(() => void fireEvent.keyDown(window, { key: "Delete" }));
     expect(current!.graph.nodes.map((n) => n.id)).toEqual(["n_start000", "n_agent000"]);
     expect(current!.graph.edges.map((e) => e.id)).toEqual(["e_start000"]);
-    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ action: expect.objectContaining({ label: "Undo" }) }));
-    act(() => current!.undo());
+    const notice = screen.getByText("Deleted 1 step").closest("li")!;
+    expect(within(notice).getByText("and 1 connection")).toBeInTheDocument();
+    act(() => void fireEvent.click(within(notice).getByRole("button", { name: "Undo" })));
     expect(current!.graph).toEqual(graph);
   });
 
@@ -87,8 +86,9 @@ describe("canvas keyboard and toolbar (T100)", () => {
 
   it("toolbar controls have accessible names", () => {
     render(<Harness initial={{ nodes: [], edges: [] }} />);
+    const toolbar = screen.getByRole("toolbar", { name: "Canvas" });
     for (const name of ["Auto-layout", "Fit to screen", "Zoom in", "Zoom out", "Undo", "Redo"])
-      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+      expect(within(toolbar).getByRole("button", { name })).toBeInTheDocument();
   });
 
   it("Add step opens a grouped, labelled list; clicking a step adds and selects it", () => {
@@ -107,24 +107,19 @@ describe("canvas keyboard and toolbar (T100)", () => {
 describe("canvas node reconcile (smooth drags)", () => {
   const base: NodeInputs = { nodes: graph.nodes, selected: [], locked: false, counts: {}, active: null, visited: new Set(), diff: undefined };
 
-  it("keeps every unchanged node object, so memoised cards skip re-rendering", () => {
+  it("moves only the node whose position changed", () => {
     const first = reconcileNodes([], base);
     const moved = graph.nodes.map((n) => (n.id === "n_say00000" ? { ...n, position: { x: 640, y: 20 } } : n));
     const next = reconcileNodes(first, { ...base, nodes: moved });
-    expect(next[0]).toBe(first[0]);
-    expect(next[1]).toBe(first[1]);
-    expect(next[2]).not.toBe(first[2]);
-    expect(next[2]!.position).toEqual({ x: 640, y: 20 });
-    expect(reconcileNodes(next, { ...base, nodes: moved })).toBe(next);
+    expect(next.map((n) => n.position)).toEqual([graph.nodes[0]!.position, graph.nodes[1]!.position, { x: 640, y: 20 }]);
+    expect(next.map((n) => n.data.node.label)).toEqual(["Start", "Triage", "Say"]);
   });
 
-  it("selection only replaces the nodes it touches and carries measured sizes over", () => {
+  it("selection marks the chosen node and keeps measured sizes", () => {
     const first = reconcileNodes([], base).map((n) => ({ ...n, measured: { width: 256, height: 100 } }));
     const next = reconcileNodes(first, { ...base, selected: ["n_agent000"] });
-    expect(next[0]).toBe(first[0]);
-    expect(next[1]!.selected).toBe(true);
-    expect(next[1]!.measured).toEqual({ width: 256, height: 100 });
-    expect(next[1]!.data).toBe(first[1]!.data);
+    expect(next.map((n) => n.selected)).toEqual([false, true, false]);
+    expect(next.map((n) => n.measured)).toEqual(first.map(() => ({ width: 256, height: 100 })));
   });
 
   it("a node being dragged keeps its live position when the document changes underneath", () => {

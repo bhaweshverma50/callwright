@@ -9,7 +9,7 @@
  * - Calls still processing read as "running" checks; never-connected calls are not evaluated.
  * - A phrase pattern with a backreference ("(a)\1") is refused like RE2 would.
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http, HttpResponse } from "msw";
 import type { CallListItem } from "../../api/calls";
 import type {
   AgentEvalSetting,
@@ -27,31 +27,13 @@ import type {
   TrialResult,
   Verdict,
 } from "../../api/quality";
-import { env } from "../../lib/env";
-import { MACHINE_NAME_RE, toVariableName } from "../../routes/agents/quality/variableName";
-import { fieldError, schemaFields } from "../../routes/agents/quality/settingsSchema";
+import { fieldError, schemaFields } from "../../api/evaluatorSettings";
 import { store as agentStore } from "../agents/store";
 import { MOCK_AGENTS, mockCalls, setQualitySummarizer } from "../calls/handlers";
 import { db } from "../db";
 import { BUILTINS, DEFAULT_JUDGE, JUDGE_MODELS } from "./catalog";
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-function problem(status: number, code: string, title: string, detail?: string, errors?: { pointer: string; code: string; message: string }[]) {
-  return HttpResponse.json(
-    {
-      type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`,
-      title,
-      status,
-      code,
-      ...(detail && { detail }),
-      ...(errors && { errors }),
-    } as JsonBodyType,
-    { status, headers: { "content-type": "application/problem+json" } },
-  );
-}
-const invalid = (pointer: string, message: string, code = "invalid") =>
-  problem(422, "validation_failed", "Request failed validation", message, [{ pointer, code, message }]);
+import { isMachineName, toMachineName } from "../../lib/machineName";
+import { invalid, json, problem, url, validation } from "../http";
 
 const nowIso = () => new Date().toISOString();
 let seq = 0;
@@ -639,7 +621,7 @@ function analysisOf(call: CallListItem): CallAnalysis {
 
 // Calibration math (spec 007 R7) --------------------------------------------------------------
 
-export function wilson(k: number, n: number, z = 1.96): { low: number; high: number } | null {
+function wilson(k: number, n: number, z = 1.96): { low: number; high: number } | null {
   if (n === 0) return null;
   const p = k / n;
   const denom = 1 + (z * z) / n;
@@ -648,7 +630,7 @@ export function wilson(k: number, n: number, z = 1.96): { low: number; high: num
   return { low: Math.max(0, centre - half), high: Math.min(1, centre + half) };
 }
 
-export function reading(m: { both_pass: number; both_fail: number; over_eager: number; missed: number; n: number }): CalibrationRow["reading"] {
+function reading(m: { both_pass: number; both_fail: number; over_eager: number; missed: number; n: number }): CalibrationRow["reading"] {
   if (m.n < 5) return "insufficient";
   const a = (m.both_pass + m.both_fail) / m.n;
   if (a >= 0.85) return "strong";
@@ -842,7 +824,7 @@ setQualitySummarizer((call, request) => {
 // Handlers ------------------------------------------------------------------------------------
 
 const variableError = (body: Partial<AnalysisVariable>, agentId: string, selfId?: string): Response | null => {
-  if (body.name !== undefined && !MACHINE_NAME_RE.test(body.name))
+  if (body.name !== undefined && !isMachineName(body.name))
     return invalid("/name", "Use lowercase letters, digits and underscores, starting with a letter");
   if (body.description !== undefined && (!body.description.trim() || body.description.length > 500))
     return invalid("/description", "Describe what to capture in 1 to 500 characters.");
@@ -967,7 +949,7 @@ export const qualityHandlers = [
       evaluator_type: "phrase_check" | "llm_judge_custom";
       config: CustomConfig;
     };
-    const name = body.name ?? toVariableName(body.display_name ?? "");
+    const name = body.name ?? toMachineName(body.display_name ?? "");
     if (!name) return invalid("/display_name", "Use a name with at least one letter.");
     const err = validateCustom(body.evaluator_type, body.config);
     if (err) return err;
@@ -1078,7 +1060,7 @@ export const qualityHandlers = [
         if (msg) errors.push({ pointer: `/overrides/${key}`, code: "out_of_range", message: msg });
       }
     }
-    if (errors.length) return problem(422, "validation_failed", "Request failed validation", errors[0]!.message, errors);
+    if (errors.length) return validation(errors, errors[0]!.message);
     q.settings[agentId] ??= {};
     const rows = q.settings[agentId];
     const prev = rows[e.id];

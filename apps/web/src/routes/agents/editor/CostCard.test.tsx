@@ -1,7 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { TooltipProvider } from "../../../components";
 import { llmCatalog, voiceCatalog } from "../../../mocks/agents/catalog";
 import { defaultConfig } from "../../../mocks/agents/rules";

@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useProviderVoices } from "../../../api/agents";
 import { Button, FieldRow, Select, Skeleton } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { languageLabel, perMin, type Catalogs } from "./catalogs";
 import { controlFor, FieldError, Note, Section, SliderRow } from "./fields";
 import { NoiseCancellationSelect } from "./NoiseCancellationSelect";
@@ -12,6 +11,7 @@ import type { AgentDraft } from "./useAgentDraft";
 import { usePreview } from "./usePreview";
 import { PreviewButton, VoiceAvatar, VoiceTags } from "./VoiceAvatar";
 import { VoicePickerDialog } from "./VoicePickerDialog";
+import { fieldId, fieldLabel } from "../config/fields";
 
 /**
  * Voice and speech tab (T041, T095): speech recognition, noise cancellation, then the voice with
@@ -43,7 +43,7 @@ export function VoiceSection({ draft, catalogs }: { draft: AgentDraft; catalogs:
       <Section icon={<Volume2 />} title="Voice" description="How the agent sounds. Play a sample before you choose.">
         <FieldRow
           icon={<Mic2 />}
-          label="Voice provider"
+          label={fieldLabel("/tts/provider")}
           htmlFor={fieldId("/tts/provider")}
           description="Each provider has its own voices and models."
         >
@@ -69,7 +69,7 @@ export function VoiceSection({ draft, catalogs }: { draft: AgentDraft; catalogs:
         </FieldRow>
         <FieldRow
           icon={<AudioWaveform />}
-          label="Voice model"
+          label={fieldLabel("/tts/model")}
           htmlFor={fieldId("/tts/model")}
           description="Trades speed of first audio against quality."
           hint="Each minute includes 750 characters of speech. Longer answers bill the voice for more minutes than the call lasted."

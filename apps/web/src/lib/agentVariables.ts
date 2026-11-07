@@ -1,22 +1,13 @@
+import { schemaLimits } from "./contract.gen";
 /**
  * Dynamic variable rules (spec 002 FR-008): names start with a letter or underscore and contain
  * only letters, digits and underscores (max 64), at most 50 per agent, built-in names reserved.
  * `{{ name }}` placeholders in the prompt and greeting are found with any inner spacing; malformed
  * ones (`{{ name`, `{{1abc}}`) are reported and never added.
  */
-export const VARIABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
-export const MAX_VARIABLES = 50;
-export const RESERVED_VARIABLES = [
-  "call_id",
-  "channel",
-  "direction",
-  "user_number",
-  "agent_number",
-  "timezone",
-  "current_time",
-  "current_date",
-  "current_datetime",
-] as const;
+export const VARIABLE_NAME = new RegExp(schemaLimits.DynamicVariable.name.pattern);
+export const MAX_VARIABLES = schemaLimits.AgentConfig.dynamic_variables.maxItems;
+export const RESERVED_VARIABLES = schemaLimits.DynamicVariable.name["x-reserved"];
 
 export const isReserved = (name: string) => (RESERVED_VARIABLES as readonly string[]).includes(name);
 

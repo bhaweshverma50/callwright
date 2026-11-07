@@ -8,12 +8,13 @@ import { Flask } from "@phosphor-icons/react";
 import { Layers, UserRoundPlus, Workflow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useAgentOptions } from "../../api/calls";
 import { SIM_PAGE_SIZE, useExperiments, useStandaloneRuns, type Experiment, type SimulationRun } from "../../api/simulations";
-import { Button, EmptyState, PageHeader, Pagination, Select, TabPanel, Table, Tabs, TruncatedText, type Column } from "../../components";
-import { relative } from "../calls/format";
+import { Button, type Column, EmptyState, PageHeader, Pagination, ProgressBar, Select, Table, TabPanel, Tabs, TruncatedText } from "../../components";
 import { NewSimulationDialog } from "./NewSimulationDialog";
-import { END_REASONS, MODE_LABELS, ProgressBar, SimStatusBadge, cost, problemText, targetPhrase } from "./shared";
+import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
+import { costUsd, timeAgo } from "../../lib/format";
+import { problemText } from "../../components/ProblemAlert";
+import { useAllAgents } from "../../api/agents";
 
 const ALL = "all";
 type Tab = "batches" | "runs";
@@ -67,12 +68,12 @@ const BATCH_COLUMNS: Column<Experiment>[] = [
     ),
   },
   { key: "status", header: "Status", cell: (e) => <SimStatusBadge status={e.status} /> },
-  { key: "cost", header: "Cost", numeric: true, hideOnNarrow: true, cell: (e) => cost(e.cost_usd) },
+  { key: "cost", header: "Cost", numeric: true, hideOnNarrow: true, cell: (e) => costUsd(e.cost_usd) },
   {
     key: "created",
     header: "Started",
     hideOnNarrow: true,
-    cell: (e) => <span className="whitespace-nowrap text-fg-2">{relative(e.created_at)}</span>,
+    cell: (e) => <span className="whitespace-nowrap text-fg-2">{timeAgo(e.created_at)}</span>,
   },
 ];
 
@@ -103,12 +104,12 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
     hideOnNarrow: true,
     cell: (r) => <span className="whitespace-nowrap text-fg-2">{r.end_reason ? END_REASONS[r.end_reason] : "n/a"}</span>,
   },
-  { key: "cost", header: "Cost", numeric: true, hideOnNarrow: true, cell: (r) => cost(r.cost_usd) },
+  { key: "cost", header: "Cost", numeric: true, hideOnNarrow: true, cell: (r) => costUsd(r.cost_usd) },
   {
     key: "created",
     header: "Started",
     hideOnNarrow: true,
-    cell: (r) => <span className="whitespace-nowrap text-fg-2">{relative(r.created_at)}</span>,
+    cell: (r) => <span className="whitespace-nowrap text-fg-2">{timeAgo(r.created_at)}</span>,
   },
 ];
 
@@ -120,7 +121,7 @@ export function SimulationsPage() {
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
   const batches = useExperiments(agentId, tab === "batches" ? page : 1);
   const runs = useStandaloneRuns(agentId, tab === "runs" ? page : 1);
-  const agents = useAgentOptions();
+  const agents = useAllAgents();
   const [creating, setCreating] = useState(false);
 
   const set = (patch: Record<string, string | null>) => {

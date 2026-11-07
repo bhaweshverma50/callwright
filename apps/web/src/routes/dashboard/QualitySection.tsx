@@ -4,18 +4,18 @@ import type { ReactNode } from "react";
 import type { AgentHealth, DashboardQuality } from "../../api/calls";
 import { Skeleton, cn } from "../../components";
 import { ChartCard } from "./charts/ChartFrame";
+import { pct, pp } from "../../lib/format";
 
-const rate = (r: number | null | undefined) => (r == null ? "n/a" : `${Math.round(r * 100)}%`);
+const rate = (r: number | null | undefined) => pct(r, 0);
 
-function Delta({ pp }: { pp: number | null | undefined }) {
-  if (pp == null) return <span className="text-[12px] text-fg-3">No prior data</span>;
-  const Icon = pp > 0 ? ArrowUpRight : pp < 0 ? ArrowDownRight : Minus;
-  const tone = pp > 0 ? "text-success-text" : pp < 0 ? "text-danger-text" : "text-fg-3";
+function Delta({ delta }: { delta: number | null | undefined }) {
+  if (delta == null) return <span className="text-[12px] text-fg-3">No prior data</span>;
+  const Icon = delta > 0 ? ArrowUpRight : delta < 0 ? ArrowDownRight : Minus;
+  const tone = delta > 0 ? "text-success-text" : delta < 0 ? "text-danger-text" : "text-fg-3";
   return (
     <span className={cn("inline-flex items-center gap-0.5 font-mono text-[12px] tnum", tone)}>
       <Icon className="size-3.5" aria-hidden />
-      {pp > 0 ? "+" : ""}
-      {pp} pp
+      {pp(delta)}
     </span>
   );
 }
@@ -47,13 +47,13 @@ export function QualityGrid({ data }: { data: DashboardQuality | undefined }) {
         <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.per_evaluator.map((e) => {
             const before = prior.get(e.evaluator_id)?.pass_rate;
-            const pp = e.pass_rate != null && before != null ? Math.round((e.pass_rate - before) * 1000) / 10 : null;
+            const delta = e.pass_rate != null && before != null ? (e.pass_rate - before) * 100 : null;
             return (
               <li key={e.evaluator_id} className="flex flex-col gap-2 rounded-control border border-line px-3.5 py-3">
                 <span className="truncate text-[13px] font-medium text-fg">{e.display_name}</span>
                 <span className="flex items-baseline justify-between">
                   <span className="font-mono text-[20px] font-semibold text-fg tnum">{rate(e.pass_rate)}</span>
-                  <Delta pp={pp} />
+                  <Delta delta={delta} />
                 </span>
                 <span className="h-1.5 overflow-hidden rounded-full bg-surface-3">
                   <span className="block h-full rounded-full bg-success" style={{ width: `${(e.pass_rate ?? 0) * 100}%` }} />
@@ -87,7 +87,7 @@ export function AgentHealthCard({ data }: { data: AgentHealth | undefined }) {
               <span className="truncate text-[13px] text-fg">{i.display_name}</span>
               <span className="flex items-center gap-3">
                 <span className="font-mono text-[15px] font-semibold text-fg tnum">{rate(i.pass_rate)}</span>
-                <Delta pp={i.delta_pp} />
+                <Delta delta={i.delta_pp} />
               </span>
             </li>
           ))}

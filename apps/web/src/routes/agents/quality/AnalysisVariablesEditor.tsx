@@ -10,8 +10,9 @@ import { deleteVariable, qualityKeys, reorderVariables, useAnalysisVariables, ty
 import { Badge, Button, ConfirmDialog, EmptyState, IconButton, Skeleton, toast } from "../../../components";
 import { TabHeader } from "../tools/TabHeader";
 import { AddVariableDialog, TYPE_ICONS, TYPE_LABELS } from "./AddVariableDialog";
+import { operationExtensions } from "../../../lib/contract.gen";
 
-export const MAX_VARIABLES = 25;
+export const MAX_VARIABLES = operationExtensions["POST /agents/{agent_id}/analysis-variables"]["x-max-per-agent"];
 
 function modelLabel(config: AgentConfig): { label: string; own: boolean } {
   const c = config as AgentConfig & { advanced?: { analysis_model?: { provider: string; model: string } | null }; llm?: { model?: string } };

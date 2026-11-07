@@ -6,10 +6,6 @@ import { cn } from "../../../components";
  * check (light on #FFFFFF, dark on #161A42: lightness band, chroma, CVD and contrast all pass).
  * Single-series charts use the accent; status uses the semantic colours.
  */
-export const chartVars =
-  "[--ch-1:#3346E8] [--ch-2:#E0457B] [--ch-3:#C47A0A] [--ch-4:#14A38B] dark:[--ch-1:#6E7DFF] dark:[--ch-4:#1E9E84] [--series:#3346E8] dark:[--series:#7E8BFF]";
-
-export const axisTick = { fill: "var(--text-3)", fontSize: 11, fontFamily: "Geist Mono Variable, ui-monospace, monospace" };
 
 /** A titled chart card: what it shows on the left, a figure or control on the right. */
 export function ChartCard({
@@ -58,7 +54,3 @@ export function ChartTooltip({ title, rows }: { title: ReactNode; rows: { label:
     </div>
   );
 }
-
-const dayFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
-/** Bucket starts are calendar dates; format them as dates, never shifted by the viewer's zone. */
-export const bucketLabel = (iso: string) => dayFmt.format(new Date(`${iso}T00:00:00Z`));

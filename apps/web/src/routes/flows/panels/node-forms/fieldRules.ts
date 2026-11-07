@@ -2,11 +2,8 @@
  * Inline checks for node panels (FR-045, T104). They mirror the API validator (flows/validation.py)
  * so problems show next to the field while typing; the same checks block publishing on the server.
  */
-import { e164Error, urlError } from "../../../agents/tools/forms/fieldRules";
+import { FLOW_FIELD_NAME_MAX, isMachineName, NAME_RULE } from "../../../../lib/machineName";
 
-export { e164Error, urlError };
-
-const FIELD = /^[a-z][a-z0-9_]{0,39}$/;
 const CATEGORY = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$/;
 const REASON = /^[a-z_]{1,40}$/;
 const PLACEHOLDER = /\{\{\s*[A-Za-z_][A-Za-z0-9_.]*\s*\}\}/g;
@@ -127,20 +124,9 @@ export function categoryNameError(name: string, others: string[]): string | null
 }
 
 export function fieldNameError(name: string, others: string[]): string | null {
-  if (!FIELD.test(name)) return "Use lowercase letters, digits and underscores, starting with a letter.";
+  if (!isMachineName(name, FLOW_FIELD_NAME_MAX)) return `${NAME_RULE}.`;
   if (others.includes(name)) return `${name} is already used.`;
   return null;
-}
-
-/** "Customer Name" -> "customer_name" (FR-056), shown before the variable is added. */
-export function toVariableName(text: string): string {
-  let slug = text
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  if (/^\d/.test(slug)) slug = `v_${slug}`;
-  return slug.slice(0, 40);
 }
 
 export function reasonError(reason: string): string | null {

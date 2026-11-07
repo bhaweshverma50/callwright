@@ -68,7 +68,7 @@ export function AssistantPanel({
       if (out.operations.length || out.flow_name)
         onProposal({
           message: out.message,
-          graph: out.proposed_graph as unknown as FlowGraph,
+          graph: out.proposed_graph,
           name: out.flow_name ?? null,
           issues: out.issues,
           baseRevision: out.base_revision,

@@ -3,12 +3,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { Toaster, TooltipProvider } from "../../../components";
 import { MOCK_AGENTS } from "../../../mocks/calls/handlers";
 import { qualityStore } from "../../../mocks/quality/handlers";
 import { AddVariableDialog } from "./AddVariableDialog";
-import { toVariableName } from "./variableName";
 
 const AGENT = MOCK_AGENTS[0]!.id;
 
@@ -24,24 +23,6 @@ function renderDialog() {
     </QueryClientProvider>,
   );
 }
-
-describe("toVariableName (007 FR-045)", () => {
-  it.each([
-    ["Customer Mood", "customer_mood"],
-    ["  Preferred   day!! ", "preferred_day"],
-    ["2nd attempt", "nd_attempt"],
-    ["__x__", "x"],
-    ["Café visit", "cafe_visit"],
-    ["!!!", ""],
-    ["123", ""],
-  ])("%s becomes %s", (input, expected) => {
-    expect(toVariableName(input)).toBe(expected);
-  });
-
-  it("keeps at most 64 characters", () => {
-    expect(toVariableName("a".repeat(80))).toHaveLength(64);
-  });
-});
 
 describe("AddVariableDialog (007 T090, US1 scenarios 7 and 8)", () => {
   it('shows and saves "Customer Mood" as customer_mood', async () => {

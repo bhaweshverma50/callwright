@@ -11,6 +11,7 @@ import {
   ScrollText,
   type LucideIcon,
 } from "lucide-react";
+import { agentEditPath, agentTestingPath, isAgentId } from "../../lib/paths";
 
 /**
  * The guided setup tour (spec 013): one step per control on the way from an empty workspace to
@@ -52,8 +53,6 @@ export interface TourStep {
   doIt?: { label: string; click?: string; action?: "create-agent" };
 }
 
-const AGENT_EDIT = /^\/agents\/agt_[0-9A-HJKMNP-TV-Z]{26}\/edit$/;
-
 export const STEPS: TourStep[] = [
   {
     id: "agents",
@@ -74,7 +73,7 @@ export const STEPS: TourStep[] = [
     path: () => "/agents/templates",
     target: ["[data-tour='template-grid']"],
     sheetTarget: ["[data-tour='template-grid'] > button"],
-    doneWhen: ({ pathname }) => AGENT_EDIT.test(pathname),
+    doneWhen: ({ pathname }) => pathname.endsWith("/edit") && agentInPath(pathname) !== null,
     waitingFor: "Use a template to go on",
     doIt: { label: "Choose one for me", action: "create-agent" },
   },
@@ -83,7 +82,7 @@ export const STEPS: TourStep[] = [
     title: "Tell it what to do",
     body: "The prompt is the agent's brief: who it is, what it helps with and when to hand over. The template's prompt works as it is; change it whenever you like.",
     icon: ScrollText,
-    path: (id) => `/agents/${id}/edit`,
+    path: agentEditPath,
     needsAgent: true,
     exactSearch: true,
     target: ["#f-prompt"],
@@ -93,7 +92,7 @@ export const STEPS: TourStep[] = [
     title: "Choose how it sounds",
     body: "The Voice tab lets you hear samples and pick the voice callers will hear. Speech recognition and the model sit on the other tabs.",
     icon: AudioLines,
-    path: (id) => `/agents/${id}/edit`,
+    path: agentEditPath,
     needsAgent: true,
     target: ["[role='tab'][id$='-trigger-voice']"],
     doneWhen: ({ doc }) => Boolean(doc.querySelector("[role='tab'][id$='-trigger-voice'][aria-selected='true']")),
@@ -105,7 +104,7 @@ export const STEPS: TourStep[] = [
     title: "See the price per minute",
     body: "Every link of the chain shows its rate. The total is what one minute of a call costs on this stack, and it moves as you change the model or the voice.",
     icon: Gauge,
-    path: (id) => `/agents/${id}/edit`,
+    path: agentEditPath,
     needsAgent: true,
     target: ["section[aria-labelledby='cost-title']"],
   },
@@ -114,7 +113,7 @@ export const STEPS: TourStep[] = [
     title: "Talk to it",
     body: "Start a test call and speak. It rings first, then each answer lands in the transcript with a latency chip that splits the wait by link of the chain.",
     icon: PhoneCall,
-    path: (id) => `/agents/${id}/testing`,
+    path: agentTestingPath,
     needsAgent: true,
     target: ["section[aria-label='Test call']"],
     sheetTarget: ["section[aria-label='Test call'] footer"],
@@ -127,7 +126,7 @@ export const STEPS: TourStep[] = [
     title: "Publish it",
     body: "Publishing makes the saved version live. Numbers and WhatsApp answer with the published version; later edits stay in draft until you publish again.",
     icon: Rocket,
-    path: (id) => `/agents/${id}/edit`,
+    path: agentEditPath,
     needsAgent: true,
     target: ["[data-tour='agent-publish']"],
     doneWhen: ({ doc }) => Boolean(doc.querySelector("[data-tour='agent-publish'][data-published='true']")),
@@ -189,5 +188,6 @@ export function onStepPage(step: TourStep, path: string | null, loc: { pathname:
 
 /** The agent id in an agent page's address, if any. */
 export function agentInPath(pathname: string): string | null {
-  return /^\/agents\/(agt_[0-9A-HJKMNP-TV-Z]{26})\/(edit|testing)$/.exec(pathname)?.[1] ?? null;
+  const id = /^\/agents\/([^/]+)\/(edit|testing)$/.exec(pathname)?.[1];
+  return id && isAgentId(id) ? id : null;
 }

@@ -244,6 +244,7 @@ paths:
                 config:
                   description: Optional partial config overlaid on defaults (and on the template if given)
                   type: object
+                  additionalProperties: true
       responses:
         '201':
           description: Created; ETag carries draft_revision
@@ -316,6 +317,8 @@ paths:
                   $ref: '#/components/schemas/AgentType'
                 config:
                   type: object
+                  additionalProperties: true
+                  description: A whole AgentConfig as edited; validation reports what is wrong with it
                 agent_id:
                   $ref: '#/components/schemas/AgentId'
                   description: Optional; lets attachment validators check workspace references
@@ -452,6 +455,7 @@ paths:
       x-spec: 007-quality-evals
     post:
       operationId: createAnalysisVariable
+      x-max-per-agent: 25
       requestBody:
         required: true
         content:
@@ -1565,6 +1569,8 @@ paths:
               properties:
                 amount_usd:
                   $ref: '#/components/schemas/MoneyUsd'
+                  x-minimum-usd: '5.00'
+                  x-maximum-usd: '10000.00'
                   description: Minimum 5.00, maximum 10000.00, at most two decimal places (FR-008). Out-of-range
                     or over-precise amounts return 422 with a field error. Presets in the UI are 25, 100,
                     500, 1000 and only fill the amount.
@@ -2112,7 +2118,8 @@ paths:
           default: live,test
       - name: columns
         in: query
-        description: Comma-separated column keys in display order; defaults to all list columns.
+        description: Comma-separated ExportColumn keys in display order; unknown keys are ignored. Defaults
+          to every column.
         schema:
           type: string
       responses:
@@ -2961,6 +2968,8 @@ paths:
   /dnc-entries/import:
     post:
       operationId: importDncEntries
+      x-max-file-bytes: 10485760
+      x-max-rows: 100000
       summary: Bulk import do-not-call numbers from CSV
       description: 'UTF-8 CSV with a header row containing `number` and optionally `note`. Max 100,000
         data rows and 10 MB. Valid numbers are normalised to E.164 and stored once; duplicates (in the
@@ -4784,6 +4793,7 @@ paths:
       tags:
       - issues
       operationId: validateIssueFix
+      x-max-failed-run-share: 0.2
       summary: Validate the current revision (control and treatment batches). dry_run returns the estimate
         only.
       parameters:
@@ -4896,8 +4906,10 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Page'
+                - $ref: '#/components/schemas/PageMeta'
                 - type: object
+                  required:
+                  - items
                   properties:
                     items:
                       type: array
@@ -5031,8 +5043,10 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Page'
+                - $ref: '#/components/schemas/PageMeta'
                 - type: object
+                  required:
+                  - items
                   properties:
                     items:
                       type: array
@@ -5045,6 +5059,7 @@ paths:
       tags:
       - knowledge
       operationId: uploadDocument
+      x-max-file-bytes: 20971520
       description: 'Multipart upload, PDF or DOCX by content, at most 20,971,520 bytes. Returns 202 with
         the
 
@@ -6971,7 +6986,15 @@ paths:
                   description: Derived from name when omitted.
                 color:
                   type: string
-                  pattern: ^#[0-9a-f]{6}$
+                  enum:
+                  - '#3346e8'
+                  - '#7a3cff'
+                  - '#e0457b'
+                  - '#e89a1c'
+                  - '#12805c'
+                  - '#0e8fb3'
+                  - '#c2281b'
+                  - '#5e6287'
                   description: One of the palette colours; defaults to the first unused palette colour
       responses:
         '201':
@@ -7252,8 +7275,10 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/Page'
+                - $ref: '#/components/schemas/PageMeta'
                 - type: object
+                  required:
+                  - items
                   properties:
                     items:
                       type: array
@@ -7509,6 +7534,7 @@ paths:
       security:
       - bearerAuth: []
       summary: Raw and billable cost per feature for a date window (FR-014)
+      x-max-window-days: 366
       parameters:
       - name: from
         in: query
@@ -7669,6 +7695,8 @@ paths:
       x-spec: 002-agent-builder
     post:
       operationId: uploadAmbientAudio
+      x-max-file-bytes: 10485760
+      x-max-uploads: 20
       tags:
       - voices
       security:
@@ -9475,6 +9503,7 @@ components:
           minimum: 1
         changes:
           type: object
+          additionalProperties: true
           minProperties: 1
           description: Partial AgentConfig (002 agents.yaml AgentConfig), deep-merged into the draft.
             start_speaker and begin_message are rejected for flow agents (the Start node owns them).
@@ -10516,6 +10545,16 @@ components:
       - no_answer
       - busy
       - voicemail
+      x-on-air:
+      - queued
+      - ringing
+      - in_progress
+      x-still-changing:
+      - queued
+      - ringing
+      - in_progress
+      - ended
+      - processing
     CallTranscriptItem:
       oneOf:
       - $ref: '#/components/schemas/TranscriptMessage'
@@ -11883,13 +11922,13 @@ components:
           - integer
           - 'null'
         call_status:
-          type:
-          - string
-          - 'null'
+          oneOf:
+          - $ref: '#/components/schemas/CallStatus'
+          - type: 'null'
         eval_status:
-          type:
-          - string
-          - 'null'
+          oneOf:
+          - $ref: '#/components/schemas/EvalStatus'
+          - type: 'null'
         sentiment:
           type:
           - string
@@ -12328,6 +12367,17 @@ components:
         name:
           type: string
           pattern: ^[A-Za-z_][A-Za-z0-9_]{0,63}$
+          description: Built-in names are filled by the platform and cannot be declared.
+          x-reserved:
+          - call_id
+          - channel
+          - direction
+          - user_number
+          - agent_number
+          - timezone
+          - current_time
+          - current_date
+          - current_datetime
         default:
           type:
           - string
@@ -12948,6 +12998,29 @@ components:
           - string
           - 'null'
           format: date-time
+    ExportColumn:
+      type: string
+      description: A CSV column of exportCalls.
+      enum:
+      - call_id
+      - started_at
+      - agent_id
+      - agent_name
+      - from_number
+      - to_number
+      - channel
+      - origin
+      - disconnect_reason
+      - duration_s
+      - status
+      - cost_usd
+      - latency_avg_ms
+      - has_recording
+      - summary
+      - sentiment
+      - analysis_values
+      - eval_status
+      - label
     ExtractConfig:
       type: object
       title: extract_variable
@@ -13503,6 +13576,7 @@ components:
         properties:
           parameters:
             type: object
+            additionalProperties: true
             description: JSON Schema (Draft 2020-12) with type object.
             default:
               type: object
@@ -14720,28 +14794,37 @@ components:
             model:
               type: string
             temperature:
-              type: number
+              type:
+              - number
+              - 'null'
               minimum: 0
               maximum: 2
         tts:
           type:
           - object
           - 'null'
+          description: Numbers are checked against the 002 controls range table (validate_override)
           properties:
             provider:
               type: string
             model:
-              type: string
+              type:
+              - string
+              - 'null'
             voice_id:
               type: string
             speed:
-              type: number
-              minimum: 0.5
-              maximum: 2
-            stability:
-              type: number
-              minimum: 0
-              maximum: 1
+              type:
+              - number
+              - 'null'
+            volume:
+              type:
+              - number
+              - 'null'
+            expressiveness:
+              type:
+              - number
+              - 'null'
         stt:
           type:
           - object
@@ -14750,30 +14833,13 @@ components:
             provider:
               type: string
             model:
-              type: string
+              type:
+              - string
+              - 'null'
         language:
           type:
           - string
           - 'null'
-    Page:
-      type: object
-      required:
-      - items
-      - total
-      - page
-      - page_size
-      - total_pages
-      properties:
-        items:
-          type: array
-        total:
-          type: integer
-        page:
-          type: integer
-        page_size:
-          type: integer
-        total_pages:
-          type: integer
     PageMeta:
       type: object
       required:
@@ -15488,6 +15554,7 @@ components:
           type:
           - object
           - 'null'
+          additionalProperties: true
           description: JSON Schema for the action's params.
     RegisteredSession:
       allOf:
@@ -16198,6 +16265,7 @@ components:
           description: Required for version; base version for variant
         config:
           type: object
+          additionalProperties: true
           description: Full agent snapshot (config
           tools: null
           flow: null
@@ -16616,6 +16684,11 @@ components:
         instructions:
           type: string
           maxLength: 16000
+        begin_message:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
         fields:
           type: array
           minItems: 1
@@ -16710,6 +16783,78 @@ components:
       - healthcare
       - telecom
       description: Launch categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom
+    TemplateConfig:
+      type: object
+      description: 'Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+
+        llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
+
+        tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
+
+        fixed-temperature model, nor tts.voice_id (the language default voice applies).
+
+        '
+      required:
+      - agent_name
+      - language
+      - llm
+      - prompt
+      - begin_message
+      - start_speaker
+      - stt
+      - tts
+      - dynamic_variables
+      properties:
+        agent_name:
+          type: string
+        language:
+          type: string
+        llm:
+          type: object
+          required:
+          - provider
+          - model
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+        prompt:
+          type: string
+        begin_message:
+          type:
+          - string
+          - 'null'
+        start_speaker:
+          type: string
+          enum:
+          - agent
+          - user
+        stt:
+          type: object
+          required:
+          - provider
+          properties:
+            provider:
+              type: string
+            model:
+              type:
+              - string
+              - 'null'
+        tts:
+          type: object
+          required:
+          - provider
+          - model
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+        dynamic_variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/DynamicVariable'
     TemplateDetail:
       allOf:
       - $ref: '#/components/schemas/TemplateSummary'
@@ -16718,16 +16863,7 @@ components:
         - config
         properties:
           config:
-            type: object
-            description: 'Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
-
-              llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
-
-              tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
-
-              fixed-temperature model, nor tts.voice_id (the language default voice applies).
-
-              '
+            $ref: '#/components/schemas/TemplateConfig'
     TemplateSummary:
       type: object
       required:
@@ -17281,6 +17417,10 @@ components:
       type: string
       pattern: ^[a-z][a-z0-9_]{0,63}$
       description: Must not be `kb_search` and must not start with `route_to_`.
+      x-reserved-names:
+        kb_search: knowledge search
+      x-reserved-prefixes:
+        route_to_: flows
     ToolPreset:
       type: object
       required:

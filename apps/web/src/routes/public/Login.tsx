@@ -4,12 +4,13 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage } from "../../api/problems";
-import { safeNext, startSession, useSignedIn } from "../../app/auth";
+import { startSession, useSignedIn } from "../../api/session";
+import { safeNext } from "../../lib/paths";
 import { LogIn } from "lucide-react";
-import { Button, Field, Input } from "../../components";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "../../mocks/demoAccount";
 
 function retryText(seconds?: number) {
   if (!seconds) return "in a few minutes";
@@ -148,14 +149,14 @@ export function Login() {
 
       {env.mocks && (
         <p className="mt-5 rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
-          Demo data is on. Use <span className="font-medium text-fg-2">ops@halcyon-dental.com</span> with{" "}
-          <span className="font-medium text-fg-2">correct-horse-9</span>.{" "}
+          Demo data is on. Use <span className="font-medium text-fg-2">{DEMO_EMAIL}</span> with{" "}
+          <span className="font-medium text-fg-2">{DEMO_PASSWORD}</span>.{" "}
           <button
             type="button"
             className="link-underline text-accent-text"
             onClick={() => {
-              setEmail("ops@halcyon-dental.com");
-              setPassword("correct-horse-9");
+              setEmail(DEMO_EMAIL);
+              setPassword(DEMO_PASSWORD);
             }}
           >
             Fill it in

@@ -1,9 +1,9 @@
 import { BrainCircuit, Building2 } from "lucide-react";
 import { FieldRow, Select } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { isFixed, llmModel, perMin, type Catalogs } from "./catalogs";
 import { FieldError } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 /**
  * Model provider and language model (FR-005, FR-031). Each model option shows its price per
@@ -33,7 +33,7 @@ export function ModelPicker({ draft, catalogs, onClamp }: { draft: AgentDraft; c
     <>
       <FieldRow
         icon={<Building2 />}
-        label="Model provider"
+        label={fieldLabel("/llm/provider")}
         htmlFor={fieldId("/llm/provider")}
         description="The same models are offered by both providers."
       >
@@ -51,7 +51,7 @@ export function ModelPicker({ draft, catalogs, onClamp }: { draft: AgentDraft; c
       </FieldRow>
       <FieldRow
         icon={<BrainCircuit />}
-        label="Language model"
+        label={fieldLabel("/llm/model")}
         htmlFor={fieldId("/llm/model")}
         description="Decides what the agent says. Prices are per minute of call."
         hint="Each minute includes 20,000 input and 200 output tokens. A call that uses more bills the model for more minutes than it lasted."

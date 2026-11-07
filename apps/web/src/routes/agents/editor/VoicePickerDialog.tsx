@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Check, CloudOff, RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { fetchProviderVoices, type TtsProvider, type Voice, type VoiceCatalog } from "../../../api/agents";
+import { agentKeys, fetchProviderVoices, type TtsProvider, type Voice, type VoiceCatalog } from "../../../api/agents";
 import { problemMessage } from "../../../api/problems";
 import { Button, Dialog, Input, Segmented, Select, Skeleton, cn } from "../../../components";
 import { useDebounced } from "../../../lib/useDebounced";
@@ -61,7 +61,7 @@ export function VoicePickerDialog({
     model,
   };
   const voices = useInfiniteQuery({
-    queryKey: ["voices", "browse", provider.provider, filters],
+    queryKey: agentKeys.browseVoices(provider.provider, filters),
     queryFn: ({ pageParam }) => fetchProviderVoices(provider.provider, filters, pageParam ?? undefined),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.next_cursor,

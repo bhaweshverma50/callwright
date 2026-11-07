@@ -7,7 +7,6 @@ import {
   GitBranch,
   Hash,
   MessagesSquare,
-  PhoneCall,
   PhoneIncoming,
   Receipt,
   ShieldCheck,
@@ -21,12 +20,10 @@ import { callKeys, isOnAir, useCall, useFlowTransitions, useTranscript, useTurnL
 import { callbackKeys } from "../../api/callbacks";
 import { qualityKeys } from "../../api/quality";
 import { problemMessage } from "../../api/problems";
-import { Badge, Button, CopyButton, Drawer, EmptyState, OnAir, Skeleton, TabPanel, Tabs, TruncatedText } from "../../components";
+import { Badge, Button, CopyButton, Drawer, EmptyState, Skeleton, TabPanel, Tabs, TruncatedText } from "../../components";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { CostHeader, CostPanel } from "./CostBreakdown";
-import { CHANNEL_LABELS, ORIGIN_LABELS, REASON_LABELS, STATUS_LABELS } from "./filters";
 import { FlowPath } from "./FlowPath";
-import { mss, phone, STATUS_TONES, usd, whenLong } from "./format";
 import { CallAnalysisPanel } from "./quality/CallAnalysisPanel";
 import { QualityChecks } from "./quality/QualityChecks";
 import { YourReview } from "./quality/YourReview";
@@ -39,6 +36,8 @@ import { summaryHeadline, summaryOutcome } from "./quality/SummaryText";
 import { CallCallbacks } from "./callbacks/CallbackParts";
 import { CallLanguageCard } from "./CallLanguageCard";
 import { LiveDuration } from "./live/LiveDuration";
+import { mss, phone, usd, whenLong } from "../../lib/format";
+import { CallStatusBadge, CHANNEL_LABELS, ORIGIN_LABELS, REASON_LABELS } from "../../components/callVocabulary";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -54,22 +53,11 @@ function Fact({ icon: Icon, label, children }: { icon: LucideIcon; label: string
   );
 }
 
-export function StatusBadge({ status }: { status: CallDetail["status"] }) {
-  if (status === "in_progress") return <OnAir pill label="On air" className="whitespace-nowrap" />;
-  if (status === "ringing")
-    return (
-      <Badge tone="accent" icon={<PhoneCall aria-hidden />}>
-        Ringing
-      </Badge>
-    );
-  return <Badge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</Badge>;
-}
-
 function Header({ call }: { call: CallDetail }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={call.status} />
+        <CallStatusBadge status={call.status} />
         <Badge tone="neutral">{CHANNEL_LABELS[call.channel]}</Badge>
         {call.origin !== "live" && <Badge tone={call.origin === "simulation" ? "accent" : "neutral"}>{ORIGIN_LABELS[call.origin]}</Badge>}
         {call.disconnect_reason && <span className="text-[13px] text-fg-3">{REASON_LABELS[call.disconnect_reason]}</span>}

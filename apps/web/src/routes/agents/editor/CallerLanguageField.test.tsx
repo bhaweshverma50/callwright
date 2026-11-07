@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { onePerBase, supportedLanguages, switchTargets } from "../../../lib/callerLanguages";
+import { onePerBase, supportedLanguages, switchTargets } from "../../../api/languageSwitching";
 import { voiceCatalog } from "../../../mocks/agents/catalog";
 import { defaultConfig, validateConfig } from "../../../mocks/agents/rules";
 import { store } from "../../../mocks/agents/store";

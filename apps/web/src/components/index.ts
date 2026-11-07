@@ -13,6 +13,7 @@ export { EmptyState } from "./EmptyState";
 export { Skeleton, LoadingRegion } from "./Skeleton";
 export { Badge, Chip, Kbd, type Tone } from "./Badge";
 export { MoneyText } from "./Money";
+export { TalkMinutes } from "./TalkMinutes";
 export { CostBreakdownCard, COMPONENT_LABELS, COMPONENT_ICONS } from "./CostBreakdown";
 export { Tooltip, TooltipProvider } from "./Tooltip";
 export { InfoTip, TruncatedText } from "./TruncatedText";
@@ -29,3 +30,7 @@ export { PageTransition, Reveal, RevealItem, Ticker, useTicker, useRipple, EASE_
 export { cn, focusRing } from "./cn";
 export { Stepper, type Step, type StepStatus } from "./Stepper";
 export { Composer, ThinkingIndicator, type ComposerProps } from "./ai";
+export { Checkbox } from "./Checkbox";
+export { Figure, ProgressBar, deltaTone } from "./Figure";
+export { FormAlert } from "./FormAlert";
+export { chartVars, axisTick } from "./chartTokens";

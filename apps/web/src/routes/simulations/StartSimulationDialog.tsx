@@ -19,11 +19,11 @@ import {
   type SimMode,
   type SimSettings,
 } from "../../api/simulations";
-import { Button, Dialog, Field, Input, Segmented, toast } from "../../components";
-import { FormAlert } from "../public/FormAlert";
+import { Button, Dialog, Field, FormAlert, Input, Segmented, toast } from "../../components";
 import { PreflightStep } from "./PreflightDialog";
-import { ProblemAlert, plural } from "./shared";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, variantChanges, type TargetChoice } from "./VariantEditor";
+import { plural } from "../../lib/format";
+import { ProblemAlert } from "../../components/ProblemAlert";
 
 export interface StartSimulationProps {
   open: boolean;

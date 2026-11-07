@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ROOM_DATA_EVENT } from "../../../components/webCallLive";
+import { ROOM_DATA_EVENT } from "../../../webCall/webCallLive";
 
 export const FLOW_TOPIC = "callwright.flow";
 

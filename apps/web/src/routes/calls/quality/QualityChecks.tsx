@@ -6,11 +6,12 @@ import { useId, useState } from "react";
 import { callKeys } from "../../../api/calls";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
-import { newIdempotencyKey, qualityKeys, rerunEvaluations, useCallEvaluations, type EvaluatorRun, type ResultItem } from "../../../api/quality";
+import { qualityKeys, rerunEvaluations, useCallEvaluations, type EvaluatorRun, type ResultItem } from "../../../api/quality";
 import { Badge, Button, Skeleton, cn, toast } from "../../../components";
-import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../evaluators/evaluatorMeta";
-import { when } from "../format";
+import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../agents/quality/evaluatorMeta";
 import { withoutLineRefs } from "../../../lib/text";
+import { usd, when } from "../../../lib/format";
+import { idempotencyKey } from "../../../api/agents";
 
 export const RUNNING_TEXT = "Running checks, results appear as each one finishes";
 const TURN_PAGE = 20;
@@ -161,7 +162,7 @@ function RunCard({ run, defaultOpen }: { run: EvaluatorRun; defaultOpen: boolean
                 </span>
                 <span>{SCOPE_LABELS[run.scope ?? "call"]}</span>
                 {run.judge_model && <span>judge {run.judge_model}</span>}
-                {run.cost_usd != null && <span>${run.cost_usd.toFixed(4)}</span>}
+                {run.cost_usd != null && <span>{usd(run.cost_usd, 4)}</span>}
                 {snapshot && <span>{snapshot}</span>}
                 {run.completed_at && <span>{when(run.completed_at)}</span>}
               </p>
@@ -225,7 +226,7 @@ export function QualityChecks({ callId, canRerun }: { callId: string; canRerun: 
     setBusy(true);
     setRefused(null);
     try {
-      await rerunEvaluations(callId, newIdempotencyKey());
+      await rerunEvaluations(callId, idempotencyKey());
       await qc.invalidateQueries({ queryKey: qualityKeys.evaluations(callId) });
       void qc.invalidateQueries({ queryKey: callKeys.all });
     } catch (e) {

@@ -10,15 +10,14 @@ import { api } from "../../../api/client";
 import { ApiError } from "../../../api/errors";
 import { toProblem } from "../../../api/errors";
 import {
-  agentKeys,
-  etag,
-  idempotencyKey,
-  looseConfig,
   type AgentConfig,
   type AgentDetail,
+  agentKeys,
   type AgentType,
   type ConfigIssue,
   type ConfigValidationResult,
+  etag,
+  idempotencyKey,
   type SaveResult,
 } from "../../../api/agents";
 import { useDebounced } from "../../../lib/useDebounced";
@@ -59,7 +58,7 @@ export function stable(v: unknown): string {
 
 async function validate(type: AgentType, config: AgentConfig, agentId: string | null): Promise<ConfigValidationResult> {
   const { data, error, response } = await api.POST("/agents/validate", {
-    body: { type, config: looseConfig(config), ...(agentId && { agent_id: agentId }) },
+    body: { type, config: config, ...(agentId && { agent_id: agentId }) },
   });
   if (!response.ok) throw new ApiError(response.status, toProblem(response.status, error));
   return data as ConfigValidationResult;
@@ -80,7 +79,7 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
   const debouncedConfig = useMemo(() => JSON.parse(debouncedKey) as AgentConfig, [debouncedKey]);
 
   const validation = useQuery({
-    queryKey: ["agents", "validate", type, base.id, debouncedKey],
+    queryKey: agentKeys.validate(type, base.id, debouncedKey),
     queryFn: () => validate(type, debouncedConfig, base.id),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
@@ -168,7 +167,7 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
       if (nameError) all.push({ pointer: "/name", code: "required", message: nameError });
       for (const [pointer, message] of Object.entries(local)) all.push({ pointer, code: "invalid_format", message });
       for (const e of fresh.errors) if (!local[e.pointer]) all.push(e);
-      qc.setQueryData(["agents", "validate", type, base.id, configKey], fresh);
+      qc.setQueryData(agentKeys.validate(type, base.id, configKey), fresh);
       if (all.length) return { status: "invalid", issues: all };
 
       const cfg = fresh.normalized_config;
@@ -177,11 +176,11 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
         res = base.id
           ? await api.PUT("/agents/{agent_id}/draft", {
               params: { path: { agent_id: base.id }, header: { "If-Match": etag(base.revision) } },
-              body: { config: cfg as never, name: name.trim(), ...(note?.trim() && { note: note.trim() }) },
+              body: { config: cfg, name: name.trim(), ...(note?.trim() && { note: note.trim() }) },
             })
           : await api.POST("/agents", {
               params: { header: { "Idempotency-Key": createKey.current } },
-              body: { name: name.trim(), type, language: cfg.language, config: looseConfig(cfg) },
+              body: { name: name.trim(), type, language: cfg.language, config: cfg },
             });
       } catch (error) {
         return { status: "error", error };
@@ -203,7 +202,7 @@ export function useAgentDraft(initial: DraftBase, type: AgentType) {
       createKey.current = idempotencyKey();
       resetTo(detail);
       qc.setQueryData(agentKeys.detail(detail.id), detail);
-      void qc.invalidateQueries({ queryKey: ["agents", "list"] });
+      void qc.invalidateQueries({ queryKey: agentKeys.lists });
       void qc.invalidateQueries({ queryKey: agentKeys.versions(detail.id) });
       return { status: "saved", detail, created, versionNumber };
     },

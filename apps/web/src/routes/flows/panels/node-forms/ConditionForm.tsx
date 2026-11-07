@@ -25,12 +25,13 @@ export function ConditionForm({
   onSelectEdge: (id: string) => void;
 }) {
   const set = (patch: Partial<ConditionConfig>) => onChange({ ...config, ...patch });
+  const cats = config.categories ?? [];
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<Record<number, string>>({});
   const draftError = draft
     ? categoryNameError(
         draft.trim(),
-        config.categories.map((c) => c.name),
+        cats.map((c) => c.name),
       )
     : null;
 
@@ -40,11 +41,11 @@ export function ConditionForm({
       !name ||
       categoryNameError(
         name,
-        config.categories.map((c) => c.name),
+        cats.map((c) => c.name),
       )
     )
       return;
-    set({ categories: [...config.categories, { name, description: "" }] });
+    set({ categories: [...cats, { name, description: "" }] });
     setDraft("");
   };
 
@@ -71,8 +72,8 @@ export function ConditionForm({
         <Group title="Categories" description="2 to 20. Each needs exactly one connection from its handle.">
           <ul className="flex flex-col gap-2.5">
             <AnimatePresence initial={false}>
-              {config.categories.map((c, i) => {
-                const others = config.categories.filter((_, j) => j !== i).map((x) => x.name);
+              {cats.map((c, i) => {
+                const others = cats.filter((_, j) => j !== i).map((x) => x.name);
                 const typed = names[i] ?? c.name;
                 const err = categoryNameError(typed.trim(), others) ?? issueFor(issues, `categories.${i}.name`);
                 return (
@@ -98,7 +99,7 @@ export function ConditionForm({
                             return rest;
                           });
                           if (next === c.name || categoryNameError(next, others)) return;
-                          const categories = config.categories.map((x, j) => (j === i ? { ...x, name: next } : x));
+                          const categories = cats.map((x, j) => (j === i ? { ...x, name: next } : x));
                           onRenameCategory(c.name, next, { ...config, categories });
                         }}
                         className="font-medium"
@@ -106,7 +107,7 @@ export function ConditionForm({
                       <IconButton
                         label={`Remove ${c.name}`}
                         className="size-8 shrink-0"
-                        onClick={() => set({ categories: config.categories.filter((_, j) => j !== i) })}
+                        onClick={() => set({ categories: cats.filter((_, j) => j !== i) })}
                       >
                         <Trash2 className="size-3.5" aria-hidden />
                       </IconButton>
@@ -117,7 +118,7 @@ export function ConditionForm({
                       rows={2}
                       value={c.description}
                       placeholder="When does this category fit?"
-                      onChange={(e) => set({ categories: config.categories.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)) })}
+                      onChange={(e) => set({ categories: cats.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)) })}
                       className="mt-2 min-h-0 text-[13px]"
                     />
                   </motion.li>
@@ -138,12 +139,7 @@ export function ConditionForm({
                   aria-describedby={describedBy}
                   aria-invalid={invalid || undefined}
                 />
-                <Button
-                  size="sm"
-                  icon={<Plus aria-hidden />}
-                  onClick={add}
-                  disabled={!draft.trim() || Boolean(draftError) || config.categories.length >= 20}
-                >
+                <Button size="sm" icon={<Plus aria-hidden />} onClick={add} disabled={!draft.trim() || Boolean(draftError) || cats.length >= 20}>
                   Add
                 </Button>
               </div>

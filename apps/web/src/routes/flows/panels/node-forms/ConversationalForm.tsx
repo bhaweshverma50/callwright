@@ -122,7 +122,7 @@ export function ConversationalForm({
               : "No earlier turns; only the persona prompt, these instructions and the details collected."}
         </p>
       </Group>
-      <ToolPicker value={config.tool_ids} onChange={(tool_ids) => set({ tool_ids })} onCreateTool={onCreateTool} />
+      <ToolPicker value={config.tool_ids ?? []} onChange={(tool_ids) => set({ tool_ids })} onCreateTool={onCreateTool} />
       <Group title="Knowledge" icon={<BookOpen aria-hidden />}>
         <Switch
           checked={config.kb_search_enabled}
@@ -133,7 +133,7 @@ export function ConversationalForm({
       </Group>
       {catalogs && (
         <OverridesSection
-          value={config.overrides}
+          value={config.overrides ?? {}}
           onChange={(overrides) => set({ overrides })}
           llm={catalogs.llm}
           voice={catalogs.voice}

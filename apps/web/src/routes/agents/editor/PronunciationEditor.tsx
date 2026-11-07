@@ -2,9 +2,9 @@ import { BookA, Plus, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef } from "react";
 import { Button, IconButton, Input } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId } from "../config/fields";
 
 /**
  * Pronunciation dictionary (FR-005): words are replaced before the voice speaks them. Rows with an
@@ -12,7 +12,6 @@ import type { AgentDraft } from "./useAgentDraft";
  */
 export function PronunciationEditor({ draft }: { draft: AgentDraft }) {
   const rows = draft.config.advanced.pronunciation;
-  // Stable keys for rows while words are being typed.
   const keys = useRef<number[]>([]);
   const seq = useRef(0);
   while (keys.current.length < rows.length) keys.current.push(++seq.current);

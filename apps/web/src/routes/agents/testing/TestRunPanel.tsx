@@ -19,10 +19,10 @@ import {
   type TestRun,
   type TestRunDetail,
 } from "../../../api/testing";
-import { Badge, Button, EmptyState, Panel, Segmented, Select, Skeleton, toast } from "../../../components";
-import { relative } from "../../calls/format";
-import { Figure, ProgressBar, cost, problemText } from "../../simulations/shared";
+import { Badge, Button, EmptyState, Figure, Panel, ProgressBar, Segmented, Select, Skeleton, toast } from "../../../components";
 import { ResultRow } from "./ResultRow";
+import { costUsd, timeAgo } from "../../../lib/format";
+import { problemText } from "../../../components/ProblemAlert";
 
 type Filter = "all" | "failed" | "error" | "manual";
 
@@ -134,7 +134,7 @@ export function TestRunPanel({
   return (
     <Panel
       title={data ? `Run ${data.number ?? ""}`.trim() : "Run"}
-      description={data ? `${TARGETS[data.target.type]}, judged by ${data.judge_model}, ${relative(data.created_at)}` : undefined}
+      description={data ? `${TARGETS[data.target.type]}, judged by ${data.judge_model}, ${timeAgo(data.created_at)}` : undefined}
       icon={<History aria-hidden />}
       bodyClassName="p-0"
       actions={
@@ -171,7 +171,7 @@ export function TestRunPanel({
                 <span className={data.errored ? "text-warning-text" : undefined}>{data.errored}</span>
               </Figure>
               <Figure label="Cases">{data.total}</Figure>
-              <Figure label="Cost">{active ? "Running" : cost(data.cost_usd)}</Figure>
+              <Figure label="Cost">{active ? "Running" : costUsd(data.cost_usd)}</Figure>
             </div>
             <div className="flex items-center gap-3">
               <ProgressBar completed={data.passed} failed={data.failed} cancelled={data.errored} total={data.total} label="Run progress" />
@@ -202,7 +202,7 @@ export function TestRunPanel({
                 className="w-[130px]"
                 value={runId}
                 onValueChange={onRunId}
-                options={runs.map((r) => ({ value: r.test_run_id, label: `Run ${r.number ?? ""}`.trim(), meta: relative(r.created_at) }))}
+                options={runs.map((r) => ({ value: r.test_run_id, label: `Run ${r.number ?? ""}`.trim(), meta: timeAgo(r.created_at) }))}
               />
             )}
           </div>

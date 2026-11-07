@@ -1,11 +1,12 @@
 import { AudioLines, BrainCircuit, Captions, Mic, Server, Volume2, Zap, type LucideIcon } from "lucide-react";
 import type { CostBreakdown as CostBreakdownT, CostLine } from "../api/types";
 import { formatUsd, toMicros } from "../lib/money";
-import { modelLabel } from "../lib/catalogSeed";
 import { providerLabel } from "../lib/providers";
 import { cn } from "./cn";
 import { MoneyText } from "./Money";
 import { InfoTip, TruncatedText } from "./TruncatedText";
+import { mss } from "../lib/format";
+import { useCatalogEntries } from "../api/pricing";
 
 export const COMPONENT_LABELS: Record<string, string> = {
   stt: "Speech to text",
@@ -33,10 +34,6 @@ const UNIT_LABELS: Record<string, string> = {
   tts_chars: "characters",
 };
 
-function mss(seconds: number) {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
 /** Average per-minute price over the billed duration, 4 places: total / duration_minutes. */
 function avgPerMinute(b: CostBreakdownT): string {
   const total = toMicros(b.total_usd) ?? 0n;
@@ -62,6 +59,9 @@ export function CostBreakdownCard({
   title?: string;
   onConsole?: boolean;
 }) {
+  const entries = useCatalogEntries();
+  const modelLabel = (l: CostLine) =>
+    entries.find((e) => e.component === l.component && e.provider === l.provider && e.model === (l.model ?? null))?.label ?? l.model;
   const surcharged = breakdown.lines.filter(hasSurcharge);
   return (
     <section aria-label={title} className={cn("@container overflow-hidden rounded-panel border border-line bg-surface", className)}>
@@ -116,9 +116,7 @@ export function CostBreakdownCard({
                     <Icon className={cn("size-3.5 shrink-0", surcharge ? "text-warning-text" : "text-fg-3")} aria-hidden />
                     <span className="whitespace-nowrap text-fg">{COMPONENT_LABELS[l.component] ?? l.component}</span>
                     <TruncatedText className="hidden text-fg-3 @[30rem]:block">
-                      {l.component === "platform"
-                        ? providerLabel(l.provider)
-                        : (modelLabel(l.component, l.provider, l.model) ?? providerLabel(l.provider))}
+                      {l.component === "platform" ? providerLabel(l.provider) : (modelLabel(l) ?? providerLabel(l.provider))}
                     </TruncatedText>
                   </span>
                 </th>

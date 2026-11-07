@@ -1,7 +1,7 @@
 import { serverNow } from "../../../api/live";
 import { cn } from "../../../components";
 import { useNow } from "../../../lib/useNow";
-import { mss } from "../format";
+import { mss } from "../../../lib/format";
 
 /** Seconds since `since` on the server's clock (0 before it). */
 export function elapsedSeconds(since: string | null | undefined, now: number): number {

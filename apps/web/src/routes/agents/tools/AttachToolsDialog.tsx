@@ -3,9 +3,10 @@ import { Check, Link2, Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MAX_TOOLS_PER_AGENT, useTools, type Tool } from "../../../api/tools";
 import { problemMessage } from "../../../api/problems";
-import { Badge, Button, Dialog, EmptyState, IconButton, Input, Skeleton, cn } from "../../../components";
+import { Badge, Button, Dialog, EmptyState, IconButton, Input, Skeleton } from "../../../components";
 import { useDebounced } from "../../../lib/useDebounced";
 import { TOOL_META, ToolTile } from "./toolMeta";
+import { PickTile } from "../PickTile";
 
 /**
  * Pick tools from the workspace library (T030). Tools already attached are marked; a tool whose
@@ -122,50 +123,29 @@ export function AttachToolsDialog({
                 const full = !on && !isAttached && room <= 0;
                 const disabled = isAttached || clash || full;
                 return (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={on || isAttached}
-                      aria-disabled={disabled || undefined}
-                      disabled={disabled}
-                      onClick={() => toggle(t)}
-                      className={cn(
-                        "flex w-full min-w-0 items-center gap-3 rounded-panel border px-3.5 py-3 text-left transition-[background-color,border-color,box-shadow] duration-150",
-                        on
-                          ? "border-accent bg-accent-soft/45 shadow-[0_0_0_1px_var(--accent)]"
-                          : "border-line bg-surface hover:border-accent/45 hover:bg-surface-2/60",
-                        disabled && "cursor-not-allowed opacity-60 hover:border-line hover:bg-surface",
-                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                      )}
-                    >
-                      <ToolTile type={t.type} size="sm" />
-                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="truncate font-mono text-[13px] font-medium text-fg">{t.name}</span>
-                          <span className="shrink-0 text-[12px] text-fg-3">{TOOL_META[t.type].label}</span>
-                        </span>
-                        <span className="truncate text-[13px] text-fg-2">{t.description}</span>
-                      </span>
-                      {isAttached ? (
+                  <PickTile
+                    key={t.id}
+                    checked={on || isAttached}
+                    selected={on}
+                    disabled={disabled}
+                    onToggle={() => toggle(t)}
+                    icon={<ToolTile type={t.type} size="sm" />}
+                    status={
+                      isAttached ? (
                         <Badge tone="success">Attached</Badge>
                       ) : clash ? (
                         <Badge tone="warning">Name in use</Badge>
                       ) : full ? (
                         <Badge>Limit reached</Badge>
-                      ) : (
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "grid size-5 shrink-0 place-items-center rounded-full border transition-[background-color,border-color,transform] duration-200",
-                            on ? "scale-100 border-transparent bg-accent text-white" : "scale-90 border-line-strong bg-surface text-transparent",
-                          )}
-                        >
-                          <Check strokeWidth={3} className="size-3" />
-                        </span>
-                      )}
-                    </button>
-                  </li>
+                      ) : undefined
+                    }
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-mono text-[13px] font-medium text-fg">{t.name}</span>
+                      <span className="shrink-0 text-[12px] text-fg-3">{TOOL_META[t.type].label}</span>
+                    </span>
+                    <span className="truncate text-[13px] text-fg-2">{t.description}</span>
+                  </PickTile>
                 );
               })}
             </ul>

@@ -4,6 +4,17 @@ import type { components, paths } from "./schema";
 export type { paths, components };
 type S = components["schemas"];
 
+type Method = "get" | "post" | "put" | "patch" | "delete";
+type JsonBody<R> = R extends { content: { "application/json": infer B } } ? B : never;
+type Success<Rs> = JsonBody<Rs[Extract<keyof Rs, 200 | 201 | 202>]>;
+
+/** The JSON body an operation answers with on success, for responses the contract does not name. */
+export type ResponseOf<P extends keyof paths, M extends Method> = paths[P][M] extends { responses: infer Rs } ? Success<Rs> : never;
+/** The query parameters an operation accepts. */
+export type QueryOf<P extends keyof paths, M extends Method> = paths[P][M] extends { parameters: { query?: infer Q } } ? NonNullable<Q> : never;
+/** The JSON request body an operation accepts. */
+export type BodyOf<P extends keyof paths, M extends Method> = paths[P][M] extends { requestBody?: infer B } ? JsonBody<NonNullable<B>> : never;
+
 export type Problem = S["Problem"];
 export type FieldError = S["FieldError"];
 export type MoneyUsd = S["MoneyUsd"];

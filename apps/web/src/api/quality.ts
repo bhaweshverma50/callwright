@@ -4,9 +4,11 @@
  * from specs/007-quality-evals/contracts; hooks are TanStack Query.
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { idempotencyKey } from "./agents";
 import { api, unwrap } from "./client";
 import { isApiError } from "./errors";
 import type { components } from "./schema";
+import type { BodyOf, QueryOf, ResponseOf } from "./types";
 
 type S = components["schemas"];
 
@@ -30,31 +32,13 @@ export type JudgeQuestionConfig = S["JudgeQuestionConfig"];
 export type CustomConfig = S["CustomConfig"];
 export type CustomEvaluatorInput = S["CustomEvaluatorInput"];
 export type CustomType = CustomEvaluatorInput["evaluator_type"];
-export type ReviewStrategy = "random" | "failed" | "disagreement";
-export type VersionScope = "current" | "all";
-export interface JudgeModel {
-  model_id: string;
-  display_name: string;
-  is_default: boolean;
-}
-export interface TrialResult {
-  verdict: Verdict;
-  score?: number | null;
-  rationale: string;
-  evidence?: { turn_indices?: number[]; quote?: string | null };
-  charged_usd?: number | null;
-}
-export interface CalibrationSummary {
-  annotated_calls: number;
-  annotated_and_evaluated_calls: number;
-  conflicting_label_calls: number;
-  min_sample_for_signal: number;
-}
-export interface ReviewSummary {
-  random: number;
-  failed: number;
-  disagreement: number;
-}
+export type ReviewStrategy = NonNullable<QueryOf<"/review/queue", "get">["strategy"]>;
+export type VersionScope = NonNullable<QueryOf<"/calibration/evaluators", "get">["version_scope"]>;
+export type JudgeModel = ResponseOf<"/evaluators/judge-models", "get">["items"][number];
+export type TrialResult = ResponseOf<"/evaluators/trial", "post">;
+export type CalibrationSummary = ResponseOf<"/calibration/summary", "get">;
+export type ReviewSummary = ResponseOf<"/review/queue/summary", "get">;
+export type EvalSettingBody = BodyOf<"/agents/{agent_id}/eval-settings/{evaluator_id}", "put">;
 
 export const qualityKeys = {
   all: ["quality"] as const,
@@ -74,8 +58,6 @@ export const qualityKeys = {
   calibrationSummary: (agentId: string, lookback: number) => ["quality", "calibration", "summary", agentId, lookback] as const,
 };
 
-export const newIdempotencyKey = () => crypto.randomUUID();
-
 /** Field message for a settings key from a 422, whether the server names it by JSON pointer
  * ("/overrides/sample_rate_pct") or by dotted field ("overrides.sample_rate_pct"). */
 export function settingErrors(err: unknown): Record<string, string> {
@@ -94,8 +76,7 @@ export function settingErrors(err: unknown): Record<string, string> {
 export function useAnalysisVariables(agentId: string | null) {
   return useQuery({
     queryKey: qualityKeys.variables(agentId ?? ""),
-    queryFn: async () =>
-      (await unwrap(api.GET("/agents/{agent_id}/analysis-variables", { params: { path: { agent_id: agentId! } } }))).items as AnalysisVariable[],
+    queryFn: async () => (await unwrap(api.GET("/agents/{agent_id}/analysis-variables", { params: { path: { agent_id: agentId! } } }))).items,
     enabled: Boolean(agentId),
   });
 }
@@ -119,7 +100,7 @@ export function reorderVariables(agentId: string, ids: string[]) {
 export function useCallAnalysis(callId: string | null) {
   return useQuery({
     queryKey: qualityKeys.analysis(callId ?? ""),
-    queryFn: () => unwrap(api.GET("/calls/{call_id}/analysis", { params: { path: { call_id: callId! } } })) as Promise<CallAnalysis>,
+    queryFn: () => unwrap(api.GET("/calls/{call_id}/analysis", { params: { path: { call_id: callId! } } })),
     enabled: Boolean(callId),
     retry: false,
     refetchInterval: (q) => (q.state.data?.status === "pending" || q.state.data?.status === "running" ? 3_000 : false),
@@ -129,9 +110,9 @@ export function useCallAnalysis(callId: string | null) {
 export function rerunAnalysis(callId: string) {
   return unwrap(
     api.POST("/calls/{call_id}/analysis/rerun", {
-      params: { path: { call_id: callId }, header: { "Idempotency-Key": newIdempotencyKey() } },
+      params: { path: { call_id: callId }, header: { "Idempotency-Key": idempotencyKey() } },
     }),
-  ) as Promise<CallAnalysis>;
+  );
 }
 
 // Catalog and settings (US2, US5) --------------------------------------------------------------
@@ -146,7 +127,7 @@ export function useEvaluators(opts: { kind?: "builtin" | "custom"; agentType?: "
             params: { query: { ...(opts.kind && { kind: opts.kind }), ...(opts.agentType && { agent_type: opts.agentType }) } },
           }),
         )
-      ).items as Evaluator[],
+      ).items,
     staleTime: 30_000,
   });
 }
@@ -154,7 +135,7 @@ export function useEvaluators(opts: { kind?: "builtin" | "custom"; agentType?: "
 export function useJudgeModels() {
   return useQuery({
     queryKey: qualityKeys.judgeModels,
-    queryFn: async () => (await unwrap(api.GET("/evaluators/judge-models"))).items as JudgeModel[],
+    queryFn: async () => (await unwrap(api.GET("/evaluators/judge-models"))).items,
     staleTime: 5 * 60_000,
   });
 }
@@ -162,30 +143,23 @@ export function useJudgeModels() {
 export function useEvalSettings(agentId: string | null) {
   return useQuery({
     queryKey: qualityKeys.settings(agentId ?? ""),
-    queryFn: async () =>
-      (await unwrap(api.GET("/agents/{agent_id}/eval-settings", { params: { path: { agent_id: agentId! } } }))).items as AgentEvalSetting[],
+    queryFn: async () => (await unwrap(api.GET("/agents/{agent_id}/eval-settings", { params: { path: { agent_id: agentId! } } }))).items,
     enabled: Boolean(agentId),
   });
-}
-
-export interface EvalSettingBody {
-  enabled: boolean;
-  overrides: Record<string, unknown>;
-  is_headline: boolean;
 }
 
 export function putEvalSetting(agentId: string, evaluatorId: string, body: EvalSettingBody) {
   return unwrap(
     api.PUT("/agents/{agent_id}/eval-settings/{evaluator_id}", { params: { path: { agent_id: agentId, evaluator_id: evaluatorId } }, body }),
-  ) as Promise<AgentEvalSetting>;
+  );
 }
 
 export function createCustomEvaluator(body: CustomEvaluatorInput) {
-  return unwrap(api.POST("/evaluators", { body })) as Promise<Evaluator>;
+  return unwrap(api.POST("/evaluators", { body }));
 }
 
 export function updateCustomEvaluator(id: string, body: { display_name?: string; description?: string | null; config?: CustomConfig }) {
-  return unwrap(api.PATCH("/evaluators/{evaluator_id}", { params: { path: { evaluator_id: id } }, body })) as Promise<Evaluator>;
+  return unwrap(api.PATCH("/evaluators/{evaluator_id}", { params: { path: { evaluator_id: id } }, body }));
 }
 
 export function deleteCustomEvaluator(id: string) {
@@ -193,7 +167,7 @@ export function deleteCustomEvaluator(id: string) {
 }
 
 export function trialCustomEvaluator(body: { evaluator_type: CustomType; config: CustomConfig; call_id: string }, key: string) {
-  return unwrap(api.POST("/evaluators/trial", { params: { header: { "Idempotency-Key": key } }, body })) as Promise<TrialResult>;
+  return unwrap(api.POST("/evaluators/trial", { params: { header: { "Idempotency-Key": key } }, body }));
 }
 
 // Runs (US2) ----------------------------------------------------------------------------------
@@ -203,10 +177,7 @@ export const EVAL_POLL_MS = 3_000;
 export function useCallEvaluations(callId: string | null) {
   return useQuery({
     queryKey: qualityKeys.evaluations(callId ?? ""),
-    queryFn: () =>
-      unwrap(
-        api.GET("/calls/{call_id}/evaluations", { params: { path: { call_id: callId! }, query: { include_history: true } } }),
-      ) as Promise<CallEvaluations>,
+    queryFn: () => unwrap(api.GET("/calls/{call_id}/evaluations", { params: { path: { call_id: callId! }, query: { include_history: true } } })),
     enabled: Boolean(callId),
     retry: false,
     // Results fill in without a reload while any run is still going (US2 scenario 5).
@@ -228,17 +199,13 @@ export function rerunEvaluations(callId: string, key: string, evaluatorIds?: str
 export function useAnnotations(callId: string | null) {
   return useQuery({
     queryKey: qualityKeys.annotations(callId ?? ""),
-    queryFn: () =>
-      unwrap(api.GET("/calls/{call_id}/annotations", { params: { path: { call_id: callId! } } })) as Promise<{
-        mine: Annotation | null;
-        items: Annotation[];
-      }>,
+    queryFn: () => unwrap(api.GET("/calls/{call_id}/annotations", { params: { path: { call_id: callId! } } })),
     enabled: Boolean(callId),
   });
 }
 
 export function putMyAnnotation(callId: string, label: "good" | "bad", note: string | null) {
-  return unwrap(api.PUT("/calls/{call_id}/annotations/me", { params: { path: { call_id: callId } }, body: { label, note } })) as Promise<Annotation>;
+  return unwrap(api.PUT("/calls/{call_id}/annotations/me", { params: { path: { call_id: callId } }, body: { label, note } }));
 }
 
 export function deleteMyAnnotation(callId: string) {
@@ -250,8 +217,7 @@ export function deleteMyAnnotation(callId: string) {
 export function useReviewQueue(strategy: ReviewStrategy, agentId: string | null) {
   return useQuery({
     queryKey: qualityKeys.queue(strategy, agentId ?? ""),
-    queryFn: async () =>
-      (await unwrap(api.GET("/review/queue", { params: { query: { strategy, ...(agentId && { agent_id: agentId }) } } }))).items as QueueItem[],
+    queryFn: async () => (await unwrap(api.GET("/review/queue", { params: { query: { strategy, ...(agentId && { agent_id: agentId }) } } }))).items,
     placeholderData: keepPreviousData,
   });
 }
@@ -259,8 +225,7 @@ export function useReviewQueue(strategy: ReviewStrategy, agentId: string | null)
 export function useReviewSummary(agentId: string | null) {
   return useQuery({
     queryKey: qualityKeys.reviewSummary(agentId ?? ""),
-    queryFn: () =>
-      unwrap(api.GET("/review/queue/summary", { params: { query: { ...(agentId && { agent_id: agentId }) } } })) as Promise<ReviewSummary>,
+    queryFn: () => unwrap(api.GET("/review/queue/summary", { params: { query: { ...(agentId && { agent_id: agentId }) } } })),
     placeholderData: keepPreviousData,
   });
 }
@@ -275,7 +240,7 @@ export function useCalibrationRows(agentId: string | null, lookbackDays: number,
         api.GET("/calibration/evaluators", {
           params: { query: { lookback_days: lookbackDays, version_scope: scope, ...(agentId && { agent_id: agentId }) } },
         }),
-      ) as Promise<{ min_sample_for_signal: number; items: CalibrationRow[] }>,
+      ),
     placeholderData: keepPreviousData,
   });
 }
@@ -284,9 +249,7 @@ export function useCalibrationSummary(agentId: string | null, lookbackDays: numb
   return useQuery({
     queryKey: qualityKeys.calibrationSummary(agentId ?? "", lookbackDays),
     queryFn: () =>
-      unwrap(
-        api.GET("/calibration/summary", { params: { query: { lookback_days: lookbackDays, ...(agentId && { agent_id: agentId }) } } }),
-      ) as Promise<CalibrationSummary>,
+      unwrap(api.GET("/calibration/summary", { params: { query: { lookback_days: lookbackDays, ...(agentId && { agent_id: agentId }) } } })),
     placeholderData: keepPreviousData,
   });
 }

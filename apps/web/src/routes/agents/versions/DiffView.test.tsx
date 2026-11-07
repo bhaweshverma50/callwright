@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { DiffView } from "./DiffView";
-import { lineDiff } from "./lineDiff";
+import { lineDiff } from "../../../lib/lineDiff";
 
 // 002 T085: the folded run of unchanged lines is a row of the table, so the table holds only rows.
 describe("DiffView structure", () => {

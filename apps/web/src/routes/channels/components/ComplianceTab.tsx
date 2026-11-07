@@ -5,10 +5,10 @@ import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, IconButton, Input, Pagination, Panel, Select, Skeleton } from "../../../components";
 import { useDebounced } from "../../../lib/useDebounced";
-import { useDecisions, useDncEntries, useDncMutations } from "../hooks/useOutboundCompliance";
+import { useDecisions, useDncEntries, useDncMutations } from "../../../api/channels";
 import { CallingHoursEditor } from "./CallingHoursEditor";
 import { DncImportDialog, REGIONS } from "./DncImportDialog";
-import { relativeTime } from "./shared";
+import { timeAgo } from "../../../lib/format";
 
 function DncPanel() {
   const [search, setSearch] = useState("");
@@ -142,7 +142,7 @@ function DncPanel() {
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-mono text-[13px] text-fg">{e.number}</span>
                     <span className="truncate text-[12px] text-fg-3">
-                      {e.note || (e.source === "csv_import" ? "Imported from CSV" : "Added by hand")} · {relativeTime(e.created_at)}
+                      {e.note || (e.source === "csv_import" ? "Imported from CSV" : "Added by hand")} · {timeAgo(e.created_at)}
                     </span>
                   </div>
                   {e.source === "csv_import" && <Badge className="hidden sm:inline-flex">CSV</Badge>}
@@ -210,7 +210,7 @@ function DecisionsPanel() {
                       : `On the do-not-call list, from ${d.from_number}`}
                 </span>
               </div>
-              <span className="shrink-0 text-[12px] text-fg-3">{relativeTime(d.decided_at)}</span>
+              <span className="shrink-0 text-[12px] text-fg-3">{timeAgo(d.decided_at)}</span>
             </li>
           ))}
         </ul>

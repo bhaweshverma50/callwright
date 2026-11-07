@@ -86,6 +86,9 @@ describe("usage window (T080, US4)", () => {
     expect(windowError("2026-10-10", "2026-10-01")).toBe("The end date must be on or after the start date.");
     expect(windowError("2025-01-01", "2026-10-01")).toBe("Pick a window of 366 days or less.");
     expect(windowError("2026-01-01", "2026-12-31")).toBeNull();
+    // Both ends count, as on the API: 366 calendar days is the most, 367 is refused.
+    expect(windowError("2024-01-01", "2024-12-31")).toBeNull();
+    expect(windowError("2025-01-01", "2026-01-02")).toBe("Pick a window of 366 days or less.");
   });
 
   it("shows the empty state with the window dates", async () => {

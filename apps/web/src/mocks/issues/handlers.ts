@@ -10,7 +10,7 @@
  *   check; every other kind passes.
  * - Apply answers 409 with the first blocker; dismiss checks the reason rules.
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http } from "msw";
 import type {
   ApplyBlocker,
   ApplyResult,
@@ -37,24 +37,8 @@ import {
   type StoredDetection,
   type StoredIssue,
 } from "./store";
+import { invalid, json, problem, url } from "../http";
 
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-function problem(status: number, code: string, title: string, detail?: string, errors?: { pointer: string; code: string; message: string }[]) {
-  return HttpResponse.json(
-    {
-      type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`,
-      title,
-      status,
-      code,
-      ...(detail && { detail }),
-      ...(errors && { errors }),
-    } as JsonBodyType,
-    { status, headers: { "content-type": "application/problem+json" } },
-  );
-}
-const invalid = (pointer: string, message: string, code = "invalid") =>
-  problem(422, "validation_failed", "Request failed validation", message, [{ pointer, code, message }]);
 const notFound = () => problem(404, "not_found", "Not found", "No issue with that ID.");
 const VALIDATION_MS = 5_000;
 const DETECTION_MS = 2_500;

@@ -5,12 +5,13 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { fieldErrors, problemMessage } from "../../api/problems";
-import { isRegisteredSession, startSession } from "../../app/auth";
-import { Button, Field, Input } from "../../components";
+import { startSession } from "../../api/session";
+import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
+import { mockVerifyToken } from "../../mocks/demoAccount";
+import { AUTH_PAGES } from "../../lib/paths";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -28,7 +29,7 @@ export function Register() {
   const register = useMutation({
     mutationFn: () => unwrap(api.POST("/auth/register", { body: { email: email.trim(), password } })),
     onSuccess: (result) => {
-      if (!isRegisteredSession(result)) return;
+      if (result.status !== "signed_in") return;
       startSession(result);
       navigate("/dashboard", { replace: true });
     },
@@ -48,7 +49,7 @@ export function Register() {
     register.mutate();
   };
 
-  if (register.isSuccess && !isRegisteredSession(register.data)) {
+  if (register.isSuccess && register.data.status !== "signed_in") {
     const addr = email.trim().toLowerCase();
     return (
       <AuthLayout
@@ -81,7 +82,10 @@ export function Register() {
           {env.mocks && (
             <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
-              <Link className="link-underline text-accent-text" to={`/verify-email?token_hash=${encodeURIComponent(`verify-${addr}`)}`}>
+              <Link
+                className="link-underline text-accent-text"
+                to={`${AUTH_PAGES.verifyEmail}?token_hash=${encodeURIComponent(mockVerifyToken(addr))}`}
+              >
                 Open the verification link
               </Link>
             </p>

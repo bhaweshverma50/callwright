@@ -5,11 +5,10 @@ import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import type { Session } from "../../api/types";
-import { startSession } from "../../app/auth";
+import { startSession } from "../../api/session";
 import { Send } from "lucide-react";
-import { Button, Field, Input, Skeleton } from "../../components";
+import { Button, Field, FormAlert, Input, Skeleton } from "../../components";
 import { AuthLayout } from "./AuthLayout";
-import { FormAlert } from "./FormAlert";
 
 // A verification link works once. React StrictMode mounts effects twice in development, so
 // in-flight requests are shared per token instead of being sent again.

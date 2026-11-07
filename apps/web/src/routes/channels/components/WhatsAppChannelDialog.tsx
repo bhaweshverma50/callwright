@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { isApiError } from "../../../api/errors";
 import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Dialog, Field, Input } from "../../../components";
-import { useAgentOptions } from "../hooks/usePhoneNumbers";
-import { useCreateWhatsApp, useWhatsAppSettings, type WhatsAppChannel } from "../hooks/useWhatsAppChannels";
-import { E164_EXAMPLE, e164Error } from "../validation";
+import { useCreateWhatsApp, useWhatsAppSettings, type WhatsAppChannel } from "../../../api/channels";
 import { AgentSelect } from "./shared";
+import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
+import { useAllAgents } from "../../../api/agents";
 
 export const SETUP_GUIDE = "https://developers.facebook.com/docs/whatsapp/cloud-api/calling";
 
@@ -44,7 +44,7 @@ export function WhatsAppChannelDialog({
   onCreated: (c: WhatsAppChannel) => void;
 }) {
   const settings = useWhatsAppSettings(open);
-  const agents = useAgentOptions(open);
+  const agents = useAllAgents(open);
   const create = useCreateWhatsApp();
   const [v, setV] = useState<Record<string, string>>({});
   const [agent, setAgent] = useState<string | null>(null);

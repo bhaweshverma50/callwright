@@ -6,10 +6,10 @@ import { useBalance, useQuote } from "../../../api/queries";
 import type { QuoteLine, QuoteRequest } from "../../../api/types";
 import { Badge, FlowChain, InfoTip, MoneyText, Skeleton, TruncatedText, cn, type FlowNode } from "../../../components";
 import { formatUsd, toMicros } from "../../../lib/money";
-import { talkMinutes } from "../../../lib/stack";
 import { useDebounced } from "../../../lib/useDebounced";
 import { llmLabel } from "./catalogs";
 import { surchargeRisk } from "./surchargeRisk";
+import { talkMinutes } from "../../../api/pricing";
 
 type Link = "nc" | "stt" | "llm" | "tts";
 
@@ -54,7 +54,6 @@ export function CostCard({ config, llm, voice }: { config: AgentConfig; llm: Llm
   const quote = useQuote(req);
   const balance = useBalance({ pollMs: false });
 
-  // Light the link whose selection changed.
   const prev = useRef(selection);
   const [lit, setLit] = useState<Link | null>(null);
   useEffect(() => {

@@ -2,18 +2,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChartColumn, History, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { qk, useBalance, useQuote } from "../../api/queries";
+import { qk, useBalance } from "../../api/queries";
 import type { Transaction } from "../../api/types";
-import { Button, PageHeader, TabPanel, Tabs, WorkLayout, toast } from "../../components";
+import { Button, FormAlert, PageHeader, TabPanel, Tabs, toast, WorkLayout } from "../../components";
 import { formatUsd, toMicros } from "../../lib/money";
-import { DEFAULT_STACK } from "../../lib/stack";
 import { WIDE, useMediaQuery } from "../../lib/useMediaQuery";
-import { FormAlert } from "../public/FormAlert";
 import { BreakdownInspector } from "./CostBreakdownPopover";
 import { TalkTimeGauge } from "./TalkTimeGauge";
 import { CHECKOUT_BEFORE_KEY, TopUpCard } from "./TopUpCard";
 import { TransactionsTable } from "./TransactionsTable";
 import { UsagePanel } from "./UsagePanel";
+import { useStackRate } from "../../api/pricing";
 
 const POLL_MS = 2_000;
 const POLL_FOR_MS = 30_000;
@@ -38,8 +37,7 @@ export function BillingPage() {
   const amountRef = useRef<HTMLInputElement>(null);
   const polling = watch === "waiting";
   const balance = useBalance({ pollMs: polling ? POLL_MS : 60_000 });
-  const stack = useQuote({ components: DEFAULT_STACK });
-  const perMinute = stack.data ? toMicros(stack.data.per_minute_total_usd) : null;
+  const perMinute = useStackRate() ?? null;
   const startBalance = useRef<bigint | null>(null);
   if (polling && startBalance.current === null) {
     try {

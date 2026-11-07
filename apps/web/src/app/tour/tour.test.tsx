@@ -2,16 +2,16 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { api, unwrap } from "../../api/client";
-import type { Session } from "../../api/types";
 import { server } from "../../mocks/node";
 import { renderApp, signInDemo } from "../../test/render";
-import { session } from "../session";
+import { session } from "../../api/session";
+import { DEMO_PASSWORD, mockVerifyToken } from "../../mocks/demoAccount";
 
 /** A brand-new verified account: a workspace with no agents and no saved tour progress. */
 async function signUpFresh() {
   const email = `new.${Math.random().toString(36).slice(2, 10)}@example.com`;
-  await unwrap(api.POST("/auth/register", { body: { email, password: "correct-horse-9" } }));
-  session.set((await unwrap(api.POST("/auth/verify-email", { body: { token_hash: `verify-${email}` } }))) as Session);
+  await unwrap(api.POST("/auth/register", { body: { email, password: DEMO_PASSWORD } }));
+  session.set(await unwrap(api.POST("/auth/verify-email", { body: { token_hash: mockVerifyToken(email) } })));
 }
 
 /** Every PATCH /me/preferences body, in order. */

@@ -1,10 +1,10 @@
 import { Captions, Cpu, Wand2 } from "lucide-react";
 import { ChoiceGroup, FieldRow, Select } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { languageLabel, perMin, type Catalogs } from "./catalogs";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { useCatalog } from "../../../api/queries";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const AUTO = "__auto__";
 
@@ -56,7 +56,7 @@ export function SttPicker({ draft, catalogs }: { draft: AgentDraft; catalogs: Ca
     <>
       <FieldRow
         icon={<Captions />}
-        label="Speech recognition provider"
+        label={fieldLabel("/stt/provider")}
         htmlFor={fieldId("/stt/provider")}
         description="Turns what the caller says into text."
       >
@@ -77,7 +77,7 @@ export function SttPicker({ draft, catalogs }: { draft: AgentDraft; catalogs: Ca
       </FieldRow>
       <StackRow
         icon={<Cpu />}
-        label="Speech recognition model"
+        label={fieldLabel("/stt/model")}
         description={single ? "This provider has one model for the language, so it is selected for you." : "Auto is right for most agents."}
         hint="Auto resolves when each call starts, so a better model for the language is used as soon as the platform adds one. Calls are billed for the model that ran."
       >

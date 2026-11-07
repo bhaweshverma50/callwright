@@ -4,18 +4,6 @@
  * its field errors are mapped onto the same fields.
  */
 
-export const E164 = /^\+[1-9]\d{6,14}$/;
-export const E164_EXAMPLE = "+14155550123";
-
-export function e164Error(value: string, label = "number"): string | null {
-  const v = value.trim();
-  if (!v) return `Enter the ${label}.`;
-  if (!v.startsWith("+")) return `Start with + and the country code, for example ${E164_EXAMPLE}.`;
-  if (/\s|-|\(|\)/.test(v)) return `Digits only after the +, for example ${E164_EXAMPLE}.`;
-  if (!E164.test(v)) return `Use E.164: + and 7 to 15 digits, for example ${E164_EXAMPLE}.`;
-  return null;
-}
-
 const LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/i;
 const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
 

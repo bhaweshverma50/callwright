@@ -370,6 +370,7 @@ components:
         expected_draft_revision: {type: integer, minimum: 1}
         changes:
           type: object
+          additionalProperties: true
           minProperties: 1
           description: Partial AgentConfig (002 agents.yaml AgentConfig), deep-merged into the
             draft. start_speaker and begin_message are rejected for flow agents (the Start node
@@ -453,20 +454,22 @@ components:
           properties:
             provider: {type: string}
             model: {type: string}
-            temperature: {type: number, minimum: 0, maximum: 2}
+            temperature: {type: [number, 'null'], minimum: 0, maximum: 2}
         tts:
           type: [object, 'null']
+          description: Numbers are checked against the 002 controls range table (validate_override)
           properties:
             provider: {type: string}
-            model: {type: string}
+            model: {type: [string, 'null']}
             voice_id: {type: string}
-            speed: {type: number, minimum: 0.5, maximum: 2}
-            stability: {type: number, minimum: 0, maximum: 1}
+            speed: {type: [number, 'null']}
+            volume: {type: [number, 'null']}
+            expressiveness: {type: [number, 'null']}
         stt:
           type: [object, 'null']
           properties:
             provider: {type: string}
-            model: {type: string}
+            model: {type: [string, 'null']}
         language: {type: [string, 'null']}
     AgentConfigNode:
       type: object
@@ -499,6 +502,7 @@ components:
       required: [instructions, fields, max_rounds, context_strategy]
       properties:
         instructions: {type: string, maxLength: 16000}
+        begin_message: {type: [string, 'null'], maxLength: 500}
         fields:
           type: array
           minItems: 1

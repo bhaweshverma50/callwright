@@ -5,7 +5,7 @@
  * the API joins its capability YAML with the pricing catalog (FR-039).
  */
 import type { ControlRange, Language, LlmCatalog, NoiseCancellationOption, SttProvider, TtsProvider, VoiceCatalog } from "../../api/agents";
-import { catalogCurrent } from "../../lib/catalogSeed";
+import { catalogCurrent } from "../pricing/catalog";
 import { chimeDataUri } from "./audio";
 
 function price(component: string, provider: string, model: string | null): string | null {
