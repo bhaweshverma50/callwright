@@ -28,7 +28,9 @@ fi
 
 if running "$old"; then
   # ponytail: the drain outlives this ssh session; its log is the only progress report.
-  nohup docker compose stop "$old" >"/tmp/voice-drain-$old.log" 2>&1 < /dev/null &
+  # Removing the drained container frees its image for the next prune (the disk is small).
+  nohup sh -c "docker compose stop $old && docker compose rm -f $old" \
+    >"/tmp/voice-drain-$old.log" 2>&1 < /dev/null &
   disown
   echo "$new serving on :$port; $old draining (log /tmp/voice-drain-$old.log)"
 else
