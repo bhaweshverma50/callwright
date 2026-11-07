@@ -1910,6 +1910,9 @@ export const schemaLimits = {
     },
     "heartbeat_interval_s": {
       "default": 10
+    },
+    "simulation": {
+      "default": false
     }
   },
   "RuntimeTranscriptItem": {

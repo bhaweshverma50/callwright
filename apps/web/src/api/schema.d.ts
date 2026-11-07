@@ -4585,6 +4585,7 @@ export interface components {
             };
             runtime?: components["schemas"]["RuntimeConfig"];
         };
+        /** @description Everything the worker needs, resolved by the API, which owns the catalogs and defaults (shape defined once in packages/contract, `callwright_contract.protocol`). The worker keeps no defaults or tables of its own. */
         RuntimeConfig: {
             /** @enum {string} */
             channel: "web" | "sip_inbound" | "sip_outbound" | "whatsapp";
@@ -4596,7 +4597,7 @@ export interface components {
             agent_version_id: string;
             /** @enum {string} */
             agent_type?: "single_prompt" | "flow";
-            /** @description Frozen AgentConfig from the agent version (schema owned by 002-agent-builder). */
+            /** @description Frozen AgentConfig from the agent version (schema owned by 002-agent-builder) with the language and every vendor resolved (`stt.model` stays null for Auto) and the call-behaviour, keypad, voicemail and background-audio defaults applied. */
             config: {
                 [key: string]: unknown;
             };
@@ -4627,10 +4628,43 @@ export interface components {
             recording_enabled?: boolean;
             /** @description The speech recognition model Auto resolved to for the agent's language. */
             stt_resolved_model?: string | null;
+            /** @description 002's control range table (data-model 8.6). The worker clamps call behaviour and segment overrides to it. */
+            controls: components["schemas"]["RuntimeControlRange"][];
+            /** @description How speech recognition Auto picks a model, per provider (002 data-model 8.3), for flow nodes and overrides that change the language or provider. The same rules admission used, so the worker runs the model admission priced. */
+            stt_auto_rules: {
+                [key: string]: components["schemas"]["SttAutoRule"];
+            };
+            /**
+             * @description Text runs (008) and the offline harness; tools answer without side effects.
+             * @default false
+             */
+            simulation: boolean;
             /** @description Languages the caller can switch to during the call (012), the agent's own language first. Empty when language switching is off, the agent is a flow, or no other language is supported by both the agent's speech recognition and voice. */
             language_options?: components["schemas"]["LanguageOption"][];
             /** @description Phone calls only (012): the caller's saved language when it is one of `language_options` and differs from the agent's language. The call starts in it (speech recognition, replies and a greeting with the same meaning). */
             caller_language?: string | null;
+        };
+        /** @description One row of 002's ControlRange (voices.yaml) without its display fields. */
+        RuntimeControlRange: {
+            /**
+             * @description JSON Pointer into the agent config
+             * @example /tts/speed
+             */
+            path: string;
+            min: number;
+            max: number;
+            step?: number | null;
+        };
+        /** @description The language code exactly, then its base (`en-US` -> `en`), then the default; a model whose `languages` does not list the language counts as none. */
+        SttAutoRule: {
+            default?: string | null;
+            by_language?: {
+                [key: string]: string;
+            };
+            /** @description Languages each model covers. */
+            languages?: {
+                [key: string]: string[];
+            };
         };
         LanguageOption: {
             /**
@@ -12896,6 +12930,10 @@ export interface operations {
                         output_call_id: string;
                         mode: components["schemas"]["SimMode"];
                         config_snapshot: Record<string, never>;
+                        /** @description The run's resolved values, as in the claim's RuntimeConfig (config with defaults applied, limits, controls, stt_auto_rules, stt_resolved_model, language_options); the text runner builds its runtime from them. */
+                        runtime?: {
+                            [key: string]: unknown;
+                        };
                         settings: components["schemas"]["SimSettings"];
                         dynamic_variables: {
                             [key: string]: string;
@@ -13515,6 +13553,10 @@ export interface operations {
                         /** @enum {string} */
                         agent_type: "single_prompt" | "flow";
                         config_snapshot: Record<string, never>;
+                        /** @description The run's resolved values, as in the claim's RuntimeConfig (config with defaults applied, limits, controls, stt_auto_rules, stt_resolved_model, language_options); the text runner builds its runtime from them. */
+                        runtime?: {
+                            [key: string]: unknown;
+                        };
                         user_prompt: string;
                         dynamic_variables: {
                             [key: string]: string;
