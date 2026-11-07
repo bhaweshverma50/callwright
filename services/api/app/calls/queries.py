@@ -28,7 +28,8 @@ from app.billing.models import CallCost
 from app.call_events.models import CallEvent
 from app.calls.cost_view import cost_view
 from app.calls.models import Call
-from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary, quality_port
+from app.calls.ports import registry
+from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary
 from app.calls.transcript_text import normalize_items
 from app.core.errors import ProblemError, field_error, validation_failed
 
@@ -205,7 +206,7 @@ def conditions(q: CallListQuery, user_id: str) -> list[ColumnElement[bool]]:
         where.append(Call.created_at < q.window_to)
     if q.labels or q.eval_statuses:
         where.append(
-            quality_port().filter_clause(
+            registry.quality.filter_clause(
                 Call.id, labels=q.labels, eval_statuses=q.eval_statuses, user_id=user_id
             )
         )
@@ -298,7 +299,7 @@ async def list_calls(
         )
     ).all()
     ids = [r[0].id for r in rows]
-    summaries = await quality_port().summaries(session, ids, user_id)
+    summaries = await registry.quality.summaries(session, ids, user_id)
     states = await analysis_states(session, ids)
     items = [
         list_item(c, name, deleted, summaries.get(c.id, QualitySummary()), states.get(c.id))
@@ -375,7 +376,7 @@ async def iter_export_rows(
     if total > limit:
         return total, []
     rows = (await session.execute(_base().where(and_(*where)).order_by(*_order(q)))).all()
-    summaries = await quality_port().summaries(session, [r[0].id for r in rows], user_id)
+    summaries = await registry.quality.summaries(session, [r[0].id for r in rows], user_id)
     return total, [
         list_item(c, name, deleted, summaries.get(c.id, QualitySummary())) for c, name, deleted in rows
     ]
@@ -401,7 +402,7 @@ async def call_detail(session: AsyncSession, call_id: str, user_id: str) -> dict
     if loaded is None:
         return None
     call, name, deleted = loaded
-    quality = (await quality_port().summaries(session, [call.id], user_id)).get(call.id, QualitySummary())
+    quality = (await registry.quality.summaries(session, [call.id], user_id)).get(call.id, QualitySummary())
     version_number = None
     if call.agent_version_id:
         version_number = (

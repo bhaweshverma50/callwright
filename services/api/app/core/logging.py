@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import sys
+from collections.abc import Iterable
 from datetime import UTC, datetime
 
 from opentelemetry import trace
@@ -21,28 +22,25 @@ class _TraceIdFilter(logging.Filter):
         return True
 
 
-# Values of these fields never reach a log line (010 T042): carrier passwords, WhatsApp tokens
-# and app secrets, Meta SIP credentials, and bearer tokens.
-SECRET_FIELDS = (
-    "auth_password",
-    "password",
-    "access_token",
-    "verify_token",
-    "app_secret",
-    "sip_user_password",
-    "hub.verify_token",
-    "client_secret",
-)
-_SECRET_VALUE = re.compile(
-    r"(?P<key>(?:" + "|".join(re.escape(f) for f in SECRET_FIELDS) + r"))"
-    r"(?P<sep>[\"']?\s*[:=]\s*[\"']?)(?P<value>[^\"'\s,;&}\]]+)",
-    re.IGNORECASE,
-)
+# Values of these fields never reach a log line (010 T042); features add their own names
+# (``Feature.secret_fields``) through ``configure_logging``.
+BASE_SECRET_FIELDS = ("password", "access_token", "client_secret")
+
+
+def _secret_value_pattern(fields: Iterable[str]) -> re.Pattern[str]:
+    return re.compile(
+        r"(?P<key>(?:" + "|".join(re.escape(f) for f in sorted(set(fields), key=len, reverse=True)) + r"))"
+        r"(?P<sep>[\"']?\s*[:=]\s*[\"']?)(?P<value>[^\"'\s,;&}\]]+)",
+        re.IGNORECASE,
+    )
+
+
+_secret_value = _secret_value_pattern(BASE_SECRET_FIELDS)
 _BEARER = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+")
 
 
 def redact(text: str) -> str:
-    text = _SECRET_VALUE.sub(lambda m: f"{m.group('key')}{m.group('sep')}[redacted]", text)
+    text = _secret_value.sub(lambda m: f"{m.group('key')}{m.group('sep')}[redacted]", text)
     return _BEARER.sub(r"\1[redacted]", text)
 
 
@@ -74,7 +72,11 @@ class _JsonFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
-def configure_logging(level: str = "INFO", json_output: bool = False) -> None:
+def configure_logging(
+    level: str = "INFO", json_output: bool = False, secret_fields: Iterable[str] = ()
+) -> None:
+    global _secret_value
+    _secret_value = _secret_value_pattern([*BASE_SECRET_FIELDS, *secret_fields])
     handler = logging.StreamHandler(sys.stderr)
     handler.addFilter(_TraceIdFilter())
     handler.addFilter(RedactSecretsFilter())

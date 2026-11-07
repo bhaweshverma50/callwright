@@ -16,9 +16,10 @@ import httpx
 import pytest_asyncio
 
 from app.core.ids import new_id
+from app.features import job_functions
 from tests.agent_helpers import create_ok
 from tests.conftest import Account
-from tests.runtime_support import SERVICE_HEADERS, RecordingQueue, job_functions, owner_sql
+from tests.runtime_support import SERVICE_HEADERS, RecordingQueue, owner_sql
 
 PROMPT = "You book cleaning appointments for Bright Smiles dental clinic."
 
@@ -383,7 +384,7 @@ class SimEnv:
         }
 
     async def run_api_jobs(self, *, include_deferred: bool = True) -> int:
-        functions = {**job_functions(), **{f.__name__: f for f in sim_job_functions()}}
+        functions = job_functions()
         ran = 0
         for _ in range(50):
             runnable = [j for j in self.queue.jobs if include_deferred or not j.defer_by_s]
@@ -412,12 +413,6 @@ class SimEnv:
                     await self.runner.single_turn(*args)
                 else:
                     await self.runner.simulation(*args)
-
-
-def sim_job_functions() -> list[Any]:
-    from app.simulator.install import job_functions as functions
-
-    return functions()
 
 
 @pytest_asyncio.fixture

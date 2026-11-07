@@ -117,9 +117,9 @@ class IssueEnv:
         return {"db": state.db, "settings": state.settings, "jobs": self.queue, "redis": state.redis}
 
     async def run_jobs(self, *names: str, rounds: int = 10) -> int:
-        from app.issues.install import job_functions
+        from app.issues.install import FEATURE
 
-        functions = {f.__name__: f for f in job_functions()}
+        functions = dict(FEATURE.jobs)
         ran = 0
         for _ in range(rounds):
             todo = [j for j in self.queue.jobs if j.name in functions and (not names or j.name in names)]

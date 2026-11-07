@@ -20,7 +20,6 @@ from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.core.rate_limit import RateLimiter
 from app.core.secrets import key_wrapper
-from app.tools import hooks as _hooks  # noqa: F401  (registers 002 hooks)
 from app.tools import http_exec, service
 from app.tools.presets import PRESETS
 from app.tools.schemas import SetAgentTools, TestRunRequest, ToolCreate, ToolType, ToolUpdate

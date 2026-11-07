@@ -25,8 +25,6 @@ from app.flows.models import Flow
 from app.llms.adapters.fake import PURPOSE_REPLIES
 from app.tools import service as tools
 
-_registered = False
-
 
 async def resolve_flow(ctx: agent_hooks.HookContext) -> Any:
     if ctx.agent_type != "flow" or ctx.session is None or ctx.agent_id is None:
@@ -77,12 +75,7 @@ async def duplicate_flow(ctx: agent_hooks.DuplicateContext) -> None:
 
 
 def register() -> None:
-    """Install the hooks once per process (called by ``create_app``)."""
-    global _registered
     ports.set_flow_runtime_available(True)
-    if _registered:
-        return
-    _registered = True
     agent_hooks.register_snapshot_resolver("flow", resolve_flow)
     agent_hooks.register_validator("flow", validate_flow)
     agent_hooks.register_duplicate_hook(duplicate_flow)

@@ -1,20 +1,18 @@
-"""Call jobs: post-call pipeline, recording start, stuck-call reaper, replay CLI (003 T057, T080,
-T081, T083, T114; research R13, R14, R16).
+"""Call jobs: post-call pipeline, recording start, stuck-call reaper (003 T057, T080, T081, T083,
+T114; research R13, R14, R16).
 
 arq entry points take ``ctx`` with ``db``, ``settings``, ``livekit``, ``jobs`` and
-``adapter_catalog`` (built in ``app.core.jobs.startup``). The functions under them take explicit
+``adapter_catalog`` (built in ``app.worker.startup``). The functions under them take explicit
 arguments so tests run them without Redis.
 
 Replay a call's pipeline (every step again; idempotent, so no second charge or notification)::
 
-    uv run python -m app.calls.jobs replay <call_id>
+    uv run python -m app.worker replay <call_id>
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -283,56 +281,3 @@ async def settle_stuck_recordings(ctx: dict[str, Any]) -> int:
 async def reap_stuck_calls(ctx: dict[str, Any]) -> int:
     result = await reap_and_clean(ctx["db"], ctx.get("livekit"), ctx.get("jobs"))
     return len(result.reaped)
-
-
-# CLI -----------------------------------------------------------------------------------------
-
-
-async def _replay(call_id: str) -> int:
-    from callwright_contract.adapters import load_catalog
-
-    from app.agent_versions.runtime_port import register as register_agent_versions
-    from app.core.config import get_settings
-    from app.core.queue import ArqJobQueue
-    from app.evals.install import install as install_quality
-
-    settings = get_settings()
-    db = Database(settings.database_url, settings.database_admin_url, pool_size=2)
-    queue = ArqJobQueue()
-    # The same ports as the jobs worker (app.core.jobs.startup): without 002's agent versions
-    # price_and_charge cannot read the call's config and the replay blocks the call.
-    register_agent_versions()
-    await install_quality(settings, None, queue=queue, sync=False)
-    try:
-        async with db.transaction() as session:
-            workspace_id = (
-                await session.execute(text("select calls_workspace_for(:id)"), {"id": call_id})
-            ).scalar()
-        if workspace_id is None:
-            print(f"no call {call_id}", file=sys.stderr)
-            return 1
-        result = await run_pipeline_for(
-            db,
-            queue,
-            str(workspace_id),
-            call_id,
-            catalog=load_catalog(),
-            recordings_bucket=settings.recordings_bucket,
-            replay=True,
-        )
-        print(f"{call_id}: {result.status} {result.steps}")
-        return 0 if result.status in ("finished", "not_ready") else 2
-    finally:
-        await queue.aclose()
-        await db.dispose()
-
-
-def main(argv: list[str]) -> int:
-    if len(argv) != 2 or argv[0] != "replay":
-        print("usage: python -m app.calls.jobs replay <call_id>", file=sys.stderr)
-        return 2
-    return asyncio.run(_replay(argv[1]))
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

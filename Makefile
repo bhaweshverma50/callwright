@@ -29,7 +29,7 @@ api: ## Run the API on :8100 with reload
 	$(UV) uvicorn app.main:app --reload --port 8100
 
 worker: ## Run the arq jobs worker
-	$(UV) arq app.core.jobs.WorkerSettings
+	$(UV) arq app.worker.WorkerSettings
 
 test: ## Run every API test (needs `make up`)
 	$(UV) pytest -q

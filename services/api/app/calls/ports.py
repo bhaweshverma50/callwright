@@ -1,7 +1,8 @@
 """Extension points of the calls module (003 plan "Extension points", T018).
 
-Later or parallel features register implementations here; until they do, the defaults keep the
-API working with clear refusals.
+Later or parallel features register implementations in ``registry`` from their ``install`` hook
+(``app/features.py`` runs every hook in the API and the jobs worker); until they do, the defaults
+keep the API working with clear refusals.
 
 * ``AgentVersionsPort`` (002): frozen agent versions. 003 codes against this protocol; the
   integrator registers 002's ``agent_versions.service`` with ``set_agent_versions`` at merge.
@@ -11,17 +12,26 @@ API working with clear refusals.
   pinned version or None. Every method receives the caller's RLS-scoped session.
 * ``InboundRouter`` (010): resolves an inbound SIP or WhatsApp call to workspace and agent.
 * ``OutboundDialProvider`` (010): trunk and numbers for ``sip_outbound`` claims.
-* ``ObjectSigner``: short-lived GET URLs for objects (uploaded ambience, recordings).
+* ``ObjectSigner`` (``core.storage``): short-lived GET URLs for uploaded ambience and recordings.
 * ``flow_runtime_available`` (004): flow agents are refused until 004 says it can run them.
+* ``CallQualityPort`` (007): verdicts and labels on call lists, detail and the dashboard.
+* step handlers (007): the post-call pipeline's ``analyze`` and ``evaluate`` steps.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.calls.quality_port import CallQualityPort, NullCallQualityPort
+from app.core.storage import ObjectSigner
+
+# ``async def handler(call_id, session) -> None`` for the ``analyze`` and ``evaluate`` steps.
+StepHandler = Callable[[str, AsyncSession], Awaitable[None]]
+EXTERNAL_STEPS = ("analyze", "evaluate")
 
 
 @dataclass(frozen=True)
@@ -96,10 +106,6 @@ class OutboundDialProvider(Protocol):
     async def dial_spec(self, session: AsyncSession, call: Any) -> OutboundDial | None: ...
 
 
-class ObjectSigner(Protocol):
-    def presign_get(self, bucket: str, key: str, ttl_s: int) -> str: ...
-
-
 @dataclass
 class Registry:
     agent_versions: AgentVersionsPort = field(default_factory=NoAgentVersions)
@@ -107,6 +113,8 @@ class Registry:
     outbound_dial: OutboundDialProvider | None = None
     signer: ObjectSigner | None = None
     flow_runtime_available: bool = False
+    quality: CallQualityPort = field(default_factory=NullCallQualityPort)
+    step_handlers: dict[str, StepHandler] = field(default_factory=dict)
 
 
 registry = Registry()
@@ -130,3 +138,18 @@ def set_object_signer(signer: ObjectSigner | None) -> None:
 
 def set_flow_runtime_available(available: bool) -> None:
     registry.flow_runtime_available = available
+
+
+def set_quality_port(port: CallQualityPort | None) -> None:
+    """``None`` restores the null port (tests)."""
+    registry.quality = port if port is not None else NullCallQualityPort()
+
+
+def set_step_handler(step: str, handler: StepHandler | None) -> None:
+    """Register (or with None, remove) the handler for ``analyze`` or ``evaluate``."""
+    if step not in EXTERNAL_STEPS:
+        raise ValueError("only analyze and evaluate accept handlers")
+    if handler is None:
+        registry.step_handlers.pop(step, None)
+    else:
+        registry.step_handlers[step] = handler

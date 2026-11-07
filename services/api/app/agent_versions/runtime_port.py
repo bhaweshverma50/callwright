@@ -1,7 +1,7 @@
 """003's ``AgentVersionsPort`` over this module's service (wave 2 integration).
 
-The voice runtime codes against ``app.calls.ports.AgentVersionsPort``; ``create_app`` registers
-``AgentVersionsAdapter`` with ``ports.set_agent_versions``. Every method runs in the caller's
+The voice runtime codes against ``app.calls.ports.AgentVersionsPort``; the feature's ``install``
+registers ``AgentVersionsAdapter`` with ``ports.set_agent_versions``. Every method runs in the caller's
 workspace-scoped session, so RLS hides other workspaces' agents and versions.
 
 002's ``AgentSnapshot`` carries version bookkeeping (number, schema version, hash, source) that
@@ -69,5 +69,4 @@ class AgentVersionsAdapter:
 
 
 def register() -> None:
-    """Make 002 the source of agent versions for 003 (called by ``create_app``)."""
     ports.set_agent_versions(AgentVersionsAdapter())

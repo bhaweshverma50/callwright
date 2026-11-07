@@ -1,8 +1,8 @@
 """Quality data seam between 006 (reads) and 007 (owns verdicts and labels), research R3.
 
 006 renders evaluation outcomes, the viewer's own labels and evaluator pass rates, but 007 owns
-that data and depends on 006. 007 registers its implementation at app start with
-``register_quality_port``; until then ``NullCallQualityPort`` answers with the empty states
+that data and depends on 006. 007 registers its implementation at start-up with
+``ports.set_quality_port``; until then ``NullCallQualityPort`` answers with the empty states
 ("not evaluated", unannotated, no evaluator runs).
 """
 
@@ -132,16 +132,3 @@ class NullCallQualityPort:
         self, session: AsyncSession, left_call_id: str, right_call_id: str
     ) -> list[VerdictDiff]:
         return []
-
-
-_port: CallQualityPort = NullCallQualityPort()
-
-
-def register_quality_port(port: CallQualityPort | None) -> None:
-    """007 installs its port at start-up; ``None`` restores the null port (tests)."""
-    global _port
-    _port = port if port is not None else NullCallQualityPort()
-
-
-def quality_port() -> CallQualityPort:
-    return _port

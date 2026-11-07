@@ -337,14 +337,10 @@ async def test_estimate_before_any_fix(issue_env: IssueEnv) -> None:
 
 async def test_end_to_end_with_text_runner(sim_env: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.evaluators.registry import builtin_id
-    from app.issues.install import job_functions as issue_jobs
-    from tests import sim_support
     from tests.conftest import signup
     from tests.issues_support import enable as enable_checks
     from tests.sim_support import make_agent
 
-    original = sim_support.sim_job_functions
-    monkeypatch.setattr(sim_support, "sim_job_functions", lambda: [*original(), *issue_jobs()])
     account = await signup(sim_env.client, sim_env.app)
     agent = await make_agent(sim_env.client, account)
     intent = builtin_id("intent_fulfillment")

@@ -48,7 +48,7 @@ export DATABASE_URL=postgresql://callwright:callwright@localhost:55432/callwrigh
 ```bash
 cd services/api && uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8100              # API
-uv run arq app.core.jobs.WorkerSettings                       # jobs (pipeline, webhooks, reaper)
+uv run arq app.worker.WorkerSettings                          # jobs (pipeline, webhooks, reaper)
 cd ../voice-worker && uv run python -m worker.entry dev       # voice worker (vendor keys)
 cd ../../apps/web && pnpm dev                                 # SPA on http://localhost:5180
 ```
@@ -165,7 +165,7 @@ uv run --directory services/api pytest tests/unit/test_auto_stt.py -q
 ```bash
 psql $DATABASE_URL -c "select step, status, attempts from call_pipeline_steps where call_id='<id>';"
 # replay every step: should not create a second charge
-uv run python -m app.calls.jobs replay <call_id>
+uv run python -m app.worker replay <call_id>
 psql $DATABASE_URL -c "select count(*) from credit_transactions where call_id='<id>';"   # expect 1
 ```
 

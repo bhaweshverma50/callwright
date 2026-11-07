@@ -22,7 +22,8 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.agents.models import Agent
 from app.call_events.models import CallEvent
 from app.calls.models import Call
-from app.calls.quality_port import EvaluatorStat, quality_port
+from app.calls.ports import registry
+from app.calls.quality_port import EvaluatorStat
 from app.dashboard.aggregates import daily_average, delta_pp, top_with_others, zero_fill
 from app.dashboard.periods import Window
 
@@ -236,7 +237,7 @@ def _stat_json(s: EvaluatorStat) -> dict[str, Any]:
 async def quality(
     session: AsyncSession, window: Window, agent_ids: Sequence[str], compare: bool
 ) -> dict[str, Any]:
-    port = quality_port()
+    port = registry.quality
     current, evaluated = await port.window_stats(
         session, start=window.start, end=window.end, agent_ids=agent_ids
     )
@@ -257,7 +258,7 @@ async def quality(
 
 async def agent_health(session: AsyncSession, window: Window, agent_ids: Sequence[str]) -> dict[str, Any]:
     """Headline evaluators: last 30 days against the 30 before, at most 4, by run count."""
-    port = quality_port()
+    port = registry.quality
     prior = window.prior()
     current, _ = await port.window_stats(session, start=window.start, end=window.end, agent_ids=agent_ids)
     before, _ = await port.window_stats(session, start=prior.start, end=prior.end, agent_ids=agent_ids)

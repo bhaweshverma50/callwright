@@ -62,9 +62,6 @@ BLOCKING_STEPS = frozenset({"finalize_transcript", "price_and_charge", "complete
 STEPS: tuple[StepSpec, ...] = tuple(StepSpec(name, name in BLOCKING_STEPS) for name in PIPELINE_STEPS)
 
 Outcome = Literal["done", "skipped"]
-# 007 registers ``async def handler(call_id, session) -> None`` for analyze and evaluate.
-ExternalHandler = Callable[[str, AsyncSession], Awaitable[None]]
-_external: dict[str, ExternalHandler] = {}
 # Jobs an external handler wants enqueued once its step commits (007 enqueues evaluate_call).
 _step_deferred: ContextVar[Deferred | None] = ContextVar("pipeline_step_deferred", default=None)
 
@@ -72,16 +69,6 @@ _step_deferred: ContextVar[Deferred | None] = ContextVar("pipeline_step_deferred
 def step_deferred() -> Deferred | None:
     """The running ``analyze``/``evaluate`` step's post-commit job list (None outside a step)."""
     return _step_deferred.get()
-
-
-def register_step_handler(step: str, handler: ExternalHandler | None) -> None:
-    """Register (or with None, remove) the handler for ``analyze`` or ``evaluate`` (007)."""
-    if step not in ("analyze", "evaluate"):
-        raise ValueError("only analyze and evaluate accept handlers")
-    if handler is None:
-        _external.pop(step, None)
-    else:
-        _external[step] = handler
 
 
 @dataclass
@@ -173,7 +160,7 @@ async def price_and_charge(ctx: StepContext) -> Outcome:
 
 def _external_step(name: str) -> StepHandler:
     async def run(ctx: StepContext) -> Outcome:
-        handler = _external.get(name)
+        handler = registry.step_handlers.get(name)
         if handler is None or ctx.call.connected_at is None:
             return "skipped"
         token = _step_deferred.set(ctx.deferred)

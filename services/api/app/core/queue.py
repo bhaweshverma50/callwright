@@ -1,8 +1,5 @@
-"""Job queue port (003): where request handlers and jobs enqueue follow-up work.
-
-Kept apart from ``app.core.jobs`` (the arq worker definition imports every feature's jobs), so
-feature modules can depend on the queue without import cycles.
-"""
+"""Job queue port (003): where request handlers and jobs enqueue follow-up work, by the job name
+a feature's manifest declares (``Feature.jobs``; the worker is ``app.worker``)."""
 
 from __future__ import annotations
 

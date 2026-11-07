@@ -470,6 +470,3 @@ async def attachments_for_agent(ctx: agent_hooks.UsageContext) -> list[agent_hoo
             )
         )
     return out
-
-
-agent_hooks.register_usage_checker(attachments_for_agent)

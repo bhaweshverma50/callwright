@@ -1,8 +1,10 @@
 """FastAPI app factory (T021, T083). Run with ``uv run uvicorn app.main:app --port 8100``.
 
-Routers mount under ``/v1``. ``app.state`` carries the settings, the database (app and admin
-engines), Redis, the token verifier, the identity provider and the payment gateway; tests build
-their own app with ``create_app(settings)``.
+Routers mount under ``/v1``: core's health route, then every feature's routers in
+``app/features.py`` order. The lifespan builds the shared clients on ``app.state`` (settings,
+database, Redis, token verifier, identity provider, payment gateway, LiveKit, job queue, storage,
+SIP, WhatsApp Graph) and runs every feature's ``install`` hook, as the jobs worker does; tests
+build their own app with ``create_app(settings)``.
 """
 
 from __future__ import annotations
@@ -21,78 +23,23 @@ from redis.backoff import NoBackoff
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
-from app.agent_versions.router import router as agent_versions_router
-from app.agent_versions.runtime_port import register as register_agent_versions
-from app.agents.router import router as agents_router
-from app.analysis_vars.router import router as analysis_vars_router
-from app.analytics_chat.router import router as analytics_chat_router
-from app.annotations.router import router as annotations_router
+from app import features
 from app.auth.idp import build_idp
-from app.auth.router import router as auth_router
-from app.billing.router import router as billing_router
 from app.billing.stripe_gateway import build_gateway
-from app.calibration.router import router as calibration_router
-from app.call_events.router import router as call_events_router
-from app.callbacks.router import internal_router as callbacks_internal_router
-from app.callbacks.router import router as callbacks_router
-from app.caller_language.router import internal_router as caller_language_internal_router
-from app.caller_language.router import router as caller_language_router
-from app.calls.read_router import router as calls_read_router
-from app.calls.router import router as calls_router
 from app.core.auth import TokenVerifier
 from app.core.config import Settings, get_settings
 from app.core.db import Database
 from app.core.errors import UnhandledErrorMiddleware, install_error_handlers
+from app.core.feature import Runtime
 from app.core.health import router as health_router
 from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
-from app.core.storage import dev_router as dev_storage_router
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
-from app.dashboard.router import router as dashboard_router
-from app.datasets.router import router as datasets_router
-from app.demo.router import router as demo_router
-from app.dev.router import checkout_router as fake_checkout_router
-from app.dev.router import router as dev_router
-from app.evals.install import install as install_quality
-from app.evals.router import router as evals_router
-from app.evaluators.router import router as evaluators_router
-from app.flows.hooks import register as register_flows
-from app.flows.router import router as flows_router
-from app.issues.install import install as install_issues
-from app.issues.router import router as issues_router
-from app.knowledge.router import internal_router as knowledge_internal_router
-from app.knowledge.router import router as knowledge_router
-from app.livekit_hooks.router import router as livekit_hooks_router
 from app.llms.client import LlmClient
-from app.llms.router import router as llms_router
-from app.outbound.router import router as outbound_router
-from app.phone_numbers.install import install as install_channels
-from app.phone_numbers.router import router as phone_numbers_router
 from app.phone_numbers.sip import build_sip
-from app.preferences.router import router as preferences_router
-from app.pricing.router import router as pricing_router
-from app.prompt_ai.router import router as prompt_ai_router
-from app.recordings.router import router as recordings_router
-from app.review.router import router as review_router
-from app.sessions.router import router as sessions_router
-from app.simulator.install import install as install_simulator
-from app.simulator.internal_router import router as simulator_internal_router
-from app.simulator.router import router as simulator_router
-from app.templates.router import router as templates_router
-from app.test_cases.router import router as test_cases_router
-from app.test_runs.router import internal_router as test_runs_internal_router
-from app.test_runs.router import router as test_runs_router
-from app.tools.router import router as tools_router
-from app.usage.router import router as usage_router
-from app.voice_commands.router import router as voice_commands_router
-from app.voices.router import router as voices_router
-from app.webhooks_out.router import router as webhooks_out_router
 from app.whatsapp.graph_client import build_graph as build_whatsapp_graph
-from app.whatsapp.router import public_router as whatsapp_public_router
-from app.whatsapp.router import router as whatsapp_router
-from app.workspaces.router import router as workspaces_router
 
 logger = logging.getLogger(__name__)
 API_PREFIX = "/v1"
@@ -174,7 +121,7 @@ def _log_hosting_flags(settings: Settings) -> None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    configure_logging(settings.log_level, settings.log_json)
+    configure_logging(settings.log_level, settings.log_json, features.secret_fields())
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -186,11 +133,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.verifier = TokenVerifier(settings)
         app.state.idp = build_idp(settings, db)
         app.state.stripe = build_gateway(settings)
-        # 002 supplies the agent versions 003 admits and claims calls with.
-        register_agent_versions()
-        # 004: flow snapshot resolver and validator, duplicate and mock hooks; flows may run.
-        register_flows()
-        # Voice runtime (003): media server, worker catalog, job queue, outbound webhook client.
         app.state.livekit = build_livekit(settings)
         app.state.adapter_catalog = load_catalog()
         jobs = ArqJobQueue()
@@ -199,17 +141,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.storage = build_store(settings)
         app.state.llm_client = LlmClient(settings)
         app.state.vm_waker = VmWaker(settings.wake_vm_project, settings.wake_vm_zone, settings.wake_vm_name)
-        # Channels (010): SIP trunks and dispatch rules, WhatsApp Cloud API, inbound routing.
         app.state.sip = build_sip(settings)
         app.state.whatsapp_graph = build_whatsapp_graph(settings)
-        install_channels(app.state)
-        # Quality and evaluations (007): post-call analysis and evaluator pipeline handlers, the
-        # 006 quality port and the built-in evaluator catalog.
-        await install_quality(settings, db, queue=jobs)
-        # Testing and simulation (008): offline replies for drafting, judging and persona briefs.
-        install_simulator()
-        # Issues and auto-fix (009): naming and drafting models, embedder, validation hook.
-        install_issues(settings)
+        await features.install(Runtime("api", settings, db, jobs, app.state.webhook_http))
         try:
             yield
         finally:
@@ -248,63 +182,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
         expose_headers=["Retry-After"],
     )
-    for router in (
-        health_router,
-        auth_router,
-        workspaces_router,
-        billing_router,
-        pricing_router,
-        usage_router,
-        sessions_router,
-        calls_router,
-        calls_read_router,
-        recordings_router,
-        dashboard_router,
-        analytics_chat_router,
-        voice_commands_router,
-        call_events_router,
-        webhooks_out_router,
-        livekit_hooks_router,
-        agents_router,
-        agent_versions_router,
-        templates_router,
-        llms_router,
-        voices_router,
-        prompt_ai_router,
-        tools_router,
-        knowledge_router,
-        knowledge_internal_router,
-        phone_numbers_router,
-        outbound_router,
-        callbacks_router,
-        callbacks_internal_router,
-        caller_language_router,
-        caller_language_internal_router,
-        preferences_router,
-        whatsapp_router,
-        whatsapp_public_router,
-        flows_router,
-        demo_router,
-        analysis_vars_router,
-        evaluators_router,
-        evals_router,
-        annotations_router,
-        review_router,
-        calibration_router,
-        test_cases_router,
-        test_runs_router,
-        test_runs_internal_router,
-        simulator_router,
-        simulator_internal_router,
-        datasets_router,
-        issues_router,
-    ):
+    for router in (health_router, *features.routers(settings)):
         app.include_router(router, prefix=API_PREFIX)
-    if settings.dev_routes_enabled:
-        app.include_router(dev_router, prefix=API_PREFIX)
-        app.include_router(dev_storage_router, prefix=API_PREFIX)
-    if settings.fake_checkout_enabled:
-        app.include_router(fake_checkout_router, prefix=API_PREFIX)
     _log_hosting_flags(settings)
     _setup_tracing(app, settings)
     return app

@@ -9,60 +9,30 @@ from __future__ import annotations
 import inspect
 import re
 from collections.abc import Callable
+from functools import cache
 from typing import Annotated, Any
 
 from fastapi import Path
 from ulid import ULID
 
-PREFIXES = frozenset(
-    {
-        "ws",
-        "usr",
-        "agt",
-        "agv",
-        "flw",
-        "tool",
-        "kb",
-        "doc",
-        "call",
-        "num",
-        "wa",
-        "wcr",
-        "dnc",
-        "whd",
-        "var",
-        "evl",
-        "evr",
-        "ann",
-        "ds",
-        "tc",
-        "trn",
-        "exp",
-        "srun",
-        "iss",
-        "txn",
-        "cbk",
-        "cpf",
-        "clg",
-    }
-)
 _ULID = "[0-9A-HJKMNP-TV-Z]{26}"
-_PATTERNS = {p: re.compile(rf"^{p}_{_ULID}$") for p in PREFIXES}
+_PREFIX = re.compile(r"^[a-z]+$")
+
+
+@cache
+def _pattern(prefix: str) -> re.Pattern[str]:
+    return re.compile(rf"^{prefix}_{_ULID}$")
 
 
 def new_id(prefix: str) -> str:
-    if prefix not in PREFIXES:
-        raise ValueError(f"unknown id prefix {prefix!r}")
+    """Prefixes are declared by the owning feature's manifest (``Feature.id_prefixes``)."""
+    if not _PREFIX.match(prefix):
+        raise ValueError(f"invalid id prefix {prefix!r}")
     return f"{prefix}_{ULID()}"
 
 
 def is_valid_id(value: str, prefix: str) -> bool:
-    pattern = _PATTERNS.get(prefix)
-    return bool(pattern and pattern.match(value))
-
-
-def id_pattern(prefix: str) -> str:
-    return _PATTERNS[prefix].pattern
+    return bool(_PREFIX.match(prefix) and _pattern(prefix).match(value))
 
 
 def require_id(value: str, prefix: str, kind: str) -> str:

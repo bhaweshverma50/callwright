@@ -15,13 +15,13 @@ from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.datasets import service
 from app.datasets.schemas import AddItems, DatasetCreate, DatasetUpdate, EvaluateBody
+from app.evals.jobs import EVALUATE_CALL
 
 router = APIRouter(tags=["datasets"])
 
 DatasetId = Annotated[str, Depends(path_id("ds", "dataset", "dataset_id"))]
 CallId = Annotated[str, Depends(path_id("call", "call", "call_id"))]
 EVALUATE = "POST /v1/datasets/{id}/evaluate"
-EVALUATE_CALL = "evaluate_call"
 
 
 def _tx(request: Request, principal: Principal) -> Any:

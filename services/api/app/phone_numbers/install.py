@@ -1,17 +1,33 @@
-"""Registers 010's implementations with 003's extension points (``calls/ports.py``)."""
+"""Phone numbers (010): routes inbound SIP calls, blocks deleting agents in use and drains deleted
+numbers and WhatsApp channels."""
 
 from __future__ import annotations
 
-from typing import Any
+from arq import cron
 
-from app.calls.ports import register_inbound_router, set_outbound_dial_provider
-from app.outbound.service import SipOutboundDial
+from app.agents import hooks as agent_hooks
+from app.calls import ports
+from app.core.feature import Feature, Runtime
+from app.phone_numbers.jobs import drain_channels
+from app.phone_numbers.router import router
 from app.phone_numbers.routing import PhoneNumberRouter
-from app.whatsapp.routing import WhatsAppRouter
+from app.phone_numbers.service import attachments_for_agent
 
 
-def install(state: Any) -> None:
-    """``state`` is ``app.state`` with ``db``, ``settings`` and ``webhook_http`` set."""
-    register_inbound_router("sip_inbound", PhoneNumberRouter(state.db, state.settings, state.webhook_http))
-    register_inbound_router("whatsapp", WhatsAppRouter(state.db, state.settings, state.webhook_http))
-    set_outbound_dial_provider(SipOutboundDial())
+def install(runtime: Runtime) -> None:
+    ports.register_inbound_router(
+        "sip_inbound", PhoneNumberRouter(runtime.db, runtime.settings, runtime.http)
+    )
+    agent_hooks.register_usage_checker(attachments_for_agent)
+
+
+FEATURE = Feature(
+    "phone_numbers",
+    routers=(router,),
+    install=install,
+    jobs={"drain_channels": drain_channels},
+    # 010 R8.
+    crons=(cron(drain_channels, second={5, 35}, run_at_startup=False, unique=True),),
+    id_prefixes=frozenset({"num"}),
+    secret_fields=("auth_password",),
+)

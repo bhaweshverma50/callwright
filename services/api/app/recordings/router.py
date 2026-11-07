@@ -10,10 +10,11 @@ from fastapi.responses import JSONResponse
 from opentelemetry import trace
 
 from app.calls.models import Call
+from app.calls.ports import registry
 from app.core.auth import CurrentPrincipal
 from app.core.errors import not_found, problem_responses
 from app.core.ids import path_id
-from app.recordings.service import build_signer, recording_link
+from app.recordings.service import recording_link
 
 router = APIRouter(tags=["recordings"])
 tracer = trace.get_tracer("app.recordings")
@@ -35,11 +36,12 @@ async def get_recording(
             call = await session.get(Call, call_id)
         if call is None:
             raise not_found("call")
-        signer = getattr(state, "recording_signer", None) or build_signer(state.settings, state.storage)
-        state.recording_signer = signer
-        body = await recording_link(
+        if registry.signer is None:
+            raise not_found("recording")
+        body = recording_link(
             call,
-            signer,
+            registry.signer,
+            state.settings.recordings_bucket,
             ttl_s=state.settings.recording_url_ttl_s,
             disposition=disposition,
             now=datetime.now(UTC),

@@ -15,7 +15,7 @@ supabase start                                  # prints the local auth URL and 
 cp services/api/.env.example services/api/.env  # fill SUPABASE_URL, SUPABASE_SERVICE_KEY, STRIPE_* (test mode)
 cd services/api && uv sync && uv run alembic upgrade head && cd -
 uv run --directory services/api uvicorn app.main:app --reload --port 8000 &
-uv run --directory services/api arq app.core.jobs.WorkerSettings &
+uv run --directory services/api arq app.worker.WorkerSettings &
 stripe listen --forward-to localhost:8000/v1/webhooks/stripe   # copy the whsec_ into STRIPE_WEBHOOK_SECRET
 cd apps/web && pnpm install && pnpm dev                         # http://localhost:5173
 ```

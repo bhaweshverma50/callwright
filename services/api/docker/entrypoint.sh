@@ -22,7 +22,7 @@ case "$role" in
       "$@"
     ;;
   worker)
-    exec python -m app.core.worker_main "$@"
+    exec python -m app.worker "$@"
     ;;
   migrate)
     alembic upgrade head

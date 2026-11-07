@@ -19,7 +19,7 @@ from app.calls import queries
 from app.calls.compare import align_turns, flow_diff, verdict_diffs_json
 from app.calls.export import EXPORT_LIMIT, csv_lines, pick_columns
 from app.calls.models import Call
-from app.calls.quality_port import quality_port
+from app.calls.ports import registry
 from app.core.auth import CurrentPrincipal, Principal
 from app.core.errors import ProblemError, field_error, not_found, problem_responses, validation_failed
 from app.core.ids import path_id
@@ -189,7 +189,7 @@ async def compare_calls(
             right_items = await queries.transcript_items(session, right_call)
             left_flow = await queries.flow_path(session, call_id)
             right_flow = await queries.flow_path(session, right_id)
-            verdicts = await quality_port().verdict_diffs(session, call_id, right_id)
+            verdicts = await registry.quality.verdict_diffs(session, call_id, right_id)
     return {
         "left": left,
         "right": right,

@@ -43,11 +43,12 @@ from app.calls import components as comp
 from app.calls import variables as variables_mod
 from app.calls.effects import START_RECORDING, Deferred
 from app.calls.models import Call
-from app.calls.ports import AgentSnapshot, ObjectSigner, registry
+from app.calls.ports import AgentSnapshot, registry
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
 from app.core.ids import is_valid_id, new_id
+from app.core.storage import ObjectSigner
 from app.pricing import service as pricing
 from app.voices.catalog import load_catalog as load_speech_catalog
 from app.webhooks_out import service as webhooks
@@ -676,40 +677,6 @@ async def claim(
     )
     outcome.deferred.extend(admission.deferred)
     return outcome
-
-
-# Recording state (for 006) -----------------------------------------------------------------
-
-
-def recording_state(
-    call: Call,
-    *,
-    signer: ObjectSigner | None = None,
-    bucket: str | None = None,
-    now: datetime | None = None,
-) -> dict[str, Any]:
-    """Contract ``CallRecordingState``: ``not_recorded`` (never a URL) is distinct from ``failed``."""
-    url = None
-    expires = None
-    if (
-        call.recording_enabled
-        and call.recording_status == "available"
-        and call.recording_key
-        and signer is not None
-        and bucket
-    ):
-        url = signer.presign_get(bucket, call.recording_key, SIGNED_URL_TTL_S)
-        from datetime import timedelta
-
-        expires = ((now or datetime.now(UTC)) + timedelta(seconds=SIGNED_URL_TTL_S)).isoformat()
-    return {
-        "call_id": call.id,
-        "recording_enabled": call.recording_enabled,
-        "recording_setting_source": call.recording_setting_source,
-        "recording_status": call.recording_status,
-        "recording_url": url,
-        "expires_at": expires,
-    }
 
 
 async def config_for(session: AsyncSession, call: Call) -> Mapping[str, Any] | None:

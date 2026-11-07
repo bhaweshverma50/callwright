@@ -50,10 +50,15 @@ apps/web/src/
                   003 testing and 008), floating AnalyticsAssistant and VoiceCopilot (006)
   api/            generated TS client from contracts (openapi-typescript)
 services/api/app/
-  main.py         app factory, router registration
+  features.py     the list of features; main.py and worker.py iterate it
+  main.py         app factory: routers and installs from features.py
+  worker.py       arq jobs worker: jobs, crons and installs from features.py; replay CLI
   core/           config, db (sets app.workspace_id for RLS), auth, ids, errors, logging,
-                  jobs (arq setup), secrets, rate_limit, idempotency, livekit, url_guard
-  <module>/       router.py, schemas.py, models.py, service.py, jobs.py, adapters/ (if any)
+                  feature (the manifest type), queue, secrets, rate_limit, idempotency, livekit,
+                  storage, url_guard; core imports no feature
+  <module>/       install.py (FEATURE manifest: routers, install hook, jobs, crons, id prefixes,
+                  secret field names), router.py, schemas.py, models.py, service.py, jobs.py,
+                  adapters/ (if any)
   migrations/     Alembic, forward-only
 services/api/tests/{unit,contract,integration}/
 services/voice-worker/worker/
@@ -78,6 +83,9 @@ docker-compose.yml, .github/workflows/ci.yml
 **Core helper ownership.** `core/` belongs to 001. A helper is created by the first feature in
 dependency order that needs it: 001 creates config, db, auth, ids, errors, logging, jobs, secrets,
 rate_limit; 003 creates livekit, url_guard, idempotency. Later features extend, never fork, them.
+A feature is wired by its manifest and one line in `app/features.py`; core never imports a
+feature, and features register with each other's ports from their `install` hook, which runs in
+the API and the jobs worker alike.
 
 **Vendor adapters.** Principle I applies on both sides: the worker has runtime adapters; the API
 has `llms/adapters/` (prompt assistant, judges, analytics), `voices/adapters/` (voice listings),

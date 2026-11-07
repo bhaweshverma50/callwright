@@ -2,7 +2,7 @@
 
 002 stores, hashes, diffs and versions every AgentConfig block, but some blocks belong to later
 features. Instead of importing them (which would invert the build order, architecture section
-3), 002 calls whatever they register here at import time of their module:
+3), 002 calls whatever they register here from their feature's ``install`` hook:
 
 * ``register_validator(block, fn)``: called by ``agents.service.validate_config`` (save, publish,
   ``POST /v1/agents/validate``) with a :class:`HookContext`. Returns a :class:`HookIssues`
@@ -24,8 +24,8 @@ Flow-node overrides (004): every per-node model, voice or STT override MUST be v
 ``agents.service.validate_override(path, value)``, which uses the same ``controls`` range table
 that ``GET /v1/voices/catalog`` serves (FR-047, T104). Do not keep a second range table.
 
-Hooks may be plain functions or coroutines. Registration is process-wide; tests use
-``registered(...)`` to install hooks temporarily.
+Hooks may be plain functions or coroutines. Registration is process-wide and registering the same
+function again is a no-op; tests use ``registered(...)`` to install hooks temporarily.
 """
 
 from __future__ import annotations
@@ -100,7 +100,9 @@ SNAPSHOT_ONLY_BLOCKS = frozenset({"tools", "knowledge"})
 
 
 def register_validator(block: str, fn: Validator) -> None:
-    _validators.setdefault(block, []).append(fn)
+    fns = _validators.setdefault(block, [])
+    if fn not in fns:
+        fns.append(fn)
 
 
 def register_snapshot_resolver(block: str, fn: SnapshotResolver) -> None:
@@ -110,11 +112,13 @@ def register_snapshot_resolver(block: str, fn: SnapshotResolver) -> None:
 
 
 def register_usage_checker(fn: UsageChecker) -> None:
-    _usage_checkers.append(fn)
+    if fn not in _usage_checkers:
+        _usage_checkers.append(fn)
 
 
 def register_duplicate_hook(fn: DuplicateHook) -> None:
-    _duplicate_hooks.append(fn)
+    if fn not in _duplicate_hooks:
+        _duplicate_hooks.append(fn)
 
 
 async def _maybe_await(value: Any) -> Any:

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from app.core.worker_main import is_healthy, serve_health
+from app.core.worker_health import is_healthy, serve_health
 
 
 @dataclass

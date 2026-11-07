@@ -16,7 +16,6 @@ from app.core.errors import forbidden, not_found, problem_responses, too_many_re
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.core.rate_limit import RateLimiter
-from app.knowledge import hooks as _hooks  # noqa: F401  (registers 002 hooks)
 from app.knowledge import jobs, service, storage
 from app.knowledge.schemas import (
     CheckDuplicate,

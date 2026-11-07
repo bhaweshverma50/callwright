@@ -9,15 +9,12 @@ A link is valid for at most ``RECORDING_URL_TTL_S`` (capped at 600 s). States fr
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from pathlib import PurePosixPath
 from typing import Any, Literal, Protocol
 
-from app.core.config import Settings
 from app.core.errors import ProblemError
-from app.core.storage import ObjectStore
+from app.core.storage import ObjectSigner
 
 MAX_TTL_S = 600
 CONTENT_TYPES = {
@@ -30,9 +27,6 @@ CONTENT_TYPES = {
     "webm": "audio/webm",
 }
 
-# (key, ttl_s, download filename or None) -> URL
-Signer = Callable[[str, int, str | None], Awaitable[str]]
-
 
 class _RecordingCall(Protocol):
     id: str
@@ -41,9 +35,10 @@ class _RecordingCall(Protocol):
     billable_seconds: int | None
 
 
-async def recording_link(
+def recording_link(
     call: _RecordingCall,
-    sign: Signer,
+    signer: ObjectSigner,
+    bucket: str,
     *,
     ttl_s: int,
     disposition: Literal["inline", "attachment"],
@@ -65,7 +60,9 @@ async def recording_link(
     ext = PurePosixPath(call.recording_key).suffix.lstrip(".").lower() or "ogg"
     filename = f"{call.id}.{ext}"
     ttl = max(1, min(ttl_s, MAX_TTL_S))
-    url = await sign(call.recording_key, ttl, filename if disposition == "attachment" else None)
+    url = signer.presign_get(
+        bucket, call.recording_key, ttl, filename if disposition == "attachment" else None
+    )
     return {
         "url": url,
         "expires_at": (now + timedelta(seconds=ttl)).isoformat(),
@@ -73,36 +70,3 @@ async def recording_link(
         "filename": filename,
         "duration_s": call.billable_seconds,
     }
-
-
-def build_signer(settings: Settings, store: ObjectStore) -> Signer:
-    """S3 presigned GET on the recordings bucket in ``s3`` storage mode; the dev store otherwise."""
-    if settings.storage_mode != "s3":
-
-        async def fake(key: str, ttl_s: int, download_name: str | None) -> str:
-            return await store.signed_url(key, ttl_s)
-
-        return fake
-
-    import boto3
-
-    access = settings.recordings_s3_access_key or settings.s3_access_key_id
-    secret = settings.recordings_s3_secret_key or settings.s3_secret_access_key
-    client: Any = boto3.client(
-        "s3",
-        endpoint_url=settings.recordings_s3_endpoint or settings.s3_endpoint_url,
-        region_name=settings.recordings_s3_region,
-        aws_access_key_id=access.get_secret_value() if access else None,
-        aws_secret_access_key=secret.get_secret_value() if secret else None,
-    )
-
-    async def s3(key: str, ttl_s: int, download_name: str | None) -> str:
-        params: dict[str, str] = {"Bucket": settings.recordings_bucket, "Key": key}
-        if download_name:
-            params["ResponseContentDisposition"] = f'attachment; filename="{download_name}"'
-        url: str = await asyncio.to_thread(
-            client.generate_presigned_url, "get_object", Params=params, ExpiresIn=ttl_s
-        )
-        return url
-
-    return s3

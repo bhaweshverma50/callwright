@@ -29,6 +29,7 @@ from app.billing import service as billing
 from app.calls.models import Call
 from app.core.db import Database
 from app.core.errors import ProblemError
+from app.evals.jobs import EVALUATE_CALL
 from app.evals.runtime import runtime
 from app.simulator import calls as sim_calls
 from app.simulator import dispatch, service
@@ -38,7 +39,6 @@ from app.simulator.persona import ExtractionFailed, extract_brief
 
 logger = logging.getLogger(__name__)
 DISPATCH_SIMULATION = "dispatch_simulation"
-EVALUATE_CALL = "evaluate_call"
 STALE_RUN_S = 15 * 60
 LOST_DISPATCH_S = 30 * 60
 

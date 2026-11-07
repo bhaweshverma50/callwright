@@ -1,6 +1,6 @@
 """005's registrations in 002's hook registries (T077): the ``kb_ids`` validator and the
 ``knowledge`` snapshot resolver (``[{kb_id, name, description}]`` captured at save and publish,
-used by the worker to word ``kb_search``). Imported by ``app.knowledge.router``."""
+used by the worker to word ``kb_search``). Registered by the feature's ``install``."""
 
 from __future__ import annotations
 
@@ -49,6 +49,3 @@ async def resolve_knowledge(ctx: hooks.HookContext) -> list[dict[str, Any]] | No
 def register() -> None:
     hooks.register_validator("kb_ids", validate_kb_ids)
     hooks.register_snapshot_resolver("knowledge", resolve_knowledge)
-
-
-register()

@@ -16,7 +16,7 @@ import copy
 import hashlib
 import json
 import uuid
-from collections.abc import AsyncIterator, Callable, Mapping
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -34,6 +34,7 @@ from app.calls import ports
 from app.calls.effects import Job
 from app.calls.ports import AgentSnapshot
 from app.core.ids import new_id
+from app.features import job_functions
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "schema_version": 1,
@@ -213,26 +214,6 @@ class FakeAgentVersions:
     async def get_published(self, session: AsyncSession, agent_id: str) -> AgentSnapshot | None:
         agent = await self._visible(session, agent_id)
         return agent.published if agent else None
-
-
-JobFn = Callable[..., Any]
-
-
-def job_functions() -> dict[str, JobFn]:
-    from app.analysis_vars.jobs import rerun_analysis
-    from app.calls.jobs import reap_stuck_calls, run_pipeline, start_recording
-    from app.evals.jobs import evaluate_call
-    from app.webhooks_out.jobs import deliver_webhook, purge_webhook_deliveries
-
-    return {
-        "evaluate_call": evaluate_call,
-        "rerun_analysis": rerun_analysis,
-        "run_pipeline": run_pipeline,
-        "start_recording": start_recording,
-        "deliver_webhook": deliver_webhook,
-        "reap_stuck_calls": reap_stuck_calls,
-        "purge_webhook_deliveries": purge_webhook_deliveries,
-    }
 
 
 @dataclass

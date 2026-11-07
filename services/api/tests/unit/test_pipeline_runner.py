@@ -9,15 +9,15 @@ import pytest
 from callwright_contract.calls import PIPELINE_STEPS
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.calls import pipeline
+from app.calls import pipeline, ports
 from tests.runtime_support import Runtime, agent_config, ended_call, owner_sql
 
 
 @pytest.fixture(autouse=True)
 def _clear_handlers() -> Any:
     yield
-    pipeline.register_step_handler("analyze", None)
-    pipeline.register_step_handler("evaluate", None)
+    ports.set_step_handler("analyze", None)
+    ports.set_step_handler("evaluate", None)
 
 
 async def _run(runtime: Runtime, ws: str, call_id: str, **kw: Any) -> pipeline.PipelineRun:
@@ -37,7 +37,7 @@ def test_fixed_order_and_blocking_flags() -> None:
         "complete",
     ]
     with pytest.raises(ValueError):
-        pipeline.register_step_handler("price_and_charge", lambda c, s: None)  # type: ignore[arg-type,return-value]
+        ports.set_step_handler("price_and_charge", lambda c, s: None)  # type: ignore[arg-type,return-value]
 
 
 async def test_registered_handlers_run_in_order(runtime: Runtime) -> None:
@@ -49,8 +49,8 @@ async def test_registered_handlers_run_in_order(runtime: Runtime) -> None:
     async def evaluate(call_id: str, session: AsyncSession) -> None:
         seen.append("evaluate")
 
-    pipeline.register_step_handler("analyze", analyze)
-    pipeline.register_step_handler("evaluate", evaluate)
+    ports.set_step_handler("analyze", analyze)
+    ports.set_step_handler("evaluate", evaluate)
     setup = await ended_call(runtime)
     result = await _run(runtime, setup.workspace_id, setup.call_id)
     assert result.status == "finished" and seen == ["analyze", "evaluate"]
@@ -70,7 +70,7 @@ async def test_non_blocking_failure_is_a_warning(runtime: Runtime) -> None:
     async def broken(call_id: str, session: AsyncSession) -> None:
         raise RuntimeError("model unavailable")
 
-    pipeline.register_step_handler("analyze", broken)
+    ports.set_step_handler("analyze", broken)
     setup = await ended_call(
         runtime, config=agent_config(advanced={"webhook_url": "https://hooks.example.com/x"})
     )

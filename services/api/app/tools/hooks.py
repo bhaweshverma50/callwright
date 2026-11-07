@@ -1,6 +1,6 @@
 """005's registrations in 002's hook registries (T025): the ``tool_ids`` validator and the
 ``tools`` snapshot resolver, so every recorded version (save, publish, test snapshot) embeds the
-resolved tool definitions (research R2). Imported by ``app.tools.router``."""
+resolved tool definitions (research R2). Registered by the feature's ``install``."""
 
 from __future__ import annotations
 
@@ -42,6 +42,3 @@ async def resolve_tools(ctx: hooks.HookContext) -> list[dict[str, Any]] | None:
 def register() -> None:
     hooks.register_validator("tool_ids", validate_tool_ids)
     hooks.register_snapshot_resolver("tools", resolve_tools)
-
-
-register()
