@@ -21,8 +21,8 @@ const problem = (status: number, code: string, detail: string) =>
   });
 
 export const MOCK_AGENTS = [
-  { id: "agt_01MOCKAGENTORDERDESK0000001", name: "Order desk" },
-  { id: "agt_01MOCKAGENTSCHEDULER000002", name: "Clinic scheduler" },
+  { id: "agt_01HMCKAGENT0RDERDESK000001", name: "Order desk" },
+  { id: "agt_01HMCKAGENTSCHEDVR00000002", name: "Clinic scheduler" },
 ];
 
 interface Store {

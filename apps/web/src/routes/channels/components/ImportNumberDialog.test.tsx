@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { TooltipProvider } from "../../../components";
 import { env } from "../../../lib/env";
 import { resetMockChannels } from "../../../mocks/channels/handlers";

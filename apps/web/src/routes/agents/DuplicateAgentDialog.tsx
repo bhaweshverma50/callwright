@@ -8,6 +8,7 @@ import { ApiError, toProblem } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { Button, Dialog, Field, Input, Select, Skeleton, toast } from "../../components";
 import { relativeDate } from "./AgentCard";
+import { agentPath } from "../../lib/paths";
 
 const DRAFT = "draft";
 const KEEPS = ["Prompt, greeting and variables", "Model, voice, speech and call settings", "Tools and knowledge bases, linked to the same ones"];
@@ -64,7 +65,7 @@ export function DuplicateAgentDialog({
       void qc.invalidateQueries({ queryKey: ["agents", "list"] });
       onOpenChange(false);
       toast({ tone: "success", title: "Agent duplicated", description: `${copy.name} starts at version 1 and is not published.` });
-      navigate(copy.type === "flow" ? `/agents/${copy.id}/flow` : `/agents/${copy.id}/edit`);
+      navigate(agentPath(copy));
     },
     onError: (e) => toast({ tone: "error", title: "Not duplicated", description: problemMessage(e, "agent") }),
   });

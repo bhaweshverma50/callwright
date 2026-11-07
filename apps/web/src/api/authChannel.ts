@@ -18,7 +18,7 @@ export const authChannel = {
     try {
       getChannel()?.postMessage(event);
     } catch {
-      /* closed channel: the storage event in session.ts still reaches other tabs */
+      /* closed channel: the storage event (session.ts) still reaches other tabs */
     }
   },
   listen(fn: (event: AuthEvent) => void) {

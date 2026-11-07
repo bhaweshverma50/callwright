@@ -15,9 +15,10 @@ import {
   cn,
   focusRing,
 } from "../components";
-import { signOut } from "./auth";
+import { signOut } from "../api/auth";
 import { setThemePref, useThemePref, type ThemePref } from "./theme";
 import { useTour } from "./tour/context";
+import { SETTINGS_PATH } from "../lib/paths";
 
 export function initialsOf(email: string): string {
   const local = email.split("@")[0] ?? "";
@@ -64,7 +65,7 @@ export function UserMenu() {
           </TruncatedText>
         </MenuLabel>
         <MenuSeparator />
-        <MenuItem onSelect={() => navigate("/settings")}>
+        <MenuItem onSelect={() => navigate(SETTINGS_PATH)}>
           <Settings aria-hidden />
           Settings
         </MenuItem>

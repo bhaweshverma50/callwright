@@ -22,6 +22,7 @@ import {
   focusRing,
   type Step,
 } from "../../components";
+import { BILLING_PATH, SETTINGS_PATH } from "../../lib/paths";
 
 interface SetupStep {
   title: string;
@@ -156,7 +157,7 @@ export function DashboardPlaceholder() {
                 {isPending || !me ? (
                   <Skeleton className="ml-auto h-4 w-20" />
                 ) : (
-                  <Link to="/billing" className={cn("link-underline rounded-inline text-fg", focusRing)}>
+                  <Link to={BILLING_PATH} className={cn("link-underline rounded-inline text-fg", focusRing)}>
                     <MoneyText value={me.balance_usd} places={3} animate fromZero className="font-medium" />
                   </Link>
                 )}
@@ -187,7 +188,7 @@ export function DashboardPlaceholder() {
             </PanelRows>
             <p className="border-t border-line px-5 py-3.5 text-[13px] leading-relaxed text-fg-3">
               Change the name and recording default in{" "}
-              <Link to="/settings" className={cn("link-underline text-accent-text", focusRing)}>
+              <Link to={SETTINGS_PATH} className={cn("link-underline text-accent-text", focusRing)}>
                 Settings
               </Link>
               .

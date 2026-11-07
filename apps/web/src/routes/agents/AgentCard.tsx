@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router";
 import type { AgentSummary } from "../../api/agents";
 import { Badge, Tooltip, TruncatedText, cn } from "../../components";
-import { AgentActions, agentPath } from "./AgentActions";
+import { AgentActions } from "./AgentActions";
+import { agentPath } from "../../lib/paths";
 
 export function relativeDate(iso: string): string {
   const d = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);

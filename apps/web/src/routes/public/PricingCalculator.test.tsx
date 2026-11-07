@@ -1,7 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../app/queryClient";
+import { createQueryClient } from "../../api/queryClient";
 import { TooltipProvider } from "../../components";
 import { MAX_MINUTES, PricingCalculator } from "./PricingCalculator";
 

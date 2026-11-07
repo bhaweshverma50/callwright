@@ -47,6 +47,7 @@ import { CreateKbDialog } from "./CreateKbDialog";
 import { DocStatusBadge, ERROR_HELP, KbStatusBadge } from "./kbStatus";
 import { SearchPreviewPanel } from "./SearchPreviewPanel";
 import { UploadDialog } from "./UploadDialog";
+import { agentPath } from "../../lib/paths";
 
 const ID = /^kb_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -415,7 +416,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
             {inUse.map((a) => (
               <li key={a.agent_id} className="flex items-center gap-2.5 rounded-control bg-surface-2/70 px-3 py-2">
                 <Bot className="size-4 text-fg-3" aria-hidden />
-                <Link to={`/agents/${a.agent_id}/edit`} className="link-underline text-[13px] text-fg">
+                <Link to={agentPath({ id: a.agent_id })} className="link-underline text-[13px] text-fg">
                   {a.agent_name}
                 </Link>
               </li>

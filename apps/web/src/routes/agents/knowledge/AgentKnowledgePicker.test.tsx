@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { TooltipProvider } from "../../../components";
 import { resetToolStore, seedKb } from "../../../mocks/tools";
 import { AgentKnowledgePicker } from "./AgentKnowledgePicker";

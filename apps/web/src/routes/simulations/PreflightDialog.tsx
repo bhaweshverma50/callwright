@@ -10,9 +10,10 @@ import { INVALID_REASONS } from "../../api/datasets";
 import type { Preflight } from "../../api/simulations";
 import { Button } from "../../components";
 import { Figure, cost, plural } from "./shared";
+import { agentEditPath, agentFlowPath } from "../../lib/paths";
 
 export function configureMocksPath(agentId: string, type: AgentType | undefined) {
-  return type === "flow" ? `/agents/${agentId}/flow` : `/agents/${agentId}/edit?tab=tools`;
+  return type === "flow" ? agentFlowPath(agentId) : `${agentEditPath(agentId)}?tab=tools`;
 }
 
 export function PreflightStep({ report, agentId, agentType }: { report: Preflight; agentId: string; agentType: AgentType | undefined }) {

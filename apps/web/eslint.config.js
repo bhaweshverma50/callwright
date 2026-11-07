@@ -40,7 +40,7 @@ export default tseslint.config(
   },
   {
     // T098: the shell and the top-level router never request feature tokens.
-    files: ["src/app/Shell.tsx", "src/app/TopBar.tsx", "src/app/Sidebar.tsx", "src/app/router.tsx", "src/main.tsx"],
+    files: ["src/app/Shell.tsx", "src/app/TopBar.tsx", "src/app/Sidebar.tsx", "src/router.tsx", "src/main.tsx"],
     rules: lazyTokenBan,
   },
   {

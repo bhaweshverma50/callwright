@@ -5,7 +5,7 @@ import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import type { Session } from "../../api/types";
-import { startSession } from "../../app/auth";
+import { startSession } from "../../api/session";
 import { Send } from "lucide-react";
 import { Button, Field, Input, Skeleton } from "../../components";
 import { AuthLayout } from "./AuthLayout";

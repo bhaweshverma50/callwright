@@ -2,10 +2,9 @@ import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { isApiError } from "../api/errors";
 import { useMe } from "../api/queries";
-import { session } from "./session";
-import { queryClient } from "./queryClient";
 import { FullPageLoader } from "../components";
-import { loginPathFor, useSignedIn } from "./auth";
+import { endSession, useSignedIn } from "../api/session";
+import { AUTH_PAGES, loginPathFor } from "../lib/paths";
 
 /**
  * Protects every app route (T040). Signed-out visitors go to `/login?next=<where they were>`;
@@ -26,13 +25,12 @@ export function AuthGuard() {
 
   useEffect(() => {
     if (rejected && !unverified) {
-      queryClient.clear();
-      session.clear();
+      endSession();
     }
   }, [rejected, unverified]);
 
   if (!signedIn) return <Navigate to={loginPathFor(location)} replace />;
-  if (unverified) return <Navigate to="/verify-email" replace />;
+  if (unverified) return <Navigate to={AUTH_PAGES.verifyEmail} replace />;
   if (rejected) return <FullPageLoader label="Signing you out" />;
   if (me.isPending) return <FullPageLoader label="Checking your session" />;
   return <Outlet />;

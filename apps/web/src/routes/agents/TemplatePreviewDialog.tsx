@@ -10,6 +10,7 @@ import { problemMessage } from "../../api/problems";
 import { Badge, Button, Dialog, Skeleton, TruncatedText, cn, toast } from "../../components";
 import { languageLabel, llmLabel } from "./editor/catalogs";
 import { CATEGORY_TINT, TEMPLATE_ICONS } from "./templateIcons";
+import { agentEditPath } from "../../lib/paths";
 
 /** Highlights `{{name}}` placeholders in template text. */
 function Highlighted({ text }: { text: string }) {
@@ -72,7 +73,7 @@ export function TemplatePreviewDialog({
         title: "Agent created from template",
         description: replaced?.message ?? `${agent.name} is saved as version 1. Adjust it and save again.`,
       });
-      navigate(`/agents/${agent.id}/edit`);
+      navigate(agentEditPath(agent.id));
     },
     onError: (e) => toast({ tone: "error", title: "Agent not created", description: problemMessage(e, "template") }),
   });

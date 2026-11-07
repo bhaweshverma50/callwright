@@ -1,7 +1,7 @@
 /** Per-user preferences (spec 013): the guided setup tour's progress, saved on the server so it
  * follows the user across browsers. */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { session } from "../app/session";
+import { session } from "./session";
 import { api, unwrap } from "./client";
 import type { Onboarding, Preferences } from "./types";
 

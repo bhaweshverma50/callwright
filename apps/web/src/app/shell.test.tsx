@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderApp, signInDemo } from "../test/render";
-import { session } from "./session";
+import { session } from "../api/session";
 
 describe("auth guard (T040, US1.3)", () => {
   it("sends signed-out visitors to sign-in with a return path, then back", async () => {

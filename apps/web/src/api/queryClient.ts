@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { isApiError } from "../api/errors";
+import { isApiError } from "./errors";
 
 /**
  * One query client for the app (T026). Client errors (4xx) are not retried: they will not fix

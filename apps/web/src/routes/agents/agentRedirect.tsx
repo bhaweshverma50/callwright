@@ -7,13 +7,12 @@ import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, EmptyState, PanelLoader } from "../../components";
 import { RecordNotFound } from "../NotFound";
-
-const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+import { agentPath, isAgentId } from "../../lib/paths";
 
 /** `/agents/:id` opens the right builder for the agent's type (T024). */
 export function AgentRedirect() {
   const { id = "" } = useParams();
-  const valid = ULID.test(id);
+  const valid = isAgentId(id);
   const agent = useAgent(valid ? id : undefined);
   if (!valid || (isApiError(agent.error) && agent.error.status === 404))
     return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
@@ -24,7 +23,7 @@ export function AgentRedirect() {
       </EmptyState>
     );
   if (!agent.data) return <PanelLoader label="Opening agent" />;
-  return <Navigate replace to={`/agents/${id}/${agent.data.type === "flow" ? "flow" : "edit"}`} />;
+  return <Navigate replace to={agentPath(agent.data)} />;
 }
 
 function Later({

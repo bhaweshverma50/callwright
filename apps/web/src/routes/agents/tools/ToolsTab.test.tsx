@@ -5,7 +5,7 @@ import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentConfig } from "../../../api/agents";
-import { createQueryClient } from "../../../app/queryClient";
+import { createQueryClient } from "../../../api/queryClient";
 import { Toaster, TooltipProvider } from "../../../components";
 import { defaultConfig } from "../../../mocks/agents/rules";
 import { resetToolStore, seedTool } from "../../../mocks/tools";

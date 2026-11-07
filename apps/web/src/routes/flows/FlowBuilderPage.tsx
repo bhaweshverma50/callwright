@@ -37,8 +37,7 @@ import { NodePanel } from "./panels/NodePanel";
 import { PublishDialog } from "./panels/PublishDialog";
 import { ValidationPanel } from "./panels/ValidationPanel";
 import { FlowTestPanel } from "./test/FlowTestPanel";
-
-const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+import { isAgentId } from "../../lib/paths";
 
 /**
  * Flow builder (T030, T108) at /agents/:id/flow: canvas, side panel and header. Loads the agent,
@@ -46,7 +45,7 @@ const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
  */
 export function FlowBuilderPage() {
   const { id = "" } = useParams();
-  const valid = ULID.test(id);
+  const valid = isAgentId(id);
   const agent = useAgent(valid ? id : undefined);
   const flow = useFlowByAgent(valid ? id : undefined);
   const llm = useLlmCatalog();

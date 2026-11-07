@@ -27,6 +27,7 @@ import { LiveNowCard } from "../calls/live/LiveCalls";
 import { DashboardPlaceholder } from "./DashboardPlaceholder";
 import { KpiTiles } from "./KpiTiles";
 import { AgentHealthCard, QualityGrid } from "./QualitySection";
+import { isAgentId } from "../../lib/paths";
 
 export const PERIODS: { value: DashboardPeriod; label: string; long: string }[] = [
   { value: "last_7_days", label: "7d", long: "Last 7 days" },
@@ -52,7 +53,7 @@ export function readSelection(p: URLSearchParams): DashboardSelection {
     period,
     start: p.get("start_date") ?? "",
     end: p.get("end_date") ?? "",
-    agents: (p.get("agent_ids") ?? "").split(",").filter((a) => /^agt_[A-Za-z0-9]+$/.test(a)),
+    agents: (p.get("agent_ids") ?? "").split(",").filter(isAgentId),
   };
 }
 

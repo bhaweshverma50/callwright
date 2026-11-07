@@ -2,8 +2,7 @@ import { Copy, History, MoreVertical, PencilLine, PhoneCall, Trash2 } from "luci
 import { useNavigate } from "react-router";
 import type { AgentSummary } from "../../api/agents";
 import { Button, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, cn } from "../../components";
-
-export const agentPath = (a: Pick<AgentSummary, "id" | "type">) => (a.type === "flow" ? `/agents/${a.id}/flow` : `/agents/${a.id}/edit`);
+import { agentPath, agentTestingPath } from "../../lib/paths";
 
 /** Everything you can do to one agent, always visible (not hover-only) on cards and table rows. */
 export function AgentActions({
@@ -30,7 +29,7 @@ export function AgentActions({
         <MenuItem onSelect={() => navigate(open)}>
           <PencilLine aria-hidden /> {agent.type === "flow" ? "Open the canvas" : "Open in the editor"}
         </MenuItem>
-        <MenuItem onSelect={() => navigate(`/agents/${agent.id}/testing`)}>
+        <MenuItem onSelect={() => navigate(agentTestingPath(agent.id))}>
           <PhoneCall aria-hidden /> Test call
         </MenuItem>
         <MenuItem onSelect={() => navigate(`${open}?history=1`)}>

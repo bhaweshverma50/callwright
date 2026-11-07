@@ -3,10 +3,7 @@
  * Uploads use XMLHttpRequest so the dialog can show upload progress.
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { env } from "../lib/env";
-import { session } from "../app/session";
-import { api, unwrap } from "./client";
-import { ApiError, toProblem } from "./errors";
+import { api, apiUrl, readJson, sendAuthorized, unwrap } from "./client";
 import type { components } from "./schema";
 
 type S = components["schemas"];
@@ -122,33 +119,30 @@ export interface UploadOptions {
   signal?: AbortSignal;
 }
 
-/** Multipart upload with progress (fetch has no upload progress). */
-export function uploadDocument(kbId: string, file: File, opts: UploadOptions = {}): Promise<KbDocument> {
+/** XHR runs one attempt and hands back a Response, so auth, refresh and the wake gate apply as usual. */
+function xhrSend(url: string, form: FormData, token: string | null, opts: UploadOptions): Promise<Response> {
   return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.append("file", file, file.name);
-    if (opts.displayName?.trim()) form.append("display_name", opts.displayName.trim());
-    if (opts.replaceDocId) form.append("replace_doc_id", opts.replaceDocId);
-    if (opts.acknowledgeDuplicate) form.append("acknowledge_duplicate", "true");
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${env.apiBaseUrl}/knowledge-bases/${kbId}/documents`);
-    const token = session.accessToken();
+    xhr.open("POST", url);
     if (token) xhr.setRequestHeader("authorization", `Bearer ${token}`);
     xhr.upload.onprogress = (e) => e.lengthComputable && opts.onProgress?.(e.loaded / e.total);
-    xhr.onload = () => {
-      let body: unknown = null;
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {
-        body = null;
-      }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(body as KbDocument);
-      else reject(Object.assign(new ApiError(xhr.status, toProblem(xhr.status, body)), { body }));
-    };
-    xhr.onerror = () => reject(new ApiError(0, toProblem(0, { title: "Network error", code: "network", status: 0 })));
+    xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status, headers: { "content-type": "application/json" } }));
+    xhr.onerror = () => reject(new TypeError("network"));
+    xhr.onabort = () => reject(new TypeError("aborted"));
     opts.signal?.addEventListener("abort", () => xhr.abort());
     xhr.send(form);
   });
+}
+
+/** Multipart upload with progress (fetch has no upload progress). */
+export async function uploadDocument(kbId: string, file: File, opts: UploadOptions = {}): Promise<KbDocument> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  if (opts.displayName?.trim()) form.append("display_name", opts.displayName.trim());
+  if (opts.replaceDocId) form.append("replace_doc_id", opts.replaceDocId);
+  if (opts.acknowledgeDuplicate) form.append("acknowledge_duplicate", "true");
+  const url = apiUrl("/knowledge-bases/{kb_id}/documents", { kb_id: kbId });
+  return readJson(await sendAuthorized((token) => xhrSend(url, form, token, opts), url));
 }
 
 export async function documentUrl(kbId: string, docId: string): Promise<string> {

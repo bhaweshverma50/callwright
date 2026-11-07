@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { QuoteRequest, TransactionType } from "./types";
-import { session } from "../app/session";
+import { session } from "./session";
 
 export const qk = {
   me: ["me"] as const,

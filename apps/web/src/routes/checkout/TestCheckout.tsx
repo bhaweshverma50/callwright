@@ -8,6 +8,7 @@ import { Button, Field, Input, Logo, PanelLoader, cn, focusRing } from "../../co
 import { env } from "../../lib/env";
 import { formatUsd, toMicros } from "../../lib/money";
 import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
+import { BILLING_PATH } from "../../lib/paths";
 
 /** The fake gateway's checkout session (services/api/app/dev/router.py). */
 interface TestCard {
@@ -94,7 +95,7 @@ function Notice({ icon, tone, title, text }: { icon: ReactNode; tone: "danger" |
       <h1 className="font-display text-[22px] tracking-[-0.02em] text-fg">{title}</h1>
       <p className="text-[14px] text-fg-2">{text}</p>
       <Button asChild variant="secondary" icon={<ArrowLeft aria-hidden />}>
-        <Link to="/billing">Back to Billing</Link>
+        <Link to={BILLING_PATH}>Back to Billing</Link>
       </Button>
     </div>
   );

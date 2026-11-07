@@ -25,13 +25,14 @@ import { Badge, Button, EmptyState, PageHeader, Pagination, Panel, PanelLoader, 
 import { RecordNotFound } from "../NotFound";
 import { relative } from "../calls/format";
 import { Figure, problemText, shortId } from "../simulations/shared";
-import { ApplyPanel, agentPath } from "./ApplyPanel";
+import { ApplyPanel } from "./ApplyPanel";
 import { DismissDialog } from "./DismissDialog";
 import { FixPanel } from "./FixPanel";
 import { ValidateDialog } from "./ValidateDialog";
 import { ValidationEvidence } from "./ValidationEvidence";
 import { DISMISS_LABELS, IssueStatusBadge, ORIGIN_LABELS } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
+import { agentPath } from "../../lib/paths";
 
 const SAMPLE_COLUMNS: Column<IssueSample>[] = [
   {
@@ -84,7 +85,7 @@ function Summary({ issue, agentName }: { issue: DetectedIssue; agentName: string
             {issue.evaluator_display_name ?? issue.evaluator_name} v{issue.evaluator_version}
           </span>{" "}
           on{" "}
-          <Link to={agentPath(issue)} className="text-accent-text hover:underline">
+          <Link to={agentPath({ id: issue.agent_id, type: issue.agent_type })} className="text-accent-text hover:underline">
             {agentName}
           </Link>
           {issue.flow_node_label && (

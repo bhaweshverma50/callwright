@@ -20,7 +20,7 @@ import {
   type WebCallDriver,
   type WebCallRequest,
 } from "./webCall";
-import { queryClient } from "../app/queryClient";
+import { queryClient } from "../api/queryClient";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 

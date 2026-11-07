@@ -356,7 +356,7 @@ function missingMocks(agentId: string) {
     .filter((t) => ids.includes(t.id) && !t.mock_response)
     .map((t) => ({ tool_id: t.id, node_id: null, name: t.name, kind: "tool" as const }));
   if (fromLibrary.length || ids.length) return fromLibrary;
-  if (a?.name === "Front desk agent" || agentId.startsWith("agt_01MOCKAGENTORDERDESK"))
+  if (a?.name === "Front desk agent" || agentId === "agt_01HMCKAGENT0RDERDESK000001")
     return [{ tool_id: "tool_01MOCKCHECKINSURANCE000001", node_id: null, name: "check_insurance", kind: "tool" as const }];
   return [];
 }

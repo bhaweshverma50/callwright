@@ -9,7 +9,7 @@
  */
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { session } from "../app/session";
+import { session } from "./session";
 import { callbackKeys } from "./callbacks";
 import { callKeys } from "./calls";
 import { api, unwrap } from "./client";

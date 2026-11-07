@@ -16,6 +16,7 @@
 import type { Latency } from "./signal";
 import { ApiError } from "../api/errors";
 import type { Problem } from "../api/types";
+import { BILLING_PATH } from "../lib/paths";
 
 export type MicCheck = "granted" | "denied" | "unavailable";
 /** What the agent is doing, from the `lk.agent.state` participant attribute. */
@@ -137,7 +138,7 @@ export function problemFromError(e: unknown): CallProblem {
       kind: "refused",
       title: "Not enough credit",
       detail: "Add funds to keep making test calls. The refused attempt was not charged.",
-      action: { label: "Add funds", href: "/billing" },
+      action: { label: "Add funds", href: BILLING_PATH },
     };
   if (e.status === 403 || type.endsWith("/email-unverified"))
     return { kind: "refused", title: "Verify your email first", detail: "Open the link we emailed you, then start the test call again." };

@@ -10,6 +10,7 @@ import { problemMessage } from "../../api/problems";
 import type { AnswerSource, Experiment, SimEndReason, SimMode, SimStatus, SimulationRun, TargetType, VerdictDiff } from "../../api/simulations";
 import { Badge, Button, cn, focusRing, type Tone } from "../../components";
 import { FormAlert } from "../public/FormAlert";
+import { BILLING_PATH } from "../../lib/paths";
 
 export const MODE_LABELS: Record<SimMode, string> = { replay: "Replay", persona: "Persona" };
 
@@ -141,7 +142,7 @@ export function ProblemAlert({ error, kind = "record", className }: { error: unk
           tone="warning"
           action={
             <Button asChild size="sm" variant="secondary" className="w-fit">
-              <Link to="/billing">Add funds</Link>
+              <Link to={BILLING_PATH}>Add funds</Link>
             </Button>
           }
         >

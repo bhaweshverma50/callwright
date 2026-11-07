@@ -6,11 +6,11 @@ import { Link } from "react-router";
 import { MAX_KBS_PER_AGENT, useAllKnowledgeBases, type KnowledgeBase } from "../../../api/knowledge";
 import { problemMessage } from "../../../api/problems";
 import { Badge, Button, Dialog, EmptyState, IconButton, Input, Panel, Skeleton, cn, toast } from "../../../components";
-import { TabHeader } from "../../agents/tools/TabHeader";
-import type { EditorPanelProps } from "../../agents/editor/panelSlots";
-import { CreateKbDialog } from "../CreateKbDialog";
-import { KbStatusBadge } from "../kbStatus";
-import { UploadDialog } from "../UploadDialog";
+import { TabHeader } from "../tools/TabHeader";
+import type { EditorPanelProps } from "../editor/panels";
+import { CreateKbDialog } from "../../knowledge/CreateKbDialog";
+import { KbStatusBadge } from "../../knowledge/kbStatus";
+import { UploadDialog } from "../../knowledge/UploadDialog";
 
 function sameSet(a: string[], b: string[]) {
   return a.length === b.length && a.every((x) => b.includes(x));

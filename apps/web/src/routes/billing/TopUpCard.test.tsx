@@ -2,7 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createQueryClient } from "../../app/queryClient";
+import { createQueryClient } from "../../api/queryClient";
 import { TooltipProvider } from "../../components";
 import { signInDemo } from "../../test/render";
 import { TopUpCard, checkoutNavigator } from "./TopUpCard";

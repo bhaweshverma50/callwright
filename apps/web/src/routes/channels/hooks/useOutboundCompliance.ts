@@ -3,10 +3,7 @@
  * do-not-call list, calling hours and the log of blocked attempts.
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { env } from "../../../lib/env";
-import { session } from "../../../app/session";
-import { api, unwrap } from "../../../api/client";
-import { ApiError, toProblem } from "../../../api/errors";
+import { api, postForm, unwrap } from "../../../api/client";
 import type { components } from "../../../api/schema";
 
 type S = components["schemas"];
@@ -86,7 +83,6 @@ export function useDncMutations() {
   return { add, remove };
 }
 
-/** CSV upload as multipart form data (openapi-fetch has no file body helper). */
 export function useDncImport() {
   const invalidate = useInvalidate();
   return useMutation({
@@ -94,14 +90,7 @@ export function useDncImport() {
       const form = new FormData();
       form.append("file", file);
       if (region) form.append("default_region", region);
-      const res = await fetch(`${env.apiBaseUrl}/dnc-entries/import`, {
-        method: "POST",
-        body: form,
-        headers: { authorization: `Bearer ${session.accessToken() ?? ""}` },
-      });
-      const body: unknown = await res.json().catch(() => ({}));
-      if (!res.ok) throw new ApiError(res.status, toProblem(res.status, body));
-      return body as DncImportResult;
+      return postForm("/dnc-entries/import", form);
     },
     onSuccess: () => void invalidate(),
   });

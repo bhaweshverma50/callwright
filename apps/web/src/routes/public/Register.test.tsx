@@ -3,8 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { api, unwrap } from "../../api/client";
-import { isRegisteredSession } from "../../app/auth";
-import { session } from "../../app/session";
+import { session } from "../../api/session";
 import { env } from "../../lib/env";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "../../mocks/db";
 import { server } from "../../mocks/node";
@@ -35,14 +34,5 @@ describe("register (T041, US1.1)", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/dashboard"));
     expect(session.accessToken()).toBe(tokens.access_token);
     expect(screen.queryByText("Check your email")).not.toBeInTheDocument();
-  });
-});
-
-describe("isRegisteredSession", () => {
-  it("accepts only a signed_in body with tokens", () => {
-    expect(isRegisteredSession({ status: "verification_sent" })).toBe(false);
-    expect(isRegisteredSession({ status: "signed_in" })).toBe(false);
-    expect(isRegisteredSession(null)).toBe(false);
-    expect(isRegisteredSession({ status: "signed_in", access_token: "a", refresh_token: "r", token_type: "bearer", expires_in: 60 })).toBe(true);
   });
 });

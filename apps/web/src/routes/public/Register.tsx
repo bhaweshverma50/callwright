@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { fieldErrors, problemMessage } from "../../api/problems";
-import { isRegisteredSession, startSession } from "../../app/auth";
+import { startSession } from "../../api/session";
 import { Button, Field, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
@@ -28,7 +28,7 @@ export function Register() {
   const register = useMutation({
     mutationFn: () => unwrap(api.POST("/auth/register", { body: { email: email.trim(), password } })),
     onSuccess: (result) => {
-      if (!isRegisteredSession(result)) return;
+      if (result.status !== "signed_in") return;
       startSession(result);
       navigate("/dashboard", { replace: true });
     },
@@ -48,7 +48,7 @@ export function Register() {
     register.mutate();
   };
 
-  if (register.isSuccess && !isRegisteredSession(register.data)) {
+  if (register.isSuccess && register.data.status !== "signed_in") {
     const addr = email.trim().toLowerCase();
     return (
       <AuthLayout

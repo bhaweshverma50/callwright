@@ -11,6 +11,7 @@ import { viewerTimeZone } from "../../routes/calls/filters";
 import { chartVars } from "../../routes/dashboard/charts/ChartFrame";
 import { AnswerView, SuggestionChips, type ChatAnswer } from "./AnswerView";
 import { onOpenAsk } from "./bus";
+import { BILLING_PATH } from "../../lib/paths";
 
 type Turn = { role: "user"; content: string } | { role: "assistant"; content: string; answer: ChatAnswer };
 type Failure = { kind: "credit" | "busy" | "unavailable" | "other"; title: string; message: string };
@@ -236,7 +237,7 @@ export function AskPanel({ placement = "dock" }: { placement?: "dock" | "bar" })
                     </div>
                     {failure.kind === "credit" ? (
                       <Button asChild size="sm" variant="secondary" icon={<Wallet aria-hidden />}>
-                        <Link to="/billing">Add funds</Link>
+                        <Link to={BILLING_PATH}>Add funds</Link>
                       </Button>
                     ) : (
                       <Button size="sm" variant="secondary" icon={<RotateCcw aria-hidden />} onClick={() => void ask(draft)}>

@@ -13,6 +13,7 @@ import { lineDiff } from "../versions/lineDiff";
 import { DiffView } from "../versions/DiffView";
 import { syncVariables } from "./catalogs";
 import type { AgentDraft } from "./useAgentDraft";
+import { BILLING_PATH } from "../../../lib/paths";
 
 interface Turn {
   id: number;
@@ -207,7 +208,7 @@ export function AssistantPanel({
                     <span>{t.error.message}</span>
                     {t.error.credit && (
                       <Button asChild size="sm" variant="secondary" icon={<Wallet aria-hidden />} className="w-fit">
-                        <Link to="/billing">Add funds</Link>
+                        <Link to={BILLING_PATH}>Add funds</Link>
                       </Button>
                     )}
                   </div>

@@ -4,30 +4,28 @@
  *
  * Auth: every request carries the bearer token. A 401 on a protected call triggers one silent
  * refresh (single-flight across concurrent requests) and a single retry. When refresh fails the
- * session is cleared, other tabs are told, and `onSessionExpired` sends the user to sign-in
- * with a return path (US1.3, edge case "session token expires mid-session").
+ * session ends (session.ts) and the auth guard sends the user to sign-in with a return path
+ * (US1.3, edge case "session token expires mid-session").
  *
  * Hosted demo: a 503 `waking_up` (the call servers are starting) is held at the wake gate and the
  * request retried; see wakeGate.ts and WakeOverlay.
  *
  * Lazy feature credentials (FR-020, T098): tokens for optional features (voice copilot STT key,
- * web test-call room token, analytics assistant session) are fetched by `useLazyToken(feature)`
- * hooks only when the user first opens that feature. Never request them from the shell, route
- * loaders or on page load; eslint.config.js blocks token queries in app/Shell.tsx.
+ * web test-call room token, analytics assistant session) are fetched only when the user first
+ * opens that feature. Never request them from the shell, route loaders or on page load;
+ * eslint.config.js blocks token queries in app/Shell.tsx.
  */
-import createClient from "openapi-fetch";
+import createClient, { type ClientPathsWithMethod, type MethodResponse } from "openapi-fetch";
 import { env } from "../lib/env";
-import { session } from "../app/session";
-import { authChannel } from "../app/authChannel";
 import { ApiError, networkError, toProblem } from "./errors";
-import type { paths, Session } from "./types";
+import { endSession, session } from "./session";
+import type { paths } from "./types";
 import { wakeAwareFetch } from "./wakeGate";
 
-type Expired = () => void;
-let onSessionExpired: Expired = () => {};
-export function setSessionExpiredHandler(fn: Expired) {
-  onSessionExpired = fn;
-}
+const REFRESH: keyof paths = "/auth/refresh";
+/** Endpoints that answer 401 for a wrong password or token, not for an expired session. */
+const PUBLIC_AUTH_ENDPOINTS: (keyof paths)[] = ["/auth/sign-in", "/auth/register", REFRESH, "/auth/verify-email", "/auth/password-reset"];
+const isPublicAuthCall = (url: string) => PUBLIC_AUTH_ENDPOINTS.some((p) => url.includes(p));
 
 let refreshing: Promise<boolean> | null = null;
 
@@ -38,14 +36,14 @@ async function refreshOnce(): Promise<boolean> {
     try {
       // Through the wake gate: a refresh while the call servers start must wait, not sign out.
       const res = await wakeAwareFetch(() =>
-        globalThis.fetch(`${env.apiBaseUrl}/auth/refresh`, {
+        globalThis.fetch(`${env.apiBaseUrl}${REFRESH}`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ refresh_token }),
         }),
       );
       if (!res.ok) return false;
-      session.set((await res.json()) as Session);
+      session.set(await res.json());
       return true;
     } catch {
       return false;
@@ -58,42 +56,35 @@ async function refreshOnce(): Promise<boolean> {
   return refreshing;
 }
 
-function withToken(req: Request): Request {
-  const token = session.accessToken();
-  if (!token) return req;
-  const headers = new Headers(req.headers);
-  headers.set("authorization", `Bearer ${token}`);
-  return new Request(req, { headers });
-}
-
-const isAuthPath = (url: string) => /\/auth\/(sign-in|register|refresh|verify-email|password-reset)/.test(url);
-
-/** Sends a fresh copy of `template` each time, through the wake gate (wakeGate.ts). */
-function sendVia(template: Request): Promise<Response> {
-  return wakeAwareFetch(() => globalThis.fetch(withToken(template.clone())));
-}
-
-async function authFetch(input: Request): Promise<Response> {
-  const template = input.clone();
-  let res: Response;
-  try {
-    res = await sendVia(template);
-  } catch {
-    throw networkError();
-  }
-  if (res.status !== 401 || isAuthPath(input.url) || !session.isSignedIn()) return res;
-
-  if (await refreshOnce()) {
+/**
+ * Sends one request with the current token through the wake gate. On a 401 it refreshes once and
+ * sends again; when the refresh fails the session ends. `send` builds a fresh request per attempt,
+ * so any transport can use it (the knowledge upload uses XHR for progress).
+ */
+export async function sendAuthorized(send: (token: string | null) => Promise<Response>, url = ""): Promise<Response> {
+  const attempt = async () => {
     try {
-      return await sendVia(template);
+      return await wakeAwareFetch(() => send(session.accessToken()));
     } catch {
       throw networkError();
     }
-  }
-  session.clear();
-  authChannel.post({ type: "signed_out" });
-  onSessionExpired();
+  };
+  const res = await attempt();
+  if (res.status !== 401 || isPublicAuthCall(url) || !session.isSignedIn()) return res;
+  if (await refreshOnce()) return attempt();
+  endSession();
   return res;
+}
+
+function authFetch(input: Request): Promise<Response> {
+  const template = input.clone();
+  return sendAuthorized((token) => {
+    const req = template.clone();
+    if (!token) return globalThis.fetch(req);
+    const headers = new Headers(req.headers);
+    headers.set("authorization", `Bearer ${token}`);
+    return globalThis.fetch(new Request(req, { headers }));
+  }, input.url);
 }
 
 export const api = createClient<paths>({ baseUrl: env.apiBaseUrl, fetch: authFetch });
@@ -106,4 +97,35 @@ export async function unwrap<T>(call: Promise<{ data?: T; error?: unknown; respo
   const { data, error, response } = await call;
   if (response.ok) return data as T;
   throw new ApiError(response.status, toProblem(response.status, error));
+}
+
+type FormPath = ClientPathsWithMethod<typeof api, "post">;
+
+/** Fills `{name}` segments of a contract path. */
+export function apiUrl(path: string, params: Record<string, string> = {}): string {
+  return `${env.apiBaseUrl}${path.replace(/\{(\w+)\}/g, (_, k: string) => encodeURIComponent(params[k] ?? ""))}`;
+}
+
+/** Reads a JSON body from a response sent outside openapi-fetch, throwing ApiError when it failed. */
+export async function readJson<T>(res: Response): Promise<T> {
+  const body: unknown = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, toProblem(res.status, body));
+  return body as T;
+}
+
+/**
+ * Multipart upload (openapi-fetch has no file body helper) with the same auth, refresh and wake
+ * handling as every other call. The response is typed from the contract.
+ */
+export async function postForm<P extends FormPath>(
+  path: P,
+  form: FormData,
+  params?: Record<string, string>,
+): Promise<MethodResponse<typeof api, "post", P>> {
+  const url = apiUrl(path, params);
+  const res = await sendAuthorized(
+    (token) => globalThis.fetch(url, { method: "POST", body: form, headers: token ? { authorization: `Bearer ${token}` } : {} }),
+    url,
+  );
+  return readJson(res);
 }

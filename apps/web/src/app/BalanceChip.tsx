@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useBalance } from "../api/queries";
 import { MoneyText, Skeleton, Tooltip, cn, focusRing } from "../components";
 import { toMicros } from "../lib/money";
+import { BILLING_PATH } from "../lib/paths";
 
 const LOW = 1_000_000n; // $1.00
 
@@ -26,7 +27,7 @@ export function BalanceChip() {
   return (
     <Tooltip content={hint} side="bottom">
       <Link
-        to="/billing"
+        to={BILLING_PATH}
         aria-label={data ? `Balance ${data.balance_usd} US dollars. Open billing` : "Open billing"}
         className={cn(
           "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] transition-[border-color,box-shadow,background-color] duration-150",

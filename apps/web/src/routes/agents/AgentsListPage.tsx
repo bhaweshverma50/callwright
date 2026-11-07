@@ -60,10 +60,11 @@ import {
   type Column,
 } from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
-import { AgentActions, agentPath } from "./AgentActions";
+import { AgentActions } from "./AgentActions";
 import { AgentCard, relativeDate } from "./AgentCard";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { languageLabel, llmLabel } from "./editor/catalogs";
+import { agentPath } from "../../lib/paths";
 
 type Filter = "all" | AgentType;
 type Status = "all" | AgentStatus;

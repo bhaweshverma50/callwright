@@ -12,10 +12,7 @@ import { Button, Dialog, Field, Panel, Segmented, Textarea, toast } from "../../
 import { relative } from "../calls/format";
 import { Figure, ProblemAlert, deltaTone, pct, shortId } from "../simulations/shared";
 import { BLOCKER_TEXT, pp } from "./shared";
-
-export function agentPath(issue: Pick<DetectedIssue, "agent_id" | "agent_type">) {
-  return issue.agent_type === "flow" ? `/agents/${issue.agent_id}/flow` : `/agents/${issue.agent_id}/edit`;
-}
+import { agentPath } from "../../lib/paths";
 
 function ApplyDialog({ open, onOpenChange, issue }: { open: boolean; onOpenChange: (o: boolean) => void; issue: DetectedIssue }) {
   const qc = useQueryClient();
@@ -121,7 +118,7 @@ export function ApplyPanel({ issue }: { issue: DetectedIssue }) {
             <p className="text-[14px] text-fg-2">
               The fix became version{" "}
               <Link
-                to={agentPath(issue)}
+                to={agentPath({ id: issue.agent_id, type: issue.agent_type })}
                 className="rounded-inline font-mono text-[13px] text-accent-text hover:underline"
                 title={issue.applied_agent_version_id}
               >

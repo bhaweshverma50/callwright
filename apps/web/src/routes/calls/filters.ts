@@ -5,6 +5,7 @@
  * URLSearchParams so a leading plus or a space reaches the server unchanged.
  */
 import type { CallOrigin, CallStatus, Channel, DisconnectReason, EvalStatus, Sentiment } from "../../api/calls";
+import { isAgentId } from "../../lib/paths";
 
 export const STATUS_LABELS: Record<CallStatus, string> = {
   queued: "Queued",
@@ -96,7 +97,6 @@ const ALLOWED: Record<Exclude<MultiKey, "agent_id">, readonly string[]> = {
   origin: Object.keys(ORIGIN_LABELS),
 };
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const AGENT = /^agt_[A-Za-z0-9]+$/;
 
 export const emptyFilters = (): CallFilters => ({
   status: [],
@@ -125,7 +125,7 @@ export function parseListState(params: URLSearchParams): { state: ListState; dro
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean);
-    const ok = values.filter((v) => (key === "agent_id" ? AGENT.test(v) : ALLOWED[key].includes(v)));
+    const ok = values.filter((v) => (key === "agent_id" ? isAgentId(v) : ALLOWED[key].includes(v)));
     dropped.push(...values.filter((v) => !ok.includes(v)));
     const unique = [...new Set(ok)];
     if (key === "origin") filters.origin = unique.length ? (unique as CallOrigin[]) : [...DEFAULT_ORIGINS];

@@ -36,11 +36,10 @@ import { CallBehaviorSection } from "./CallBehaviorSection";
 import type { Catalogs } from "./catalogs";
 import { ChecksCard } from "./ChecksCard";
 import { CostCard } from "./CostCard";
-import { editorPanels } from "./panelSlots";
+import { EDITOR_PANELS } from "./panels";
 import { useAgentDraft, type DraftBase } from "./useAgentDraft";
 import { VoiceSection } from "./VoiceSection";
-
-const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+import { agentEditPath, agentFlowPath, agentTestingPath, isAgentId } from "../../../lib/paths";
 
 /**
  * Single-prompt agent editor (T039), at /agents/new/single (never saved) and /agents/:id/edit.
@@ -50,7 +49,7 @@ const ULID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
 export function AgentEditorPage() {
   const { id } = useParams();
   const isNew = !id;
-  const valid = isNew || ULID.test(id);
+  const valid = isNew || isAgentId(id);
   const agent = useAgent(valid && !isNew ? id : undefined);
   const defaults = useAgentDefaults("en-US", isNew);
   const llm = useLlmCatalog();
@@ -102,7 +101,6 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
   }, [params, setParams]);
   const [note, setNote] = useState("");
   const [goTo, setGoTo] = useState<string | null>(null);
-  const panels = editorPanels("single_prompt");
 
   // Navigate only after the saved state has rendered, so the leave guard sees a clean form.
   useEffect(() => {
@@ -146,8 +144,8 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             : undefined
           : "Nothing in the configuration changed, so no new version was recorded.",
       });
-      if (then === "test") setGoTo(`/agents/${out.detail.id}/testing`);
-      else if (!draft.base.id) setGoTo(`/agents/${out.detail.id}/edit`);
+      if (then === "test") setGoTo(agentTestingPath(out.detail.id));
+      else if (!draft.base.id) setGoTo(agentEditPath(out.detail.id));
     },
     [draft, note, initial.id],
   );
@@ -179,13 +177,11 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
   const blockers = draft.validation?.publish_blockers ?? [];
 
   // Short labels and no icons keep seven tabs readable; Advanced goes last, where people look for it.
-  const PANEL_ORDER = ["tools", "knowledge", "quality"];
-  const rank = (id: string) => PANEL_ORDER.indexOf(id) + 1 || PANEL_ORDER.length + 1;
   const tabs = [
     { value: "basics", label: "Basics", alerts: counts.basics },
     { value: "voice", label: "Voice", alerts: counts.voice },
     { value: "behaviour", label: "Behaviour", alerts: counts.behaviour },
-    ...[...panels].sort((a, b) => rank(a.id) - rank(b.id)).map((p) => ({ value: p.id, label: p.label })),
+    ...EDITOR_PANELS.map((p) => ({ value: p.id, label: p.label })),
     { value: "advanced", label: "Advanced", alerts: counts.advanced },
   ];
 
@@ -234,7 +230,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             icon={<Play aria-hidden />}
             pending={saving === "test"}
             disabled={saving === "save"}
-            onClick={() => (draft.dirty || isNew ? void save("test") : navigate(`/agents/${draft.base.id}/testing`))}
+            onClick={() => (draft.dirty || !draft.base.id ? void save("test") : navigate(agentTestingPath(draft.base.id)))}
           >
             Test agent
           </Button>
@@ -265,7 +261,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             <TabPanel value="advanced">
               <AdvancedSection draft={draft} catalogs={catalogs} />
             </TabPanel>
-            {panels.map((p) => (
+            {EDITOR_PANELS.map((p) => (
               <TabPanel key={p.id} value={p.id}>
                 <p.component agentId={draft.base.id} agentType="single_prompt" config={draft.config} update={draft.update} />
               </TabPanel>
@@ -477,7 +473,7 @@ function FlowAgentNotice({ agent }: { agent: AgentDetail }) {
         title={`${agent.name} is a flow agent`}
         actions={
           <Button asChild variant="primary" icon={<FlowArrow aria-hidden />}>
-            <Link to={`/agents/${agent.id}/flow`}>Open the flow builder</Link>
+            <Link to={agentFlowPath(agent.id)}>Open the flow builder</Link>
           </Button>
         }
       >

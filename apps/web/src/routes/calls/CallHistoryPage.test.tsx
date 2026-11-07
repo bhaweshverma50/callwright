@@ -10,9 +10,11 @@ const rowsOnPage = () => within(screen.getByRole("table")).getAllByRole("checkbo
 
 describe("call list URL state (FR-005, FR-036 to FR-038)", () => {
   it("drops unknown values and counts one chip per applied filter, Any not counted", () => {
-    const { state, dropped } = parseListState(new URLSearchParams("status=failed,exploded&agent_id=agt_1&label=good&origin=live,test"));
+    const { state, dropped } = parseListState(
+      new URLSearchParams("status=failed,exploded&agent_id=agt_01HMCKAGENT0RDERDESK000001&label=good&origin=live,test"),
+    );
     expect(dropped).toEqual(["exploded"]);
-    const chips = filterChips(state.filters, (id) => (id === "agt_1" ? "Order desk" : id));
+    const chips = filterChips(state.filters, (id) => (id === "agt_01HMCKAGENT0RDERDESK000001" ? "Order desk" : id));
     expect(chips.map((c) => c.label)).toEqual(["Status: Failed", "Agent: Order desk", "Your label: Good"]);
     const any = filterChips({ ...emptyFilters(), label: [] }, (id) => id);
     expect(any).toHaveLength(0);

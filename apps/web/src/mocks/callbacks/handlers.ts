@@ -52,7 +52,7 @@ interface Seed {
   cancelledAt?: string;
 }
 
-const API_AGENT = { id: "agt_01MOCKAGENTSCHEDULER000002", name: "Clinic scheduler" };
+const API_AGENT = { id: "agt_01HMCKAGENTSCHEDVR00000002", name: "Clinic scheduler" };
 
 const SEEDS: Seed[] = [
   {
@@ -119,7 +119,7 @@ const SEEDS: Seed[] = [
     source: null,
     placed: null,
     to: "+442079460958",
-    agent: { id: "agt_01MOCKAGENTORDERDESK0000001", name: "Order desk" },
+    agent: { id: "agt_01HMCKAGENT0RDERDESK000001", name: "Order desk" },
     timezone: "Europe/London",
     local: "2026-10-16T09:00:00",
     offset: 1,
