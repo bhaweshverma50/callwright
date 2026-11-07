@@ -5,9 +5,10 @@
  * empty so the empty state is reachable.
  */
 import type { AgentConfig, AgentDetail, AgentSummary, AgentType, ConfigIssue, VersionRef, VersionSource, VersionSummary } from "../../api/agents";
-import { DEMO_EMAIL, db, save } from "../db";
+import { db, save } from "../db";
 import { contentHash, defaultConfig, overlay, validateConfig } from "./rules";
 import { findVoice } from "./voices";
+import { DEMO_EMAIL } from "../demoAccount";
 
 export interface MockAgent {
   id: string;

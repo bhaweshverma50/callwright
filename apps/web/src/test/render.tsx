@@ -5,7 +5,7 @@ import { App } from "../App";
 import { createQueryClient } from "../api/queryClient";
 import { routes } from "../router";
 import { session } from "../api/session";
-import { DEMO_EMAIL, DEMO_PASSWORD } from "../mocks/db";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "../mocks/demoAccount";
 
 /** Signs the demo account in against the mock API (MSW node server). */
 export async function signInDemo() {

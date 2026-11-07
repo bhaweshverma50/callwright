@@ -3,18 +3,10 @@
  * specs/005-tools-knowledge/contracts/*.yaml. In-memory; documents become ready one poll after
  * upload. Used by Vitest and `pnpm dev:mock`.
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http } from "msw";
 import type { KbDocument, KnowledgeBase } from "../api/knowledge";
 import type { Tool, ToolDraft, ToolPreset } from "../api/tools";
-import { env } from "../lib/env";
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = (body: unknown, status = 200) => HttpResponse.json(body as JsonBodyType, { status });
-const problem = (status: number, code: string, title: string, extra: Record<string, unknown> = {}) =>
-  HttpResponse.json({ type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title, status, code, ...extra } as JsonBodyType, {
-    status,
-    headers: { "content-type": "application/problem+json" },
-  });
+import { json, page, problem, url } from "./http";
 
 let seq = 0;
 const ulid = (prefix: string) => `${prefix}_01J${String(++seq).padStart(23, "0")}`;
@@ -89,19 +81,6 @@ function derive(kb: KnowledgeBase): KnowledgeBase {
     status,
     attachable: ready > 0,
   });
-}
-
-function page<T>(items: T[], request: Request) {
-  const q = new URL(request.url).searchParams;
-  const p = Number(q.get("page") ?? 1);
-  const size = Number(q.get("page_size") ?? 20);
-  return {
-    items: items.slice((p - 1) * size, p * size),
-    total: items.length,
-    page: p,
-    page_size: size,
-    total_pages: Math.max(1, Math.ceil(items.length / size)),
-  };
 }
 
 const PRESETS: ToolPreset[] = [

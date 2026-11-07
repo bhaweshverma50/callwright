@@ -6,7 +6,8 @@
 import type { Transaction, TransactionType, Workspace, CostBreakdown, Preferences } from "../api/types";
 import { priceQuote } from "../lib/pricing";
 import { microsToDecimal, toMicros } from "../lib/money";
-import { catalogV1 } from "./catalog";
+import { catalogV1 } from "../lib/catalogSeed";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "./demoAccount";
 
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 let counter = 0;
@@ -55,9 +56,6 @@ export interface MockState {
   /** Per-user preferences (013), by user id. Optional: states saved before 013 have none. */
   preferences?: Record<string, Preferences>;
 }
-
-export const DEMO_EMAIL = "ops@halcyon-dental.com";
-export const DEMO_PASSWORD = "correct-horse-9";
 
 const DAY = 86_400_000;
 

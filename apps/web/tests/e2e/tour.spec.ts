@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { DEMO_PASSWORD } from "../../src/mocks/demoAccount";
 
 // Spec 013: the guided setup tour, against the mock API. A fresh account gets the welcome card.
 async function signUpFresh(page: Page) {
   const email = `tour.${Date.now()}@example.com`;
   await page.goto("/register");
   await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("correct-horse-9");
+  await page.getByLabel("Password", { exact: true }).fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText(/check your email|we sent/i).first()).toBeVisible();
   await page.goto(`/verify-email?token_hash=verify-${email}`);

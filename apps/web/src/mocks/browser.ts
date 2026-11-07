@@ -1,16 +1,7 @@
 import { setupWorker } from "msw/browser";
-import { handlers } from "./handlers";
-import { agentHandlers } from "./agents/handlers";
-import { callHandlers, seedMockCalls, seedMockLiveCalls } from "./calls/handlers";
-import { flowHandlers } from "./flows";
-import { toolHandlers } from "./tools";
-import { channelHandlers } from "./channels/handlers";
-import { qualityHandlers } from "./quality/handlers";
-import { simHandlers } from "./sim/handlers";
-import { issueHandlers } from "./issues/handlers";
-import { callbackHandlers } from "./callbacks/handlers";
-import { callerLanguageHandlers } from "./callerLanguage/handlers";
+import { seedMockCalls, seedMockLiveCalls } from "./calls/handlers";
 import { enablePersistence } from "./db";
+import { allHandlers } from "./registry";
 
 /** Starts the in-browser mock API. Imported dynamically only when VITE_API_MOCKS=true. */
 export async function startMocks() {
@@ -21,19 +12,7 @@ export async function startMocks() {
   // `?live=3` puts calls on air (ringing, then live, transcripts growing); `?live=0` or none: quiet.
   const live = params.get("live");
   if (live !== null) seedMockLiveCalls(live === "" ? 3 : Number(live));
-  const worker = setupWorker(
-    ...handlers,
-    ...agentHandlers,
-    ...callHandlers,
-    ...toolHandlers,
-    ...channelHandlers,
-    ...flowHandlers,
-    ...qualityHandlers,
-    ...simHandlers,
-    ...issueHandlers,
-    ...callbackHandlers,
-    ...callerLanguageHandlers,
-  );
+  const worker = setupWorker(...allHandlers);
   await worker.start({
     onUnhandledRequest: "bypass",
     quiet: true,

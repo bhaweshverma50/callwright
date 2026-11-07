@@ -6,10 +6,10 @@
  * - a WhatsApp access token containing "invalid" is rejected
  * - an outbound call to a number on the do-not-call list is blocked with `dnc_listed`
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http, HttpResponse } from "msw";
 import type { components } from "../../api/schema";
-import { env } from "../../lib/env";
 import { db } from "../db";
+import { invalid, json, page, problemDetail, unauthorized, url } from "../http";
 
 type S = components["schemas"];
 type PhoneNumber = S["PhoneNumber"];
@@ -18,19 +18,6 @@ type CallerRoute = S["CallerRoute"];
 type DncEntry = S["DncEntry"];
 type PolicyDecision = S["PolicyDecision"];
 type WeeklyWindows = S["WeeklyWindows"];
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-const problem = (status: number, code: string, detail: string, extra: Record<string, unknown> = {}) =>
-  HttpResponse.json(
-    { type: `https://callwright.dev/problems/${code.replace(/_/g, "-")}`, title: "Error", status, code, detail, ...extra } as JsonBodyType,
-    {
-      status,
-      headers: { "content-type": "application/problem+json" },
-    },
-  );
-const invalid = (pointer: string, message: string) =>
-  problem(422, "validation_failed", "Some fields need attention.", { errors: [{ pointer, code: "invalid_format", message }] });
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const DEFAULT_WINDOWS = Object.fromEntries(DAYS.map((d) => [d, { start: "09:00", end: "21:00" }])) as WeeklyWindows;
@@ -57,12 +44,6 @@ const now = () => new Date().toISOString();
 const signedIn = (request: Request) => {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   return !!token && !!db().sessions[token];
-};
-const page = <T>(items: T[], request: Request, size = 20) => {
-  const q = new URL(request.url).searchParams;
-  const p = Number(q.get("page") ?? 1);
-  const ps = Number(q.get("page_size") ?? size);
-  return { items: items.slice((p - 1) * ps, p * ps), total: items.length, page: p, page_size: ps, total_pages: Math.ceil(items.length / ps) };
 };
 const E164 = /^\+[1-9]\d{6,14}$/;
 
@@ -98,17 +79,15 @@ export const channelHandlers = [
           transports: ["udp", "tcp", "tls"],
           telephony_enabled: true,
         })
-      : problem(401, "unauthorized", "Sign in"),
+      : unauthorized(),
   ),
-  http.get(url("/phone-numbers"), ({ request }) =>
-    signedIn(request) ? json(page(store.numbers, request)) : problem(401, "unauthorized", "Sign in"),
-  ),
+  http.get(url("/phone-numbers"), ({ request }) => (signedIn(request) ? json(page(store.numbers, request)) : unauthorized())),
   http.post(url("/phone-numbers"), async ({ request }) => {
-    if (!signedIn(request)) return problem(401, "unauthorized", "Sign in");
+    if (!signedIn(request)) return unauthorized();
     const b = (await request.json()) as S["PhoneNumberImport"];
-    if (!E164.test(b.e164 ?? "")) return invalid("/e164", "Enter the number in E.164 form, for example +14155550123.");
-    if (/[@;/?]/.test(b.termination_address ?? "")) return invalid("/termination_address", "Enter only a host and optional port.");
-    if (store.numbers.some((n) => n.e164 === b.e164)) return problem(409, "number_already_registered", "This number is already connected.");
+    if (!E164.test(b.e164 ?? "")) return invalid("/e164", "Enter the number in E.164 form, for example +14155550123.", "invalid_format");
+    if (/[@;/?]/.test(b.termination_address ?? "")) return invalid("/termination_address", "Enter only a host and optional port.", "invalid_format");
+    if (store.numbers.some((n) => n.e164 === b.e164)) return problemDetail(409, "number_already_registered", "This number is already connected.");
     const failed = (b.termination_address ?? "").includes("fail");
     const n: PhoneNumber = {
       id: id("num"),
@@ -134,11 +113,11 @@ export const channelHandlers = [
   }),
   http.get(url("/phone-numbers/:id"), ({ params }) => {
     const n = store.numbers.find((x) => x.id === params.id);
-    return n ? json(n) : problem(404, "not_found", "No phone number");
+    return n ? json(n) : problemDetail(404, "not_found", "No phone number");
   }),
   http.patch(url("/phone-numbers/:id"), async ({ params, request }) => {
     const n = store.numbers.find((x) => x.id === params.id);
-    if (!n) return problem(404, "not_found", "No phone number");
+    if (!n) return problemDetail(404, "not_found", "No phone number");
     const b = (await request.json()) as S["PhoneNumberUpdate"] & Record<string, unknown>;
     if (b.auth_password) n.has_auth_password = true;
     if (b.remove_auth_password) n.has_auth_password = false;
@@ -148,10 +127,10 @@ export const channelHandlers = [
   }),
   http.delete(url("/phone-numbers/:id"), ({ params, request }) => {
     const n = store.numbers.find((x) => x.id === params.id);
-    if (!n) return problem(404, "not_found", "No phone number");
+    if (!n) return problemDetail(404, "not_found", "No phone number");
     const whenIdle = new URL(request.url).searchParams.get("when_idle") === "true";
     if (n.active_call_count > 0) {
-      if (!whenIdle) return problem(409, "number_has_active_calls", "Calls are active", { active_call_count: n.active_call_count });
+      if (!whenIdle) return problemDetail(409, "number_has_active_calls", "Calls are active", { active_call_count: n.active_call_count });
       n.status = "draining";
       return json(n, 202);
     }
@@ -160,7 +139,7 @@ export const channelHandlers = [
   }),
   http.post(url("/phone-numbers/:id/retry-provisioning"), ({ params }) => {
     const n = store.numbers.find((x) => x.id === params.id);
-    if (!n) return problem(404, "not_found", "No phone number");
+    if (!n) return problemDetail(404, "not_found", "No phone number");
     Object.assign(n, { status: "active", status_detail: null });
     return json(n);
   }),
@@ -182,7 +161,7 @@ export const channelHandlers = [
         dnc_entry_id: entry.id,
         dnc_number: entry.number,
       });
-      return problem(422, "outbound_policy", "This number is on the do-not-call list.", {
+      return problemDetail(422, "outbound_policy", "This number is on the do-not-call list.", {
         reason: "dnc_listed",
         to_number: b.to_number,
         dnc_entry_id: entry.id,
@@ -218,8 +197,8 @@ export const channelHandlers = [
     const b = (await request.json()) as S["DncEntryCreate"];
     const digits = b.number.replace(/\D/g, "");
     const number = b.number.trim().startsWith("+") ? `+${digits}` : b.default_region === "US" ? `+1${digits}` : "";
-    if (!E164.test(number)) return problem(422, "invalid_number", "Not a phone number");
-    if (store.dnc.some((d) => d.number === number)) return problem(409, "dnc_entry_exists", "Already listed");
+    if (!E164.test(number)) return problemDetail(422, "invalid_number", "Not a phone number");
+    if (store.dnc.some((d) => d.number === number)) return problemDetail(409, "dnc_entry_exists", "Already listed");
     const e: DncEntry = { id: id("dnc"), number, note: b.note ?? null, source: "manual", created_by_user_id: "usr_mock", created_at: now() };
     store.dnc.unshift(e);
     return json(e, 201);
@@ -255,14 +234,12 @@ export const channelHandlers = [
   http.get(url("/whatsapp/settings"), () =>
     json({ callback_url: "https://api.callwright.example/v1/whatsapp/webhook", default_graph_api_version: "v23.0", telephony_enabled: true }),
   ),
-  http.get(url("/whatsapp/channels"), ({ request }) =>
-    signedIn(request) ? json(page(store.channels, request, 100)) : problem(401, "unauthorized", "Sign in"),
-  ),
+  http.get(url("/whatsapp/channels"), ({ request }) => (signedIn(request) ? json(page(store.channels, request, 100)) : unauthorized())),
   http.post(url("/whatsapp/channels"), async ({ request }) => {
     const b = (await request.json()) as S["WhatsAppChannelCreate"];
-    if (!/^\d{5,32}$/.test(b.meta_phone_number_id)) return invalid("/meta_phone_number_id", "Digits only.");
+    if (!/^\d{5,32}$/.test(b.meta_phone_number_id)) return invalid("/meta_phone_number_id", "Digits only.", "invalid_format");
     if (b.access_token.includes("invalid"))
-      return problem(422, "whatsapp_token_rejected", "WhatsApp said: Error validating access token: Session has expired.");
+      return problemDetail(422, "whatsapp_token_rejected", "WhatsApp said: Error validating access token: Session has expired.");
     const c: WhatsAppChannel = {
       id: id("wa"),
       meta_phone_number_id: b.meta_phone_number_id,
@@ -290,11 +267,11 @@ export const channelHandlers = [
   }),
   http.get(url("/whatsapp/channels/:id"), ({ params }) => {
     const c = store.channels.find((x) => x.id === params.id);
-    return c ? json(c) : problem(404, "not_found", "No channel");
+    return c ? json(c) : problemDetail(404, "not_found", "No channel");
   }),
   http.patch(url("/whatsapp/channels/:id"), async ({ params, request }) => {
     const c = store.channels.find((x) => x.id === params.id);
-    if (!c) return problem(404, "not_found", "No channel");
+    if (!c) return problemDetail(404, "not_found", "No channel");
     const b = (await request.json()) as S["WhatsAppChannelUpdate"];
     const { access_token, verify_token, app_secret: _s, ...rest } = b;
     if (access_token) c.access_token_last4 = access_token.slice(-4);
@@ -308,7 +285,7 @@ export const channelHandlers = [
   }),
   http.post(url("/whatsapp/channels/:id/retry-setup"), ({ params }) => {
     const c = store.channels.find((x) => x.id === params.id);
-    return c ? json(c) : problem(404, "not_found", "No channel");
+    return c ? json(c) : problemDetail(404, "not_found", "No channel");
   }),
   http.get(url("/whatsapp/channels/:id/caller-routes"), ({ params, request }) =>
     json(
@@ -322,9 +299,9 @@ export const channelHandlers = [
   http.post(url("/whatsapp/channels/:id/caller-routes"), async ({ params, request }) => {
     const b = (await request.json()) as { caller_number: string; agent_id: string };
     const caller = b.caller_number.startsWith("+") ? b.caller_number : `+${b.caller_number}`;
-    if (!E164.test(caller)) return invalid("/caller_number", "Enter the number in E.164 form.");
+    if (!E164.test(caller)) return invalid("/caller_number", "Enter the number in E.164 form.", "invalid_format");
     if (store.routes.some((r) => r.channel_id === params.id && r.caller_number === caller))
-      return problem(409, "duplicate_caller_route", "Duplicate");
+      return problemDetail(409, "duplicate_caller_route", "Duplicate");
     const r: CallerRoute = {
       id: id("wcr"),
       channel_id: String(params.id),
@@ -340,7 +317,7 @@ export const channelHandlers = [
   }),
   http.patch(url("/whatsapp/channels/:id/caller-routes/:route"), async ({ params, request }) => {
     const r = store.routes.find((x) => x.id === params.route);
-    if (!r) return problem(404, "not_found", "No route");
+    if (!r) return problemDetail(404, "not_found", "No route");
     r.agent_id = ((await request.json()) as { agent_id: string }).agent_id;
     return json(r);
   }),

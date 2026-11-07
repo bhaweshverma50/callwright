@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderApp, signInDemo } from "../test/render";
 import { session } from "../api/session";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "../mocks/demoAccount";
 
 describe("auth guard (T040, US1.3)", () => {
   it("sends signed-out visitors to sign-in with a return path, then back", async () => {
@@ -11,8 +12,8 @@ describe("auth guard (T040, US1.3)", () => {
     expect(router.state.location.search).toBe(`?next=${encodeURIComponent("/billing?tab=usage")}`);
 
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText("Work email"), "ops@halcyon-dental.com");
-    await user.type(screen.getByLabelText("Password", { exact: true }), "correct-horse-9");
+    await user.type(screen.getByLabelText("Work email"), DEMO_EMAIL);
+    await user.type(screen.getByLabelText("Password", { exact: true }), DEMO_PASSWORD);
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/billing"));
     expect(router.state.location.search).toBe("?tab=usage");
@@ -21,7 +22,7 @@ describe("auth guard (T040, US1.3)", () => {
   it("shows a plain message for a wrong password", async () => {
     renderApp("/login");
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText("Work email"), "ops@halcyon-dental.com");
+    await user.type(screen.getByLabelText("Work email"), DEMO_EMAIL);
     await user.type(screen.getByLabelText("Password", { exact: true }), "not-the-password");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("That email and password do not match an account.")).toBeInTheDocument();
@@ -72,7 +73,8 @@ describe("shell (T042, T095, T096, FR-005, FR-018)", () => {
     await signInDemo();
     renderApp("/dashboard");
     expect(await screen.findByRole("heading", { name: "Get your first call on the line" })).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Setup progress" })).toHaveAttribute("aria-valuenow", "0");
+    // The demo workspace already has agents and nothing else, so one step of three is done.
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Setup progress" })).toHaveAttribute("aria-valuenow", "1"));
     for (const s of ["Create an agent", "Make a test call", "Connect a number"]) expect(screen.getByRole("heading", { name: s })).toBeInTheDocument();
   });
 
@@ -95,7 +97,7 @@ describe("shell (T042, T095, T096, FR-005, FR-018)", () => {
     await signInDemo();
     const user = userEvent.setup();
     const { router } = renderApp("/dashboard");
-    await user.click(await screen.findByRole("button", { name: /Account menu for ops@halcyon-dental.com/ }));
+    await user.click(await screen.findByRole("button", { name: new RegExp(`Account menu for ${DEMO_EMAIL}`) }));
     await user.click(await screen.findByRole("menuitem", { name: "Settings" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
     await user.click(screen.getByRole("button", { name: /Account menu/ }));

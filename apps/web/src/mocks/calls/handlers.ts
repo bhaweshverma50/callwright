@@ -6,19 +6,11 @@
  * Seeding also books the 011 callbacks on these calls (mocks/callbacks/handlers.ts) and records
  * the 012 caller languages (mocks/callerLanguage/handlers.ts).
  */
-import { http, HttpResponse, type JsonBodyType } from "msw";
+import { http, HttpResponse } from "msw";
 import type { CallDetail, CallListItem, DashboardStats, TranscriptItem, TurnLatency } from "../../api/calls";
-import { env } from "../../lib/env";
-import { resetMockCallbacks, seedMockCallbacks } from "../callbacks/handlers";
-import { resetMockCallerLanguages, seedMockCallerLanguages } from "../callerLanguage/handlers";
-
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
-const json = <T>(body: T, status = 200) => HttpResponse.json(body as unknown as JsonBodyType, { status });
-const problem = (status: number, code: string, detail: string) =>
-  HttpResponse.json({ type: `https://callwright.dev/problems/${code}`, title: "Error", status, code, detail } as JsonBodyType, {
-    status,
-    headers: { "content-type": "application/problem+json" },
-  });
+import { seedMockCallbacks } from "../callbacks/handlers";
+import { seedMockCallerLanguages } from "../callerLanguage/handlers";
+import { json, page, problemDetail, url } from "../http";
 
 export const MOCK_AGENTS = [
   { id: "agt_01HMCKAGENT0RDERDESK000001", name: "Order desk" },
@@ -44,8 +36,6 @@ const withQuality = (c: CallListItem, request: Request): CallListItem => (qualit
 export function resetMockCalls() {
   store = { calls: [], requests: [] };
   liveScript = [];
-  resetMockCallbacks();
-  resetMockCallerLanguages();
 }
 
 /**
@@ -373,15 +363,7 @@ export const callHandlers = [
     const q = new URL(request.url).searchParams;
     store.requests.push(new URL(request.url).search);
     const rows = store.calls.map((c) => withQuality(c, request)).filter((c) => matches(c, q));
-    const page = Number(q.get("page") ?? 1);
-    const size = Number(q.get("page_size") ?? 20);
-    return json({
-      items: rows.slice((page - 1) * size, page * size),
-      total: rows.length,
-      page,
-      page_size: size,
-      total_pages: Math.ceil(rows.length / size),
-    });
+    return json(page(rows, q));
   }),
   http.get(url("/calls/live"), () => {
     tickLive();
@@ -417,23 +399,25 @@ export const callHandlers = [
   http.get(url("/calls/:id"), ({ params, request }) => {
     tickLive();
     const c = find(String(params.id));
-    return c ? json(detail(withQuality(c, request))) : problem(404, "not_found", "No call with that id exists in this workspace.");
+    return c ? json(detail(withQuality(c, request))) : problemDetail(404, "not_found", "No call with that id exists in this workspace.");
   }),
   http.get(url("/calls/:id/transcript"), ({ params }) => {
     const id = String(params.id);
-    if (!find(id)) return problem(404, "not_found", "No call.");
+    if (!find(id)) return problemDetail(404, "not_found", "No call.");
     return json({ call_id: id, items: liveScript.some((l) => l.id === id) ? liveTranscript(id) : TRANSCRIPT });
   }),
   http.get(url("/calls/:id/turn-latencies"), ({ params }) => {
     const c = find(String(params.id));
-    return c ? json({ call_id: c.call_id, summary: detail(c).latency, turns: TURNS }) : problem(404, "not_found", "No call.");
+    return c ? json({ call_id: c.call_id, summary: detail(c).latency, turns: TURNS }) : problemDetail(404, "not_found", "No call.");
   }),
-  http.get(url("/calls/:id/flow-transitions"), () => problem(404, "not_found", "Not served yet.")),
+  http.get(url("/calls/:id/flow-transitions"), ({ params }) =>
+    find(String(params.id)) ? json({ items: [] }) : problemDetail(404, "not_found", "No call."),
+  ),
   http.get(url("/calls/:id/recording"), ({ params }) => {
     const c = find(String(params.id));
-    if (!c) return problem(404, "not_found", "No call.");
-    if (c.call_id === mockCallId(4)) return problem(410, "recording_deleted", "Recording deleted under your retention policy.");
-    if (!c.has_recording) return problem(404, "not_recorded", "This call has no recording.");
+    if (!c) return problemDetail(404, "not_found", "No call.");
+    if (c.call_id === mockCallId(4)) return problemDetail(410, "recording_deleted", "Recording deleted under your retention policy.");
+    if (!c.has_recording) return problemDetail(404, "not_recorded", "This call has no recording.");
     return json({
       url: "https://storage.test/rec.ogg",
       expires_at: new Date(Date.now() + 600_000).toISOString(),
@@ -445,7 +429,7 @@ export const callHandlers = [
     const other = new URL(request.url).searchParams.get("with_call_id") ?? "";
     const a = find(String(params.id));
     const b = find(other);
-    if (!a || !b) return problem(404, "not_found", "Call not found.");
+    if (!a || !b) return problemDetail(404, "not_found", "Call not found.");
     return json({
       left: detail(a),
       right: detail(b),
@@ -469,9 +453,9 @@ export const callHandlers = [
     const body = (await request.json()) as { messages: { content: string }[] };
     const q = body.messages.at(-1)?.content ?? "";
     store.requests.push(`chat:${request.headers.get("Idempotency-Key")}`);
-    if (q.includes("#402")) return problem(402, "insufficient_credit", "Add funds to ask about your data.");
-    if (q.includes("#429")) return problem(429, "rate_limited", "Too many questions.");
-    if (q.includes("#503")) return problem(503, "assistant_unavailable", "The assistant could not answer right now.");
+    if (q.includes("#402")) return problemDetail(402, "insufficient_credit", "Add funds to ask about your data.");
+    if (q.includes("#429")) return problemDetail(429, "rate_limited", "Too many questions.");
+    if (q.includes("#503")) return problemDetail(503, "assistant_unavailable", "The assistant could not answer right now.");
     if (/churn/i.test(q))
       return json({
         outcome: "declined",
@@ -555,7 +539,7 @@ export const callHandlers = [
     });
   }),
   http.post(url("/voice-commands/stream-token"), () =>
-    problem(503, "stt_not_configured", "Speech transcription is not configured on this server. Type the command instead."),
+    problemDetail(503, "stt_not_configured", "Speech transcription is not configured on this server. Type the command instead."),
   ),
   http.post(url("/voice-commands/interpret"), async ({ request }) => {
     const body = (await request.json()) as { transcript: string };

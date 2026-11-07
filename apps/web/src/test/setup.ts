@@ -3,11 +3,7 @@ import { cleanup, configure } from "@testing-library/react";
 import { MotionGlobalConfig } from "motion";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "../mocks/node";
-import { resetMockDb } from "../mocks/db";
-import { resetMockCalls } from "../mocks/calls/handlers";
-import { resetQualityMocks } from "../mocks/quality/handlers";
-import { resetSimMocks } from "../mocks/sim/store";
-import { resetIssueMocks } from "../mocks/issues/store";
+import { resetAll } from "../mocks/registry";
 import { resetWakeForTests } from "../api/wakeGate";
 
 // Full parallel runs load every worker; route pages behind the app shell can take over the 1 s
@@ -45,11 +41,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   cleanup();
   server.resetHandlers();
-  resetMockDb();
-  resetMockCalls();
-  resetQualityMocks();
-  resetSimMocks();
-  resetIssueMocks();
+  resetAll();
   resetWakeForTests();
   localStorage.clear();
 });

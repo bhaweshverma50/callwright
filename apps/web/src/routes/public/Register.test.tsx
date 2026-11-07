@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 import { api, unwrap } from "../../api/client";
 import { session } from "../../api/session";
 import { env } from "../../lib/env";
-import { DEMO_EMAIL, DEMO_PASSWORD } from "../../mocks/db";
 import { server } from "../../mocks/node";
 import { renderApp } from "../../test/render";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "../../mocks/demoAccount";
 
 async function fillAndSubmit(email: string) {
   const user = userEvent.setup();

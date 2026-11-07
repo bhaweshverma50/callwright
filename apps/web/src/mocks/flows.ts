@@ -3,27 +3,42 @@
  * small demo flow kept in memory; saves bump the revision, validation reports nothing, publish
  * and the assistant answer with fixed shapes. Creating a flow agent needs the real API.
  */
-import { http, HttpResponse } from "msw";
+import { http } from "msw";
 import type { Flow, FlowGraph } from "../api/flows";
-import { env } from "../lib/env";
-import { defaultConfig } from "../routes/flows/model";
+import { json, problem, problemDetail, url } from "./http";
 
-const url = (path: string) => `${env.apiBaseUrl}${path}`;
 const flows = new Map<string, Flow>();
+
+export function resetMockFlows() {
+  flows.clear();
+}
 const VALID = { errors: 0, warnings: 0, issues: [] };
 
 function demo(agentId: string): Flow {
   const graph: FlowGraph = {
     nodes: [
-      { id: "n_start000", type: "start", label: "Start", position: { x: 32, y: 120 }, config: defaultConfig("start") },
+      {
+        id: "n_start000",
+        type: "start",
+        label: "Start",
+        position: { x: 32, y: 120 },
+        config: { start_speaker: "agent", greeting_type: "static", greeting: "Hi, thanks for calling. How can I help?" },
+      },
       {
         id: "n_agent000",
         type: "agent",
         label: "Reminder",
         position: { x: 376, y: 120 },
-        config: { ...defaultConfig("agent"), instructions: "Remind the caller of their appointment and offer to rebook." },
+        config: {
+          instructions: "Remind the caller of their appointment and offer to rebook.",
+          begin_message: null,
+          context_strategy: "inherit",
+          overrides: { llm: null, tts: null, stt: null, language: null },
+          tool_ids: [],
+          kb_search_enabled: true,
+        },
       },
-      { id: "n_end00000", type: "end", label: "End", position: { x: 720, y: 120 }, config: defaultConfig("end") },
+      { id: "n_end00000", type: "end", label: "End", position: { x: 720, y: 120 }, config: { message: "", reason: "call_completed" } },
     ],
     edges: [
       { id: "e_start000", source: "n_start000", target: "n_agent000", trigger: "always", sort_order: 0 },
@@ -56,43 +71,29 @@ function demo(agentId: string): Flow {
 const byFlowId = (id: string) => [...flows.values()].find((f) => f.id === id);
 
 export const flowHandlers = [
-  http.post(url("/flows"), () =>
-    HttpResponse.json(
-      {
-        type: "about:blank",
-        title: "Not available in mock mode",
-        status: 422,
-        code: "validation_failed",
-        detail: "Create flow agents against the API.",
-      },
-      { status: 422, headers: { "content-type": "application/problem+json" } },
-    ),
-  ),
+  http.post(url("/flows"), () => problem(422, "validation_failed", "Not available in mock mode", "Create flow agents against the API.")),
   http.get(url("/agents/:id/flow"), ({ params }) => {
     const id = String(params.id);
     if (!flows.has(id)) flows.set(id, demo(id));
     const flow = flows.get(id)!;
-    return HttpResponse.json(flow, { headers: { ETag: `"${flow.revision}"` } });
+    return json(flow, 200, { ETag: `"${flow.revision}"` });
   }),
   http.put(url("/flows/:id"), async ({ params, request }) => {
     const flow = byFlowId(String(params.id));
-    if (!flow) return HttpResponse.json({ title: "Not found", status: 404, code: "not_found" }, { status: 404 });
+    if (!flow) return problemDetail(404, "not_found", "No flow with that ID.");
     const body = (await request.json()) as { name: string; graph: FlowGraph };
     const next = { ...flow, name: body.name, graph: body.graph, revision: flow.revision + 1, updated_at: new Date().toISOString() };
     flows.set(flow.agent_id, next);
-    return HttpResponse.json(next, { headers: { ETag: `"${next.revision}"` } });
+    return json(next, 200, { ETag: `"${next.revision}"` });
   }),
-  http.post(url("/flows/:id/validate"), () => HttpResponse.json(VALID)),
-  http.post(url("/flows/:id/compile"), () => HttpResponse.json({ ok: true, issues: [], compiled: null })),
+  http.post(url("/flows/:id/validate"), () => json(VALID)),
+  http.post(url("/flows/:id/compile"), () => json({ ok: true, issues: [], compiled: null })),
   http.post(url("/flows/:id/publish"), () =>
-    HttpResponse.json(
-      { agent_version_id: "agv_01ARZ3NDEKTSV4RRFFQ69G5FAV", version_number: 2, graph_hash: "0".repeat(64), warnings: 0 },
-      { status: 201 },
-    ),
+    json({ agent_version_id: "agv_01ARZ3NDEKTSV4RRFFQ69G5FAV", version_number: 2, graph_hash: "0".repeat(64), warnings: 0 }, 201),
   ),
   http.post(url("/flows/:id/assistant"), ({ params }) => {
     const flow = byFlowId(String(params.id));
-    return HttpResponse.json({
+    return json({
       message: "Tell me which step to add or change.",
       flow_name: null,
       operations: [],

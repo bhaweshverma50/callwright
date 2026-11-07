@@ -3,12 +3,12 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../../../api/agents";
 import { createQueryClient } from "../../../api/queryClient";
 import { Toaster, TooltipProvider } from "../../../components";
 import { defaultConfig } from "../../../mocks/agents/rules";
-import { resetToolStore, seedTool } from "../../../mocks/tools";
+import { seedTool } from "../../../mocks/tools";
 import { draftErrors, nameError, urlError } from "./forms/fieldRules";
 import { ToolsTab, toolSummary } from "./ToolsTab";
 
@@ -64,8 +64,6 @@ const http = (name: string, mock: string | null = null) =>
       execution_message: "One moment.",
     },
   });
-
-beforeEach(() => resetToolStore());
 
 describe("ToolsTab (005 T030, T033, T088)", () => {
   it("shows an empty state with both ways to add a tool", async () => {
