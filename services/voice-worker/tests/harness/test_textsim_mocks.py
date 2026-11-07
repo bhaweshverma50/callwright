@@ -8,10 +8,10 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_script,
     deps,
     flow,

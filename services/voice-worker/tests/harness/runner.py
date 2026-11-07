@@ -125,7 +125,7 @@ def default_variables(config: Mapping[str, Any], channel: str) -> dict[str, str]
         "timezone": "UTC",
         "current_date": EPOCH.date().isoformat(),
         "current_time": EPOCH.time().isoformat(timespec="minutes"),
-        "current_datetime": EPOCH.isoformat(),
+        "current_datetime": EPOCH.isoformat(timespec="minutes"),
     }
     values.update({name: known.get(name, "") for name in BUILTIN_VARIABLES})
     return values

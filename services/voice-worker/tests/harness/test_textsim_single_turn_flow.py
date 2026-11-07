@@ -3,10 +3,10 @@ tool calls and (flow agents) the visited nodes posted as the case result."""
 
 from __future__ import annotations
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_config,
     agent_script,
     case_spec,

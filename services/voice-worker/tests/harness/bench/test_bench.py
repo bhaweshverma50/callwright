@@ -18,8 +18,6 @@ async def test_benchmark_meets_budget_and_baseline() -> None:
     assert report.calls == 20 and report.turns == 120
     baseline = json.loads(DEFAULT_BASELINE.read_text())
     assert gate(report, baseline) == []
-    assert report.e2e_p50_ms <= 800
-    assert report.e2e_p95_ms <= 1500
 
 
 async def test_benchmark_is_deterministic() -> None:

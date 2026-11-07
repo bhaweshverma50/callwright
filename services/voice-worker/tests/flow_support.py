@@ -39,6 +39,9 @@ def compiled_config(name: str) -> dict[str, Any]:
 
 @dataclass
 class Rule:
+    """When the caller's last line contains ``match``: call ``tool`` with ``args``, or say
+    ``reply`` (the flow and text-run fake models)."""
+
     match: str
     tool: str | None = None
     args: dict[str, Any] = field(default_factory=dict)

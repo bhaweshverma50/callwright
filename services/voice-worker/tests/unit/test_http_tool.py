@@ -9,7 +9,8 @@ from typing import Any
 
 import httpx
 
-from tests.unit.tool_support import http_spec, make
+from tests.unit.tool_support import Harness, http_spec, make
+from worker.tools.http import HttpExecutor
 
 
 def slots(request: httpx.Request) -> httpx.Response:
@@ -76,7 +77,16 @@ async def test_upstream_error_and_blocked_address() -> None:
     assert result["error"] == "blocked_address" and blocked.requests == []
 
 
-async def _slow_handler(delay: float) -> Any:
+def slow_lookup(**spec: Any) -> Harness:
+    """A lookup slower than its waiting-line delay (shortened from 400 ms to keep tests fast)."""
+    h = make([http_spec(**spec)], handler=_handler_taking(0.05))
+    executor = h.tools.executors["http"]
+    assert isinstance(executor, HttpExecutor)
+    executor.waiting_after_s = 0.01
+    return h
+
+
+def _handler_taking(delay: float) -> Any:
     async def handler(request: httpx.Request) -> httpx.Response:
         await asyncio.sleep(delay)
         return httpx.Response(200, json={"ok": True})
@@ -84,25 +94,25 @@ async def _slow_handler(delay: float) -> Any:
     return handler
 
 
-async def test_waiting_line_only_after_400_ms_and_once() -> None:
-    fast = make([http_spec()], handler=await _slow_handler(0.05))
+async def test_waiting_line_only_after_its_delay_and_once() -> None:
+    fast = make([http_spec()], handler=_handler_taking(0.05))
     await fast.tools.dispatch("check_availability", {"date": "d"})
     assert fast.backend.said == [] and fast.events()[0]["spoke_execution_message"] is False
 
-    slow = make([http_spec()], handler=await _slow_handler(0.6))
+    slow = slow_lookup()
     await slow.tools.dispatch("check_availability", {"date": "d"})
     assert slow.backend.said == ["One moment while I check that."]
     assert slow.events()[0]["spoke_execution_message"] is True
 
 
 async def test_no_waiting_line_when_the_reply_already_spoke() -> None:
-    h = make([http_spec()], handler=await _slow_handler(0.6))
+    h = slow_lookup()
     h.tools.fillers.reply_spoke = True
     await h.tools.dispatch("check_availability", {"date": "d"})
     assert h.backend.said == []
 
 
 async def test_waiting_line_off() -> None:
-    h = make([http_spec(speak_during_execution=False)], handler=await _slow_handler(0.6))
+    h = slow_lookup(speak_during_execution=False)
     await h.tools.dispatch("check_availability", {"date": "d"})
     assert h.backend.said == []

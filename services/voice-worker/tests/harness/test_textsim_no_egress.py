@@ -13,11 +13,11 @@ from typing import Any
 import httpx
 import pytest
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     BASE,
     FakeInternalApi,
     Models,
-    Rule,
     agent_config,
     agent_script,
     case_spec,
