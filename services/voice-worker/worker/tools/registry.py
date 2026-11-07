@@ -27,7 +27,6 @@ import asyncio
 import contextlib
 import json
 import logging
-import re
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -43,7 +42,7 @@ from callwright_contract.values import (
     SCHEDULE_CALLBACK_TOOL,
 )
 
-from worker import telemetry
+from worker import json_schema, telemetry
 from worker.internal_api import InternalApiClient
 from worker.tools import CallControl, ToolActivity, kb_search, secrets
 from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecView
@@ -138,65 +137,9 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
     return {"name": spec.name, "description": description, "parameters": parameters}
 
 
-_TYPES: Mapping[str, tuple[type, ...]] = {
-    "string": (str,),
-    "integer": (int,),
-    "number": (int, float),
-    "boolean": (bool,),
-    "object": (dict,),
-    "array": (list,),
-    "null": (type(None),),
-}
-
-
-def _type_ok(value: Any, expected: Any) -> bool:
-    names = expected if isinstance(expected, list) else [expected]
-    for name in names:
-        kinds = _TYPES.get(str(name))
-        if kinds is None:
-            return True
-        if isinstance(value, bool) and name in ("integer", "number"):
-            continue
-        if isinstance(value, kinds):
-            return True
-    return False
-
-
-def validate_arguments(schema: Mapping[str, Any], value: Any, path: str = "") -> str | None:
-    """A small JSON Schema check (type, required, enum, pattern, lengths, ranges, nesting)."""
-    where = path or "arguments"
-    if "type" in schema and not _type_ok(value, schema["type"]):
-        return f"{where} must be {schema['type']}"
-    if "enum" in schema and value not in schema["enum"]:
-        return f"{where} must be one of {schema['enum']}"
-    if isinstance(value, str):
-        if "pattern" in schema and not re.search(str(schema["pattern"]), value):
-            return f"{where} has the wrong format"
-        if len(value) < int(schema.get("minLength", 0)):
-            return f"{where} is too short"
-        if "maxLength" in schema and len(value) > int(schema["maxLength"]):
-            return f"{where} is too long"
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        if "minimum" in schema and value < schema["minimum"]:
-            return f"{where} is below {schema['minimum']}"
-        if "maximum" in schema and value > schema["maximum"]:
-            return f"{where} is above {schema['maximum']}"
-    if isinstance(value, dict):
-        for name in schema.get("required") or []:
-            if name not in value or value[name] is None:
-                return f"{name} is required"
-        props = schema.get("properties") or {}
-        for name, sub in props.items():
-            if name in value and value[name] is not None and isinstance(sub, Mapping):
-                problem = validate_arguments(sub, value[name], f"{path}.{name}" if path else name)
-                if problem:
-                    return problem
-    if isinstance(value, list) and isinstance(schema.get("items"), Mapping):
-        for i, item in enumerate(value):
-            problem = validate_arguments(schema["items"], item, f"{where}[{i}]")
-            if problem:
-                return problem
-    return None
+def validate_arguments(schema: Mapping[str, Any], value: Any) -> str | None:
+    """Why the model's arguments do not fit the function's parameters, or None."""
+    return json_schema.problem(schema, value, combining=False)
 
 
 # Fillers --------------------------------------------------------------------------------------

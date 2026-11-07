@@ -14,7 +14,8 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from worker.flow import registry
-from worker.flow.registry import Move, Outcome, Stop
+from worker.flow.compiled import StartSection
+from worker.flow.registry import CONVERSATIONAL, Move, Outcome, Stop
 from worker.flow.templating import render
 
 
@@ -34,18 +35,16 @@ class Opening:
 def opening(compiled: Mapping[str, Any], variables: Mapping[str, Any]) -> Opening:
     nodes: Mapping[str, Mapping[str, Any]] = compiled.get("nodes") or {}
     start_id = str(compiled["entry_node_id"])
-    start = nodes[start_id].get("start") or {}
-    speaker: Literal["agent", "user"] = "user" if start.get("start_speaker") == "user" else "agent"
-    greeting_type = start.get("greeting_type") or "static"
+    start = StartSection.of(nodes[start_id].get("start"))
+    speaker = start.start_speaker
     parts: list[str] = []
-    text = render(start.get("greeting"), variables)[0].strip()
-    if text and (speaker == "user" or greeting_type == "static"):
+    text = render(start.greeting, variables)[0].strip()
+    if text and (speaker == "user" or start.greeting_type == "static"):
         parts.append(text)
     moves: list[tuple[str, Move]] = []
-    target = start.get("next")
-    if not target:
+    if not start.next:
         return Opening(speaker, None)
-    move = Move(target=str(target), trigger="always", edge_id=start.get("edge_id"))
+    move = Move(target=start.next, trigger="always", edge_id=start.edge_id)
     source = start_id
     while True:
         node = nodes.get(move.target) or {}
@@ -61,10 +60,10 @@ def opening(compiled: Mapping[str, Any], variables: Mapping[str, Any]) -> Openin
         break
     greeting = " ".join(parts) or None
     first_speaker: Literal["agent", "user"] = "agent" if greeting else speaker
-    if speaker == "agent" and greeting_type == "generated":
+    if speaker == "agent" and start.greeting_type == "generated":
         first_speaker = "agent"
     node_type = (nodes.get(move.target) or {}).get("type")
-    if node_type in ("agent", "task"):
+    if node_type in CONVERSATIONAL:
         moves.append((source, move))
         return Opening(first_speaker, greeting, moves, None)
     return Opening(first_speaker, greeting, moves, (source, move))
@@ -72,10 +71,10 @@ def opening(compiled: Mapping[str, Any], variables: Mapping[str, Any]) -> Openin
 
 async def handle(run: Any, node_id: str, node: Mapping[str, Any]) -> Outcome:
     """Start as a plain node (a move back into Start): continue to its first step."""
-    start = node.get("start") or {}
-    if not start.get("next"):
+    start = StartSection.of(node.get("start"))
+    if not start.next:
         return Stop("flow_dead_end")
-    return Move(target=str(start["next"]), trigger="always", edge_id=start.get("edge_id"))
+    return Move(target=start.next, trigger="always", edge_id=start.edge_id)
 
 
 registry.register("start", handle)

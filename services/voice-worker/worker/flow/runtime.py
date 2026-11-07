@@ -23,7 +23,12 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from callwright_contract.values import SCHEDULE_CALLBACK_TOOL, SET_LANGUAGE_TOOL, STOCK_GOODBYE
+from callwright_contract.values import (
+    COMPLETE_TASK_TOOL,
+    SCHEDULE_CALLBACK_TOOL,
+    SET_LANGUAGE_TOOL,
+    STOCK_GOODBYE,
+)
 
 from worker.adapters.registry import (
     UnsupportedLanguage,
@@ -39,8 +44,9 @@ from worker.agent import (
     tts_gain_for,
 )
 from worker.call_behavior import ends_with_goodbye
-from worker.flow import FLOW_NOT_COMPILED, FlowComponents, FlowRuntimeUnavailable, llm_ops
+from worker.flow import FlowComponents, llm_ops
 from worker.flow import nodes as _handlers  # noqa: F401  (registers the node handlers)
+from worker.flow.compiled import ConversationNode, TaskSection, load_compiled
 from worker.flow.context import BackgroundSummarizer, Message, handoff, known_facts
 from worker.flow.events import TOPIC, FlowEvents
 from worker.flow.executor import FlowRun, WebhookResult
@@ -66,7 +72,6 @@ GREETING_WAIT_S = 20.0
 GOODBYE_TIMEOUT_S = 4.0
 GOODBYE_AFTER_PLAYOUT_S = 1.5
 REPLY_PLAYOUT_WAIT_S = 30.0
-COMPLETE_TASK = "complete_task"
 IGNORED = "Ignored: the call already moved to another step this turn."
 
 
@@ -78,14 +83,6 @@ class NodeComponents:
     built: dict[str, Any] = field(default_factory=dict)
     tts: VendorSpec | None = None
     tts_gain: float = 1.0
-
-
-def flow_block(config: Mapping[str, Any]) -> Mapping[str, Any]:
-    flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    if not isinstance(compiled, Mapping) or compiled.get("schema_version") != 1:
-        raise FlowRuntimeUnavailable("the flow did not compile", diagnostic=FLOW_NOT_COMPILED)
-    return compiled
 
 
 # Built-in tools of the call (005's registry) that every conversational node gets: booking a
@@ -247,7 +244,7 @@ class FlowCall:
         components: FlowComponents | None = None,
         base_tools: CallTools,
     ) -> None:
-        compiled = flow_block(runtime.config)
+        compiled = load_compiled(runtime.config)
         self.runtime = runtime
         self.control = control
         self.plan = plan
@@ -585,18 +582,19 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
             self.rounds = 0
             self.completed = False
             node = self.node
-            strategy = "inherit" if rebuild else str(node.get("context_strategy") or "inherit")
+            strategy = "inherit" if rebuild else ConversationNode.of(node).context_strategy
             ctx, extra = call.node_chat_ctx(strategy, chat_ctx)
             instructions = call.run.render(node.get("instructions"))
-            task = node.get("task")
-            if task:
-                fields = ", ".join((task.get("json_schema") or {}).get("properties", {}).keys())
+            self.task = TaskSection.of(node["task"]) if node.get("task") else None
+            task = self.task
+            if task is not None:
+                fields = ", ".join(task.json_schema.get("properties", {}).keys())
                 extra = "\n\n".join(
                     p
                     for p in (
                         extra,
                         f"Collect these details from the caller: {fields}. Once you have them, "
-                        f"call {COMPLETE_TASK} with the values.",
+                        f"call {COMPLETE_TASK_TOOL} with the values.",
                     )
                     if p
                 )
@@ -606,7 +604,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 plan = replace(plan, tts=components.tts, tts_gain=components.tts_gain)
             tools_set = node_tools(call.base_tools, node)
             tools = [*tools_set.function_tools(), *self._transition_tools(), *call.extra_tools]
-            if task:
+            if task is not None:
                 tools.append(self._task_tool(task))
             kwargs: dict[str, Any] = {**call.default_components, **components.built}
             if ctx is not None:
@@ -644,8 +642,8 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 )
             return out
 
-        def _task_tool(self, task: Mapping[str, Any]) -> Any:
-            schema = dict(task.get("json_schema") or {"type": "object", "properties": {}})
+        def _task_tool(self, task: TaskSection) -> Any:
+            schema = dict(task.json_schema)
 
             async def run(args: dict[str, Any], _ctx: Any) -> Any:
                 required = [str(r) for r in schema.get("required") or []]
@@ -655,7 +653,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 return await self._complete(args, complete=True)
 
             return llm_ops.raw_tool(
-                COMPLETE_TASK, "Save the collected details and continue.", schema, run
+                COMPLETE_TASK_TOOL, "Save the collected details and continue.", schema, run
             )
 
         async def _take(self, function_name: str, run_ctx: Any = None) -> Any:
@@ -689,18 +687,18 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
         async def _complete(self, values: Mapping[str, Any], *, complete: bool) -> Any:
             call = self.call
             self.completed = True
-            task = self.node.get("task") or {}
+            task = self.task or TaskSection()
             found = {k: v for k, v in values.items() if v not in (None, "")}
             variables: dict[str, Any] = {f"task_result.{k}": v for k, v in found.items()}
             variables["task_result"] = dict(found)
-            if not task.get("success_target"):
+            if not task.success_target:
                 return "There is no next step."
             if not call.run.claim_turn(call.turns) and complete:
                 return IGNORED
             move = Move(
-                target=str(task["success_target"]),
+                target=task.success_target,
                 trigger="success",
-                edge_id=task.get("success_edge_id"),
+                edge_id=task.success_edge_id,
                 variables=variables,
                 note=None if complete else f"max rounds reached after {self.rounds}",
             )
@@ -725,14 +723,14 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
         async def llm_node(self, chat_ctx: Any, tools: list[Any], model_settings: Any) -> Any:
             """A task node that reached its maximum caller rounds completes with what it has
             instead of replying (FR-012)."""
-            task = self.node.get("task")
+            task = self.task
             items = getattr(chat_ctx, "items", [])
-            if task and items and getattr(items[-1], "role", None) == "user":
+            if task is not None and items and getattr(items[-1], "role", None) == "user":
                 self.rounds += 1
-            if task and not self.completed and self.rounds >= int(task.get("max_rounds") or 5):
+            if task is not None and not self.completed and self.rounds >= task.max_rounds:
                 self.completed = True
                 call = self.call
-                schema = dict(task.get("json_schema") or {})
+                schema = dict(task.json_schema)
                 values = await call.services.extract(
                     call.run.render(self.node.get("instructions")), schema
                 )
@@ -799,7 +797,7 @@ class CallwrightFlowRunner:
         self._calls: dict[str, FlowCall] = {}
 
     def opening(self, runtime: RuntimeConfig) -> Opening:
-        return opening(flow_block(runtime.config), runtime.variables)
+        return opening(load_compiled(runtime.config), runtime.variables)
 
     def build_agent(
         self,
