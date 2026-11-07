@@ -54,6 +54,7 @@ import { mss, plural, shortId, timeAgo, when } from "../../lib/format";
 import { CallStatusBadge, SentimentBadge } from "../../components/callVocabulary";
 import { ProblemAlert } from "../../components/ProblemAlert";
 import { bodyLimits } from "../../lib/contract.gen";
+import { CALLS_PATH, DATASETS_PATH, callPath } from "../../lib/paths";
 
 // The call's evaluation status from 007: its current checks passed, one failed, still running,
 // none ran, or a check errored.
@@ -74,7 +75,7 @@ function columns(onRemove: (item: DatasetItem) => void): Column<DatasetItem>[] {
       cell: (i) => (
         <span className="flex min-w-0 items-center gap-2">
           <Link
-            to={`/calls?call=${i.call_id}`}
+            to={callPath(i.call_id)}
             title={i.call_id}
             className={cn("block whitespace-nowrap rounded-inline font-mono text-[13px] hover:underline", i.available ? "text-fg" : "text-fg-3")}
           >
@@ -273,7 +274,7 @@ export function DatasetPage() {
   const [pending, setPending] = useState(false);
 
   if (isApiError(dataset.error) && dataset.error.status === 404)
-    return <RecordNotFound kind="dataset" backTo="/datasets" backLabel="Back to Datasets" />;
+    return <RecordNotFound kind="dataset" backTo={DATASETS_PATH} backLabel="Back to Datasets" />;
   if (dataset.isError)
     return (
       <EmptyState
@@ -312,7 +313,7 @@ export function DatasetPage() {
       await deleteDataset(d.dataset_id);
       void qc.invalidateQueries({ queryKey: datasetKeys.all });
       toast({ tone: "success", title: `Deleted ${d.name}`, description: "The calls themselves are untouched." });
-      navigate("/datasets");
+      navigate(DATASETS_PATH);
     } catch (e) {
       toast({ tone: "error", title: "Not deleted", description: problemText(e) });
     } finally {
@@ -323,7 +324,10 @@ export function DatasetPage() {
   const tooFew = d.item_count < 2;
   return (
     <div className="flex flex-col">
-      <Link to="/datasets" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link
+        to={DATASETS_PATH}
+        className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
+      >
         <ChevronLeft className="size-4" aria-hidden /> Back to Datasets
       </Link>
       <PageHeader
@@ -382,7 +386,7 @@ export function DatasetPage() {
               title="No calls yet"
               actions={
                 <Button asChild>
-                  <Link to="/calls">Open Calls</Link>
+                  <Link to={CALLS_PATH}>Open Calls</Link>
                 </Button>
               }
             >

@@ -63,7 +63,7 @@ import { AgentActions } from "./AgentActions";
 import { AgentCard } from "./AgentCard";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { languageLabel, llmLabel } from "./editor/catalogs";
-import { agentPath } from "../../lib/paths";
+import { agentPath, NEW_AGENT_PATH, TEMPLATES_PATH } from "../../lib/paths";
 import { timeAgo } from "../../lib/format";
 import { AGENT_TYPES, AgentTypeBadge } from "./agentType";
 
@@ -223,10 +223,10 @@ export function AgentsListPage() {
           !firstLoad && total === 0 && !filtered ? undefined : (
             <>
               <Button asChild icon={<LayoutTemplate aria-hidden />}>
-                <Link to="/agents/templates">Templates</Link>
+                <Link to={TEMPLATES_PATH}>Templates</Link>
               </Button>
               <Button asChild variant="primary" icon={<Plus aria-hidden />}>
-                <Link to="/agents/new">New agent</Link>
+                <Link to={NEW_AGENT_PATH}>New agent</Link>
               </Button>
             </>
           )
@@ -243,10 +243,10 @@ export function AgentsListPage() {
               actions={
                 <>
                   <Button asChild variant="primary" icon={<Plus aria-hidden />}>
-                    <Link to="/agents/new">New agent</Link>
+                    <Link to={NEW_AGENT_PATH}>New agent</Link>
                   </Button>
                   <Button asChild icon={<LayoutTemplate aria-hidden />}>
-                    <Link to="/agents/templates">Start from a template</Link>
+                    <Link to={TEMPLATES_PATH}>Start from a template</Link>
                   </Button>
                 </>
               }

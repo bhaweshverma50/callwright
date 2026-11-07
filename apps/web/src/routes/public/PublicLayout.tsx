@@ -3,6 +3,7 @@ import { Suspense, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useSignedIn } from "../../api/session";
 import { Button, Drawer, IconButton, Logo, PageTransition, PanelLoader, cn, focusRing } from "../../components";
+import { DASHBOARD_PATH } from "../../lib/paths";
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   cn("link-underline rounded-inline px-1 py-1 text-[14px] transition-colors", isActive ? "text-fg" : "text-fg-2 hover:text-fg", focusRing);
@@ -40,7 +41,7 @@ export function PublicLayout() {
           <div className="ml-auto flex items-center gap-2">
             {signedIn ? (
               <Button asChild variant="primary" icon={<LayoutDashboard aria-hidden />}>
-                <Link to="/dashboard">Open dashboard</Link>
+                <Link to={DASHBOARD_PATH}>Open dashboard</Link>
               </Button>
             ) : (
               <>

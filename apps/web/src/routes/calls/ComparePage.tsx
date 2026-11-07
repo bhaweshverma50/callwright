@@ -18,6 +18,7 @@ import { Badge, Button, EmptyState, Input, PageHeader, Panel, Skeleton, Truncate
 import { transcriptRows, TurnLatencyChip } from "./Transcript";
 import { mss, usd, when } from "../../lib/format";
 import { CallStatusBadge } from "../../components/callVocabulary";
+import { callComparePath, callPath } from "../../lib/paths";
 
 function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "right"; kind: "call" | "simulation" }) {
   return (
@@ -34,7 +35,7 @@ function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "righ
           {call.agent_version_label && <Badge tone="accent">{call.agent_version_label}</Badge>}
         </p>
         <Link
-          to={`/calls?call=${call.call_id}`}
+          to={callPath(call.call_id)}
           className={cn("block truncate rounded-inline font-mono text-[12px] text-accent-text hover:underline", focusRing)}
         >
           {call.call_id}
@@ -294,7 +295,7 @@ export function ComparePage() {
         description="Line two calls up turn by turn to see what a change did."
         actions={
           <Button asChild variant="secondary" icon={<ArrowLeft aria-hidden />}>
-            <Link to={`/calls?call=${callId}`}>Back to the call</Link>
+            <Link to={callPath(callId)}>Back to the call</Link>
           </Button>
         }
       />
@@ -308,7 +309,7 @@ export function ComparePage() {
           title="Call not found"
           actions={
             <Button asChild variant="secondary" icon={<ArrowsLeftRight aria-hidden />}>
-              <Link to={`/calls/${callId}/compare`}>Pick another call</Link>
+              <Link to={callComparePath(callId)}>Pick another call</Link>
             </Button>
           }
         >

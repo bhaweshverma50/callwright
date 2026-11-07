@@ -258,7 +258,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       <LeaveGuard when={dirty && !draft.saving} />
       <header className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:flex-1">
-          <Link to="/agents" className="link-underline inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+          <Link to={AGENTS_PATH} className="link-underline inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
             <ChevronLeft className="size-4" aria-hidden /> Agents
           </Link>
           <div className="flex min-w-0 flex-col gap-1">

@@ -7,7 +7,7 @@ import { agentChanged, useVoiceCatalog } from "../../api/agents";
 import { createFlowAgent } from "../../api/flows";
 import { problemMessage } from "../../api/problems";
 import { Button, Field, Input, Select, Skeleton, cn, toast } from "../../components";
-import { agentFlowPath } from "../../lib/paths";
+import { agentFlowPath, NEW_AGENT_PATH } from "../../lib/paths";
 import { bodyLimits } from "../../lib/contract.gen";
 
 /** What a new flow starts with (FR-003): one row each, the text column aligned when it wraps. */
@@ -48,7 +48,10 @@ export function NewFlowAgentPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-[640px] flex-col">
-      <Link to="/agents/new" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link
+        to={NEW_AGENT_PATH}
+        className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
+      >
         <ChevronLeft className="size-4" aria-hidden /> Agent type
       </Link>
       <section className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">

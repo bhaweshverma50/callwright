@@ -12,6 +12,7 @@ import { Badge, Button, OnAir, TruncatedText, Waveform, cn, focusRing } from "..
 import { CHANNEL_ICONS } from "../columns";
 import { LiveDuration } from "./LiveDuration";
 import { phone } from "../../../lib/format";
+import { CALLS_PATH } from "../../../lib/paths";
 
 /** Who is on the line, as people say it: the outside number, or a browser call. */
 export function liveParty(c: Pick<LiveCall, "channel" | "direction" | "from_number" | "to_number">): string {
@@ -179,7 +180,7 @@ export function LiveNowCard({ onOpen }: { onOpen: (id: string) => void }) {
           <CardHeader count={data.count}>
             <span className="hidden text-[13px] text-fg-3 sm:inline">Open a call to follow its transcript as it happens.</span>
             <Button asChild variant="link" size="sm" className="ml-auto">
-              <Link to="/calls">All calls</Link>
+              <Link to={CALLS_PATH}>All calls</Link>
             </Button>
           </CardHeader>
           <LiveCallList calls={data.items} onOpen={onOpen} label="Calls on air" />

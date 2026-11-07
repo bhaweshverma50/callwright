@@ -10,7 +10,7 @@ import { Button, Field, FormAlert, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 import { demoHints } from "../../lib/demoHints";
-import { AUTH_PAGES } from "../../lib/paths";
+import { AUTH_PAGES, DASHBOARD_PATH } from "../../lib/paths";
 import { bodyLimits } from "../../lib/contract.gen";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -32,7 +32,7 @@ export function Register() {
     onSuccess: (result) => {
       if (result.status !== "signed_in") return;
       startSession(result);
-      navigate("/dashboard", { replace: true });
+      navigate(DASHBOARD_PATH, { replace: true });
     },
   });
   const resend = useMutation({

@@ -12,6 +12,7 @@ import { COUNTED, STEPS, agentInPath, onStepPage, stepPath } from "./steps";
 import { TourOverlay, type StepProgress } from "./TourOverlay";
 import { WelcomeCard } from "./WelcomeCard";
 import { idempotencyKey } from "../../lib/idempotency";
+import { agentEditPath } from "../../lib/paths";
 
 const AGENT_KEY = "cw.tour.agent";
 /** Pause after the real action before moving on, so the user sees what they did land. */
@@ -181,7 +182,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (!t) throw new Error("No templates are available.");
     const agent = await createAgentFromTemplate(qc, t, idempotencyKey());
     toast({ tone: "success", title: "Agent created from template", description: `${agent.name} is saved as version 1.` });
-    navigate(`/agents/${agent.id}/edit`);
+    navigate(agentEditPath(agent.id));
   }, [qc, navigate]);
 
   const doIt = useCallback(async () => {

@@ -38,8 +38,8 @@ import { CostCard } from "./CostCard";
 import { EDITOR_PANELS } from "./panels";
 import { useAgentDraft, type DraftBase } from "./useAgentDraft";
 import { VoiceSection } from "./VoiceSection";
-import { agentEditPath, agentFlowPath, AGENTS_PATH, agentTestingPath, isAgentId } from "../../../lib/paths";
-import { type EditorSection, fieldId, sectionOf } from "../config/fields";
+import { type AgentEditorTab, agentEditPath, agentFlowPath, AGENTS_PATH, agentTestingPath, isAgentId } from "../../../lib/paths";
+import { fieldId, sectionOf } from "../config/fields";
 import { LoadFailure, useCatalogs, useSaveShortcut } from "./editorShell";
 import { bodyLimits } from "../../../lib/contract.gen";
 
@@ -68,7 +68,7 @@ export function AgentEditorPage() {
   return <Editor key={id ?? "new"} initial={initial} catalogs={catalogs} />;
 }
 
-type Tab = EditorSection | string;
+type Tab = AgentEditorTab;
 
 function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs }) {
   const draft = useAgentDraft(initial, "single_prompt");
@@ -177,7 +177,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
   return (
     <div className="flex flex-col">
       <LeaveGuard when={draft.dirty && saving === null && goTo === null} />
-      <Link to="/agents" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link to={AGENTS_PATH} className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
         <ChevronLeft className="size-4" aria-hidden /> Agents
       </Link>
 
@@ -237,7 +237,7 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
 
       <WorkLayout
         main={
-          <Tabs value={tab} onValueChange={setTab} items={tabs} density="compact" aria-label="Agent settings">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} items={tabs} density="compact" aria-label="Agent settings">
             <TabPanel value="basics">
               <BasicSection draft={draft} catalogs={catalogs} onOpenAssistant={() => setAssistant(true)} />
             </TabPanel>
@@ -454,7 +454,7 @@ function EditorSkeleton() {
 function FlowAgentNotice({ agent }: { agent: AgentDetail }) {
   return (
     <div className="flex flex-col">
-      <Link to="/agents" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link to={AGENTS_PATH} className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
         <ChevronLeft className="size-4" aria-hidden /> Agents
       </Link>
       <EmptyState

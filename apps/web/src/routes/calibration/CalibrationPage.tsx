@@ -9,6 +9,7 @@ import { Badge, Button, EmptyState, PageHeader, Segmented, Select, Skeleton, cn,
 import { COST_LABELS, evaluatorIcon } from "../agents/quality/evaluatorMeta";
 import { pct } from "../../lib/format";
 import { useAllAgents } from "../../api/agents";
+import { REVIEW_PATH } from "../../lib/paths";
 
 const LOOKBACKS = [30, 90, 180, 365] as const;
 const ALL_AGENTS = "all";
@@ -240,7 +241,7 @@ export function CalibrationPage() {
         description="How often each check agrees with the labels people gave the same calls. Trust a check once it has enough labelled calls and agrees strongly."
         actions={
           <Button asChild variant="secondary" icon={<ArrowRight aria-hidden />}>
-            <Link to="/review">Label calls</Link>
+            <Link to={REVIEW_PATH}>Label calls</Link>
           </Button>
         }
       />
@@ -303,7 +304,7 @@ export function CalibrationPage() {
           title="No checks to calibrate yet"
           actions={
             <Button asChild variant="primary">
-              <Link to="/review">Open the review queue</Link>
+              <Link to={REVIEW_PATH}>Open the review queue</Link>
             </Button>
           }
         >

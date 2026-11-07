@@ -38,6 +38,7 @@ import { CallLanguageCard } from "./CallLanguageCard";
 import { LiveDuration } from "./live/LiveDuration";
 import { mss, phone, usd, whenLong } from "../../lib/format";
 import { CallStatusBadge, CHANNEL_LABELS, ORIGIN_LABELS, REASON_LABELS } from "../../components/callVocabulary";
+import { callComparePath } from "../../lib/paths";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
 
@@ -290,7 +291,7 @@ export function CallDetailDrawer({
                 </>
               )}
               <Button asChild size="sm" variant="secondary" icon={<ArrowLeftRight aria-hidden />}>
-                <Link to={`/calls/${shown}/compare`} aria-label="Compare with another call">
+                <Link to={callComparePath(shown)} aria-label="Compare with another call">
                   <span className="hidden sm:inline">Compare</span>
                 </Link>
               </Button>

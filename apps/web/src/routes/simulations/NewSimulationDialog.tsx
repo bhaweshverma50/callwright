@@ -14,6 +14,7 @@ import { PreflightStep } from "./PreflightDialog";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, type TargetChoice } from "./VariantEditor";
 import { ProblemAlert } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { simulationRunPath } from "../../lib/paths";
 
 function Target({ agentId, value, onChange }: { agentId: string; value: TargetChoice; onChange: (t: TargetChoice) => void }) {
   const sources = useTargetSources(agentId);
@@ -94,7 +95,7 @@ export function NewSimulationDialog({
       key.reset();
       toast({ tone: "success", title: "Simulation started", description: "The transcript opens when the run finishes." });
       onOpenChange(false);
-      navigate(`/simulations/runs/${run.simulation_run_id}`);
+      navigate(simulationRunPath(run.simulation_run_id));
     } catch (e) {
       if (!isRetryable(e)) key.reset();
       setError(e);

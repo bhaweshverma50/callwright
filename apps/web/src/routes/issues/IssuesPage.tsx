@@ -31,6 +31,7 @@ import { plural, timeAgo } from "../../lib/format";
 import { ProblemAlert } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
 import { problemText } from "../../api/problems";
+import { issuePath } from "../../lib/paths";
 
 const ALL = "all";
 const DETECT_HINT = "Choose an agent to run detection";
@@ -40,7 +41,7 @@ const columns = (agentNames: Record<string, string>, showAgent: boolean): Column
     key: "issue",
     header: "Issue",
     cell: (i) => (
-      <Link to={`/issues/${i.issue_id}`} className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 hover:underline md:max-w-[56ch]">
+      <Link to={issuePath(i.issue_id)} className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 hover:underline md:max-w-[56ch]">
         <TruncatedText className="text-[14px] font-medium text-fg">{i.title}</TruncatedText>
         <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-fg-3">
           <span className="truncate">{`${i.evaluator_display_name ?? i.evaluator_name}${i.flow_node_label ? `, node ${i.flow_node_label}` : ""}`}</span>

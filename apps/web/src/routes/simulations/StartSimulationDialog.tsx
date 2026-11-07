@@ -25,6 +25,7 @@ import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSourc
 import { plural } from "../../lib/format";
 import { ProblemAlert } from "../../components/ProblemAlert";
 import { bodyLimits } from "../../lib/contract.gen";
+import { experimentPath, simulationRunPath } from "../../lib/paths";
 
 export interface StartSimulationProps {
   open: boolean;
@@ -102,7 +103,7 @@ export function StartSimulationDialog({ open, onOpenChange, agentId, agentName, 
         key.reset();
         toast({ tone: "success", title: "Batch started", description: `${plural(exp.total_count, "run")} queued.` });
         onOpenChange(false);
-        navigate(`/simulations/${exp.experiment_id}`);
+        navigate(experimentPath(exp.experiment_id));
       } else {
         const run = await startSimulationRun(
           { agent_id: agentId, mode, base_call_id: baseCallIds[0]!, target: simTarget(), settings: settings() },
@@ -111,7 +112,7 @@ export function StartSimulationDialog({ open, onOpenChange, agentId, agentName, 
         key.reset();
         toast({ tone: "success", title: "Simulation started", description: "The comparison opens when the run finishes." });
         onOpenChange(false);
-        navigate(`/simulations/runs/${run.simulation_run_id}`);
+        navigate(simulationRunPath(run.simulation_run_id));
       }
     } catch (e) {
       if (!isRetryable(e)) key.reset();

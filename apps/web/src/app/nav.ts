@@ -13,7 +13,20 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { AGENTS_PATH, BILLING_PATH, CALLS_PATH, DASHBOARD_PATH, SETTINGS_PATH } from "../lib/paths";
+import {
+  AGENTS_PATH,
+  BILLING_PATH,
+  CALIBRATION_PATH,
+  CALLS_PATH,
+  DASHBOARD_PATH,
+  DATASETS_PATH,
+  ISSUES_PATH,
+  KNOWLEDGE_PATH,
+  PHONE_NUMBERS_PATH,
+  REVIEW_PATH,
+  SETTINGS_PATH,
+  SIMULATIONS_PATH,
+} from "../lib/paths";
 
 export interface NavItem {
   to: string;
@@ -38,12 +51,12 @@ export const NAV: NavGroup[] = [
     items: [
       { to: AGENTS_PATH, label: "Agents", icon: Bot },
       {
-        to: "/knowledge-base",
+        to: KNOWLEDGE_PATH,
         label: "Knowledge",
         icon: BookOpen,
       },
       {
-        to: "/phone-numbers",
+        to: PHONE_NUMBERS_PATH,
         label: "Channels",
         icon: PhoneForwarded,
       },
@@ -68,12 +81,12 @@ export const NAV: NavGroup[] = [
     label: "Quality",
     items: [
       {
-        to: "/datasets",
+        to: DATASETS_PATH,
         label: "Datasets",
         icon: DatabaseIcon,
       },
       {
-        to: "/simulations",
+        to: SIMULATIONS_PATH,
         label: "Simulations",
         icon: FlaskConical,
       },
@@ -83,17 +96,17 @@ export const NAV: NavGroup[] = [
     label: "Feedback loop",
     items: [
       {
-        to: "/review",
+        to: REVIEW_PATH,
         label: "Review",
         icon: ListChecksIcon,
       },
       {
-        to: "/calibration",
+        to: CALIBRATION_PATH,
         label: "Calibration",
         icon: CrosshairIcon,
       },
       {
-        to: "/issues",
+        to: ISSUES_PATH,
         label: "Issues",
         icon: TriangleAlert,
       },

@@ -6,7 +6,9 @@
  * control ranges in the editor; their entries here name them when the catalog is not loaded.
  */
 
-export type EditorSection = "basics" | "voice" | "behaviour" | "advanced";
+import type { AgentEditorTab } from "../../../lib/paths";
+
+export type EditorSection = Extract<AgentEditorTab, "basics" | "voice" | "behaviour" | "advanced">;
 
 export const SECTION_LABELS: Record<EditorSection, string> = {
   basics: "Basics",

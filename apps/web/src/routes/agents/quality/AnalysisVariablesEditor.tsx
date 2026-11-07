@@ -11,6 +11,7 @@ import { Badge, Button, ConfirmDialog, EmptyState, IconButton, Skeleton, toast }
 import { TabHeader } from "../tools/TabHeader";
 import { AddVariableDialog, TYPE_ICONS, TYPE_LABELS } from "./AddVariableDialog";
 import { operationExtensions } from "../../../lib/contract.gen";
+import { agentEditPath } from "../../../lib/paths";
 
 export const MAX_VARIABLES = operationExtensions["POST /agents/{agent_id}/analysis-variables"]["x-max-per-agent"];
 
@@ -104,7 +105,7 @@ export function AnalysisVariablesEditor({
           {model.own ? " (set under Advanced)." : ", the agent's main model."}
         </span>
         {showModelLink && (
-          <Link to="?tab=advanced" className="link-underline rounded-inline text-accent-text">
+          <Link to={agentEditPath(agentId, "advanced")} className="link-underline rounded-inline text-accent-text">
             Change model
           </Link>
         )}

@@ -13,7 +13,7 @@ import { costUsd, plural } from "../../lib/format";
 import { INVALID_REASONS } from "./invalidCalls";
 
 export function configureMocksPath(agentId: string, type: AgentType | undefined) {
-  return type === "flow" ? agentFlowPath(agentId) : `${agentEditPath(agentId)}?tab=tools`;
+  return type === "flow" ? agentFlowPath(agentId) : agentEditPath(agentId, "tools");
 }
 
 export function PreflightStep({ report, agentId, agentType }: { report: Preflight; agentId: string; agentType: AgentType | undefined }) {

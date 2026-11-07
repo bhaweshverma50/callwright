@@ -46,6 +46,7 @@ import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared
 import { costUsd, plural, shortId, timeAgo, whenLong } from "../../lib/format";
 import { ProblemAlert } from "../../components/ProblemAlert";
 import { problemText } from "../../api/problems";
+import { SIMULATIONS_PATH, callPath, datasetPath, simulationRunPath } from "../../lib/paths";
 
 const RUN_COLUMNS: Column<SimulationRun>[] = [
   {
@@ -54,7 +55,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
     cell: (r) =>
       r.base_call_id ? (
         <Link
-          to={`/calls?call=${r.base_call_id}`}
+          to={callPath(r.base_call_id)}
           title={r.base_call_id}
           className="block whitespace-nowrap rounded-inline font-mono text-[13px] text-fg-2 hover:text-fg hover:underline"
         >
@@ -90,7 +91,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
     cell: (r) =>
       r.status === "completed" ? (
         <Link
-          to={`/simulations/runs/${r.simulation_run_id}`}
+          to={simulationRunPath(r.simulation_run_id)}
           className="inline-flex items-center gap-1 whitespace-nowrap rounded-inline text-[13px] font-medium text-accent-text hover:underline"
           aria-label={`Compare ${r.base_call_id ?? "run"}`}
         >
@@ -241,7 +242,8 @@ export function ExperimentPage() {
   const [confirm, setConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  if (isApiError(exp.error) && exp.error.status === 404) return <RecordNotFound kind="batch" backTo="/simulations" backLabel="Back to Simulations" />;
+  if (isApiError(exp.error) && exp.error.status === 404)
+    return <RecordNotFound kind="batch" backTo={SIMULATIONS_PATH} backLabel="Back to Simulations" />;
   if (exp.isError)
     return (
       <EmptyState
@@ -273,7 +275,10 @@ export function ExperimentPage() {
   const settled = e.completed_count + e.failed_count + e.cancelled_count;
   return (
     <div className="flex flex-col">
-      <Link to="/simulations" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link
+        to={SIMULATIONS_PATH}
+        className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
+      >
         <ChevronLeft className="size-4" aria-hidden /> Back to Simulations
       </Link>
       <PageHeader
@@ -294,7 +299,7 @@ export function ExperimentPage() {
             <SimStatusBadge status={e.status} />
             <span className="text-[13px] text-fg-3">Started {whenLong(e.created_at)}</span>
             {e.source === "dataset" && e.dataset_id && (
-              <Link to={`/datasets/${e.dataset_id}`} className="text-[13px] text-accent-text hover:underline">
+              <Link to={datasetPath(e.dataset_id)} className="text-[13px] text-accent-text hover:underline">
                 From a dataset
               </Link>
             )}

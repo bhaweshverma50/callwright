@@ -21,6 +21,7 @@ import type { components } from "../../api/schema";
 import { Badge, cn, focusRing, type Tone } from "../../components";
 import { mss, usd, when } from "../../lib/format";
 import { STATUS_TONES } from "../../components/callVocabulary";
+import { callPath } from "../../lib/paths";
 
 export type ChatAnswer = components["schemas"]["ChatAnswer"];
 type Column = NonNullable<NonNullable<ChatAnswer["table"]>["columns"]>[number];
@@ -158,7 +159,7 @@ const ORIGIN_BADGE: Record<string, { label: string; tone: Tone } | undefined> = 
   simulation: { label: "Simulated", tone: "neutral" },
 };
 
-export const callHref = (id: string) => `/calls?call=${encodeURIComponent(id)}`;
+export const callHref = callPath;
 
 function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (

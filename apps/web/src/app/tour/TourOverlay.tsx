@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { Button, IconButton, cn, focusRing, EASE_OUT_SOFT } from "../../components";
 import { COUNTED, STEPS, type TourStep } from "./steps";
+import { AGENTS_PATH, agentEditPath, agentTestingPath } from "../../lib/paths";
 
 export interface StepProgress {
   /** The step asks for an action the user has not done yet. */
@@ -520,14 +521,14 @@ const RECAP = [
     label: "Open your agent",
     hint: "Prompt, voice and price",
     icon: Bot,
-    to: (id: string | null) => (id ? `/agents/${id}/edit` : "/agents"),
+    to: (id: string | null) => (id ? agentEditPath(id) : AGENTS_PATH),
   },
   {
     key: "test",
     label: "Call it again",
     hint: "Browser test call",
     icon: PhoneCall,
-    to: (id: string | null) => (id ? `/agents/${id}/testing` : "/agents"),
+    to: (id: string | null) => (id ? agentTestingPath(id) : AGENTS_PATH),
   },
   { key: "number", label: "Connect a number", hint: "SIP trunk or WhatsApp", icon: PhoneForwarded, to: () => "/phone-numbers" },
   { key: "review", label: "Review calls", hint: "Labels and quality checks", icon: ListChecks, to: () => "/review" },

@@ -21,7 +21,7 @@ import {
   focusRing,
   type Step,
 } from "../../components";
-import { BILLING_PATH, SETTINGS_PATH } from "../../lib/paths";
+import { AGENTS_PATH, BILLING_PATH, NEW_AGENT_PATH, PHONE_NUMBERS_PATH, SETTINGS_PATH } from "../../lib/paths";
 
 interface SetupStep {
   title: string;
@@ -46,7 +46,7 @@ export function setupSteps({
       title: "Create an agent",
       detail: "Write what it should do, then pick its speech recognition, model and voice.",
       action: "Create an agent",
-      to: "/agents/new",
+      to: NEW_AGENT_PATH,
       icon: Robot,
       done: hasAgent,
     },
@@ -54,7 +54,7 @@ export function setupSteps({
       title: "Make a test call",
       detail: "Talk to it from the browser. Every turn shows its latency and every second its cost.",
       action: "Make a test call",
-      to: "/agents",
+      to: AGENTS_PATH,
       icon: PhoneCallDuo,
       done: hasTestCall,
     },
@@ -62,7 +62,7 @@ export function setupSteps({
       title: "Connect a number",
       detail: "Put the agent on a phone number or SIP trunk so real callers can reach it.",
       action: "Connect a number",
-      to: "/phone-numbers",
+      to: PHONE_NUMBERS_PATH,
       icon: PhoneList,
       done: hasNumber,
     },
@@ -109,7 +109,7 @@ export function DashboardPlaceholder() {
         description="Calls, cost and quality for this workspace. Get your first call on the line to fill it."
         actions={
           <Button asChild variant="secondary" icon={<Bot aria-hidden />}>
-            <Link to="/agents">See agents</Link>
+            <Link to={AGENTS_PATH}>See agents</Link>
           </Button>
         }
       />

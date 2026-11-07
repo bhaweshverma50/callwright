@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 import { Badge, Button, ChoiceGroup, PageHeader, Textarea, cn } from "../../components";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { AGENT_TYPES } from "./agentType";
+import { AGENTS_PATH, NEW_FLOW_AGENT_PATH, NEW_SINGLE_AGENT_PATH, TEMPLATES_PATH } from "../../lib/paths";
 
 type Kind = "single" | "flow";
 
@@ -27,11 +28,11 @@ export function NewAgentTypePage() {
   const [copying, setCopying] = useState(false);
   const draftWithAi = () => {
     const d = describe.trim();
-    if (d) navigate(`/agents/new/single?describe=${encodeURIComponent(d)}`);
+    if (d) navigate(`${NEW_SINGLE_AGENT_PATH}?describe=${encodeURIComponent(d)}`);
   };
   return (
     <>
-      <Link to="/agents" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link to={AGENTS_PATH} className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
         <ChevronLeft className="size-4" aria-hidden /> Agents
       </Link>
       <PageHeader title="New agent" description="Describe what it should do and let the assistant draft it, or set it up yourself." />
@@ -80,7 +81,7 @@ export function NewAgentTypePage() {
           <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
             <span className="mr-1 text-[13px] text-fg-3">Or start from</span>
             <Button asChild size="sm" icon={<LayoutTemplate aria-hidden />}>
-              <Link to="/agents/templates">A template</Link>
+              <Link to={TEMPLATES_PATH}>A template</Link>
             </Button>
             <Button size="sm" icon={<Copy aria-hidden />} onClick={() => setCopying(true)}>
               A copy of an existing agent
@@ -148,12 +149,7 @@ export function NewAgentTypePage() {
             <span className="font-medium text-fg">The type cannot be changed later.</span> To switch, create a new agent of the other type.
           </span>
         </p>
-        <Button
-          variant="primary"
-          size="lg"
-          className="shrink-0"
-          onClick={() => navigate(kind === "single" ? "/agents/templates" : "/agents/new/flow")}
-        >
+        <Button variant="primary" size="lg" className="shrink-0" onClick={() => navigate(kind === "single" ? TEMPLATES_PATH : NEW_FLOW_AGENT_PATH)}>
           Continue with {kind === "single" ? "single prompt" : "flow"}
         </Button>
       </div>

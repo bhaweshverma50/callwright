@@ -4,7 +4,34 @@ import { AuthGuard } from "./app/AuthGuard";
 import { RouteError } from "./app/RouteError";
 import { Shell } from "./app/Shell";
 import { FullPageLoader } from "./components";
-import { AUTH_PAGES, BILLING_PATH, DASHBOARD_PATH, SETTINGS_PATH } from "./lib/paths";
+import {
+  agentEditPath,
+  agentFlowPath,
+  agentHomePath,
+  AGENTS_PATH,
+  agentTestingPath,
+  AUTH_PAGES,
+  BILLING_PATH,
+  CALIBRATION_PATH,
+  CALLBACKS_PATH,
+  callComparePath,
+  CALLS_PATH,
+  DASHBOARD_PATH,
+  datasetPath,
+  DATASETS_PATH,
+  experimentPath,
+  issuePath,
+  ISSUES_PATH,
+  NEW_AGENT_PATH,
+  NEW_FLOW_AGENT_PATH,
+  NEW_SINGLE_AGENT_PATH,
+  PHONE_NUMBERS_PATH,
+  REVIEW_PATH,
+  SETTINGS_PATH,
+  SIMULATIONS_PATH,
+  simulationRunPath,
+  TEMPLATES_PATH,
+} from "./lib/paths";
 import { AgentRedirect } from "./routes/agents/agentRedirect";
 import { NotFound } from "./routes/NotFound";
 import { Enterprise } from "./routes/public/Enterprise";
@@ -52,30 +79,30 @@ const IssueDetailPage = lazy(() => import("./routes/issues/IssueDetailPage").the
 
 /** Agent builder (spec 002, T024), browser test calls (003) and the flow builder (004). */
 const agentRoutes: RouteObject[] = [
-  { path: "agents", element: <AgentsListPage /> },
-  { path: "agents/new", element: <NewAgentTypePage /> },
-  { path: "agents/templates", element: <TemplatesPage /> },
-  { path: "agents/new/single", element: <AgentEditorPage /> },
-  { path: "agents/new/flow", element: <NewFlowAgentPage /> },
-  { path: "agents/:id", element: <AgentRedirect /> },
-  { path: "agents/:id/edit", element: <AgentEditorPage /> },
-  { path: "agents/:id/flow", element: <FlowBuilderPage /> },
-  { path: "agents/:id/testing", element: <AgentTestingPage /> },
+  { path: AGENTS_PATH, element: <AgentsListPage /> },
+  { path: NEW_AGENT_PATH, element: <NewAgentTypePage /> },
+  { path: TEMPLATES_PATH, element: <TemplatesPage /> },
+  { path: NEW_SINGLE_AGENT_PATH, element: <AgentEditorPage /> },
+  { path: NEW_FLOW_AGENT_PATH, element: <NewFlowAgentPage /> },
+  { path: agentHomePath(":id"), element: <AgentRedirect /> },
+  { path: agentEditPath(":id"), element: <AgentEditorPage /> },
+  { path: agentFlowPath(":id"), element: <FlowBuilderPage /> },
+  { path: agentTestingPath(":id"), element: <AgentTestingPage /> },
 ];
 
 /** Testing and simulation (spec 008): batches, individual runs, comparisons and datasets. */
 const simulationRoutes: RouteObject[] = [
-  { path: "simulations", element: <SimulationsPage /> },
-  { path: "simulations/runs/:runId", element: <RunComparePage /> },
-  { path: "simulations/:experimentId", element: <ExperimentPage /> },
-  { path: "datasets", element: <DatasetsPage /> },
-  { path: "datasets/:datasetId", element: <DatasetPage /> },
+  { path: SIMULATIONS_PATH, element: <SimulationsPage /> },
+  { path: simulationRunPath(":runId"), element: <RunComparePage /> },
+  { path: experimentPath(":experimentId"), element: <ExperimentPage /> },
+  { path: DATASETS_PATH, element: <DatasetsPage /> },
+  { path: datasetPath(":datasetId"), element: <DatasetPage /> },
 ];
 
 /** Issues and auto-fix (spec 009): the issue list with detection, and one issue with its fix loop. */
 const issueRoutes: RouteObject[] = [
-  { path: "issues", element: <IssuesPage /> },
-  { path: "issues/:id", element: <IssueDetailPage /> },
+  { path: ISSUES_PATH, element: <IssuesPage /> },
+  { path: issuePath(":id"), element: <IssueDetailPage /> },
 ];
 
 /** Public and protected route groups (T026). Unknown signed-in addresses get NotFound (T095). */
@@ -119,14 +146,14 @@ export const routes: RouteObject[] = [
                 children: [
                   { path: "app", element: <Navigate to={DASHBOARD_PATH} replace /> },
                   { path: DASHBOARD_PATH, element: <DashboardPage /> },
-                  { path: "calls", element: <CallHistoryPage /> },
-                  { path: "calls/callbacks", element: <CallbacksPage /> },
-                  { path: "calls/:callId/compare", element: <ComparePage /> },
+                  { path: CALLS_PATH, element: <CallHistoryPage /> },
+                  { path: CALLBACKS_PATH, element: <CallbacksPage /> },
+                  { path: callComparePath(":callId"), element: <ComparePage /> },
                   { path: BILLING_PATH, element: <BillingPage /> },
                   { path: SETTINGS_PATH, element: <SettingsPage /> },
-                  { path: "phone-numbers", element: <PhoneNumbersPage /> },
-                  { path: "review", element: <ReviewPage /> },
-                  { path: "calibration", element: <CalibrationPage /> },
+                  { path: PHONE_NUMBERS_PATH, element: <PhoneNumbersPage /> },
+                  { path: REVIEW_PATH, element: <ReviewPage /> },
+                  { path: CALIBRATION_PATH, element: <CalibrationPage /> },
                   ...agentRoutes,
                   ...knowledgeRoutes,
                   ...simulationRoutes,

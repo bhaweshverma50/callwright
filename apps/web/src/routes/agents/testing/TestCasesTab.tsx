@@ -49,6 +49,7 @@ import { plural } from "../../../lib/format";
 import { ProblemAlert } from "../../../components/ProblemAlert";
 import { downloadJson } from "../../../lib/download";
 import { problemText } from "../../../api/problems";
+import { agentPath } from "../../../lib/paths";
 
 type Editing = { mode: "new" } | { mode: "edit"; tc: TestCase } | null;
 
@@ -84,7 +85,7 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
   const [starting, setStarting] = useState(false);
   const runKey = useActionKey();
   const blocked = useNotRunnable(agent);
-  const editPath = `/agents/${agentId}/${agent.type === "flow" ? "flow" : "edit"}`;
+  const editPath = agentPath({ id: agentId, type: agent.type });
 
   const latestId = runs.data?.items[0]?.test_run_id ?? null;
   useEffect(() => {

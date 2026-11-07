@@ -58,7 +58,7 @@ import { CreateKbDialog } from "./CreateKbDialog";
 import { DocStatusBadge, ERROR_HELP, KbStatusBadge } from "./kbStatus";
 import { SearchPreviewPanel } from "./SearchPreviewPanel";
 import { UploadDialog } from "./UploadDialog";
-import { agentPath } from "../../lib/paths";
+import { agentPath, KNOWLEDGE_PATH } from "../../lib/paths";
 import { formatBytes, timeAgo } from "../../lib/format";
 
 const ID = /^kb_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -81,7 +81,7 @@ export function KnowledgeBasePage() {
   const valid = Boolean(id && ID.test(id));
   const kb = useKnowledgeBase(valid ? id : undefined);
   if (!valid || (kb.error && isApiError(kb.error) && kb.error.status === 404)) {
-    return <RecordNotFound kind="knowledge base" backTo="/knowledge-base" backLabel="Back to Knowledge" />;
+    return <RecordNotFound kind="knowledge base" backTo={KNOWLEDGE_PATH} backLabel="Back to Knowledge" />;
   }
   if (kb.error) {
     return (
@@ -127,7 +127,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
       setInUse(null);
       refresh();
       toast({ tone: "success", title: "Knowledge base deleted", description: `${kb.name} and its documents are gone.` });
-      navigate("/knowledge-base");
+      navigate(KNOWLEDGE_PATH);
     },
     onError: (e) => {
       setDeletingKb(false);
@@ -247,7 +247,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
   return (
     <div className="flex flex-col">
       <Link
-        to="/knowledge-base"
+        to={KNOWLEDGE_PATH}
         className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
       >
         <ChevronLeft className="size-4" aria-hidden /> Knowledge

@@ -9,6 +9,7 @@ import { Badge, Chip, EmptyState, IconButton, Input, PageHeader, Skeleton, cn } 
 import { useDebounced } from "../../lib/useDebounced";
 import { CATEGORY_ICONS, CATEGORY_TINT, TEMPLATE_ICONS } from "./templateIcons";
 import { TemplatePreviewDialog } from "./TemplatePreviewDialog";
+import { NEW_AGENT_PATH, NEW_SINGLE_AGENT_PATH } from "../../lib/paths";
 
 /**
  * Template picker (T075, US5): "Start from scratch" first, then the platform templates with an
@@ -28,7 +29,10 @@ export function TemplatesPage() {
 
   return (
     <>
-      <Link to="/agents/new" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link
+        to={NEW_AGENT_PATH}
+        className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
+      >
         <ChevronLeft className="size-4" aria-hidden /> Agent type
       </Link>
       <PageHeader
@@ -80,7 +84,7 @@ export function TemplatesPage() {
         )}
       >
         <Link
-          to="/agents/new/single"
+          to={NEW_SINGLE_AGENT_PATH}
           className="group relative flex min-h-[208px] flex-col gap-4 overflow-hidden rounded-panel border border-dashed border-accent/50 bg-accent-soft/25 p-5 transition-[transform,box-shadow,background-color] duration-200 hover:bg-accent-soft/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <span className="grid size-11 place-items-center rounded-control bg-accent text-white transition-transform duration-200">

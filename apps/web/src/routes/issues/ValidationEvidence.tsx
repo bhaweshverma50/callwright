@@ -10,6 +10,7 @@ import type { EvaluatorEvidence, ValidationAttempt } from "../../api/issues";
 import { Badge, Button, cn, type Column, deltaTone, Figure, Panel, Table } from "../../components";
 import { AttemptBadge, SET_LABELS, reasonText } from "./shared";
 import { costUsd, pct, pp, timeAgo } from "../../lib/format";
+import { experimentPath } from "../../lib/paths";
 
 const SET_ORDER: Record<EvaluatorEvidence["set"], number> = { affected: 0, guard: 1, combined: 2 };
 
@@ -64,10 +65,10 @@ function Attempt({ a }: { a: ValidationAttempt }) {
           {t.min_sample} calls.
         </span>
         <span className="ml-auto flex flex-wrap gap-3">
-          <Link className="rounded-inline font-medium text-accent-text hover:underline" to={`/simulations/${a.control_experiment_id}`}>
+          <Link className="rounded-inline font-medium text-accent-text hover:underline" to={experimentPath(a.control_experiment_id)}>
             Control batch
           </Link>
-          <Link className="rounded-inline font-medium text-accent-text hover:underline" to={`/simulations/${a.treatment_experiment_id}`}>
+          <Link className="rounded-inline font-medium text-accent-text hover:underline" to={experimentPath(a.treatment_experiment_id)}>
             Batch with the fix
           </Link>
         </span>

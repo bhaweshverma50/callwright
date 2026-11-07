@@ -6,6 +6,7 @@ import type { Channel, DashboardStats, DisconnectReason, Sentiment } from "../..
 import { cn, focusRing } from "../../../components";
 import { ChartCard, ChartTooltip } from "./ChartFrame";
 import { CHANNEL_LABELS, REASON_LABELS, SENTIMENT_LABELS } from "../../../components/callVocabulary";
+import { callsPath } from "../../../lib/paths";
 
 const pct = (n: number, total: number) => (total ? `${Math.round((n / total) * 100)}%` : "0%");
 
@@ -75,7 +76,7 @@ export function DisconnectReasons({ data }: { data: DashboardStats["disconnect_r
       ) : (
         <ol className="-mx-2 flex flex-col">
           {rows.map(([k, v], i) => (
-            <BarRow key={k} index={i} label={REASON_LABELS[k] ?? k} value={v} total={total} max={max} href={`/calls?disconnect_reason=${k}`} />
+            <BarRow key={k} index={i} label={REASON_LABELS[k] ?? k} value={v} total={total} max={max} href={callsPath({ disconnect_reason: k })} />
           ))}
         </ol>
       )}
@@ -124,7 +125,7 @@ export function SentimentSplit({ data }: { data: DashboardStats["sentiment"] }) 
               return (
                 <li key={k}>
                   <Link
-                    to={`/calls?sentiment=${k}`}
+                    to={callsPath({ sentiment: k })}
                     className={cn(
                       "flex items-center gap-2 rounded-control border border-line px-3 py-2 transition-colors hover:border-accent/40 hover:bg-accent-soft/30",
                       focusRing,
@@ -251,7 +252,7 @@ export function Leaderboard({ rows }: { rows: DashboardStats["leaderboard"] }) {
             {rows.map((r, i) => (
               <tr key={r.agent_id} className="border-t border-line/70 transition-colors hover:bg-accent-soft/25">
                 <td className="py-2.5 pl-5">
-                  <Link to={`/calls?agent_id=${r.agent_id}`} className={cn("flex min-w-0 items-center gap-2.5 rounded-inline", focusRing)}>
+                  <Link to={callsPath({ agent_id: r.agent_id })} className={cn("flex min-w-0 items-center gap-2.5 rounded-inline", focusRing)}>
                     <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-3 font-mono text-[11px] text-fg-2">{i + 1}</span>
                     <span className="min-w-0">
                       <span className="block truncate text-fg">{r.agent_name}</span>
@@ -295,7 +296,7 @@ export function Distribution({ rows }: { rows: DashboardStats["distribution"] })
               total={total}
               max={max}
               muted={r.agent_id === "others"}
-              href={r.agent_id === "others" ? undefined : `/calls?agent_id=${r.agent_id}`}
+              href={r.agent_id === "others" ? undefined : callsPath({ agent_id: r.agent_id })}
             />
           ))}
         </ol>

@@ -11,6 +11,7 @@ import { usePlaceCall, type OutboundCallAccepted } from "../../../api/channels";
 import { type PhoneNumber } from "../../../api/channels";
 import { AgentSelect } from "./shared";
 import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
+import { CALLS_PATH } from "../../../lib/paths";
 
 type Block = ProblemOf<"PolicyBlockedProblem">;
 
@@ -138,7 +139,7 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
         result ? (
           <>
             <Button asChild>
-              <Link to="/calls">Open calls</Link>
+              <Link to={CALLS_PATH}>Open calls</Link>
             </Button>
             <Button variant="primary" onClick={() => onOpenChange(false)}>
               Done
