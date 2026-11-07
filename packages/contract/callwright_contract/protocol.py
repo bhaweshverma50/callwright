@@ -40,6 +40,9 @@ DISPATCH_CALL_ID: Final = "call_id"
 DISPATCH_CHANNEL: Final = "channel"
 DISPATCH_ROUTE_REF: Final = "route_ref"
 
+# The compiled flow format (004 data-model section 4) the API writes and the worker runs.
+COMPILED_FLOW_SCHEMA_VERSION: Final = 1
+
 MAX_EVENTS_PER_BATCH: Final = 200
 MAX_TOOL_OUTPUT_CHARS: Final = 8192
 MAX_DETAIL_CHARS: Final = 2000

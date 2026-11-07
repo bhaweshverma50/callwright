@@ -2,16 +2,15 @@
 
 ``compiled_schema.json`` is written by the API from its ``CompiledFlow`` model
 (``app.flows.export_schema``); :func:`load_compiled` checks every compiled flow against it before
-the call starts, and the schema's ``schema_version`` is the version this worker runs. Node
-sections are read through the small views below, which carry the compiler's defaults for the
-values it always writes (``app.flows.compiler``), so the runtime reads them in one place.
+the call starts, and the schema's ``schema_version`` is the version this worker runs. The
+compiler writes every value of a node section, so the views below read them as given.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any, Literal, Self
 
@@ -45,39 +44,29 @@ def load_compiled(config: Mapping[str, Any]) -> Mapping[str, Any]:
 
 class _View:
     @classmethod
-    def of(cls, section: Mapping[str, Any] | None) -> Self:
-        """The view of a node section; absent or null values take the compiler's default."""
-        names = {f.name for f in fields(cls)}  # type: ignore[arg-type]
-        return cls(**{k: v for k, v in (section or {}).items() if k in names and v is not None})
-
-
-@dataclass(frozen=True)
-class ConversationNode(_View):
-    """An agent or task node."""
-
-    context_strategy: Literal["inherit", "summarize", "reset"] = "inherit"
+    def of(cls, section: Mapping[str, Any]) -> Self:
+        """The view of a node section (checked against the schema at load)."""
+        return cls(**{f.name: section[f.name] for f in fields(cls)})  # type: ignore[arg-type]
 
 
 @dataclass(frozen=True)
 class TaskSection(_View):
-    json_schema: Mapping[str, Any] = field(
-        default_factory=lambda: {"type": "object", "properties": {}}
-    )
-    max_rounds: int = 5
-    success_target: str | None = None
-    success_edge_id: str | None = None
+    json_schema: Mapping[str, Any]
+    max_rounds: int
+    success_target: str | None
+    success_edge_id: str | None
 
 
 @dataclass(frozen=True)
 class StartSection(_View):
-    start_speaker: Literal["agent", "user"] = "agent"
-    greeting_type: Literal["static", "generated"] = "static"
-    greeting: str = ""
-    next: str | None = None
-    edge_id: str | None = None
+    start_speaker: Literal["agent", "user"]
+    greeting_type: Literal["static", "generated"]
+    greeting: str
+    next: str | None
+    edge_id: str | None
 
 
 @dataclass(frozen=True)
 class EndSection(_View):
-    message: str = ""
-    reason: str = "call_completed"
+    message: str
+    reason: str

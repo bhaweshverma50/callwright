@@ -31,7 +31,7 @@ from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
 from app.core.secrets import KeyWrapper, delete_secret, get_secret, put_secret
 from app.tools.models import Tool
-from app.tools.schemas import CONFIG_MODELS, ToolCreate, ToolSpec, ToolUpdate
+from app.tools.schemas import CONFIG_MODELS, ToolCreate, ToolSpec, ToolUpdate, with_config_defaults
 from app.tools.validation import Issue, issue, validate_tool
 
 COPY_SUFFIX = "_copy"
@@ -462,7 +462,7 @@ def to_spec(tool: Tool) -> ToolSpec:
         type=tool.type,
         name=tool.name,
         description=tool.description,
-        config=snapshot_config(tool.config),
+        config=snapshot_config(with_config_defaults(tool.type, tool.config)),
         mock_response=tool.mock_response,
     )
 

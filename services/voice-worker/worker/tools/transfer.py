@@ -82,7 +82,7 @@ class TransferExecutor:
         hold = str(config.get("hold_message") or "").strip()
         if hold:
             await ctx.speak(hold)
-        ring_timeout = int(config.get("ring_timeout_s") or 30)
+        ring_timeout = int(config["ring_timeout_s"])
         try:
             if config.get("transfer_type") != "warm":
                 await self.backend.cold(number)

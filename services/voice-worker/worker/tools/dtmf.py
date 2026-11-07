@@ -41,8 +41,8 @@ class PressDigitExecutor:
             return ToolResult.error("channel_unsupported", "Keypad tones need a phone call.")
         if ctx.simulation:
             return ToolResult(llm_payload=f'{{"sent":"{digits}"}}', output=digits, mocked=True)
-        delay = int(spec.config.get("delay_ms", 1000)) / 1000
-        cooldown = int(spec.config.get("cooldown_ms", 5000)) / 1000
+        delay = int(spec.config["delay_ms"]) / 1000
+        cooldown = int(spec.config["cooldown_ms"]) / 1000
         async with self._lock:
             wait = delay
             if self._last_press is not None:

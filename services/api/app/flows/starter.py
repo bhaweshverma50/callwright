@@ -1,6 +1,8 @@
 """Node defaults and the starter graph of a new flow agent (T016, FR-003, FR-004).
 
-The defaults table matches the spec's Node Types table; the web palette keeps the same values.
+The defaults table matches the spec's Node Types table and is served to the builder
+(``GET /v1/flows/node-defaults``); webhook requests and transfers start at the tool schemas'
+defaults (005), which the compiler also fills into every compiled request and transfer.
 """
 
 from __future__ import annotations
@@ -9,8 +11,7 @@ import copy
 import secrets
 from typing import Any
 
-from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
-from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE, DEFAULT_HOLD_MESSAGE
+from app.tools.schemas import HttpRequestSpec, TransferSpec, config_defaults
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
 DEFAULT_GREETING = "Hi, thanks for calling. How can I help?"
@@ -77,31 +78,8 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
     },
     "say": {"message": "", "allow_interruptions": True},
     "extract_variable": {"instructions": "", "fields": []},
-    "webhook": {
-        "request": {
-            "method": "POST",
-            "url": "",
-            "headers": [{"name": "Content-Type", "value": "application/json", "secret": False}],
-            "body_template": None,
-            "timeout_ms": DEFAULT_TIMEOUT_MS,
-            "response_mappings": [],
-            "speak_during_execution": True,
-            "execution_message": DEFAULT_EXECUTION_MESSAGE,
-        },
-        "mock_response": None,
-    },
-    "transfer": {
-        "transfer": {
-            "routing_type": "static",
-            "number": None,
-            "routing_instructions": None,
-            "allowed_numbers": [],
-            "transfer_type": "cold",
-            "warm_transfer": None,
-            "hold_message": DEFAULT_HOLD_MESSAGE,
-            "ring_timeout_s": 30,
-        }
-    },
+    "webhook": {"request": {"url": "", **config_defaults(HttpRequestSpec)}, "mock_response": None},
+    "transfer": {"transfer": config_defaults(TransferSpec)},
     "end": {"message": DEFAULT_END_MESSAGE, "reason": "call_completed"},
 }
 

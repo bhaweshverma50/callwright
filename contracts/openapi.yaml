@@ -3571,6 +3571,22 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationProblem'
       x-spec: 004-flow-agents
+  /flows/node-defaults:
+    get:
+      tags:
+      - flows
+      operationId: getFlowNodeDefaults
+      summary: What a new node of each type starts with in the builder (label and full config)
+      responses:
+        '200':
+          description: One entry per node type, in palette order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowNodeDefaults'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 004-flow-agents
   /flows/{flow_id}:
     parameters:
     - $ref: '#/components/parameters/FlowId'
@@ -13389,6 +13405,33 @@ components:
               type: number
               minimum: 0.1
               maximum: 4
+    FlowNodeDefaults:
+      type: object
+      required:
+      - node_types
+      properties:
+        node_types:
+          type: array
+          items:
+            type: object
+            required:
+            - type
+            - label
+            - config
+            properties:
+              type:
+                $ref: '#/components/schemas/NodeType'
+              label:
+                type: string
+                description: The label a new node of this type gets
+              config:
+                type: object
+                additionalProperties: true
+                description: 'Every config value a new node of this type starts with (StartConfig, AgentConfigNode,
+                  ... by type). Webhook requests and transfers carry the tool schemas'' defaults, the
+                  same values the compiler fills in.
+
+                  '
     FlowTransition:
       type: object
       required:

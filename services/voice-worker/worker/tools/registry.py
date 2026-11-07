@@ -164,7 +164,7 @@ def filler_texts(specs: Sequence[ToolSpecView]) -> dict[str, str]:
     for spec in specs:
         if spec.type == "kb_search":
             texts[spec.name] = DEFAULT_EXECUTION_MESSAGE
-        elif spec.type == "http" and spec.config.get("speak_during_execution", True):
+        elif spec.type == "http" and spec.config["speak_during_execution"]:
             texts[spec.name] = str(
                 spec.config.get("execution_message") or DEFAULT_EXECUTION_MESSAGE
             )

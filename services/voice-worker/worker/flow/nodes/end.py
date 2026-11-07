@@ -24,12 +24,12 @@ if TYPE_CHECKING:
 
 def generates(node: Mapping[str, Any]) -> bool:
     """True when the End node has no line of its own and the agent writes the goodbye."""
-    message = EndSection.of(node.get("end")).message.strip()
+    message = str(node["end"]["message"]).strip()
     return not message or message == STOCK_GOODBYE
 
 
 async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome:
-    end = EndSection.of(node.get("end"))
+    end = EndSection.of(node["end"])
     run.state.variables["end_reason"] = end.reason
     if generates(node):
         await run.services.end(STOCK_GOODBYE, generate=True)

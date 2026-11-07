@@ -12,6 +12,7 @@ import json
 import re
 from typing import Any
 
+from app.flows.schemas import CONVERSATIONAL
 from app.llms.adapters.base import ChatMessage
 
 _GRAPH = re.compile(r"<graph>\n?(.*?)\n?</graph>", re.DOTALL)
@@ -36,7 +37,7 @@ def reply(messages: list[ChatMessage], system: str | None) -> str:
     graph = _graph(system)
     nodes = graph.get("nodes") or []
     edges = graph.get("edges") or []
-    first = next((n for n in nodes if n.get("type") in ("agent", "task")), None)
+    first = next((n for n in nodes if n.get("type") in CONVERSATIONAL), None)
     ops: list[dict[str, Any]] = []
     parts: list[str] = []
     rename = re.search(r"rename (?:the flow |it )?to ['\"]?([^'\"]+?)['\"]?\s*$", last, re.IGNORECASE)

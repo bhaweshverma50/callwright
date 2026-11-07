@@ -26,6 +26,7 @@ from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
 from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS, LIVE_CHANNELS
 from callwright_contract.protocol import (
+    COMPILED_FLOW_SCHEMA_VERSION,
     DISPATCH_CALL_ID,
     DISPATCH_CHANNEL,
     DISPATCH_ROUTE_REF,
@@ -246,7 +247,7 @@ def _replayed_refusal(call: Call) -> Refusal:
 def _has_compiled_flow(config: Mapping[str, Any]) -> bool:
     flow = config.get("flow")
     compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    return isinstance(compiled, Mapping) and compiled.get("schema_version") == 1
+    return isinstance(compiled, Mapping) and compiled.get("schema_version") == COMPILED_FLOW_SCHEMA_VERSION
 
 
 async def _checks(

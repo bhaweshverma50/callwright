@@ -60,11 +60,7 @@ class HttpExecutor:
             spoke = True
             await ctx.speak(str(config.get("execution_message") or DEFAULT_EXECUTION_MESSAGE))
 
-        waiter = (
-            asyncio.create_task(waiting_line())
-            if config.get("speak_during_execution", True)
-            else None
-        )
+        waiter = asyncio.create_task(waiting_line()) if config["speak_during_execution"] else None
         try:
             result = await self._send(prepared, config)
         finally:

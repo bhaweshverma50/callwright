@@ -38,7 +38,12 @@ class FakeTransfer:
         return "Caller Ana wants to move her appointment."
 
 
-STATIC = {"routing_type": "static", "number": "+14155550100", "hold_message": "Please hold."}
+STATIC = {
+    "routing_type": "static",
+    "number": "+14155550100",
+    "hold_message": "Please hold.",
+    "ring_timeout_s": 30,
+}
 
 
 async def test_cold_static_transfer() -> None:
@@ -55,6 +60,7 @@ async def test_dynamic_with_allow_list() -> None:
         "routing_type": "dynamic",
         "routing_instructions": "Sales +14155550100, support +14155550111",
         "allowed_numbers": ["+14155550100", "+14155550111"],
+        "ring_timeout_s": 30,
     }
     backend = FakeTransfer()
     h = make([tool("transfer_call", "route", config)], transfer_backend=backend)
@@ -65,7 +71,7 @@ async def test_dynamic_with_allow_list() -> None:
 
 
 async def test_dynamic_without_allow_list_takes_any_e164() -> None:
-    config = {"routing_type": "dynamic", "routing_instructions": "Any branch"}
+    config = {"routing_type": "dynamic", "routing_instructions": "Any branch", "ring_timeout_s": 30}
     backend = FakeTransfer()
     h = make([tool("transfer_call", "route", config)], transfer_backend=backend)
     await h.tools.dispatch("route", {"destination": "+442071234567"})

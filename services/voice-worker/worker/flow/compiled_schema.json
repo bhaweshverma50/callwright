@@ -2,6 +2,7 @@
   "$defs": {
     "CompiledNode": {
       "additionalProperties": true,
+      "description": "One node; the compiler writes every value of the sections it fills (agent and task nodes\ncarry ``context_strategy``), so the worker reads them as given.",
       "properties": {
         "begin_message": {
           "anyOf": [
@@ -48,15 +49,13 @@
         "end": {
           "anyOf": [
             {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/$defs/EndSection"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "End"
+          "default": null
         },
         "extract": {
           "anyOf": [
@@ -128,28 +127,24 @@
         "say": {
           "anyOf": [
             {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/$defs/SaySection"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Say"
+          "default": null
         },
         "start": {
           "anyOf": [
             {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/$defs/StartSection"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Start"
+          "default": null
         },
         "stt": {
           "anyOf": [
@@ -167,15 +162,13 @@
         "task": {
           "anyOf": [
             {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/$defs/TaskSection"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Task"
+          "default": null
         },
         "tools": {
           "anyOf": [
@@ -338,6 +331,168 @@
         "type"
       ],
       "title": "DeclaredVariable",
+      "type": "object"
+    },
+    "EndSection": {
+      "additionalProperties": true,
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message",
+        "reason"
+      ],
+      "title": "EndSection",
+      "type": "object"
+    },
+    "SaySection": {
+      "additionalProperties": true,
+      "properties": {
+        "allow_interruptions": {
+          "title": "Allow Interruptions",
+          "type": "boolean"
+        },
+        "edge_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Edge Id"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next"
+        }
+      },
+      "required": [
+        "message",
+        "allow_interruptions",
+        "next",
+        "edge_id"
+      ],
+      "title": "SaySection",
+      "type": "object"
+    },
+    "StartSection": {
+      "additionalProperties": true,
+      "properties": {
+        "edge_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Edge Id"
+        },
+        "greeting": {
+          "title": "Greeting",
+          "type": "string"
+        },
+        "greeting_type": {
+          "enum": [
+            "static",
+            "generated"
+          ],
+          "title": "Greeting Type",
+          "type": "string"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next"
+        },
+        "start_speaker": {
+          "enum": [
+            "agent",
+            "user"
+          ],
+          "title": "Start Speaker",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_speaker",
+        "greeting_type",
+        "greeting",
+        "next",
+        "edge_id"
+      ],
+      "title": "StartSection",
+      "type": "object"
+    },
+    "TaskSection": {
+      "additionalProperties": true,
+      "properties": {
+        "json_schema": {
+          "additionalProperties": true,
+          "title": "Json Schema",
+          "type": "object"
+        },
+        "max_rounds": {
+          "title": "Max Rounds",
+          "type": "integer"
+        },
+        "success_edge_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Success Edge Id"
+        },
+        "success_target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Success Target"
+        }
+      },
+      "required": [
+        "json_schema",
+        "max_rounds",
+        "success_target",
+        "success_edge_id"
+      ],
+      "title": "TaskSection",
       "type": "object"
     }
   },

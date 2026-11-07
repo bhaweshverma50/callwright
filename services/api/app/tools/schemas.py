@@ -9,6 +9,7 @@ validate with the same models, so the tool form and the node form accept the sam
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
@@ -21,6 +22,7 @@ from callwright_contract.values import (
     ROUTE_TOOL_PREFIX,
 )
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import to_jsonable_python
 
 from app.agents.schemas import MAX_TOOLS
 
@@ -120,6 +122,22 @@ CONFIG_MODELS: dict[str, type[BaseModel]] = {
     "press_digit": PressDigitConfig,
     "http": HttpToolConfig,
 }
+
+
+def config_defaults(model: type[BaseModel]) -> dict[str, Any]:
+    """Every optional field of ``model`` at its default, in JSON form."""
+    return {
+        name: to_jsonable_python(f.get_default(call_default_factory=True), exclude_none=True)
+        for name, f in model.model_fields.items()
+        if not f.is_required()
+    }
+
+
+def with_config_defaults(tool_type: str, config: Mapping[str, Any]) -> dict[str, Any]:
+    """``config`` with every field it leaves out at the schema's default: what a version
+    snapshot carries, so the worker reads each value as given."""
+    model = CONFIG_MODELS.get(tool_type)
+    return {**(config_defaults(model) if model else {}), **config}
 
 
 class ToolCreate(_Strict):

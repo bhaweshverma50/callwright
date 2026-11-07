@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from callwright_contract.values import DEFAULT_HOLD_MESSAGE
 
+from app.tools.schemas import with_config_defaults
 from app.tools.validation import (
     validate_config,
     validate_mock,
@@ -142,3 +144,13 @@ def test_validate_tool_collects_every_issue() -> None:
         ("/config/messag", "unknown_field"),
         ("/mock_response", "not_allowed"),
     ]
+
+
+def test_snapshot_configs_carry_every_schema_default() -> None:
+    """A version snapshot names every value, so the worker keeps no defaults of its own."""
+    transfer = with_config_defaults("transfer_call", {"number": "+14155550100", "ring_timeout_s": 45})
+    assert transfer["ring_timeout_s"] == 45 and transfer["hold_message"] == DEFAULT_HOLD_MESSAGE
+    assert with_config_defaults("press_digit", {}) == {"delay_ms": 1000, "cooldown_ms": 5000}
+    http = with_config_defaults("http", {"url": "https://api.example.com"})
+    assert http["speak_during_execution"] is True and http["timeout_ms"] == 8000
+    assert http["headers"] == [{"name": "Content-Type", "value": "application/json", "secret": False}]

@@ -88,6 +88,7 @@
               "failure_target": "n_sorry000",
               "mock_response": null,
               "request": {
+                "body_template": null,
                 "execution_message": "One moment.",
                 "headers": [],
                 "method": "GET",

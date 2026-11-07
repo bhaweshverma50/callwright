@@ -94,7 +94,7 @@ def test_ending_rules_ask_before_hanging_up_on_a_busy_caller() -> None:
 
 
 def test_end_node_generates_only_without_a_line_of_its_own() -> None:
-    assert generates({"end": {"message": ""}}) and generates({"end": {}})
+    assert generates({"end": {"message": ""}})
     assert generates({"end": {"message": f"  {STOCK_GOODBYE} "}})
     assert not generates({"end": {"message": "Thanks for calling Harbour Clinic. Bye!"}})
 
