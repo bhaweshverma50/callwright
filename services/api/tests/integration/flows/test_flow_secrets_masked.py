@@ -6,8 +6,8 @@ from __future__ import annotations
 import json
 
 import httpx
+from callwright_contract import http_core
 
-from app.tools.service import secret_refs
 from tests.conftest import Account
 from tests.flow_helpers import clinic, create_flow, save
 
@@ -35,6 +35,6 @@ async def test_secret_stays_a_reference_everywhere(client: httpx.AsyncClient, ac
         headers=account.headers,
     )
     assert SECRET not in version.text
-    refs = secret_refs(version.json()["config"])
+    refs = http_core.secret_refs(version.json()["config"])
     assert len(refs) == 1 and refs[0].startswith("flow_hdr:")
     assert SECRET not in json.dumps(version.json())

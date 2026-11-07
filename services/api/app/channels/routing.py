@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
 import httpx
-from callwright_contract.url_guard import UrlNotAllowed
+from callwright_contract.url_guard import UrlNotAllowed, send_pinned
 from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from opentelemetry import trace
 from sqlalchemy import text
@@ -43,7 +43,6 @@ from app.core.config import Settings
 from app.core.db import Database
 from app.core.ids import is_valid_id, new_id
 from app.core.secrets import key_wrapper
-from app.core.url_guard import guarded_request
 from app.webhooks_out import service as webhooks
 from app.webhooks_out import signing
 
@@ -152,7 +151,7 @@ async def call_inbound_webhook(
             "Callwright-Event": "call_inbound",
         }
         try:
-            response = await guarded_request(
+            response = await send_pinned(
                 http,
                 "POST",
                 checked,

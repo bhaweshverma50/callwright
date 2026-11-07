@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from callwright_contract.url_guard import (
@@ -10,6 +11,7 @@ from callwright_contract.url_guard import (
     host_header,
     is_blocked_ip,
     pinned_url,
+    send_pinned,
 )
 
 
@@ -94,3 +96,20 @@ async def test_pinned_url_and_host_header_keep_the_original_name() -> None:
     checked = await check_url("https://hooks.example.com:8443/in?x=1", resolver=fixed("93.184.216.34"))
     assert pinned_url(checked, "93.184.216.34") == "https://93.184.216.34:8443/in?x=1"
     assert host_header(checked) == "hooks.example.com:8443"
+
+
+async def test_send_pinned_goes_to_the_checked_address_without_redirects() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(302, headers={"Location": "http://169.254.169.254/"})
+
+    checked = await check_url("https://hooks.example.com:8443/in?x=1", resolver=fixed("93.184.216.34"))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        response = await send_pinned(client, "POST", checked, content=b"{}", timeout=3.0)
+    assert response.status_code == 302
+    assert len(seen) == 1
+    assert seen[0].url.host == "93.184.216.34"
+    assert seen[0].headers["host"] == "hooks.example.com:8443"
+    assert seen[0].extensions["sni_hostname"] == "hooks.example.com"

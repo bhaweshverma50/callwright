@@ -11,7 +11,7 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 
-from app.tools import router as tools_router
+from app.core import url_guard
 from tests.agent_helpers import create_ok
 from tests.conftest import Account, signup
 from tests.contract.conftest import check
@@ -256,13 +256,13 @@ async def upstream(app: FastAPI) -> AsyncIterator[list[httpx.Request]]:
         return ["10.1.1.1"] if host == "internal.example.com" else ["93.184.216.34"]
 
     app.state.tool_http = httpx.AsyncClient(transport=httpx.MockTransport(handle))
-    tools_router.test_run_resolver = resolver
+    previous, url_guard.resolver = url_guard.resolver, resolver
     try:
         yield seen
     finally:
         await app.state.tool_http.aclose()
         app.state.tool_http = None
-        tools_router.test_run_resolver = None
+        url_guard.resolver = previous
 
 
 async def test_test_run_inline_and_saved(

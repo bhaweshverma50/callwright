@@ -7,9 +7,10 @@ including IPv6 equivalents and IPv4-mapped IPv6 addresses.
 
 Callers then connect to the address that was checked, not to a fresh DNS answer, so a host that
 resolves to a public address at check time and a private one a moment later (DNS rebinding)
-cannot redirect the request: ``pinned_url`` replaces the URL's host by the checked IP while
-``host_header`` and the TLS server name (SNI and certificate check) keep the original name. Used
-by the API (webhooks, inbound routing webhooks, HTTP tool test runs) and the worker (HTTP tools).
+cannot redirect the request: ``pinned_request`` builds it for the checked IP while the ``Host``
+header and the TLS server name (SNI and certificate check) keep the original name, and
+``send_pinned`` sends it without following redirects. Used by the API (webhooks, inbound routing
+webhooks, HTTP tool test runs) and the worker (HTTP tools).
 """
 
 from __future__ import annotations
@@ -17,9 +18,12 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import socket
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
+
+import httpx
 
 IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 Resolver = Callable[[str, int], Awaitable[list[str]]]
@@ -152,5 +156,42 @@ def host_header(checked: CheckedUrl) -> str:
     return host if checked.port == default else f"{host}:{checked.port}"
 
 
-def blocked_networks() -> Iterable[ipaddress.IPv4Network | ipaddress.IPv6Network]:
-    return _EXTRA_BLOCKED
+def pinned_request(
+    client: httpx.AsyncClient,
+    method: str,
+    checked: CheckedUrl,
+    *,
+    content: bytes | None = None,
+    headers: Mapping[str, str] | None = None,
+    timeout: float | httpx.Timeout | None = None,
+) -> httpx.Request:
+    """A request to the first checked address of ``checked`` with the original ``Host`` header
+    and TLS server name."""
+    extensions: dict[str, Any] = {}
+    if checked.scheme == "https":
+        extensions["sni_hostname"] = checked.host
+    if timeout is not None:
+        t = timeout if isinstance(timeout, httpx.Timeout) else httpx.Timeout(timeout)
+        extensions["timeout"] = t.as_dict()
+    return client.build_request(
+        method,
+        pinned_url(checked, checked.addresses[0]),
+        content=content,
+        headers={**(headers or {}), "Host": host_header(checked)},
+        extensions=extensions,
+    )
+
+
+async def send_pinned(
+    client: httpx.AsyncClient,
+    method: str,
+    checked: CheckedUrl,
+    *,
+    content: bytes | None = None,
+    headers: Mapping[str, str] | None = None,
+    timeout: float | httpx.Timeout | None = None,
+    stream: bool = False,
+) -> httpx.Response:
+    """Send one :func:`pinned_request` (redirects are never followed)."""
+    request = pinned_request(client, method, checked, content=content, headers=headers, timeout=timeout)
+    return await client.send(request, stream=stream, follow_redirects=False)
