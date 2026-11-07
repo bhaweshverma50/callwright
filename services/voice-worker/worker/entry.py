@@ -132,16 +132,6 @@ def parse_dispatch_metadata(raw: str | None) -> dict[str, Any]:
     return value if isinstance(value, dict) else {"raw": raw}
 
 
-def make_api_client(settings: WorkerSettings) -> InternalApiClient:
-    return InternalApiClient(
-        settings.internal_api_url,
-        settings.service_token.get_secret_value(),
-        timeout_s=settings.http_timeout_s,
-        max_attempts=settings.events_max_attempts,
-        backoff_base_s=settings.events_backoff_base_s,
-    )
-
-
 # --------------------------------------------------------------------------------------------
 # Live call
 
@@ -666,7 +656,7 @@ class LiveCall:
             extra_instructions = VOICEMAIL_INSTRUCTION
         self._extra_instructions = extra_instructions
         self.tools = await prepare_call_tools(
-            runtime, self.control, self.settings, transfer_backend=self._transfer_backend()
+            runtime, self.control, self.api, transfer_backend=self._transfer_backend()
         )
         try:
             self.components = build_components(
@@ -1031,7 +1021,7 @@ async def job_entry(
     ctx: Any, registry: AdapterRegistry | None = None, extra_tools: Sequence[Any] = ()
 ) -> None:
     settings = get_settings()
-    api = make_api_client(settings)
+    api = InternalApiClient.from_settings(settings)
     attrs = {"livekit.job_id": ctx.job.id, "livekit.room": ctx.room.name}
     with telemetry.call_scope(None), telemetry.span("call", attrs) as call_span:
         try:

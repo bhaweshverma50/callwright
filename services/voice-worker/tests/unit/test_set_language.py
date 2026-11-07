@@ -15,6 +15,7 @@ import pytest
 from tests.unit.conftest import call_tools, make_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
+from worker.internal_api import InternalApiClient
 from worker.language import (
     reply_language_instruction,
     set_language_instruction,
@@ -88,9 +89,7 @@ def setup(
     tools = build_call_tools(
         runtime,
         control,
-        api_client=client,
-        api_base_url="http://api.test/v1/internal",
-        service_token="svc",
+        api=InternalApiClient("http://api.test/v1/internal", "svc", http=client),
     )
     return SimpleNamespace(
         runtime=runtime,

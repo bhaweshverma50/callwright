@@ -1,34 +1,53 @@
-"""Typed client for the API's internal worker endpoints (``/v1/internal/*``).
+"""The worker's client for every internal API route (``/v1/internal/*``, research R19).
 
-Shapes are the contract's (``callwright_contract.protocol``). Both endpoints authenticate with
-``Authorization: Bearer <service token>`` (research R19).
+All routes authenticate with ``Authorization: Bearer <service token>``. Shapes are the
+contract's (``callwright_contract.protocol``) where it has them; the text runner's run specs
+(``specs/008-text-simulations/contracts``) are modelled here.
 
-- ``POST {base}/calls/claim`` with :class:`ClaimRequest` returns :class:`ClaimResponse`.
-  Idempotent per ``job_id``, so transport failures and 5xx are retried.
-- ``POST {base}/calls/{call_id}/events`` with ``{"events": [...]}`` (up to
-  ``MAX_EVENTS_PER_BATCH`` items; empty is a pure heartbeat) returns :class:`EventBatchResult`.
-  ``control.action == "end_call"`` orders the worker to hang up with ``control.disconnect_reason``
-  (mid-call credit guard, FR-025).
-  Duplicate ``seq`` values are ignored server side, so every retry is safe. 409 means the call is
-  already terminal: the worker stops posting (:class:`CallClosed`).
+Retried with exponential backoff (transport errors, 408, 425, 429 and 5xx; every route is
+idempotent or deduplicated server side):
+
+- ``POST /calls/claim`` with :class:`ClaimRequest` returns :class:`ClaimResponse`; 404 or 409
+  raise :class:`ClaimRejected`.
+- ``POST /calls/{call_id}/events`` with ``{"events": [...]}`` (up to ``MAX_EVENTS_PER_BATCH``;
+  empty is a pure heartbeat) returns :class:`EventBatchResult`. ``control.action == "end_call"``
+  orders the worker to hang up (mid-call credit guard, FR-025). Duplicate ``seq`` values are
+  ignored server side; 409 means the call is terminal (:class:`CallClosed`).
+- Text runs (008): ``GET /test-runs/{trn}/cases/{tc}/spec`` (:class:`CaseSpec`),
+  ``GET /simulation-runs/{srun}/spec`` (:class:`SimulationSpec`) and their ``POST .../result``.
+  404 or 409 mean the run was cancelled or is gone.
+
+Asked once while a call waits on the answer (the caller hears the delay, so no retries):
+
+- ``GET /calls/{call_id}/tool-secrets`` (005): the call's secret header values.
+- ``POST /knowledge/search`` (005 ``kb_search``).
+- ``POST /calls/{call_id}/callbacks`` (011 ``schedule_callback``).
+- ``POST /calls/{call_id}/language`` (012 ``set_language``, in the background).
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any
+from typing import Any, Literal
 
 import httpx
+from callwright_contract.calls import AgentType, Channel
 from callwright_contract.protocol import (
     MAX_EVENTS_PER_BATCH,
     ClaimRequest,
     ClaimResponse,
     EventBatchResult,
+    RuntimeValues,
 )
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from worker import telemetry
+from worker.settings import WorkerSettings
+
+log = logging.getLogger(__name__)
 
 
 class InternalApiError(Exception):
@@ -47,13 +66,101 @@ class CallClosed(InternalApiError):
 
 
 RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
+GONE = frozenset({404, 409})
 
 Sleep = Callable[[float], Awaitable[None]]
 
 
-class InternalApiClient:
-    """Async client with retry and exponential backoff for the two internal endpoints."""
+# Text run specs (008) ----------------------------------------------------------------------------
 
+
+class PersonaBrief(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    goal: str = ""
+    known_facts: list[str] = Field(default_factory=list)
+    temperament: str | None = None
+    speaking_style: str | None = None
+    constraints: list[str] = Field(default_factory=list)
+    opening_line: str | None = None
+
+
+class SimSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    max_caller_turns: int = 20
+    missing_mock_policy: Literal["synthesize", "error"] = "synthesize"
+    persona_model: str | None = None
+
+
+class RecordedOutput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    name: str
+    output: str
+
+
+def _string_map(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(k): "" if v is None else str(v) for k, v in value.items()}
+
+
+class CaseSpec(BaseModel):
+    """One single-turn test case (``internalGetTestCaseSpec``)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    workspace_id: str
+    agent_id: str
+    agent_type: AgentType = "single_prompt"
+    runtime: RuntimeValues
+    user_prompt: str
+    dynamic_variables: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("dynamic_variables", mode="before")
+    @classmethod
+    def _vars(cls, value: Any) -> dict[str, str]:
+        return _string_map(value)
+
+
+class SimulationSpec(BaseModel):
+    """One simulation run (``internalGetSimulationSpec``)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    workspace_id: str
+    simulation_run_id: str
+    output_call_id: str
+    agent_id: str
+    agent_type: AgentType = "single_prompt"
+    channel: Channel = "web"
+    mode: Literal["replay", "persona"]
+    runtime: RuntimeValues
+    settings: SimSettings = Field(default_factory=SimSettings)
+    dynamic_variables: dict[str, str] = Field(default_factory=dict)
+    start_speaker: Literal["agent", "user"] | None = None
+    # Strings; the worker also accepts ``{"text", "interrupted"}`` items (replay_caller).
+    caller_turns: list[Any] = Field(default_factory=list)
+    recorded_tool_outputs: list[RecordedOutput] = Field(default_factory=list)
+    original_node_path: list[str] = Field(default_factory=list)
+    persona_brief: PersonaBrief | None = None
+
+    @field_validator("dynamic_variables", mode="before")
+    @classmethod
+    def _vars(cls, value: Any) -> dict[str, str]:
+        return _string_map(value)
+
+    @field_validator("settings", mode="before")
+    @classmethod
+    def _settings(cls, value: Any) -> Any:
+        return value if value is not None else {}
+
+
+# Client --------------------------------------------------------------------------------------
+
+
+class InternalApiClient:
     def __init__(
         self,
         base_url: str,
@@ -75,6 +182,16 @@ class InternalApiClient:
         self._backoff_max = backoff_max_s
         self._sleep = sleep
 
+    @classmethod
+    def from_settings(cls, settings: WorkerSettings) -> InternalApiClient:
+        return cls(
+            settings.internal_api_url,
+            settings.service_token.get_secret_value(),
+            timeout_s=settings.http_timeout_s,
+            max_attempts=settings.events_max_attempts,
+            backoff_base_s=settings.events_backoff_base_s,
+        )
+
     async def aclose(self) -> None:
         if self._owns_http:
             await self._http.aclose()
@@ -84,15 +201,23 @@ class InternalApiClient:
         delay = min(self._backoff_max, self._backoff_base * (2 ** (attempt - 1)))
         return float(delay * random.uniform(0.9, 1.1))
 
-    async def _post(self, path: str, body: dict[str, Any], span: Any = None) -> httpx.Response:
-        last_error: str = ""
+    async def _once(
+        self, method: str, path: str, body: Any = None, timeout_s: float | None = None
+    ) -> httpx.Response:
+        options: dict[str, Any] = {} if timeout_s is None else {"timeout": timeout_s}
+        return await self._http.request(
+            method, f"{self._base}{path}", json=body, headers=self._headers, **options
+        )
+
+    async def _retried(
+        self, method: str, path: str, body: Any = None, span: Any = None
+    ) -> httpx.Response:
+        last_error = ""
         for attempt in range(1, self._max_attempts + 1):
             if span is not None:
                 span.set_attribute("internal_api.attempts", attempt)
             try:
-                response = await self._http.post(
-                    f"{self._base}{path}", json=body, headers=self._headers
-                )
+                response = await self._once(method, path, body)
             except httpx.TransportError as exc:
                 last_error = f"{type(exc).__name__}: {exc}"
             else:
@@ -105,6 +230,8 @@ class InternalApiClient:
                 await self._sleep(self.backoff_delay(attempt))
         raise InternalApiError(None, f"gave up after {self._max_attempts} attempts: {last_error}")
 
+    # calls -------------------------------------------------------------------------------
+
     async def claim(self, request: ClaimRequest) -> ClaimResponse:
         attrs = {
             "http.request.method": "POST",
@@ -113,7 +240,9 @@ class InternalApiClient:
             "livekit.room": request.room_name,
         }
         with telemetry.span("internal_api.claim", attrs) as span:
-            response = await self._post("/calls/claim", request.model_dump(exclude_none=True), span)
+            response = await self._retried(
+                "POST", "/calls/claim", request.model_dump(exclude_none=True), span
+            )
             if response.status_code in (404, 409):
                 raise ClaimRejected(response.status_code, _problem_detail(response))
             if response.status_code != 200:
@@ -136,7 +265,9 @@ class InternalApiClient:
             "events.last_seq": max(seqs) if seqs else None,
         }
         with telemetry.span("internal_api.events", attrs) as span:
-            response = await self._post(f"/calls/{call_id}/events", {"events": list(events)}, span)
+            response = await self._retried(
+                "POST", f"/calls/{call_id}/events", {"events": list(events)}, span
+            )
             if response.status_code == 409:
                 raise CallClosed(409, _problem_detail(response))
             if response.status_code != 200:
@@ -144,6 +275,112 @@ class InternalApiClient:
             result = EventBatchResult.model_validate(response.json())
             span.set_attribute("control.action", result.control.action)
             return result
+
+    # tools -------------------------------------------------------------------------------
+
+    async def tool_secrets(self, call_id: str) -> dict[str, str]:
+        """The call's secret map, or an empty map when the API cannot provide it (tools then
+        answer ``secret_unavailable`` and the call goes on). Values are never logged."""
+        try:
+            response = await self._once("GET", f"/calls/{call_id}/tool-secrets")
+        except httpx.HTTPError as exc:
+            log.warning("tool secrets unavailable for %s: %s", call_id, type(exc).__name__)
+            return {}
+        if response.status_code != 200:
+            log.warning("tool secrets unavailable for %s: HTTP %s", call_id, response.status_code)
+            return {}
+        secrets = response.json().get("secrets") or {}
+        return {str(k): str(v) for k, v in secrets.items()}
+
+    async def kb_search(self, body: dict[str, Any], *, timeout_s: float) -> dict[str, Any]:
+        """Search results, or ``{}`` when the API fails. Raises ``TimeoutError`` after
+        ``timeout_s``."""
+        try:
+            response = await asyncio.wait_for(
+                self._once("POST", "/knowledge/search", body), timeout_s
+            )
+            data = response.json() if response.status_code == 200 else {}
+        except httpx.TimeoutException as exc:
+            raise TimeoutError from exc
+        except (httpx.HTTPError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    async def schedule_callback(
+        self, call_id: str, body: dict[str, Any], *, timeout_s: float
+    ) -> tuple[int, Any]:
+        """The status and JSON answer of a booking. Raises :class:`InternalApiError` when the
+        API cannot be reached or answers no JSON."""
+        try:
+            response = await self._once("POST", f"/calls/{call_id}/callbacks", body, timeout_s)
+            return response.status_code, response.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise InternalApiError(None, type(exc).__name__) from exc
+
+    async def report_language(
+        self, call_id: str, body: dict[str, Any], *, timeout_s: float
+    ) -> None:
+        try:
+            response = await self._once("POST", f"/calls/{call_id}/language", body, timeout_s)
+        except httpx.HTTPError as exc:
+            log.warning("language report for %s failed: %s", call_id, exc)
+            return
+        if response.status_code != 200:
+            log.warning("language report for %s: HTTP %s", call_id, response.status_code)
+
+    # text runs (008) ---------------------------------------------------------------------
+
+    async def _spec(self, path: str, route: str) -> dict[str, Any] | None:
+        attrs = {"http.request.method": "GET", "url.path": f"/v1/internal{route}"}
+        with telemetry.span("internal_api.textsim_spec", attrs) as span:
+            response = await self._retried("GET", path, span=span)
+            if response.status_code in GONE:
+                return None
+            if response.status_code != 200:
+                raise InternalApiError(response.status_code, _problem_detail(response))
+            body: dict[str, Any] = response.json()
+            return body
+
+    async def _result(self, path: str, route: str, body: dict[str, Any]) -> bool:
+        """Post a result. False when the run is gone (404 or 409)."""
+        attrs = {"http.request.method": "POST", "url.path": f"/v1/internal{route}"}
+        with telemetry.span("internal_api.textsim_result", attrs) as span:
+            response = await self._retried("POST", path, body, span)
+            if response.status_code in GONE:
+                return False
+            if response.status_code not in (200, 202, 204):
+                raise InternalApiError(response.status_code, _problem_detail(response))
+            return True
+
+    async def case_spec(self, test_run_id: str, test_case_id: str) -> CaseSpec | None:
+        raw = await self._spec(
+            f"/test-runs/{test_run_id}/cases/{test_case_id}/spec",
+            "/test-runs/{test_run_id}/cases/{test_case_id}/spec",
+        )
+        return CaseSpec.model_validate(raw) if raw is not None else None
+
+    async def post_case_result(
+        self, test_run_id: str, test_case_id: str, body: dict[str, Any]
+    ) -> bool:
+        return await self._result(
+            f"/test-runs/{test_run_id}/cases/{test_case_id}/result",
+            "/test-runs/{test_run_id}/cases/{test_case_id}/result",
+            body,
+        )
+
+    async def simulation_spec(self, simulation_run_id: str) -> SimulationSpec | None:
+        raw = await self._spec(
+            f"/simulation-runs/{simulation_run_id}/spec",
+            "/simulation-runs/{simulation_run_id}/spec",
+        )
+        return SimulationSpec.model_validate(raw) if raw is not None else None
+
+    async def post_simulation_result(self, simulation_run_id: str, body: dict[str, Any]) -> bool:
+        return await self._result(
+            f"/simulation-runs/{simulation_run_id}/result",
+            "/simulation-runs/{simulation_run_id}/result",
+            body,
+        )
 
 
 def _problem_detail(response: httpx.Response) -> str:

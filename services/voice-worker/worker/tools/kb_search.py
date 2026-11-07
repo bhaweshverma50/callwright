@@ -8,13 +8,11 @@ the kb ids, result count, top score, chunk ids, timeout and embedding cache hit.
 
 from __future__ import annotations
 
-import asyncio
 import time
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import httpx
-
+from worker.internal_api import InternalApiClient
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 TIMEOUT_S = 0.8
@@ -66,16 +64,12 @@ def format_passages(results: Sequence[Mapping[str, Any]]) -> str:
 class KbSearchExecutor:
     def __init__(
         self,
-        client: httpx.AsyncClient,
-        base_url: str,
-        service_token: str,
+        api: InternalApiClient | None,
         kb_ids: Sequence[str],
         *,
         timeout_s: float = TIMEOUT_S,
     ) -> None:
-        self.client = client
-        self.url = f"{base_url.rstrip('/')}/knowledge/search"
-        self.headers = {"Authorization": f"Bearer {service_token}"}
+        self.api = api
         self.kb_ids = list(kb_ids)
         self.timeout_s = timeout_s
 
@@ -95,16 +89,12 @@ class KbSearchExecutor:
             return ToolResult.error("invalid_arguments", "Pass a search query.", kb=kb)
         started = time.perf_counter()
         body = {"call_id": ctx.call_id, "query": query, "kb_ids": self.kb_ids, "top_k": TOP_K}
+        data: dict[str, Any] = {}
         try:
-            response = await asyncio.wait_for(
-                self.client.post(self.url, json=body, headers=self.headers), self.timeout_s
-            )
-            data = response.json() if response.status_code == 200 else {}
-        except (TimeoutError, httpx.TimeoutException):
+            if self.api is not None:
+                data = await self.api.kb_search(body, timeout_s=self.timeout_s)
+        except TimeoutError:
             kb["timed_out"] = True
-            data = {}
-        except (httpx.HTTPError, ValueError):
-            data = {}
         results = list(data.get("results") or [])
         kb.update(
             result_count=len(results),

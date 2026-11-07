@@ -9,7 +9,7 @@ import pytest
 from callwright_contract.values import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
 
 from worker.settings import WorkerSettings
-from worker.textsim import entry, runner
+from worker.textsim import entry
 
 
 def settings(**env: str) -> WorkerSettings:
@@ -36,32 +36,12 @@ def test_worker_options() -> None:
     assert (redis.host, redis.port, redis.database, redis.password) == ("10.0.0.5", 6379, 2, "p@ss")
 
 
-async def test_jobs_delegate_to_the_runner(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[tuple[Any, ...]] = []
-
-    async def single(api: Any, trn: str, tc: str, deps: Any) -> str:
-        seen.append(("single", api, trn, tc, deps))
-        return "completed"
-
-    async def simulation(api: Any, srun: str, deps: Any) -> str:
-        seen.append(("sim", api, srun, deps))
-        return "failed"
-
-    monkeypatch.setattr(runner, "run_single_turn", single)
-    monkeypatch.setattr(runner, "run_simulation", simulation)
-    ctx = {"api": "api", "deps": "deps"}
-    assert await entry.run_single_turn(ctx, "trn_1", "tc_1") == "completed"
-    assert await entry.run_simulation(ctx, "srun_1") == "failed"
-    assert seen == [("single", "api", "trn_1", "tc_1", "deps"), ("sim", "api", "srun_1", "deps")]
-
-
 async def test_context_and_health_listener(monkeypatch: pytest.MonkeyPatch) -> None:
     s = settings(WORKER_HEALTH_PORT="0")
     monkeypatch.setattr(entry, "get_settings", lambda: s)
     ctx: dict[str, Any] = {}
     await entry.startup(ctx)
     try:
-        assert ctx["deps"].internal_api_url == s.internal_api_url
         assert ctx["deps"].heartbeat_interval_s == s.heartbeat_interval_s
         port = ctx["health"].sockets[0].getsockname()[1]
         reader, writer = await asyncio.open_connection("127.0.0.1", port)

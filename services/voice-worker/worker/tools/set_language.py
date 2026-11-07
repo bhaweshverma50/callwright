@@ -29,9 +29,9 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import httpx
 from callwright_contract.values import SET_LANGUAGE_TOOL
 
+from worker.internal_api import InternalApiClient
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 log = logging.getLogger(__name__)
@@ -83,18 +83,14 @@ class SetLanguageExecutor:
         self,
         options: Sequence[Any],
         current: str | None,
-        client: httpx.AsyncClient | None,
-        base_url: str,
-        service_token: str,
+        api: InternalApiClient | None,
         *,
         timeout_s: float = TIMEOUT_S,
     ) -> None:
         self.options = {str(_get(o, "code")): o for o in options}
         first = str(_get(options[0], "code")) if options else ""
         self.current = current if current in self.options else first
-        self.client = client
-        self.base_url = base_url.rstrip("/")
-        self.headers = {"Authorization": f"Bearer {service_token}"}
+        self.api = api
         self.timeout_s = timeout_s
         self.reports: set[asyncio.Task[None]] = set()
 
@@ -159,19 +155,9 @@ class SetLanguageExecutor:
         return ToolResult(llm_payload=_payload(output), output=_payload(output))
 
     async def _report(self, call_id: str, code: str, offset_ms: int | None) -> None:
-        if self.client is None or not self.base_url:
+        if self.api is None:
             return
         body: dict[str, Any] = {"language": code}
         if offset_ms is not None:
             body["offset_ms"] = offset_ms
-        try:
-            response = await self.client.post(
-                f"{self.base_url}/calls/{call_id}/language",
-                json=body,
-                headers=self.headers,
-                timeout=self.timeout_s,
-            )
-            if response.status_code != 200:
-                log.warning("language report for %s: HTTP %s", call_id, response.status_code)
-        except httpx.HTTPError as exc:
-            log.warning("language report for %s failed: %s", call_id, exc)
+        await self.api.report_language(call_id, body, timeout_s=self.timeout_s)

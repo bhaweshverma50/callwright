@@ -3,7 +3,7 @@
 Simulated conversations run through the same session code as live calls (``pipeline.py``,
 ``flow/``, ``tools/``) on a LiveKit ``AgentSession`` with text input and output instead of
 STT and TTS. The API owns all state; this package fetches run specs, drives the conversation
-and posts events and results back over the internal API.
+and posts events and results back over the internal API (``worker.internal_api``).
 
 - ``entry``: the arq consumer (the contract's ``TEXTSIM_QUEUE`` and its two jobs), started
   with ``WORKER_ROLE=textsim`` (``python -m worker.entry``) or ``python -m worker.textsim.entry``.
@@ -12,7 +12,6 @@ and posts events and results back over the internal API.
 - ``mock_tools``: how HTTP tools and webhook nodes answer without network (R4).
 - ``llm``: model construction for the agent, the simulated caller and tool stand-ins, with
   the deterministic offline fallback used when the worker holds no key for the provider.
-- ``api_client``: the internal endpoints (service token).
 """
 
 from __future__ import annotations

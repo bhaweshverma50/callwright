@@ -15,7 +15,7 @@ from tests.flow_support import compiled_config
 from tests.harness.fakes import contract_errors
 from tests.harness.runner import claim_tables, deep_merge, load_agent_config
 from worker.adapters.registry import AdapterRegistry, VendorSpec
-from worker.textsim.api_client import TextsimApiClient
+from worker.internal_api import InternalApiClient
 from worker.textsim.llm import Role, Script, ScriptReply, ScriptRequest, make_script_llm
 from worker.textsim.runner import RunnerDeps
 
@@ -84,8 +84,8 @@ class FakeInternalApi:
     def http(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(transport=httpx.MockTransport(self.handle))
 
-    def client(self) -> TextsimApiClient:
-        return TextsimApiClient(BASE, TOKEN, http=self.http(), max_attempts=2, sleep=no_sleep)
+    def client(self) -> InternalApiClient:
+        return InternalApiClient(BASE, TOKEN, http=self.http(), max_attempts=2, sleep=no_sleep)
 
     # views -------------------------------------------------------------------------------
 
@@ -196,9 +196,6 @@ def deps(api: FakeInternalApi, models: Any) -> RunnerDeps:
     return RunnerDeps(
         models=models,
         registry=AdapterRegistry(),
-        internal_api_url=BASE,
-        service_token=TOKEN,
-        kb_http=api.http(),
         settle_timeout_s=5.0,
         turn_timeout_s=10.0,
     )

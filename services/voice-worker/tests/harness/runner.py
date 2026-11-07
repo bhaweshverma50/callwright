@@ -62,6 +62,7 @@ from worker.call_behavior import (
 )
 from worker.control import RuntimeCallControl
 from worker.entry import SYSTEM_EVENT_FOR_REASON
+from worker.internal_api import InternalApiClient
 from worker.metrics import EventPoster, EventRecorder, LatencyTracker, TurnRecord, UsageMeters
 from worker.pipeline import OverrideManager, SessionComponents, build_components, plan_session
 from worker.tools import SegmentOverrides, ToolActivity
@@ -188,8 +189,9 @@ def tool_stubs(extra: Mapping[str, Any]) -> dict[str, Any]:
             "embedding_cache_hit": False,
         }
         transport = httpx.MockTransport(handler(kb_stub, body))
-        out["api_client"] = httpx.AsyncClient(transport=transport)
-        out["api_base_url"] = "http://api.harness/v1/internal"
+        out["api"] = InternalApiClient(
+            "http://api.harness/v1/internal", "harness", http=httpx.AsyncClient(transport=transport)
+        )
     return out
 
 

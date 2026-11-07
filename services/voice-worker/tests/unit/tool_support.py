@@ -10,6 +10,7 @@ import httpx
 
 from tests.unit.conftest import make_runtime
 from worker.control import RuntimeCallControl
+from worker.internal_api import InternalApiClient
 from worker.metrics import EventRecorder
 from worker.tools.registry import CallTools, build_call_tools
 
@@ -113,9 +114,7 @@ def make(
         control,
         tool_secrets=secrets,
         http_client=http,
-        api_client=api,
-        api_base_url="http://api.test/v1/internal",
-        service_token="svc",
+        api=InternalApiClient("http://api.test/v1/internal", "svc", http=api),
         resolver=public_resolver,
         **kwargs,
     )

@@ -44,6 +44,7 @@ from callwright_contract.values import (
 )
 
 from worker import telemetry
+from worker.internal_api import InternalApiClient
 from worker.tools import CallControl, ToolActivity, kb_search, secrets
 from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecView
 from worker.tools.dtmf import PressDigitExecutor
@@ -57,8 +58,6 @@ from worker.tools.transfer import TransferBackend, TransferExecutor
 
 if TYPE_CHECKING:
     from callwright_contract.protocol import RuntimeConfig
-
-    from worker.settings import WorkerSettings
 
 log = logging.getLogger(__name__)
 
@@ -492,9 +491,7 @@ def build_call_tools(
     *,
     tool_secrets: Mapping[str, str] | None = None,
     http_client: httpx.AsyncClient | None = None,
-    api_client: httpx.AsyncClient | None = None,
-    api_base_url: str = "",
-    service_token: str = "",
+    api: InternalApiClient | None = None,
     transfer_backend: TransferBackend | None = None,
     allow_http: bool = False,
     resolver: Any = None,
@@ -527,19 +524,10 @@ def build_call_tools(
     if http_client is not None:
         executors["http"] = HttpExecutor(http_client, allow_http=allow_http, resolver=resolver)
     if kb is not None:
-        if api_client is None:
-            api_client = httpx.AsyncClient(timeout=kb_search.TIMEOUT_S)
-            clients.append(api_client)
-        executors["kb_search"] = kb_search.KbSearchExecutor(
-            api_client, api_base_url, service_token, list(kb.config["kb_ids"])
-        )
-    executors["schedule_callback"] = ScheduleCallbackExecutor(
-        api_client, api_base_url, service_token
-    )
+        executors["kb_search"] = kb_search.KbSearchExecutor(api, list(kb.config["kb_ids"]))
+    executors["schedule_callback"] = ScheduleCallbackExecutor(api)
     if len(languages) > 1:
-        executors["set_language"] = SetLanguageExecutor(
-            languages, runtime.caller_language, api_client, api_base_url, service_token
-        )
+        executors["set_language"] = SetLanguageExecutor(languages, runtime.caller_language, api)
     fillers = FillerPolicy(
         filler_texts([*specs, *([kb] if kb else [])]),
         end_call_names=frozenset(s.name for s in specs if s.type == "end_call"),
@@ -558,26 +546,15 @@ def build_call_tools(
 async def prepare_call_tools(
     runtime: RuntimeConfig,
     control: CallControl,
-    settings: WorkerSettings,
+    api: InternalApiClient,
     *,
     transfer_backend: TransferBackend | None = None,
 ) -> CallTools:
-    """The live call's tools at session start: one secret fetch and keep-alive clients, closed
-    with :meth:`CallTools.aclose` when the call ends."""
-    base = settings.internal_api_url
-    token = settings.service_token.get_secret_value()
-    api_client = httpx.AsyncClient(timeout=settings.http_timeout_s)
+    """The live call's tools at session start, after one secret fetch; their own clients are
+    closed with :meth:`CallTools.aclose` when the call ends."""
     tool_secrets: dict[str, str] = {}
     if secrets.needs_secrets(runtime.config):
-        tool_secrets = await secrets.fetch(api_client, base, token, control.call_id)
-    tools = build_call_tools(
-        runtime,
-        control,
-        tool_secrets=tool_secrets,
-        api_client=api_client,
-        api_base_url=base,
-        service_token=token,
-        transfer_backend=transfer_backend,
+        tool_secrets = await api.tool_secrets(control.call_id)
+    return build_call_tools(
+        runtime, control, tool_secrets=tool_secrets, api=api, transfer_backend=transfer_backend
     )
-    tools.clients.append(api_client)
-    return tools

@@ -40,7 +40,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx
 from callwright_contract.calls import AgentType, Channel, Direction
 from callwright_contract.protocol import RuntimeConfig, RuntimeValues
 from callwright_contract.variables import BUILTIN_VARIABLES
@@ -53,9 +52,9 @@ from worker.call_behavior import ends_with_goodbye
 from worker.control import RuntimeCallControl
 from worker.flow import FlowComponents
 from worker.flow.runtime import CallwrightFlowRunner
+from worker.internal_api import InternalApiClient, SimulationSpec
 from worker.metrics import EventPoster, EventRecorder
 from worker.pipeline import build_agent, plan_session
-from worker.textsim.api_client import SimulationSpec, TextsimApiClient
 from worker.textsim.conversation import DISCONNECT_REASON, AgentTurn, Outcome
 from worker.textsim.llm import ModelFactory, Role, TokenMeter, parse_model
 from worker.textsim.mock_tools import SimulatedToolAnswers, install, tool_synthesizer
@@ -72,14 +71,11 @@ MAX_ERROR_CHARS = 2000
 
 @dataclass
 class RunnerDeps:
-    """What a run needs besides the API client: models (adapters or the offline fallback), the
-    vendor catalog, and the internal API location and client used by ``kb_search``."""
+    """What a run needs besides the API client: models (adapters or the offline fallback) and the
+    vendor catalog."""
 
     models: ModelFactory
     registry: AdapterRegistry = field(default_factory=AdapterRegistry)
-    internal_api_url: str = ""
-    service_token: str = ""
-    kb_http: httpx.AsyncClient | None = None
     settle_timeout_s: float = 60.0
     turn_timeout_s: float = 180.0
     # Events are posted after every agent turn and at least this often while a turn runs (an
@@ -177,6 +173,7 @@ class TextSession:
         call_id: str,
         runtime: RuntimeConfig,
         deps: RunnerDeps,
+        api: InternalApiClient,
         *,
         answers: SimulatedToolAnswers,
         recorder: EventRecorder,
@@ -186,6 +183,7 @@ class TextSession:
         self.call_id = call_id
         self.runtime = runtime
         self.deps = deps
+        self.api = api
         self.answers = answers
         self.recorder = recorder
         self.meter = meter
@@ -249,13 +247,7 @@ class TextSession:
         runtime = self.runtime
         plan = plan_session(runtime, self.deps.registry, self.flow_runner)
         self.plan = plan
-        tools = build_call_tools(
-            runtime,
-            self.control,
-            api_client=self.deps.kb_http,
-            api_base_url=self.deps.internal_api_url,
-            service_token=self.deps.service_token,
-        )
+        tools = build_call_tools(runtime, self.control, api=self.api)
         self.tools = install(tools, self.answers)
         tools.ctx.turn_index = lambda: self._turn
         llm = self.model(plan.llm, "agent")
@@ -409,7 +401,7 @@ def _error_text(exc: BaseException) -> str:
 
 
 async def run_single_turn(
-    api: TextsimApiClient, test_run_id: str, test_case_id: str, deps: RunnerDeps
+    api: InternalApiClient, test_run_id: str, test_case_id: str, deps: RunnerDeps
 ) -> str:
     """Run one test case. Returns ``completed``, ``error`` or ``gone`` (cancelled run)."""
     attrs = {"test_run_id": test_run_id, "test_case_id": test_case_id, "call_id": test_run_id}
@@ -439,7 +431,7 @@ async def run_single_turn(
                 call_id=test_run_id,
             )
             session = TextSession(
-                test_run_id, runtime, deps, answers=answers, recorder=recorder, meter=meter
+                test_run_id, runtime, deps, api, answers=answers, recorder=recorder, meter=meter
             )
             answers.synthesize = tool_synthesizer(session.synth_model)
             await session.start()
@@ -474,7 +466,7 @@ def persona_spec(spec: SimulationSpec, runtime: RuntimeConfig, registry: Adapter
     return VendorSpec("llm", chosen.provider, chosen.model, options)
 
 
-async def run_simulation(api: TextsimApiClient, simulation_run_id: str, deps: RunnerDeps) -> str:
+async def run_simulation(api: InternalApiClient, simulation_run_id: str, deps: RunnerDeps) -> str:
     """Run one simulation. Returns ``completed``, ``failed`` or ``gone`` (cancelled run)."""
     attrs = {"simulation_run_id": simulation_run_id}
     with telemetry.span("textsim.simulation", attrs) as span:
@@ -493,7 +485,7 @@ async def run_simulation(api: TextsimApiClient, simulation_run_id: str, deps: Ru
 
 
 async def _simulate(
-    api: TextsimApiClient, spec: SimulationSpec, deps: RunnerDeps, span: Any
+    api: InternalApiClient, spec: SimulationSpec, deps: RunnerDeps, span: Any
 ) -> str:
     call_id = spec.output_call_id
     recorder = EventRecorder()
@@ -544,6 +536,7 @@ async def _simulate(
             call_id,
             runtime,
             deps,
+            api,
             answers=answers,
             recorder=recorder,
             meter=meter,
