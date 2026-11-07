@@ -13,6 +13,9 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# The Azure OpenAI resource agents run on when a key is set without AZURE_OPENAI_ENDPOINT.
+AZURE_OPENAI_DEFAULT_ENDPOINT = "https://callwright.openai.azure.com"
+
 
 class WorkerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
@@ -51,6 +54,8 @@ class WorkerSettings(BaseSettings):
     livekit_url: str = Field("ws://localhost:7880", alias="LIVEKIT_URL")
     livekit_api_key: SecretStr = Field(SecretStr("devkey"), alias="LIVEKIT_API_KEY")
     livekit_api_secret: SecretStr = Field(SecretStr("secret"), alias="LIVEKIT_API_SECRET")
+    # 005 warm transfers dial the destination on this trunk unless the call has its own (010).
+    sip_outbound_trunk_id: str = Field("", alias="SIP_OUTBOUND_TRUNK_ID")
 
     deepgram_api_key: SecretStr = Field(SecretStr(""), alias="DEEPGRAM_API_KEY")
     assemblyai_api_key: SecretStr = Field(SecretStr(""), alias="ASSEMBLYAI_API_KEY")
@@ -92,7 +97,7 @@ class WorkerSettings(BaseSettings):
         """Credentials per provider id, as passed to adapter ``build(spec, creds)``."""
         azure: dict[str, str] = {
             "api_key": self.azure_openai_api_key.get_secret_value(),
-            "endpoint": self.azure_openai_endpoint,
+            "endpoint": self.azure_openai_endpoint or AZURE_OPENAI_DEFAULT_ENDPOINT,
             "api_version": self.azure_openai_api_version,
         }
         if self.azure_openai_falls_back_to_openai():

@@ -37,9 +37,6 @@ class FakeTransfer:
         self.log.append(("compose", instructions))
         return "Caller Ana wants to move her appointment."
 
-    async def hang_up_destination(self, room_name: str) -> None:
-        self.log.append(("hangup_destination", room_name))
-
 
 STATIC = {"routing_type": "static", "number": "+14155550100", "hold_message": "Please hold."}
 

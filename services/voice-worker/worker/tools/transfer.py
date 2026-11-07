@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any, Protocol
 
@@ -48,10 +47,8 @@ class TransferBackend(Protocol):
     async def move_to_caller(self, room_name: str) -> None: ...
 
     async def compose_briefing(self, instructions: str) -> str:
-        """One short line written by the LLM from the briefing instructions."""
+        """The briefing said to the destination for briefing instructions."""
         ...
-
-    async def hang_up_destination(self, room_name: str) -> None: ...
 
 
 class TransferExecutor:
@@ -124,12 +121,10 @@ class TransferExecutor:
 # Live backend --------------------------------------------------------------------------------
 
 Synthesize = Callable[[str], AsyncIterator[Any]]
-Compose = Callable[[str], Any]
 
 
 class LiveKitTransferBackend:
-    """LiveKit SIP and room APIs. ``SIP_OUTBOUND_TRUNK_ID`` (or the call's outbound trunk) is
-    used to dial the destination."""
+    """LiveKit SIP and room APIs; ``trunk_id`` dials the destination of a warm transfer."""
 
     def __init__(
         self,
@@ -141,16 +136,14 @@ class LiveKitTransferBackend:
         caller_identity: Callable[[], str | None],
         trunk_id: str | None = None,
         synthesize: Synthesize | None = None,
-        compose: Compose | None = None,
     ) -> None:
         self.url = url
         self.api_key = api_key
         self.api_secret = api_secret
         self.room_name = room_name
         self.caller_identity = caller_identity
-        self.trunk_id = trunk_id or os.environ.get("SIP_OUTBOUND_TRUNK_ID")
+        self.trunk_id = trunk_id
         self.synthesize = synthesize
-        self.compose = compose
 
     def _api(self) -> Any:
         from livekit import api
@@ -247,18 +240,4 @@ class LiveKitTransferBackend:
             await client.aclose()
 
     async def compose_briefing(self, instructions: str) -> str:
-        if self.compose is None:
-            return instructions
-        text = await self.compose(instructions)
-        return str(text or instructions)
-
-    async def hang_up_destination(self, room_name: str) -> None:
-        from livekit import api
-
-        client = self._api()
-        try:
-            await client.room.remove_participant(
-                api.RoomParticipantIdentity(room=room_name, identity=DESTINATION_IDENTITY)
-            )
-        finally:
-            await client.aclose()
+        return instructions  # the live call says the briefing instructions as written

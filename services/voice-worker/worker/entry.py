@@ -349,7 +349,9 @@ class LiveCall:
             api_secret=settings.livekit_api_secret.get_secret_value(),
             room_name=self.ctx.room.name,
             caller_identity=lambda: self.caller_identity,
-            trunk_id=runtime.outbound_dial.sip_trunk_id if runtime.outbound_dial else None,
+            trunk_id=(runtime.outbound_dial.sip_trunk_id if runtime.outbound_dial else None)
+            or settings.sip_outbound_trunk_id
+            or None,
             synthesize=synthesize,
         )
 
