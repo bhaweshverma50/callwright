@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+from callwright_contract.textsim import SimSettings
+from pydantic import ValidationError
+
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
@@ -20,7 +24,6 @@ from worker.textsim.llm import ScriptReply, ScriptRequest, default_factory
 from worker.textsim.persona_caller import (
     CONNECTED,
     HANG_UP,
-    clamp_turns,
     clean_caller_text,
     instructions,
 )
@@ -95,12 +98,11 @@ async def test_turn_limit_defaults_to_twenty() -> None:
     assert result["end_reason"] == "turn_limit_reached" and len(caller_lines(api)) == 20
 
 
-async def test_turn_limit_is_at_most_fifty() -> None:
-    assert clamp_turns(None) == 20 and clamp_turns(0) == 20
-    assert clamp_turns(80) == 50 and clamp_turns(3) == 3
-    api = FakeInternalApi()
-    _, result, _ = await persona(api, chatty, settings={"max_caller_turns": 80})
-    assert result["end_reason"] == "turn_limit_reached" and len(caller_lines(api)) == 50
+def test_turn_limit_is_one_to_fifty() -> None:
+    assert SimSettings().max_caller_turns == 20
+    for turns in (0, 51):
+        with pytest.raises(ValidationError):
+            SimSettings(max_caller_turns=turns)
 
 
 async def test_explicit_turn_limit() -> None:

@@ -14,6 +14,7 @@ from __future__ import annotations
 import copy
 from typing import Annotated, Any, Literal
 
+from callwright_contract.protocol import MAX_KNOWLEDGE_BASES
 from callwright_contract.variables import MAX_DESCRIPTION_CHARS, MAX_VALUE_CHARS, MAX_VARIABLES, NAME_PATTERN
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -25,7 +26,6 @@ NAME_MAX = 80  # agents.name CHECK (migration s002_0001); a flow's name is its a
 MAX_PROMPT = 50_000
 MAX_GREETING = 1_000
 MAX_TOOLS = 25
-MAX_KBS = 10
 MAX_PRONUNCIATION = 200
 MAX_SWITCH_LANGUAGES = 30
 # Ranges the catalog ``controls`` table does not hold: temperature per model is in
@@ -165,7 +165,7 @@ class AgentConfigV1(_Strict):
         default_factory=list, max_length=MAX_TOOLS
     )
     kb_ids: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(
-        default_factory=list, max_length=MAX_KBS
+        default_factory=list, max_length=MAX_KNOWLEDGE_BASES
     )
     flow: dict[str, Any] | None = None
     evals: dict[str, Any] | None = None

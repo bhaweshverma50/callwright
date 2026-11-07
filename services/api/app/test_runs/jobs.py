@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from callwright_contract.values import RUN_SINGLE_TURN
+from callwright_contract.textsim import RUN_SINGLE_TURN
 from sqlalchemy import text
 
 from app.billing import service as billing

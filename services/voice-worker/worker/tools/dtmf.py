@@ -13,7 +13,7 @@ import time
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
-from callwright_contract.values import CHANNEL_UNSUPPORTED, MAX_PRESS_DIGITS, PRESS_DIGITS_PATTERN
+from callwright_contract.values import MAX_PRESS_DIGITS, PRESS_DIGITS_PATTERN
 
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
@@ -38,7 +38,7 @@ class PressDigitExecutor:
                 "invalid_arguments", f"Digits must be 0-9, * or #, up to {MAX_PRESS_DIGITS}."
             )
         if not ctx.is_sip and not ctx.simulation:
-            return ToolResult.error(CHANNEL_UNSUPPORTED, "Keypad tones need a phone call.")
+            return ToolResult.error("channel_unsupported", "Keypad tones need a phone call.")
         if ctx.simulation:
             return ToolResult(llm_payload=f'{{"sent":"{digits}"}}', output=digits, mocked=True)
         delay = int(spec.config.get("delay_ms", 1000)) / 1000

@@ -18,6 +18,7 @@ from typing import Any, Protocol
 
 from callwright_contract import http_core
 from callwright_contract.calls import PHONE_CHANNELS
+from callwright_contract.values import ToolErrorCode
 
 from worker.tools import CallControl
 
@@ -89,13 +90,13 @@ class ToolContext:
 class ToolResult:
     llm_payload: str
     is_error: bool = False
-    error_code: str | None = None
+    error_code: ToolErrorCode | None = None
     output: str | None = None
     mocked: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def error(cls, code: str, message: str, **extra: Any) -> ToolResult:
+    def error(cls, code: ToolErrorCode, message: str, **extra: Any) -> ToolResult:
         payload = http_core.error_payload(code, message, extra.get("http_status"))
         return cls(llm_payload=payload, is_error=True, error_code=code, extra=extra)
 

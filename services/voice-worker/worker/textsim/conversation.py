@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from callwright_contract.values import SimulationEndReason
+from callwright_contract.textsim import SimulationEndReason
 
 # Disconnect reason on the simulated call's final ``ended`` status for each end reason.
 DISCONNECT_REASON: dict[str, str] = {

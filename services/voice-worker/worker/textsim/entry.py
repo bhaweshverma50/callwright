@@ -25,7 +25,7 @@ import sys
 from typing import Any
 
 from arq.worker import func
-from callwright_contract.values import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
+from callwright_contract.textsim import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
 
 from worker import telemetry
 from worker.adapters.registry import AdapterRegistry

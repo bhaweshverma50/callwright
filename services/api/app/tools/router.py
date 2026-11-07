@@ -7,6 +7,7 @@ import hmac
 from typing import Annotated, Any
 
 from callwright_contract.calls import ACTIVE_STATUSES
+from callwright_contract.protocol import ToolSecrets
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
@@ -250,4 +251,4 @@ async def get_call_tool_secrets(call_id: CallId, request: Request) -> JSONRespon
         version = await session.get(AgentVersion, call.agent_version_id)
         config = version.config if version is not None else {}
         secrets = await service.secrets_for_config(session, key_wrapper(state.settings), workspace_id, config)
-    return JSONResponse({"secrets": secrets}, headers={"Cache-Control": "no-store"})
+    return JSONResponse(ToolSecrets(secrets=secrets).model_dump(), headers={"Cache-Control": "no-store"})

@@ -17,7 +17,7 @@ from callwright_contract.calls import (
     Direction,
 )
 from callwright_contract.protocol import MAX_DIAGNOSTIC_CHARS
-from callwright_contract.values import SimulationEndReason
+from callwright_contract.textsim import SimulationEndReason
 
 from tests.runtime_support import Runtime, owner_sql
 

@@ -14,11 +14,13 @@ from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Any
 
+from callwright_contract.protocol import CallbackRequest
 from callwright_contract.values import (
     CALLBACK_MAX_IN_MINUTES,
     CALLBACK_MAX_NOTE_CHARS,
     CALLBACK_NOT_A_PHONE_CALL,
-    CHANNEL_UNSUPPORTED,
+    CALLBACK_REFUSALS,
+    ToolErrorCode,
     spoken_time,
 )
 
@@ -69,7 +71,7 @@ def _confirmation(spoken: str) -> str:
     )
 
 
-def _mocked_error(code: str, message: str) -> ToolResult:
+def _mocked_error(code: ToolErrorCode, message: str) -> ToolResult:
     result = ToolResult.error(code, message)
     result.mocked = True
     return result
@@ -108,14 +110,14 @@ class ScheduleCallbackExecutor:
         if ctx.simulation:
             return simulated(arguments, ctx.dynamic_variables)
         if not ctx.is_sip:
-            return ToolResult.error(CHANNEL_UNSUPPORTED, CALLBACK_NOT_A_PHONE_CALL)
+            return ToolResult.error("channel_unsupported", CALLBACK_NOT_A_PHONE_CALL)
         if self.api is None:
             return ToolResult.error("unavailable", UNAVAILABLE)
-        body: dict[str, Any] = {"note": str(arguments.get("note") or "")[:CALLBACK_MAX_NOTE_CHARS]}
+        note = str(arguments.get("note") or "")[:CALLBACK_MAX_NOTE_CHARS]
         if arguments.get("in_minutes") is not None:
-            body["in_minutes"] = int(arguments["in_minutes"])
+            body = CallbackRequest(in_minutes=int(arguments["in_minutes"]), note=note)
         else:
-            body["at"] = str(arguments["at"])[:40]
+            body = CallbackRequest(at=str(arguments["at"])[:40], note=note)
         try:
             status, data = await self.api.schedule_callback(
                 ctx.call_id, body, timeout_s=self.timeout_s
@@ -139,6 +141,7 @@ class ScheduleCallbackExecutor:
                 mocked=bool(data.get("mocked")),
                 extra={"callback_id": data.get("callback_id")},
             )
-        if status == 422 and isinstance(data, dict) and data.get("reason"):
-            return ToolResult.error(str(data["reason"]), str(data.get("detail") or UNAVAILABLE))
+        reason = data.get("reason") if status == 422 and isinstance(data, dict) else None
+        if reason in CALLBACK_REFUSALS:
+            return ToolResult.error(reason, str(data.get("detail") or UNAVAILABLE))
         return ToolResult.error("unavailable", UNAVAILABLE)

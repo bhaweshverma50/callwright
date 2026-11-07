@@ -181,12 +181,11 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [workspace_id, agent_id, agent_type, config_snapshot, user_prompt, dynamic_variables]
+                required: [workspace_id, agent_id, agent_type, runtime, user_prompt, dynamic_variables]
                 properties:
                   workspace_id: { type: string }
                   agent_id: { type: string }
                   agent_type: { type: string, enum: [single_prompt, flow] }
-                  config_snapshot: { type: object }
                   runtime:
                     type: object
                     description: >
@@ -196,10 +195,6 @@ paths:
                     additionalProperties: true
                   user_prompt: { type: string }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
-                  language_options:
-                    type: array
-                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
-                    items: { $ref: '../../003-voice-runtime/contracts/calls.yaml#/components/schemas/LanguageOption' }
         '404': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound' }
         '409': { $ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict' }
   /internal/test-runs/{test_run_id}/cases/{test_case_id}/result:

@@ -4115,7 +4115,7 @@ paths:
                 - agent_type
                 - channel
                 - mode
-                - config_snapshot
+                - runtime
                 - settings
                 - dynamic_variables
                 properties:
@@ -4142,8 +4142,6 @@ paths:
                     description: Call row pre-created with origin simulation
                   mode:
                     $ref: '#/components/schemas/SimMode'
-                  config_snapshot:
-                    type: object
                   runtime:
                     type: object
                     description: 'The run''s resolved values, as in the claim''s RuntimeConfig (config
@@ -4158,16 +4156,13 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
-                  language_options:
-                    type: array
-                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
-                    items:
-                      $ref: '#/components/schemas/LanguageOption'
                   start_speaker:
                     type: string
                     enum:
                     - agent
                     - user
+                    description: Replay only; who spoke first on the base call, so the replay opens the
+                      same way
                   caller_turns:
                     type: array
                     description: Replay only
@@ -4278,7 +4273,7 @@ paths:
                 - workspace_id
                 - agent_id
                 - agent_type
-                - config_snapshot
+                - runtime
                 - user_prompt
                 - dynamic_variables
                 properties:
@@ -4291,8 +4286,6 @@ paths:
                     enum:
                     - single_prompt
                     - flow
-                  config_snapshot:
-                    type: object
                   runtime:
                     type: object
                     description: 'The run''s resolved values, as in the claim''s RuntimeConfig (config
@@ -4307,11 +4300,6 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
-                  language_options:
-                    type: array
-                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
-                    items:
-                      $ref: '#/components/schemas/LanguageOption'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -10820,7 +10808,7 @@ components:
           reason:
             type: string
             enum:
-            - unsupported_channel
+            - channel_unsupported
             - number_unavailable
             - agent_unavailable
             - unknown_timezone

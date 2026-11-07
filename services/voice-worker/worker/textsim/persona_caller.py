@@ -16,15 +16,13 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from callwright_contract.values import SimulationEndReason
+from callwright_contract.textsim import DEFAULT_CALLER_TURNS, SimulationEndReason
 
 from worker.textsim.conversation import Conversation, Outcome, agent_end_reason
 from worker.textsim.llm import complete
 
 HANG_UP = "hang_up"
 PERSONA_TEMPERATURE = 0.7
-DEFAULT_MAX_TURNS = 20
-MAX_TURNS = 50
 CONNECTED = "[The call has just connected and the agent has not spoken yet. Say your first line.]"
 
 SYSTEM = (
@@ -45,10 +43,6 @@ HANG_UP_SCHEMA: dict[str, Any] = {
 _AGENT_LABEL = re.compile(r"^\s*(agent|assistant|representative|receptionist)\s*:", re.I)
 _CALLER_LABEL = re.compile(r"^\s*(caller|user|customer|me)\s*:\s*", re.I)
 _DIRECTION = re.compile(r"\[[^\]]*\]|\*[^*]*\*")
-
-
-def clamp_turns(value: int | None) -> int:
-    return max(1, min(MAX_TURNS, int(value or DEFAULT_MAX_TURNS)))
 
 
 def instructions(brief: Mapping[str, Any]) -> str:
@@ -101,10 +95,12 @@ def hang_up_tool() -> Any:
 
 
 class PersonaCaller:
-    def __init__(self, llm: Any, brief: Mapping[str, Any], *, max_turns: int | None = None):
+    def __init__(
+        self, llm: Any, brief: Mapping[str, Any], *, max_turns: int = DEFAULT_CALLER_TURNS
+    ):
         self.llm = llm
         self.brief = dict(brief)
-        self.max_turns = clamp_turns(max_turns)
+        self.max_turns = max_turns
         self.system = instructions(self.brief)
         self.hang_up_reason: str | None = None
 

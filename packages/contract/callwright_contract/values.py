@@ -1,11 +1,11 @@
 """Small values both services use: phone number and keypad syntax, tool names, error codes and
-default texts, callback limits and wording (011), stock lines and the text runner's queue (008)."""
+default texts, callback limits and wording (011) and stock lines."""
 
 from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from typing import Final, Literal
+from typing import Final, Literal, get_args
 
 E164_PATTERN: Final = r"^\+[1-9]\d{6,14}$"
 E164 = re.compile(E164_PATTERN)
@@ -24,23 +24,41 @@ KB_TOOL: Final = "kb_search"
 COMPLETE_TASK_TOOL: Final = "complete_task"
 ROUTE_TOOL_PREFIX: Final = "route_to_"
 
-# Codes a tool result carries in ``{"error": code, "message": ...}`` (005 data-model ToolCall).
-ToolErrorCode = Literal[
-    "invalid_arguments",
-    "missing_variable",
-    "secret_unavailable",
-    "blocked_address",
-    "connection_error",
-    "timeout",
-    "http_status",
-    "response_too_large",
+# Why the API refuses to book a callback from a call (011 ``CallbackRefusedProblem.reason``); the
+# agent's tool result carries the same code.
+CallbackRefusal = Literal[
     "channel_unsupported",
-    "transfer_failed",
-    "no_mock_response",
+    "number_unavailable",
+    "agent_unavailable",
+    "unknown_timezone",
     "invalid_time",
-    "unavailable",
+    "dnc_listed",
+    "outside_calling_hours",
 ]
-CHANNEL_UNSUPPORTED: Final = "channel_unsupported"
+CALLBACK_REFUSALS: Final[tuple[CallbackRefusal, ...]] = get_args(CallbackRefusal)
+
+# Codes a tool result carries in ``{"error": code, "message": ...}`` (005 data-model ToolCall).
+ToolErrorCode = (
+    Literal[
+        "invalid_arguments",
+        "missing_variable",
+        "secret_unavailable",
+        "blocked_address",
+        "connection_error",
+        "timeout",
+        "http_status",
+        "response_too_large",
+        "transfer_failed",
+        "unsupported_language",
+        "unavailable",
+        "internal",
+        # 008 simulations: no canned answer, or the stand-in answer could not be written.
+        "no_mock_response",
+        "no_mock_configured",
+        "synthesis_failed",
+    ]
+    | CallbackRefusal
+)
 
 DEFAULT_HOLD_MESSAGE: Final = "Please hold while I connect you."
 DEFAULT_EXECUTION_MESSAGE: Final = "One moment while I check that."
@@ -66,18 +84,3 @@ def spoken_time(local: datetime, now_local: datetime) -> str:
     if local.date() == now_local.date() + timedelta(days=1):
         return f"tomorrow, {day}, at {clock}"
     return f"{day} at {clock}"
-
-
-# 008 text runner: the arq queue the voice worker's ``textsim`` role consumes, its two jobs and
-# why a simulated conversation ended.
-TEXTSIM_QUEUE: Final = "arq:textsim"
-RUN_SINGLE_TURN: Final = "run_single_turn"
-RUN_SIMULATION: Final = "run_simulation"
-SimulationEndReason = Literal[
-    "caller_turns_exhausted",
-    "caller_hung_up",
-    "agent_hangup",
-    "call_transfer",
-    "turn_limit_reached",
-    "error",
-]

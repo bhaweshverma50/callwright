@@ -28,7 +28,8 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from callwright_contract.calls import PHONE_CHANNELS
-from callwright_contract.values import CALLBACK_NOT_A_PHONE_CALL, spoken_time
+from callwright_contract.protocol import CallbackRequest
+from callwright_contract.values import CALLBACK_NOT_A_PHONE_CALL, CallbackRefusal, spoken_time
 from callwright_contract.variables import BUILTIN_VARIABLES, CALLBACK_NOTE, MAX_VALUE_CHARS
 from pydantic import ValidationError
 from sqlalchemy import func, select, text
@@ -38,7 +39,6 @@ from app.agents.models import Agent
 from app.callbacks.models import ScheduledCallback
 from app.callbacks.schemas import (
     MAX_CARRIED_VARIABLES,
-    CallbackBookRequest,
     CallbackCreate,
     parse_local,
 )
@@ -242,7 +242,7 @@ async def create(
 # Book from a call (voice worker) ---------------------------------------------------------------
 
 
-def refused(reason: str, detail: str, **extra: Any) -> ProblemError:
+def refused(reason: CallbackRefusal, detail: str, **extra: Any) -> ProblemError:
     return ProblemError(
         422, "callback_not_possible", "Callback not possible", detail, extra={"reason": reason, **extra}
     )
@@ -295,7 +295,7 @@ def recipient_of(call: Call) -> Recipient:
     )
 
 
-def resolve_time(body: CallbackBookRequest, zone: str, now: datetime) -> datetime:
+def resolve_time(body: CallbackRequest, zone: str, now: datetime) -> datetime:
     if body.in_minutes is not None:
         return (now + timedelta(minutes=body.in_minutes)).replace(second=0, microsecond=0)
     try:
@@ -367,7 +367,7 @@ def _policy_refusal(exc: Exception, zone: str, now: datetime) -> ProblemError:
 
 
 async def book_from_call(
-    db: Database, workspace_id: str, call_id: str, body: CallbackBookRequest, now: datetime | None = None
+    db: Database, workspace_id: str, call_id: str, body: CallbackRequest, now: datetime | None = None
 ) -> tuple[int, dict[str, Any]]:
     now = now or datetime.now(UTC)
     async with db.transaction(workspace_id=workspace_id) as session:
@@ -383,7 +383,7 @@ async def book_from_call(
                 raise refused("invalid_time", problem)
             return 200, _booked(None, at, zone, now, mocked=True, rescheduled=False)
         if call.channel not in PHONE_CHANNELS:
-            raise refused("unsupported_channel", CALLBACK_NOT_A_PHONE_CALL)
+            raise refused("channel_unsupported", CALLBACK_NOT_A_PHONE_CALL)
         recipient = recipient_of(call)
         at = resolve_time(body, recipient.timezone, now)
         problem = _time_problem(at, now)

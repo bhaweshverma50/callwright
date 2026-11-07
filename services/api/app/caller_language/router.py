@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
+from callwright_contract.protocol import LanguageReport
 from callwright_contract.values import E164_PATTERN
 from fastapi import APIRouter, Depends, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, Field
 
 from app.caller_language import service
 from app.calls.lookups import workspace_for_call
@@ -21,13 +21,6 @@ internal_router = APIRouter(tags=["internal"], dependencies=[Depends(require_ser
 
 PreferenceId = Annotated[str, Depends(path_id("cpf", "caller_preference", "preference_id"))]
 CallId = Annotated[str, Depends(path_id("call", "call", "call_id"))]
-
-
-class LanguageReport(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    language: str = Field(min_length=2, max_length=16)
-    offset_ms: int | None = Field(default=None, ge=0)
 
 
 @router.get("/caller-preferences", responses=problem_responses(401))

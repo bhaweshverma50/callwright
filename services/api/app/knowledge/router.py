@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
+from callwright_contract.protocol import KbSearchRequest
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
@@ -19,7 +20,6 @@ from app.core.rate_limit import RateLimiter
 from app.knowledge import jobs, service, storage
 from app.knowledge.schemas import (
     CheckDuplicate,
-    InternalSearch,
     KnowledgeBaseWrite,
     SearchRequest,
     SetAgentKnowledge,
@@ -247,7 +247,7 @@ async def set_agent_knowledge_bases(
 
 
 @internal_router.post("/internal/knowledge/search", responses=problem_responses(403, 404))
-async def internal_knowledge_search(body: InternalSearch, request: Request) -> dict[str, Any]:
+async def internal_knowledge_search(body: KbSearchRequest, request: Request) -> dict[str, Any]:
     """Workspace from the call; ``kb_ids`` must belong to the call's agent version (R15).
 
     008: a simulated call searches the knowledge of the snapshot it runs (variants included),

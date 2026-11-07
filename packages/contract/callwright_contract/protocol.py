@@ -1,6 +1,8 @@
-"""The worker protocol: dispatch metadata, the claim (``POST /v1/internal/calls/claim``) and the
+"""The worker protocol: dispatch metadata, the claim (``POST /v1/internal/calls/claim``), the
 event batch (``POST /v1/internal/calls/{call_id}/events``), as in
-``specs/003-voice-runtime/contracts/calls.yaml`` and ``call_events.yaml``.
+``specs/003-voice-runtime/contracts/calls.yaml`` and ``call_events.yaml``, and the bodies of the
+internal routes the worker's tools call during a call (005 tool secrets and knowledge search,
+011 callbacks, 012 language switches).
 
 The claim's ``runtime`` carries every value the worker needs fully resolved by the API, which
 owns the catalogs and defaults: the version config with call-behaviour defaults applied, the call
@@ -14,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from callwright_contract.calls import (
     AgentType,
@@ -25,7 +27,11 @@ from callwright_contract.calls import (
     RefusalReason,
     WorkerStatus,
 )
-from callwright_contract.values import DTMF_EVENT_DIGITS_PATTERN
+from callwright_contract.values import (
+    CALLBACK_MAX_IN_MINUTES,
+    CALLBACK_MAX_NOTE_CHARS,
+    DTMF_EVENT_DIGITS_PATTERN,
+)
 
 # Dispatch metadata keys: ``{"call_id"}`` for calls the API created (web, outbound), or
 # ``{"channel", "route_ref"}`` for inbound SIP and WhatsApp calls routed at claim (010).
@@ -37,9 +43,6 @@ MAX_EVENTS_PER_BATCH: Final = 200
 MAX_TOOL_OUTPUT_CHARS: Final = 8192
 MAX_DETAIL_CHARS: Final = 2000
 MAX_DIAGNOSTIC_CHARS: Final = 500
-
-
-# Claim -----------------------------------------------------------------------------------------
 
 
 class SipAttributes(BaseModel):
@@ -170,9 +173,6 @@ class ClaimResponse(BaseModel):
     call_id: str
     refusal: Refusal | None = None
     runtime: RuntimeConfig | None = None
-
-
-# Events ----------------------------------------------------------------------------------------
 
 
 class _Event(BaseModel):
@@ -327,3 +327,52 @@ class EventBatchResult(BaseModel):
     accepted: int
     duplicates: int
     control: Control = Field(default_factory=Control)
+
+
+MAX_KNOWLEDGE_BASES: Final = 10
+KB_QUERY_MAX_CHARS: Final = 1000
+KB_DEFAULT_TOP_K: Final = 4
+KB_MAX_TOP_K: Final = 8
+
+
+class KbSearchRequest(BaseModel):
+    """``POST /v1/internal/knowledge/search``: the knowledge bases must belong to the version the
+    call runs. ``call_id`` is a test run id for 008's single-turn test cases (no call exists)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    call_id: str = Field(pattern=r"^(call|trn)_")
+    query: str = Field(min_length=1, max_length=KB_QUERY_MAX_CHARS)
+    kb_ids: list[Annotated[str, Field(pattern=r"^kb_")]] = Field(min_length=1, max_length=MAX_KNOWLEDGE_BASES)
+    top_k: int = Field(default=KB_DEFAULT_TOP_K, ge=1, le=KB_MAX_TOP_K)
+
+
+class CallbackRequest(BaseModel):
+    """``POST /v1/internal/calls/{call_id}/callbacks`` (011): a local time or minutes from now."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    at: str | None = Field(default=None, max_length=40)
+    in_minutes: int | None = Field(default=None, ge=1, le=CALLBACK_MAX_IN_MINUTES)
+    note: str = Field(default="", max_length=CALLBACK_MAX_NOTE_CHARS)
+
+    @model_validator(mode="after")
+    def _one_time(self) -> CallbackRequest:
+        if (self.at is None) == (self.in_minutes is None):
+            raise ValueError("Give exactly one of at and in_minutes.")
+        return self
+
+
+class LanguageReport(BaseModel):
+    """``POST /v1/internal/calls/{call_id}/language`` (012): the caller's language changed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    language: str = Field(min_length=2, max_length=16)
+    offset_ms: int | None = Field(default=None, ge=0)
+
+
+class ToolSecrets(BaseModel):
+    """``GET /v1/internal/calls/{call_id}/tool-secrets`` (005): plaintext by ``secret_ref``."""
+
+    secrets: dict[str, str] = Field(default_factory=dict)

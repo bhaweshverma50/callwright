@@ -25,9 +25,11 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Awaitable, Callable, Iterable, Mapping
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from callwright_contract import http_core
+from callwright_contract.textsim import ANSWER_SOURCES, AnswerSource
+from callwright_contract.values import ToolErrorCode
 
 from worker.textsim.llm import complete
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
@@ -35,8 +37,8 @@ from worker.tools.registry import CallTools, function_schema
 
 log = logging.getLogger("callwright.textsim")
 
-NO_MOCK = "no_mock_configured"
-SYNTHESIS_FAILED = "synthesis_failed"
+NO_MOCK: Final = "no_mock_configured"
+SYNTHESIS_FAILED: Final = "synthesis_failed"
 Policy = Literal["synthesize", "error"]
 Synthesizer = Callable[[ToolSpecView, Mapping[str, Any]], Awaitable[str]]
 
@@ -77,7 +79,7 @@ class SimulatedToolAnswers:
         for name, output in _recorded_pairs(recorded):
             self.recorded.setdefault(name, []).append(output)
         self.calls: dict[str, int] = {}
-        self.counts: dict[str, int] = {"mock": 0, "recorded": 0, "synthesized": 0, "error": 0}
+        self.counts: dict[AnswerSource, int] = dict.fromkeys(ANSWER_SOURCES, 0)
         self.in_flight = 0
 
     async def __call__(
@@ -110,7 +112,9 @@ class SimulatedToolAnswers:
             return self._canned(spec, ctx, body, "synthesized")
         return self._error(NO_MOCK, None)
 
-    def _canned(self, spec: ToolSpecView, ctx: ToolContext, body: str, source: str) -> ToolResult:
+    def _canned(
+        self, spec: ToolSpecView, ctx: ToolContext, body: str, source: AnswerSource
+    ) -> ToolResult:
         mapped, _ = http_core.apply_mappings(body, list(spec.config.get("response_mappings") or []))
         ctx.mapped_variables.update(mapped)
         payload = http_core.success_payload(body)
@@ -122,7 +126,7 @@ class SimulatedToolAnswers:
             extra={"mapped_variables": mapped, "answer_source": source},
         )
 
-    def _error(self, code: str, message: str | None) -> ToolResult:
+    def _error(self, code: ToolErrorCode, message: str | None) -> ToolResult:
         self.counts["error"] += 1
         body: dict[str, str] = {"error": code}
         if message:
