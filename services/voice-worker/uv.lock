@@ -204,11 +204,23 @@ wheels = [
 ]
 
 [[package]]
+name = "callwright-contract"
+version = "0.1.0"
+source = { editable = "../../packages/contract" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.7" }]
+
+[[package]]
 name = "callwright-voice-worker"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "arq" },
+    { name = "callwright-contract" },
     { name = "httpx" },
     { name = "livekit-agents", extra = ["anthropic", "assemblyai", "cartesia", "deepgram", "elevenlabs", "fishaudio", "openai", "sarvam", "silero", "turn-detector"] },
     { name = "livekit-plugins-ai-coustics" },
@@ -235,6 +247,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "arq", specifier = ">=0.26,<0.29" },
+    { name = "callwright-contract", editable = "../../packages/contract" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "livekit-agents", extras = ["anthropic", "assemblyai", "cartesia", "deepgram", "elevenlabs", "fishaudio", "openai", "sarvam", "silero", "turn-detector"], specifier = "~=1.8.8" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.3.4" },

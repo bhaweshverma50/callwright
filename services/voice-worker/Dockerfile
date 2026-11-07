@@ -23,12 +23,14 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PYTHON=/usr/local/bin/python3.12 \
     UV_PROJECT_ENVIRONMENT=/opt/venv
+COPY packages/contract /srv/packages/contract
 WORKDIR /srv/services/voice-worker
 COPY services/voice-worker/pyproject.toml services/voice-worker/uv.lock ./
 # The project itself is not installed (its wheel would also package tests/); the code runs from
-# /srv/services/voice-worker on PYTHONPATH.
+# /srv/services/voice-worker on PYTHONPATH. --no-editable installs the contract package into the
+# venv, so the runtime needs no sources.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project --no-editable
 
 FROM build AS models
 ENV PATH=/opt/venv/bin:$PATH \

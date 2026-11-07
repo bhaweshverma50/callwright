@@ -1,13 +1,11 @@
 {
   "schema_version": 1,
-  "description": "Vendors the voice worker can run. The API reads this file at admission to refuse unsupported vendors before a room exists (003 research R8). Model ids match 002 data-model section 8 and research/live/config-providers.json.",
+  "description": "Vendors the voice worker can run (Principle I, 003 research R8). The worker builds only these; the API refuses any other vendor at admission, before a room exists. Speech recognition Auto is resolved by the API from its speech catalog (voices/catalog.yaml) and sent in the claim.",
   "entries": [
     {
       "kind": "stt",
       "provider": "deepgram",
       "models": ["nova-3", "nova-2", "flux-general-en"],
-      "supports_auto": true,
-      "auto_rule": {"default": "nova-2", "by_language": {"en": "nova-3"}},
       "builtin_turn_detection": ["flux-general-en"],
       "streaming": true,
       "meter": "audio_ms"
@@ -16,18 +14,6 @@
       "kind": "stt",
       "provider": "assemblyai",
       "models": ["universal-streaming", "universal-streaming-multilingual"],
-      "supports_auto": true,
-      "auto_rule": {
-        "default": null,
-        "by_language": {
-          "en": "universal-streaming",
-          "es": "universal-streaming-multilingual",
-          "fr": "universal-streaming-multilingual",
-          "de": "universal-streaming-multilingual",
-          "it": "universal-streaming-multilingual",
-          "pt": "universal-streaming-multilingual"
-        }
-      },
       "builtin_turn_detection": ["universal-streaming", "universal-streaming-multilingual"],
       "streaming": true,
       "meter": "audio_ms"
@@ -36,8 +22,6 @@
       "kind": "stt",
       "provider": "sarvam",
       "models": ["saarika:v2.5", "saaras:v3"],
-      "supports_auto": true,
-      "auto_rule": {"default": "saarika:v2.5", "by_language": {}},
       "builtin_turn_detection": [],
       "streaming": true,
       "meter": "audio_ms"
@@ -67,13 +51,7 @@
     {
       "kind": "tts",
       "provider": "elevenlabs",
-      "models": [
-        "eleven_flash_v2_5",
-        "eleven_flash_v2",
-        "eleven_turbo_v2_5",
-        "eleven_turbo_v2",
-        "eleven_multilingual_v2"
-      ],
+      "models": ["eleven_flash_v2_5", "eleven_flash_v2", "eleven_turbo_v2_5", "eleven_turbo_v2", "eleven_multilingual_v2"],
       "default_model": "eleven_multilingual_v2",
       "capabilities": {"speed": true, "expressiveness": true, "volume": true},
       "streaming": true,

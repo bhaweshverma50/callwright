@@ -1,5 +1,5 @@
 # Upload filter for `gcloud builds submit .` (deploy/cloudrun/cloudbuild.yaml builds the API image,
-# deploy/vm/cloudbuild-voice.yaml the voice worker image). Only services/ is needed.
+# deploy/vm/cloudbuild-voice.yaml the voice worker image). Only services/ and packages/ are needed.
 .gcloudignore
 .git
 .gitignore
@@ -21,3 +21,4 @@ specs/
 **/.env.*
 services/api/tests/
 services/voice-worker/tests/
+packages/contract/tests/

@@ -5,7 +5,7 @@
 #   migrate  alembic upgrade head, then the agent templates sync; exits
 # Pick the role with the ROLE env var or the first container argument.
 #
-# Build from the repository root (the API reads the voice worker's adapter catalog):
+# Build from the repository root (the API depends on packages/contract):
 #   docker build -f services/api/Dockerfile -t callwright-api .
 
 ARG PYTHON_IMAGE=python:3.12-slim
@@ -19,10 +19,12 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PYTHON=/usr/local/bin/python3.12 \
     UV_PROJECT_ENVIRONMENT=/opt/venv
+COPY packages/contract /srv/packages/contract
 WORKDIR /srv/services/api
 COPY services/api/pyproject.toml services/api/uv.lock ./
+# --no-editable installs the contract package into the venv, so the runtime needs no sources.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project --no-editable
 
 FROM ${PYTHON_IMAGE} AS runtime
 # 007: PyAV (recording decode for the long-silences check) and google-re2 (custom phrase
@@ -38,8 +40,6 @@ COPY --from=build /opt/venv /opt/venv
 WORKDIR /srv/services/api
 COPY services/api/alembic.ini ./
 COPY services/api/app ./app
-# Settings.adapter_catalog_path resolves to ../voice-worker/worker/adapters/catalog.json.
-COPY services/voice-worker/worker/adapters/catalog.json /srv/services/voice-worker/worker/adapters/catalog.json
 COPY --chmod=0755 services/api/docker/entrypoint.sh /usr/local/bin/callwright-entrypoint
 USER callwright:callwright
 EXPOSE 8080

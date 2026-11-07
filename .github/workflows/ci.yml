@@ -62,10 +62,12 @@ jobs:
       - run: uv sync --frozen
       - name: Lint
         run: |
-          uv run ruff check .
-          uv run ruff format --check .
+          uv run ruff check . ../../packages/contract
+          uv run ruff format --check . ../../packages/contract
       - name: Types
-        run: uv run mypy app
+        run: |
+          uv run mypy app
+          uv run mypy --config-file ../../packages/contract/pyproject.toml ../../packages/contract
       - name: Migrations apply to an empty database
         run: uv run alembic upgrade head
       # Migrations are forward-only (constitution); check the chain stays linear instead.
@@ -73,6 +75,8 @@ jobs:
         run: test "$(uv run alembic heads | grep -c head)" -eq 1
       - name: Agent templates sync
         run: uv run python -m app.templates.jobs sync
+      - name: Contract package tests (packages/contract, shared by the API and the voice worker)
+        run: uv run pytest -q ../../packages/contract/tests
       - name: Tests (unit, contract, integration)
         run: uv run pytest -q
 

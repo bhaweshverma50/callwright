@@ -61,12 +61,16 @@ services/voice-worker/worker/
   pipeline.py     session assembly from an AgentVersion snapshot
   call_behavior.py, audio.py, telephony.py silence/max-duration, background audio and
                   pronunciation, SIP specifics (ring duration, DTMF)
-  adapters/{stt,llm,tts,nc}/<vendor>.py, adapters/registry.py, adapters/catalog.json
+  adapters/{stt,llm,tts,nc}/<vendor>.py, adapters/registry.py
   flow/           executor, registry, nodes/<type>.py, rules, templating (004)
   tools/          ToolProvider, CallControl, builtin tools, http tool, kb_search (005)
   textsim/        runner, replay_caller, persona_caller, mock_tools (008)
   metrics.py      per-turn latency and usage meters, posted to /v1/internal/calls/{id}/events
 services/voice-worker/tests/harness/       scripted-caller harness; bench/ holds latency benchmarks
+packages/contract/callwright_contract/     what the API and worker share (a uv path dependency of
+                  both, pure Python): call vocabulary (calls), worker protocol models (protocol),
+                  variables, HTTP tool core (http_core), outbound URL guard (url_guard), the
+                  vendors the worker runs (adapters.json) and small shared values (values)
 contracts/        openapi.yaml assembled by scripts/assemble_contracts.py from specs/*/contracts
 docker-compose.yml, .github/workflows/ci.yml
 ```

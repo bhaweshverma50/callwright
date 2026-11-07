@@ -15,6 +15,7 @@ dependencies = [
     "opentelemetry-sdk>=1.30",
     "opentelemetry-exporter-otlp-proto-http>=1.30",
     "arq>=0.26,<0.29",
+    "callwright-contract",
 ]
 
 [dependency-groups]
@@ -27,6 +28,9 @@ dev = [
     "mypy>=1.11",
     "types-pyyaml>=6.0",
 ]
+
+[tool.uv.sources]
+callwright-contract = { path = "../../packages/contract", editable = true }
 
 [build-system]
 requires = ["hatchling"]

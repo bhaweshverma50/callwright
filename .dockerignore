@@ -1,6 +1,5 @@
-# Build context is the repo root for both images (services/api/Dockerfile reads the voice worker's
-# adapter catalog; services/voice-worker/Dockerfile). Keep the context small: no web app, docs,
-# local envs or caches.
+# Build context is the repo root for both images (both install packages/contract). Keep the
+# context small: no web app, docs, local envs or caches.
 **/.git
 **/.venv
 **/node_modules
@@ -23,3 +22,4 @@ specs
 deploy
 services/api/tests
 services/voice-worker/tests
+packages/contract/tests

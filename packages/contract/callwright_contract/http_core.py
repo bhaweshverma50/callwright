@@ -1,8 +1,8 @@
-"""HTTP tool core: templating, argument placement, response mapping and payloads (research R5, R6).
+"""HTTP tool core: templating, argument placement, redirects, response mapping and payloads
+(005 research R4 to R6).
 
-Pure functions with no I/O. A copy of the API's ``services/api/app/tools/http_core.py`` (the
-two services share no package, research R5); both run the same test vectors
-(``tests/unit/fixtures/http_exec_vectors.json``), so editor test runs and calls agree.
+Shared by the API's editor test runs (``app.tools.http_exec``) and the worker's executor on calls
+(``worker.tools.http``), so both agree; ``tests/http_exec_vectors.json`` pins the behaviour.
 
 Placeholders are ``{{name}}`` with names ``[A-Za-z_][A-Za-z0-9_.]*``, looked up in the call's
 dynamic variables, then the LLM arguments, then variables mapped by earlier tools. The body
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import AsyncIterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
@@ -26,6 +26,9 @@ _PATH_TOKEN = re.compile(r"([^.\[\]]+)|\[(\d+)\]")
 MAX_RESPONSE_BYTES = 64 * 1024
 MAX_LLM_PAYLOAD_CHARS = 4000
 QUERY_METHODS = frozenset({"GET", "DELETE"})
+DEFAULT_TIMEOUT_MS = 8000
+MAX_REDIRECTS = 3
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _MISSING = object()
 
 
@@ -204,9 +207,7 @@ def get_path(data: Any, path: str) -> tuple[bool, Any]:
     return True, node
 
 
-def apply_mappings(
-    body_text: str, mappings: list[Mapping[str, Any]]
-) -> tuple[dict[str, Any], list[str]]:
+def apply_mappings(body_text: str, mappings: list[Mapping[str, Any]]) -> tuple[dict[str, Any], list[str]]:
     """Mapped variables and the json paths that were not found."""
     if not mappings:
         return {}, []
@@ -223,6 +224,32 @@ def apply_mappings(
         else:
             missing.append(str(mapping["json_path"]))
     return mapped, missing
+
+
+def timeout_s(spec: Mapping[str, Any]) -> float:
+    return int(spec.get("timeout_ms") or DEFAULT_TIMEOUT_MS) / 1000
+
+
+def redirected(status: int, method: str, content: bytes | None) -> tuple[str, bytes | None]:
+    """Method and body for the next hop: 303, and 301/302 after a method with a body, become GET."""
+    if status == 303 or (status in (301, 302) and method not in QUERY_METHODS):
+        return "GET", None
+    return method, content
+
+
+def blocked_error_code(reason: str) -> str:
+    """Tool error code for a URL the guard refused (``url_guard.UrlNotAllowed.reason``)."""
+    return "blocked_address" if reason in ("private_address", "https_required") else "connection_error"
+
+
+async def read_capped(chunks: AsyncIterable[bytes]) -> tuple[bytes, bool]:
+    """At most ``MAX_RESPONSE_BYTES`` of a body, and whether it was cut."""
+    data = bytearray()
+    async for chunk in chunks:
+        data.extend(chunk)
+        if len(data) > MAX_RESPONSE_BYTES:
+            return bytes(data[:MAX_RESPONSE_BYTES]), True
+    return bytes(data), False
 
 
 def truncate(text: str, limit: int = MAX_LLM_PAYLOAD_CHARS) -> str:

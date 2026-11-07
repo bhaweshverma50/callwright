@@ -42,6 +42,7 @@ dependencies = [
     "av>=19.0.2",
     "numpy>=2.5.4",
     "scikit-learn>=1.5",
+    "callwright-contract",
 ]
 
 [dependency-groups]
@@ -58,6 +59,9 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+callwright-contract = { path = "../../packages/contract", editable = true }
 
 [tool.ruff]
 line-length = 110
