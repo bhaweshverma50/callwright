@@ -5,6 +5,9 @@
  * the agent's voice model speaks its base language ("hi" for "hi-Latn"), directly or through the
  * model's `multilingual_model` (English-only Flash v2 and Turbo v2 switch to their v2.5 versions).
  * The agent's own language and its other variants are never a switch target.
+ *
+ * The API serves the resolved options only to the voice worker (RuntimeConfig.language_options);
+ * nothing serves them for a draft being edited, so the editor applies the rule here.
  */
 import type { AgentConfig, Language, VoiceCatalog } from "./agents";
 

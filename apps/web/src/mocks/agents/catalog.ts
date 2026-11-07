@@ -153,7 +153,7 @@ const languages: Language[] = LANGS.map(([code, label]) => ({
 
 // --- speech recognition (8.3) ------------------------------------------------
 
-const stt: SttProvider[] = [
+const sttProviders: Omit<SttProvider, "auto">[] = [
   {
     provider: "deepgram",
     label: "Deepgram",
@@ -248,6 +248,14 @@ const stt: SttProvider[] = [
 
 /** Price of Auto for a provider (the catalog row with a null model). */
 export const sttAutoPrice = (provider: string) => price("stt", provider, null);
+
+/** Auto as the API serves it for the picker: its label, the providers' coverage and its price. */
+const stt: SttProvider[] = sttProviders.map((p) => ({
+  ...p,
+  auto: p.supports_auto
+    ? { label: "Auto", description: null, languages: [...new Set(p.models.flatMap((m) => m.languages))], price_per_min_usd: sttAutoPrice(p.provider) }
+    : null,
+}));
 
 // --- voices (8.4) ------------------------------------------------------------
 

@@ -13,7 +13,6 @@ export type CallLanguageSwitch = S["CallLanguageSwitch"];
 export const callerLanguageKeys = {
   all: ["caller-language"] as const,
   forCall: (callId: string) => ["caller-language", "call", callId] as const,
-  forNumber: (phone: string) => ["caller-language", "number", phone] as const,
 };
 
 /** The languages of one call (the call drawer card): agent, start, switches and the saved one. */
@@ -22,18 +21,6 @@ export function useCallLanguage(callId: string | null) {
     queryKey: callerLanguageKeys.forCall(callId ?? ""),
     queryFn: () => unwrap(api.GET("/calls/{call_id}/language", { params: { path: { call_id: callId! } } })),
     enabled: Boolean(callId),
-  });
-}
-
-/** The saved language of one phone number, or null when there is none. */
-export function useCallerPreference(phoneNumber: string | null) {
-  return useQuery({
-    queryKey: callerLanguageKeys.forNumber(phoneNumber ?? ""),
-    queryFn: async () => {
-      const page = await unwrap(api.GET("/caller-preferences", { params: { query: { phone_number: phoneNumber!, page_size: 1 } } }));
-      return page.items[0] ?? null;
-    },
-    enabled: Boolean(phoneNumber),
   });
 }
 
