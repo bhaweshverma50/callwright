@@ -1,10 +1,12 @@
-"""Wire 008 into the app and the jobs worker: offline fake replies for the model calls it makes
-(test case drafting and judging, persona briefs), its arq jobs and crons."""
+"""Wire 008 into the app and the jobs worker: the run snapshot of a simulated call (003 port),
+offline fake replies for the model calls it makes (test case drafting and judging, persona
+briefs), its arq jobs and crons."""
 
 from __future__ import annotations
 
 from arq import cron
 
+from app.calls import ports
 from app.core.feature import Feature, Runtime
 from app.simulator import persona
 from app.simulator.internal_router import router as internal_router
@@ -15,11 +17,13 @@ from app.simulator.jobs import (
     sweep_simulations,
 )
 from app.simulator.router import router
+from app.simulator.service import run_snapshot
 from app.test_cases import generate
 from app.test_runs import judge
 
 
 def install(runtime: Runtime) -> None:
+    ports.set_run_snapshot(run_snapshot)
     generate.register_fakes()
     judge.register_fakes()
     persona.register_fakes()

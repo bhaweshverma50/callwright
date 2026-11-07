@@ -140,7 +140,7 @@ async def get_turn_latencies(
         if call is None:
             raise not_found("call")
         turns = await queries.turn_latencies(session, call_id)
-    return {"call_id": call_id, "summary": queries.latency_summary(call), "turns": turns}
+    return {"call_id": call_id, "summary": queries.latency_summary(call.latency_stats), "turns": turns}
 
 
 @router.get("/calls/{call_id}/compare", responses=problem_responses(401, 404, 422))
@@ -167,7 +167,6 @@ async def compare_calls(
                 )
             right_id = with_call_id
             if with_simulation_run_id is not None:
-                # 008 writes the run's output call with ``simulation_run_id``; resolve it directly.
                 right_id = (
                     await session.execute(
                         select(Call.id)

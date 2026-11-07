@@ -15,6 +15,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from app.calls.transcript import Message
 from app.evaluators.judge import json_object, neutralise
 from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
 from app.llms.adapters.fake import PURPOSE_REPLIES
@@ -74,19 +75,15 @@ def clean_brief(raw: Mapping[str, Any]) -> dict[str, Any] | None:
     return brief
 
 
-def render(items: Sequence[Mapping[str, Any]]) -> str:
-    lines = []
-    for item in items:
-        if item.get("type") == "message" and str(item.get("text") or "").strip():
-            who = "CALLER" if item.get("role") == "user" else "AGENT"
-            lines.append(f"{who}: {neutralise(str(item['text']))}")
+def render(messages: Sequence[Message]) -> str:
+    lines = [f"{'CALLER' if m.role == 'user' else 'AGENT'}: {neutralise(m.text)}" for m in messages]
     return "<call_data>\n" + "\n".join(lines[:200]) + "\n</call_data>"
 
 
 async def extract_brief(
-    llm: Any, model: str, items: Sequence[Mapping[str, Any]], *, timeout_s: float
+    llm: Any, model: str, messages: Sequence[Message], *, timeout_s: float
 ) -> tuple[dict[str, Any], ExtractionUsage]:
-    data = render(items)
+    data = render(messages)
     inp = out = 0
     for _attempt in range(2):
         try:

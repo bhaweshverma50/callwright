@@ -8,9 +8,9 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.call_events.service import workspace_for_call
 from app.callbacks import service
 from app.callbacks.schemas import CallbackBookRequest, CallbackCreate
+from app.calls.lookups import workspace_for_call
 from app.core.auth import CurrentPrincipal, require_service
 from app.core.errors import problem_responses
 from app.core.ids import path_id

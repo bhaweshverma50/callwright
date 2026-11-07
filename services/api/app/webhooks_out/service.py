@@ -3,10 +3,11 @@
 * The workspace secret (``whsec_`` + 32 random bytes, base64url) is created lazily, stored
   encrypted in 001's ``secrets`` table and shown in full only by the rotate response. Rotation
   keeps the previous secret signing for 24 hours.
-* ``enqueue_event`` writes one delivery per (call, event): the partial unique index on
+* ``enqueue_delivery`` writes one delivery per (call, event): the partial unique index on
   ``webhook_deliveries (call_id, event)`` makes a second enqueue a no-op, so replays and racing
-  writers never send an event twice. The body is built once and reused byte for byte on every
-  retry and redelivery; the signature and timestamp are fresh on each attempt.
+  writers never send an event twice. The body is built once (by ``calls.lifecycle.notify``) and
+  reused byte for byte on every retry and redelivery; the signature and timestamp are fresh on
+  each attempt.
 """
 
 from __future__ import annotations
@@ -23,12 +24,12 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
-from app.calls.effects import DELIVER_WEBHOOK, Deferred
-from app.calls.models import Call
 from app.core.ids import new_id
+from app.core.queue import Deferred
 from app.core.secrets import KeyWrapper, WorkspaceSecret, get_secret, put_secret
 from app.webhooks_out.models import WebhookDelivery, WebhookSigningSecret
 
+DELIVER_WEBHOOK = "deliver_webhook"
 ROTATION_OVERLAP = timedelta(hours=24)
 DEFAULT_TIMEOUT_MS = 3000
 MIN_TIMEOUT_MS = 1000
@@ -166,50 +167,6 @@ def webhook_settings(config: Mapping[str, Any] | None) -> tuple[str | None, int]
     return (str(url) if isinstance(url, str) and url else None), timeout_ms
 
 
-def call_payload(call: Call, event: str, *, recording_url: str | None = None) -> dict[str, Any]:
-    """Contract ``WebhookCall``. Transcript, analysis and cost are sent with ``call_analyzed``."""
-    analyzed = event == "call_analyzed"
-    status = call.status
-    if analyzed and status == "processing":
-        # Sent by the step just before ``complete``: report the status the call is about to get.
-        status = "voicemail" if call.disconnect_reason == "voicemail_reached" else "completed"
-    payload: dict[str, Any] = {
-        "call_id": call.id,
-        "agent_id": call.agent_id,
-        "agent_version_id": call.agent_version_id,
-        "channel": call.channel,
-        "direction": call.direction,
-        "from_number": call.from_number,
-        "to_number": call.to_number,
-        "status": status,
-        "disconnect_reason": call.disconnect_reason,
-        "created_at": _iso(call.created_at),
-        "connected_at": _iso(call.connected_at),
-        "ended_at": _iso(call.ended_at),
-        "billable_seconds": call.billable_seconds,
-        "dynamic_variables": {k: str(v) for k, v in (call.dynamic_variables or {}).items()},
-        "metadata": dict(call.metadata_ or {}),
-        "recording_enabled": call.recording_enabled,
-        "recording_status": call.recording_status,
-        "recording_url": None,
-        "processing_warnings": list(call.pipeline_warnings or []),
-    }
-    if analyzed:
-        payload.update(
-            {
-                "transcript": call.transcript or {"items": []},
-                "summary": call.summary,
-                "sentiment": call.sentiment,
-                "analysis": call.analysis,
-                "cost": call.cost_breakdown,
-                "latency": call.latency_stats,
-            }
-        )
-        if call.recording_status == "available" and call.recording_enabled:
-            payload["recording_url"] = recording_url
-    return payload
-
-
 def envelope(event: str, event_id: str, occurred_at: datetime, call: dict[str, Any] | None) -> dict[str, Any]:
     return {"event": event, "event_id": event_id, "occurred_at": occurred_at.isoformat(), "call": call}
 
@@ -218,38 +175,19 @@ def dumps(body: Mapping[str, Any]) -> str:
     return json.dumps(body, separators=(",", ":"), ensure_ascii=False, default=str)
 
 
-def _occurred_at(call: Call, event: str, now: datetime) -> datetime:
-    if event == "call_started" and call.connected_at:
-        return call.connected_at
-    if event == "call_ended" and call.ended_at:
-        return call.ended_at
-    return now
-
-
-async def enqueue_event(
+async def enqueue_delivery(
     session: AsyncSession,
-    call: Call,
+    workspace_id: str,
+    call_id: str,
     event: str,
+    url: str,
+    timeout_ms: int,
+    body: str,
     *,
-    config: Mapping[str, Any] | None,
     deferred: Deferred,
-    recording_url: str | None = None,
-    now: datetime | None = None,
+    now: datetime,
 ) -> str | None:
-    """Queue ``event`` for ``call`` once. Returns the new delivery id (None: no URL or duplicate)."""
-    url, timeout_ms = webhook_settings(config)
-    if url is None or call.origin == "simulation":
-        # 008: simulated calls never reach customer webhooks (FR-018).
-        return None
-    now = now or datetime.now(UTC)
-    body = dumps(
-        envelope(
-            event,
-            f"evt_{call.id}_{event}",
-            _occurred_at(call, event, now),
-            call_payload(call, event, recording_url=recording_url),
-        )
-    )
+    """Queue ``body`` for ``event`` of ``call_id`` once. Returns the new delivery id (None: duplicate)."""
     delivery_id = new_id("whd")
     inserted = (
         await session.execute(
@@ -261,8 +199,8 @@ async def enqueue_event(
             ),
             {
                 "id": delivery_id,
-                "ws": call.workspace_id,
-                "call": call.id,
+                "ws": workspace_id,
+                "call": call_id,
                 "event": event,
                 "url": url[:2048],
                 "timeout": timeout_ms,
@@ -273,7 +211,7 @@ async def enqueue_event(
     ).first()
     if inserted is None:
         return None
-    deferred.add(DELIVER_WEBHOOK, call.workspace_id, delivery_id)
+    deferred.add(DELIVER_WEBHOOK, workspace_id, delivery_id)
     return delivery_id
 
 

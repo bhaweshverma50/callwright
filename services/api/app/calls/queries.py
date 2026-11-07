@@ -22,15 +22,13 @@ from sqlalchemy import Integer, and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.agent_versions.models import AgentVersion
 from app.agents.models import Agent
-from app.billing.models import CallCost
-from app.call_events.models import CallEvent
 from app.calls.cost_view import cost_view
-from app.calls.models import Call
+from app.calls.lookups import snapshot_for
+from app.calls.models import Call, CallEvent
 from app.calls.ports import registry
 from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary
-from app.calls.transcript_text import normalize_items
+from app.calls.transcript import normalize_items, stored_items
 from app.core.errors import ProblemError, field_error, validation_failed
 
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")
@@ -276,16 +274,6 @@ def analysis_status(call: Call, analysis: tuple[str, str | None] | None) -> str:
     return status
 
 
-async def analysis_states(session: AsyncSession, call_ids: list[str]) -> dict[str, tuple[str, str | None]]:
-    if not call_ids:
-        return {}
-    rows = await session.execute(
-        text("select call_id, status, skip_reason from call_analyses where call_id = any(:ids)"),
-        {"ids": call_ids},
-    )
-    return {r.call_id: (r.status, r.skip_reason) for r in rows}
-
-
 async def list_calls(
     session: AsyncSession, q: CallListQuery, *, page: int, page_size: int, user_id: str
 ) -> tuple[list[dict[str, Any]], int]:
@@ -300,7 +288,7 @@ async def list_calls(
     ).all()
     ids = [r[0].id for r in rows]
     summaries = await registry.quality.summaries(session, ids, user_id)
-    states = await analysis_states(session, ids)
+    states = await registry.quality.analysis_states(session, ids)
     items = [
         list_item(c, name, deleted, summaries.get(c.id, QualitySummary()), states.get(c.id))
         for c, name, deleted in rows
@@ -382,7 +370,7 @@ async def iter_export_rows(
     ]
 
 
-def _latency_summary(stats: Mapping[str, Any] | None) -> dict[str, Any]:
+def latency_summary(stats: Mapping[str, Any] | None) -> dict[str, Any]:
     stats = stats or {}
     return {
         "avg_ms": stats.get("e2e_avg_ms"),
@@ -403,31 +391,16 @@ async def call_detail(session: AsyncSession, call_id: str, user_id: str) -> dict
         return None
     call, name, deleted = loaded
     quality = (await registry.quality.summaries(session, [call.id], user_id)).get(call.id, QualitySummary())
-    version_number = None
-    if call.agent_version_id:
-        version_number = (
-            await session.execute(
-                select(AgentVersion.version_number).where(AgentVersion.id == call.agent_version_id)
-            )
-        ).scalar_one_or_none()
-    stored: Mapping[str, Any] | None = None
-    cost_row = await session.get(CallCost, call.id)
-    if cost_row is not None:
-        stored = {
-            "catalog_version": cost_row.catalog_version,
-            "billed_seconds": cost_row.billed_seconds,
-            "duration_minutes": cost_row.duration_minutes,
-            "lines": cost_row.lines,
-            "total_usd": cost_row.total_usd,
-        }
+    snapshot = await snapshot_for(session, call.agent_version_id)
+    version_number = snapshot.version_number if snapshot is not None else None
     detail = list_item(call, name, deleted, quality)
     detail.update(
         {
             "agent_version_id": call.agent_version_id or "",
             "agent_version_label": f"v{version_number}" if version_number else None,
             "ended_at": call.ended_at.isoformat() if call.ended_at else None,
-            "latency": _latency_summary(call.latency_stats),
-            "cost": cost_view(stored or call.cost_breakdown),
+            "latency": latency_summary(call.latency_stats),
+            "cost": cost_view(call.cost_breakdown),
             "processing_state": "pending" if call.status in PENDING_STATES else "done",
             # The recorder finishes its upload a few seconds after the call ends; clients keep
             # polling while this is true instead of showing "no recording".
@@ -452,7 +425,7 @@ async def _events(session: AsyncSession, call_id: str, types: Sequence[str]) -> 
 async def transcript_items(session: AsyncSession, call: Call) -> list[dict[str, Any]]:
     """The finalised transcript, or the items received so far while the call is live."""
     if call.transcript is not None:
-        raw = call.transcript.get("items") or []
+        raw = stored_items(call.transcript)
     else:
         raw = [
             dict(e.payload.get("item") or {}) for e in await _events(session, call.id, ("transcript_item",))
@@ -488,10 +461,6 @@ async def flow_path(session: AsyncSession, call_id: str) -> list[dict[str, Any]]
             }
         )
     return out
-
-
-def latency_summary(call: Call) -> dict[str, Any]:
-    return _latency_summary(call.latency_stats)
 
 
 __all__ = [

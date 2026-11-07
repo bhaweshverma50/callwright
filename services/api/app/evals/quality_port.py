@@ -1,7 +1,8 @@
 """007's implementation of 006's ``CallQualityPort`` (T040, FR-032, research R10).
 
 Call list and drawer summaries, the list filter (viewer's label, evaluation status), dashboard
-window statistics with headline flags, and verdict diffs for the compare view. Everything reads
+window statistics with headline flags, verdict diffs for the compare view and the post-call
+analysis state of listed calls. Everything reads
 current runs: the newest unsuperseded run per call and evaluator.
 """
 
@@ -15,6 +16,7 @@ from typing import Any
 from sqlalchemy import ColumnElement, and_, exists, false, not_, or_, select, text, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analysis_vars.models import CallAnalysis
 from app.annotations.models import Annotation
 from app.calls.quality_port import EvaluatorStat, QualitySummary, VerdictDiff
 from app.evals import verdict_diff
@@ -164,3 +166,15 @@ class QualityPort:
         self, session: AsyncSession, left_call_id: str, right_call_id: str
     ) -> list[VerdictDiff]:
         return list(await verdict_diff.verdict_diffs(session, left_call_id, right_call_id))
+
+    async def analysis_states(
+        self, session: AsyncSession, call_ids: Sequence[str]
+    ) -> dict[str, tuple[str, str | None]]:
+        if not call_ids:
+            return {}
+        rows = await session.execute(
+            select(CallAnalysis.call_id, CallAnalysis.status, CallAnalysis.skip_reason).where(
+                CallAnalysis.call_id.in_(list(call_ids))
+            )
+        )
+        return {r.call_id: (r.status, r.skip_reason) for r in rows}

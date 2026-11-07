@@ -39,7 +39,8 @@ def _installed() -> dict[str, Any]:
         "inbound_routers": {k: type(v).__name__ for k, v in r.inbound_routers.items()},
         "outbound_dial": type(r.outbound_dial).__name__,
         "signer": type(r.signer).__name__,
-        "flow_runtime_available": r.flow_runtime_available,
+        "run_snapshot": getattr(r.run_snapshot, "__qualname__", None),
+        "caller_language": type(r.caller_language).__name__,
         "quality": type(r.quality).__name__,
         "step_handlers": sorted(r.step_handlers),
         "validators": sorted(agent_hooks._validators),
@@ -80,7 +81,8 @@ async def test_api_and_worker_install_the_same_features(
     assert roles["api"] == roles["worker"] == [f.name for f in features.FEATURES if f.install]
     assert in_worker == api
     assert api["agent_versions"] == "AgentVersionsAdapter"
-    assert api["flow_runtime_available"] is True
+    assert api["run_snapshot"] == "run_snapshot"
+    assert api["caller_language"] == "CallerLanguage"
     assert api["signer"] == "DevSigner"
     assert api["quality"] == "QualityPort"
     assert api["step_handlers"] == ["analyze", "evaluate"]

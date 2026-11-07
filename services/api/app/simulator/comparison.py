@@ -19,6 +19,8 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calls import transcript
+from app.calls.lookups import config_for
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.evals.models import EvaluatorResultItem
@@ -122,23 +124,14 @@ def transcript_view(items: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 async def node_path(session: AsyncSession, call: Call, labels: Mapping[str, str]) -> list[dict[str, str]]:
-    path = sim_calls.replay_material(sim_calls.items_of(call)).node_path
-    if not path:
-        rows = await session.execute(
-            text(
-                "select payload->>'to_node_id' from call_events where call_id = :call "
-                "and type = 'flow_transition' order by seq"
-            ),
-            {"call": call.id},
-        )
-        path = [r for r in rows.scalars() if r]
+    path = [t.to_node_id for t in await transcript.flow_transitions(session, call)]
     return [{"node_id": n, "node_label": labels.get(n, n)} for n in path]
 
 
 async def side(session: AsyncSession, call: Call, labels: Mapping[str, str]) -> dict[str, Any]:
     return {
         "call_id": call.id,
-        "transcript": transcript_view(sim_calls.items_of(call)),
+        "transcript": transcript_view(transcript.items(call)),
         "node_path": await node_path(session, call, labels),
     }
 
@@ -207,18 +200,11 @@ async def build_comparison(session: AsyncSession, run: SimulationRun) -> dict[st
     base = await session.get(Call, run.base_call_id) if run.base_call_id else None
     unused: list[str] = []
     if run.mode == "replay" and base is not None:
-        turns = sim_calls.replay_material(sim_calls.items_of(base)).caller_turns
-        used = sum(
-            1 for i in sim_calls.items_of(simulated) if i.get("type") == "message" and i.get("role") == "user"
-        )
+        turns = sim_calls.replay_material(base).caller_turns
+        used = sum(1 for m in transcript.read(simulated).messages if m.role == "user")
         unused = turns[used:]
     if base is not None:
-        base_labels = labels
-        if base.agent_version_id:
-            from app.call_events.service import version_config
-
-            base_config = await version_config(session, base.agent_version_id) or {}
-            base_labels = {**node_labels(base_config), **labels}
+        base_labels = {**node_labels(await config_for(session, base) or {}), **labels}
         original = await side(session, base, base_labels)
     else:
         original = None

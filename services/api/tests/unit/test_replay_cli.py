@@ -13,6 +13,7 @@ import pytest
 from app import worker
 from app.calls import ports
 from app.calls.pipeline import PipelineRun
+from app.core.ids import new_id
 
 
 class _Result:
@@ -55,6 +56,7 @@ async def test_replay_registers_agent_versions(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(worker, "run_pipeline_for", fake_run)
     monkeypatch.setattr(worker, "ArqJobQueue", _Queue)
 
-    assert await worker.replay("call_x") == 0
-    assert seen["args"] == ("ws_replay", "call_x", True)
+    call_id = new_id("call")
+    assert await worker.replay(call_id) == 0
+    assert seen["args"] == ("ws_replay", call_id, True)
     assert not isinstance(seen["port"], ports.NoAgentVersions)

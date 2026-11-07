@@ -97,14 +97,14 @@ has `llms/adapters/` (prompt assistant, judges, analytics), `voices/adapters/` (
 |---|---|---|
 | 001 platform-foundation | core, auth, workspaces, billing, pricing, usage | shell, /login, /register, /billing, /settings, public pages |
 | 002 agent-builder | agents, agent_versions, templates, llms, voices, prompt_ai | /agents, /agents/new, /agents/:id/edit, /agents/templates |
-| 003 voice-runtime | sessions, calls (write side, admission, pipeline), call_events, webhooks_out, livekit_hooks | /agents/:id/testing |
+| 003 voice-runtime | sessions, calls (write side: admission, lifecycle, origin policy, transcript, pipeline), call_events, webhooks_out, livekit_hooks, recordings (egress) | /agents/:id/testing |
 | 004 flow-agents | flows | /agents/new/flow, /agents/:id/flow |
 | 005 tools-knowledge | tools, knowledge | /knowledge-base, agent tools tab |
-| 006 calls-analytics | calls (read side), recordings, dashboard, analytics_chat, voice_commands | /dashboard, /calls (detail as `?call=<id>` drawer) |
+| 006 calls-analytics | calls (read side), recordings (signed links), dashboard, analytics_chat, voice_commands | /dashboard, /calls (detail as `?call=<id>` drawer) |
 | 007 quality-evals | analysis_vars, evaluators, evals, annotations, review, calibration | /review, /calibration, agent quality tab |
 | 008 testing-simulation | test_cases, test_runs, simulator, datasets | /simulations, /simulations/runs/:runId, /datasets |
 | 009 issues-autofix | issues | /issues, /issues/:id |
-| 010 channels | phone_numbers, outbound, whatsapp, dialing_policy | /phone-numbers |
+| 010 channels | channels (phone numbers, WhatsApp channels, inbound routing, SIP trunks and the outbound dial), outbound (outbound calls, calling hours, do-not-call) | /phone-numbers |
 | 023 team-roles | team (plus core permissions, mailer) | /settings/team, /invite/:token, /welcome |
 
 Build order: 001 > 002 > 003 > {004, 005, 006, 010} > 007 > 008 > 009.
@@ -118,7 +118,9 @@ it defines a port with an empty default and the later feature registers the impl
   005 (`tools`, `knowledge`), 007 and 010.
 - 003 worker `ToolProvider` and `CallControl` (005), `FlowRunner` (004), and
   `CallControl.apply_overrides()` for per-segment model, voice and STT overrides (004); API `InboundRouter` and
-  `OutboundDialProvider` (010); post-call step registry handlers `analyze` and `evaluate` (007).
+  `OutboundDialProvider` (010); post-call step registry handlers `analyze` and `evaluate` (007);
+  `RunSnapshot`, the configuration a simulated call ran (008); `CallerLanguagePort`, the claim's
+  language options and start language (012).
 - 002 `agents.service.validate_override()` and its shared range table: every slider and every
   flow-node override (004) is validated and clamped against one table.
 - 002 web editor panel slot `registerEditorPanel`, filled by 007 (quality checks) and others.
@@ -180,7 +182,11 @@ branch); 010 T082 into 001's shell navigation. 003 accepts a `use_draft` flag on
   heartbeat; the response can order the call ended for `insufficient_credit`. A reaper ends calls
   silent for 60 s.
 
-Call lifecycle: `queued > ringing > in_progress > ended > processing > completed`. Terminal
+Call lifecycle: `queued > ringing > in_progress > ended > processing > completed`, moved only by
+`calls.lifecycle` (worker events, reaper, LiveKit `room_finished`, room and claim failures,
+pipeline), which also sends `call_started` and `call_ended`. What an origin allows (billing,
+concurrency slot, customer webhooks and callbacks, saved caller languages, real audio) is one
+table, `calls.origins`; the stored transcript has one reader, `calls.transcript`. Terminal
 outcomes without a conversation: `failed`, `no_answer`, `busy` (details in `diagnostic`, for
 example dial failure or caller never joined). A voicemail call goes `ended > processing >
 voicemail` and is billed. Disconnect reasons: `user_hangup`, `agent_hangup`, `call_transfer`,
@@ -207,8 +213,8 @@ A step table keyed by `(call_id, step)` drives the jobs, each idempotent:
 5. `webhook`: customer `call_analyzed` (003)
 6. `complete`: mark `completed` (blocking)
 
-Calls with `origin = simulation` skip `pricing` and `webhook`; the simulation run is billed as a
-feature charge instead. Test calls (`origin = test`) are priced and charged like live calls.
+Calls whose origin is not billable (`origin = simulation`) skip `pricing` and `webhook`; the
+simulation run is billed as a feature charge instead. Test calls (`origin = test`) are priced and charged like live calls.
 
 ## 7. Cross-cutting
 

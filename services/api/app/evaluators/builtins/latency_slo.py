@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
+from app.calls.origins import policy
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, SettingsField
 
 
@@ -33,7 +34,7 @@ class LatencySlo(Evaluator):
     )
 
     async def evaluate(self, ctx: EvalContext, settings: Mapping[str, Any], tools: EvalTools) -> EvalOutcome:
-        if ctx.origin == "simulation" or not ctx.latencies:
+        if not policy(ctx.origin).has_real_audio or not ctx.latencies:
             return EvalOutcome.not_applicable("no audio timing")
         limit = int(settings["threshold_ms"])
         items = []

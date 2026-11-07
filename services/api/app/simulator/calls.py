@@ -20,7 +20,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calls import transcript
 from app.calls.models import Call
+from app.calls.origins import policy
 from app.core.ids import is_valid_id, new_id
 
 REASONS = ("not_found", "wrong_agent", "simulated_call", "not_completed", "unavailable")
@@ -33,25 +35,16 @@ REASON_TEXT = {
 }
 
 
-def items_of(call: Call) -> list[Mapping[str, Any]]:
-    transcript = call.transcript if isinstance(call.transcript, Mapping) else {}
-    return [i for i in transcript.get("items") or [] if isinstance(i, Mapping)]
-
-
-def has_conversation(call: Call) -> bool:
-    return any(i.get("type") == "message" and str(i.get("text") or "").strip() for i in items_of(call))
-
-
 def call_problem(call: Call | None, agent_id: str) -> str | None:
     if call is None:
         return "not_found"
     if call.agent_id != agent_id:
         return "wrong_agent"
-    if call.origin == "simulation":
+    if not policy(call.origin).has_real_audio:
         return "simulated_call"
     if call.status != "completed":
         return "not_completed"
-    if not has_conversation(call):
+    if not transcript.has_conversation(call.transcript):
         return "unavailable"
     return None
 
@@ -72,34 +65,24 @@ class ReplayMaterial:
     node_path: list[str] = field(default_factory=list)
 
 
-def replay_material(items: Sequence[Mapping[str, Any]]) -> ReplayMaterial:
+def replay_material(call: Call) -> ReplayMaterial:
+    parsed = transcript.read(call)
     out = ReplayMaterial()
-    first = next((i for i in items if i.get("type") == "message" and str(i.get("text") or "").strip()), None)
-    out.start_speaker = "user" if first is not None and first.get("role") == "user" else "agent"
+    if parsed.messages and parsed.messages[0].role == "user":
+        out.start_speaker = "user"
     last_role: str | None = None
-    names: dict[str, str] = {}
-    for item in items:
-        kind = item.get("type")
-        if kind == "message":
-            text = str(item.get("text") or "").strip()
-            role = item.get("role")
-            if not text:
-                continue
-            if role == "user":
-                if last_role == "user" and out.caller_turns:
-                    out.caller_turns[-1] = f"{out.caller_turns[-1]} {text}"
-                else:
-                    out.caller_turns.append(text)
-            last_role = str(role)
-        elif kind == "tool_call":
-            if item.get("ref"):
-                names[str(item["ref"])] = str(item.get("name") or "")
-        elif kind == "tool_result":
-            name = str(item.get("name") or names.get(str(item.get("ref") or ""), "") or "")
-            if name:
-                out.recorded_tool_outputs.append({"name": name, "output": str(item.get("output") or "")})
-        elif kind == "flow_transition" and item.get("to_node_id"):
-            out.node_path.append(str(item["to_node_id"]))
+    for message in parsed.messages:
+        text = message.text.strip()
+        if message.role == "user":
+            if last_role == "user" and out.caller_turns:
+                out.caller_turns[-1] = f"{out.caller_turns[-1]} {text}"
+            else:
+                out.caller_turns.append(text)
+        last_role = message.role
+    out.recorded_tool_outputs = [
+        {"name": t.name, "output": t.output} for t in parsed.tools if t.output is not None
+    ]
+    out.node_path = [t.to_node_id for t in parsed.transitions]
     return out
 
 

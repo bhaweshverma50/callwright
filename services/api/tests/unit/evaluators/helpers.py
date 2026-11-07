@@ -7,8 +7,9 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
+from app.calls.transcript import FlowTransition, Message, ToolEvent
 from app.evals import fakes
-from app.evaluators.base import EvalContext, EvalTools, FlowTransition, Message, ToolEvent, TurnLatency
+from app.evaluators.base import EvalContext, EvalTools, TurnLatency
 from app.evaluators.judge import Judge
 from app.llms.adapters.base import ChatMessage
 from tests.fakes.fake_llm import FakeLlm

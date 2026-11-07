@@ -1,6 +1,7 @@
 """Evaluator protocol and the data every evaluator reads (007 T008, research R3).
 
-``EvalContext`` is built once per call by ``app.evals.context`` from the finalised transcript,
+``EvalContext`` is built once per call by ``app.evals.context`` from the finalised transcript
+(``calls.transcript``),
 turn events, the agent version the call ran (never the current draft) and the call's recording
 reference. Evaluators return ``EvalOutcome``: one ``ItemResult`` per call (call scope), per turn,
 per flow node or per silence, plus model usage for judges. The runner turns items into the run
@@ -15,6 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar, Literal
 
+from app.calls.transcript import FlowTransition, Message, ToolEvent
 from app.evals.scoring import Verdict
 
 Scope = Literal["call", "turn", "flow_node"]
@@ -23,34 +25,6 @@ OutputKind = Literal["class", "anomaly", "audio_quality", "process_reward"]
 AgentType = Literal["single_prompt", "flow"]
 ALL_AGENT_TYPES: tuple[AgentType, ...] = ("single_prompt", "flow")
 FLOW_ONLY: tuple[AgentType, ...] = ("flow",)
-
-
-@dataclass(frozen=True)
-class Message:
-    """One spoken line. ``index`` is its position among messages (the judge's turn number)."""
-
-    index: int
-    role: Literal["agent", "user"]
-    text: str
-    turn_index: int | None = None
-    started_ms: int | None = None
-
-
-@dataclass(frozen=True)
-class ToolEvent:
-    name: str
-    arguments: Mapping[str, Any] | None
-    output: str | None
-    is_error: bool
-    ref: str | None = None
-    after_message: int = -1  # index of the last message before the call (-1: before any)
-
-
-@dataclass(frozen=True)
-class FlowTransition:
-    from_node_id: str | None
-    to_node_id: str
-    label: str | None = None
 
 
 @dataclass(frozen=True)

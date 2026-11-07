@@ -27,7 +27,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from callwright_contract.calls import ACTIVE_STATUSES, PHONE_CHANNELS
+from callwright_contract.calls import PHONE_CHANNELS
 from callwright_contract.values import CALLBACK_NOT_A_PHONE_CALL, spoken_time
 from callwright_contract.variables import BUILTIN_VARIABLES, CALLBACK_NOTE, MAX_VALUE_CHARS
 from pydantic import ValidationError
@@ -42,7 +42,9 @@ from app.callbacks.schemas import (
     CallbackCreate,
     parse_local,
 )
+from app.calls.lookups import concurrency_full
 from app.calls.models import Call
+from app.calls.origins import policy
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, not_found
 from app.core.ids import new_id
@@ -50,7 +52,6 @@ from app.core.pagination import page_meta
 from app.outbound import calling_hours
 from app.outbound import service as outbound
 from app.outbound.schemas import OutboundCallRequest
-from app.workspaces.models import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -373,7 +374,7 @@ async def book_from_call(
         call = await session.get(Call, call_id)
         if call is None:
             raise not_found("call")
-        if call.origin == "simulation":
+        if not policy(call.origin).reaches_customer:
             # 008: simulations never reach customers; answer as if booked, store nothing.
             zone = _call_zone(call) or "UTC"
             at = resolve_time(body, zone, now)
@@ -450,24 +451,6 @@ async def book_from_call(
 # Placing (cron) --------------------------------------------------------------------------------
 
 
-async def _workspace_full(session: AsyncSession, workspace_id: str) -> bool:
-    limit = (
-        await session.execute(select(Workspace.concurrency_limit).where(Workspace.id == workspace_id))
-    ).scalar_one()
-    active = (
-        await session.execute(
-            select(func.count())
-            .select_from(Call)
-            .where(
-                Call.workspace_id == workspace_id,
-                Call.status.in_(tuple(ACTIVE_STATUSES)),
-                Call.origin != "simulation",
-            )
-        )
-    ).scalar_one()
-    return int(active) >= int(limit)
-
-
 def _fail(row: ScheduledCallback, reason: str, detail: str | None, now: datetime) -> None:
     row.status = "failed"
     row.failure_reason = reason[:64]
@@ -528,7 +511,7 @@ async def place_one(deps: outbound.OutboundDeps, workspace_id: str, callback_id:
         if deps.settings.livekit_mode == "live" and not deps.sip.live:
             _fail(row, "telephony_unavailable", "This deployment has no SIP service.", now)
             return "failed"
-        if row.status == "scheduled" and await _workspace_full(session, workspace_id):
+        if row.status == "scheduled" and await concurrency_full(session, workspace_id):
             return "skipped"  # every call slot is busy: the next run tries again
         row.status, row.attempts, row.updated_at = "placing", row.attempts + 1, now
         request = _request_for(row)

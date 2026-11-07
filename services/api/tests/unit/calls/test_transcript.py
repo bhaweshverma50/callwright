@@ -1,8 +1,9 @@
-"""Transcript read model and plain-text copy format (006 T025, FR-009, FR-010)."""
+"""The stored transcript's reader (006 T025, FR-009): the call view's items and the parsed
+messages, tools and flow transitions everything else reads."""
 
 from __future__ import annotations
 
-from app.calls.transcript_text import normalize_items, transcript_text
+from app.calls.transcript import has_conversation, normalize_items, parse
 
 RAW = [
     {"type": "message", "role": "agent", "text": "Hi, how can I help?", "started_ms": 400, "turn_index": 0},
@@ -72,19 +73,26 @@ def test_normalize_fields() -> None:
     assert items[6]["interrupted"] is True
 
 
-def test_plain_text_format() -> None:
-    text = transcript_text(normalize_items(RAW))
-    assert text.splitlines() == [
-        "Agent: Hi, how can I help?",
-        "Caller: Check my order",
-        '[Tool call: lookup_order({"id": "A12"})]',
-        "[Tool result: lookup_order -> shipped]",
-        "[Tool call: refund({})]",
-        "[Tool error: refund -> timeout]",
-        "Agent: It shipped yesterday and",
+def test_parse_pairs_tools_and_keeps_the_flow_path() -> None:
+    parsed = parse(RAW)
+    assert [(m.role, m.text) for m in parsed.messages] == [
+        ("agent", "Hi, how can I help?"),
+        ("user", "Check my order"),
+        ("agent", "It shipped yesterday and"),
     ]
+    assert [(t.name, t.output, t.is_error) for t in parsed.tools] == [
+        ("lookup_order", "shipped", False),
+        ("refund", "timeout", True),
+    ]
+    assert [(t.from_node_id, t.to_node_id) for t in parsed.transitions] == [("n1", "n2")]
+
+
+def test_a_conversation_needs_something_said() -> None:
+    assert has_conversation({"items": RAW})
+    assert not has_conversation({"items": [{"type": "message", "role": "user", "text": "  "}]})
+    assert not has_conversation({"items": [RAW[2]]})
+    assert not has_conversation(None)
 
 
 def test_empty_transcript() -> None:
     assert normalize_items(None) == []
-    assert transcript_text([]) == ""

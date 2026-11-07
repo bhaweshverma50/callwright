@@ -23,19 +23,6 @@ DncId = Annotated[str, Depends(path_id("dnc", "do-not-call entry", "dnc_id"))]
 ListSize = Annotated[int, Query(ge=1, le=100)]
 
 
-def outbound_deps(request: Request) -> outbound.OutboundDeps:
-    state = request.app.state
-    return outbound.OutboundDeps(
-        db=state.db,
-        settings=state.settings,
-        sip=state.sip,
-        livekit=state.livekit,
-        catalog=state.adapter_catalog,
-        jobs=getattr(state, "jobs", None),
-        redis=state.redis,
-    )
-
-
 @router.post(
     "/outbound-calls", status_code=202, responses=problem_responses(400, 401, 402, 403, 409, 422, 429, 503)
 )
@@ -46,7 +33,7 @@ async def create_outbound_call(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> JSONResponse:
     return await outbound.start_outbound_call(
-        outbound_deps(request), principal, body, idempotency_key, request.url.path
+        outbound.deps_from(request.app.state), principal, body, idempotency_key, request.url.path
     )
 
 

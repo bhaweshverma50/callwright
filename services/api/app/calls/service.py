@@ -15,6 +15,7 @@ always comes from the call row (security-definer lookup), never from the request
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -34,24 +35,27 @@ from callwright_contract.protocol import (
     RuntimeConfig,
     RuntimeValues,
 )
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import CALL_BEHAVIOR_DEFAULTS
 from app.billing import service as billing
 from app.calls import components as comp
+from app.calls import lifecycle
 from app.calls import variables as variables_mod
-from app.calls.effects import START_RECORDING, Deferred
+from app.calls.lookups import concurrency_full, snapshot_for, workspace_for_call
 from app.calls.models import Call
+from app.calls.origins import policy
 from app.calls.ports import AgentSnapshot, registry
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
 from app.core.ids import is_valid_id, new_id
+from app.core.livekit import LiveKitError, LiveKitGateway
+from app.core.queue import Deferred, JobQueue, dispatch
 from app.core.storage import ObjectSigner
 from app.pricing import service as pricing
 from app.voices.catalog import load_catalog as load_speech_catalog
-from app.webhooks_out import service as webhooks
 from app.workspaces.models import Workspace
 
 logger = logging.getLogger(__name__)
@@ -62,7 +66,6 @@ SIGNED_URL_TTL_S = 600
 REFUSALS: dict[str, tuple[int, str]] = {
     "email_unverified": (403, "error"),
     "agent_not_published": (409, "error"),
-    "flow_runtime_unavailable": (422, "error"),
     "flow_not_compiled": (409, "error"),
     "unsupported_vendor": (422, "error"),
     "pricing_unavailable": (422, "error"),
@@ -73,7 +76,6 @@ REFUSALS: dict[str, tuple[int, str]] = {
 _DETAILS = {
     "email_unverified": "Verify your email address before placing calls.",
     "agent_not_published": "This agent has no published version.",
-    "flow_runtime_unavailable": "Flow agents cannot run calls yet.",
     "flow_not_compiled": "This flow has no compiled graph. Fix the problems the flow builder lists.",
     "unsupported_vendor": "The agent uses a speech or language vendor the platform does not support.",
     "pricing_unavailable": "The agent's configuration is not fully priced.",
@@ -223,23 +225,6 @@ async def _resolve_version(
     return snapshot, None
 
 
-async def _active_calls(session: AsyncSession, workspace_id: str) -> int:
-    return int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(Call)
-                # 008: simulated calls run as text and never hold a concurrent-call slot.
-                .where(
-                    Call.workspace_id == workspace_id,
-                    Call.status.in_(tuple(ACTIVE_STATUSES)),
-                    Call.origin != "simulation",
-                )
-            )
-        ).scalar_one()
-    )
-
-
 async def _email_verified(session: AsyncSession, workspace_id: str) -> bool:
     return bool(
         (
@@ -266,14 +251,12 @@ def _has_compiled_flow(config: Mapping[str, Any]) -> bool:
 async def _checks(
     session: AsyncSession, request: AdmissionRequest, snapshot: AgentSnapshot, catalog: AdapterCatalog
 ) -> Refusal | None:
-    if snapshot.agent_type == "flow" and not registry.flow_runtime_available:
-        return refusal("flow_runtime_unavailable")
     if snapshot.agent_type == "flow" and not _has_compiled_flow(snapshot.config):
         # The worker would fail the call with the same code after the caller joined (004).
         return refusal("flow_not_compiled")
     components = comp.resolve(snapshot.config, catalog)
     diagnostic = comp.unsupported(components, catalog)
-    if diagnostic is None and request.origin != "simulation":
+    if diagnostic is None and policy(request.origin).has_real_audio:
         diagnostic = comp.unconfigured(components, get_settings())
     if diagnostic is not None:
         return refusal("unsupported_vendor", diagnostic)
@@ -284,7 +267,7 @@ async def _checks(
     if not quote.complete:
         unpriced = ",".join(line.component for line in quote.lines if line.status == "unpriced")
         return refusal("pricing_unavailable", f"pricing_unavailable:{unpriced}")
-    if request.origin != "simulation" and await billing.get_balance(session, request.workspace_id) <= 0:
+    if policy(request.origin).billable and await billing.get_balance(session, request.workspace_id) <= 0:
         return refusal("insufficient_credit")
     return None
 
@@ -319,11 +302,7 @@ async def admit_in_session(
             )
         ).scalar_one_or_none()
         if existing is not None:
-            snapshot = (
-                await registry.agent_versions.get_snapshot(session, existing.agent_version_id)
-                if existing.agent_version_id
-                else None
-            )
+            snapshot = await snapshot_for(session, existing.agent_version_id)
             refused = None
             if existing.status == "failed" and existing.claimed_at is None:
                 refused = _replayed_refusal(existing)
@@ -337,14 +316,7 @@ async def admit_in_session(
         refused = refusal("declined_by_webhook")
     if refused is None:
         await _lock_admissions(session, request.workspace_id)
-        limit = int(
-            (
-                await session.execute(
-                    select(Workspace.concurrency_limit).where(Workspace.id == request.workspace_id)
-                )
-            ).scalar_one()
-        )
-        if await _active_calls(session, request.workspace_id) >= limit:
+        if await concurrency_full(session, request.workspace_id):
             refused = refusal("concurrency_limit")
     call_id = request.call_id or new_id("call")
     config: Mapping[str, Any] = snapshot.config if snapshot is not None else {}
@@ -410,7 +382,7 @@ async def admit_in_session(
     admission = Admission(call, refused is None, refused, snapshot)
     if refused is not None:
         # A refused call never connected: only ``call_ended`` is sent (FR-035).
-        await webhooks.enqueue_event(session, call, "call_ended", config=config, deferred=admission.deferred)
+        await lifecycle.notify(session, call, "call_ended", deferred=admission.deferred)
         logger.info("call %s refused: %s", call_id, refused.diagnostic)
     return admission
 
@@ -430,36 +402,52 @@ async def admit(
         )
 
 
-async def mark_failed(
-    db: Database, workspace_id: str, call_id: str, diagnostic: str, *, deferred: Deferred | None = None
-) -> bool:
-    """Fail a call that never connected (room could not be created, dial error, ...)."""
-    from app.calls.models import transition
+def room_name(call_id: str) -> str:
+    return f"call-{call_id}"
 
-    async with db.transaction(workspace_id=workspace_id) as session:
-        changed = await transition(
-            session,
-            call_id,
-            ("queued", "ringing"),
-            "failed",
-            disconnect_reason="error",
-            diagnostic=diagnostic[:500],
-            billable_seconds=0,
-        )
-        if changed and deferred is not None:
-            call = await session.get(Call, call_id)
-            assert call is not None
-            snapshot = await _snapshot(session, call)
-            await webhooks.enqueue_event(
-                session, call, "call_ended", config=snapshot.config if snapshot else None, deferred=deferred
+
+def media_unavailable(call_id: str) -> ProblemError:
+    return ProblemError(
+        503,
+        "media_unavailable",
+        "Call could not start",
+        "The realtime media server is unavailable. The call was not charged; try again.",
+        extra={"call_id": call_id, "disconnect_reason": "error", "diagnostic": "room_unavailable"},
+    )
+
+
+async def start_room(
+    db: Database, livekit: LiveKitGateway, jobs: JobQueue | None, call: Call, *, agent_name: str
+) -> str:
+    """Create room ``call-{call_id}`` and dispatch the voice worker into it with ``{"call_id"}``
+    (web and outbound calls). When the media server fails the call is failed (never charged), the
+    room is removed and ``media_unavailable`` raised."""
+    room = room_name(call.id)
+    try:
+        metadata = {DISPATCH_CALL_ID: call.id}
+        await livekit.create_room(room, metadata=json.dumps(metadata, separators=(",", ":")))
+        await livekit.dispatch_agent(room, agent_name, metadata)
+    except LiveKitError:
+        logger.exception("room setup failed for %s", call.id)
+        deferred = Deferred()
+        now = datetime.now(UTC)
+        async with db.transaction(workspace_id=call.workspace_id) as session:
+            row = await session.get(Call, call.id, with_for_update=True)
+            assert row is not None
+            await lifecycle.fail_unconnected(
+                session, row, at=now, diagnostic="room_unavailable", deferred=deferred, now=now
             )
-    return changed
-
-
-async def _snapshot(session: AsyncSession, call: Call) -> AgentSnapshot | None:
-    if call.agent_version_id is None:
-        return None
-    return await registry.agent_versions.get_snapshot(session, call.agent_version_id)
+        await dispatch(jobs, deferred)
+        try:
+            await livekit.delete_room(room)
+        except LiveKitError:
+            logger.warning("could not delete room %s after a failed setup", room)
+        raise media_unavailable(call.id) from None
+    async with db.transaction(workspace_id=call.workspace_id) as session:
+        row = await session.get(Call, call.id)
+        assert row is not None
+        row.room_name = room
+    return room
 
 
 # Claim --------------------------------------------------------------------------------------
@@ -512,9 +500,7 @@ def claim_language_options(
 ) -> list[dict[str, Any]]:
     """012: the languages ``set_language`` may switch to; the agent's own entry carries the models
     this call resolved (Auto speech recognition included), so switching back restores them."""
-    from app.caller_language.options import language_options
-
-    options = language_options(config)
+    options = registry.caller_language.options(config)
     if options:
         options[0] = {**options[0], "stt_model": components.stt.model, "tts_model": components.tts.model}
     return options
@@ -552,7 +538,7 @@ async def _claim_existing(
             return outcome
         if call.status not in ACTIVE_STATUSES and not same_job:
             raise ProblemError(409, "call_not_claimable", "Call is closed", "This call has already ended.")
-        snapshot = await _snapshot(session, call)
+        snapshot = await snapshot_for(session, call.agent_version_id)
         if snapshot is None:
             raise ProblemError(409, "call_not_claimable", "Call is closed", "The call has no agent version.")
         outbound: Mapping[str, Any] | None = None
@@ -560,16 +546,13 @@ async def _claim_existing(
             provider = registry.outbound_dial
             dial = await provider.dial_spec(session, call) if provider is not None else None
             if dial is None:
-                from app.calls.models import transition
-
-                await transition(
+                await lifecycle.fail_unconnected(
                     session,
-                    call.id,
-                    ("queued", "ringing"),
-                    "failed",
-                    disconnect_reason="error",
+                    call,
+                    at=now,
                     diagnostic="outbound_unavailable",
-                    billable_seconds=0,
+                    deferred=outcome.deferred,
+                    now=now,
                 )
                 outcome.body = _refused_body(call.id, "error", "outbound_unavailable")
                 return outcome
@@ -586,13 +569,13 @@ async def _claim_existing(
                 call.room_name = request.room_name
             await session.flush()
             if call.recording_enabled and call.recording_status == "none":
-                outcome.deferred.add(START_RECORDING, workspace_id, call.id)
+                outcome.deferred.add(lifecycle.START_RECORDING, workspace_id, call.id)
         runtime = runtime_config(
             call, snapshot, catalog, signer=registry.signer, media_bucket=media_bucket, outbound_dial=outbound
         )
-        from app.caller_language.service import start_language
-
-        runtime["caller_language"] = await start_language(session, call, runtime["language_options"])
+        runtime["caller_language"] = await registry.caller_language.start(
+            session, call, runtime["language_options"]
+        )
     outcome.body = {"admitted": True, "call_id": call_id, "runtime": runtime}
     return outcome
 
@@ -609,16 +592,9 @@ async def claim(
     metadata = request.dispatch_metadata
     call_id = metadata.get(DISPATCH_CALL_ID)
     if isinstance(call_id, str):
-        if not is_valid_id(call_id, "call"):
-            raise not_found("call")
-        async with db.transaction() as session:
-            workspace_id = (
-                await session.execute(text("select calls_workspace_for(:id)"), {"id": call_id})
-            ).scalar()
-        if workspace_id is None:
-            raise not_found("call")
+        workspace_id = await workspace_for_call(db, call_id)
         return await _claim_existing(
-            db, str(workspace_id), call_id, request, catalog=catalog, media_bucket=media_bucket, now=now
+            db, workspace_id, call_id, request, catalog=catalog, media_bucket=media_bucket, now=now
         )
     channel = metadata.get(DISPATCH_CHANNEL)
     if channel not in INBOUND_SIP_CHANNELS:
@@ -677,11 +653,6 @@ async def claim(
     )
     outcome.deferred.extend(admission.deferred)
     return outcome
-
-
-async def config_for(session: AsyncSession, call: Call) -> Mapping[str, Any] | None:
-    snapshot = await _snapshot(session, call)
-    return snapshot.config if snapshot is not None else None
 
 
 async def set_analysis(

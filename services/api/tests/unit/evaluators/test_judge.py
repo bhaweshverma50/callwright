@@ -6,7 +6,8 @@ import json
 
 import pytest
 
-from app.evaluators.base import Message, ToolEvent, Unavailable
+from app.calls.transcript import Message, ToolEvent
+from app.evaluators.base import Unavailable
 from app.evaluators.judge import Judge, parse_call_reply, parse_turn_reply, render_call
 from tests.fakes.fake_llm import FakeLlm
 

@@ -14,9 +14,9 @@ import pytest
 from fastapi import FastAPI
 
 from app.calls import service as calls
-from app.calls.jobs import RECORDING_UNAVAILABLE, start_recording_for
 from app.core.config import get_settings
 from app.core.livekit import EgressTarget
+from app.recordings.egress import RECORDING_UNAVAILABLE, start_recording_for
 from tests.conftest import Account
 from tests.runtime_support import (
     SERVICE_HEADERS,

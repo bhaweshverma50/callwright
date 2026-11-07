@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
+from app.calls.origins import policy
 from app.evals.scoring import Verdict
 from app.evaluators.audio import RecordingUnavailable, Silence, find_silences
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, SettingsField
@@ -87,7 +88,7 @@ class AudioSilence(Evaluator):
     )
 
     async def evaluate(self, ctx: EvalContext, settings: Mapping[str, Any], tools: EvalTools) -> EvalOutcome:
-        if ctx.recording is None or ctx.origin == "simulation" or tools.read_levels is None:
+        if ctx.recording is None or not policy(ctx.origin).has_real_audio or tools.read_levels is None:
             return EvalOutcome.not_applicable("no recording")
         try:
             levels = await tools.read_levels(ctx.recording)

@@ -7,8 +7,9 @@ from typing import Any
 
 import pytest
 
+from app.calls.transcript import ToolEvent
 from app.evals.scoring import ItemOutcome, run_verdict
-from app.evaluators.base import EvalOutcome, ToolEvent
+from app.evaluators.base import EvalOutcome
 from app.evaluators.registry import BUILTINS
 from tests.fakes.fake_llm import FakeLlm
 from tests.unit.evaluators.helpers import context, flow_config, judge_json, messages, tools

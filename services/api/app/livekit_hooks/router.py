@@ -10,9 +10,9 @@ import logging
 
 from fastapi import APIRouter, Request, Response
 
-from app.calls.effects import dispatch
 from app.core.errors import ProblemError, problem_responses
 from app.core.livekit import WebhookAuthError
+from app.core.queue import dispatch
 from app.livekit_hooks import service
 
 logger = logging.getLogger(__name__)

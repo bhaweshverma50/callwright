@@ -20,7 +20,6 @@ import httpx
 from callwright_contract.url_guard import Resolver, UrlNotAllowed, check_url
 from sqlalchemy import select, text
 
-from app.calls.effects import DELIVER_WEBHOOK
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.queue import JobQueue
@@ -189,7 +188,7 @@ async def deliver(
         outcome.status = row.status
     if outcome.retry_in_s is not None and queue is not None:
         await queue.enqueue(
-            DELIVER_WEBHOOK,
+            service.DELIVER_WEBHOOK,
             workspace_id,
             delivery_id,
             defer_by_s=outcome.retry_in_s,

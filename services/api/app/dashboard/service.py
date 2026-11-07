@@ -20,8 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.agents.models import Agent
-from app.call_events.models import CallEvent
-from app.calls.models import Call
+from app.calls.models import Call, CallEvent
 from app.calls.ports import registry
 from app.calls.quality_port import EvaluatorStat
 from app.dashboard.aggregates import daily_average, delta_pp, top_with_others, zero_fill

@@ -11,9 +11,9 @@ from callwright_contract.protocol import EventBatch
 from fastapi import APIRouter, Depends, Request
 
 from app.call_events import service
-from app.calls.effects import dispatch
 from app.core.auth import require_service
 from app.core.errors import problem_responses
+from app.core.queue import dispatch
 
 router = APIRouter(tags=["call-events-internal"], dependencies=[Depends(require_service)])
 

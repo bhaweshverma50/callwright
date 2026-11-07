@@ -9,8 +9,8 @@ from typing import Any
 import httpx
 from fastapi import FastAPI
 
-from app.calls.jobs import start_recording_for
 from app.core.livekit import sign_webhook
+from app.recordings.egress import start_recording_for
 from tests.runtime_support import Runtime, admitted_call, owner_sql, post_events
 
 

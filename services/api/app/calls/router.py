@@ -1,6 +1,6 @@
 """POST /v1/internal/calls/claim (contracts/calls.yaml, 003 T032). Service token only.
 
-006 adds the read side (list, detail, recording URLs) to this module.
+The read side (006) is ``read_router``.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ from callwright_contract.protocol import ClaimRequest
 from fastapi import APIRouter, Depends, Request
 
 from app.calls import service
-from app.calls.effects import dispatch
 from app.core.auth import require_service
 from app.core.errors import problem_responses
+from app.core.queue import dispatch
 
 router = APIRouter(tags=["calls-internal"], dependencies=[Depends(require_service)])
 

@@ -751,7 +751,7 @@ async def spec_for(session: AsyncSession, run_id: str) -> dict[str, Any]:
         "runtime": runtime_values(config, load_catalog()).model_dump(mode="json"),
     }
     if base is not None:
-        material = sim_calls.replay_material(sim_calls.items_of(base))
+        material = sim_calls.replay_material(base)
         spec["original_node_path"] = material.node_path
         if run.mode == "replay":
             spec["start_speaker"] = material.start_speaker

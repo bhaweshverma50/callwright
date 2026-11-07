@@ -13,14 +13,16 @@ keep the API working with clear refusals.
 * ``InboundRouter`` (010): resolves an inbound SIP or WhatsApp call to workspace and agent.
 * ``OutboundDialProvider`` (010): trunk and numbers for ``sip_outbound`` claims.
 * ``ObjectSigner`` (``core.storage``): short-lived GET URLs for uploaded ambience and recordings.
-* ``flow_runtime_available`` (004): flow agents are refused until 004 says it can run them.
-* ``CallQualityPort`` (007): verdicts and labels on call lists, detail and the dashboard.
+* ``CallQualityPort`` (007): verdicts, labels and analysis states on call lists, detail and the
+  dashboard.
 * step handlers (007): the post-call pipeline's ``analyze`` and ``evaluate`` steps.
+* ``RunSnapshot`` (008): the configuration a simulation run used, for its simulated call.
+* ``CallerLanguagePort`` (012): the languages a call may switch to and its start language.
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -32,6 +34,8 @@ from app.core.storage import ObjectSigner
 # ``async def handler(call_id, session) -> None`` for the ``analyze`` and ``evaluate`` steps.
 StepHandler = Callable[[str, AsyncSession], Awaitable[None]]
 EXTERNAL_STEPS = ("analyze", "evaluate")
+# ``async def run_snapshot(session, simulation_run_id) -> config or None``.
+RunSnapshot = Callable[[AsyncSession, str], Awaitable[Mapping[str, Any] | None]]
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,7 @@ class AgentSnapshot:
     workspace_id: str
     agent_type: str  # single_prompt | flow
     config: Mapping[str, Any]
+    version_number: int | None = None
 
 
 class AgentVersionsPort(Protocol):
@@ -106,15 +111,36 @@ class OutboundDialProvider(Protocol):
     async def dial_spec(self, session: AsyncSession, call: Any) -> OutboundDial | None: ...
 
 
+class CallerLanguagePort(Protocol):
+    def options(self, config: Mapping[str, Any]) -> list[dict[str, Any]]: ...
+
+    async def start(
+        self, session: AsyncSession, call: Any, options: Sequence[Mapping[str, Any]]
+    ) -> str | None: ...
+
+
+class NoCallerLanguage:
+    """Default until 012 is wired: no language switching."""
+
+    def options(self, config: Mapping[str, Any]) -> list[dict[str, Any]]:
+        return []
+
+    async def start(
+        self, session: AsyncSession, call: Any, options: Sequence[Mapping[str, Any]]
+    ) -> str | None:
+        return None
+
+
 @dataclass
 class Registry:
     agent_versions: AgentVersionsPort = field(default_factory=NoAgentVersions)
     inbound_routers: dict[str, InboundRouter] = field(default_factory=dict)
     outbound_dial: OutboundDialProvider | None = None
     signer: ObjectSigner | None = None
-    flow_runtime_available: bool = False
     quality: CallQualityPort = field(default_factory=NullCallQualityPort)
     step_handlers: dict[str, StepHandler] = field(default_factory=dict)
+    run_snapshot: RunSnapshot | None = None
+    caller_language: CallerLanguagePort = field(default_factory=NoCallerLanguage)
 
 
 registry = Registry()
@@ -136,10 +162,6 @@ def set_object_signer(signer: ObjectSigner | None) -> None:
     registry.signer = signer
 
 
-def set_flow_runtime_available(available: bool) -> None:
-    registry.flow_runtime_available = available
-
-
 def set_quality_port(port: CallQualityPort | None) -> None:
     """``None`` restores the null port (tests)."""
     registry.quality = port if port is not None else NullCallQualityPort()
@@ -153,3 +175,11 @@ def set_step_handler(step: str, handler: StepHandler | None) -> None:
         registry.step_handlers.pop(step, None)
     else:
         registry.step_handlers[step] = handler
+
+
+def set_run_snapshot(resolver: RunSnapshot | None) -> None:
+    registry.run_snapshot = resolver
+
+
+def set_caller_language(port: CallerLanguagePort | None) -> None:
+    registry.caller_language = port if port is not None else NoCallerLanguage()

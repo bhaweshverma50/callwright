@@ -19,7 +19,6 @@ outbound trunk, the two numbers and the ring timeout stored on the call.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -27,22 +26,19 @@ from datetime import UTC, datetime
 from typing import Any
 
 from callwright_contract.adapters import AdapterCatalog
-from callwright_contract.protocol import DISPATCH_CALL_ID
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calls import service as calls
-from app.calls.effects import Deferred, dispatch
-from app.calls.models import Call
 from app.calls.ports import OutboundDial
 from app.core import idempotency
 from app.core.auth import Principal
 from app.core.errors import ProblemError, field_error, too_many_requests, validation_failed
-from app.core.livekit import LiveKitError, LiveKitGateway
+from app.core.livekit import LiveKitGateway
 from app.core.pagination import page_meta
-from app.core.queue import JobQueue
+from app.core.queue import JobQueue, dispatch
 from app.core.rate_limit import TokenBucket
 from app.outbound import calling_hours, dnc
 from app.outbound.models import OutboundCallingHours, OutboundPolicyDecision
@@ -61,6 +57,23 @@ class OutboundDeps(ChannelDeps):
     catalog: AdapterCatalog | None = None
     jobs: JobQueue | None = None
     redis: Redis | None = None
+
+
+def deps_from(source: Any) -> OutboundDeps:
+    """From the API's ``app.state`` or the jobs worker's ``ctx`` (same names)."""
+
+    def get(name: str) -> Any:
+        return source.get(name) if isinstance(source, dict) else getattr(source, name, None)
+
+    return OutboundDeps(
+        db=get("db"),
+        settings=get("settings"),
+        sip=get("sip"),
+        livekit=get("livekit"),
+        catalog=get("adapter_catalog"),
+        jobs=get("jobs"),
+        redis=get("redis"),
+    )
 
 
 @dataclass(frozen=True)
@@ -376,7 +389,10 @@ async def place(
         assert admission.refusal is not None
         raise admission.refusal.problem(call.id)
     if admission.created:
-        await _start_room(deps, call)
+        assert deps.livekit is not None
+        await calls.start_room(
+            deps.db, deps.livekit, deps.jobs, call, agent_name=deps.settings.worker_agent_name
+        )
     assert admission.snapshot is not None
     return 202, {
         "call_id": call.id,
@@ -391,31 +407,6 @@ async def place(
         "recipient_timezones": zones,
         "timezone_source": source,
     }
-
-
-async def _start_room(deps: OutboundDeps, call: Call) -> None:
-    from app.sessions.service import media_unavailable, room_name
-
-    assert deps.livekit is not None
-    room = room_name(call.id)
-    try:
-        metadata = {DISPATCH_CALL_ID: call.id}
-        await deps.livekit.create_room(room, metadata=json.dumps(metadata, separators=(",", ":")))
-        await deps.livekit.dispatch_agent(room, deps.settings.worker_agent_name, metadata)
-    except LiveKitError:
-        logger.exception("room setup failed for outbound call %s", call.id)
-        deferred = Deferred()
-        await calls.mark_failed(deps.db, call.workspace_id, call.id, "room_unavailable", deferred=deferred)
-        await dispatch(deps.jobs, deferred)
-        try:
-            await deps.livekit.delete_room(room)
-        except LiveKitError:
-            logger.warning("could not delete room %s after a failed setup", room)
-        raise media_unavailable(call.id) from None
-    async with deps.db.transaction(workspace_id=call.workspace_id) as session:
-        row = await session.get(Call, call.id)
-        assert row is not None
-        row.room_name = room
 
 
 # Decision log -------------------------------------------------------------------------------------

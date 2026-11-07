@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_versions import service as versions
 from app.agents.models import Agent
+from app.calls import transcript
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.evaluators.judge import json_object, neutralise
@@ -176,12 +177,10 @@ class DraftInput:
 
 
 def _excerpt(call: Call, turns: Sequence[int]) -> list[str]:
-    items = [i for i in (call.transcript or {}).get("items") or [] if isinstance(i, Mapping)]
-    lines: list[tuple[int | None, str]] = []
-    for item in items:
-        if item.get("type") == "message" and str(item.get("text") or "").strip():
-            who = "CALLER" if item.get("role") == "user" else "AGENT"
-            lines.append((item.get("turn_index"), f"{who}: {neutralise(str(item['text']))[:300]}"))
+    lines = [
+        (m.turn_index, f"{'CALLER' if m.role == 'user' else 'AGENT'}: {neutralise(m.text)[:300]}")
+        for m in transcript.read(call).messages
+    ]
     if not lines:
         return []
     focus = next((i for i, (t, _) in enumerate(lines) if t is not None and t in turns), None)

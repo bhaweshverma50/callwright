@@ -12,7 +12,8 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from app.calls.effects import Deferred
+from app.calls import lifecycle
+from app.core.queue import Deferred
 from app.core.secrets import key_wrapper
 from app.webhooks_out import jobs, service
 from tests.integration.tools.flaky_receiver import FlakyReceiver, verify
@@ -42,13 +43,7 @@ async def _delivery(runtime: Runtime, url: str, timeout_ms: int = 3000) -> tuple
 
         call = await session.get(Call, setup.call_id)
         assert call is not None
-        delivery_id = await service.enqueue_event(
-            session,
-            call,
-            "call_ended",
-            config=runtime.versions.versions[call.agent_version_id or ""].config,
-            deferred=Deferred(),
-        )
+        delivery_id = await lifecycle.notify(session, call, "call_ended", deferred=Deferred())
     assert delivery_id is not None
     return setup.workspace_id, delivery_id
 

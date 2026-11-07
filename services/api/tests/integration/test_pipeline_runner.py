@@ -9,6 +9,7 @@ import pytest
 from callwright_contract.calls import PIPELINE_STEPS
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing import service as billing
 from app.calls import pipeline, ports
 from tests.runtime_support import Runtime, agent_config, ended_call, owner_sql
 
@@ -29,13 +30,7 @@ def steps(call_id: str) -> dict[str, tuple[str, int]]:
     return {r[0]: (r[1], r[2]) for r in rows}
 
 
-def test_fixed_order_and_blocking_flags() -> None:
-    assert [s.name for s in pipeline.STEPS] == list(PIPELINE_STEPS)
-    assert [s.name for s in pipeline.STEPS if s.blocking] == [
-        "finalize_transcript",
-        "price_and_charge",
-        "complete",
-    ]
+def test_only_analyze_and_evaluate_take_handlers() -> None:
     with pytest.raises(ValueError):
         ports.set_step_handler("price_and_charge", lambda c, s: None)  # type: ignore[arg-type,return-value]
 
@@ -97,16 +92,16 @@ async def test_blocking_failure_stops_the_chain_and_retries(
     runtime: Runtime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = 0
-    original = pipeline.HANDLERS["price_and_charge"]
+    charge_call = billing.charge_call
 
-    async def flaky(ctx: pipeline.StepContext) -> pipeline.Outcome:
+    async def flaky(*args: Any, **kwargs: Any) -> Any:
         nonlocal calls
         calls += 1
         if calls < 3:
             raise ConnectionError("ledger unavailable")
-        return await original(ctx)
+        return await charge_call(*args, **kwargs)
 
-    monkeypatch.setitem(pipeline.HANDLERS, "price_and_charge", flaky)
+    monkeypatch.setattr(billing, "charge_call", flaky)
     setup = await ended_call(runtime)
     first = await _run(runtime, setup.workspace_id, setup.call_id)
     assert first.status == "retry" and first.retry_in_s == pipeline.RETRY_BASE_S
@@ -126,17 +121,18 @@ async def test_blocking_failure_stops_the_chain_and_retries(
 
 
 async def test_blocked_after_max_attempts(runtime: Runtime, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def always(ctx: pipeline.StepContext) -> pipeline.Outcome:
+    async def down(*args: Any, **kwargs: Any) -> Any:
         raise ConnectionError("down")
 
-    monkeypatch.setitem(pipeline.HANDLERS, "finalize_transcript", always)
+    monkeypatch.setattr(billing, "charge_call", down)
     setup = await ended_call(runtime)
     for _ in range(pipeline.MAX_BLOCKING_ATTEMPTS - 1):
         assert (await _run(runtime, setup.workspace_id, setup.call_id)).status == "retry"
     final = await _run(runtime, setup.workspace_id, setup.call_id)
     assert final.status == "blocked"
     assert owner_sql("select pipeline_status from calls where id = %s", (setup.call_id,)) == [("blocked",)]
-    assert steps(setup.call_id)["price_and_charge"] == ("pending", 0)
+    assert steps(setup.call_id)["price_and_charge"] == ("failed", pipeline.MAX_BLOCKING_ATTEMPTS)
+    assert steps(setup.call_id)["analyze"] == ("pending", 0)
 
 
 async def test_simulation_skips_pricing_and_webhook(runtime: Runtime) -> None:

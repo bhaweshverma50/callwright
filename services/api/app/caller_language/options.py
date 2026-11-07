@@ -12,8 +12,8 @@ voice speaks it:
 
 ``advanced.language_switching.languages`` limits the offer; empty means one code per base
 language (the bare code when supported, so ``hi`` rather than ``hi-Latn``). The agent's own
-language comes first and other variants of it are never offered. Flow agents and agents with
-the setting off get no options, and neither does an agent with nothing to switch to.
+language comes first and other variants of it are never offered. Agents with the setting off get
+no options, and neither does an agent with nothing to switch to.
 """
 
 from __future__ import annotations

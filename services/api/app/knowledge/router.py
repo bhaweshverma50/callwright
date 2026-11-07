@@ -8,8 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
-from app.agent_versions.models import AgentVersion
-from app.call_events.service import workspace_for_call
+from app.calls.lookups import config_for, workspace_for_call
 from app.calls.models import Call
 from app.core.auth import CurrentPrincipal, Principal, require_service
 from app.core.errors import forbidden, not_found, problem_responses, too_many_requests
@@ -277,14 +276,8 @@ async def internal_knowledge_search(body: InternalSearch, request: Request) -> d
         call = await session.get(Call, body.call_id)
         if call is None:
             raise not_found("call")
-        version = await session.get(AgentVersion, call.agent_version_id) if call.agent_version_id else None
-        allowed = service.version_kb_ids(version.config) if version is not None else set()
-        if call.origin == "simulation" and call.simulation_run_id:
-            from app.simulator.service import run_snapshot
-
-            snapshot = await run_snapshot(session, call.simulation_run_id)
-            if snapshot is not None:
-                allowed = service.version_kb_ids(snapshot)
+        config = await config_for(session, call)
+        allowed = service.version_kb_ids(config) if config is not None else set()
         if not set(body.kb_ids) <= allowed:
             raise forbidden("These knowledge bases are not attached to the call's agent version.")
         return await service.search(session, state.redis, deps.embedder, body.kb_ids, body.query, body.top_k)

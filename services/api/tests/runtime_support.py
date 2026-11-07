@@ -31,9 +31,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
 from app.calls import ports
-from app.calls.effects import Job
 from app.calls.ports import AgentSnapshot
 from app.core.ids import new_id
+from app.core.queue import Job
 from app.features import job_functions
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -428,7 +428,7 @@ async def post_events(runtime: Runtime, call_id: str, events: list[dict[str, Any
     from callwright_contract.protocol import EventBatch
 
     from app.call_events.service import ingest
-    from app.calls.effects import dispatch
+    from app.core.queue import dispatch
 
     settings = runtime.app.state.settings
     out = await ingest(
@@ -510,7 +510,6 @@ def dispatch_metadata(runtime: Runtime, call_id: str) -> dict[str, Any]:
 @pytest_asyncio.fixture
 async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     previous_port = ports.registry.agent_versions
-    previous_flow_runtime = ports.registry.flow_runtime_available
     previous_jobs = getattr(app.state, "jobs", None)
     versions = FakeAgentVersions(materialize=True)
     queue = RecordingQueue()
@@ -519,5 +518,4 @@ async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     async with httpx.AsyncClient() as http:
         yield Runtime(app, versions, queue, http)
     ports.set_agent_versions(previous_port)
-    ports.set_flow_runtime_available(previous_flow_runtime)
     app.state.jobs = previous_jobs

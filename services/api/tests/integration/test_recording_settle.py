@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from app.calls.jobs import settle_recordings, start_recording_for
+from app.recordings.egress import settle_recordings, start_recording_for
 from tests.runtime_support import Runtime, admitted_call, owner_sql
 
 

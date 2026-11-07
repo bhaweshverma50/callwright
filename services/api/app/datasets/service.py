@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
+from app.calls import transcript
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
@@ -233,8 +234,7 @@ async def list_items(
         await session.execute(
             text(
                 "select i.call_id, i.added_at, c.status, c.connected_at, c.created_at, c.billable_seconds, "
-                "c.sentiment, c.transcript is not null and "
-                "jsonb_array_length(coalesce(c.transcript->'items', '[]'::jsonb)) > 0 as has_transcript "
+                "c.sentiment, c.transcript "
                 "from dataset_items i join calls c on c.id = i.call_id "
                 "where i.dataset_id = :ds order by i.added_at desc, i.call_id offset :off limit :lim"
             ),
@@ -250,7 +250,7 @@ async def list_items(
             {
                 "call_id": r.call_id,
                 "added_at": r.added_at.isoformat(),
-                "available": bool(r.has_transcript),
+                "available": transcript.has_conversation(r.transcript),
                 "started_at": started.isoformat() if started else None,
                 "duration_s": r.billable_seconds,
                 "call_status": r.status,
@@ -316,7 +316,7 @@ async def evaluate(
     jobs: list[tuple[str, str]] = []
     for call_id in ids:
         call = calls.get(call_id)
-        if call is None or not sim_calls.has_conversation(call):
+        if call is None or not transcript.has_conversation(call.transcript):
             counts["skipped_unavailable"] += 1
             continue
         if only_missing:

@@ -23,12 +23,13 @@ from arq.cron import CronJob
 from arq.typing import WorkerCoroutine
 from arq.worker import Function, create_worker, func
 from callwright_contract.adapters import load_catalog
-from sqlalchemy import text
 
 from app import features
 from app.calls.jobs import run_pipeline_for
+from app.calls.lookups import workspace_for_call
 from app.core.config import Settings, get_settings
 from app.core.db import Database
+from app.core.errors import ProblemError
 from app.core.feature import Runtime
 from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
@@ -103,17 +104,15 @@ async def replay(call_id: str) -> int:
     http = httpx.AsyncClient(follow_redirects=False)
     try:
         await features.install(Runtime("worker", settings, db, queue, http))
-        async with db.transaction() as session:
-            workspace_id = (
-                await session.execute(text("select calls_workspace_for(:id)"), {"id": call_id})
-            ).scalar()
-        if workspace_id is None:
+        try:
+            workspace_id = await workspace_for_call(db, call_id)
+        except ProblemError:
             print(f"no call {call_id}", file=sys.stderr)
             return 1
         result = await run_pipeline_for(
             db,
             queue,
-            str(workspace_id),
+            workspace_id,
             call_id,
             catalog=load_catalog(),
             recordings_bucket=settings.recordings_bucket,

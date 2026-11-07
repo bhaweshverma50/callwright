@@ -26,12 +26,12 @@ from callwright_contract.values import RUN_SIMULATION
 from sqlalchemy import text
 
 from app.billing import service as billing
+from app.calls import transcript
 from app.calls.models import Call
 from app.core.db import Database
 from app.core.errors import ProblemError
 from app.evals.jobs import EVALUATE_CALL
 from app.evals.runtime import runtime
-from app.simulator import calls as sim_calls
 from app.simulator import dispatch, service
 from app.simulator.charges import charge_run, merge_usage
 from app.simulator.models import SimulationRun
@@ -59,11 +59,11 @@ async def _extract(db: Database, settings: Any, workspace_id: str, run_id: str) 
         base = await session.get(Call, run.base_call_id)
         if base is None:
             return "The base call is no longer available."
-        items = sim_calls.items_of(base)
+        messages = transcript.read(base).messages
         model = str((run.settings or {}).get("persona_model") or settings.simulator_model)
     rt = runtime()
     try:
-        brief, usage = await extract_brief(rt.llm, model, items, timeout_s=settings.sim_timeout_s)
+        brief, usage = await extract_brief(rt.llm, model, messages, timeout_s=settings.sim_timeout_s)
     except ExtractionFailed as exc:
         return f"Could not write the persona brief: {exc}"
     async with db.transaction(workspace_id=workspace_id) as session:

@@ -21,8 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import DEFAULT_LANGUAGE
 from app.caller_language.models import CallerPreference, CallLanguage
+from app.calls.lookups import config_for
 from app.calls.models import Call
-from app.calls.service import config_for
+from app.calls.origins import policy
 from app.core.db import Database
 from app.core.errors import field_error, not_found, validation_failed
 from app.core.ids import new_id
@@ -48,7 +49,7 @@ def number_for(call: Call) -> str | None:
 
 
 def saves_preference(call: Call) -> bool:
-    return call.origin != "simulation" and number_for(call) is not None
+    return policy(call.origin).saves_preferences and number_for(call) is not None
 
 
 async def preference_for(session: AsyncSession, number: str) -> CallerPreference | None:
@@ -136,7 +137,7 @@ async def report_switch(
                 offset_ms=offset_ms,
             )
         )
-        if call.origin == "simulation":
+        if not policy(call.origin).saves_preferences:
             return {"recorded": True, "stored": False, "reason": "simulation"}
         if call.channel not in PHONE_CHANNELS:
             return {"recorded": True, "stored": False, "reason": "not_phone_call"}
@@ -213,7 +214,7 @@ async def call_language(session: AsyncSession, call_id: str) -> dict[str, Any]:
             continue
         switches.append({"offset_ms": row.offset_ms, "from": ref(current), "to": ref(row.language)})
         current = row.language
-    number = number_for(call) if call.origin != "simulation" else None
+    number = number_for(call) if policy(call.origin).saves_preferences else None
     pref = await preference_for(session, number) if number else None
     return {
         "call_id": call_id,

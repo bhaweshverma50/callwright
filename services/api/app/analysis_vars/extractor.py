@@ -16,7 +16,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from app.evaluators.base import Message, ToolEvent
+from app.calls.transcript import Message, ToolEvent
 from app.evaluators.judge import PREAMBLE, CompletionClient, Usage, json_object, render_call
 from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
 

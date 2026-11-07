@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from app.analysis_vars.extractor import extract
-from app.evaluators.base import Message
+from app.calls.transcript import Message
 from tests.fakes.fake_llm import FakeLlm
 
 VARIABLES = [

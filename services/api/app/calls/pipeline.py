@@ -11,10 +11,11 @@ Steps run in a fixed order, one ``call_pipeline_steps`` row per ``(call_id, step
 | notify_analyzed     | no       | customer ``call_analyzed`` webhook (enqueued once per call)    |
 | complete            | yes      | ``completed`` (or ``voicemail``), pipeline status              |
 
-Calls with ``origin = simulation`` skip ``price_and_charge`` and ``notify_analyzed`` (the run is
-billed as a feature charge by 008). Each step locks its row with ``FOR UPDATE SKIP LOCKED`` and
-commits its effects and its ``done`` mark in one transaction (under the call row lock), so a step
-runs once even when two runners race or a run is replayed. A failing blocking step stops the
+Calls whose origin is not billable skip ``price_and_charge``, and those that never reach customers
+skip ``notify_analyzed`` (``calls.origins``; simulations are billed as feature charges by 008).
+Each step locks its row with ``FOR UPDATE SKIP LOCKED`` and commits its effects and its ``done``
+mark in one transaction (under the call row lock), so a step runs once even when two runners race
+or a run is replayed. A failing blocking step stops the
 chain and is retried with backoff; after ``MAX_BLOCKING_ATTEMPTS`` the pipeline is ``blocked``
 and an alert is logged. A failing non-blocking step is recorded as a warning and the chain
 continues.
@@ -37,12 +38,14 @@ from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
-from app.call_events.models import CallEvent
 from app.calls import components as comp
-from app.calls.effects import Deferred
-from app.calls.models import Call, CallPipelineStep
+from app.calls import lifecycle
+from app.calls.lookups import config_for
+from app.calls.models import Call, CallEvent, CallPipelineStep
+from app.calls.origins import policy
 from app.calls.ports import registry
 from app.core.db import Database
+from app.core.queue import Deferred
 from app.webhooks_out import service as webhooks
 
 logger = logging.getLogger(__name__)
@@ -135,7 +138,7 @@ async def finalize_transcript(ctx: StepContext) -> Outcome:
 
 async def price_and_charge(ctx: StepContext) -> Outcome:
     call = ctx.call
-    if call.origin == "simulation" or call.connected_at is None or call.ended_at is None:
+    if not policy(call.origin).billable or call.connected_at is None or call.ended_at is None:
         return "skipped"
     if ctx.config is None:
         raise LookupError(f"agent version {call.agent_version_id} is not available")
@@ -173,13 +176,9 @@ def _external_step(name: str) -> StepHandler:
     return run
 
 
-def final_status(call: Call) -> str:
-    return "voicemail" if call.disconnect_reason == "voicemail_reached" else "completed"
-
-
 async def notify_analyzed(ctx: StepContext) -> Outcome:
     call = ctx.call
-    if call.origin == "simulation":
+    if not policy(call.origin).reaches_customer or webhooks.webhook_settings(ctx.config)[0] is None:
         return "skipped"
     url = None
     if (
@@ -192,27 +191,14 @@ async def notify_analyzed(ctx: StepContext) -> Outcome:
         url = registry.signer.presign_get(
             ctx.recordings_bucket, call.recording_key, webhooks.RECORDING_URL_TTL_S
         )
-    delivery = await webhooks.enqueue_event(
-        ctx.session,
-        call,
-        "call_analyzed",
-        config=ctx.config,
-        deferred=ctx.deferred,
-        recording_url=url,
-        now=ctx.now,
+    await lifecycle.notify(
+        ctx.session, call, "call_analyzed", deferred=ctx.deferred, recording_url=url, now=ctx.now
     )
-    if delivery is None and webhooks.webhook_settings(ctx.config)[0] is None:
-        return "skipped"
     return "done"
 
 
 async def complete(ctx: StepContext) -> Outcome:
-    call = ctx.call
-    if call.status == "processing":
-        call.status = final_status(call)
-        call.completed_at = ctx.now
-    if call.status in ("completed", "voicemail"):
-        call.pipeline_status = "done_with_warnings" if call.pipeline_warnings else "done"
+    await lifecycle.finalize(ctx.session, ctx.call, ctx.now)
     return "done"
 
 
@@ -320,9 +306,7 @@ async def _run_step(
         if step.status in ("done", "skipped") or (step.status == "failed" and not spec.blocking):
             result.steps[spec.name] = step.status
             return "continue"
-        from app.call_events.service import version_config
-
-        config = await version_config(session, call.agent_version_id)
+        config = await config_for(session, call)
         stamp = now or datetime.now(UTC)
         ctx = StepContext(session, call, config, catalog, Deferred(), stamp, recordings_bucket)
         step.started_at = stamp
@@ -372,11 +356,3 @@ async def _run_step(
         result.steps[spec.name] = outcome
         result.deferred.extend(ctx.deferred)
     return "continue"
-
-
-async def step_rows(db: Database, workspace_id: str, call_id: str) -> dict[str, CallPipelineStep]:
-    async with db.transaction(workspace_id=workspace_id) as session:
-        rows = (
-            await session.execute(select(CallPipelineStep).where(CallPipelineStep.call_id == call_id))
-        ).scalars()
-        return {r.step: r for r in rows}

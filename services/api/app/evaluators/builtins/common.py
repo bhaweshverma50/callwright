@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, ItemResult, Message, ToolEvent
+from app.calls.transcript import Message, ToolEvent
+from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, ItemResult
 from app.evaluators.judge import JudgeResult
 
 

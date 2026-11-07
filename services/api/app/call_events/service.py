@@ -13,8 +13,7 @@ is compared with the balance: below ``-CREDIT_GRACE_USD`` the response orders ``
 from __future__ import annotations
 
 import logging
-from collections import OrderedDict
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -23,22 +22,21 @@ from typing import Any
 from callwright_contract.adapters import AdapterCatalog
 from callwright_contract.calls import ACCEPTS_EVENTS_STATUSES
 from callwright_contract.protocol import Control, EventBatch, EventBatchResult, StatusEvent, UsageEvent
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
-from app.call_events.models import CallEvent
 from app.calls import components as comp
-from app.calls.effects import RUN_PIPELINE, Deferred
-from app.calls.models import Call, billable_seconds, can_transition
-from app.calls.ports import registry
+from app.calls import lifecycle
+from app.calls.lookups import config_for, workspace_for_call
+from app.calls.models import Call, CallEvent
+from app.calls.origins import policy
 from app.core.db import Database
-from app.core.errors import ProblemError, not_found
-from app.core.ids import is_valid_id
+from app.core.errors import ProblemError
+from app.core.queue import Deferred
 from app.pricing import engine
 from app.pricing import service as pricing
-from app.webhooks_out import service as webhooks
 
 logger = logging.getLogger(__name__)
 
@@ -79,34 +77,13 @@ def credit_control(balance_usd: Decimal, running_cost_usd: Decimal, grace_usd: D
     return Control(action="none")
 
 
-# Version config cache: versions are immutable, so a snapshot never changes.
-_CONFIGS: OrderedDict[str, Mapping[str, Any]] = OrderedDict()
-_CONFIG_CACHE_SIZE = 1024
-
-
-async def version_config(session: AsyncSession, version_id: str | None) -> Mapping[str, Any] | None:
-    if version_id is None:
-        return None
-    cached = _CONFIGS.get(version_id)
-    if cached is not None:
-        _CONFIGS.move_to_end(version_id)
-        return cached
-    snapshot = await registry.agent_versions.get_snapshot(session, version_id)
-    if snapshot is None:
-        return None
-    _CONFIGS[version_id] = snapshot.config
-    if len(_CONFIGS) > _CONFIG_CACHE_SIZE:
-        _CONFIGS.popitem(last=False)
-    return snapshot.config
-
-
 async def running_cost(
     session: AsyncSession, call: Call, catalog: AdapterCatalog, now: datetime
 ) -> Decimal | None:
     """Cost so far: 001 pricing over the latest meters and the connected time until ``now``."""
     if call.connected_at is None:
         return None
-    config = await version_config(session, call.agent_version_id)
+    config = await config_for(session, call)
     if config is None:
         return None
     components = comp.resolve(config, catalog).pricing(call.usage)
@@ -156,58 +133,35 @@ def _row(call: Call, event: Any) -> dict[str, Any]:
 
 
 async def _apply_status(
-    session: AsyncSession,
-    call: Call,
-    event: StatusEvent,
-    config: Mapping[str, Any] | None,
-    deferred: Deferred,
-    now: datetime,
+    session: AsyncSession, call: Call, event: StatusEvent, deferred: Deferred, now: datetime
 ) -> None:
-    new = event.status
     at = event.occurred_at
-    current = call.status
-    if new == "ended" and current in ("queued", "ringing"):
-        # Ended before connecting: a never-connected outcome, not billed (FR-035).
-        new = "failed"
-    if not can_transition(current, new):
-        logger.info("stale status %s -> %s ignored for %s", current, new, call.id)
-        return
-    call.status = new
-    if new == "ringing":
-        call.ringing_at = at
-    elif new == "in_progress":
-        call.connected_at = at
-        await session.flush()
-        await webhooks.enqueue_event(session, call, "call_started", config=config, deferred=deferred, now=now)
-    elif new == "ended":
-        assert call.connected_at is not None
-        call.ended_at = max(at, call.connected_at)
-        call.disconnect_reason = event.disconnect_reason or "error"
-        call.diagnostic = event.diagnostic
-        call.billable_seconds = billable_seconds(call.connected_at, call.ended_at)
-        await session.flush()
-        await webhooks.enqueue_event(session, call, "call_ended", config=config, deferred=deferred, now=now)
-        deferred.add(RUN_PIPELINE, call.workspace_id, call.id)
-    else:  # failed, no_answer, busy: never connected
-        call.ended_at = at
-        call.billable_seconds = 0
-        call.diagnostic = event.diagnostic
-        if new == "failed":
-            call.disconnect_reason = event.disconnect_reason or "error"
-        await session.flush()
-        await webhooks.enqueue_event(session, call, "call_ended", config=config, deferred=deferred, now=now)
-
-
-async def workspace_for_call(db: Database, call_id: str) -> str:
-    if not is_valid_id(call_id, "call"):
-        raise not_found("call")
-    async with db.transaction() as session:
-        workspace_id = (
-            await session.execute(text("select calls_workspace_for(:id)"), {"id": call_id})
-        ).scalar()
-    if workspace_id is None:
-        raise not_found("call")
-    return str(workspace_id)
+    if event.status == "ringing":
+        await lifecycle.ring(session, call, at)
+    elif event.status == "in_progress":
+        await lifecycle.connect(session, call, at, deferred=deferred, now=now)
+    elif event.status == "ended" and call.status not in ("queued", "ringing"):
+        await lifecycle.end_connected(
+            session,
+            call,
+            at=at,
+            reason=event.disconnect_reason or "error",
+            diagnostic=event.diagnostic,
+            deferred=deferred,
+            now=now,
+        )
+    else:
+        # Ended before connecting is a never-connected outcome, not billed (FR-035).
+        await lifecycle.fail_unconnected(
+            session,
+            call,
+            status="failed" if event.status == "ended" else event.status,
+            at=at,
+            reason=event.disconnect_reason,
+            diagnostic=event.diagnostic,
+            deferred=deferred,
+            now=now,
+        )
 
 
 def call_closed() -> ProblemError:
@@ -248,15 +202,13 @@ async def ingest(
         snapshot = latest_usage(call.usage_seq, events)
         if snapshot is not None:
             call.usage_seq, call.usage = snapshot
-        config = await version_config(session, call.agent_version_id)
         for event in sorted(
             (e for e in events if isinstance(e, StatusEvent) and e.seq in inserted), key=lambda e: e.seq
         ):
-            await _apply_status(session, call, event, config, out.deferred, now)
+            await _apply_status(session, call, event, out.deferred, now)
         call.last_heartbeat_at = now
         await session.flush()
-        # Simulations are billed as feature charges (008), never as call minutes.
-        if call.status == "in_progress" and call.origin != "simulation":
+        if call.status == "in_progress" and policy(call.origin).billable:
             cost = await running_cost(session, call, catalog, now)
             if cost is not None:
                 balance = await billing.get_balance(session, workspace_id)

@@ -15,40 +15,8 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import phonenumbers
-from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME, PLACEHOLDER
+from callwright_contract.variables import PLACEHOLDER
 from phonenumbers import timezone as pn_timezone
-
-
-@dataclass(frozen=True)
-class VariableIssue:
-    pointer: str
-    code: str
-    message: str
-
-
-def validate_supplied(values: Mapping[str, Any]) -> list[VariableIssue]:
-    issues: list[VariableIssue] = []
-    if len(values) > MAX_VARIABLES:
-        issues.append(
-            VariableIssue("/dynamic_variables", "out_of_range", f"At most {MAX_VARIABLES} variables.")
-        )
-    for name, value in values.items():
-        pointer = f"/dynamic_variables/{name}"
-        if not NAME.match(name):
-            issues.append(
-                VariableIssue(
-                    pointer,
-                    "invalid_format",
-                    "Names start with a letter or underscore and use letters, digits and underscores.",
-                )
-            )
-        if not isinstance(value, str):
-            issues.append(VariableIssue(pointer, "invalid_format", "Values are strings."))
-        elif len(value) > MAX_VALUE_CHARS:
-            issues.append(
-                VariableIssue(pointer, "out_of_range", f"Values are at most {MAX_VALUE_CHARS} characters.")
-            )
-    return issues
 
 
 def referenced_names(texts: Iterable[str | None]) -> list[str]:

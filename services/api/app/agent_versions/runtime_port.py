@@ -27,6 +27,7 @@ def to_runtime(snapshot: service.AgentSnapshot, agent_type: str | None = None) -
         workspace_id=snapshot.workspace_id,
         agent_type=str(config.get("type") or agent_type or "single_prompt"),
         config=config,
+        version_number=snapshot.version_number,
     )
 
 

@@ -29,8 +29,7 @@ from app.agent_versions import service as versions
 from app.agents import service as agents
 from app.agents.defaults import default_config
 from app.agents.models import Agent
-from app.call_events.models import CallEvent
-from app.calls.models import Call
+from app.calls.models import Call, CallEvent
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import new_id
 from app.core.secrets import KeyWrapper, put_secret

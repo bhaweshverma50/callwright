@@ -65,13 +65,8 @@ def stt_not_configured() -> ProblemError:
     )
 
 
-def stt_unavailable() -> ProblemError:
-    return ProblemError(
-        503,
-        "stt_unavailable",
-        "Transcription unavailable",
-        "Live transcription is not available; record the clip instead.",
-    )
+def stt_unavailable(detail: str) -> ProblemError:
+    return ProblemError(503, "stt_unavailable", "Transcription unavailable", detail)
 
 
 @router.post("/voice-commands/stream-token", responses=problem_responses(401, 429, 503))
@@ -82,7 +77,7 @@ async def stream_token(request: Request, principal: CurrentPrincipal) -> JSONRes
     except SttNotConfigured as exc:
         raise stt_not_configured() from exc
     except SttUnavailable as exc:
-        raise stt_unavailable() from exc
+        raise stt_unavailable("Live transcription is not available; record the clip instead.") from exc
     return JSONResponse(credential, headers={"Cache-Control": "no-store"})
 
 
@@ -106,9 +101,7 @@ async def transcribe(
     except SttNotConfigured as exc:
         raise stt_not_configured() from exc
     except SttUnavailable as exc:
-        raise ProblemError(
-            503, "stt_unavailable", "Transcription unavailable", "Try again, or type the command."
-        ) from exc
+        raise stt_unavailable("Try again, or type the command.") from exc
     return {"transcript": text}
 
 

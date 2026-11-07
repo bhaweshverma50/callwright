@@ -18,7 +18,6 @@ from typing import Any
 
 from app.agents import hooks as agent_hooks
 from app.agents.models import Agent
-from app.calls import ports
 from app.core.ids import new_id
 from app.flows import assistant_fake, service
 from app.flows.models import Flow
@@ -75,7 +74,6 @@ async def duplicate_flow(ctx: agent_hooks.DuplicateContext) -> None:
 
 
 def register() -> None:
-    ports.set_flow_runtime_available(True)
     agent_hooks.register_snapshot_resolver("flow", resolve_flow)
     agent_hooks.register_validator("flow", validate_flow)
     agent_hooks.register_duplicate_hook(duplicate_flow)

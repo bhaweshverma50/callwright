@@ -21,9 +21,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
+from app.calls import transcript
 from app.calls.models import Call
-from app.evals.context import parse_transcript
-from app.evaluators.base import EvalContext, Message, ToolEvent
+from app.calls.transcript import Message, ToolEvent
+from app.evaluators.base import EvalContext
 
 MAX_CHARS = 8000
 # Embedding list price per million tokens (005 adapters use text-embedding-3-small class models).
@@ -145,8 +146,8 @@ async def backfill(
         call = await session.get(Call, call_id)
         if call is None or call.ended_at is None:
             continue
-        messages, tools, _ = parse_transcript(list((call.transcript or {}).get("items") or []))
-        if not messages:
+        parsed = transcript.read(call)
+        if not parsed.messages:
             continue
         await store(
             session,
@@ -155,7 +156,7 @@ async def backfill(
             call_id=call.id,
             agent_id=call.agent_id,
             ended_at=call.ended_at,
-            source=call_text(messages, tools, call.disconnect_reason),
+            source=call_text(parsed.messages, parsed.tools, call.disconnect_reason),
         )
         done += 1
     return done

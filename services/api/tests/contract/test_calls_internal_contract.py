@@ -13,7 +13,14 @@ from app.calls.ports import InboundRoute
 from tests.conftest import Account
 from tests.contract.conftest import check
 from tests.contract.worker_compat import worker_client, worker_modules
-from tests.runtime_support import SERVICE_HEADERS, Runtime, dispatch_metadata, owner_sql, start_web_call
+from tests.runtime_support import (
+    SERVICE_HEADERS,
+    Runtime,
+    agent_config,
+    dispatch_metadata,
+    owner_sql,
+    start_web_call,
+)
 
 
 async def _web_call(client: httpx.AsyncClient, account: Account, runtime: Runtime) -> tuple[str, str]:
@@ -170,7 +177,9 @@ async def test_sip_outbound_without_dial_provider_is_refused(app: FastAPI, runti
 
     worker_modules()
     _, ws = await runtime.workspace()
-    agent = runtime.versions.add_agent(ws)
+    agent = runtime.versions.add_agent(
+        ws, agent_config(advanced={"webhook_url": "https://hooks.example.com/x"})
+    )
     admission = await calls.admit(
         runtime.db,
         calls.AdmissionRequest(ws, agent.agent_id, "sip_outbound", "outbound", to_number="+15550002"),
@@ -186,4 +195,11 @@ async def test_sip_outbound_without_dial_provider_is_refused(app: FastAPI, runti
         )
     )
     assert not result.admitted and result.refusal.diagnostic == "outbound_unavailable"
+    # Failed like every never-connected call: call_ended goes to the agent's webhook.
+    call_id = admission.call.id
+    assert owner_sql("select status, billable_seconds from calls where id = %s", (call_id,)) == [
+        ("failed", 0)
+    ]
+    events = owner_sql("select event from webhook_deliveries where call_id = %s", (call_id,))
+    assert events == [("call_ended",)]
     await http.aclose()

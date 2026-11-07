@@ -72,17 +72,5 @@ def test_timezone_rendering_and_unknown_zone_falls_back() -> None:
     assert builtins(timezone="Not/AZone")["timezone"] == "UTC"
 
 
-def test_validation_limits() -> None:
-    assert v.validate_supplied({"ok_name": "x", "_x1": "y"}) == []
-    bad = v.validate_supplied({"1bad": "x", "has-dash": "y", "long": "z" * 2001})
-    assert {i.pointer for i in bad} == {
-        "/dynamic_variables/1bad",
-        "/dynamic_variables/has-dash",
-        "/dynamic_variables/long",
-    }
-    assert v.validate_supplied({f"v{i}": "x" for i in range(51)})[0].code == "out_of_range"
-    assert v.NAME.match("a" * 64) and not v.NAME.match("a" * 65)
-
-
 def test_referenced_names_tolerates_whitespace() -> None:
     assert v.referenced_names(["{{a}} {{ b }} {{a}}", None, "{{ not valid-}}"]) == ["a", "b"]

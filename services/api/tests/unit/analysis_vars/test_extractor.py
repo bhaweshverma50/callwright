@@ -15,7 +15,7 @@ from app.analysis_vars.extractor import (
     resolve,
     system_prompt,
 )
-from app.evaluators.base import Message
+from app.calls.transcript import Message
 from tests.fakes.fake_llm import FakeLlm
 
 BOOL = {"name": "appointment_booked", "type": "boolean", "description": "Slot confirmed"}

@@ -11,11 +11,11 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app.calls.effects import Deferred, dispatch
 from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import new_id, path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.core.queue import Deferred, dispatch
 from app.core.secrets import key_wrapper
 from app.webhooks_out import jobs, service
 from app.webhooks_out.models import DELIVERY_STATUSES, WEBHOOK_EVENTS, WebhookDelivery

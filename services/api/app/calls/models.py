@@ -1,11 +1,13 @@
-"""Call and pipeline-step rows, value sets and the guarded state transition (003 T008).
+"""Call, pipeline-step and call-event rows and the guarded state transition (003 T008, T009).
 
 Tables are created by migration s003_0001. ORM mappings declare no foreign keys (the migration
-owns them), so the module imports on its own.
+owns them), so the module imports on its own. Call events (data-model section 2) are what the
+worker posts, ordered and de-duplicated per call by ``(call_id, seq)``; heartbeats are not stored.
 
 State machine (data-model section 1): transitions are applied with
 ``UPDATE ... WHERE id = :id AND status IN (:expected)``. A stale transition updates nothing and
-is logged, never raised, so the first writer wins (disconnect reason included).
+is logged, never raised, so the first writer wins (disconnect reason included). Every move of a
+call goes through ``calls.lifecycle``.
 """
 
 from __future__ import annotations
@@ -15,10 +17,21 @@ import math
 from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Final, Literal
+from typing import Any, Final
 
-from callwright_contract.calls import CALL_STATUSES
-from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, Text, func, update
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Identity,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    update,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
@@ -49,11 +62,6 @@ TRANSITIONS: Final[frozenset[tuple[str | None, str]]] = frozenset(
 
 def can_transition(current: str | None, new: str) -> bool:
     return (current, new) in TRANSITIONS
-
-
-def sources_for(new: str) -> tuple[str, ...]:
-    """Every status a call may move to ``new`` from (stable order)."""
-    return tuple(s for s in CALL_STATUSES if (s, new) in TRANSITIONS)
 
 
 def billable_seconds(connected_at: datetime | None, ended_at: datetime | None) -> int:
@@ -120,9 +128,6 @@ class Call(Base):
     route_detail: Mapped[str | None] = mapped_column(String)
 
 
-StepStatus = Literal["pending", "running", "done", "failed", "skipped"]
-
-
 class CallPipelineStep(Base):
     __tablename__ = "call_pipeline_steps"
 
@@ -135,6 +140,28 @@ class CallPipelineStep(Base):
     last_error: Mapped[str | None] = mapped_column(String)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CallEvent(Base):
+    __tablename__ = "call_events"
+    __table_args__ = (UniqueConstraint("call_id", "seq"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String)
+    call_id: Mapped[str] = mapped_column(String)
+    seq: Mapped[int] = mapped_column(Integer)
+    type: Mapped[str] = mapped_column(String)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    offset_ms: Mapped[int | None] = mapped_column(Integer)
+    turn_index: Mapped[int | None] = mapped_column(Integer)
+    stt_final_ms: Mapped[int | None] = mapped_column(Integer)
+    eou_delay_ms: Mapped[int | None] = mapped_column(Integer)
+    llm_ttft_ms: Mapped[int | None] = mapped_column(Integer)
+    tts_ttfb_ms: Mapped[int | None] = mapped_column(Integer)
+    e2e_ms: Mapped[int | None] = mapped_column(Integer)
+    tool_ms: Mapped[int | None] = mapped_column(Integer)
+    interrupted: Mapped[bool | None] = mapped_column(Boolean)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
 
 async def transition(

@@ -19,8 +19,9 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Protocol
 
+from app.calls.transcript import Message, ToolEvent
 from app.evals.scoring import Verdict, judge_item_verdict
-from app.evaluators.base import Message, ToolEvent, Unavailable, quote
+from app.evaluators.base import Unavailable, quote
 from app.llms.adapters.base import ChatMessage, Completion, ModelError, ModelTimeout
 from app.llms.client import token_cost
 

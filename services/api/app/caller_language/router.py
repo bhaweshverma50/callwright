@@ -9,8 +9,8 @@ from callwright_contract.values import E164_PATTERN
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.call_events.service import workspace_for_call
 from app.caller_language import service
+from app.calls.lookups import workspace_for_call
 from app.core.auth import CurrentPrincipal, require_service
 from app.core.errors import problem_responses
 from app.core.ids import path_id

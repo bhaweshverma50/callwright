@@ -96,6 +96,12 @@ class CallQualityPort(Protocol):
         self, session: AsyncSession, left_call_id: str, right_call_id: str
     ) -> list[VerdictDiff]: ...
 
+    async def analysis_states(
+        self, session: AsyncSession, call_ids: Sequence[str]
+    ) -> dict[str, tuple[str, str | None]]:
+        """``(status, skip_reason)`` of each call's post-call analysis, when one exists."""
+        ...
+
 
 class NullCallQualityPort:
     """No quality feature installed: every call is ``not_evaluated`` and unannotated."""
@@ -113,7 +119,6 @@ class NullCallQualityPort:
         eval_statuses: Sequence[str],
         user_id: str,
     ) -> ColumnElement[bool]:
-        # Every call is unannotated and not evaluated, so a filter matches all or nothing.
         label_ok = not labels or "unannotated" in labels
         status_ok = not eval_statuses or "not_evaluated" in eval_statuses
         return true() if label_ok and status_ok else false()
@@ -132,3 +137,8 @@ class NullCallQualityPort:
         self, session: AsyncSession, left_call_id: str, right_call_id: str
     ) -> list[VerdictDiff]:
         return []
+
+    async def analysis_states(
+        self, session: AsyncSession, call_ids: Sequence[str]
+    ) -> dict[str, tuple[str, str | None]]:
+        return {}

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.agent_versions.models import AgentVersion
-from app.call_events.service import workspace_for_call
+from app.calls.lookups import workspace_for_call
 from app.calls.models import Call
 from app.core.auth import CurrentPrincipal, Principal, bearer_token
 from app.core.errors import ProblemError, not_found, problem_responses, too_many_requests, validation_failed

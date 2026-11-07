@@ -21,6 +21,5 @@ class VoiceCommandLog(Base):
     transcript: Mapped[str] = mapped_column(String)
     action: Mapped[str] = mapped_column(String)
     downgraded: Mapped[bool] = mapped_column(Boolean, default=False)
-    stt_seconds: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=Decimal(0))
     raw_cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
