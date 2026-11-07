@@ -49,16 +49,18 @@ export interface ListState {
 export const MULTI_KEYS = ["status", "channel", "disconnect_reason", "sentiment", "agent_id", "label", "eval_status", "origin"] as const;
 export const TEXT_KEYS = ["call_id", "from_number", "to_number", "start_date", "end_date"] as const;
 export type MultiKey = (typeof MULTI_KEYS)[number];
-export type TextKey = (typeof TEXT_KEYS)[number];
 
-const ALLOWED: Record<Exclude<MultiKey, "agent_id">, readonly string[]> = {
-  status: Object.keys(STATUS_LABELS),
-  channel: Object.keys(CHANNEL_LABELS),
-  disconnect_reason: Object.keys(REASON_LABELS),
-  sentiment: Object.keys(SENTIMENT_LABELS),
-  label: Object.keys(LABEL_LABELS),
-  eval_status: Object.keys(EVAL_LABELS),
-  origin: Object.keys(ORIGIN_LABELS),
+const oneOf = (labels: Record<string, string>) => (v: string) => Object.hasOwn(labels, v);
+/** Which values each list filter accepts from the address. */
+const ALLOWED: Record<MultiKey, (v: string) => boolean> = {
+  status: oneOf(STATUS_LABELS),
+  channel: oneOf(CHANNEL_LABELS),
+  disconnect_reason: oneOf(REASON_LABELS),
+  sentiment: oneOf(SENTIMENT_LABELS),
+  agent_id: isAgentId,
+  label: oneOf(LABEL_LABELS),
+  eval_status: oneOf(EVAL_LABELS),
+  origin: oneOf(ORIGIN_LABELS),
 };
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -89,7 +91,7 @@ export function parseListState(params: URLSearchParams): { state: ListState; dro
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean);
-    const ok = values.filter((v) => (key === "agent_id" ? isAgentId(v) : ALLOWED[key].includes(v)));
+    const ok = values.filter((v) => ALLOWED[key](v));
     dropped.push(...values.filter((v) => !ok.includes(v)));
     const unique = [...new Set(ok)];
     if (key === "origin") filters.origin = unique.length ? (unique as CallOrigin[]) : [...DEFAULT_ORIGINS];

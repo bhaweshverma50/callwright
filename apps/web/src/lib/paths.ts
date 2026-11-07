@@ -1,3 +1,4 @@
+import { scalarLimits } from "./contract.gen";
 /**
  * Every in-app address built outside the router, so a page moving changes one place. The router
  * (src/router.tsx) mounts its routes on the same values.
@@ -20,8 +21,8 @@ export const AUTH_PAGES = {
 
 const AUTH_PAGE_SET = new Set<string>(Object.values(AUTH_PAGES));
 
-/** Agent ids are `agt_` and a Crockford ULID. */
-const AGENT_ID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+/** Agent ids are `agt_` and a Crockford ULID (the contract's AgentId pattern). */
+const AGENT_ID = new RegExp(scalarLimits.AgentId.pattern);
 export const isAgentId = (id: string) => AGENT_ID.test(id);
 
 type AgentRef = { id: string; type?: "single_prompt" | "flow" | null };

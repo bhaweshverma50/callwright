@@ -1,10 +1,11 @@
+import { scalarLimits } from "./contract.gen";
 /**
  * Phone numbers in E.164 form (a plus, the country code and 7 to 15 digits), as the API stores
  * them for transfers, phone numbers, WhatsApp channels and outbound calls. The server stays the
  * authority; this check only points at the field early.
  */
 
-export const E164 = /^\+[1-9]\d{6,14}$/;
+export const E164 = new RegExp(scalarLimits.E164.pattern);
 export const E164_EXAMPLE = "+14155550123";
 
 /** `label` names the field in the empty message ("Enter the destination number."). */
