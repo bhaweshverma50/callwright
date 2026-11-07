@@ -88,7 +88,7 @@ async def test_reporting_failure_does_not_break_dispatch() -> None:
     assert json.loads(await h.tools.dispatch("end_call", {})) == {"ended": True}
 
 
-def test_kb_search_is_injected_and_switchable() -> None:
+def test_kb_search_is_injected() -> None:
     h = make(
         [tool("end_call", "end_call")],
         knowledge=[{"kb_id": "kb_1", "name": "Clinic FAQ", "description": "hours"}],
@@ -97,10 +97,6 @@ def test_kb_search_is_injected_and_switchable() -> None:
     assert names == ["end_call", "schedule_callback", "kb_search"]
     kb = h.tools.schemas()[-1]
     assert "Clinic FAQ (hours)" in kb["description"]
-    assert [s["name"] for s in h.tools.schemas(kb_search_enabled=False)] == [
-        "end_call",
-        "schedule_callback",
-    ]
 
 
 def test_function_tools_build_livekit_raw_tools() -> None:

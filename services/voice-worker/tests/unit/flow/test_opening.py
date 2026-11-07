@@ -8,8 +8,9 @@ from typing import Any
 from tests.flow_support import RecordingControl, compiled_config
 from tests.harness.runner import build_runtime
 from worker.adapters.registry import AdapterRegistry
+from worker.flow import FlowComponents
 from worker.flow.nodes.start import opening
-from worker.flow.runtime import FlowCall, FlowComponents
+from worker.flow.runtime import CallwrightFlowRunner, FlowCall
 from worker.pipeline import plan_session
 from worker.tools.registry import build_call_tools
 
@@ -55,14 +56,14 @@ def test_generated_greeting_is_written_by_the_first_node() -> None:
 
 def test_plan_takes_the_opening_from_the_start_node() -> None:
     config = compiled_config("triage_support")
-    plan = plan_session(build_runtime(config, {}), AdapterRegistry())
+    plan = plan_session(build_runtime(config, {}), AdapterRegistry(), CallwrightFlowRunner())
     assert plan.agent_type == "flow" and plan.greeting == "Thanks for calling. How can I help?"
 
 
 def test_node_overrides_build_their_own_components() -> None:
     config = compiled_config("overrides_context")
     runtime = build_runtime(config, {})
-    plan = plan_session(runtime, AdapterRegistry())
+    plan = plan_session(runtime, AdapterRegistry(), CallwrightFlowRunner())
     control = RecordingControl()
     built: list[Any] = []
 

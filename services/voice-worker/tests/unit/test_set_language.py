@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 import pytest
 
-from tests.unit.conftest import make_runtime
+from tests.unit.conftest import call_tools, make_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
 from worker.language import (
@@ -144,7 +144,7 @@ async def test_switch_stages_speech_voice_and_reply_language_and_reports_it() ->
     assert swap.specs["tts"].options["language"] == "hi"
     plan = h.manager.plan_for_current()
     assert plan.language == "hi" and plan.reply_language == "Hindi"
-    agent = build_agent(plan, h.runtime, control=None)  # type: ignore[arg-type]
+    agent = build_agent(plan, h.runtime, None, call_tools(h.runtime))  # type: ignore[arg-type]
     assert agent.instructions.endswith(reply_language_instruction("Hindi"))
 
     await settle(h.tools)
@@ -188,7 +188,7 @@ def test_call_starts_in_the_saved_language() -> None:
     assert (plan.stt.model, plan.stt.options["language"]) == ("nova-2", "hi")
     assert plan.tts.options["language"] == "hi"
     assert plan.reply_language == "Hindi" and plan.greeting_language == "Hindi"
-    agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+    agent = build_agent(plan, runtime, None, call_tools(runtime))  # type: ignore[arg-type]
     assert reply_language_instruction("Hindi") in agent.instructions
     assert set_language_instruction(runtime.language_options) in agent.instructions
 
@@ -199,7 +199,12 @@ def test_call_starts_in_the_saved_language() -> None:
         assert same.language == "en-US" and same.reply_language is None
         assert same.greeting_language is None
     nothing = make_runtime()
-    agent = build_agent(plan_session(nothing, AdapterRegistry()), nothing, control=None)  # type: ignore[arg-type]
+    agent = build_agent(
+        plan_session(nothing, AdapterRegistry()),
+        nothing,
+        None,  # type: ignore[arg-type]
+        call_tools(nothing),
+    )
     assert "set_language" not in agent.instructions and "Language rule" not in agent.instructions
 
 

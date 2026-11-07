@@ -1,4 +1,4 @@
-"""005's tool provider (T012, T029, T048, T079, T087, T100).
+"""A call's tools (005 T012, T029, T048, T079, T087, T100).
 
 Builds the LLM function tools for a call from the version snapshot (``tools`` and
 ``knowledge``), dispatches every invocation through one path and reports it:
@@ -17,8 +17,8 @@ Spoken fillers: :class:`FillerPolicy` tells the agent's ``llm_node`` which tools
 what to say at once when the model calls one before saying anything (pipeline.py). Internal
 worker tools (voicemail detection) are not in the policy and never trigger a filler.
 
-``kb_search`` is added when the snapshot lists knowledge bases. 004's flow executor passes
-``kb_search_enabled=False`` for nodes that switch it off (``CallTools.function_tools``).
+``kb_search`` is added when the snapshot lists knowledge bases; a flow node gets it when the node
+switches it on (``worker.flow.runtime.node_tools``).
 """
 
 from __future__ import annotations
@@ -29,7 +29,6 @@ import json
 import logging
 import re
 import time
-import weakref
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
@@ -45,13 +44,7 @@ from callwright_contract.values import (
 )
 
 from worker import telemetry
-from worker.tools import (
-    CallControl,
-    ToolActivity,
-    kb_search,
-    register_tool_provider,
-    secrets,
-)
+from worker.tools import CallControl, ToolActivity, kb_search, secrets
 from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecView
 from worker.tools.dtmf import PressDigitExecutor
 from worker.tools.end_call import EndCallExecutor
@@ -288,16 +281,12 @@ class CallTools:
             found[self.kb.name] = self.kb
         return found
 
-    def schemas(self, *, kb_search_enabled: bool = True) -> list[dict[str, Any]]:
-        specs = list(self.specs)
-        if self.kb is not None and kb_search_enabled:
-            specs.append(self.kb)
+    def schemas(self) -> list[dict[str, Any]]:
+        specs = [*self.specs, *([self.kb] if self.kb is not None else [])]
         return [function_schema(s) for s in specs]
 
-    def function_tools(self, *, kb_search_enabled: bool = True) -> list[Any]:
-        return [
-            _raw_tool(self, schema) for schema in self.schemas(kb_search_enabled=kb_search_enabled)
-        ]
+    def function_tools(self) -> list[Any]:
+        return [_raw_tool(self, schema) for schema in self.schemas()]
 
     def _context(self, run_ctx: Any) -> ToolContext:
         if run_ctx is None:
@@ -566,75 +555,29 @@ def build_call_tools(
     return CallTools(control, specs, executors, ctx, fillers, kb, clients=clients)
 
 
-# Provider -------------------------------------------------------------------------------------
-
-
-class CallwrightToolProvider:
-    """The registered :class:`~worker.tools.ToolProvider`. ``prepare`` runs at session start
-    (secret fetch, keep-alive clients); ``tools_for`` then hands the LLM its function tools."""
-
-    def __init__(self) -> None:
-        self.calls: dict[str, CallTools] = {}
-        self._adhoc: weakref.WeakKeyDictionary[Any, CallTools] = weakref.WeakKeyDictionary()
-
-    async def prepare(
-        self,
-        runtime: RuntimeConfig,
-        control: CallControl,
-        settings: WorkerSettings,
-        *,
-        transfer_backend: TransferBackend | None = None,
-    ) -> CallTools:
-        base = settings.internal_api_url
-        token = settings.service_token.get_secret_value()
-        api_client = httpx.AsyncClient(timeout=settings.http_timeout_s)
-        tool_secrets: dict[str, str] = {}
-        if secrets.needs_secrets(runtime.config):
-            tool_secrets = await secrets.fetch(api_client, base, token, control.call_id)
-        tools = build_call_tools(
-            runtime,
-            control,
-            tool_secrets=tool_secrets,
-            api_client=api_client,
-            api_base_url=base,
-            service_token=token,
-            transfer_backend=transfer_backend,
-        )
-        tools.clients.append(api_client)
-        self.calls[control.call_id] = tools
-        return tools
-
-    def _for(self, runtime: RuntimeConfig, control: CallControl) -> CallTools:
-        """The prepared tools of the call, else tools without secrets for this control (offline
-        harness and tests), kept as long as the control lives."""
-        call_id = getattr(control, "call_id", None)
-        prepared = self.calls.get(call_id) if isinstance(call_id, str) else None
-        if prepared is not None:
-            return prepared
-        try:
-            found = self._adhoc.get(control)
-        except TypeError:  # not weak-referenceable
-            return build_call_tools(runtime, control)
-        if found is None:
-            found = build_call_tools(runtime, control)
-            self._adhoc[control] = found
-        return found
-
-    def tools_for(self, runtime: RuntimeConfig, control: CallControl) -> Sequence[Any]:
-        return self._for(runtime, control).function_tools()
-
-    def call_tools(self, runtime: RuntimeConfig, control: CallControl) -> CallTools:
-        """The call's tools, from which 004 builds each flow node's own tool set."""
-        return self._for(runtime, control)
-
-    def filler_policy(self, runtime: RuntimeConfig, control: CallControl) -> FillerPolicy:
-        return self._for(runtime, control).fillers
-
-    async def release(self, call_id: str) -> None:
-        tools = self.calls.pop(call_id, None)
-        if tools is not None:
-            await tools.aclose()
-
-
-PROVIDER = CallwrightToolProvider()
-register_tool_provider(PROVIDER)
+async def prepare_call_tools(
+    runtime: RuntimeConfig,
+    control: CallControl,
+    settings: WorkerSettings,
+    *,
+    transfer_backend: TransferBackend | None = None,
+) -> CallTools:
+    """The live call's tools at session start: one secret fetch and keep-alive clients, closed
+    with :meth:`CallTools.aclose` when the call ends."""
+    base = settings.internal_api_url
+    token = settings.service_token.get_secret_value()
+    api_client = httpx.AsyncClient(timeout=settings.http_timeout_s)
+    tool_secrets: dict[str, str] = {}
+    if secrets.needs_secrets(runtime.config):
+        tool_secrets = await secrets.fetch(api_client, base, token, control.call_id)
+    tools = build_call_tools(
+        runtime,
+        control,
+        tool_secrets=tool_secrets,
+        api_client=api_client,
+        api_base_url=base,
+        service_token=token,
+        transfer_backend=transfer_backend,
+    )
+    tools.clients.append(api_client)
+    return tools

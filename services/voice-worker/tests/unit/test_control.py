@@ -10,13 +10,7 @@ from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
 from worker.metrics import EventRecorder
 from worker.pipeline import OverrideManager, clamp_value, plan_session
-from worker.tools import (
-    CallControl,
-    NullToolProvider,
-    ToolActivity,
-    get_tool_provider,
-    register_tool_provider,
-)
+from worker.tools import CallControl, ToolActivity
 
 
 class Backend:
@@ -178,21 +172,3 @@ async def test_control_without_manager_rejects_overrides() -> None:
     control = RuntimeCallControl("call_x", EventRecorder(), Backend())
     result = await control.apply_overrides({"tts": {"speed": 1.0}})
     assert result.rejected == ("tts",) and not result.pending
-
-
-def test_tool_provider_registration_and_null_default() -> None:
-    from worker.tools.registry import PROVIDER
-
-    # 005 installs its provider once worker.tools.registry is imported (entry does that).
-    assert get_tool_provider() is PROVIDER
-    assert list(NullToolProvider().tools_for(None, None)) == []  # type: ignore[arg-type]
-
-    class Provider:
-        def tools_for(self, runtime: object, control: object) -> list[str]:
-            return ["end_call"]
-
-    register_tool_provider(Provider())
-    try:
-        assert list(get_tool_provider().tools_for(None, None)) == ["end_call"]  # type: ignore[arg-type]
-    finally:
-        register_tool_provider(PROVIDER)

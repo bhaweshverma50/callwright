@@ -50,17 +50,22 @@ async def run(turns: int = TURNS) -> dict[str, Any]:
     baseline_rt = build_runtime(load_agent_config(), {})
     baseline_plan = plan_session(baseline_rt, AdapterRegistry())
     baseline = await _timed_turns(
-        build_agent(baseline_plan, baseline_rt, control=None),  # type: ignore[arg-type]
+        build_agent(
+            baseline_plan,
+            baseline_rt,
+            None,  # type: ignore[arg-type]
+            build_call_tools(baseline_rt, None),  # type: ignore[arg-type]
+        ),
         script,
         ["Hello"] * turns,
     )
 
     config = copy.deepcopy(compiled_config("overrides_context"))
     rt = build_runtime(config, {})
-    plan = plan_session(rt, AdapterRegistry())
+    flows = CallwrightFlowRunner()
+    plan = plan_session(rt, AdapterRegistry(), flows)
     control = RecordingControl()
-    tools = build_call_tools(rt, control)
-    agent = CallwrightFlowRunner().build_agent(rt, control, [], plan=plan, base_tools=tools)
+    agent = build_agent(plan, rt, control, build_call_tools(rt, control), flows=flows)
     flow = await _timed_turns(agent, script, ["Hello"] * turns)
 
     moves: list[float] = []
@@ -69,9 +74,7 @@ async def run(turns: int = TURNS) -> dict[str, Any]:
     )
     for _ in range(max(3, turns // 3)):
         control = RecordingControl()
-        agent = CallwrightFlowRunner().build_agent(
-            rt, control, [], plan=plan, base_tools=build_call_tools(rt, control)
-        )
+        agent = build_agent(plan, rt, control, build_call_tools(rt, control), flows=flows)
         moves += await _timed_turns(agent, move_script, ["Spanish please"])
 
     def stats(values: list[float]) -> dict[str, float]:

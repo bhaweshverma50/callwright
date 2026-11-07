@@ -26,7 +26,6 @@ import httpx
 from callwright_contract.values import SCHEDULE_CALLBACK_TOOL, SET_LANGUAGE_TOOL, STOCK_GOODBYE
 
 from worker.adapters.registry import (
-    AdapterRegistry,
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorSpec,
@@ -40,7 +39,7 @@ from worker.agent import (
     tts_gain_for,
 )
 from worker.call_behavior import ends_with_goodbye
-from worker.flow import FLOW_NOT_COMPILED, FlowRuntimeUnavailable, llm_ops
+from worker.flow import FLOW_NOT_COMPILED, FlowComponents, FlowRuntimeUnavailable, llm_ops
 from worker.flow import nodes as _handlers  # noqa: F401  (registers the node handlers)
 from worker.flow.context import BackgroundSummarizer, Message, handoff, known_facts
 from worker.flow.events import TOPIC, FlowEvents
@@ -58,7 +57,7 @@ from worker.tools.registry import CallTools, FillerPolicy, filler_texts, simulat
 if TYPE_CHECKING:
     from callwright_contract.protocol import RuntimeConfig
 
-    from worker.agent import SessionPlan
+    from worker.agent import SessionPlan, TtsTextHook
 
 log = logging.getLogger("callwright.flow")
 GREETING_WAIT_S = 20.0
@@ -72,15 +71,6 @@ COMPLETE_TASK = "complete_task"
 IGNORED = "Ignored: the call already moved to another step this turn."
 
 
-@dataclass(frozen=True)
-class FlowComponents:
-    """How the runtime builds a node's own LLM, TTS or STT (from ``LiveCall``)."""
-
-    registry: AdapterRegistry
-    build: Callable[[VendorSpec], Any]
-    on_timing: Callable[[str, int], None] | None = None
-
-
 @dataclass
 class NodeComponents:
     """A node's own components (``llm``, ``tts``, ``stt``) and, with its own voice, the voice's
@@ -91,17 +81,12 @@ class NodeComponents:
     tts_gain: float = 1.0
 
 
-def flow_block(config: Mapping[str, Any]) -> Mapping[str, Any] | None:
+def flow_block(config: Mapping[str, Any]) -> Mapping[str, Any]:
     flow = config.get("flow")
     compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    return (
-        compiled if isinstance(compiled, Mapping) and compiled.get("schema_version") == 1 else None
-    )
-
-
-def call_opening(config: Mapping[str, Any], variables: Mapping[str, Any]) -> Opening | None:
-    compiled = flow_block(config)
-    return opening(compiled, variables) if compiled is not None else None
+    if not isinstance(compiled, Mapping) or compiled.get("schema_version") != 1:
+        raise FlowRuntimeUnavailable("the flow did not compile", diagnostic=FLOW_NOT_COMPILED)
+    return compiled
 
 
 # Built-in tools of the call (005's registry) that every conversational node gets: booking a
@@ -261,11 +246,9 @@ class FlowCall:
         extra_instructions: str = "",
         on_tts_text: Callable[[str], None] | None = None,
         components: FlowComponents | None = None,
-        base_tools: CallTools | None = None,
+        base_tools: CallTools,
     ) -> None:
         compiled = flow_block(runtime.config)
-        if compiled is None:
-            raise FlowRuntimeUnavailable("the flow did not compile", diagnostic=FLOW_NOT_COMPILED)
         self.runtime = runtime
         self.control = control
         self.plan = plan
@@ -289,10 +272,6 @@ class FlowCall:
             variables,
             call_id=getattr(control, "call_id", None),
         )
-        if base_tools is None:
-            from worker.tools.registry import PROVIDER
-
-            base_tools = PROVIDER.call_tools(runtime, control)
         self.base_tools = base_tools
         if components is not None and components.on_timing is not None:
             timing = components.on_timing
@@ -834,33 +813,46 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
 
 
 class CallwrightFlowRunner:
-    """The registered ``FlowRunner`` (004)."""
-
-    available = True
+    """The ``FlowRunner`` (004): one :class:`FlowCall` per running call, by call id."""
 
     def __init__(self) -> None:
-        self.calls: dict[str, FlowCall] = {}
+        self._calls: dict[str, FlowCall] = {}
+
+    def opening(self, runtime: RuntimeConfig) -> Opening:
+        return opening(flow_block(runtime.config), runtime.variables)
 
     def build_agent(
-        self, runtime: RuntimeConfig, control: CallControl, tools: Sequence[Any], **options: Any
+        self,
+        runtime: RuntimeConfig,
+        control: CallControl,
+        plan: SessionPlan,
+        tools: CallTools,
+        *,
+        extra_tools: Sequence[Any] = (),
+        extra_instructions: str = "",
+        on_tts_text: TtsTextHook | None = None,
+        components: FlowComponents | None = None,
     ) -> Any:
-        plan = options.get("plan")
-        if plan is None:
-            raise FlowRuntimeUnavailable("the flow runtime needs the session plan")
         call = FlowCall(
             runtime,
             control,
             plan,
-            extra_tools=tools,
-            extra_instructions=str(options.get("extra_instructions") or ""),
-            on_tts_text=options.get("on_tts_text"),
-            components=options.get("components"),
-            base_tools=options.get("base_tools"),
+            extra_tools=extra_tools,
+            extra_instructions=extra_instructions,
+            on_tts_text=on_tts_text,
+            components=components,
+            base_tools=tools,
         )
-        call_id = getattr(control, "call_id", None)
-        if isinstance(call_id, str):
-            self.calls[call_id] = call
+        self._calls[control.call_id] = call
         return call.entry_agent()
 
+    def rebuild(self, call_id: str, plan: SessionPlan, components: Mapping[str, Any]) -> Any:
+        call = self._calls.get(call_id)
+        return call.rebuild(plan, components) if call is not None else None
 
-RUNNER = CallwrightFlowRunner()
+    def visited_nodes(self, call_id: str) -> list[str]:
+        call = self._calls.get(call_id)
+        return list(call.run.state.visited) if call is not None else []
+
+    def release(self, call_id: str) -> None:
+        self._calls.pop(call_id, None)

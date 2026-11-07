@@ -1,21 +1,16 @@
-"""Extension points for tools and call control (003 plan, implemented by 005).
+"""Call control for tools (005) and flows (004).
 
-- :class:`ToolProvider` returns the LLM function tools for a call (end_call, transfer,
-  press_digit, http, kb_search) built from the version snapshot. Without 005 installed the
-  :class:`NullToolProvider` returns no tools.
-- :class:`CallControl` is what tools and flows (004) use to act on the call without vendor
-  details: hang up with a reason, speak, send keypad tones, report tool and flow activity, and
-  apply per-segment overrides (FR-046). The worker implements it in ``worker.control``.
+:class:`CallControl` is what tools and flows use to act on the call without vendor details: hang
+up with a reason, speak, send keypad tones, report tool and flow activity, and apply per-segment
+overrides (FR-046). The worker implements it in ``worker.control``; ``worker.tools.registry``
+builds a call's tools.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol, TypedDict, runtime_checkable
-
-if TYPE_CHECKING:
-    from callwright_contract.protocol import RuntimeConfig
+from typing import Any, Protocol, TypedDict, runtime_checkable
 
 
 class LlmOverride(TypedDict, total=False):
@@ -31,7 +26,6 @@ class TtsOverride(TypedDict, total=False):
     speed: float
     expressiveness: float
     volume: float
-    stability: float
 
 
 class SttOverride(TypedDict, total=False):
@@ -122,30 +116,3 @@ class CallControl(Protocol):
         ...
 
     async def apply_overrides(self, overrides: SegmentOverrides) -> OverrideResult: ...
-
-
-@runtime_checkable
-class ToolProvider(Protocol):
-    def tools_for(self, runtime: RuntimeConfig, control: CallControl) -> Sequence[Any]:
-        """LiveKit function tools for this call."""
-        ...
-
-
-class NullToolProvider:
-    """Default without 005: single-prompt agents run with no tools."""
-
-    def tools_for(self, runtime: RuntimeConfig, control: CallControl) -> Sequence[Any]:
-        return []
-
-
-_provider: ToolProvider = NullToolProvider()
-
-
-def register_tool_provider(provider: ToolProvider) -> None:
-    """Called by 005 at import time to install its provider."""
-    global _provider
-    _provider = provider
-
-
-def get_tool_provider() -> ToolProvider:
-    return _provider

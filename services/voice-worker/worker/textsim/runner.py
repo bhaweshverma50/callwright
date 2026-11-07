@@ -35,7 +35,7 @@ import asyncio
 import contextlib
 import logging
 import time
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -51,7 +51,8 @@ from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan, resolve_llm
 from worker.call_behavior import ends_with_goodbye
 from worker.control import RuntimeCallControl
-from worker.flow.runtime import CallwrightFlowRunner, FlowComponents
+from worker.flow import FlowComponents
+from worker.flow.runtime import CallwrightFlowRunner
 from worker.metrics import EventPoster, EventRecorder
 from worker.pipeline import build_agent, plan_session
 from worker.textsim.api_client import SimulationSpec, TextsimApiClient
@@ -164,23 +165,6 @@ class _SimBackend:
         return None  # keypad presses are only logged in simulations (the tool_call event)
 
 
-class _Tools:
-    """``ToolProvider`` over the session's own call tools (no shared registry state, so
-    concurrent runs of one test run never collide)."""
-
-    def __init__(self, tools: CallTools) -> None:
-        self.tools = tools
-
-    def tools_for(self, runtime: RuntimeConfig, control: Any) -> Sequence[Any]:
-        return self.tools.function_tools()
-
-    def call_tools(self, runtime: RuntimeConfig, control: Any) -> CallTools:
-        return self.tools
-
-    def filler_policy(self, runtime: RuntimeConfig, control: Any) -> Any:
-        return self.tools.fillers
-
-
 async def _wait(awaitable: Any) -> None:
     await awaitable
 
@@ -238,8 +222,7 @@ class TextSession:
 
     @property
     def visited_nodes(self) -> list[str]:
-        call = self.flow_runner.calls.get(self.call_id)
-        return list(call.run.state.visited) if call is not None else []
+        return self.flow_runner.visited_nodes(self.call_id)
 
     # models --------------------------------------------------------------------------------
 
@@ -264,7 +247,7 @@ class TextSession:
         from livekit.agents import AgentSession
 
         runtime = self.runtime
-        plan = plan_session(runtime, self.deps.registry)
+        plan = plan_session(runtime, self.deps.registry, self.flow_runner)
         self.plan = plan
         tools = build_call_tools(
             runtime,
@@ -280,8 +263,8 @@ class TextSession:
             plan,
             runtime,
             self.control,
-            tool_provider=_Tools(tools),
-            flow_runner=self.flow_runner,
+            tools,
+            flows=self.flow_runner,
             flow_components=FlowComponents(self.deps.registry, self._component),
         )
         session: Any = AgentSession(llm=llm, vad=None, user_away_timeout=None)

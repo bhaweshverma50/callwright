@@ -21,8 +21,9 @@ from callwright_contract.protocol import RuntimeConfig
 
 from tests.harness.runner import build_runtime
 from worker.adapters.registry import AdapterRegistry
+from worker.agent import GENERATED_GREETING_INSTRUCTION
 from worker.flow.runtime import CallwrightFlowRunner
-from worker.pipeline import plan_session
+from worker.pipeline import build_agent, plan_session
 from worker.tools import OverrideResult, SegmentOverrides, ToolActivity
 from worker.tools.registry import build_call_tools
 
@@ -268,10 +269,11 @@ async def run_flow_call(
     from livekit.agents import AgentSession
 
     rt = build_runtime(dict(config), dict(runtime or {}))
-    plan = plan_session(rt, AdapterRegistry())
+    flows = CallwrightFlowRunner()
+    plan = plan_session(rt, AdapterRegistry(), flows)
     control = control or RecordingControl()
     tools = build_call_tools(rt, control)
-    agent = CallwrightFlowRunner().build_agent(rt, control, [], plan=plan, base_tools=tools)
+    agent = build_agent(plan, rt, control, tools, flows=flows)
     model = flow_llm(script)
     replies: list[str] = []
     async with AgentSession(llm=model, vad=None) as session:
@@ -280,7 +282,7 @@ async def run_flow_call(
             if plan.greeting:
                 await session.say(plan.greeting, allow_interruptions=False)
             else:
-                await session.generate_reply()
+                await session.generate_reply(instructions=GENERATED_GREETING_INSTRUCTION)
         for line in caller:
             if control.ending:
                 break

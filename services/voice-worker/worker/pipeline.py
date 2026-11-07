@@ -46,15 +46,9 @@ from worker.agent import (
 )
 from worker.audio import entries_from_config, resolve_background_audio
 from worker.call_behavior import CallBehavior, behavior_from_config
-from worker.flow import FlowRunner, get_flow_runner
-from worker.tools import (
-    CallControl,
-    ClampedValue,
-    OverrideResult,
-    SegmentOverrides,
-    ToolProvider,
-    get_tool_provider,
-)
+from worker.flow import FlowComponents, FlowRunner, FlowRuntimeUnavailable
+from worker.tools import CallControl, ClampedValue, OverrideResult, SegmentOverrides
+from worker.tools.registry import CallTools
 
 if TYPE_CHECKING:
     from callwright_contract.protocol import ControlRange, RuntimeConfig, SttAuto
@@ -132,8 +126,11 @@ def own_language_label(runtime: RuntimeConfig, code: str) -> str:
     return code
 
 
-def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPlan:
-    """Resolve everything a call needs from the frozen config. Raises ``UnsupportedVendor``."""
+def plan_session(
+    runtime: RuntimeConfig, registry: AdapterRegistry, flows: FlowRunner | None = None
+) -> SessionPlan:
+    """Resolve everything a call needs from the frozen config. Raises ``UnsupportedVendor``, and
+    ``FlowRuntimeUnavailable`` for a flow agent without a runnable flow (or without ``flows``)."""
     config = runtime.config
     agent_language = str(config["language"])
     language = agent_language
@@ -175,11 +172,10 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
     agent_type: Literal["single_prompt", "flow"] = "flow" if is_flow else "single_prompt"
     if is_flow:
         # 004: the Start node (and Say nodes right after it) is the opening of a flow call.
-        from worker.flow.runtime import call_opening
-
-        opening = call_opening(config, variables)
-        if opening is not None:
-            start_speaker, greeting = opening.start_speaker, opening.greeting
+        if flows is None:
+            raise FlowRuntimeUnavailable("flow agents need the flow runtime")
+        opening = flows.opening(runtime)
+        start_speaker, greeting = opening.start_speaker, opening.greeting
     greeting_language = reply_language if greeting and start_speaker == "agent" else None
     # Speech recognition and the voice follow the agent's language setting, but the prompt may be
     # written in another language: tell the model too (non-English agents; English is the default
@@ -299,52 +295,48 @@ def build_agent(
     plan: SessionPlan,
     runtime: RuntimeConfig,
     control: CallControl,
+    tools: CallTools,
     *,
-    tool_provider: ToolProvider | None = None,
-    flow_runner: FlowRunner | None = None,
+    flows: FlowRunner | None = None,
     on_tts_text: TtsTextHook | None = None,
     extra_tools: Sequence[Any] = (),
     extra_instructions: str = "",
-    flow_components: Any = None,
+    flow_components: FlowComponents | None = None,
     **agent_kwargs: Any,
 ) -> Any:
-    """The entry agent: tools from 005's provider, flows from 004's runner (FR-024).
+    """The entry agent with the call's tools (005), or a flow's entry agent from ``flows`` (004).
 
     ``extra_tools`` and ``extra_instructions`` carry worker-internal tools such as voicemail
     detection (R10); they are added to single-prompt agents and passed to flows as tools.
     """
-    provider = tool_provider or get_tool_provider()
-    tools = list(provider.tools_for(runtime, control))
-    policy_for = getattr(provider, "filler_policy", None)
-    fillers = policy_for(runtime, control) if callable(policy_for) else None
-    tools += list(extra_tools)
     if plan.agent_type == "flow":
+        if flows is None:
+            raise FlowRuntimeUnavailable("flow agents need the flow runtime")
         # Flow nodes carry their own tools (compiled from 005's snapshot) plus the built-in
         # schedule_callback and set_language from the call's tools; worker-internal tools such
         # as voicemail detection are added to every node, with the same built-in rules a
         # single-prompt agent gets (adapted to the flow's own routing).
-        call_tools = getattr(provider, "call_tools", None)
-        return (flow_runner or get_flow_runner()).build_agent(
+        return flows.build_agent(
             runtime,
             control,
-            list(extra_tools),
-            base_tools=call_tools(runtime, control) if callable(call_tools) else None,
-            plan=plan,
-            on_tts_text=on_tts_text,
+            plan,
+            tools,
+            extra_tools=extra_tools,
             extra_instructions="\n\n".join(
                 p for p in (builtin_instructions(runtime, flow=True), extra_instructions) if p
             ),
+            on_tts_text=on_tts_text,
             components=flow_components,
         )
     agent_cls = make_agent_class()
     return agent_cls(
         plan,
-        tools=tools,
+        tools=[*tools.function_tools(), *extra_tools],
         on_tts_text=on_tts_text,
         extra_instructions="\n\n".join(
             p for p in (builtin_instructions(runtime), extra_instructions) if p
         ),
-        filler_policy=fillers,
+        filler_policy=tools.fillers,
         **agent_kwargs,
     )
 

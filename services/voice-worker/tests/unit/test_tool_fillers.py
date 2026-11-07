@@ -112,7 +112,7 @@ def test_agent_receives_the_policy() -> None:
     runtime = make_runtime({"tools": [http_spec()]})
     plan = plan_session(runtime, AdapterRegistry())
     h = make([http_spec()])
-    agent = build_agent(plan, runtime, h.tools.control)
+    agent = build_agent(plan, runtime, h.tools.control, h.tools)
     assert agent._fillers is not None and "check_availability" in agent._fillers.texts
 
 
