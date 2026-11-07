@@ -1,7 +1,7 @@
 import { ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../../components";
-import type { DiffLine } from "./lineDiff";
+import type { DiffLine } from "../../../lib/lineDiff";
 
 const CONTEXT = 2;
 

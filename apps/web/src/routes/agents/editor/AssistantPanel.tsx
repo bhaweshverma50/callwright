@@ -9,7 +9,7 @@ import { ApiError, toProblem } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Button, Composer, Drawer, ThinkingIndicator, cn } from "../../../components";
 import { formatUsd } from "../../../lib/money";
-import { lineDiff } from "../versions/lineDiff";
+import { lineDiff } from "../../../lib/lineDiff";
 import { DiffView } from "../versions/DiffView";
 import { syncVariables } from "./catalogs";
 import type { AgentDraft } from "./useAgentDraft";

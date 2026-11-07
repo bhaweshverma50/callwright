@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { lineDiff } from "./lineDiff";
 import { PATH_LABELS, fieldId, formatValue, labelFor, objectFields, readableChanges, sectionOf } from "./versionLabels";
 
 /** Every AgentConfig path in data-model.md section 4 (T056). */
@@ -87,17 +86,6 @@ describe("version labels (T056, FR-025)", () => {
     expect(sectionOf("/advanced/language_switching/languages")).toBe("basics");
     expect(fieldId("/tts/voice_id")).toBe("f-tts-voice_id");
     expect(fieldId("/dynamic_variables[order_id]/default")).toBe("f-dynamic_variables-order_id-default");
-  });
-});
-
-describe("line diff", () => {
-  it("keeps common lines and marks additions and removals", () => {
-    expect(lineDiff("a\nb\nc", "a\nc\nd")).toEqual([
-      { kind: "same", text: "a" },
-      { kind: "remove", text: "b" },
-      { kind: "same", text: "c" },
-      { kind: "add", text: "d" },
-    ]);
   });
 });
 

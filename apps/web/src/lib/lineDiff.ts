@@ -1,7 +1,7 @@
 /**
- * Line-by-line difference for long text (prompts, greetings) in version compare and the prompt
- * assistant (US3.2, US6.1). A longest-common-subsequence walk over lines; very long texts fall
- * back to a plain before and after so the browser never stalls.
+ * Line-by-line difference for long text (prompts, greetings) in version compare, the prompt
+ * assistant (002 US3.2, US6.1) and issue fixes (009 T033). A longest-common-subsequence walk over
+ * lines; very long texts fall back to a plain before and after so the browser never stalls.
  */
 export type DiffLine = { kind: "same" | "add" | "remove"; text: string };
 

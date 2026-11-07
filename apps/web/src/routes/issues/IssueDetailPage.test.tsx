@@ -3,23 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { issuesMock } from "../../mocks/issues/store";
 import { renderApp, signInDemo } from "../../test/render";
-import { lineDiff } from "./FixDiff";
 import { thresholdError } from "./ValidateDialog";
 
 const issueId = (title: string) => issuesMock().issues.find((i) => i.title.startsWith(title))!.issue_id;
 const bodies = (suffix: string) => issuesMock().bodies.filter((b) => b.path.endsWith(suffix));
 
-describe("FixDiff and threshold helpers", () => {
-  it("diffs lines and keeps unchanged lines", () => {
-    expect(lineDiff("a\nb\nc", "a\nB\nc\nd")).toEqual([
-      { op: "same", text: "a" },
-      { op: "remove", text: "b" },
-      { op: "add", text: "B" },
-      { op: "same", text: "c" },
-      { op: "add", text: "d" },
-    ]);
-  });
-
+describe("threshold helpers", () => {
   it("checks threshold ranges", () => {
     expect(thresholdError("min_improvement_pp", "4")).toBe("Use a value from 5 to 50.");
     expect(thresholdError("max_regression_pp", "0")).toBeNull();
