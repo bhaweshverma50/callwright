@@ -1,13 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, FlaskConical, MessageCircleQuestion, ShieldPlus, TextSearch } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCalls } from "../../../api/calls";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import {
   createCustomEvaluator,
-  newIdempotencyKey,
   qualityKeys,
   trialCustomEvaluator,
   updateCustomEvaluator,
@@ -25,6 +24,7 @@ import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
 import { withoutLineRefs } from "../../../lib/text";
 import { NAME_RULE, toMachineName } from "../../../lib/machineName";
 import { usd, when } from "../../../lib/format";
+import { idempotencyKey } from "../../../api/agents";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };
@@ -51,14 +51,14 @@ export function CustomEvaluatorDialog({
   const [type, setType] = useState<CustomType | null>(null);
   const editing = existing ?? null;
   const step: CustomType | null = editing ? (editing.evaluator_type as CustomType) : type;
-  const close = (o: boolean) => {
-    onOpenChange(o);
-    if (!o) window.setTimeout(() => setType(null), 200);
-  };
+  // Each opening starts at the type choice; closing keeps the step on screen while it fades out.
+  useEffect(() => {
+    if (open) setType(null);
+  }, [open]);
   return (
     <Dialog
       open={open}
-      onOpenChange={close}
+      onOpenChange={onOpenChange}
       size="lg"
       icon={
         step === "phrase_check" ? (
@@ -110,10 +110,10 @@ export function CustomEvaluatorDialog({
                 type={step}
                 existing={editing}
                 onBack={editing ? undefined : () => setType(null)}
-                onCancel={() => close(false)}
+                onCancel={() => onOpenChange(false)}
                 onSaved={(e) => {
                   onSaved?.(e);
-                  close(false);
+                  onOpenChange(false);
                 }}
               />
             </motion.div>
@@ -141,7 +141,7 @@ function TrialPanel({ type, config, ready }: { type: CustomType; config: CustomC
     setBusy(true);
     setError(null);
     try {
-      setResult(await trialCustomEvaluator({ evaluator_type: type, config, call_id: chosen }, newIdempotencyKey()));
+      setResult(await trialCustomEvaluator({ evaluator_type: type, config, call_id: chosen }, idempotencyKey()));
     } catch (e) {
       setResult(null);
       setError(
