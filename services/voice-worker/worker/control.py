@@ -16,18 +16,27 @@ from callwright_contract.values import KEYPAD_DIGITS
 
 from worker import telemetry
 from worker.metrics import EventRecorder
-from worker.pipeline import OverrideManager
 from worker.tools import OverrideResult, SegmentOverrides, ToolActivity
 
 
 class CallBackend(Protocol):
     async def speak(self, text: str, allow_interruptions: bool) -> None: ...
 
+    async def caller_quiet(self) -> bool:
+        """True once the caller is not talking (waits briefly while they are)."""
+        ...
+
     async def end(self, reason: str, diagnostic: str | None) -> None:
         """Stop speech, post the final status, close the session and the room."""
         ...
 
     async def send_dtmf(self, digits: str) -> None: ...
+
+
+class OverrideStager(Protocol):
+    """Validates and stages segment overrides (``pipeline.OverrideManager``)."""
+
+    def request(self, overrides: SegmentOverrides) -> OverrideResult: ...
 
 
 class RuntimeCallControl:
@@ -37,7 +46,7 @@ class RuntimeCallControl:
         recorder: EventRecorder,
         backend: CallBackend,
         *,
-        overrides: OverrideManager | None = None,
+        overrides: OverrideStager | None = None,
         room: Any = None,
         on_overrides_staged: Callable[[], None] | None = None,
     ) -> None:
@@ -72,10 +81,10 @@ class RuntimeCallControl:
         return True
 
     async def caller_quiet(self) -> bool:
-        """True once the caller is not talking (they may still be finishing a sentence that
-        speech recognition split into two turns). Backends that cannot tell answer True."""
-        quiet = getattr(self._backend, "caller_quiet", None)
-        return bool(await quiet()) if callable(quiet) else True
+        return await self._backend.caller_quiet()
+
+    def offset_ms(self) -> int | None:
+        return self._recorder.offset_ms()
 
     async def say(self, text: str, *, allow_interruptions: bool = True) -> None:
         if self.ending:
@@ -154,7 +163,6 @@ class RuntimeCallControl:
         self._recorder.transcript_item(item)
 
     def report_language(self, code: str, label: str) -> int | None:
-        """012: record a language switch on the transcript; returns its offset in the call."""
         item = self._recorder.system("language_switched", f"{label} ({code})")
         at = item.get("item", {}).get("at_ms")
         return at if isinstance(at, int) else self._recorder.offset_ms()

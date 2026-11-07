@@ -7,6 +7,7 @@ on timeout or an answer outside the list the first category is followed with tri
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
@@ -16,6 +17,8 @@ from worker.flow.registry import Move, Outcome, Stop
 
 if TYPE_CHECKING:
     from worker.flow.executor import FlowRun
+
+log = logging.getLogger("callwright.flow")
 
 
 async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome:
@@ -43,7 +46,8 @@ async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome
     started = time.perf_counter()
     try:
         choice = await run.services.classify(run.render(cond.get("instructions")), categories)
-    except Exception:
+    except Exception:  # a failed classify must not end the call
+        log.exception("flow condition node %s failed on %s", node_id, run.call_id)
         choice = None
     model_ms = round((time.perf_counter() - started) * 1000)
     chosen = next(

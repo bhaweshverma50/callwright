@@ -11,7 +11,7 @@ import pytest
 import respx
 
 from tests.harness.runner import CALL_ID
-from worker.entry import claim_job, create_server, parse_dispatch_metadata, run_textsim
+from worker.entry import claim_job, create_server, parse_dispatch_metadata
 from worker.internal_api import InternalApiClient
 from worker.settings import WorkerSettings
 from worker.telephony import dtmf_code, sip_attributes
@@ -38,28 +38,38 @@ def test_sip_attributes_and_dtmf_codes() -> None:
         dtmf_code("A")
 
 
-def test_textsim_role_runs_the_textsim_consumer(monkeypatch: pytest.MonkeyPatch) -> None:
-    from worker.textsim import entry as textsim_entry
+class AgentServer:
+    """Stands in for ``livekit.agents.AgentServer``: keeps the options it was created with."""
 
-    monkeypatch.setattr(textsim_entry, "main", lambda: 7)
-    assert run_textsim() == 7
+    def __init__(self, **options: Any) -> None:
+        self.options = options
+
+    def rtc_session(self, entrypoint: Any, *, agent_name: str) -> None:
+        self.agent_name = agent_name
 
 
+@pytest.fixture
+def server_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    import livekit.agents
+
+    monkeypatch.setattr(livekit.agents, "AgentServer", AgentServer)
+
+
+@pytest.mark.usefixtures("server_options")
 def test_create_server_applies_capacity_settings() -> None:
     settings = WorkerSettings.model_validate(
         {"WORKER_NUM_IDLE_PROCESSES": "2", "WORKER_LOAD_THRESHOLD": "0.9"}
     )
     server = create_server(settings)
-    assert server._num_idle_processes == 2
-    assert server._load_threshold == 0.9
+    assert server.options["num_idle_processes"] == 2
+    assert server.options["load_threshold"] == 0.9
+    assert server.agent_name == settings.agent_name
 
 
+@pytest.mark.usefixtures("server_options")
 def test_create_server_keeps_framework_defaults_when_unset() -> None:
-    from livekit.agents.worker import ServerEnvOption
-
-    server = create_server(WorkerSettings())
-    assert isinstance(server._num_idle_processes, ServerEnvOption)
-    assert isinstance(server._load_threshold, ServerEnvOption)
+    options = create_server(WorkerSettings()).options
+    assert "num_idle_processes" not in options and "load_threshold" not in options
 
 
 class Participant:

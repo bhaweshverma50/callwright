@@ -29,7 +29,6 @@ class FlowEvents:
     publish: Publisher | None = None
     turn_index: Callable[[], int] = lambda: 0
     started: float = field(default_factory=time.monotonic)
-    moves: list[dict[str, Any]] = field(default_factory=list)
     pending: set[Any] = field(default_factory=set)
 
     def now_ms(self) -> int:
@@ -72,7 +71,6 @@ class FlowEvents:
         if note:
             details["note"] = note
         details = {k: v for k, v in details.items() if v is not None}
-        self.moves.append({"from_node_id": source_id, "to_node_id": target_id, **details})
         if self.control is not None:
             try:
                 self.control.report_transition(

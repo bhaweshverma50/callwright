@@ -11,10 +11,10 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_config,
     agent_script,
     case_spec,

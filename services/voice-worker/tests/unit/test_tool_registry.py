@@ -4,7 +4,6 @@ events, kb_search injection and the per-node switch for 004."""
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from typing import Any
 
 from tests.unit.tool_support import http_spec, make, tool
@@ -88,7 +87,7 @@ async def test_reporting_failure_does_not_break_dispatch() -> None:
     assert json.loads(await h.tools.dispatch("end_call", {})) == {"ended": True}
 
 
-def test_kb_search_is_injected_and_switchable() -> None:
+def test_kb_search_is_injected() -> None:
     h = make(
         [tool("end_call", "end_call")],
         knowledge=[{"kb_id": "kb_1", "name": "Clinic FAQ", "description": "hours"}],
@@ -97,10 +96,6 @@ def test_kb_search_is_injected_and_switchable() -> None:
     assert names == ["end_call", "schedule_callback", "kb_search"]
     kb = h.tools.schemas()[-1]
     assert "Clinic FAQ (hours)" in kb["description"]
-    assert [s["name"] for s in h.tools.schemas(kb_search_enabled=False)] == [
-        "end_call",
-        "schedule_callback",
-    ]
 
 
 def test_function_tools_build_livekit_raw_tools() -> None:
@@ -117,8 +112,8 @@ def test_fillers_cover_lookup_tools_and_a_silent_goodbye() -> None:
     )
     assert h.tools.fillers.texts == {
         "check_availability": "One moment while I check that.",
-        "kb_search": "One moment, let me check that.",
-        "end_call": "Thanks for calling. Goodbye!",
+        "kb_search": "One moment while I check that.",
+        "end_call": "Thanks for calling. Goodbye.",
     }
 
 
@@ -136,27 +131,19 @@ def test_every_agent_gets_a_built_in_end_call() -> None:
 
 async def test_end_call_waits_for_the_goodbye_to_play_before_hanging_up() -> None:
     h = make([])
-    order: list[str] = []
+    ended_at_playout: list[list[str]] = []
+
+    class Session:
+        async def say(self, text: str, add_to_chat_ctx: bool) -> None:
+            return None
 
     class RunCtx:
-        session = None  # no LiveKit session: keeps the harness context, adds the playout wait
+        """The LiveKit tool context: the reply that called end_call is still playing."""
 
-    class Played:
+        session = Session()
+
         async def wait_for_playout(self) -> None:
-            order.append("played")
+            ended_at_playout.append(list(h.backend.ended))
 
-    original = h.tools._context
-
-    def context(run_ctx: object) -> object:
-        return replace(original(None), wait_for_playout=Played().wait_for_playout)
-
-    h.tools._context = context  # type: ignore[method-assign,assignment]
-    backend_end = h.backend.end
-
-    async def end(reason: str, diagnostic: str | None) -> None:
-        order.append(f"ended:{reason}")
-        await backend_end(reason, diagnostic)
-
-    h.backend.end = end  # type: ignore[method-assign]
     await h.tools.dispatch("end_call", {}, RunCtx())
-    assert order == ["played", "ended:agent_hangup"]
+    assert ended_at_playout == [[]] and h.backend.ended == ["agent_hangup"]

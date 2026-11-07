@@ -39,12 +39,6 @@ ANSWER_GRACE_S = 10.0  # the answered callee joining the room after the dial ret
 FailStatus = Literal["busy", "no_answer", "failed"]
 
 
-class TelephonyUnavailable(Exception):
-    """No SIP path for this call (kept for 003's entry, which maps it to ``failed``)."""
-
-    diagnostic = "telephony-unavailable"
-
-
 class DialFailed(Exception):
     """The destination did not answer; ``status`` is the call status to post."""
 

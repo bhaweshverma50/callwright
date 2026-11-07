@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import json
 
+from tests.flow_support import Rule
 from tests.harness.test_textsim_language import OPTIONS, replies_in_language
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_script,
     deps,
     flow,

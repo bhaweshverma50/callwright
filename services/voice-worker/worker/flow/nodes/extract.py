@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
@@ -12,6 +13,8 @@ from worker.flow.registry import Move, Outcome, Stop
 if TYPE_CHECKING:
     from worker.flow.executor import FlowRun
 
+log = logging.getLogger("callwright.flow")
+
 
 async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome:
     spec = node.get("extract") or {}
@@ -19,7 +22,8 @@ async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome
     started = time.perf_counter()
     try:
         values = await run.services.extract(run.render(spec.get("instructions")), schema)
-    except Exception:
+    except Exception:  # a failed extract must not end the call
+        log.exception("flow extract node %s failed on %s", node_id, run.call_id)
         values = {}
     model_ms = round((time.perf_counter() - started) * 1000)
     allowed = set((schema.get("properties") or {}).keys())

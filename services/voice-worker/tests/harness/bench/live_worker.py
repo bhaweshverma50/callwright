@@ -18,11 +18,9 @@ async def bench_job_entry(ctx: Any) -> None:
     metadata = parse_dispatch_metadata(getattr(ctx.job, "metadata", None))
     bench = metadata.get("bench") or {}
     if bench.get("vendors") == "real":
-        from tests.harness.bench.live_real import BenchToolProvider, RealBenchParams, real_registry
-        from worker.tools import register_tool_provider
+        from tests.harness.bench.live_real import RealBenchParams, availability_tool, real_registry
 
         params = RealBenchParams.from_json(bench)
-        register_tool_provider(BenchToolProvider(params.tool_delay_ms))
-        await job_entry(ctx, real_registry(params))
+        await job_entry(ctx, real_registry(params), [availability_tool(params.tool_delay_ms)])
         return
     await job_entry(ctx, live_registry(LiveFakeParams.from_json(bench)))

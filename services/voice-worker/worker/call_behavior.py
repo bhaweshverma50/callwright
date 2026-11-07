@@ -10,6 +10,7 @@ import asyncio
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from callwright_contract.values import KEYPAD_DIGITS
@@ -19,6 +20,18 @@ if TYPE_CHECKING:
 
 # --------------------------------------------------------------------------------------------
 # Clock
+
+
+def local_now(variables: Mapping[str, Any], now: datetime | None = None) -> datetime:
+    """Now in the call's zone, from the ``current_datetime`` built-in (it carries the offset);
+    UTC when the call has none."""
+    now = now or datetime.now(UTC)
+    raw = str(variables.get("current_datetime") or "")
+    try:
+        offset = datetime.fromisoformat(raw).utcoffset()
+    except ValueError:
+        offset = None
+    return now.astimezone(timezone(offset) if offset is not None else UTC)
 
 
 class TimerHandle(Protocol):

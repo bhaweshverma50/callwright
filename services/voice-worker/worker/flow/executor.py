@@ -53,7 +53,7 @@ class FlowServices(Protocol):
 
     async def transfer(self, node_id: str, spec: Mapping[str, Any]) -> bool: ...
 
-    async def end(self, message: str, reason: str, *, generate: bool = False) -> None:
+    async def end(self, message: str, *, generate: bool = False) -> None:
         """Say ``message`` (or, with ``generate``, a goodbye written for the call, falling back
         to ``message``) and hang up."""
         ...
@@ -66,8 +66,6 @@ class FlowRunState:
     current_node_id: str
     visited: list[str] = field(default_factory=list)
     variables: dict[str, Any] = field(default_factory=dict)
-    task_rounds: dict[str, int] = field(default_factory=dict)
-    summary: str | None = None
     transition_count: int = 0
     ended: bool = False
     turn_moved: int | None = None  # turn index of the last honoured transition
@@ -105,7 +103,6 @@ class FlowRun:
         self.max_transitions = max_transitions
         self.clock = clock
         self.call_id = call_id
-        self.engine_ms: list[int] = []
         self.on_engine: Callable[[int], None] | None = None
 
     # helpers ---------------------------------------------------------------------------
@@ -127,7 +124,6 @@ class FlowRun:
 
     def record(self, from_id: str | None, move: Move, started: float) -> None:
         engine_ms = round((self.clock() - started) * 1000)
-        self.engine_ms.append(engine_ms)
         if self.on_engine is not None:
             self.on_engine(engine_ms)
         if move.variables:

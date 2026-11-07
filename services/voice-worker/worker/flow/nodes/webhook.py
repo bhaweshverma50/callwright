@@ -6,14 +6,18 @@ success path with the failure noted on the move when there is none (US3 scenario
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from worker.flow import registry
+from worker.flow.executor import WebhookResult
 from worker.flow.registry import Move, Outcome, Stop
 
 if TYPE_CHECKING:
     from worker.flow.executor import FlowRun
+
+log = logging.getLogger("callwright.flow")
 
 
 async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome:
@@ -22,9 +26,8 @@ async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome
         result = await run.services.webhook(
             node_id, spec.get("request") or {}, spec.get("mock_response"), run.state.variables
         )
-    except Exception as exc:
-        from worker.flow.executor import WebhookResult
-
+    except Exception as exc:  # the failure path is followed instead
+        log.exception("flow webhook node %s failed on %s", node_id, run.call_id)
         result = WebhookResult(ok=False, detail=type(exc).__name__)
     if result.ok and spec.get("success_target"):
         return Move(

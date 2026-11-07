@@ -8,10 +8,10 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_script,
     deps,
     flow,
@@ -127,7 +127,7 @@ async def test_transcript_items_carry_the_answer_source() -> None:
     answers = SimulatedToolAnswers(synthesize=Synth())
     h = harness([http_tool("slots", mock='{"a":1}')], answers)
     await h.tools.dispatch("slots", {})
-    items = [e["item"] for e in h.recorder.history if e["type"] == "transcript_item"]
+    items = [e["item"] for e in h.recorder.drain() if e["type"] == "transcript_item"]
     assert [(i["type"], i.get("answer_source")) for i in items] == [
         ("tool_call", "mock"),
         ("tool_result", "mock"),

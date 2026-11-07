@@ -75,9 +75,7 @@ class CallIdSpanProcessor(SpanProcessor):
         return None
 
 
-def build_provider(
-    exporter: ExporterKind, *, resource_attrs: Mapping[str, str] | None = None
-) -> TracerProvider | None:
+def build_provider(exporter: ExporterKind) -> TracerProvider | None:
     """A provider with the call-id processor and the chosen exporter, or None for ``none``."""
     if exporter == "none":
         return None
@@ -88,7 +86,7 @@ def build_provider(
         SimpleSpanProcessor,
     )
 
-    resource = Resource.create({"service.name": SERVICE_NAME, **dict(resource_attrs or {})})
+    resource = Resource.create({"service.name": SERVICE_NAME})
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(CallIdSpanProcessor())
     if exporter == "console":
@@ -116,10 +114,9 @@ def install(provider: trace.TracerProvider | None, *, framework: bool = True) ->
         set_tracer_provider(provider, allow_pii=False)
 
 
-def configure_tracing(exporter: ExporterKind, *, worker_id: str | None = None) -> bool:
+def configure_tracing(exporter: ExporterKind) -> bool:
     """Process start-up hook: build and install the provider. Returns True when tracing is on."""
-    attrs = {"service.instance.id": worker_id} if worker_id else None
-    provider = build_provider(exporter, resource_attrs=attrs)
+    provider = build_provider(exporter)
     if provider is None:
         return False
     install(provider)

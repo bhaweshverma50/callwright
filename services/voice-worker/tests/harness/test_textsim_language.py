@@ -4,10 +4,10 @@ nothing is reported to the API (no preference is ever saved from a simulation)."
 
 from __future__ import annotations
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_config,
     agent_script,
     case_spec,

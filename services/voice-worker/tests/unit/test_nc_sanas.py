@@ -59,11 +59,8 @@ def creds(**extra: str) -> dict[str, str]:
 
 def test_settings_carry_the_sanas_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SANAS_API_KEY", "k")
-    monkeypatch.setenv("SANAS_ENDPOINT", "wss://sanas.test/stream")
-    monkeypatch.setenv("SANAS_SAMPLE_RATE", "8000")
-    monkeypatch.setenv("SANAS_MAX_LATENCY_MS", "15")
     config = sanas.SanasConfig.from_creds(WorkerSettings().vendor_credentials()["sanas"])
-    assert config == sanas.SanasConfig("k", "wss://sanas.test/stream", 8000, 15.0)
+    assert config == sanas.SanasConfig("k")
     assert sanas.SanasConfig.from_creds({}) == sanas.SanasConfig()
     assert "sk-secret-123" not in repr(sanas.SanasConfig(api_key="sk-secret-123"))
 
@@ -94,9 +91,9 @@ def test_fake_engine_lowers_noise_floor_and_keeps_speech() -> None:
         return FakeSanasEngine(mode)
 
     sanas.register_engine(factory)
-    processor = AdapterRegistry().build(SPEC, creds(endpoint="wss://e"))
+    processor = AdapterRegistry().build(SPEC, creds())
     assert processor.applied and processor.passthrough_reason is None
-    assert seen[0][0] == "voice_isolation" and seen[0][1].endpoint == "wss://e"
+    assert seen[0][0] == "voice_isolation" and seen[0][1].api_key == "sk-test"
     audio, is_speech = noisy_call_audio()
     out = run_frames(processor, audio)
     assert out.shape == audio.shape
@@ -142,7 +139,7 @@ def test_live_call_meters_only_applied_audio_and_warns_on_passthrough() -> None:
     call._update_time_meters()
     assert call.meters.snapshot()["nc"] == []
     call._warn_nc_passthrough(call.plan)
-    (warning,) = [e for e in call.recorder.history if e["type"] == "warning"]
+    (warning,) = [e for e in call.recorder.drain() if e["type"] == "warning"]
     assert warning["code"] == "nc_passthrough" and warning["component"] == "nc"
     assert warning["provider"] == "sanas" and "sanas_sdk_unavailable" in warning["detail"]
 
@@ -153,4 +150,4 @@ def test_live_call_meters_only_applied_audio_and_warns_on_passthrough() -> None:
     call._update_time_meters()
     assert call.meters.snapshot()["nc"] == [{"provider": "sanas", "model": "vi", "audio_ms": 3000}]
     call._warn_nc_passthrough(call.plan)
-    assert len([e for e in call.recorder.history if e["type"] == "warning"]) == 1
+    assert not [e for e in call.recorder.drain() if e["type"] == "warning"]

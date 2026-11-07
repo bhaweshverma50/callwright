@@ -9,11 +9,14 @@ so it keeps the original words (FR-018).
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from collections.abc import AsyncIterable, AsyncIterator, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
+
+log = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------------------------
 # Pronunciation
@@ -130,6 +133,8 @@ BUILTIN_AMBIENCE: Mapping[str, str] = {
     "keyboard_typing": "KEYBOARD_TYPING",
     "keyboard_typing2": "KEYBOARD_TYPING2",
 }
+# The ambience player's ceiling: the builder's volume (the claim's background volume control)
+# above it is played at it, so loud ambience never clips.
 MAX_GAIN = 2.0
 
 
@@ -148,7 +153,6 @@ class AudioWarning:
 
 
 def clamp_gain(volume: float) -> float:
-    """Builder range 0..3 to player gain 0..2 (clipping guard)."""
     return round(max(0.0, min(MAX_GAIN, float(volume))), 4)
 
 
@@ -196,7 +200,8 @@ class BackgroundAudioCache:
             return path
         try:
             response = await http.get(spec.url)
-        except Exception:
+        except Exception as exc:  # the call goes on without ambience (a warning event)
+            log.warning("ambience download failed: %r", exc)
             return None
         if response.status_code != 200 or not response.content:
             return None

@@ -14,7 +14,6 @@ from worker.metrics import (
     TurnRecord,
     UsageMeters,
     latency_payload,
-    played_words,
 )
 
 
@@ -27,7 +26,7 @@ def test_meters_are_cumulative_per_provider_and_model() -> None:
     m.add_llm("azure_openai", "gpt-5.1", input_tokens=120, cached_input_tokens=100, output_tokens=9)
     m.add_tts("elevenlabs", "eleven_flash_v2_5", 30)
     m.add_tts("elevenlabs", "eleven_flash_v2_5", -5)  # never decreases
-    m.add_nc("none", "none", 1000)  # passthrough is not metered
+    m.set_nc("none", "none", 1000)  # passthrough is not metered
     snap = m.snapshot()
     assert snap["stt"] == [
         {"provider": "deepgram", "model": "nova-3", "audio_ms": 1500},
@@ -52,10 +51,7 @@ def test_set_meters_never_go_down() -> None:
     m = UsageMeters()
     m.set_nc("sanas", "vi", 5000)
     m.set_nc("sanas", "vi", 4000)
-    m.set_stt("deepgram", "nova-3", 3000)
-    m.set_stt("deepgram", "nova-3", 2000)
     assert m.snapshot()["nc"][0]["audio_ms"] == 5000
-    assert m.snapshot()["stt"][0]["audio_ms"] == 3000
 
 
 def test_latency_tracker_measures_e2e_directly() -> None:
@@ -221,22 +217,15 @@ def test_recorder_events_follow_the_contract() -> None:
         rec.warning("vendor_error", component="stt", level="error"),
         rec.status("ended", disconnect_reason="user_hangup"),
     ]
-    assert [e["seq"] for e in rec.history] == list(range(1, 13))
+    assert [e["seq"] for e in events] == list(range(2, 13)) and rec.pending == 12
     assert events[0]["offset_ms"] == 1500
     assert len(events[5]["output"]) == 8192
-    for event in rec.history:
+    for event in events:
         assert contract_errors(event) == [], event
     batch = rec.drain(5)
     assert len(batch) == 5 and rec.pending == 7
     rec.requeue(batch)
     assert rec.drain()[0]["seq"] == 1
-
-
-def test_played_words_truncates_interrupted_text() -> None:
-    text = "one two three four five six seven eight nine ten"
-    assert played_words(text, 0.35) == "one two three"
-    assert played_words(text, 1.2) == text
-    assert played_words(text, 0) == ""
 
 
 def test_latency_payload_splits_the_measured_answer_time() -> None:

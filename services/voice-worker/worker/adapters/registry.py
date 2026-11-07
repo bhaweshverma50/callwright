@@ -13,7 +13,6 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from callwright_contract.adapters import AdapterCatalog, AdapterEntry, Kind, load_catalog
@@ -130,6 +129,15 @@ class AdapterRegistry:
             return VendorSpec(spec.kind, entry.provider, spec.model, spec.options)
         return spec
 
+    def native_volume(self, spec: VendorSpec) -> bool:
+        """Whether the TTS vendor applies ``volume`` itself (the adapter's ``native_volume``);
+        otherwise the worker applies it as output gain."""
+        module = importlib.import_module(
+            _module_path(spec.kind, self.entry(spec.kind, spec.provider).provider)
+        )
+        native: Callable[[str | None], bool] | None = getattr(module, "native_volume", None)
+        return native is not None and native(spec.model)
+
     def builtin_turn_detection(self, spec: VendorSpec) -> bool:
         if spec.kind != "stt" or spec.model is None:
             return False
@@ -155,8 +163,3 @@ class AdapterRegistry:
         if builder is None:
             builder = self._default_builder or _import_builder(spec.kind, spec.provider)
         return builder(spec, creds)
-
-
-def has_module(kind: Kind, provider: str) -> bool:
-    """True when the adapter module for ``(kind, provider)`` exists in the package."""
-    return Path(__file__).with_name(kind).joinpath(f"{provider}.py").exists()

@@ -29,8 +29,7 @@ class EndCallExecutor:
         if ctx.wait_for_playout is not None:
             with contextlib.suppress(Exception):
                 await ctx.wait_for_playout()
-        quiet = getattr(ctx.control, "caller_quiet", None)
-        if callable(quiet) and not await quiet():
+        if not await ctx.control.caller_quiet():
             return ToolResult(
                 llm_payload=NOT_ENDED,
                 output="not ended: the caller is still talking",

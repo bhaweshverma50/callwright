@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from callwright_contract.calls import SYSTEM_EVENTS
 from callwright_contract.protocol import CallEventIn, Control, EventBatchResult
 from pydantic import TypeAdapter, ValidationError
 
@@ -144,16 +145,6 @@ def fake_registry(fakes: Fakes, base: AdapterRegistry | None = None) -> AdapterR
 # --------------------------------------------------------------------------------------------
 # Fake internal API (events endpoint) with contract checks
 
-SYSTEM_EVENTS = {
-    "language_switched",
-    "voicemail_detected",
-    "silence_timeout",
-    "max_duration",
-    "credit_exhausted",
-    "vendor_error",
-    "segment_override",
-    "override_clamped",
-}
 EVENT = TypeAdapter(CallEventIn)
 
 
@@ -170,36 +161,56 @@ def contract_errors(event: Mapping[str, Any]) -> list[str]:
 
 
 @dataclass
+class EventLog:
+    """Events posted per call, checked as the API checks them (contract shape, increasing seq);
+    every fake internal API keeps its calls' events here."""
+
+    by_call: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    violations: list[str] = field(default_factory=list)
+    finished: set[str] = field(default_factory=set)
+
+    def accept(self, call_id: str, events: Sequence[Mapping[str, Any]]) -> None:
+        stored = self.by_call.setdefault(call_id, [])
+        last_seq = max((int(e.get("seq", 0)) for e in stored), default=0)
+        for event in events:
+            seq = int(event.get("seq", 0))
+            for error in contract_errors(event):
+                self.violations.append(f"{call_id} seq {seq}: {error}")
+            if seq <= last_seq:
+                self.violations.append(f"{call_id} seq {seq} not increasing")
+            last_seq = max(last_seq, seq)
+            if event.get("type") == "status" and event.get("status") in ("ended", "failed"):
+                self.finished.add(call_id)
+        stored.extend(dict(e) for e in events)
+
+
+@dataclass
 class FakeEventSink:
-    """Records posted batches; can order ``end_call`` and enforces seq and contract rules."""
+    """The events endpoint for one in-process call: can order ``end_call`` and answers 409
+    (``CallClosed``) once the call is finished."""
 
     end_call_on_post: int | None = None
     end_call_reason: Literal["insufficient_credit", "error"] = "insufficient_credit"
-    batches: list[list[dict[str, Any]]] = field(default_factory=list)
-    violations: list[str] = field(default_factory=list)
-    closed: bool = False
-    _last_seq: int = 0
+    log: EventLog = field(default_factory=EventLog)
+    posts: int = 0
 
     async def post_events(self, call_id: str, events: Sequence[dict[str, Any]]) -> EventBatchResult:
-        if self.closed:
+        if call_id in self.log.finished:
             raise CallClosed(409, "call is terminal")
-        self.batches.append([dict(e) for e in events])
-        for event in events:
-            for error in contract_errors(event):
-                self.violations.append(f"seq {event.get('seq')}: {error}")
-            if event.get("seq", 0) <= self._last_seq:
-                self.violations.append(f"seq {event.get('seq')} not increasing")
-            self._last_seq = max(self._last_seq, int(event.get("seq", 0)))
-        if any(e.get("type") == "status" and e.get("status") == "ended" for e in events):
-            self.closed = True
+        self.posts += 1
+        self.log.accept(call_id, events)
         control = Control()
-        if self.end_call_on_post is not None and len(self.batches) == self.end_call_on_post:
+        if self.end_call_on_post is not None and self.posts == self.end_call_on_post:
             control = Control(action="end_call", disconnect_reason=self.end_call_reason)
         return EventBatchResult(accepted=len(events), duplicates=0, control=control)
 
     @property
     def events(self) -> list[dict[str, Any]]:
-        return [e for batch in self.batches for e in batch]
+        return [e for events in self.log.by_call.values() for e in events]
+
+    @property
+    def violations(self) -> list[str]:
+        return self.log.violations
 
 
 # --------------------------------------------------------------------------------------------

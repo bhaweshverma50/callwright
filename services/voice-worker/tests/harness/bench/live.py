@@ -54,7 +54,7 @@ from aiohttp import web
 
 from tests.harness.bench import synth
 from tests.harness.bench.live_fakes import LiveFakeParams, frame_rms
-from tests.harness.fakes import contract_errors
+from tests.harness.fakes import EventLog
 from tests.harness.runner import DEFAULT_CONFIG, build_runtime, deep_merge, load_agent_config
 
 log = logging.getLogger("callwright.bench.live")
@@ -140,8 +140,9 @@ class FakeInternalApi:
     def __init__(self, config: Mapping[str, Any], token: str = SERVICE_TOKEN) -> None:
         self.config = dict(config)
         self.token = token
-        self.events: dict[str, list[dict[str, Any]]] = {}
-        self.violations: list[str] = []
+        self.log = EventLog()
+        self.events = self.log.by_call
+        self.violations = self.log.violations
         self.ended: dict[str, asyncio.Event] = {}
         self.claims: list[str] = []
         self._runner: web.AppRunner | None = None
@@ -168,22 +169,12 @@ class FakeInternalApi:
         if not self._authorized(request):
             return web.json_response({"title": "unauthorized"}, status=401)
         call_id = request.match_info["call_id"]
-        stored = self.events.setdefault(call_id, [])
-        if self.ended_event(call_id).is_set():
+        if call_id in self.log.finished:
             return web.json_response({"title": "call is terminal"}, status=409)
         body = await request.json()
         events = list(body.get("events") or [])
-        last_seq = max((int(e.get("seq", 0)) for e in stored), default=0)
-        for event in events:
-            for error in contract_errors(event):
-                self.violations.append(f"{call_id} seq {event.get('seq')}: {error}")
-            if int(event.get("seq", 0)) <= last_seq:
-                self.violations.append(f"{call_id} seq {event.get('seq')} not increasing")
-            last_seq = max(last_seq, int(event.get("seq", 0)))
-        stored.extend(events)
-        if any(
-            e.get("type") == "status" and e.get("status") in ("ended", "failed") for e in events
-        ):
+        self.log.accept(call_id, events)
+        if call_id in self.log.finished:
             self.ended_event(call_id).set()
         return web.json_response(
             {"accepted": len(events), "duplicates": 0, "control": {"action": "none"}}

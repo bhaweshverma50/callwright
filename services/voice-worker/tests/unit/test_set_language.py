@@ -12,9 +12,12 @@ from typing import Any
 import httpx
 import pytest
 
-from tests.unit.conftest import make_runtime
+from tests.harness.fakes import scripted_llm
+from tests.unit.conftest import call_tools, make_runtime
+from tests.unit.tool_support import Backend
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
+from worker.internal_api import InternalApiClient
 from worker.language import (
     reply_language_instruction,
     set_language_instruction,
@@ -35,17 +38,6 @@ OPTIONS = [
     {"code": "hi", "label": "Hindi", "stt_model": "nova-2", "tts_model": "eleven_flash_v2_5"},
     {"code": "es", "label": "Spanish", "stt_model": "nova-2", "tts_model": "eleven_flash_v2_5"},
 ]
-
-
-class Backend:
-    async def speak(self, text: str, allow_interruptions: bool) -> None:
-        return None
-
-    async def end(self, reason: str, diagnostic: str | None) -> None:
-        return None
-
-    async def send_dtmf(self, digits: str) -> None:
-        return None
 
 
 def setup(
@@ -88,9 +80,7 @@ def setup(
     tools = build_call_tools(
         runtime,
         control,
-        api_client=client,
-        api_base_url="http://api.test/v1/internal",
-        service_token="svc",
+        api=InternalApiClient("http://api.test/v1/internal", "svc", http=client),
     )
     return SimpleNamespace(
         runtime=runtime,
@@ -144,20 +134,21 @@ async def test_switch_stages_speech_voice_and_reply_language_and_reports_it() ->
     assert swap.specs["tts"].options["language"] == "hi"
     plan = h.manager.plan_for_current()
     assert plan.language == "hi" and plan.reply_language == "Hindi"
-    agent = build_agent(plan, h.runtime, control=None)  # type: ignore[arg-type]
+    agent = build_agent(plan, h.runtime, None, call_tools(h.runtime))  # type: ignore[arg-type]
     assert agent.instructions.endswith(reply_language_instruction("Hindi"))
 
     await settle(h.tools)
     assert [str(r.url) for r in h.seen] == ["http://api.test/v1/internal/calls/call_test/language"]
     assert json.loads(h.seen[0].content)["language"] == "hi"
     assert h.seen[0].headers["authorization"] == "Bearer svc"
+    events = h.recorder.drain()
     system = [
         e["item"]
-        for e in h.recorder.history
+        for e in events
         if e["type"] == "transcript_item" and e["item"]["type"] == "system"
     ]
     assert system[-1]["event"] == "language_switched" and system[-1]["detail"] == "Hindi (hi)"
-    calls = [e for e in h.recorder.history if e["type"] == "tool_call"]
+    calls = [e for e in events if e["type"] == "tool_call"]
     assert calls[-1]["name"] == "set_language" and not calls[-1]["is_error"]
 
     # The same language again changes nothing; switching back restores the agent's models.
@@ -188,7 +179,7 @@ def test_call_starts_in_the_saved_language() -> None:
     assert (plan.stt.model, plan.stt.options["language"]) == ("nova-2", "hi")
     assert plan.tts.options["language"] == "hi"
     assert plan.reply_language == "Hindi" and plan.greeting_language == "Hindi"
-    agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+    agent = build_agent(plan, runtime, None, call_tools(runtime))  # type: ignore[arg-type]
     assert reply_language_instruction("Hindi") in agent.instructions
     assert set_language_instruction(runtime.language_options) in agent.instructions
 
@@ -199,7 +190,12 @@ def test_call_starts_in_the_saved_language() -> None:
         assert same.language == "en-US" and same.reply_language is None
         assert same.greeting_language is None
     nothing = make_runtime()
-    agent = build_agent(plan_session(nothing, AdapterRegistry()), nothing, control=None)  # type: ignore[arg-type]
+    agent = build_agent(
+        plan_session(nothing, AdapterRegistry()),
+        nothing,
+        None,  # type: ignore[arg-type]
+        call_tools(nothing),
+    )
     assert "set_language" not in agent.instructions and "Language rule" not in agent.instructions
 
 
@@ -301,13 +297,12 @@ async def greet(translation: str | Exception) -> tuple[GreetingSession, FakeTTS,
     tts = FakeTTS()
     call.components = SessionComponents(stt=None, llm=None, tts=tts, nc=None)
 
-    async def translate(plan: Any, greeting: str, label: str) -> str:
-        assert label == "Hindi" and greeting.startswith("Hi there")
+    def translator(spec: Any, creds: Any) -> Any:
         if isinstance(translation, Exception):
             raise translation
-        return translation
+        return scripted_llm(translation)
 
-    call._translate_greeting = translate  # type: ignore[method-assign]
+    call.registry = AdapterRegistry().with_builders({("llm", call.plan.llm.provider): translator})
     session = GreetingSession()
     call.session = session
     task = call._presynthesize_greeting(call.plan)

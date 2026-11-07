@@ -2,37 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from callwright_contract.protocol import ControlRange
 
 from tests.unit.conftest import make_runtime
+from tests.unit.tool_support import Backend
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
 from worker.metrics import EventRecorder
 from worker.pipeline import OverrideManager, clamp_value, plan_session
-from worker.tools import (
-    CallControl,
-    NullToolProvider,
-    ToolActivity,
-    get_tool_provider,
-    register_tool_provider,
-)
-
-
-class Backend:
-    def __init__(self) -> None:
-        self.ended: list[tuple[str, str | None]] = []
-        self.said: list[str] = []
-        self.tones: list[str] = []
-
-    async def speak(self, text: str, allow_interruptions: bool) -> None:
-        self.said.append(text)
-
-    async def end(self, reason: str, diagnostic: str | None) -> None:
-        self.ended.append((reason, diagnostic))
-
-    async def send_dtmf(self, digits: str) -> None:
-        self.tones.append(digits)
+from worker.tools import CallControl, ToolActivity
 
 
 def make_control(
@@ -58,8 +39,8 @@ def make_control(
     )
 
 
-def items(recorder: EventRecorder) -> list[dict[str, object]]:
-    return [e["item"] for e in recorder.history if e["type"] == "transcript_item"]
+def items(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [e["item"] for e in events if e["type"] == "transcript_item"]
 
 
 async def test_hang_up_first_writer_wins() -> None:
@@ -67,7 +48,7 @@ async def test_hang_up_first_writer_wins() -> None:
     assert isinstance(control, CallControl)
     assert await control.hang_up("max_duration_reached")
     assert not await control.hang_up("inactivity")
-    assert backend.ended == [("max_duration_reached", None)]
+    assert backend.ended == ["max_duration_reached"] and backend.diagnostics == [None]
     assert control.disconnect_reason == "max_duration_reached"
     await control.say("too late")
     assert backend.said == []
@@ -77,12 +58,8 @@ async def test_send_dtmf_validates_and_reports() -> None:
     control, backend, recorder, _ = make_control()
     await control.send_dtmf("12#")
     assert backend.tones == ["12#"]
-    assert recorder.history[-1] == {
-        **recorder.history[-1],
-        "type": "dtmf",
-        "digits": "12#",
-        "direction": "sent",
-    }
+    (event,) = recorder.drain()
+    assert (event["type"], event["digits"], event["direction"]) == ("dtmf", "12#", "sent")
     with pytest.raises(ValueError):
         await control.send_dtmf("12A")
 
@@ -93,7 +70,8 @@ async def test_report_tool_and_transition() -> None:
         ToolActivity("lookup", ref="t1", arguments={"id": 1}, output="ok", duration_ms=40)
     )
     control.report_transition("n_2", from_node_id="n_1", label="next")
-    types = [e["type"] for e in recorder.history]
+    events = recorder.drain()
+    types = [e["type"] for e in events]
     assert types == [
         "tool_call",
         "transcript_item",
@@ -101,7 +79,7 @@ async def test_report_tool_and_transition() -> None:
         "flow_transition",
         "transcript_item",
     ]
-    kinds = [i["type"] for i in items(recorder)]
+    kinds = [i["type"] for i in items(events)]
     assert kinds == ["tool_call", "tool_result", "flow_transition"]
 
 
@@ -121,14 +99,14 @@ async def test_overrides_clamp_and_apply_at_turn_boundary() -> None:
     )
     assert result.pending and result.rejected == ()
     assert {c.path for c in result.clamped} == {"tts.speed", "tts.volume"}
-    assert [i["event"] for i in items(recorder)] == ["override_clamped", "override_clamped"]
+    assert [i["event"] for i in items(recorder.drain())] == ["override_clamped", "override_clamped"]
     assert manager.current["tts"].provider == "elevenlabs"  # not before the boundary
     swap = manager.apply_pending()
     assert swap is not None and swap.kinds == ("tts",)
     tts = manager.current["tts"]
     assert (tts.provider, tts.model) == ("cartesia", "sonic-3")
     assert tts.options["speed"] == 2.0 and tts.options["volume"] == 0.0
-    assert items(recorder)[-1]["event"] == "segment_override"
+    assert items(recorder.drain())[-1]["event"] == "segment_override"
     assert manager.apply_pending() is None
 
 
@@ -178,21 +156,3 @@ async def test_control_without_manager_rejects_overrides() -> None:
     control = RuntimeCallControl("call_x", EventRecorder(), Backend())
     result = await control.apply_overrides({"tts": {"speed": 1.0}})
     assert result.rejected == ("tts",) and not result.pending
-
-
-def test_tool_provider_registration_and_null_default() -> None:
-    from worker.tools.registry import PROVIDER
-
-    # 005 installs its provider once worker.tools.registry is imported (entry does that).
-    assert get_tool_provider() is PROVIDER
-    assert list(NullToolProvider().tools_for(None, None)) == []  # type: ignore[arg-type]
-
-    class Provider:
-        def tools_for(self, runtime: object, control: object) -> list[str]:
-            return ["end_call"]
-
-    register_tool_provider(Provider())
-    try:
-        assert list(get_tool_provider().tools_for(None, None)) == ["end_call"]  # type: ignore[arg-type]
-    finally:
-        register_tool_provider(PROVIDER)

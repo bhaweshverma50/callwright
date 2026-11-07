@@ -11,11 +11,11 @@ from typing import Any
 
 import httpx
 
-from tests.flow_support import compiled_config
-from tests.harness.fakes import contract_errors
+from tests.flow_support import Rule, compiled_config
+from tests.harness.fakes import EventLog
 from tests.harness.runner import claim_tables, deep_merge, load_agent_config
 from worker.adapters.registry import AdapterRegistry, VendorSpec
-from worker.textsim.api_client import TextsimApiClient
+from worker.internal_api import InternalApiClient
 from worker.textsim.llm import Role, Script, ScriptReply, ScriptRequest, make_script_llm
 from worker.textsim.runner import RunnerDeps
 
@@ -35,10 +35,9 @@ class FakeInternalApi:
     sim_specs: dict[str, Any] = field(default_factory=dict)
     case_results: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     sim_results: dict[str, dict[str, Any]] = field(default_factory=dict)
-    events: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    log: EventLog = field(default_factory=EventLog)
     kb_requests: list[dict[str, Any]] = field(default_factory=list)
     kb_results: list[dict[str, Any]] = field(default_factory=list)
-    violations: list[str] = field(default_factory=list)
     close_events_after: int | None = None  # 409 on events once this many posts were accepted
     requests: list[httpx.Request] = field(default_factory=list)
     posts: int = 0
@@ -64,9 +63,7 @@ class FakeInternalApi:
                 return httpx.Response(409, json={"detail": "call is terminal"})
             self.posts += 1
             batch = json.loads(request.content)["events"]
-            for event in batch:
-                self.violations += [f"{m[1]}: {e}" for e in contract_errors(event)]
-            self.events.setdefault(m[1], []).extend(batch)
+            self.log.accept(m[1], batch)
             return httpx.Response(200, json={"accepted": len(batch), "duplicates": 0})
         if path == "/knowledge/search":
             self.kb_requests.append(json.loads(request.content))
@@ -84,10 +81,18 @@ class FakeInternalApi:
     def http(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(transport=httpx.MockTransport(self.handle))
 
-    def client(self) -> TextsimApiClient:
-        return TextsimApiClient(BASE, TOKEN, http=self.http(), max_attempts=2, sleep=no_sleep)
+    def client(self) -> InternalApiClient:
+        return InternalApiClient(BASE, TOKEN, http=self.http(), max_attempts=2, sleep=no_sleep)
 
     # views -------------------------------------------------------------------------------
+
+    @property
+    def events(self) -> dict[str, list[dict[str, Any]]]:
+        return self.log.by_call
+
+    @property
+    def violations(self) -> list[str]:
+        return self.log.violations
 
     def call_events(self, call_id: str, type_: str | None = None) -> list[dict[str, Any]]:
         return [e for e in self.events.get(call_id, []) if type_ is None or e["type"] == type_]
@@ -114,16 +119,6 @@ def _spec_response(spec: Any) -> httpx.Response:
 
 def tool_names(request: ScriptRequest) -> set[str]:
     return set(request.tools)
-
-
-@dataclass
-class Rule:
-    """When the caller's last line contains ``match``: say ``reply`` or call ``tool``."""
-
-    match: str
-    reply: str | None = None
-    tool: str | None = None
-    args: Mapping[str, Any] = field(default_factory=dict)
 
 
 def agent_script(
@@ -196,9 +191,6 @@ def deps(api: FakeInternalApi, models: Any) -> RunnerDeps:
     return RunnerDeps(
         models=models,
         registry=AdapterRegistry(),
-        internal_api_url=BASE,
-        service_token=TOKEN,
-        kb_http=api.http(),
         settle_timeout_s=5.0,
         turn_timeout_s=10.0,
     )

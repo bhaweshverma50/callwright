@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
 
@@ -12,10 +13,12 @@ import pytest
 import respx
 
 from tests.harness.runner import CALL_ID
-from tests.unit.conftest import make_runtime
+from tests.unit.conftest import call_tools, make_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
 from worker.entry import LiveCall
+from worker.flow import FlowRunner
+from worker.flow.runtime import CallwrightFlowRunner
 from worker.internal_api import InternalApiClient
 from worker.pipeline import OverrideManager, plan_session
 from worker.settings import WorkerSettings
@@ -61,12 +64,14 @@ async def no_sleep(_: float) -> None:
     return None
 
 
-def live_call(**config: Any) -> tuple[LiveCall, Ctx, Session]:
+def live_call(flows: FlowRunner | None = None, **config: Any) -> tuple[LiveCall, Ctx, Session]:
     ctx = Ctx()
     runtime = make_runtime(dict(config))
     api = InternalApiClient(BASE, "t", sleep=no_sleep)
-    call = LiveCall(ctx, api, WorkerSettings(), CALL_ID, runtime)
-    call.plan = plan_session(runtime, AdapterRegistry())
+    call = LiveCall(
+        ctx, api, WorkerSettings(), CALL_ID, runtime, flows=flows or CallwrightFlowRunner()
+    )
+    call.plan = plan_session(runtime, AdapterRegistry(), call.flows)
     call.overrides = OverrideManager(
         call.plan, AdapterRegistry(), runtime.controls, runtime.stt_auto_rules
     )
@@ -92,12 +97,13 @@ def test_turn_events_from_session_state_changes() -> None:
     call._on_agent_state(ev(old_state="listening", new_state="thinking", created_at=102.1))
     call._on_agent_state(ev(old_state="thinking", new_state="speaking", created_at=102.65))
     call._on_item(ev(item=ev(role="assistant", text_content="How can", interrupted=True)))
-    turns = [e for e in call.recorder.history if e["type"] == "turn"]
+    events = call.recorder.drain()
+    turns = [e for e in events if e["type"] == "turn"]
     assert [(t["turn_index"], t["e2e_ms"], t["interrupted"]) for t in turns] == [
         (0, 300, False),
         (1, 650, True),
     ]
-    messages = [e["item"] for e in call.recorder.history if e["type"] == "transcript_item"]
+    messages = [e["item"] for e in events if e["type"] == "transcript_item"]
     assert [(m["role"], m["text"]) for m in messages] == [
         ("agent", "Hi there"),
         ("user", "Hello"),
@@ -150,14 +156,14 @@ async def test_latency_publish_failure_does_not_break_the_call() -> None:
     call.tracker.component("llm_ttft", 0.3)
     call._on_item(ev(item=ev(role="assistant", text_content="Sure", interrupted=False)))
     await asyncio.gather(*call._tasks)
-    assert [e["type"] for e in call.recorder.history] == ["turn", "transcript_item"]
+    assert [e["type"] for e in call.recorder.drain()] == ["turn", "transcript_item"]
 
 
 async def test_keypad_flush_becomes_a_user_turn() -> None:
     call, _, session = live_call()
     call._on_dtmf_flush("1234", "termination_key")
     assert session.replies == ["1234"]
-    kinds = [e["type"] for e in call.recorder.history]
+    kinds = [e["type"] for e in call.recorder.drain()]
     assert kinds == ["dtmf", "transcript_item"]
 
 
@@ -168,7 +174,7 @@ async def test_keypad_turn_is_one_caller_line() -> None:
     call._on_dtmf_flush("1234", "termination_key")
     call._on_item(ev(item=ev(role="user", text_content="1234")))
     call._on_item(ev(item=ev(role="user", text_content="1234")))
-    lines = [e["item"] for e in call.recorder.history if e["type"] == "transcript_item"]
+    lines = [e["item"] for e in call.recorder.drain() if e["type"] == "transcript_item"]
     assert [(i["text"], i.get("source")) for i in lines] == [("1234", "keypad"), ("1234", "voice")]
 
 
@@ -234,7 +240,7 @@ def test_vendor_error_ends_call_with_diagnostic() -> None:
     call._on_error(ev(error=ev(recoverable=False, error="boom"), source=Tts()), call.plan)
     call._on_error(ev(error=ev(recoverable=True, error="retry"), source=Tts()), call.plan)
     assert hung == [("error", "vendor_error:tts/elevenlabs")]
-    codes = [e["code"] for e in call.recorder.history if e["type"] in ("warning", "error")]
+    codes = [e["code"] for e in call.recorder.drain() if e["type"] in ("warning", "error")]
     assert codes == ["vendor_error", "vendor_retry"]
 
 
@@ -258,15 +264,7 @@ async def test_end_call_from_inside_the_session_closes_it_promptly() -> None:
     call, ctx, _ = live_call()
     assert call.control is not None and call.plan is not None
     tools = build_call_tools(call.runtime, call.control)
-
-    class Provider:
-        def tools_for(self, runtime: Any, control: Any) -> Any:
-            return tools.function_tools()
-
-        def filler_policy(self, runtime: Any, control: Any) -> Any:
-            return tools.fillers
-
-    agent = build_agent(call.plan, call.runtime, call.control, tool_provider=Provider())
+    agent = build_agent(call.plan, call.runtime, call.control, tools)
     model = flow_llm(FlowScript(rules=[Rule("bye", "end_call", {"goodbye": "Bye for now."})]))
     session: Any = AgentSession(llm=model, vad=None)
     call.session = session
@@ -304,36 +302,31 @@ def test_language_swap_on_a_flow_call_rebuilds_its_current_node(
     """012 on flows: the swap at the turn boundary rebuilds the node the call is on with the new
     plan and components; building the entry agent again would restart the flow."""
     from tests.flow_support import compiled_config
-    from worker.flow import get_flow_runner, register_flow_runner
     from worker.pipeline import SessionComponents
 
-    rebuilt: list[tuple[Any, dict[str, Any]]] = []
+    rebuilt: list[tuple[str, Any, Mapping[str, Any]]] = []
 
-    class FlowCall:
-        def rebuild(self, plan: Any, components: dict[str, Any]) -> str:
-            rebuilt.append((plan, components))
+    class Runner(CallwrightFlowRunner):
+        def rebuild(self, call_id: str, plan: Any, components: Mapping[str, Any]) -> str:
+            rebuilt.append((call_id, plan, components))
             return "node-agent"
 
-    runner = SimpleNamespace(available=True, calls={CALL_ID: FlowCall()})
-    previous = get_flow_runner()
-    register_flow_runner(runner)
-    try:
-        call, _, session = live_call(**compiled_config("greeting_end"))
-        assert call.plan is not None and call.plan.agent_type == "flow"
-        assert call.overrides is not None
-        call.components = SessionComponents(stt="stt", llm="llm", tts="tts", nc=None)
-        monkeypatch.setattr(call.registry, "build", lambda spec, creds: f"new-{spec.kind}")
-        call.overrides.request(
-            {
-                "switch_language": {"code": "hi", "label": "Hindi", "tts_model": None},
-                "stt": {"language": "hi", "model": "nova-2"},
-            }
-        )
-        call._swap_pending = True
-        call._apply_swap()
-    finally:
-        register_flow_runner(previous)
-    ((plan, components),) = rebuilt
+    call, _, session = live_call(Runner(), **compiled_config("greeting_end"))
+    assert call.plan is not None and call.plan.agent_type == "flow"
+    assert call.overrides is not None
+    call.components = SessionComponents(stt="stt", llm="llm", tts="tts", nc=None)
+    call.tools = call_tools(call.runtime)
+    monkeypatch.setattr(call.registry, "build", lambda spec, creds: f"new-{spec.kind}")
+    call.overrides.request(
+        {
+            "switch_language": {"code": "hi", "label": "Hindi", "tts_model": None},
+            "stt": {"language": "hi", "model": "nova-2"},
+        }
+    )
+    call._swap_pending = True
+    call._apply_swap()
+    ((call_id, plan, components),) = rebuilt
+    assert call_id == CALL_ID
     assert plan.reply_language == "Hindi" and plan.language == "hi"
     assert components["stt"] == "new-stt" and components["llm"] == "llm"
     assert session.agents == ["node-agent"]

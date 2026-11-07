@@ -1,5 +1,5 @@
 """End node (T065, FR-018): the closing line, then hang-up with ``agent_hangup``; the node's
-reason is stored on the move.
+reason is kept in the ``end_reason`` flow variable.
 
 An End node whose message is empty or the stock default (``STOCK_GOODBYE``, what new flows
 used to get) does not speak a canned line over whatever the caller just asked: the agent says a
@@ -15,30 +15,27 @@ from typing import TYPE_CHECKING, Any
 from callwright_contract.values import STOCK_GOODBYE
 
 from worker.flow import registry
+from worker.flow.compiled import EndSection
 from worker.flow.registry import Outcome, Stop
 
 if TYPE_CHECKING:
     from worker.flow.executor import FlowRun
 
-# The default End message of flows built before the goodbye was generated (API starter, web
-# flow model); treated like an empty message.
-
 
 def generates(node: Mapping[str, Any]) -> bool:
     """True when the End node has no line of its own and the agent writes the goodbye."""
-    message = str((node.get("end") or {}).get("message") or "").strip()
+    message = EndSection.of(node.get("end")).message.strip()
     return not message or message == STOCK_GOODBYE
 
 
 async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome:
-    spec = node.get("end") or {}
-    reason = str(spec.get("reason") or "call_completed")
-    run.state.variables["end_reason"] = reason
+    end = EndSection.of(node.get("end"))
+    run.state.variables["end_reason"] = end.reason
     if generates(node):
-        await run.services.end(STOCK_GOODBYE, reason, generate=True)
+        await run.services.end(STOCK_GOODBYE, generate=True)
     else:
-        await run.services.end(run.render(spec.get("message")).strip(), reason)
-    return Stop(reason)
+        await run.services.end(run.render(end.message).strip())
+    return Stop(end.reason)
 
 
 registry.register("end", handle)

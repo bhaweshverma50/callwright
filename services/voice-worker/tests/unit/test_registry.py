@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from importlib.util import find_spec
 from pathlib import Path
 
 import pytest
@@ -15,9 +16,8 @@ from worker.adapters.registry import (
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorSpec,
-    has_module,
 )
-from worker.pipeline import auto_stt
+from worker.agent import auto_stt
 from worker.settings import WorkerSettings
 
 REPO = Path(__file__).resolve().parents[4]
@@ -41,7 +41,7 @@ async def test_every_catalog_entry_builds(kind: str, provider: str, model: str) 
 
 def test_every_catalog_entry_has_a_module() -> None:
     for entry in load_catalog().entries:
-        assert has_module(entry.kind, entry.provider), entry
+        assert find_spec(f"worker.adapters.{entry.kind}.{entry.provider}"), entry
 
 
 def test_unknown_provider_and_model_raise() -> None:

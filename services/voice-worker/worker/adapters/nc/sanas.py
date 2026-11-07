@@ -10,21 +10,16 @@ Engine contract (what the vendor SDK integration implements and registers with
 - ``process(samples, sample_rate, num_channels)`` takes interleaved int16 samples for one
   frame (10 ms at the track rate, usually 48 kHz mono) and returns the same number of int16
   samples. It is called synchronously on the audio path, so it must return within the frame
-  budget (``SANAS_MAX_LATENCY_MS``); it resamples to ``SANAS_SAMPLE_RATE`` itself if the model
-  needs a fixed rate, and keeps its streaming state between calls.
+  budget (``MAX_LATENCY_MS``); it resamples itself if the model needs a fixed rate, and keeps
+  its streaming state between calls.
 - ``applied`` is True when the engine really transforms audio. Only applied audio is metered
   (``usage.nc`` audio_ms, FR-029), so a pass-through never bills the customer.
 - ``close()`` releases the stream at call end.
 
-Configuration (``WorkerSettings``, environment):
-
-- ``SANAS_API_KEY``: account key; without it the pass-through engine is used.
-- ``SANAS_ENDPOINT``: streaming endpoint or on-prem engine URL, if the SDK needs one.
-- ``SANAS_SAMPLE_RATE`` (16000): model rate the engine works at.
-- ``SANAS_MAX_LATENCY_MS`` (20): per-frame budget; frames over it are counted in
-  ``slow_frames`` (a health signal for the integration). A frame whose ``process`` raises or
-  returns the wrong length passes through unchanged (fail open, the caller is never muted) and
-  is counted in ``errors``.
+``SANAS_API_KEY`` (``WorkerSettings``) is the account key; without it the pass-through engine
+is used. Frames over the per-frame budget are counted in ``slow_frames`` (a health signal for
+the integration). A frame whose ``process`` raises or returns the wrong length passes through
+unchanged (fail open, the caller is never muted) and is counted in ``errors``.
 
 No vendor SDK or key is available yet, so :func:`make_engine` returns
 :class:`PassthroughEngine` unless an engine factory is registered: the call runs, the caller's
@@ -47,27 +42,20 @@ import numpy.typing as npt
 from worker.adapters.registry import VendorSpec
 
 MODELS = {"vi": "voice_isolation", "st": "standard"}
+MAX_LATENCY_MS = 20.0
 
 Samples = npt.NDArray[np.int16]
 
 
 @dataclass(frozen=True)
 class SanasConfig:
-    """The ``SANAS_*`` contract, as passed to adapters in ``creds``."""
+    """What the engine factory gets from ``creds``."""
 
     api_key: str = field(default="", repr=False)  # never in logs or reprs
-    endpoint: str = ""
-    sample_rate: int = 16000
-    max_latency_ms: float = 20.0
 
     @classmethod
     def from_creds(cls, creds: Mapping[str, str]) -> SanasConfig:
-        return cls(
-            api_key=creds.get("api_key", ""),
-            endpoint=creds.get("endpoint", ""),
-            sample_rate=int(creds.get("sample_rate") or 16000),
-            max_latency_ms=float(creds.get("max_latency_ms") or 20.0),
-        )
+        return cls(api_key=creds.get("api_key", ""))
 
 
 class SanasEngine(Protocol):
@@ -159,7 +147,7 @@ def _processor_class() -> type[Any]:
             except Exception:
                 self.errors += 1
                 return frame
-            if (time.perf_counter() - started) * 1000.0 > self.config.max_latency_ms:
+            if (time.perf_counter() - started) * 1000.0 > MAX_LATENCY_MS:
                 self.slow_frames += 1
             if out.shape != samples.shape:
                 self.errors += 1

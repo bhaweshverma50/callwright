@@ -7,7 +7,7 @@ Live job sequence (003 plan, research R1, R2):
    (SIP inbound, WhatsApp; 010). The worker claims the job at ``POST /v1/internal/calls/claim``
    and receives the frozen :class:`RuntimeConfig`, or a refusal (hang up without speaking).
 2. :func:`worker.pipeline.plan_session` resolves vendors; unsupported vendors or a flow agent
-   without the 004 runtime fail the call with a diagnostic.
+   without a runnable compiled flow fail the call with a diagnostic.
 3. Web calls wait up to ``caller_join_timeout_s`` for the browser, then post ``in_progress``,
    start the session, the timers, background audio and the greeting.
 4. Every events post is the heartbeat; ``control.end_call`` in a response ends the call.
@@ -26,7 +26,7 @@ import json
 import logging
 import sys
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from typing import Any
 
 from callwright_contract.adapters import Kind
@@ -45,6 +45,7 @@ from worker.adapters.registry import (
     UnsupportedVendor,
     VendorSpec,
 )
+from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan
 from worker.audio import PronunciationTransform, scale_frame
 from worker.call_behavior import (
     GOODBYE_HANGUP_DELAY_S,
@@ -62,8 +63,8 @@ from worker.call_behavior import (
     ends_with_goodbye,
 )
 from worker.control import RuntimeCallControl
-from worker.flow import FlowRuntimeUnavailable, get_flow_runner
-from worker.flow.runtime import FlowComponents
+from worker.flow import FlowComponents, FlowRunner, FlowRuntimeUnavailable
+from worker.flow.runtime import CallwrightFlowRunner
 from worker.internal_api import InternalApiClient
 from worker.language import translate_greeting, translated_greeting_instruction
 from worker.metrics import (
@@ -77,10 +78,8 @@ from worker.metrics import (
     latency_payload,
 )
 from worker.pipeline import (
-    GENERATED_GREETING_INSTRUCTION,
     OverrideManager,
     SessionComponents,
-    SessionPlan,
     build_agent,
     build_components,
     build_session,
@@ -91,7 +90,6 @@ from worker.pipeline import (
 from worker.settings import WorkerSettings, get_settings
 from worker.telephony import (
     DialFailed,
-    TelephonyUnavailable,
     dial_outbound,
     dtmf_code,
     play_ringback,
@@ -99,7 +97,7 @@ from worker.telephony import (
     sip_attributes,
 )
 from worker.tools import ToolActivity
-from worker.tools import registry as tool_registry
+from worker.tools.registry import CallTools, prepare_call_tools
 from worker.tools.transfer import DESTINATION_IDENTITY, LiveKitTransferBackend
 from worker.turn_detection import DigitAwareTurnDetector
 
@@ -112,6 +110,8 @@ CALLER_QUIET_MAX_WAIT_S = 2.0
 # The session closes in well under a second once nothing inside it waits on the close; the cap
 # only keeps a vendor that never answers its close from holding the room open.
 SESSION_CLOSE_TIMEOUT_S = 10.0
+# The flow runtime of this worker process (004); calls release their flow state when they end.
+FLOW_RUNNER: FlowRunner = CallwrightFlowRunner()
 SYSTEM_EVENT_FOR_REASON = {
     "inactivity": "silence_timeout",
     "max_duration_reached": "max_duration",
@@ -131,16 +131,6 @@ def parse_dispatch_metadata(raw: str | None) -> dict[str, Any]:
     return value if isinstance(value, dict) else {"raw": raw}
 
 
-def make_api_client(settings: WorkerSettings) -> InternalApiClient:
-    return InternalApiClient(
-        settings.internal_api_url,
-        settings.service_token.get_secret_value(),
-        timeout_s=settings.http_timeout_s,
-        max_attempts=settings.events_max_attempts,
-        backoff_base_s=settings.events_backoff_base_s,
-    )
-
-
 # --------------------------------------------------------------------------------------------
 # Live call
 
@@ -156,6 +146,9 @@ class LiveCall:
         call_id: str,
         runtime: RuntimeConfig,
         registry: AdapterRegistry | None = None,
+        *,
+        flows: FlowRunner = FLOW_RUNNER,
+        extra_tools: Sequence[Any] = (),
     ) -> None:
         self.ctx = ctx
         self.api = api
@@ -163,6 +156,8 @@ class LiveCall:
         self.call_id = call_id
         self.runtime = runtime
         self.registry = registry or AdapterRegistry()
+        self.flows = flows
+        self.tools: CallTools | None = None
         self.clock = AsyncioClock()
         self.meters = UsageMeters()
         self.recorder = EventRecorder(self.meters, monotonic=time.monotonic)
@@ -196,7 +191,7 @@ class LiveCall:
         self._ended = asyncio.Event()
         self._swap_pending = False
         self._tasks: set[asyncio.Task[Any]] = set()
-        self._extra_tools: list[Any] = []
+        self._extra_tools: list[Any] = list(extra_tools)
         self._extra_instructions = ""
         self._goodbye_timer: asyncio.TimerHandle | None = None
         self._teardown: asyncio.Future[None] | None = None
@@ -259,11 +254,13 @@ class LiveCall:
     async def _close_room(self, *, keep: bool = False) -> None:
         """Delete the room, or only leave it when a warm transfer left caller and destination
         talking in it (005)."""
-        with contextlib.suppress(Exception):
+        try:
             if keep:
                 await self.ctx.room.disconnect()
             else:
                 await self.ctx.delete_room()
+        except Exception as exc:  # the job still shuts down
+            log.warning("room not closed for %s: %r", self.call_id, exc)
         self.ctx.shutdown(reason="call ended")
         self._ended.set()
 
@@ -307,13 +304,17 @@ class LiveCall:
             if diagnostic and diagnostic.startswith("vendor_error"):
                 self.recorder.system("vendor_error", diagnostic)
             if self.session is not None:
-                with contextlib.suppress(Exception):
+                try:
                     self.session.interrupt()
+                except Exception as exc:  # the final status is posted regardless
+                    log.warning("speech not interrupted for %s: %r", self.call_id, exc)
             self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
             await self.poster.stop()
             if self.background is not None:
-                with contextlib.suppress(Exception):
+                try:
                     await self.background.aclose()
+                except Exception as exc:
+                    log.warning("ambience not closed for %s: %r", self.call_id, exc)
             if self.session is not None:
                 try:
                     await asyncio.wait_for(self.session.aclose(), SESSION_CLOSE_TIMEOUT_S)
@@ -324,15 +325,15 @@ class LiveCall:
                 if diagnostic:
                     self.session_span.set_attribute("call.diagnostic", diagnostic)
                 self.session_span.end()
-            await tool_registry.PROVIDER.release(self.call_id)
+            self.flows.release(self.call_id)
+            if self.tools is not None:
+                await self.tools.aclose()
         finally:
             await self._close_room(keep=reason == "call_transfer" and self._destination_in_room())
 
     def _destination_in_room(self) -> bool:
-        with contextlib.suppress(Exception):
-            participants = self.ctx.room.remote_participants.values()
-            return any(p.identity == DESTINATION_IDENTITY for p in participants)
-        return False
+        participants = self.ctx.room.remote_participants.values()
+        return any(p.identity == DESTINATION_IDENTITY for p in participants)
 
     def _transfer_backend(self) -> LiveKitTransferBackend | None:
         """Transfers (005) on SIP calls through the LiveKit server API."""
@@ -351,7 +352,9 @@ class LiveCall:
             api_secret=settings.livekit_api_secret.get_secret_value(),
             room_name=self.ctx.room.name,
             caller_identity=lambda: self.caller_identity,
-            trunk_id=runtime.outbound_dial.sip_trunk_id if runtime.outbound_dial else None,
+            trunk_id=(runtime.outbound_dial.sip_trunk_id if runtime.outbound_dial else None)
+            or settings.sip_outbound_trunk_id
+            or None,
             synthesize=synthesize,
         )
 
@@ -392,21 +395,20 @@ class LiveCall:
         for kind, component in built.items():
             self.components.set(kind, component)
         plan = self.overrides.plan_for_current()
-        assert self.control is not None
+        assert self.control is not None and self.tools is not None
         if plan.agent_type == "flow":
             # A flow keeps its place: the current node's agent is rebuilt with the new plan and
             # components (rebuilding the entry agent would restart the flow).
-            flow_call = getattr(get_flow_runner(), "calls", {}).get(self.call_id)
-            if flow_call is not None:
-                components = {k: self.components.get(k) for k in ("stt", "llm", "tts")}
-                agent = flow_call.rebuild(plan, components)
-                if agent is not None:
-                    self.session.update_agent(agent)
+            components = {k: self.components.get(k) for k in ("stt", "llm", "tts")}
+            agent = self.flows.rebuild(self.call_id, plan, components)
+            if agent is not None:
+                self.session.update_agent(agent)
             return
         self.agent = build_agent(
             plan,
             self.runtime,
             self.control,
+            self.tools,
             on_tts_text=self._on_tts_text,
             extra_tools=self._extra_tools,
             extra_instructions=self._extra_instructions,
@@ -438,7 +440,7 @@ class LiveCall:
     async def caller_quiet(
         self, quiet_s: float = CALLER_QUIET_S, max_wait_s: float = CALLER_QUIET_MAX_WAIT_S
     ) -> bool:
-        """``CallBackend.caller_quiet``: wait (at most ``max_wait_s``) until the caller is not
+        """Wait (at most ``max_wait_s``) until the caller is not
         speaking and no words were transcribed in the last ``quiet_s``. At the deadline only
         transcribed words count, so line noise that voice detection hears never keeps a call
         open. Returns immediately in the usual case (the caller finished seconds ago)."""
@@ -604,8 +606,8 @@ class LiveCall:
     async def run(self) -> None:
         runtime = self.runtime
         try:
-            plan = plan_session(runtime, self.registry)
-        except UnsupportedVendor as exc:
+            plan = plan_session(runtime, self.registry, self.flows)
+        except (UnsupportedVendor, FlowRuntimeUnavailable) as exc:
             await self._fail(exc.diagnostic)
             return
         except UnsupportedLanguage as exc:
@@ -647,7 +649,6 @@ class LiveCall:
             on_overrides_staged=self._request_swap,
         )
         behavior = plan.behavior
-        extra_tools: list[Any] = []
         extra_instructions = ""
         if runtime.direction == "outbound" and behavior.voicemail.enabled:
             self.voicemail = VoicemailHandler(
@@ -656,13 +657,11 @@ class LiveCall:
                 hang_up=lambda: self._hang_up_soon("voicemail_reached"),
                 speak_message=self._leave_voicemail,
             )
-            extra_tools.append(voicemail_tool(self._report_machine))
+            self._extra_tools.append(voicemail_tool(self._report_machine))
             extra_instructions = VOICEMAIL_INSTRUCTION
-        self._extra_tools = extra_tools
         self._extra_instructions = extra_instructions
-        # 005: one secret fetch and keep-alive clients for this call's tools.
-        await tool_registry.PROVIDER.prepare(
-            runtime, self.control, self.settings, transfer_backend=self._transfer_backend()
+        self.tools = await prepare_call_tools(
+            runtime, self.control, self.api, transfer_backend=self._transfer_backend()
         )
         try:
             self.components = build_components(
@@ -672,8 +671,10 @@ class LiveCall:
                 plan,
                 runtime,
                 self.control,
+                self.tools,
+                flows=self.flows,
                 on_tts_text=self._on_tts_text,
-                extra_tools=extra_tools,
+                extra_tools=self._extra_tools,
                 extra_instructions=extra_instructions,
                 flow_components=self._flow_components(),
             )
@@ -735,9 +736,6 @@ class LiveCall:
                 return None
             try:
                 return await dial_outbound(self.ctx, runtime.outbound_dial, self.recorder)
-            except TelephonyUnavailable as exc:
-                await self._fail(exc.diagnostic)
-                return None
             except DialFailed as exc:
                 await self._not_answered(exc)
                 return None
@@ -900,8 +898,10 @@ class LiveCall:
         try:
             return await translate_greeting(llm, greeting, label, on_usage=meter)
         finally:
-            with contextlib.suppress(Exception):
+            try:
                 await llm.aclose()
+            except Exception as exc:
+                log.warning("greeting translator not closed for %s: %r", self.call_id, exc)
 
     async def _greeting_frames(self, task: asyncio.Task[list[Any]] | None) -> list[Any] | None:
         """The pre-synthesised greeting, or None to fall back to live TTS."""
@@ -938,11 +938,13 @@ class LiveCall:
 
         async def run() -> None:
             if self.session is not None:
-                with contextlib.suppress(Exception):
+                try:
                     handle = self.session.generate_reply(
                         instructions=SILENCE_GOODBYE, allow_interruptions=False
                     )
                     await asyncio.wait_for(handle.wait_for_playout(), timeout=15)
+                except Exception as exc:  # the call still ends on silence
+                    log.warning("silence goodbye not said on %s: %r", self.call_id, exc)
             self._hang_up_soon("inactivity")
 
         self._spawn(run())
@@ -1021,9 +1023,11 @@ async def claim_job(ctx: Any, api: InternalApiClient) -> tuple[str, RuntimeConfi
     return response.call_id, response.runtime if response.admitted else None, response.refusal
 
 
-async def job_entry(ctx: Any, registry: AdapterRegistry | None = None) -> None:
+async def job_entry(
+    ctx: Any, registry: AdapterRegistry | None = None, extra_tools: Sequence[Any] = ()
+) -> None:
     settings = get_settings()
-    api = make_api_client(settings)
+    api = InternalApiClient.from_settings(settings)
     attrs = {"livekit.job_id": ctx.job.id, "livekit.room": ctx.room.name}
     with telemetry.call_scope(None), telemetry.span("call", attrs) as call_span:
         try:
@@ -1034,11 +1038,13 @@ async def job_entry(ctx: Any, registry: AdapterRegistry | None = None) -> None:
             if runtime is None:
                 # Refused (inbound admission) calls hang up without speaking (R2).
                 log.info("call %s refused: %s", call_id, refusal)
-                with contextlib.suppress(Exception):
+                try:
                     await ctx.delete_room()
+                except Exception as exc:
+                    log.warning("room of refused call %s not deleted: %r", call_id, exc)
                 ctx.shutdown(reason="refused")
                 return
-            call = LiveCall(ctx, api, settings, call_id, runtime, registry)
+            call = LiveCall(ctx, api, settings, call_id, runtime, registry, extra_tools=extra_tools)
             await call.run_safely()
             if call.control is not None and call.control.disconnect_reason:
                 call_span.set_attribute("call.disconnect_reason", call.control.disconnect_reason)
@@ -1108,18 +1114,13 @@ def create_server(
     return server
 
 
-def run_textsim() -> int:
-    """``role=textsim`` (text-mode simulations, 008): the arq consumer in ``worker.textsim``."""
-    from worker.textsim.entry import main as textsim_main
-
-    return textsim_main()
-
-
 def main() -> int:
     logging.basicConfig(level=logging.INFO)
     settings = get_settings()
     if settings.role == "textsim":
-        return run_textsim()
+        from worker.textsim.entry import main as textsim_main
+
+        return textsim_main()
     from livekit.agents import cli
 
     cli.run_app(create_server(settings))

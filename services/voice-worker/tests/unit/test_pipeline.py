@@ -8,27 +8,24 @@ from typing import Any
 
 import pytest
 
-from tests.unit.conftest import make_runtime
+from tests.unit.conftest import call_tools, make_runtime
 from worker.adapters.registry import AdapterRegistry, UnsupportedVendor
-from worker.audio import PronunciationEntry, PronunciationTransform
-from worker.flow import (
-    FlowRuntimeUnavailable,
-    NullFlowRunner,
-    get_flow_runner,
-    register_flow_runner,
-)
-from worker.pipeline import (
+from worker.agent import (
     CALLBACK_CLOSE,
     CALLBACK_INSTRUCTION,
     ENDING_INSTRUCTION,
     VOICE_STYLE_INSTRUCTION,
+    callback_instructions,
+    pronounce,
+)
+from worker.audio import PronunciationEntry, PronunciationTransform
+from worker.flow import FlowRuntimeUnavailable
+from worker.flow.runtime import CallwrightFlowRunner
+from worker.pipeline import (
     build_agent,
     build_components,
     build_session,
-    callback_instructions,
     plan_session,
-    pronounce,
-    tts_gain_for,
     vendor_error_diagnostic,
 )
 
@@ -164,53 +161,20 @@ def test_tts_gain_only_without_native_volume() -> None:
         make_runtime({"tts": {"provider": "cartesia", "model": "sonic-2", "volume": 0.5}}),
         AdapterRegistry(),
     )
-    assert tts_gain_for(sonic2.tts) == 0.5
-
-
-def test_flow_agent_without_004_is_refused() -> None:
-    runtime = make_runtime({"type": "flow"})
-    plan = plan_session(runtime, AdapterRegistry())
-    previous = get_flow_runner()
-    register_flow_runner(NullFlowRunner())
-    try:
-        with pytest.raises(FlowRuntimeUnavailable) as exc:
-            build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
-    finally:
-        register_flow_runner(previous)
-    assert exc.value.diagnostic == "flow-runtime-unavailable"
+    assert sonic2.tts_gain == 0.5
 
 
 def test_flow_agent_without_a_compiled_flow_fails_with_a_diagnostic() -> None:
     runtime = make_runtime({"type": "flow"})
-    plan = plan_session(runtime, AdapterRegistry())
     with pytest.raises(FlowRuntimeUnavailable) as exc:
-        build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+        plan_session(runtime, AdapterRegistry(), CallwrightFlowRunner())
     assert exc.value.diagnostic == "flow_not_compiled"
-
-
-def test_flow_runner_port_builds_the_entry_agent() -> None:
-    runtime = make_runtime({"type": "flow"})
-    plan = plan_session(runtime, AdapterRegistry())
-
-    class Runner:
-        available = True
-
-        def build_agent(self, runtime: Any, control: Any, tools: Any, **options: Any) -> str:
-            assert options["plan"] is plan
-            return "flow-entry-agent"
-
-    previous = get_flow_runner()
-    register_flow_runner(Runner())
-    try:
-        assert build_agent(plan, runtime, control=None) == "flow-entry-agent"  # type: ignore[arg-type]
-    finally:
-        register_flow_runner(previous)
 
 
 def test_single_prompt_agent_carries_plan_and_instructions() -> None:
     runtime = make_runtime()
     plan = plan_session(runtime, AdapterRegistry())
-    agent = build_agent(plan, runtime, control=None)  # type: ignore[arg-type]
+    agent = build_agent(plan, runtime, None, call_tools(runtime))  # type: ignore[arg-type]
     assert agent.plan is plan
     callback = callback_instructions(runtime.variables, runtime.direction)
     assert agent.instructions == (
@@ -267,7 +231,8 @@ async def test_voicemail_tool_is_added_with_its_instruction() -> None:
     agent = build_agent(
         plan,
         runtime,
-        control=None,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+        call_tools(runtime),
         extra_tools=[tool],
         extra_instructions=VOICEMAIL_INSTRUCTION,
     )
@@ -302,8 +267,8 @@ def test_a_non_english_agent_tells_the_model_its_language() -> None:
 
 
 def test_a_multilingual_agent_follows_the_caller_language() -> None:
+    from worker.agent import make_agent_class
     from worker.language import FOLLOW_CALLER_LANGUAGE
-    from worker.pipeline import make_agent_class
 
     plan = plan_session(make_runtime({"language": "multi"}), AdapterRegistry())
     assert plan.reply_language is None, "no 'reply only in Multilingual'"

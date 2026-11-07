@@ -11,10 +11,9 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
-import httpx
 from callwright_contract.values import (
     CALLBACK_MAX_IN_MINUTES,
     CALLBACK_MAX_NOTE_CHARS,
@@ -23,6 +22,8 @@ from callwright_contract.values import (
     spoken_time,
 )
 
+from worker.call_behavior import local_now
+from worker.internal_api import InternalApiClient, InternalApiError
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 TOOL_TYPE = "schedule_callback"
@@ -61,18 +62,6 @@ PARAMETERS: dict[str, Any] = {
 }
 
 
-def local_now(variables: Mapping[str, Any], now: datetime | None = None) -> datetime:
-    """Now in the call's zone, from the ``current_datetime`` built-in (it carries the offset);
-    UTC when the call has none."""
-    now = now or datetime.now(UTC)
-    raw = str(variables.get("current_datetime") or "")
-    try:
-        offset = datetime.fromisoformat(raw).utcoffset()
-    except ValueError:
-        offset = None
-    return now.astimezone(timezone(offset) if offset is not None else UTC)
-
-
 def _confirmation(spoken: str) -> str:
     return (
         f"Callback booked for {spoken}. Tell the caller that time, then say goodbye and end the "
@@ -107,17 +96,8 @@ def simulated(arguments: Mapping[str, Any], variables: Mapping[str, Any]) -> Too
 
 
 class ScheduleCallbackExecutor:
-    def __init__(
-        self,
-        client: httpx.AsyncClient | None,
-        base_url: str,
-        service_token: str,
-        *,
-        timeout_s: float = TIMEOUT_S,
-    ) -> None:
-        self.client = client
-        self.base_url = base_url.rstrip("/")
-        self.headers = {"Authorization": f"Bearer {service_token}"}
+    def __init__(self, api: InternalApiClient | None, *, timeout_s: float = TIMEOUT_S) -> None:
+        self.api = api
         self.timeout_s = timeout_s
 
     async def execute(
@@ -129,22 +109,20 @@ class ScheduleCallbackExecutor:
             return simulated(arguments, ctx.dynamic_variables)
         if not ctx.is_sip:
             return ToolResult.error(CHANNEL_UNSUPPORTED, CALLBACK_NOT_A_PHONE_CALL)
-        if self.client is None:
+        if self.api is None:
             return ToolResult.error("unavailable", UNAVAILABLE)
         body: dict[str, Any] = {"note": str(arguments.get("note") or "")[:CALLBACK_MAX_NOTE_CHARS]}
         if arguments.get("in_minutes") is not None:
             body["in_minutes"] = int(arguments["in_minutes"])
         else:
             body["at"] = str(arguments["at"])[:40]
-        url = f"{self.base_url}/calls/{ctx.call_id}/callbacks"
         try:
-            response = await self.client.post(
-                url, json=body, headers=self.headers, timeout=self.timeout_s
+            status, data = await self.api.schedule_callback(
+                ctx.call_id, body, timeout_s=self.timeout_s
             )
-            data = response.json()
-        except (httpx.HTTPError, ValueError):
+        except InternalApiError:
             return ToolResult.error("unavailable", UNAVAILABLE)
-        if response.status_code in (200, 201) and isinstance(data, dict):
+        if status in (200, 201) and isinstance(data, dict):
             spoken = str(data.get("spoken_time") or data.get("local_time") or "")
             payload = json.dumps(
                 {
@@ -161,6 +139,6 @@ class ScheduleCallbackExecutor:
                 mocked=bool(data.get("mocked")),
                 extra={"callback_id": data.get("callback_id")},
             )
-        if response.status_code == 422 and isinstance(data, dict) and data.get("reason"):
+        if status == 422 and isinstance(data, dict) and data.get("reason"):
             return ToolResult.error(str(data["reason"]), str(data.get("detail") or UNAVAILABLE))
         return ToolResult.error("unavailable", UNAVAILABLE)

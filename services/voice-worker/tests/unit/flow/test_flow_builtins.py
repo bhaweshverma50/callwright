@@ -19,17 +19,17 @@ from tests.flow_support import (
 )
 from tests.harness.runner import build_runtime
 from worker.adapters.registry import AdapterRegistry
-from worker.flow import runtime as flow_runtime
-from worker.flow.nodes.end import generates
-from worker.flow.runtime import CallwrightFlowRunner
-from worker.pipeline import (
+from worker.agent import (
     CALLER_HAS_TO_GO,
     ENDING_INSTRUCTION,
     FLOW_CALLBACK_CLOSE,
     FLOW_ENDING_INSTRUCTION,
-    build_agent,
-    plan_session,
 )
+from worker.flow import FlowComponents
+from worker.flow import runtime as flow_runtime
+from worker.flow.nodes.end import generates
+from worker.flow.runtime import CallwrightFlowRunner
+from worker.pipeline import build_agent, plan_session
 from worker.tools.registry import build_call_tools
 
 pytestmark = pytest.mark.usefixtures("no_llm_prewarm")
@@ -60,20 +60,10 @@ def tool_names(agent: Any) -> set[str]:
 def entry_agent(**runtime: Any) -> Any:
     """The flow's entry agent as a live call builds it (``pipeline.build_agent``)."""
     rt = build_runtime(greeting_end(), {"channel": "sip_inbound", **runtime})
-    plan = plan_session(rt, AdapterRegistry())
+    flows = CallwrightFlowRunner()
+    plan = plan_session(rt, AdapterRegistry(), flows)
     control = RecordingControl()
-    tools = build_call_tools(rt, control)
-
-    class Provider:
-        def tools_for(self, runtime: Any, control: Any) -> Any:
-            return tools.function_tools()
-
-        def call_tools(self, runtime: Any, control: Any) -> Any:
-            return tools
-
-    return build_agent(
-        plan, rt, control, tool_provider=Provider(), flow_runner=CallwrightFlowRunner()
-    )
+    return build_agent(plan, rt, control, build_call_tools(rt, control), flows=flows)
 
 
 def test_every_conversation_node_gets_callback_and_language_tools_and_rules() -> None:
@@ -152,7 +142,7 @@ async def test_slow_goodbye_falls_back_in_bounded_time(monkeypatch: pytest.Monke
 
 async def test_no_second_goodbye_after_the_reply_said_one() -> None:
     rt = build_runtime(greeting_end(), {})
-    plan = plan_session(rt, AdapterRegistry())
+    plan = plan_session(rt, AdapterRegistry(), CallwrightFlowRunner())
     control = RecordingControl()
     call = flow_runtime.FlowCall(rt, control, plan, base_tools=build_call_tools(rt, control))
     call.reply_text = "Sure, I'll call you back in five minutes. Bye now!"
@@ -183,7 +173,7 @@ async def test_caller_still_talking_is_not_hung_up_on() -> None:
 
 def flow_call(**runtime: Any) -> flow_runtime.FlowCall:
     rt = build_runtime(greeting_end(), {"channel": "sip_inbound", **runtime})
-    plan = plan_session(rt, AdapterRegistry())
+    plan = plan_session(rt, AdapterRegistry(), CallwrightFlowRunner())
     control = RecordingControl()
     return flow_runtime.FlowCall(rt, control, plan, base_tools=build_call_tools(rt, control))
 
@@ -226,13 +216,13 @@ def test_caller_language_wins_over_a_node_voice() -> None:
         return f"{spec.kind}:{spec.model}"
 
     call = flow_call()
-    call.components = flow_runtime.FlowComponents(AdapterRegistry(), build)
+    call.components = FlowComponents(AdapterRegistry(), build)
     node = dict(call.run.node("n_greet000"))
     node["tts"] = {**node["tts"], "voice_id": "another-voice"}
-    assert "tts" in call.node_components(node)  # the node's own voice in the agent's language
+    assert "tts" in call.node_components(node).built  # the node's own voice in the agent's language
     built.clear()
     call.plan = replace(call.plan, language="hi", reply_language="Hindi")
-    assert "tts" not in call.node_components(node) and not built
+    assert "tts" not in call.node_components(node).built and not built
 
 
 async def test_flow_node_books_a_callback_and_the_goodbye_confirms_it() -> None:

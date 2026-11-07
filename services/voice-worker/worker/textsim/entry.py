@@ -24,17 +24,15 @@ import logging
 import sys
 from typing import Any
 
-import httpx
 from arq.worker import func
 from callwright_contract.values import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
 
 from worker import telemetry
 from worker.adapters.registry import AdapterRegistry
+from worker.internal_api import InternalApiClient
 from worker.settings import WorkerSettings, get_settings
 from worker.textsim import runner
-from worker.textsim.api_client import TextsimApiClient
 from worker.textsim.llm import settings_factory
-from worker.tools import kb_search
 
 log = logging.getLogger("callwright.textsim")
 
@@ -50,25 +48,14 @@ async def run_simulation(ctx: dict[str, Any], simulation_run_id: str) -> str:
 def build_context(
     settings: WorkerSettings, registry: AdapterRegistry | None = None
 ) -> dict[str, Any]:
-    """The per-process job context: API client, models and the knowledge-search client."""
+    """The per-process job context: the internal API client and the runner's models."""
     registry = registry or AdapterRegistry()
-    api = TextsimApiClient(
-        settings.internal_api_url,
-        settings.service_token.get_secret_value(),
-        timeout_s=settings.http_timeout_s,
-        max_attempts=settings.events_max_attempts,
-        backoff_base_s=settings.events_backoff_base_s,
-    )
-    kb_http = httpx.AsyncClient(timeout=max(kb_search.TIMEOUT_S, settings.http_timeout_s))
     deps = runner.RunnerDeps(
         models=settings_factory(settings, registry),
         registry=registry,
-        internal_api_url=settings.internal_api_url,
-        service_token=settings.service_token.get_secret_value(),
-        kb_http=kb_http,
         heartbeat_interval_s=settings.heartbeat_interval_s,
     )
-    return {"api": api, "deps": deps, "kb_http": kb_http}
+    return {"api": InternalApiClient.from_settings(settings), "deps": deps}
 
 
 async def _health(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -101,8 +88,6 @@ async def shutdown(ctx: dict[str, Any]) -> None:
             await health.wait_closed()
     if "api" in ctx:
         await ctx["api"].aclose()
-    if "kb_http" in ctx:
-        await ctx["kb_http"].aclose()
     telemetry.flush()
 
 

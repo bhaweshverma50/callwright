@@ -115,7 +115,12 @@ async def test_periodic_heartbeat_and_final_flush_on_stop() -> None:
     route = respx.post(URL).mock(return_value=httpx.Response(200, json=OK))
     recorder, poster, _ = make(interval_s=0.01)
     poster.start()
-    await asyncio.sleep(0.05)
+
+    async def two_heartbeats() -> None:
+        while route.call_count < 2:
+            await asyncio.sleep(0.005)
+
+    await asyncio.wait_for(two_heartbeats(), 5)
     recorder.status("ended", disconnect_reason="user_hangup")
     await poster.stop()
     assert route.call_count >= 3

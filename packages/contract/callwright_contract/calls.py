@@ -48,6 +48,19 @@ INBOUND_SIP_CHANNELS: Final = frozenset({"sip_inbound", "whatsapp"})
 # Calls that reach real people outside the editor: always run the published version.
 LIVE_CHANNELS: Final = frozenset({"sip_inbound", "sip_outbound", "whatsapp"})
 
+# ``system`` transcript items the worker posts (call_events.yaml ``TranscriptItem.event``).
+SystemEvent = Literal[
+    "voicemail_detected",
+    "silence_timeout",
+    "max_duration",
+    "credit_exhausted",
+    "vendor_error",
+    "segment_override",
+    "override_clamped",
+    "language_switched",
+]
+SYSTEM_EVENTS: Final[tuple[SystemEvent, ...]] = get_args(SystemEvent)
+
 Direction = Literal["inbound", "outbound"]
 Origin = Literal["live", "test", "simulation"]
 ORIGINS: Final[tuple[Origin, ...]] = get_args(Origin)

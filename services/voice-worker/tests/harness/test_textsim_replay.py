@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from tests.flow_support import Rule
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
-    Rule,
     agent_config,
     agent_script,
     deps,

@@ -25,8 +25,8 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
         return openai.LLM(model=model, api_key=fallback, **openai_kwargs(spec.options, creds))
     return openai.LLM.with_azure(
         model=model,
-        azure_endpoint=creds.get("endpoint") or "https://callwright.openai.azure.com",
-        azure_deployment=creds.get("deployment") or model,
+        azure_endpoint=creds.get("endpoint", ""),
+        azure_deployment=model,
         api_version=creds.get("api_version") or DEFAULT_API_VERSION,
         api_key=creds.get("api_key", ""),
         **temperature_kwargs(spec.options),

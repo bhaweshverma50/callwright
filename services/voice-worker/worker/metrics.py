@@ -53,11 +53,6 @@ class UsageMeters:
         key = (provider, model)
         self.stt[key] = self.stt.get(key, 0) + max(0, round(audio_ms))
 
-    def set_stt(self, provider: str, model: str, audio_ms: float) -> None:
-        """Set a streamed-audio counter (never lowered, so snapshots stay monotonic)."""
-        key = (provider, model)
-        self.stt[key] = max(self.stt.get(key, 0), max(0, round(audio_ms)))
-
     def add_llm(
         self,
         provider: str,
@@ -78,12 +73,6 @@ class UsageMeters:
     def add_tts(self, provider: str, model: str | None, characters: int) -> None:
         key = (provider, model)
         self.tts[key] = self.tts.get(key, 0) + max(0, characters)
-
-    def add_nc(self, provider: str, model: str, audio_ms: float) -> None:
-        if provider == "none":
-            return
-        key = (provider, model)
-        self.nc[key] = self.nc.get(key, 0) + max(0, round(audio_ms))
 
     def set_nc(self, provider: str, model: str, audio_ms: float) -> None:
         """Noise cancellation processes all caller audio: the meter is the connected time.
@@ -156,7 +145,6 @@ class LatencyTracker:
         self._held: dict[str, float] = {}
         self._caller_speaking_since_reply = False
         self.current: TurnRecord | None = None
-        self.greeting_done = False
 
     def _open_reply(self) -> TurnRecord | None:
         """The caller turn whose reply has not started yet, if any."""
@@ -243,8 +231,6 @@ class LatencyTracker:
         turn.agent_first_audio_at = at
         if turn.user_end_of_speech_at is not None:
             turn.e2e_ms = _ms(at - turn.user_end_of_speech_at)
-        if turn.turn_index == 0:
-            self.greeting_done = True
         return turn
 
 
@@ -284,15 +270,6 @@ def latency_payload(record: TurnRecord) -> dict[str, int] | None:
     if e2e is not None:
         payload["e2e_ms"] = e2e
     return payload
-
-
-def played_words(text: str, fraction: float) -> str:
-    """Truncate an interrupted agent turn to the words actually played (FR-012)."""
-    words = text.split()
-    if fraction >= 1.0:
-        return text
-    count = max(0, int(len(words) * max(0.0, fraction)))
-    return " ".join(words[:count])
 
 
 # --------------------------------------------------------------------------------------------
@@ -362,7 +339,8 @@ def utc_now() -> datetime:
 
 
 class EventRecorder:
-    """Builds contract events with strictly increasing ``seq`` and queues them for posting."""
+    """Builds contract events with strictly increasing ``seq`` and queues them for posting;
+    ``on_event`` sees each one as it is built (the text runner collects its tool calls)."""
 
     def __init__(
         self,
@@ -370,14 +348,15 @@ class EventRecorder:
         *,
         wall_clock: Callable[[], datetime] = utc_now,
         monotonic: Callable[[], float] | None = None,
+        on_event: Callable[[Event], None] | None = None,
     ) -> None:
         self.meters = meters or UsageMeters()
+        self._on_event = on_event
         self._wall = wall_clock
         self._mono = monotonic
         self._seq = 0
         self._queue: list[Event] = []
         self._connected_mono: float | None = None
-        self.history: list[Event] = []
 
     @property
     def seq(self) -> int:
@@ -403,7 +382,8 @@ class EventRecorder:
             **body,
         }
         self._queue.append(event)
-        self.history.append(event)
+        if self._on_event is not None:
+            self._on_event(event)
         return event
 
     def status(

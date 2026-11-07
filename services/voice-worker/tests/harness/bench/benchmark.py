@@ -11,8 +11,8 @@ fixtures, the production agent server and job entry handle the call with fake ST
 adapters, and ``e2e_ms`` is measured at the caller. It gates on the same budgets against
 ``baseline_live.json`` and also fails on missed turns, event contract violations, or a cut-off
 (the agent speaking before the caller's last sample, research R4).
-``--callset bench/callset_pauses.yaml`` runs the mid-sentence pause and digit-group scenarios. Real
-vendors need keys and are not wired yet (see the live module).
+``--callset bench/callset_pauses.yaml`` runs the mid-sentence pause and digit-group scenarios;
+``--vendors real`` runs the real adapters with the worker's vendor keys (``live_real``).
 
     python -m tests.harness.bench.benchmark
     python -m tests.harness.bench.benchmark --update-baseline
@@ -99,7 +99,7 @@ async def run_call(
         await call.caller_says(step, turn.say)
         await call.wait_idle()
     await call.control.hang_up("user_hangup")
-    return [e for e in call.recorder.history if e["type"] == "turn" and e["turn_index"] > 0]
+    return [e for e in call.events if e["type"] == "turn" and e["turn_index"] > 0]
 
 
 async def run_benchmark(callset_path: Path = DEFAULT_CALLSET) -> BenchReport:

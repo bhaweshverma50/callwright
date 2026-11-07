@@ -35,12 +35,11 @@ import asyncio
 import contextlib
 import logging
 import time
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx
 from callwright_contract.calls import AgentType, Channel, Direction
 from callwright_contract.protocol import RuntimeConfig, RuntimeValues
 from callwright_contract.variables import BUILTIN_VARIABLES
@@ -48,18 +47,14 @@ from callwright_contract.variables import BUILTIN_VARIABLES
 from worker import telemetry
 from worker.adapters.llm import supports_temperature
 from worker.adapters.registry import AdapterRegistry, VendorSpec
+from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan, resolve_llm
 from worker.call_behavior import ends_with_goodbye
 from worker.control import RuntimeCallControl
-from worker.flow.runtime import CallwrightFlowRunner, FlowComponents
+from worker.flow import FlowComponents
+from worker.flow.runtime import CallwrightFlowRunner
+from worker.internal_api import InternalApiClient, SimulationSpec
 from worker.metrics import EventPoster, EventRecorder
-from worker.pipeline import (
-    GENERATED_GREETING_INSTRUCTION,
-    SessionPlan,
-    build_agent,
-    plan_session,
-    resolve_llm,
-)
-from worker.textsim.api_client import SimulationSpec, TextsimApiClient
+from worker.pipeline import build_agent, plan_session
 from worker.textsim.conversation import DISCONNECT_REASON, AgentTurn, Outcome
 from worker.textsim.llm import ModelFactory, Role, TokenMeter, parse_model
 from worker.textsim.mock_tools import SimulatedToolAnswers, install, tool_synthesizer
@@ -76,14 +71,11 @@ MAX_ERROR_CHARS = 2000
 
 @dataclass
 class RunnerDeps:
-    """What a run needs besides the API client: models (adapters or the offline fallback), the
-    vendor catalog, and the internal API location and client used by ``kb_search``."""
+    """What a run needs besides the API client: models (adapters or the offline fallback) and the
+    vendor catalog."""
 
     models: ModelFactory
     registry: AdapterRegistry = field(default_factory=AdapterRegistry)
-    internal_api_url: str = ""
-    service_token: str = ""
-    kb_http: httpx.AsyncClient | None = None
     settle_timeout_s: float = 60.0
     turn_timeout_s: float = 180.0
     # Events are posted after every agent turn and at least this often while a turn runs (an
@@ -168,22 +160,8 @@ class _SimBackend:
     async def send_dtmf(self, digits: str) -> None:
         return None  # keypad presses are only logged in simulations (the tool_call event)
 
-
-class _Tools:
-    """``ToolProvider`` over the session's own call tools (no shared registry state, so
-    concurrent runs of one test run never collide)."""
-
-    def __init__(self, tools: CallTools) -> None:
-        self.tools = tools
-
-    def tools_for(self, runtime: RuntimeConfig, control: Any) -> Sequence[Any]:
-        return self.tools.function_tools()
-
-    def call_tools(self, runtime: RuntimeConfig, control: Any) -> CallTools:
-        return self.tools
-
-    def filler_policy(self, runtime: RuntimeConfig, control: Any) -> Any:
-        return self.tools.fillers
+    async def caller_quiet(self) -> bool:
+        return True  # a text caller's turn is complete when it arrives
 
 
 async def _wait(awaitable: Any) -> None:
@@ -198,6 +176,7 @@ class TextSession:
         call_id: str,
         runtime: RuntimeConfig,
         deps: RunnerDeps,
+        api: InternalApiClient,
         *,
         answers: SimulatedToolAnswers,
         recorder: EventRecorder,
@@ -207,6 +186,7 @@ class TextSession:
         self.call_id = call_id
         self.runtime = runtime
         self.deps = deps
+        self.api = api
         self.answers = answers
         self.recorder = recorder
         self.meter = meter
@@ -243,8 +223,7 @@ class TextSession:
 
     @property
     def visited_nodes(self) -> list[str]:
-        call = self.flow_runner.calls.get(self.call_id)
-        return list(call.run.state.visited) if call is not None else []
+        return self.flow_runner.visited_nodes(self.call_id)
 
     # models --------------------------------------------------------------------------------
 
@@ -269,15 +248,9 @@ class TextSession:
         from livekit.agents import AgentSession
 
         runtime = self.runtime
-        plan = plan_session(runtime, self.deps.registry)
+        plan = plan_session(runtime, self.deps.registry, self.flow_runner)
         self.plan = plan
-        tools = build_call_tools(
-            runtime,
-            self.control,
-            api_client=self.deps.kb_http,
-            api_base_url=self.deps.internal_api_url,
-            service_token=self.deps.service_token,
-        )
+        tools = build_call_tools(runtime, self.control, api=self.api)
         self.tools = install(tools, self.answers)
         tools.ctx.turn_index = lambda: self._turn
         llm = self.model(plan.llm, "agent")
@@ -285,8 +258,8 @@ class TextSession:
             plan,
             runtime,
             self.control,
-            tool_provider=_Tools(tools),
-            flow_runner=self.flow_runner,
+            tools,
+            flows=self.flow_runner,
             flow_components=FlowComponents(self.deps.registry, self._component),
         )
         session: Any = AgentSession(llm=llm, vad=None, user_away_timeout=None)
@@ -404,22 +377,15 @@ class TextSession:
 # Results
 
 
-def tool_records(recorder: EventRecorder) -> list[dict[str, Any]]:
-    """``ToolCallRecord`` rows from the recorded ``tool_call`` events. ``answer_source`` is null
-    for tools that are not answered by the simulation (end_call, transfer, kb_search, ...)."""
-    rows = []
-    for event in recorder.history:
-        if event.get("type") != "tool_call":
-            continue
-        rows.append(
-            {
-                "name": event["name"],
-                "arguments": dict(event.get("arguments") or {}),
-                "output": event.get("output"),
-                "answer_source": event.get("answer_source"),
-            }
-        )
-    return rows
+def tool_record(event: Mapping[str, Any]) -> dict[str, Any]:
+    """A ``ToolCallRecord`` from a ``tool_call`` event. ``answer_source`` is null for tools that
+    are not answered by the simulation (end_call, transfer, kb_search, ...)."""
+    return {
+        "name": event["name"],
+        "arguments": dict(event.get("arguments") or {}),
+        "output": event.get("output"),
+        "answer_source": event.get("answer_source"),
+    }
 
 
 def _error_text(exc: BaseException) -> str:
@@ -431,7 +397,7 @@ def _error_text(exc: BaseException) -> str:
 
 
 async def run_single_turn(
-    api: TextsimApiClient, test_run_id: str, test_case_id: str, deps: RunnerDeps
+    api: InternalApiClient, test_run_id: str, test_case_id: str, deps: RunnerDeps
 ) -> str:
     """Run one test case. Returns ``completed``, ``error`` or ``gone`` (cancelled run)."""
     attrs = {"test_run_id": test_run_id, "test_case_id": test_case_id, "call_id": test_run_id}
@@ -442,7 +408,13 @@ async def run_single_turn(
             return "gone"
         span.set_attribute("agent_type", spec.agent_type)
         started = time.perf_counter()
-        recorder = EventRecorder()
+        tool_calls: list[dict[str, Any]] = []
+
+        def keep_tool_call(event: dict[str, Any]) -> None:
+            if event["type"] == "tool_call":
+                tool_calls.append(tool_record(event))
+
+        recorder = EventRecorder(on_event=keep_tool_call)
         meter = TokenMeter()
         answers = SimulatedToolAnswers(policy="synthesize")
         session: TextSession | None = None
@@ -461,7 +433,7 @@ async def run_single_turn(
                 call_id=test_run_id,
             )
             session = TextSession(
-                test_run_id, runtime, deps, answers=answers, recorder=recorder, meter=meter
+                test_run_id, runtime, deps, api, answers=answers, recorder=recorder, meter=meter
             )
             answers.synthesize = tool_synthesizer(session.synth_model)
             await session.start()
@@ -474,7 +446,7 @@ async def run_single_turn(
         finally:
             if session is not None:
                 await session.aclose()
-        body["tool_calls"] = tool_records(recorder)
+        body["tool_calls"] = tool_calls
         body["nodes_visited"] = session.visited_nodes if session is not None else []
         body["usage"] = meter.usage()
         body["duration_ms"] = round((time.perf_counter() - started) * 1000)
@@ -496,7 +468,7 @@ def persona_spec(spec: SimulationSpec, runtime: RuntimeConfig, registry: Adapter
     return VendorSpec("llm", chosen.provider, chosen.model, options)
 
 
-async def run_simulation(api: TextsimApiClient, simulation_run_id: str, deps: RunnerDeps) -> str:
+async def run_simulation(api: InternalApiClient, simulation_run_id: str, deps: RunnerDeps) -> str:
     """Run one simulation. Returns ``completed``, ``failed`` or ``gone`` (cancelled run)."""
     attrs = {"simulation_run_id": simulation_run_id}
     with telemetry.span("textsim.simulation", attrs) as span:
@@ -515,7 +487,7 @@ async def run_simulation(api: TextsimApiClient, simulation_run_id: str, deps: Ru
 
 
 async def _simulate(
-    api: TextsimApiClient, spec: SimulationSpec, deps: RunnerDeps, span: Any
+    api: InternalApiClient, spec: SimulationSpec, deps: RunnerDeps, span: Any
 ) -> str:
     call_id = spec.output_call_id
     recorder = EventRecorder()
@@ -566,6 +538,7 @@ async def _simulate(
             call_id,
             runtime,
             deps,
+            api,
             answers=answers,
             recorder=recorder,
             meter=meter,

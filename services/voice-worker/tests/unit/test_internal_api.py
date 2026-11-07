@@ -177,3 +177,18 @@ def test_backoff_is_exponential_with_jitter() -> None:
     for attempt, nominal in [(1, 0.5), (2, 1.0), (3, 2.0), (4, 4.0), (6, 4.0)]:
         delay = api.backoff_delay(attempt)
         assert nominal * 0.9 <= delay <= nominal * 1.1
+
+
+@respx.mock
+async def test_tool_secrets_are_asked_once_and_missing_secrets_are_empty() -> None:
+    route = respx.get(f"{BASE}/calls/{CALL_ID}/tool-secrets").mock(
+        side_effect=[
+            httpx.Response(200, json={"secrets": {"sec_1": "s3cret"}}),
+            httpx.Response(503),
+        ]
+    )
+    api = client()
+    assert await api.tool_secrets(CALL_ID) == {"sec_1": "s3cret"}
+    assert route.calls.last.request.headers["authorization"] == "Bearer svc-token"
+    assert await api.tool_secrets(CALL_ID) == {}
+    assert route.call_count == 2

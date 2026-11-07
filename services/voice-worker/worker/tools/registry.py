@@ -1,4 +1,4 @@
-"""005's tool provider (T012, T029, T048, T079, T087, T100).
+"""A call's tools (005 T012, T029, T048, T079, T087, T100).
 
 Builds the LLM function tools for a call from the version snapshot (``tools`` and
 ``knowledge``), dispatches every invocation through one path and reports it:
@@ -17,8 +17,8 @@ Spoken fillers: :class:`FillerPolicy` tells the agent's ``llm_node`` which tools
 what to say at once when the model calls one before saying anything (pipeline.py). Internal
 worker tools (voicemail detection) are not in the policy and never trigger a filler.
 
-``kb_search`` is added when the snapshot lists knowledge bases. 004's flow executor passes
-``kb_search_enabled=False`` for nodes that switch it off (``CallTools.function_tools``).
+``kb_search`` is added when the snapshot lists knowledge bases; a flow node gets it when the node
+switches it on (``worker.flow.runtime.node_tools``).
 """
 
 from __future__ import annotations
@@ -27,9 +27,7 @@ import asyncio
 import contextlib
 import json
 import logging
-import re
 import time
-import weakref
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
@@ -37,21 +35,18 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from callwright_contract import http_core
 from callwright_contract.values import (
+    DEFAULT_EXECUTION_MESSAGE,
     E164_PATTERN,
     END_CALL_TOOL,
     KB_TOOL,
     PRESS_DIGITS_PATTERN,
     SCHEDULE_CALLBACK_TOOL,
+    STOCK_GOODBYE,
 )
 
-from worker import telemetry
-from worker.tools import (
-    CallControl,
-    ToolActivity,
-    kb_search,
-    register_tool_provider,
-    secrets,
-)
+from worker import json_schema, telemetry
+from worker.internal_api import InternalApiClient
+from worker.tools import CallControl, ToolActivity, kb_search, secrets
 from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecView
 from worker.tools.dtmf import PressDigitExecutor
 from worker.tools.end_call import EndCallExecutor
@@ -65,18 +60,10 @@ from worker.tools.transfer import TransferBackend, TransferExecutor
 if TYPE_CHECKING:
     from callwright_contract.protocol import RuntimeConfig
 
-    from worker.settings import WorkerSettings
-
 log = logging.getLogger(__name__)
 
-FILLER_TEXT = "One moment, let me check that."
 STILL_CHECKING = "Still checking, thanks for waiting."
 STILL_CHECKING_AFTER_S = 3.0
-# Said at once when the model ends the call without a goodbye of its own (it sometimes answers
-# a caller's "thanks, that's all" with only the end_call action, which hung up in silence).
-GOODBYE_FILLER = "Thanks for calling. Goodbye!"
-MAX_EVENT_OUTPUT = 4096
-LOOKUP_TYPES = frozenset({"http", "kb_search"})
 EMPTY_OBJECT: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
 
@@ -146,65 +133,9 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
     return {"name": spec.name, "description": description, "parameters": parameters}
 
 
-_TYPES: Mapping[str, tuple[type, ...]] = {
-    "string": (str,),
-    "integer": (int,),
-    "number": (int, float),
-    "boolean": (bool,),
-    "object": (dict,),
-    "array": (list,),
-    "null": (type(None),),
-}
-
-
-def _type_ok(value: Any, expected: Any) -> bool:
-    names = expected if isinstance(expected, list) else [expected]
-    for name in names:
-        kinds = _TYPES.get(str(name))
-        if kinds is None:
-            return True
-        if isinstance(value, bool) and name in ("integer", "number"):
-            continue
-        if isinstance(value, kinds):
-            return True
-    return False
-
-
-def validate_arguments(schema: Mapping[str, Any], value: Any, path: str = "") -> str | None:
-    """A small JSON Schema check (type, required, enum, pattern, lengths, ranges, nesting)."""
-    where = path or "arguments"
-    if "type" in schema and not _type_ok(value, schema["type"]):
-        return f"{where} must be {schema['type']}"
-    if "enum" in schema and value not in schema["enum"]:
-        return f"{where} must be one of {schema['enum']}"
-    if isinstance(value, str):
-        if "pattern" in schema and not re.search(str(schema["pattern"]), value):
-            return f"{where} has the wrong format"
-        if len(value) < int(schema.get("minLength", 0)):
-            return f"{where} is too short"
-        if "maxLength" in schema and len(value) > int(schema["maxLength"]):
-            return f"{where} is too long"
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        if "minimum" in schema and value < schema["minimum"]:
-            return f"{where} is below {schema['minimum']}"
-        if "maximum" in schema and value > schema["maximum"]:
-            return f"{where} is above {schema['maximum']}"
-    if isinstance(value, dict):
-        for name in schema.get("required") or []:
-            if name not in value or value[name] is None:
-                return f"{name} is required"
-        props = schema.get("properties") or {}
-        for name, sub in props.items():
-            if name in value and value[name] is not None and isinstance(sub, Mapping):
-                problem = validate_arguments(sub, value[name], f"{path}.{name}" if path else name)
-                if problem:
-                    return problem
-    if isinstance(value, list) and isinstance(schema.get("items"), Mapping):
-        for i, item in enumerate(value):
-            problem = validate_arguments(schema["items"], item, f"{where}[{i}]")
-            if problem:
-                return problem
-    return None
+def validate_arguments(schema: Mapping[str, Any], value: Any) -> str | None:
+    """Why the model's arguments do not fit the function's parameters, or None."""
+    return json_schema.problem(schema, value, combining=False)
 
 
 # Fillers --------------------------------------------------------------------------------------
@@ -232,11 +163,15 @@ def filler_texts(specs: Sequence[ToolSpecView]) -> dict[str, str]:
     texts: dict[str, str] = {}
     for spec in specs:
         if spec.type == "kb_search":
-            texts[spec.name] = FILLER_TEXT
+            texts[spec.name] = DEFAULT_EXECUTION_MESSAGE
         elif spec.type == "http" and spec.config.get("speak_during_execution", True):
-            texts[spec.name] = str(spec.config.get("execution_message") or FILLER_TEXT)
+            texts[spec.name] = str(
+                spec.config.get("execution_message") or DEFAULT_EXECUTION_MESSAGE
+            )
         elif spec.type == "end_call":
-            texts[spec.name] = str(spec.config.get("message") or "").strip() or GOODBYE_FILLER
+            # Said at once when the model ends the call without a goodbye of its own (it sometimes
+            # answers a caller's "thanks, that's all" with only end_call, which hung up in silence).
+            texts[spec.name] = str(spec.config.get("message") or "").strip() or STOCK_GOODBYE
     return texts
 
 
@@ -288,16 +223,12 @@ class CallTools:
             found[self.kb.name] = self.kb
         return found
 
-    def schemas(self, *, kb_search_enabled: bool = True) -> list[dict[str, Any]]:
-        specs = list(self.specs)
-        if self.kb is not None and kb_search_enabled:
-            specs.append(self.kb)
+    def schemas(self) -> list[dict[str, Any]]:
+        specs = [*self.specs, *([self.kb] if self.kb is not None else [])]
         return [function_schema(s) for s in specs]
 
-    def function_tools(self, *, kb_search_enabled: bool = True) -> list[Any]:
-        return [
-            _raw_tool(self, schema) for schema in self.schemas(kb_search_enabled=kb_search_enabled)
-        ]
+    def function_tools(self) -> list[Any]:
+        return [_raw_tool(self, schema) for schema in self.schemas()]
 
     def _context(self, run_ctx: Any) -> ToolContext:
         if run_ctx is None:
@@ -312,14 +243,7 @@ class CallTools:
                 await handle
 
         async def set_reply_language(label: str) -> None:
-            from worker.language import with_reply_language
-
-            agent = session.current_agent
-            hook = getattr(agent, "set_reply_language", None)
-            if callable(hook):  # a flow node: later nodes keep the language too
-                await hook(label)
-                return
-            await agent.update_instructions(with_reply_language(agent.instructions, label))
+            await session.current_agent.set_reply_language(label)
 
         # A shallow copy: the variable stores and secrets stay shared with the call.
         return replace(
@@ -420,7 +344,7 @@ class CallTools:
                     spec.name,
                     ref=spec.tool_id,
                     arguments=clean_args,
-                    output=output[:MAX_EVENT_OUTPUT],
+                    output=output,
                     is_error=result.is_error,
                     duration_ms=duration_ms,
                     extra=extra,
@@ -503,9 +427,7 @@ def build_call_tools(
     *,
     tool_secrets: Mapping[str, str] | None = None,
     http_client: httpx.AsyncClient | None = None,
-    api_client: httpx.AsyncClient | None = None,
-    api_base_url: str = "",
-    service_token: str = "",
+    api: InternalApiClient | None = None,
     transfer_backend: TransferBackend | None = None,
     allow_http: bool = False,
     resolver: Any = None,
@@ -538,19 +460,10 @@ def build_call_tools(
     if http_client is not None:
         executors["http"] = HttpExecutor(http_client, allow_http=allow_http, resolver=resolver)
     if kb is not None:
-        if api_client is None:
-            api_client = httpx.AsyncClient(timeout=kb_search.TIMEOUT_S)
-            clients.append(api_client)
-        executors["kb_search"] = kb_search.KbSearchExecutor(
-            api_client, api_base_url, service_token, list(kb.config["kb_ids"])
-        )
-    executors["schedule_callback"] = ScheduleCallbackExecutor(
-        api_client, api_base_url, service_token
-    )
+        executors["kb_search"] = kb_search.KbSearchExecutor(api, list(kb.config["kb_ids"]))
+    executors["schedule_callback"] = ScheduleCallbackExecutor(api)
     if len(languages) > 1:
-        executors["set_language"] = SetLanguageExecutor(
-            languages, runtime.caller_language, api_client, api_base_url, service_token
-        )
+        executors["set_language"] = SetLanguageExecutor(languages, runtime.caller_language, api)
     fillers = FillerPolicy(
         filler_texts([*specs, *([kb] if kb else [])]),
         end_call_names=frozenset(s.name for s in specs if s.type == "end_call"),
@@ -566,75 +479,18 @@ def build_call_tools(
     return CallTools(control, specs, executors, ctx, fillers, kb, clients=clients)
 
 
-# Provider -------------------------------------------------------------------------------------
-
-
-class CallwrightToolProvider:
-    """The registered :class:`~worker.tools.ToolProvider`. ``prepare`` runs at session start
-    (secret fetch, keep-alive clients); ``tools_for`` then hands the LLM its function tools."""
-
-    def __init__(self) -> None:
-        self.calls: dict[str, CallTools] = {}
-        self._adhoc: weakref.WeakKeyDictionary[Any, CallTools] = weakref.WeakKeyDictionary()
-
-    async def prepare(
-        self,
-        runtime: RuntimeConfig,
-        control: CallControl,
-        settings: WorkerSettings,
-        *,
-        transfer_backend: TransferBackend | None = None,
-    ) -> CallTools:
-        base = settings.internal_api_url
-        token = settings.service_token.get_secret_value()
-        api_client = httpx.AsyncClient(timeout=settings.http_timeout_s)
-        tool_secrets: dict[str, str] = {}
-        if secrets.needs_secrets(runtime.config):
-            tool_secrets = await secrets.fetch(api_client, base, token, control.call_id)
-        tools = build_call_tools(
-            runtime,
-            control,
-            tool_secrets=tool_secrets,
-            api_client=api_client,
-            api_base_url=base,
-            service_token=token,
-            transfer_backend=transfer_backend,
-        )
-        tools.clients.append(api_client)
-        self.calls[control.call_id] = tools
-        return tools
-
-    def _for(self, runtime: RuntimeConfig, control: CallControl) -> CallTools:
-        """The prepared tools of the call, else tools without secrets for this control (offline
-        harness and tests), kept as long as the control lives."""
-        call_id = getattr(control, "call_id", None)
-        prepared = self.calls.get(call_id) if isinstance(call_id, str) else None
-        if prepared is not None:
-            return prepared
-        try:
-            found = self._adhoc.get(control)
-        except TypeError:  # not weak-referenceable
-            return build_call_tools(runtime, control)
-        if found is None:
-            found = build_call_tools(runtime, control)
-            self._adhoc[control] = found
-        return found
-
-    def tools_for(self, runtime: RuntimeConfig, control: CallControl) -> Sequence[Any]:
-        return self._for(runtime, control).function_tools()
-
-    def call_tools(self, runtime: RuntimeConfig, control: CallControl) -> CallTools:
-        """The call's tools, from which 004 builds each flow node's own tool set."""
-        return self._for(runtime, control)
-
-    def filler_policy(self, runtime: RuntimeConfig, control: CallControl) -> FillerPolicy:
-        return self._for(runtime, control).fillers
-
-    async def release(self, call_id: str) -> None:
-        tools = self.calls.pop(call_id, None)
-        if tools is not None:
-            await tools.aclose()
-
-
-PROVIDER = CallwrightToolProvider()
-register_tool_provider(PROVIDER)
+async def prepare_call_tools(
+    runtime: RuntimeConfig,
+    control: CallControl,
+    api: InternalApiClient,
+    *,
+    transfer_backend: TransferBackend | None = None,
+) -> CallTools:
+    """The live call's tools at session start, after one secret fetch; their own clients are
+    closed with :meth:`CallTools.aclose` when the call ends."""
+    tool_secrets: dict[str, str] = {}
+    if secrets.needs_secrets(runtime.config):
+        tool_secrets = await api.tool_secrets(control.call_id)
+    return build_call_tools(
+        runtime, control, tool_secrets=tool_secrets, api=api, transfer_backend=transfer_backend
+    )

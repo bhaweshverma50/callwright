@@ -1,25 +1,29 @@
-"""Extension point for flow agents (003 plan, implemented by 004).
+"""The flow runtime port (004).
 
-:class:`FlowRunner` builds the entry agent for a flow; node agents then hand the call to each
-other and report every move through ``CallControl.report_transition``. 004's runner
-(``worker.flow.runtime``) is loaded on first use. :class:`NullFlowRunner` refuses flow agents
-with diagnostic ``flow-runtime-unavailable`` (FR-024) when the runtime cannot be loaded.
+:class:`FlowRunner` gives a flow call its opening (who speaks first and the greeting) and builds
+its entry agent; node agents then hand the call to each other and report every move through
+``CallControl.report_transition``. A turn-boundary swap rebuilds the current node's agent
+through the runner, and the call releases its flow state when it ends. ``worker.flow.runtime``
+implements it.
 """
 
 from __future__ import annotations
 
-import logging
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from callwright_contract.protocol import RuntimeConfig
 
+    from worker.adapters.registry import AdapterRegistry, VendorSpec
+    from worker.agent import SessionPlan, TtsTextHook
+    from worker.flow.nodes.start import Opening
     from worker.tools import CallControl
+    from worker.tools.registry import CallTools
 
 FLOW_RUNTIME_UNAVAILABLE = "flow-runtime-unavailable"
 FLOW_NOT_COMPILED = "flow_not_compiled"
-log = logging.getLogger(__name__)
 
 
 class FlowRuntimeUnavailable(Exception):
@@ -28,44 +32,44 @@ class FlowRuntimeUnavailable(Exception):
         self.diagnostic = diagnostic
 
 
-@runtime_checkable
-class FlowRunner(Protocol):
-    available: bool
+@dataclass(frozen=True)
+class FlowComponents:
+    """How the runtime builds a node's own LLM, TTS or STT, and where it reports flow timings
+    (``engine_ms``, ``transition_llm_ms``) for the current turn."""
 
-    def build_agent(
-        self, runtime: RuntimeConfig, control: CallControl, tools: Sequence[Any], **options: Any
-    ) -> Any:
-        """Return the LiveKit ``Agent`` that starts the flow. ``options`` carries the session
-        ``plan``, ``on_tts_text``, ``extra_instructions`` and ``components``."""
+    registry: AdapterRegistry
+    build: Callable[[VendorSpec], Any]
+    on_timing: Callable[[str, int], None] | None = None
+
+
+class FlowRunner(Protocol):
+    def opening(self, runtime: RuntimeConfig) -> Opening:
+        """The call's opening from the Start node and the Say nodes right after it. Raises
+        :class:`FlowRuntimeUnavailable` when the claim carries no runnable compiled flow."""
         ...
 
-
-class NullFlowRunner:
-    available = False
-
     def build_agent(
-        self, runtime: RuntimeConfig, control: CallControl, tools: Sequence[Any], **options: Any
+        self,
+        runtime: RuntimeConfig,
+        control: CallControl,
+        plan: SessionPlan,
+        tools: CallTools,
+        *,
+        extra_tools: Sequence[Any] = (),
+        extra_instructions: str = "",
+        on_tts_text: TtsTextHook | None = None,
+        components: FlowComponents | None = None,
     ) -> Any:
-        raise FlowRuntimeUnavailable("flow agents need the 004 flow runtime")
+        """The LiveKit ``Agent`` that starts the flow call ``control.call_id``."""
+        ...
 
+    def rebuild(self, call_id: str, plan: SessionPlan, components: Mapping[str, Any]) -> Any:
+        """After a turn-boundary swap: the current node's agent rebuilt with the new plan and
+        components, keeping its conversation; None between nodes."""
+        ...
 
-_runner: FlowRunner | None = None
+    def visited_nodes(self, call_id: str) -> list[str]: ...
 
-
-def register_flow_runner(runner: FlowRunner) -> None:
-    """Install a runner (tests; 004's own runner is loaded by :func:`get_flow_runner`)."""
-    global _runner
-    _runner = runner
-
-
-def get_flow_runner() -> FlowRunner:
-    global _runner
-    if _runner is None:
-        try:
-            from worker.flow.runtime import RUNNER
-        except ImportError:  # pragma: no cover - a build without the runtime
-            log.exception("flow runtime unavailable")
-            _runner = NullFlowRunner()
-        else:
-            _runner = RUNNER
-    return _runner
+    def release(self, call_id: str) -> None:
+        """Forget the call's flow state (the call ended)."""
+        ...
