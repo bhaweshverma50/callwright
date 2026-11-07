@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import hmac
 import time
+from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib.parse import quote, urlencode
 
@@ -79,6 +80,25 @@ class FakeObjectStore:
         return self.objects.get(key)
 
 
+@dataclass(frozen=True)
+class S3Access:
+    endpoint: str | None
+    region: str
+    access_key: SecretStr | None
+    secret_key: SecretStr | None
+
+
+def recordings_s3(settings: Settings) -> S3Access:
+    """The recordings bucket's S3 endpoint and keys (egress uploads, signed links): the
+    ``RECORDINGS_S3_*`` values, else the general object store's."""
+    return S3Access(
+        settings.recordings_s3_endpoint or settings.s3_endpoint_url,
+        settings.recordings_s3_region,
+        settings.recordings_s3_access_key or settings.s3_access_key_id,
+        settings.recordings_s3_secret_key or settings.s3_secret_access_key,
+    )
+
+
 def _s3_client(
     endpoint: str | None, region: str, access_key: SecretStr | None, secret_key: SecretStr | None
 ) -> Any:
@@ -104,12 +124,8 @@ class S3Signer:
             settings.s3_access_key_id,
             settings.s3_secret_access_key,
         )
-        self._recordings = _s3_client(
-            settings.recordings_s3_endpoint or settings.s3_endpoint_url,
-            settings.recordings_s3_region,
-            settings.recordings_s3_access_key or settings.s3_access_key_id,
-            settings.recordings_s3_secret_key or settings.s3_secret_access_key,
-        )
+        access = recordings_s3(settings)
+        self._recordings = _s3_client(access.endpoint, access.region, access.access_key, access.secret_key)
 
     def presign_get(self, bucket: str, key: str, ttl_s: int, download_name: str | None = None) -> str:
         client = self._recordings if bucket == self._recordings_bucket else self._default

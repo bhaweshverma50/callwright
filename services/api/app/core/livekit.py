@@ -27,6 +27,7 @@ from typing import Any, Protocol
 from livekit import api as lk
 
 from app.core.config import Settings
+from app.core.storage import recordings_s3
 
 logger = logging.getLogger(__name__)
 
@@ -205,17 +206,14 @@ class LiveKitClient(_TokenMixin):
                 ),
             )
         else:
-            # The general object store's key and endpoint stand in when no recordings-only ones are set.
-            access = s.recordings_s3_access_key or s.s3_access_key_id
-            secret = s.recordings_s3_secret_key or s.s3_secret_access_key
-            endpoint = s.recordings_s3_endpoint or s.s3_endpoint_url
+            access = recordings_s3(s)
             s3 = lk.S3Upload(
-                access_key=access.get_secret_value() if access else "",
-                secret=secret.get_secret_value() if secret else "",
-                region=s.recordings_s3_region,
-                endpoint=endpoint or "",
+                access_key=access.access_key.get_secret_value() if access.access_key else "",
+                secret=access.secret_key.get_secret_value() if access.secret_key else "",
+                region=access.region,
+                endpoint=access.endpoint or "",
                 bucket=target.bucket,
-                force_path_style=bool(endpoint),
+                force_path_style=bool(access.endpoint),
             )
             output = lk.EncodedFileOutput(file_type=lk.EncodedFileType.MP4, filepath=target.key, s3=s3)
         request = lk.RoomCompositeEgressRequest(
