@@ -10,6 +10,8 @@ import { Button, Field, FormAlert, Input } from "../../components";
 import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
+import { mockVerifyToken } from "../../mocks/demoAccount";
+import { AUTH_PAGES } from "../../lib/paths";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -80,7 +82,10 @@ export function Register() {
           {env.mocks && (
             <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
-              <Link className="link-underline text-accent-text" to={`/verify-email?token_hash=${encodeURIComponent(`verify-${addr}`)}`}>
+              <Link
+                className="link-underline text-accent-text"
+                to={`${AUTH_PAGES.verifyEmail}?token_hash=${encodeURIComponent(mockVerifyToken(addr))}`}
+              >
                 Open the verification link
               </Link>
             </p>

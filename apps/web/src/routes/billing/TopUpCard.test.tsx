@@ -1,14 +1,24 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
+import { beforeEach, describe, expect, it } from "vitest";
 import { createQueryClient } from "../../api/queryClient";
 import { TooltipProvider } from "../../components";
 import { signInDemo } from "../../test/render";
-import { TopUpCard, checkoutNavigator } from "./TopUpCard";
+import { env } from "../../lib/env";
+import { server } from "../../mocks/node";
+import { TopUpCard } from "./TopUpCard";
 
+/** Every checkout session the card asks for, by amount. The answer points at this page, so jsdom stays put. */
 function setup() {
-  const go = vi.spyOn(checkoutNavigator, "go").mockImplementation(() => {});
+  const checkouts: string[] = [];
+  server.use(
+    http.post(`${env.apiBaseUrl}/billing/checkout-sessions`, async ({ request }) => {
+      checkouts.push(((await request.json()) as { amount_usd: string }).amount_usd);
+      return HttpResponse.json({ checkout_url: window.location.href, expires_at: new Date(Date.now() + 60_000).toISOString() }, { status: 201 });
+    }),
+  );
   render(
     <QueryClientProvider client={createQueryClient()}>
       <TooltipProvider>
@@ -16,7 +26,7 @@ function setup() {
       </TooltipProvider>
     </QueryClientProvider>,
   );
-  return { go, user: userEvent.setup(), amount: screen.getByLabelText("Amount", { selector: "input" }) };
+  return { checkouts, user: userEvent.setup(), amount: screen.getByLabelText("Amount", { selector: "input" }) };
 }
 
 const addButton = () => screen.getByRole("button", { name: /add funds/i });
@@ -32,27 +42,26 @@ describe("TopUpCard (T101, US2.5, US2.6)", () => {
     ["10001", "The maximum top-up is $10,000. Contact sales for larger amounts."],
     ["5.555", "Use whole cents: at most two digits after the point."],
   ])("explains why %s is refused and starts no checkout", async (value, reason) => {
-    const { user, amount, go } = setup();
+    const { user, amount, checkouts } = setup();
     await user.type(amount, value);
     await user.tab();
     await waitFor(() => expect(screen.getAllByRole("alert").map((a) => a.textContent)).toContain(reason));
     expect(addButton()).toBeDisabled();
     expect(amount).toHaveAttribute("aria-invalid", "true");
-    expect(go).not.toHaveBeenCalled();
+    expect(checkouts).toEqual([]);
   });
 
   it("presets only fill the amount; checkout starts from the named button", async () => {
-    const { user, amount, go } = setup();
+    const { user, amount, checkouts } = setup();
     await user.click(screen.getByRole("button", { name: "$100" }));
     expect(amount).toHaveValue("100.00");
     expect(screen.getByRole("button", { name: "$100" })).toHaveAttribute("aria-pressed", "true");
-    expect(go).not.toHaveBeenCalled();
+    expect(checkouts).toEqual([]);
 
     const add = addButton();
     expect(add).toHaveTextContent("Add funds $100.00");
     await user.click(add);
-    await waitFor(() => expect(go).toHaveBeenCalledTimes(1));
-    expect(go.mock.calls[0]![0]).toMatch(/\/checkout\/cs_test_fake_mock\w+$/);
+    await waitFor(() => expect(checkouts).toEqual(["100.00"]));
   });
 
   it("accepts the $5 minimum and the $10,000 maximum", async () => {

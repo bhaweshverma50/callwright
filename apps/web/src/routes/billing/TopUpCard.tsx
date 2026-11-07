@@ -7,12 +7,9 @@ import { qk } from "../../api/queries";
 import type { Balance } from "../../api/types";
 import { Button, Chip, Field, Input, Panel, Tooltip } from "../../components";
 import { checkTopUpAmount, formatUsd } from "../../lib/money";
-import { talkMinutes } from "../../lib/stack";
+import { talkMinutes } from "../../api/pricing";
 
 export const PRESETS = ["25", "100", "500", "1000"] as const;
-
-/** Where the browser goes for hosted checkout. Indirection so tests can observe it. */
-export const checkoutNavigator = { go: (url: string) => window.location.assign(url) };
 
 /** Balance before checkout, so the return page can tell when the new credit has landed. */
 export const CHECKOUT_BEFORE_KEY = "cw.checkout.before";
@@ -54,7 +51,7 @@ export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLIn
       } catch {
         /* the return page falls back to the first balance it sees */
       }
-      checkoutNavigator.go(s.checkout_url);
+      window.location.assign(s.checkout_url);
     },
   });
 

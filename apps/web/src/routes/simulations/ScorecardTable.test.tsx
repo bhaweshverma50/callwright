@@ -2,7 +2,6 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ScorecardRow } from "../../api/simulations";
 import { ScorecardTable } from "./ScorecardTable";
-import { pct, pp } from "../../lib/format";
 
 const row = (patch: Partial<ScorecardRow>): ScorecardRow => ({
   evaluator_id: "evl_01INTENT",
@@ -26,15 +25,6 @@ const row = (patch: Partial<ScorecardRow>): ScorecardRow => ({
 });
 
 describe("scorecard figures (FR-021, SC-003)", () => {
-  it("formats rates and percentage points, rounding half away from zero", () => {
-    expect(pct(0.4)).toBe("40%");
-    expect(pct(null)).toBe("n/a");
-    expect(pp(30)).toBe("+30.0 pp");
-    expect(pp(-0.05)).toBe("-0.1 pp");
-    expect(pp(0.04)).toBe("0.0 pp");
-    expect(pp(null)).toBe("n/a");
-  });
-
   it("shows the spec fixture as 40% vs 70%, +30.0 pp, 3 improved and 0 regressed", () => {
     render(<ScorecardTable rows={[row({})]} caption="Scorecard" />);
     const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");

@@ -25,10 +25,11 @@ import type {
   FeatureFamily,
 } from "../api/types";
 import { checkTopUpAmount, microsToDecimal, toMicros } from "../lib/money";
-import { priceQuote } from "../lib/pricing";
-import { catalogCurrent } from "../lib/catalogSeed";
+import { priceQuote } from "./pricing/engine";
+import { catalogCurrent } from "./pricing/catalog";
 import { appendTransaction, balanceOf, db, mockId, save, type MockUser } from "./db";
 import { json, page, problem, unauthorized, url, validation } from "./http";
+import { mockResetToken, mockVerifyToken } from "./demoAccount";
 
 /** Sign-in with an email containing this returns 403 email_unverified. */
 const UNVERIFIED_MARKER = "unverified";
@@ -178,7 +179,7 @@ export const handlers = [
     if (!db().users.some((u) => u.email === email)) {
       db().users.push({ id: mockId("usr"), email, password: body.password!, email_verified: false, is_admin: false, workspace_id: null });
     }
-    db().verifyTokens[`verify-${email}`] = email;
+    db().verifyTokens[mockVerifyToken(email)] = email;
     save();
     await delay(250);
     return json({ status: "verification_sent" }, 202);
@@ -245,7 +246,7 @@ export const handlers = [
     const { email = "" } = (await request.json()) as { email?: string };
     const key = email.toLowerCase();
     if (db().users.some((u) => u.email === key)) {
-      db().resetTokens[`reset-${key}`] = { email: key, used: false, expires: Date.now() + 3_600_000 };
+      db().resetTokens[mockResetToken(key)] = { email: key, used: false, expires: Date.now() + 3_600_000 };
       save();
     }
     await delay(250);

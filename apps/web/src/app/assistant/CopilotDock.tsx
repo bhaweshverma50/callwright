@@ -4,10 +4,12 @@ import { useEffect, useRef, type KeyboardEvent } from "react";
 import { cn, focusRing } from "../../components";
 import { VoiceCopilot } from "../copilot/VoiceCopilot";
 import { AskPanel } from "./AskPanel";
+import { agentFlowPath } from "../../lib/paths";
 
 /** Full-height editors where a floating dock would sit on the canvas: the dock moves into the top bar. */
 export function isFullHeightEditor(pathname: string): boolean {
-  return /^\/agents\/[^/]+\/flow\/?$/.test(pathname);
+  const path = pathname.replace(/\/$/, "");
+  return path === agentFlowPath(path.split("/")[2] ?? "");
 }
 
 const POSITION_KEY = "cw.dock.offset";

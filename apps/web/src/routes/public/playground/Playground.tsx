@@ -13,10 +13,11 @@ import { createMockDriver, type CallProblem, type CallTurn } from "../../../webC
 import { createDemoDriver } from "../../../webCall/webCallLive";
 import { env } from "../../../lib/env";
 import { formatUsd } from "../../../lib/money";
-import { SEED_PER_MINUTE_MICROS } from "../../../lib/stack";
 import { LiveCall } from "../LiveCall";
 import { SCENARIOS, type Scenario } from "./scenarios";
 import { mss } from "../../../lib/format";
+import { AUTH_PAGES } from "../../../lib/paths";
+import { useStackRate } from "../../../api/pricing";
 
 /** Demo calls end here even if the agent's own limit is longer. */
 const MAX_CALL_MS = 120_000;
@@ -46,14 +47,14 @@ function demoProblem(e: unknown): CallProblem | undefined {
       kind: "refused",
       title: "That's all the demo calls for this hour",
       detail: "Create an account to keep calling. New workspaces start with $5 of calls.",
-      action: { label: "Create account", href: "/register" },
+      action: { label: "Create account", href: AUTH_PAGES.register },
     };
   if (e.status === 402 || e.status === 404 || e.status === 409)
     return {
       kind: "refused",
       title: "The demo line is closed right now",
       detail: "Create an account to call an agent of your own. New workspaces start with $5 of calls.",
-      action: { label: "Create account", href: "/register" },
+      action: { label: "Create account", href: AUTH_PAGES.register },
     };
   return undefined;
 }
@@ -108,12 +109,13 @@ function PlaygroundConsole({ scenarios, className }: { scenarios: Scenario[]; cl
   const waking = s.phase === "requesting" && wake.status === "waking";
   const ringing = isRinging(s);
   useRingback(ringing);
+  const rate = useStackRate();
 
   useEffect(() => {
     if (s.phase === "live" && elapsed >= MAX_CALL_MS) void end();
   }, [s.phase, elapsed, end]);
 
-  const costMicros = (SEED_PER_MINUTE_MICROS * BigInt(Math.max(0, Math.round(elapsed)))) / 60_000n;
+  const costMicros = ((rate ?? 0n) * BigInt(Math.max(0, Math.round(elapsed)))) / 60_000n;
   const link = !onCall
     ? null
     : s.activity === "speaking"

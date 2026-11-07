@@ -16,6 +16,13 @@ async function signUpFresh(page: Page) {
 const title = (page: Page) => page.locator("#tour-title");
 const next = (page: Page) => page.getByRole("button", { name: "Next", exact: true }).click();
 
+/** Reloads and waits for the saved tour progress: the tour decides whether to show right after it arrives. */
+async function reloadWithPreferences(page: Page) {
+  const loaded = page.waitForResponse((r) => r.url().endsWith("/me/preferences") && r.request().method() === "GET");
+  await page.reload();
+  await loaded;
+}
+
 test("a new user follows the tour from the welcome card to the recap", async ({ page }) => {
   test.setTimeout(90_000);
   await page.context().grantPermissions(["microphone"]);
@@ -58,9 +65,8 @@ test("a new user follows the tour from the welcome card to the recap", async ({ 
   await expect(title(page)).toHaveCount(0);
 
   // Completed is saved on the server: a reload offers nothing.
-  await page.reload();
+  await reloadWithPreferences(page);
   await expect(page.getByRole("heading", { name: "Review" })).toBeVisible();
-  await page.waitForTimeout(800);
   await expect(page.getByRole("dialog", { name: "Set up your first agent" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Guided setup paused" })).toHaveCount(0);
 });
@@ -74,9 +80,8 @@ test("a new user skips the tour, and can start it again from the account menu", 
   await page.getByRole("button", { name: "Skip tour" }).click();
   await expect(title(page)).toHaveCount(0);
 
-  await page.reload();
+  await reloadWithPreferences(page);
   await expect(page.getByRole("heading", { name: "Start a single-prompt agent" })).toBeVisible();
-  await page.waitForTimeout(800);
   await expect(page.getByRole("dialog", { name: "Set up your first agent" })).toHaveCount(0);
   await expect(title(page)).toHaveCount(0);
 

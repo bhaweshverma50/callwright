@@ -3,13 +3,18 @@ import { CircleDashed, Cpu, RotateCw } from "lucide-react";
 import { useState } from "react";
 import type { CallDetail } from "../../../api/calls";
 import { callKeys } from "../../../api/calls";
-import { isApiError } from "../../../api/errors";
-import { problemMessage } from "../../../api/problems";
-import { qualityKeys, rerunAnalysis, useCallAnalysis, type AnalysisValue } from "../../../api/quality";
+import { qualityKeys, rerunAnalysis, useCallAnalysis, type AnalysisValue, type CallAnalysis } from "../../../api/quality";
 import { Button, Skeleton, ThinkingIndicator, toast } from "../../../components";
 import { AnalysisTable } from "../AnalysisTable";
 import { SummaryText } from "./SummaryText";
 import { SentimentBadge } from "../../../components/callVocabulary";
+import { problemText } from "../../../components/ProblemAlert";
+
+const SKIPPED: Record<NonNullable<CallAnalysis["skip_reason"]>, string> = {
+  insufficient_credit: "Analysis skipped: insufficient credit. Re-run it after a top-up.",
+  too_short: "Not analysed: the call was too short to summarise. Re-run the analysis to force it.",
+  not_run: "This call has not been analysed. Run the analysis to get a summary and sentiment.",
+};
 
 function show(v: AnalysisValue): string {
   if (v.value === null || v.value === undefined || v.value === "") return "not found";
@@ -46,9 +51,7 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
       await qc.invalidateQueries({ queryKey: qualityKeys.analysis(call.call_id) });
       void qc.invalidateQueries({ queryKey: callKeys.detail(call.call_id) });
     } catch (e) {
-      const detail =
-        isApiError(e) && (e.status === 402 || e.status === 409) ? (e.problem.detail ?? problemMessage(e, "call")) : problemMessage(e, "call");
-      toast({ tone: "error", title: "Could not re-run analysis", description: detail });
+      toast({ tone: "error", title: "Could not re-run analysis", description: problemText(e, "call") });
     } finally {
       setBusy(false);
     }
@@ -76,13 +79,7 @@ export function CallAnalysisPanel({ call }: { call: CallDetail }) {
           />
         ) : a.status === "skipped" ? (
           <p className="text-[13px] text-fg-3">
-            {a.skip_reason === "insufficient_credit"
-              ? "Analysis skipped: insufficient credit. Re-run it after a top-up."
-              : a.skip_reason === "too_short"
-                ? "Not analysed: the call was too short to summarise. Re-run the analysis to force it."
-                : a.skip_reason === "not_run"
-                  ? "This call has not been analysed. Run the analysis to get a summary and sentiment."
-                  : "No analysis for this call: it never connected or had nothing to analyse."}
+            {a.skip_reason ? SKIPPED[a.skip_reason] : "No analysis for this call: it never connected or had nothing to analyse."}
           </p>
         ) : a.status === "error" ? (
           <p className="text-[13px] text-danger-text">Analysis failed{a.error ? `: ${a.error}` : ""}. Try re-running it.</p>

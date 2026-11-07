@@ -21,6 +21,8 @@ import {
   type WebCallRequest,
 } from "./webCall";
 import { queryClient } from "../api/queryClient";
+import { callKeys } from "../api/calls";
+import { idempotencyKey } from "../api/agents";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 
@@ -117,10 +119,6 @@ function reducer(s: WebCallState, a: Action): WebCallState {
   }
 }
 
-function newIdempotencyKey(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `wc-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
-}
-
 export function useWebCall(
   driver: WebCallDriver,
   request: WebCallRequest,
@@ -139,7 +137,6 @@ export function useWebCall(
   const problemForRef = useRef(problemFor);
   problemForRef.current = problemFor;
 
-  // Clock for duration and cost while the call runs.
   useEffect(() => {
     if (s.phase !== "live" && s.phase !== "ending") return;
     setNow(Date.now());
@@ -148,12 +145,11 @@ export function useWebCall(
   }, [s.phase]);
 
   // The shell's live-calls badge and the dashboard card pick the call up (and drop it) at once
-  // instead of on their next idle poll. Same key as `liveKeys.all` in api/live.ts.
+  // instead of on their next idle poll.
   useEffect(() => {
-    if (s.phase === "live" || s.phase === "ended") void queryClient.invalidateQueries({ queryKey: ["calls", "live"] });
+    if (s.phase === "live" || s.phase === "ended") void queryClient.invalidateQueries({ queryKey: callKeys.live });
   }, [s.phase]);
 
-  // Report the end once.
   const reported = useRef<number | null>(null);
   useEffect(() => {
     if (s.phase !== "ended" || s.endReason === null || reported.current === s.endedAt) return;
@@ -184,7 +180,7 @@ export function useWebCall(
     dispatch({ type: "requesting" });
     let session;
     try {
-      session = await driver.createSession(requestRef.current, newIdempotencyKey());
+      session = await driver.createSession(requestRef.current, idempotencyKey());
     } catch (e) {
       if (!stale()) dispatch({ type: "fail", problem: problemForRef.current?.(e) ?? problemFromError(e) });
       return;
