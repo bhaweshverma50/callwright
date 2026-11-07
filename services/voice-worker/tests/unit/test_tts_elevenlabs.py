@@ -5,6 +5,9 @@ model for new agents."""
 from __future__ import annotations
 
 import itertools
+from typing import Any
+
+import pytest
 
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.adapters.tts import elevenlabs
@@ -37,20 +40,31 @@ def test_style_only_for_models_that_support_it() -> None:
     assert flash["use_speaker_boost"] is True
 
 
-def test_build_passes_settings_and_language_code_only_where_supported() -> None:
-    built = elevenlabs.build(
+def test_build_passes_settings_and_language_code_only_where_supported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from livekit.plugins import elevenlabs as plugin
+
+    built: list[dict[str, Any]] = []
+    monkeypatch.setattr(plugin, "TTS", lambda **kwargs: built.append(kwargs))
+    elevenlabs.build(
         VendorSpec(
             "tts", "elevenlabs", "eleven_multilingual_v2", {"voice_id": "v1", "expressiveness": 0.9}
         ),
         {"api_key": "k"},
     )
-    assert built.model == "eleven_multilingual_v2"
-    opts = built._opts
-    assert opts.voice_settings.style == 0.3 and opts.voice_settings.stability == 0.35
-    hindi = elevenlabs.build(
+    elevenlabs.build(
         VendorSpec("tts", "elevenlabs", "eleven_flash_v2_5", {"language": "hi"}), {"api_key": "k"}
     )
-    assert hindi._opts.language == "hi"
+    elevenlabs.build(
+        VendorSpec("tts", "elevenlabs", "eleven_flash_v2_5", {"language": "en-US"}),
+        {"api_key": "k"},
+    )
+    multilingual, hindi, english = built
+    assert multilingual["model"] == "eleven_multilingual_v2" and multilingual["voice_id"] == "v1"
+    settings = multilingual["voice_settings"]
+    assert settings.style == 0.3 and settings.stability == 0.35
+    assert hindi["language"] == "hi" and "language" not in english
 
 
 def test_multilingual_v2_is_the_default_model() -> None:

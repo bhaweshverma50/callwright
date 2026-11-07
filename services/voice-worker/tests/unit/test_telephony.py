@@ -22,7 +22,9 @@ from callwright_contract.protocol import OutboundDial
 from tests.harness.fakes import FakeSipDialer, FakeSipRoom
 from tests.harness.runner import CALL_ID
 from tests.unit.conftest import make_runtime
+from tests.unit.tool_support import Backend
 from worker.adapters.registry import AdapterRegistry
+from worker.control import RuntimeCallControl
 from worker.entry import LiveCall
 from worker.internal_api import InternalApiClient
 from worker.metrics import EventRecorder, UsageMeters
@@ -294,7 +296,9 @@ async def test_inbound_answered_after_ring() -> None:
 async def test_caller_hangup_after_connect_is_user_hangup() -> None:
     call, _ = _call("sip_inbound")
     call.caller_identity = "sip_caller"
-    reasons: list[str] = []
-    call._hang_up_soon = lambda reason, diagnostic=None: reasons.append(reason)  # type: ignore[method-assign]
+    backend = Backend()
+    call.control = RuntimeCallControl(CALL_ID, call.recorder, backend)
+    call._on_participant_left(SimpleNamespace(identity="someone_else"))
     call._on_participant_left(SimpleNamespace(identity="sip_caller"))
-    assert reasons == ["user_hangup"]
+    await asyncio.sleep(0)
+    assert backend.ended == ["user_hangup"]

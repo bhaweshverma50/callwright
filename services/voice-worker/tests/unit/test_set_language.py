@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 import pytest
 
+from tests.harness.fakes import scripted_llm
 from tests.unit.conftest import call_tools, make_runtime
 from tests.unit.tool_support import Backend
 from worker.adapters.registry import AdapterRegistry
@@ -296,13 +297,12 @@ async def greet(translation: str | Exception) -> tuple[GreetingSession, FakeTTS,
     tts = FakeTTS()
     call.components = SessionComponents(stt=None, llm=None, tts=tts, nc=None)
 
-    async def translate(plan: Any, greeting: str, label: str) -> str:
-        assert label == "Hindi" and greeting.startswith("Hi there")
+    def translator(spec: Any, creds: Any) -> Any:
         if isinstance(translation, Exception):
             raise translation
-        return translation
+        return scripted_llm(translation)
 
-    call._translate_greeting = translate  # type: ignore[method-assign]
+    call.registry = AdapterRegistry().with_builders({("llm", call.plan.llm.provider): translator})
     session = GreetingSession()
     call.session = session
     task = call._presynthesize_greeting(call.plan)
