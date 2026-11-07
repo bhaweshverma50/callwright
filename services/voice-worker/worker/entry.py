@@ -90,7 +90,6 @@ from worker.pipeline import (
 from worker.settings import WorkerSettings, get_settings
 from worker.telephony import (
     DialFailed,
-    TelephonyUnavailable,
     dial_outbound,
     dtmf_code,
     play_ringback,
@@ -255,11 +254,13 @@ class LiveCall:
     async def _close_room(self, *, keep: bool = False) -> None:
         """Delete the room, or only leave it when a warm transfer left caller and destination
         talking in it (005)."""
-        with contextlib.suppress(Exception):
+        try:
             if keep:
                 await self.ctx.room.disconnect()
             else:
                 await self.ctx.delete_room()
+        except Exception as exc:  # the job still shuts down
+            log.warning("room not closed for %s: %r", self.call_id, exc)
         self.ctx.shutdown(reason="call ended")
         self._ended.set()
 
@@ -303,13 +304,17 @@ class LiveCall:
             if diagnostic and diagnostic.startswith("vendor_error"):
                 self.recorder.system("vendor_error", diagnostic)
             if self.session is not None:
-                with contextlib.suppress(Exception):
+                try:
                     self.session.interrupt()
+                except Exception as exc:  # the final status is posted regardless
+                    log.warning("speech not interrupted for %s: %r", self.call_id, exc)
             self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
             await self.poster.stop()
             if self.background is not None:
-                with contextlib.suppress(Exception):
+                try:
                     await self.background.aclose()
+                except Exception as exc:
+                    log.warning("ambience not closed for %s: %r", self.call_id, exc)
             if self.session is not None:
                 try:
                     await asyncio.wait_for(self.session.aclose(), SESSION_CLOSE_TIMEOUT_S)
@@ -327,10 +332,8 @@ class LiveCall:
             await self._close_room(keep=reason == "call_transfer" and self._destination_in_room())
 
     def _destination_in_room(self) -> bool:
-        with contextlib.suppress(Exception):
-            participants = self.ctx.room.remote_participants.values()
-            return any(p.identity == DESTINATION_IDENTITY for p in participants)
-        return False
+        participants = self.ctx.room.remote_participants.values()
+        return any(p.identity == DESTINATION_IDENTITY for p in participants)
 
     def _transfer_backend(self) -> LiveKitTransferBackend | None:
         """Transfers (005) on SIP calls through the LiveKit server API."""
@@ -733,9 +736,6 @@ class LiveCall:
                 return None
             try:
                 return await dial_outbound(self.ctx, runtime.outbound_dial, self.recorder)
-            except TelephonyUnavailable as exc:
-                await self._fail(exc.diagnostic)
-                return None
             except DialFailed as exc:
                 await self._not_answered(exc)
                 return None
@@ -898,8 +898,10 @@ class LiveCall:
         try:
             return await translate_greeting(llm, greeting, label, on_usage=meter)
         finally:
-            with contextlib.suppress(Exception):
+            try:
                 await llm.aclose()
+            except Exception as exc:
+                log.warning("greeting translator not closed for %s: %r", self.call_id, exc)
 
     async def _greeting_frames(self, task: asyncio.Task[list[Any]] | None) -> list[Any] | None:
         """The pre-synthesised greeting, or None to fall back to live TTS."""
@@ -936,11 +938,13 @@ class LiveCall:
 
         async def run() -> None:
             if self.session is not None:
-                with contextlib.suppress(Exception):
+                try:
                     handle = self.session.generate_reply(
                         instructions=SILENCE_GOODBYE, allow_interruptions=False
                     )
                     await asyncio.wait_for(handle.wait_for_playout(), timeout=15)
+                except Exception as exc:  # the call still ends on silence
+                    log.warning("silence goodbye not said on %s: %r", self.call_id, exc)
             self._hang_up_soon("inactivity")
 
         self._spawn(run())
@@ -1034,8 +1038,10 @@ async def job_entry(
             if runtime is None:
                 # Refused (inbound admission) calls hang up without speaking (R2).
                 log.info("call %s refused: %s", call_id, refusal)
-                with contextlib.suppress(Exception):
+                try:
                     await ctx.delete_room()
+                except Exception as exc:
+                    log.warning("room of refused call %s not deleted: %r", call_id, exc)
                 ctx.shutdown(reason="refused")
                 return
             call = LiveCall(ctx, api, settings, call_id, runtime, registry, extra_tools=extra_tools)

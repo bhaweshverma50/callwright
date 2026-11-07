@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from callwright_contract.protocol import ControlRange
 
@@ -37,8 +39,8 @@ def make_control(
     )
 
 
-def items(recorder: EventRecorder) -> list[dict[str, object]]:
-    return [e["item"] for e in recorder.history if e["type"] == "transcript_item"]
+def items(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [e["item"] for e in events if e["type"] == "transcript_item"]
 
 
 async def test_hang_up_first_writer_wins() -> None:
@@ -56,12 +58,8 @@ async def test_send_dtmf_validates_and_reports() -> None:
     control, backend, recorder, _ = make_control()
     await control.send_dtmf("12#")
     assert backend.tones == ["12#"]
-    assert recorder.history[-1] == {
-        **recorder.history[-1],
-        "type": "dtmf",
-        "digits": "12#",
-        "direction": "sent",
-    }
+    (event,) = recorder.drain()
+    assert (event["type"], event["digits"], event["direction"]) == ("dtmf", "12#", "sent")
     with pytest.raises(ValueError):
         await control.send_dtmf("12A")
 
@@ -72,7 +70,8 @@ async def test_report_tool_and_transition() -> None:
         ToolActivity("lookup", ref="t1", arguments={"id": 1}, output="ok", duration_ms=40)
     )
     control.report_transition("n_2", from_node_id="n_1", label="next")
-    types = [e["type"] for e in recorder.history]
+    events = recorder.drain()
+    types = [e["type"] for e in events]
     assert types == [
         "tool_call",
         "transcript_item",
@@ -80,7 +79,7 @@ async def test_report_tool_and_transition() -> None:
         "flow_transition",
         "transcript_item",
     ]
-    kinds = [i["type"] for i in items(recorder)]
+    kinds = [i["type"] for i in items(events)]
     assert kinds == ["tool_call", "tool_result", "flow_transition"]
 
 
@@ -100,14 +99,14 @@ async def test_overrides_clamp_and_apply_at_turn_boundary() -> None:
     )
     assert result.pending and result.rejected == ()
     assert {c.path for c in result.clamped} == {"tts.speed", "tts.volume"}
-    assert [i["event"] for i in items(recorder)] == ["override_clamped", "override_clamped"]
+    assert [i["event"] for i in items(recorder.drain())] == ["override_clamped", "override_clamped"]
     assert manager.current["tts"].provider == "elevenlabs"  # not before the boundary
     swap = manager.apply_pending()
     assert swap is not None and swap.kinds == ("tts",)
     tts = manager.current["tts"]
     assert (tts.provider, tts.model) == ("cartesia", "sonic-3")
     assert tts.options["speed"] == 2.0 and tts.options["volume"] == 0.0
-    assert items(recorder)[-1]["event"] == "segment_override"
+    assert items(recorder.drain())[-1]["event"] == "segment_override"
     assert manager.apply_pending() is None
 
 

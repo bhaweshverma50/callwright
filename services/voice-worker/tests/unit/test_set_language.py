@@ -140,13 +140,14 @@ async def test_switch_stages_speech_voice_and_reply_language_and_reports_it() ->
     assert [str(r.url) for r in h.seen] == ["http://api.test/v1/internal/calls/call_test/language"]
     assert json.loads(h.seen[0].content)["language"] == "hi"
     assert h.seen[0].headers["authorization"] == "Bearer svc"
+    events = h.recorder.drain()
     system = [
         e["item"]
-        for e in h.recorder.history
+        for e in events
         if e["type"] == "transcript_item" and e["item"]["type"] == "system"
     ]
     assert system[-1]["event"] == "language_switched" and system[-1]["detail"] == "Hindi (hi)"
-    calls = [e for e in h.recorder.history if e["type"] == "tool_call"]
+    calls = [e for e in events if e["type"] == "tool_call"]
     assert calls[-1]["name"] == "set_language" and not calls[-1]["is_error"]
 
     # The same language again changes nothing; switching back restores the agent's models.

@@ -97,12 +97,13 @@ def test_turn_events_from_session_state_changes() -> None:
     call._on_agent_state(ev(old_state="listening", new_state="thinking", created_at=102.1))
     call._on_agent_state(ev(old_state="thinking", new_state="speaking", created_at=102.65))
     call._on_item(ev(item=ev(role="assistant", text_content="How can", interrupted=True)))
-    turns = [e for e in call.recorder.history if e["type"] == "turn"]
+    events = call.recorder.drain()
+    turns = [e for e in events if e["type"] == "turn"]
     assert [(t["turn_index"], t["e2e_ms"], t["interrupted"]) for t in turns] == [
         (0, 300, False),
         (1, 650, True),
     ]
-    messages = [e["item"] for e in call.recorder.history if e["type"] == "transcript_item"]
+    messages = [e["item"] for e in events if e["type"] == "transcript_item"]
     assert [(m["role"], m["text"]) for m in messages] == [
         ("agent", "Hi there"),
         ("user", "Hello"),
@@ -155,14 +156,14 @@ async def test_latency_publish_failure_does_not_break_the_call() -> None:
     call.tracker.component("llm_ttft", 0.3)
     call._on_item(ev(item=ev(role="assistant", text_content="Sure", interrupted=False)))
     await asyncio.gather(*call._tasks)
-    assert [e["type"] for e in call.recorder.history] == ["turn", "transcript_item"]
+    assert [e["type"] for e in call.recorder.drain()] == ["turn", "transcript_item"]
 
 
 async def test_keypad_flush_becomes_a_user_turn() -> None:
     call, _, session = live_call()
     call._on_dtmf_flush("1234", "termination_key")
     assert session.replies == ["1234"]
-    kinds = [e["type"] for e in call.recorder.history]
+    kinds = [e["type"] for e in call.recorder.drain()]
     assert kinds == ["dtmf", "transcript_item"]
 
 
@@ -173,7 +174,7 @@ async def test_keypad_turn_is_one_caller_line() -> None:
     call._on_dtmf_flush("1234", "termination_key")
     call._on_item(ev(item=ev(role="user", text_content="1234")))
     call._on_item(ev(item=ev(role="user", text_content="1234")))
-    lines = [e["item"] for e in call.recorder.history if e["type"] == "transcript_item"]
+    lines = [e["item"] for e in call.recorder.drain() if e["type"] == "transcript_item"]
     assert [(i["text"], i.get("source")) for i in lines] == [("1234", "keypad"), ("1234", "voice")]
 
 
@@ -239,7 +240,7 @@ def test_vendor_error_ends_call_with_diagnostic() -> None:
     call._on_error(ev(error=ev(recoverable=False, error="boom"), source=Tts()), call.plan)
     call._on_error(ev(error=ev(recoverable=True, error="retry"), source=Tts()), call.plan)
     assert hung == [("error", "vendor_error:tts/elevenlabs")]
-    codes = [e["code"] for e in call.recorder.history if e["type"] in ("warning", "error")]
+    codes = [e["code"] for e in call.recorder.drain() if e["type"] in ("warning", "error")]
     assert codes == ["vendor_error", "vendor_retry"]
 
 

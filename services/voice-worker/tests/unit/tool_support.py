@@ -45,9 +45,10 @@ class Harness:
     backend: Backend
     recorder: EventRecorder
     requests: list[httpx.Request] = field(default_factory=list)
+    recorded: list[dict[str, Any]] = field(default_factory=list)
 
     def events(self) -> list[dict[str, Any]]:
-        return [e for e in self.recorder.history if e["type"] == "tool_call"]
+        return [e for e in self.recorded if e["type"] == "tool_call"]
 
 
 def tool(
@@ -104,7 +105,8 @@ def make(
     runtime = make_runtime(overrides, channel=channel)
     if simulation:
         runtime = runtime.model_copy(update={"simulation": True})
-    recorder = EventRecorder()
+    recorded: list[dict[str, Any]] = []
+    recorder = EventRecorder(on_event=recorded.append)
     backend = Backend()
     control = RuntimeCallControl("call_test", recorder, backend)
     seen: list[httpx.Request] = []
@@ -127,4 +129,4 @@ def make(
         **kwargs,
     )
     built.clients += [http, api]
-    return Harness(built, backend, recorder, seen)
+    return Harness(built, backend, recorder, seen, recorded)

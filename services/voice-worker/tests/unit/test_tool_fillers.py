@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 import pytest
+from callwright_contract.values import STOCK_GOODBYE
 from livekit.agents import llm
 
 from tests.unit.conftest import make_runtime
@@ -24,7 +25,6 @@ from worker.pipeline import build_agent, plan_session
 from worker.tools.base import ToolSpecView
 from worker.tools.registry import (
     BUILTIN_END_CALL,
-    GOODBYE_FILLER,
     STILL_CHECKING,
     FillerPolicy,
     filler_texts,
@@ -120,7 +120,7 @@ async def test_silent_end_call_says_goodbye_at_once() -> None:
     """A reply that is only the end_call action gets a spoken goodbye, not a silent hang-up."""
     policy = FillerPolicy(filler_texts([BUILTIN_END_CALL]))
     out = await collect(policy, call("end_call"))
-    assert out[0] == GOODBYE_FILLER + " " and policy.reply_spoke is True
+    assert out[0] == STOCK_GOODBYE + " " and policy.reply_spoke is True
     spec = ToolSpecView.from_snapshot(tool("end_call", "end_call", {"message": "Bye now."}))
     policy = FillerPolicy(filler_texts([spec]))
     assert (await collect(policy, call("end_call")))[0] == "Bye now. "
@@ -159,7 +159,7 @@ async def test_silent_end_call_says_the_goodbye_the_model_wrote() -> None:
     chunk = llm.ChatChunk(id="c", delta=llm.ChoiceDelta(role="assistant", tool_calls=[fn]))
     out = await collect(policy, chunk)
     assert out[0] == "No problem, I will call you back after your meeting. Bye! "
-    assert (await collect(policy, call("end_call")))[0] == GOODBYE_FILLER + " "
+    assert (await collect(policy, call("end_call")))[0] == STOCK_GOODBYE + " "
 
 
 async def test_end_call_says_its_goodbye_argument_when_dispatched_directly() -> None:

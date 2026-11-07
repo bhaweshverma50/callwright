@@ -35,11 +35,13 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from callwright_contract import http_core
 from callwright_contract.values import (
+    DEFAULT_EXECUTION_MESSAGE,
     E164_PATTERN,
     END_CALL_TOOL,
     KB_TOOL,
     PRESS_DIGITS_PATTERN,
     SCHEDULE_CALLBACK_TOOL,
+    STOCK_GOODBYE,
 )
 
 from worker import json_schema, telemetry
@@ -60,14 +62,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-FILLER_TEXT = "One moment, let me check that."
 STILL_CHECKING = "Still checking, thanks for waiting."
 STILL_CHECKING_AFTER_S = 3.0
-# Said at once when the model ends the call without a goodbye of its own (it sometimes answers
-# a caller's "thanks, that's all" with only the end_call action, which hung up in silence).
-GOODBYE_FILLER = "Thanks for calling. Goodbye!"
-MAX_EVENT_OUTPUT = 4096
-LOOKUP_TYPES = frozenset({"http", "kb_search"})
 EMPTY_OBJECT: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
 
@@ -167,11 +163,15 @@ def filler_texts(specs: Sequence[ToolSpecView]) -> dict[str, str]:
     texts: dict[str, str] = {}
     for spec in specs:
         if spec.type == "kb_search":
-            texts[spec.name] = FILLER_TEXT
+            texts[spec.name] = DEFAULT_EXECUTION_MESSAGE
         elif spec.type == "http" and spec.config.get("speak_during_execution", True):
-            texts[spec.name] = str(spec.config.get("execution_message") or FILLER_TEXT)
+            texts[spec.name] = str(
+                spec.config.get("execution_message") or DEFAULT_EXECUTION_MESSAGE
+            )
         elif spec.type == "end_call":
-            texts[spec.name] = str(spec.config.get("message") or "").strip() or GOODBYE_FILLER
+            # Said at once when the model ends the call without a goodbye of its own (it sometimes
+            # answers a caller's "thanks, that's all" with only end_call, which hung up in silence).
+            texts[spec.name] = str(spec.config.get("message") or "").strip() or STOCK_GOODBYE
     return texts
 
 
@@ -344,7 +344,7 @@ class CallTools:
                     spec.name,
                     ref=spec.tool_id,
                     arguments=clean_args,
-                    output=output[:MAX_EVENT_OUTPUT],
+                    output=output,
                     is_error=result.is_error,
                     duration_ms=duration_ms,
                     extra=extra,

@@ -113,8 +113,8 @@ def test_fillers_cover_lookup_tools_and_a_silent_goodbye() -> None:
     )
     assert h.tools.fillers.texts == {
         "check_availability": "One moment while I check that.",
-        "kb_search": "One moment, let me check that.",
-        "end_call": "Thanks for calling. Goodbye!",
+        "kb_search": "One moment while I check that.",
+        "end_call": "Thanks for calling. Goodbye.",
     }
 
 

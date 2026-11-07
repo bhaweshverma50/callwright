@@ -44,7 +44,7 @@ class Services:
     async def transfer(self, node_id: str, spec: Mapping[str, Any]) -> bool:
         return False
 
-    async def end(self, message: str, reason: str, *, generate: bool = False) -> None:
+    async def end(self, message: str, *, generate: bool = False) -> None:
         self.said.append(message)
         self.hung_up = ("agent_hangup", None)
 

@@ -377,22 +377,15 @@ class TextSession:
 # Results
 
 
-def tool_records(recorder: EventRecorder) -> list[dict[str, Any]]:
-    """``ToolCallRecord`` rows from the recorded ``tool_call`` events. ``answer_source`` is null
-    for tools that are not answered by the simulation (end_call, transfer, kb_search, ...)."""
-    rows = []
-    for event in recorder.history:
-        if event.get("type") != "tool_call":
-            continue
-        rows.append(
-            {
-                "name": event["name"],
-                "arguments": dict(event.get("arguments") or {}),
-                "output": event.get("output"),
-                "answer_source": event.get("answer_source"),
-            }
-        )
-    return rows
+def tool_record(event: Mapping[str, Any]) -> dict[str, Any]:
+    """A ``ToolCallRecord`` from a ``tool_call`` event. ``answer_source`` is null for tools that
+    are not answered by the simulation (end_call, transfer, kb_search, ...)."""
+    return {
+        "name": event["name"],
+        "arguments": dict(event.get("arguments") or {}),
+        "output": event.get("output"),
+        "answer_source": event.get("answer_source"),
+    }
 
 
 def _error_text(exc: BaseException) -> str:
@@ -415,7 +408,13 @@ async def run_single_turn(
             return "gone"
         span.set_attribute("agent_type", spec.agent_type)
         started = time.perf_counter()
-        recorder = EventRecorder()
+        tool_calls: list[dict[str, Any]] = []
+
+        def keep_tool_call(event: dict[str, Any]) -> None:
+            if event["type"] == "tool_call":
+                tool_calls.append(tool_record(event))
+
+        recorder = EventRecorder(on_event=keep_tool_call)
         meter = TokenMeter()
         answers = SimulatedToolAnswers(policy="synthesize")
         session: TextSession | None = None
@@ -447,7 +446,7 @@ async def run_single_turn(
         finally:
             if session is not None:
                 await session.aclose()
-        body["tool_calls"] = tool_records(recorder)
+        body["tool_calls"] = tool_calls
         body["nodes_visited"] = session.visited_nodes if session is not None else []
         body["usage"] = meter.usage()
         body["duration_ms"] = round((time.perf_counter() - started) * 1000)

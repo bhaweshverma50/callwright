@@ -1,5 +1,5 @@
 """End node (T065, FR-018): the closing line, then hang-up with ``agent_hangup``; the node's
-reason is stored on the move.
+reason is kept in the ``end_reason`` flow variable.
 
 An End node whose message is empty or the stock default (``STOCK_GOODBYE``, what new flows
 used to get) does not speak a canned line over whatever the caller just asked: the agent says a
@@ -32,9 +32,9 @@ async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome
     end = EndSection.of(node.get("end"))
     run.state.variables["end_reason"] = end.reason
     if generates(node):
-        await run.services.end(STOCK_GOODBYE, end.reason, generate=True)
+        await run.services.end(STOCK_GOODBYE, generate=True)
     else:
-        await run.services.end(run.render(end.message).strip(), end.reason)
+        await run.services.end(run.render(end.message).strip())
     return Stop(end.reason)
 
 

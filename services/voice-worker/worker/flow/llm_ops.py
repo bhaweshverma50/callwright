@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from worker.flow.context import Message
+
+log = logging.getLogger(__name__)
 
 CLASSIFY_TIMEOUT_S = 1.5
 EXTRACT_TIMEOUT_S = 8.0
@@ -86,7 +89,8 @@ async def _forced_call(
 
     try:
         return await asyncio.wait_for(run(), timeout=timeout_s)
-    except (TimeoutError, Exception):
+    except Exception as exc:  # the caller falls back (first category, no values, stock line)
+        log.info("forced %s call gave no answer: %r", name, exc)
         return None
 
 

@@ -7,6 +7,7 @@ agent says the transfer is unavailable and the call goes back to the last conver
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +17,8 @@ from worker.flow.registry import CONVERSATIONAL, Move, Outcome, Stop
 if TYPE_CHECKING:
     from worker.flow.executor import FlowRun
 
+log = logging.getLogger("callwright.flow")
+
 UNAVAILABLE = "I'm not able to transfer you right now, but I can keep helping you here."
 
 
@@ -23,7 +26,8 @@ async def handle(run: FlowRun, node_id: str, node: Mapping[str, Any]) -> Outcome
     spec = node.get("transfer") or {}
     try:
         transferred = await run.services.transfer(node_id, spec.get("transfer") or {})
-    except Exception:
+    except Exception:  # a failed transfer must not end the call
+        log.exception("flow transfer node %s failed on %s", node_id, run.call_id)
         transferred = False
     if transferred:
         return Stop("call_transfer")

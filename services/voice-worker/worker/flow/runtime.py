@@ -126,8 +126,10 @@ class LiveFlowServices:
             await self.call.control.say(text, allow_interruptions=allow_interruptions)
             return
         handle = session.say(text, allow_interruptions=allow_interruptions)
-        with contextlib.suppress(Exception):
+        try:
             await handle
+        except Exception as exc:  # the flow goes on to its next step
+            log.warning("flow line not said on %s: %r", self.call.control.call_id, exc)
 
     def _llm(self) -> Any:
         session = self.call.session
@@ -210,7 +212,7 @@ class LiveFlowServices:
         result = await executor.execute(view, arguments, replace(base.ctx, say=self._say_line))
         return not result.is_error
 
-    async def end(self, message: str, reason: str, *, generate: bool = False) -> None:
+    async def end(self, message: str, *, generate: bool = False) -> None:
         """Say the closing line, then hang up. ``generate``: the End node has no line of its own
         (empty or the stock default), so the agent says a goodbye that fits the call."""
         call = self.call
@@ -305,9 +307,8 @@ class FlowCall:
         if self._listening or session is None:
             return
         self._listening = True
-        with contextlib.suppress(Exception):
-            session.on("conversation_item_added", self._on_item)
-            session.on("metrics_collected", self._on_metrics)
+        session.on("conversation_item_added", self._on_item)
+        session.on("metrics_collected", self._on_metrics)
 
     def _on_item(self, ev: Any) -> None:
         role = getattr(ev.item, "role", None)
@@ -351,8 +352,10 @@ class FlowCall:
         ctx, self.run_ctx = self.run_ctx, None
         wait = getattr(ctx, "wait_for_playout", None)
         if callable(wait):
-            with contextlib.suppress(Exception):
+            try:
                 await asyncio.wait_for(wait(), REPLY_PLAYOUT_WAIT_S)
+            except Exception as exc:  # the End node's line and the hang-up follow anyway
+                log.info("reply playout not awaited on %s: %r", self.control.call_id, exc)
 
     def start_goodbye(self) -> None:
         """Start writing the goodbye of an End node without a line of its own, from the

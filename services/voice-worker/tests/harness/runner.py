@@ -79,6 +79,19 @@ EPOCH = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
 WORDS_PER_SECOND = 2.6
 
 
+def _raise_meter(meter: dict[tuple[str, str], int], key: tuple[str, str], ms: float) -> None:
+    """Streamed audio so far: never lowered, so usage snapshots stay monotonic."""
+    meter[key] = max(meter.get(key, 0), max(0, round(ms)))
+
+
+def played_words(text: str, fraction: float) -> str:
+    """An interrupted agent turn cut to the words actually played (FR-012)."""
+    if fraction >= 1.0:
+        return text
+    words = text.split()
+    return " ".join(words[: max(0, int(len(words) * max(0.0, fraction)))])
+
+
 def deep_merge(base: Mapping[str, Any], over: Mapping[str, Any]) -> dict[str, Any]:
     out = copy.deepcopy(dict(base))
     for key, value in over.items():
@@ -287,7 +300,13 @@ class HarnessCall:
         self.plan = plan_session(self.runtime, self.registry)
         self.components: SessionComponents = build_components(self.plan, self.registry, {})
         self.meters = UsageMeters()
-        self.recorder = EventRecorder(self.meters, wall_clock=self._wall, monotonic=self.clock.now)
+        self.events: list[dict[str, Any]] = []
+        self.recorder = EventRecorder(
+            self.meters,
+            wall_clock=self._wall,
+            monotonic=self.clock.now,
+            on_event=self.events.append,
+        )
         self.tracker = LatencyTracker()
         self.sink = FakeEventSink(self.script.api.end_call_on_post, self.script.api.end_call_reason)
         self.poster = EventPoster(
@@ -392,10 +411,10 @@ class HarnessCall:
         now = self.clock.now() if self.ended_at is None else self.ended_at
         provider, model = self._stt_key
         total = self._stt_acc.get(self._stt_key, 0.0) + (now - self._stt_since) * 1000.0
-        self.meters.set_stt(provider, model, total)
+        _raise_meter(self.meters.stt, (provider, model), total)
         for key, value in self._stt_acc.items():
             if key != self._stt_key:
-                self.meters.set_stt(key[0], key[1], value)
+                _raise_meter(self.meters.stt, key, value)
         nc = self.plan.nc
         self.meters.set_nc(nc.provider, nc.model or "", now * 1000.0)
 
@@ -513,8 +532,6 @@ class HarnessCall:
             speech.timer.cancel()
         played = speech.text
         if interrupted:
-            from worker.metrics import played_words
-
             span = max(1e-9, speech.end - speech.start)
             played = played_words(speech.text, ((at or speech.end) - speech.start) / span)
         start_ms = self.recorder.offset_ms(speech.start)
@@ -794,7 +811,7 @@ class HarnessCall:
         self.failures.append(f"{self.script.name}: {message}")
 
     def _last(self, role: str) -> dict[str, Any] | None:
-        for event in reversed(self.recorder.history):
+        for event in reversed(self.events):
             item = event.get("item")
             if (
                 isinstance(item, dict)
@@ -820,7 +837,7 @@ class HarnessCall:
         }
         if expects and not self.ended:
             await self.wait_idle()  # assertions see the agent's finished reply
-        history = self.recorder.history
+        history = self.events
         if step.expect_agent_says is not None:
             last = self._last("agent")
             if last is None or step.expect_agent_says.lower() not in last["text"].lower():
@@ -915,7 +932,7 @@ class HarnessCall:
             plan=self.plan,
             end_reason=self.end_reason,
             duration_s=self.ended_at if self.ended_at is not None else self.clock.now(),
-            history=list(self.recorder.history),
+            history=list(self.events),
             posted=self.sink.events,
             spoken=list(self.spoken),
             failures=list(self.failures),

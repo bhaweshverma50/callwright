@@ -13,7 +13,3 @@ and posts events and results back over the internal API (``worker.internal_api``
 - ``llm``: model construction for the agent, the simulated caller and tool stand-ins, with
   the deterministic offline fallback used when the worker holds no key for the provider.
 """
-
-from __future__ import annotations
-
-ANSWER_SOURCES = ("mock", "recorded", "synthesized", "error")
