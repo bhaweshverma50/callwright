@@ -19,7 +19,8 @@ from livekit.agents import llm
 from tests.unit.conftest import make_runtime
 from tests.unit.tool_support import http_spec, make, tool
 from worker.adapters.registry import AdapterRegistry
-from worker.pipeline import build_agent, plan_session, with_fillers
+from worker.agent import with_fillers
+from worker.pipeline import build_agent, plan_session
 from worker.tools.base import ToolSpecView
 from worker.tools.registry import (
     BUILTIN_END_CALL,

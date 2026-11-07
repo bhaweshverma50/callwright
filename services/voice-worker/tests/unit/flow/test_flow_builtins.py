@@ -19,17 +19,16 @@ from tests.flow_support import (
 )
 from tests.harness.runner import build_runtime
 from worker.adapters.registry import AdapterRegistry
-from worker.flow import runtime as flow_runtime
-from worker.flow.nodes.end import generates
-from worker.flow.runtime import CallwrightFlowRunner
-from worker.pipeline import (
+from worker.agent import (
     CALLER_HAS_TO_GO,
     ENDING_INSTRUCTION,
     FLOW_CALLBACK_CLOSE,
     FLOW_ENDING_INSTRUCTION,
-    build_agent,
-    plan_session,
 )
+from worker.flow import runtime as flow_runtime
+from worker.flow.nodes.end import generates
+from worker.flow.runtime import CallwrightFlowRunner
+from worker.pipeline import build_agent, plan_session
 from worker.tools.registry import build_call_tools
 
 pytestmark = pytest.mark.usefixtures("no_llm_prewarm")
@@ -229,10 +228,10 @@ def test_caller_language_wins_over_a_node_voice() -> None:
     call.components = flow_runtime.FlowComponents(AdapterRegistry(), build)
     node = dict(call.run.node("n_greet000"))
     node["tts"] = {**node["tts"], "voice_id": "another-voice"}
-    assert "tts" in call.node_components(node)  # the node's own voice in the agent's language
+    assert "tts" in call.node_components(node).built  # the node's own voice in the agent's language
     built.clear()
     call.plan = replace(call.plan, language="hi", reply_language="Hindi")
-    assert "tts" not in call.node_components(node) and not built
+    assert "tts" not in call.node_components(node).built and not built
 
 
 async def test_flow_node_books_a_callback_and_the_goodbye_confirms_it() -> None:

@@ -75,6 +75,6 @@ def test_node_overrides_build_their_own_components() -> None:
         runtime, control, plan, components=components, base_tools=build_call_tools(runtime, control)
     )
     spanish = call.node_components(call.run.node("n_spanish0"))
-    assert spanish["llm"].model == "gpt-5-mini" and spanish["llm"].provider == "openai"
-    assert spanish["stt"].options["language"] == "es"
-    assert call.node_components(call.run.node("n_triage00")) == {}
+    assert spanish.built["llm"].model == "gpt-5-mini" and spanish.built["llm"].provider == "openai"
+    assert spanish.built["stt"].options["language"] == "es"
+    assert call.node_components(call.run.node("n_triage00")).built == {}

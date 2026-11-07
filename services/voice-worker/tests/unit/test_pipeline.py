@@ -10,6 +10,14 @@ import pytest
 
 from tests.unit.conftest import make_runtime
 from worker.adapters.registry import AdapterRegistry, UnsupportedVendor
+from worker.agent import (
+    CALLBACK_CLOSE,
+    CALLBACK_INSTRUCTION,
+    ENDING_INSTRUCTION,
+    VOICE_STYLE_INSTRUCTION,
+    callback_instructions,
+    pronounce,
+)
 from worker.audio import PronunciationEntry, PronunciationTransform
 from worker.flow import (
     FlowRuntimeUnavailable,
@@ -18,17 +26,10 @@ from worker.flow import (
     register_flow_runner,
 )
 from worker.pipeline import (
-    CALLBACK_CLOSE,
-    CALLBACK_INSTRUCTION,
-    ENDING_INSTRUCTION,
-    VOICE_STYLE_INSTRUCTION,
     build_agent,
     build_components,
     build_session,
-    callback_instructions,
     plan_session,
-    pronounce,
-    tts_gain_for,
     vendor_error_diagnostic,
 )
 
@@ -164,7 +165,7 @@ def test_tts_gain_only_without_native_volume() -> None:
         make_runtime({"tts": {"provider": "cartesia", "model": "sonic-2", "volume": 0.5}}),
         AdapterRegistry(),
     )
-    assert tts_gain_for(sonic2.tts) == 0.5
+    assert sonic2.tts_gain == 0.5
 
 
 def test_flow_agent_without_004_is_refused() -> None:
@@ -302,8 +303,8 @@ def test_a_non_english_agent_tells_the_model_its_language() -> None:
 
 
 def test_a_multilingual_agent_follows_the_caller_language() -> None:
+    from worker.agent import make_agent_class
     from worker.language import FOLLOW_CALLER_LANGUAGE
-    from worker.pipeline import make_agent_class
 
     plan = plan_session(make_runtime({"language": "multi"}), AdapterRegistry())
     assert plan.reply_language is None, "no 'reply only in Multilingual'"

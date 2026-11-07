@@ -19,7 +19,7 @@ import contextlib
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -30,6 +30,14 @@ from worker.adapters.registry import (
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorSpec,
+)
+from worker.agent import (
+    FLOW_ENDING_INSTRUCTION,
+    make_agent_class,
+    resolve_llm,
+    resolve_stt,
+    resolve_tts,
+    tts_gain_for,
 )
 from worker.call_behavior import ends_with_goodbye
 from worker.flow import FLOW_NOT_COMPILED, FlowRuntimeUnavailable, llm_ops
@@ -50,7 +58,7 @@ from worker.tools.registry import CallTools, FillerPolicy, filler_texts, simulat
 if TYPE_CHECKING:
     from callwright_contract.protocol import RuntimeConfig
 
-    from worker.pipeline import SessionPlan
+    from worker.agent import SessionPlan
 
 log = logging.getLogger("callwright.flow")
 GREETING_WAIT_S = 20.0
@@ -71,6 +79,16 @@ class FlowComponents:
     registry: AdapterRegistry
     build: Callable[[VendorSpec], Any]
     on_timing: Callable[[str, int], None] | None = None
+
+
+@dataclass
+class NodeComponents:
+    """A node's own components (``llm``, ``tts``, ``stt``) and, with its own voice, the voice's
+    spec and output gain for the node's plan."""
+
+    built: dict[str, Any] = field(default_factory=dict)
+    tts: VendorSpec | None = None
+    tts_gain: float = 1.0
 
 
 def flow_block(config: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -513,27 +531,25 @@ class FlowCall:
             extra = f"Summary of the call so far: {result.summary}"
         return ctx, extra
 
-    def node_components(self, node: Mapping[str, Any]) -> dict[str, Any]:
+    def node_components(self, node: Mapping[str, Any]) -> NodeComponents:
         """The node's own LLM, TTS and STT when they differ from the call's (per-node overrides)."""
+        out = NodeComponents()
         if self.components is None:
-            return {}
-        from worker.pipeline import resolve_llm, resolve_stt, resolve_tts
-
+            return out
         registry = self.components.registry
         language = str(node.get("language") or self.plan.language)
-        out: dict[str, Any] = {}
         try:
             llm = resolve_llm({"llm": node.get("llm") or {}}, registry)
             if llm != self.plan.llm:
-                out["llm"] = self.components.build(llm)
+                out.built["llm"] = self.components.build(llm)
             if self.plan.language != (self.plan.agent_language or self.plan.language):
                 # The call runs in the caller's language (012): the call's speech recognition
                 # and voice for it win over the node's own, which are for the node's language.
                 return out
             tts = resolve_tts({"tts": node.get("tts") or {}}, registry, language=language)
             if tts != self.plan.tts:
-                out["tts"] = self.components.build(tts)
-                out["_tts_spec"] = tts
+                out.built["tts"] = self.components.build(tts)
+                out.tts, out.tts_gain = tts, tts_gain_for(tts, registry)
             stt, _ = resolve_stt(
                 {"stt": node.get("stt") or {}},
                 registry,
@@ -541,7 +557,7 @@ class FlowCall:
                 language=language,
             )
             if stt != self.plan.stt:
-                out["stt"] = self.components.build(stt)
+                out.built["stt"] = self.components.build(stt)
         except (UnsupportedVendor, UnsupportedLanguage) as exc:
             log.warning(
                 "node override not applied on %s: %s", getattr(self.control, "call_id", "?"), exc
@@ -589,8 +605,6 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
     global _classes
     if _classes is not None:
         return _classes
-    from worker.pipeline import FLOW_ENDING_INSTRUCTION, make_agent_class, tts_gain_for
-
     base: type[Any] = make_agent_class()
 
     class FlowNodeAgent(base):  # type: ignore[misc]
@@ -629,14 +643,13 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 )
             components = call.node_components(node)
             plan = replace(call.plan, instructions=instructions, reply_language=call.reply_language)
-            tts_spec = components.pop("_tts_spec", None)
-            if tts_spec is not None:
-                plan = replace(plan, tts=tts_spec, tts_gain=tts_gain_for(tts_spec))
+            if components.tts is not None:
+                plan = replace(plan, tts=components.tts, tts_gain=components.tts_gain)
             tools_set = node_tools(call.base_tools, node)
             tools = [*tools_set.function_tools(), *self._transition_tools(), *call.extra_tools]
             if task:
                 tools.append(self._task_tool(task))
-            kwargs: dict[str, Any] = {**call.default_components, **components}
+            kwargs: dict[str, Any] = {**call.default_components, **components.built}
             if ctx is not None:
                 kwargs["chat_ctx"] = ctx
             super().__init__(

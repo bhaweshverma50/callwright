@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
@@ -23,6 +23,7 @@ from callwright_contract.values import (
     spoken_time,
 )
 
+from worker.call_behavior import local_now
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 TOOL_TYPE = "schedule_callback"
@@ -59,18 +60,6 @@ PARAMETERS: dict[str, Any] = {
     },
     "required": ["note"],
 }
-
-
-def local_now(variables: Mapping[str, Any], now: datetime | None = None) -> datetime:
-    """Now in the call's zone, from the ``current_datetime`` built-in (it carries the offset);
-    UTC when the call has none."""
-    now = now or datetime.now(UTC)
-    raw = str(variables.get("current_datetime") or "")
-    try:
-        offset = datetime.fromisoformat(raw).utcoffset()
-    except ValueError:
-        offset = None
-    return now.astimezone(timezone(offset) if offset is not None else UTC)
 
 
 def _confirmation(spoken: str) -> str:

@@ -49,6 +49,7 @@ from tests.harness.clock import VirtualClock, VirtualTimer
 from tests.harness.fakes import FakeEventSink, FakeLLM, FakeSTT, FakeTTS, fake_registry
 from tests.harness.script_schema import Script, Step, load_script
 from worker.adapters.registry import AdapterRegistry, VendorSpec
+from worker.agent import SessionPlan
 from worker.audio import BackgroundAudioSpec, PronunciationTransform
 from worker.call_behavior import (
     VAD_MIN_SILENCE_S,
@@ -62,13 +63,7 @@ from worker.call_behavior import (
 from worker.control import RuntimeCallControl
 from worker.entry import SYSTEM_EVENT_FOR_REASON
 from worker.metrics import EventPoster, EventRecorder, LatencyTracker, TurnRecord, UsageMeters
-from worker.pipeline import (
-    OverrideManager,
-    SessionComponents,
-    SessionPlan,
-    build_components,
-    plan_session,
-)
+from worker.pipeline import OverrideManager, SessionComponents, build_components, plan_session
 from worker.tools import SegmentOverrides, ToolActivity
 from worker.tools.dtmf import PressDigitExecutor
 from worker.tools.registry import build_call_tools

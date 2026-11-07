@@ -45,6 +45,7 @@ from worker.adapters.registry import (
     UnsupportedVendor,
     VendorSpec,
 )
+from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan
 from worker.audio import PronunciationTransform, scale_frame
 from worker.call_behavior import (
     GOODBYE_HANGUP_DELAY_S,
@@ -77,10 +78,8 @@ from worker.metrics import (
     latency_payload,
 )
 from worker.pipeline import (
-    GENERATED_GREETING_INSTRUCTION,
     OverrideManager,
     SessionComponents,
-    SessionPlan,
     build_agent,
     build_components,
     build_session,

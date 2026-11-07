@@ -48,17 +48,12 @@ from callwright_contract.variables import BUILTIN_VARIABLES
 from worker import telemetry
 from worker.adapters.llm import supports_temperature
 from worker.adapters.registry import AdapterRegistry, VendorSpec
+from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan, resolve_llm
 from worker.call_behavior import ends_with_goodbye
 from worker.control import RuntimeCallControl
 from worker.flow.runtime import CallwrightFlowRunner, FlowComponents
 from worker.metrics import EventPoster, EventRecorder
-from worker.pipeline import (
-    GENERATED_GREETING_INSTRUCTION,
-    SessionPlan,
-    build_agent,
-    plan_session,
-    resolve_llm,
-)
+from worker.pipeline import build_agent, plan_session
 from worker.textsim.api_client import SimulationSpec, TextsimApiClient
 from worker.textsim.conversation import DISCONNECT_REASON, AgentTurn, Outcome
 from worker.textsim.llm import ModelFactory, Role, TokenMeter, parse_model

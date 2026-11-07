@@ -17,7 +17,7 @@ from worker.adapters.registry import (
     VendorSpec,
     has_module,
 )
-from worker.pipeline import auto_stt
+from worker.agent import auto_stt
 from worker.settings import WorkerSettings
 
 REPO = Path(__file__).resolve().parents[4]
