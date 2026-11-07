@@ -238,6 +238,15 @@ class RecordingControl:
     async def apply_overrides(self, overrides: SegmentOverrides) -> OverrideResult:
         return OverrideResult()
 
+    async def caller_quiet(self) -> bool:
+        return True
+
+    def offset_ms(self) -> int | None:
+        return None
+
+    def report_language(self, code: str, label: str) -> int | None:
+        return None
+
     @property
     def path(self) -> list[str]:
         if not self.transitions:

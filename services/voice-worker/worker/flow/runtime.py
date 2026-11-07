@@ -48,7 +48,6 @@ from worker.flow.nodes.end import generates as end_generates
 from worker.flow.nodes.start import Opening, opening
 from worker.flow.registry import CONVERSATIONAL, Move
 from worker.flow.templating import as_text
-from worker.language import with_reply_language
 from worker.tools import CallControl, ToolActivity
 from worker.tools.base import ToolSpecView
 from worker.tools.http import HttpExecutor
@@ -260,7 +259,7 @@ class FlowCall:
         variables: dict[str, Any] = dict(runtime.variables)
         self.events = FlowEvents(
             control,
-            offset_ms=_offset(control),
+            offset_ms=control.offset_ms,
             publish=_publisher(control),
             turn_index=lambda: self.turns,
         )
@@ -270,7 +269,7 @@ class FlowCall:
             self.services,
             self.events,
             variables,
-            call_id=getattr(control, "call_id", None),
+            call_id=control.call_id,
         )
         self.base_tools = base_tools
         if components is not None and components.on_timing is not None:
@@ -349,9 +348,6 @@ class FlowCall:
             return previous or ""
         return await llm_ops.summarize(llm, history, previous)
 
-    def control_ended(self) -> bool:
-        return bool(getattr(self.control, "ending", False))
-
     async def wait_for_reply_playout(self) -> None:
         """Let the reply that took the current transition finish playing (its own words come
         before the End node's line and the hang-up)."""
@@ -420,18 +416,11 @@ class FlowCall:
         try:
             text = await asyncio.wait_for(task, budget)
         except Exception as exc:
-            log.info(
-                "generated goodbye not used on %s: %r", getattr(self.control, "call_id", "?"), exc
-            )
+            log.info("generated goodbye not used on %s: %r", self.control.call_id, exc)
             return fallback
         if text is None:
             return ""
         return text or fallback
-
-    async def caller_still_talking(self) -> bool:
-        """``CallControl.caller_quiet`` (waits briefly for a caller who is still talking)."""
-        quiet = getattr(self.control, "caller_quiet", None)
-        return not await quiet() if callable(quiet) else False
 
     def rebuild(self, plan: SessionPlan, components: Mapping[str, Any]) -> Any:
         """A turn-boundary swap (012 set_language, FR-046 overrides): the call's plan and
@@ -538,21 +527,12 @@ class FlowCall:
             if stt != self.plan.stt:
                 out.built["stt"] = self.components.build(stt)
         except (UnsupportedVendor, UnsupportedLanguage) as exc:
-            log.warning(
-                "node override not applied on %s: %s", getattr(self.control, "call_id", "?"), exc
-            )
+            log.warning("node override not applied on %s: %s", self.control.call_id, exc)
         return out
 
 
-def _offset(control: Any) -> Callable[[], int | None]:
-    recorder = getattr(control, "_recorder", None)
-    fn = getattr(recorder, "offset_ms", None)
-    return fn if callable(fn) else (lambda: None)
-
-
-def _publisher(control: Any) -> Any:
-    room = getattr(control, "room", None)
-    participant = getattr(room, "local_participant", None)
+def _publisher(control: CallControl) -> Any:
+    participant = getattr(control.room, "local_participant", None)
     if participant is None:
         return None
 
@@ -644,7 +624,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
         async def set_reply_language(self, label: str) -> None:
             """012 set_language: reply in ``label`` now, and in every node after this one."""
             self.call.reply_language = label
-            await self.update_instructions(with_reply_language(self.instructions, label))
+            await super().set_reply_language(label)
 
         def _transition_tools(self) -> list[Any]:
             out = []
@@ -695,7 +675,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                     call.start_goodbye()
                 call.run_ctx = run_ctx
                 await call.wait_for_reply_playout()
-                if await call.caller_still_talking():
+                if not await call.control.caller_quiet():
                     call.cancel_goodbye()
                     call.run.state.turn_moved = None
                     raise_stop_response()
@@ -805,7 +785,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
                 self.session.update_agent(
                     call.agent_for(landing.node_id, chat_ctx=self.carried_ctx or self.chat_ctx)
                 )
-            elif not call.control_ended():
+            elif not call.control.ending:
                 await call.services.hang_up("error", diagnostic="flow_dead_end")
 
     _classes = (FlowNodeAgent, FlowStepAgent)

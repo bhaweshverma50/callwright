@@ -435,7 +435,7 @@ class LiveCall:
     async def caller_quiet(
         self, quiet_s: float = CALLER_QUIET_S, max_wait_s: float = CALLER_QUIET_MAX_WAIT_S
     ) -> bool:
-        """``CallBackend.caller_quiet``: wait (at most ``max_wait_s``) until the caller is not
+        """Wait (at most ``max_wait_s``) until the caller is not
         speaking and no words were transcribed in the last ``quiet_s``. At the deadline only
         transcribed words count, so line noise that voice detection hears never keeps a call
         open. Returns immediately in the usual case (the caller finished seconds ago)."""

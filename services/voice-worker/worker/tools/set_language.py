@@ -136,8 +136,7 @@ class SetLanguageExecutor:
                 await ctx.set_reply_language(label)
             except Exception:  # the rebuilt agent at the turn boundary carries it anyway
                 log.exception("could not update instructions on %s", ctx.call_id)
-        report = getattr(ctx.control, "report_language", None)
-        offset_ms = report(code, label) if callable(report) else None
+        offset_ms = ctx.control.report_language(code, label)
         if not ctx.simulation:
             task = asyncio.ensure_future(self._report(ctx.call_id, code, offset_ms))
             self.reports.add(task)

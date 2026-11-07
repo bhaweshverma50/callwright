@@ -111,10 +111,7 @@ def test_greeting_turn_has_no_stt_stage(spans: InMemorySpanExporter) -> None:
 
 
 def test_tool_call_span(spans: InMemorySpanExporter) -> None:
-    class Backend:
-        async def speak(self, text: str, allow_interruptions: bool) -> None: ...
-        async def end(self, reason: str, diagnostic: str | None) -> None: ...
-        async def send_dtmf(self, digits: str) -> None: ...
+    from tests.unit.tool_support import Backend
 
     control = RuntimeCallControl(CALL_ID, EventRecorder(), Backend())
     with telemetry.call_scope(CALL_ID):

@@ -94,8 +94,22 @@ class CallControl(Protocol):
         """The LiveKit room (``None`` in the offline harness)."""
         ...
 
+    @property
+    def ending(self) -> bool:
+        """True once the call is ending (a hang-up reason is set)."""
+        ...
+
     async def hang_up(self, reason: str, *, diagnostic: str | None = None) -> bool:
         """End the call. First writer wins: returns False when a reason was already set."""
+        ...
+
+    async def caller_quiet(self) -> bool:
+        """True once the caller is not talking (they may still be finishing a sentence that
+        speech recognition split into two turns); waits briefly for them."""
+        ...
+
+    def offset_ms(self) -> int | None:
+        """Milliseconds since the caller connected (None before)."""
         ...
 
     async def say(self, text: str, *, allow_interruptions: bool = True) -> None: ...
@@ -116,3 +130,7 @@ class CallControl(Protocol):
         ...
 
     async def apply_overrides(self, overrides: SegmentOverrides) -> OverrideResult: ...
+
+    def report_language(self, code: str, label: str) -> int | None:
+        """012: record a language switch on the transcript; returns its offset in the call."""
+        ...

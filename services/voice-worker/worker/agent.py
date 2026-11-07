@@ -368,6 +368,10 @@ def make_agent_class() -> type[Any]:
             async for chunk in with_fillers(stream, self._fillers):
                 yield chunk
 
+        async def set_reply_language(self, label: str) -> None:
+            """012 set_language: reply in ``label`` from now on."""
+            await self.update_instructions(with_reply_language(str(self.instructions), label))
+
         async def tts_node(self, text: AsyncIterable[str], model_settings: Any) -> Any:
             transform = PronunciationTransform(self.plan.pronunciation)
             frames = Agent.default.tts_node(

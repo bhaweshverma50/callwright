@@ -13,6 +13,7 @@ import httpx
 import pytest
 
 from tests.unit.conftest import call_tools, make_runtime
+from tests.unit.tool_support import Backend
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
 from worker.internal_api import InternalApiClient
@@ -36,17 +37,6 @@ OPTIONS = [
     {"code": "hi", "label": "Hindi", "stt_model": "nova-2", "tts_model": "eleven_flash_v2_5"},
     {"code": "es", "label": "Spanish", "stt_model": "nova-2", "tts_model": "eleven_flash_v2_5"},
 ]
-
-
-class Backend:
-    async def speak(self, text: str, allow_interruptions: bool) -> None:
-        return None
-
-    async def end(self, reason: str, diagnostic: str | None) -> None:
-        return None
-
-    async def send_dtmf(self, digits: str) -> None:
-        return None
 
 
 def setup(

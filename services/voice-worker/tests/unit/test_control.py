@@ -6,27 +6,12 @@ import pytest
 from callwright_contract.protocol import ControlRange
 
 from tests.unit.conftest import make_runtime
+from tests.unit.tool_support import Backend
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
 from worker.metrics import EventRecorder
 from worker.pipeline import OverrideManager, clamp_value, plan_session
 from worker.tools import CallControl, ToolActivity
-
-
-class Backend:
-    def __init__(self) -> None:
-        self.ended: list[tuple[str, str | None]] = []
-        self.said: list[str] = []
-        self.tones: list[str] = []
-
-    async def speak(self, text: str, allow_interruptions: bool) -> None:
-        self.said.append(text)
-
-    async def end(self, reason: str, diagnostic: str | None) -> None:
-        self.ended.append((reason, diagnostic))
-
-    async def send_dtmf(self, digits: str) -> None:
-        self.tones.append(digits)
 
 
 def make_control(
@@ -61,7 +46,7 @@ async def test_hang_up_first_writer_wins() -> None:
     assert isinstance(control, CallControl)
     assert await control.hang_up("max_duration_reached")
     assert not await control.hang_up("inactivity")
-    assert backend.ended == [("max_duration_reached", None)]
+    assert backend.ended == ["max_duration_reached"] and backend.diagnostics == [None]
     assert control.disconnect_reason == "max_duration_reached"
     await control.say("too late")
     assert backend.said == []

@@ -160,6 +160,9 @@ class _SimBackend:
     async def send_dtmf(self, digits: str) -> None:
         return None  # keypad presses are only logged in simulations (the tool_call event)
 
+    async def caller_quiet(self) -> bool:
+        return True  # a text caller's turn is complete when it arrives
+
 
 async def _wait(awaitable: Any) -> None:
     await awaitable

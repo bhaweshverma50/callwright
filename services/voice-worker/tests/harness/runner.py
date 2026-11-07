@@ -440,6 +440,9 @@ class HarnessCall:
     async def send_dtmf(self, digits: str) -> None:
         return None
 
+    async def caller_quiet(self) -> bool:
+        return True
+
     async def end(self, reason: str, diagnostic: str | None) -> None:
         if self._speech is not None:
             self._speech_done(self._speech, interrupted=True, at=self.clock.now())

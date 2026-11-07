@@ -16,19 +16,27 @@ from worker.tools.registry import CallTools, build_call_tools
 
 
 class Backend:
+    """``CallBackend`` that records what the call was asked to do."""
+
     def __init__(self) -> None:
         self.ended: list[str] = []
+        self.diagnostics: list[str | None] = []
         self.said: list[str] = []
         self.tones: list[str] = []
+        self.quiet = True
 
     async def speak(self, text: str, allow_interruptions: bool) -> None:
         self.said.append(text)
 
     async def end(self, reason: str, diagnostic: str | None) -> None:
         self.ended.append(reason)
+        self.diagnostics.append(diagnostic)
 
     async def send_dtmf(self, digits: str) -> None:
         self.tones.append(digits)
+
+    async def caller_quiet(self) -> bool:
+        return self.quiet
 
 
 @dataclass
