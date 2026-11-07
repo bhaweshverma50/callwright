@@ -40,5 +40,5 @@ export function costViewToBreakdown(view: CostView): CostBreakdown {
         meters: [],
       };
     }),
-  } as unknown as CostBreakdown;
+  };
 }

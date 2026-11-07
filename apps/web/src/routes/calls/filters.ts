@@ -7,51 +7,9 @@
 import type { CallOrigin, CallStatus, Channel, DisconnectReason, EvalStatus, Sentiment } from "../../api/calls";
 import { isAgentId } from "../../lib/paths";
 import { enums, queryLimits } from "../../lib/contract.gen";
+import { CHANNEL_LABELS, EVAL_LABELS, ORIGIN_LABELS, REASON_LABELS, SENTIMENT_LABELS, STATUS_LABELS } from "../../components/callVocabulary";
 
-export const STATUS_LABELS: Record<CallStatus, string> = {
-  queued: "Queued",
-  ringing: "Ringing",
-  in_progress: "In progress",
-  ended: "Ended",
-  processing: "Processing",
-  completed: "Completed",
-  failed: "Failed",
-  no_answer: "No answer",
-  busy: "Busy",
-  voicemail: "Voicemail",
-};
-export const CHANNEL_LABELS: Record<Channel, string> = {
-  web: "Web",
-  sip_inbound: "Inbound phone",
-  sip_outbound: "Outbound phone",
-  whatsapp: "WhatsApp",
-};
-export const REASON_LABELS: Record<DisconnectReason, string> = {
-  user_hangup: "Caller hung up",
-  agent_hangup: "Agent ended",
-  call_transfer: "Transferred",
-  voicemail_reached: "Voicemail reached",
-  inactivity: "Silence timeout",
-  max_duration_reached: "Max duration",
-  error: "Error",
-  concurrency_limit: "Concurrency limit",
-  insufficient_credit: "Out of credit",
-};
-export const SENTIMENT_LABELS: Record<Sentiment, string> = {
-  positive: "Positive",
-  neutral: "Neutral",
-  negative: "Negative",
-  unknown: "Unknown",
-};
-export const ORIGIN_LABELS: Record<CallOrigin, string> = { live: "Live", test: "Test", simulation: "Simulated" };
 export const LABEL_LABELS = { good: "Good", bad: "Bad", unannotated: "Unannotated" } as const;
-export const EVAL_LABELS: Record<EvalStatus, string> = {
-  not_evaluated: "Not evaluated",
-  running: "Running",
-  passed: "Passed",
-  failed: "Failed",
-  error: "Error",
-};
 
 export type OwnLabel = keyof typeof LABEL_LABELS;
 /** Sorts, page size bounds, default origins and the shortest call id prefix, as GET /calls takes them. */
@@ -243,12 +201,4 @@ export function filterChips(f: CallFilters, agentName: (id: string) => string): 
     chips.push({ key: "dates", label, remove: (x) => ({ ...x, start_date: "", end_date: "" }) });
   }
   return chips;
-}
-
-export function viewerTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
 }

@@ -14,14 +14,14 @@ import {
   type CategoryColor,
   createTestCase,
   createTestCategory,
-  testingKeys,
-  updateTestCase,
   type TestCase,
   type TestCategory,
+  testingKeys,
+  updateTestCase,
 } from "../../../api/testing";
 import { Button, Dialog, Field, Input, Select, Textarea, cn, focusRing, toast } from "../../../components";
-import { ProblemAlert } from "../../simulations/shared";
 import { categoryOptions, initialCategory } from "./categories";
+import { ProblemAlert } from "../../../components/ProblemAlert";
 
 const MAX = 2000;
 

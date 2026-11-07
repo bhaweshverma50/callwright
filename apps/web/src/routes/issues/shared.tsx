@@ -26,13 +26,10 @@ export const STATUS_LABELS: Record<IssueStatus, string> = {
   dismissed: "Dismissed",
 };
 
+/** "All" and then every status, for the status filter. */
 export const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "open", label: "Open" },
-  { value: "validating", label: "Validating" },
-  { value: "validated", label: "Validated" },
-  { value: "applied", label: "Applied" },
-  { value: "dismissed", label: "Dismissed" },
+  ...(Object.keys(STATUS_LABELS) as IssueStatus[]).map((value) => ({ value, label: STATUS_LABELS[value] })),
 ];
 
 export const SCOPE_LABELS: Record<IssueScope, string> = { real: "Real calls", real_and_simulated: "Real + simulated" };
@@ -173,14 +170,6 @@ export const DISMISS_REASONS: { value: DismissReason; label: string; description
 ];
 
 export const DISMISS_LABELS = Object.fromEntries(DISMISS_REASONS.map((r) => [r.value, r.label])) as Record<DismissReason, string>;
-
-/** "+40.0 pp": one decimal, half away from zero. */
-export function pp(delta: number | null | undefined): string {
-  if (delta === null || delta === undefined) return "n/a";
-  const rounded = (Math.sign(delta) * Math.round(Math.abs(delta) * 10)) / 10;
-  if (rounded === 0) return "0.0 pp";
-  return `${rounded > 0 ? "+" : "-"}${Math.abs(rounded).toFixed(1)} pp`;
-}
 
 /** "Oct 30 to Nov 13" for a detection window. */
 export function windowRange(start?: string, end?: string): string {

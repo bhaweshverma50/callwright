@@ -22,14 +22,7 @@ describe("AssistantPanel", () => {
     sessionStorage.clear();
     render(
       <TooltipProvider>
-        <AssistantPanel
-          flowId="flw_first"
-          revision={1}
-          graph={EMPTY}
-          dirty={false}
-          pending={false}
-          onProposal={vi.fn()}
-        />
+        <AssistantPanel flowId="flw_first" revision={1} graph={EMPTY} dirty={false} pending={false} onProposal={vi.fn()} />
       </TooltipProvider>,
     );
     await user.type(screen.getByPlaceholderText("Describe a change to the flow"), "Add a goodbye step{Enter}");

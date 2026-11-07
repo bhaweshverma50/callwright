@@ -10,8 +10,9 @@ import { useState } from "react";
 import { useActionKey, isRetryable } from "../../../api/paid";
 import { generateTestCases, importTestCases, testingKeys, type TestCaseImportRow, type TestCategory } from "../../../api/testing";
 import { Button, Dialog, Field, Input, Select, Textarea, ThinkingIndicator, cn, toast } from "../../../components";
-import { ProblemAlert, cost, plural } from "../../simulations/shared";
 import { ALL_CATEGORIES, CategoryLabel, categoryOptions } from "./categories";
+import { costUsd, plural } from "../../../lib/format";
+import { ProblemAlert } from "../../../components/ProblemAlert";
 import { bodyLimits } from "../../../lib/contract.gen";
 
 const COUNT = bodyLimits["POST /test-cases/generate"].count;
@@ -143,7 +144,7 @@ export function GenerateDialog({
       title={drafts ? "Review drafted test cases" : "Generate test cases"}
       description={
         drafts
-          ? `Untick the drafts you do not want. Nothing is saved until you save.${spent !== null ? ` Drafting cost ${cost(spent)}.` : ""}`
+          ? `Untick the drafts you do not want. Nothing is saved until you save.${spent !== null ? ` Drafting cost ${costUsd(spent)}.` : ""}`
           : "Draft test cases from this agent's prompt and tools. Each generation is charged as a feature charge."
       }
       footer={

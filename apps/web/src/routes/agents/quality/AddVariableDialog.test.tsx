@@ -24,7 +24,6 @@ function renderDialog() {
   );
 }
 
-
 describe("AddVariableDialog (007 T090, US1 scenarios 7 and 8)", () => {
   it('shows and saves "Customer Mood" as customer_mood', async () => {
     const user = userEvent.setup();

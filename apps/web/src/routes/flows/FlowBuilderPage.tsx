@@ -81,9 +81,8 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
 
   const changedKeys = useMemo(() => {
     const out = new Set<string>();
-    const before = settings.base.config as unknown as Record<string, unknown>;
-    const now = settings.config as unknown as Record<string, unknown>;
-    for (const k of Object.keys(now)) if (stable(now[k]) !== stable(before[k])) out.add(k);
+    const before = new Map<string, unknown>(Object.entries(settings.base.config));
+    for (const [k, v] of Object.entries(settings.config)) if (stable(v) !== stable(before.get(k))) out.add(k);
     return out;
   }, [settings.base.config, settings.config]);
   const dirty = draft.dirty || changedKeys.size > 0;
@@ -97,8 +96,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       toast({ tone: "error", title: "Not saved", description: nameError });
       return false;
     }
-    const changes: Record<string, unknown> = {};
-    for (const k of changedKeys) changes[k] = (settings.config as unknown as Record<string, unknown>)[k];
+    const changes = Object.fromEntries(Object.entries(settings.config).filter(([k]) => changedKeys.has(k)));
     const out = await draft.save(changedKeys.size ? { changes, draftRevision: settings.base.revision } : undefined);
     if (out.status === "saved") {
       validation.setResult(out.flow.last_validation);

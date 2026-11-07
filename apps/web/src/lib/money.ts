@@ -7,6 +7,9 @@ import { bodyLimits } from "./contract.gen";
 
 const MICRO = 1_000_000n;
 
+/** Below this the balance chip and the talk-time gauge warn that calls may soon be refused. */
+export const LOW_BALANCE_MICROS = MICRO;
+
 /** Parses "12.5", "-0.477000", "5" into micro-dollars. Returns null for anything else. */
 export function toMicros(value: string): bigint | null {
   const m = /^(-)?(\d+)(?:\.(\d{1,6}))?$/.exec(value.trim());

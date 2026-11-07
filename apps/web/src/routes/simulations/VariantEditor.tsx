@@ -34,27 +34,27 @@ export function emptyVariant(config: AgentConfig | undefined): Variant {
   return { label: "", prompt: config?.prompt ?? "", nodes: {}, tools: {} };
 }
 
-/** The variant as a full configuration: the saved draft with the edits applied. */
+/**
+ * The variant as a full configuration: the saved draft with the edits applied. A snapshot also
+ * carries the flow graph and the attached tools (SimTarget `config` is the full snapshot).
+ */
 export function variantConfig(
   base: AgentConfig,
   v: Variant,
   graph: FlowGraph | undefined,
   tools: { id: string; description: string }[],
-): AgentConfig {
-  const config = structuredClone(base) as unknown as Record<string, unknown> & AgentConfig;
+): NonNullable<SimTarget["config"]> {
+  const config: NonNullable<SimTarget["config"]> = { ...structuredClone(base) };
   if (base.type === "single_prompt") config.prompt = v.prompt;
   if (graph && Object.keys(v.nodes).length) {
-    const edited: FlowGraph = {
-      ...graph,
-      nodes: graph.nodes.map((n) =>
-        v.nodes[n.id] !== undefined && "instructions" in n.config ? { ...n, config: { ...n.config, instructions: v.nodes[n.id]! } } : n,
-      ) as FlowGraph["nodes"],
-    };
-    (config as Record<string, unknown>).flow = { ...((base.flow as Record<string, unknown> | null | undefined) ?? {}), graph: edited };
+    const nodes = graph.nodes.map((n) =>
+      v.nodes[n.id] !== undefined && "instructions" in n.config ? { ...n, config: { ...n.config, instructions: v.nodes[n.id]! } } : n,
+    );
+    const flow = typeof config.flow === "object" && config.flow !== null ? config.flow : {};
+    config.flow = { ...flow, graph: { ...graph, nodes } };
   }
-  if (Object.keys(v.tools).length)
-    (config as Record<string, unknown>).tools = tools.map((t) => ({ ...t, description: v.tools[t.id] ?? t.description }));
-  return config as AgentConfig;
+  if (Object.keys(v.tools).length) config.tools = tools.map((t) => ({ ...t, description: v.tools[t.id] ?? t.description }));
+  return config;
 }
 
 /** How many parts of the variant differ from the saved draft. */

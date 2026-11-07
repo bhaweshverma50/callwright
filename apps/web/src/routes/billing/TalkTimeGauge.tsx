@@ -4,7 +4,7 @@ import { useId } from "react";
 import { useQuote, useRecentTransactions } from "../../api/queries";
 import type { Transaction } from "../../api/types";
 import { InfoTip, MoneyText, Skeleton, Ticker, cn } from "../../components";
-import { formatUsd, toMicros } from "../../lib/money";
+import { formatUsd, LOW_BALANCE_MICROS, toMicros } from "../../lib/money";
 import { DEFAULT_STACK, talkMinutes } from "../../api/pricing";
 
 const DAY_MS = 86_400_000;
@@ -58,7 +58,7 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
   const balance = balanceUsd ? toMicros(balanceUsd) : null;
   const ready = balance !== null && perMinute !== null && recent.data;
   const facts = ready ? talkTimeFacts(balance, perMinute, recent.data.items) : null;
-  const low = balance !== null && balance < 1_000_000n;
+  const low = balance !== null && balance < LOW_BALANCE_MICROS;
 
   return (
     <section aria-labelledby="talk-time" className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">

@@ -2,10 +2,8 @@ import { Wallet } from "lucide-react";
 import { Link } from "react-router";
 import { useBalance } from "../api/queries";
 import { MoneyText, Skeleton, Tooltip, cn, focusRing } from "../components";
-import { toMicros } from "../lib/money";
+import { LOW_BALANCE_MICROS, toMicros } from "../lib/money";
 import { BILLING_PATH } from "../lib/paths";
-
-const LOW = 1_000_000n; // $1.00
 
 /**
  * Live balance in the top bar (T042, T059, T096). A link to Billing, three decimals because
@@ -16,7 +14,7 @@ const LOW = 1_000_000n; // $1.00
 export function BalanceChip() {
   const { data, isPending, isError } = useBalance();
   const micros = data ? toMicros(data.balance_usd) : null;
-  const tone = micros === null ? "neutral" : micros <= 0n ? "danger" : micros < LOW ? "warning" : "neutral";
+  const tone = micros === null ? "neutral" : micros <= 0n ? "danger" : micros < LOW_BALANCE_MICROS ? "warning" : "neutral";
   const hint =
     tone === "danger"
       ? "Balance is empty. New calls are refused until you add funds."
