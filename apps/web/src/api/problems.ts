@@ -2,7 +2,7 @@
  * Problem to plain message (FR-019, T095). The UI never shows status codes, transport errors or
  * server text that could carry internals; every message here is written for operators.
  */
-import { isApiError, type ApiError } from "./errors";
+import { isApiError } from "./errors";
 import type { Problem } from "./types";
 
 function minutesFrom(seconds?: number): string {
@@ -58,5 +58,5 @@ export function fieldErrors(err: unknown): Record<string, string> {
 }
 
 export function traceIdOf(err: unknown): string | undefined {
-  return isApiError(err) ? (err as ApiError).traceId : undefined;
+  return isApiError(err) ? err.traceId : undefined;
 }

@@ -60,7 +60,7 @@ export function StartForm({ config, onChange, issues, nextLabel }: FormProps<Sta
             label="Greeting"
             hideLabel
             error={issueFor(issues, "greeting") ?? issueFor(issues, "greeting_type")}
-            hint={`${config.greeting.length} / 500`}
+            hint={`${config.greeting?.length ?? 0} / 500`}
           >
             {({ id, describedBy, invalid }) => (
               <ExpandEditor
@@ -68,7 +68,7 @@ export function StartForm({ config, onChange, issues, nextLabel }: FormProps<Sta
                 label="Greeting"
                 rows={3}
                 maxLength={500}
-                value={config.greeting}
+                value={config.greeting ?? ""}
                 onChange={(greeting) => set({ greeting })}
                 describedBy={describedBy}
                 invalid={invalid}

@@ -3,13 +3,13 @@ import { BookOpen, Bot, FileText, HardDrive, Plus, Search, Upload, X } from "luc
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { formatBytes, type KnowledgeBase, MAX_FILE_MB, useKnowledgeBases } from "../../api/knowledge";
+import { type KnowledgeBase, MAX_FILE_MB, useKnowledgeBases } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Button, EmptyState, FlowChain, IconButton, Input, PageHeader, Pagination, Skeleton, TruncatedText, cn } from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
-import { relativeDate } from "../agents/AgentCard";
 import { CreateKbDialog } from "./CreateKbDialog";
 import { KbStatusBadge } from "./kbStatus";
+import { formatBytes, timeAgo } from "../../lib/format";
 
 const STEPS = [
   { key: "upload", label: "Upload", icon: <Upload aria-hidden /> },
@@ -95,7 +95,7 @@ function KbCard({ kb }: { kb: KnowledgeBase }) {
         <ReadyBar kb={kb} />
         <div className="flex items-center justify-between gap-2 px-5 pb-3 pt-2.5">
           <KbStatusBadge status={kb.status} />
-          <span className="text-[12px] text-fg-3">Updated {relativeDate(kb.updated_at)}</span>
+          <span className="text-[12px] text-fg-3">Updated {timeAgo(kb.updated_at)}</span>
         </div>
       </article>
     </motion.div>
@@ -143,8 +143,8 @@ export function KnowledgeListPage() {
                 </Button>
               }
             >
-              Upload PDF and Word (.docx) documents up to {MAX_FILE_MB} MB each. They are indexed in the background; attach the knowledge base to an agent and it
-              looks things up while it talks.
+              Upload PDF and Word (.docx) documents up to {MAX_FILE_MB} MB each. They are indexed in the background; attach the knowledge base to an
+              agent and it looks things up while it talks.
             </EmptyState>
             <div className="rounded-panel border border-line bg-surface-2/70 px-5 py-6">
               <p className="text-[13px] font-medium text-fg">From document to answer</p>

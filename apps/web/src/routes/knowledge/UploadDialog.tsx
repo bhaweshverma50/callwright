@@ -4,18 +4,19 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import {
   ACCEPT,
-  MAX_FILE_BYTES,
-  MAX_FILE_MB,
   checkDuplicate,
-  formatBytes,
-  sha256Hex,
-  uploadDocument,
   type DuplicateMatch,
   type DuplicateVerdict,
+  kbKeys,
+  MAX_FILE_BYTES,
+  MAX_FILE_MB,
+  sha256Hex,
+  uploadDocument,
 } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { isApiError } from "../../api/errors";
 import { Button, Dialog, Field, IconButton, Input, Segmented, cn, toast } from "../../components";
+import { formatBytes } from "../../lib/format";
 
 const TYPES = /\.(pdf|docx)$/i;
 
@@ -108,7 +109,7 @@ export function UploadDialog({
         onProgress: setProgress,
         signal: abort.current.signal,
       });
-      void qc.invalidateQueries({ queryKey: ["knowledge"] });
+      void qc.invalidateQueries({ queryKey: kbKeys.all });
       toast({
         tone: "success",
         title: "Uploaded",

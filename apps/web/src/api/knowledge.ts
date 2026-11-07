@@ -5,6 +5,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, apiUrl, readJson, sendAuthorized, unwrap } from "./client";
 import type { components } from "./schema";
+import type { ResponseOf } from "./types";
 import { operationExtensions, schemaLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
@@ -14,28 +15,9 @@ export type KbDocument = S["Document"];
 export type DocumentStatus = S["DocumentStatus"];
 export type SearchResponse = S["SearchResponse"];
 export type SearchResult = S["SearchResult"];
-export interface KbPage {
-  items: KnowledgeBase[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
-export interface DocPage {
-  items: KbDocument[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
-export type DuplicateVerdict = "ok" | "blocked_same_kb" | "warn_other_kb" | "warn_same_name";
-export interface DuplicateMatch {
-  kb_id: string;
-  kb_name: string;
-  doc_id: string;
-  file_name: string;
-  reason: "same_content" | "same_name";
-}
+export type DuplicateCheck = ResponseOf<"/knowledge-bases/{kb_id}/documents/check-duplicate", "post">;
+export type DuplicateVerdict = DuplicateCheck["verdict"];
+export type DuplicateMatch = DuplicateCheck["matches"][number];
 
 export const MAX_FILE_BYTES = operationExtensions["POST /knowledge-bases/{kb_id}/documents"]["x-max-file-bytes"];
 export const MAX_FILE_MB = MAX_FILE_BYTES / (1024 * 1024);
@@ -53,10 +35,9 @@ export const kbKeys = {
 export function useKnowledgeBases(search: string, page = 1, pageSize = 24) {
   return useQuery({
     queryKey: kbKeys.list(search, page),
-    queryFn: () =>
-      unwrap(api.GET("/knowledge-bases", { params: { query: { search: search || undefined, page, page_size: pageSize } } })) as Promise<KbPage>,
+    queryFn: () => unwrap(api.GET("/knowledge-bases", { params: { query: { search: search || undefined, page, page_size: pageSize } } })),
     placeholderData: keepPreviousData,
-    refetchInterval: (q) => ((q.state.data as KbPage | undefined)?.items.some((k) => k.status === "processing") ? 3000 : false),
+    refetchInterval: (q) => (q.state.data?.items.some((k) => k.status === "processing") ? 3000 : false),
   });
 }
 
@@ -67,7 +48,7 @@ export function useAllKnowledgeBases(enabled = true) {
     queryFn: async () => {
       const out: KnowledgeBase[] = [];
       for (let page = 1; page < 50; page++) {
-        const res = (await unwrap(api.GET("/knowledge-bases", { params: { query: { page, page_size: 100 } } }))) as KbPage;
+        const res = await unwrap(api.GET("/knowledge-bases", { params: { query: { page, page_size: 100 } } }));
         out.push(...res.items);
         if (page >= res.total_pages) break;
       }
@@ -80,22 +61,20 @@ export function useAllKnowledgeBases(enabled = true) {
 export function useKnowledgeBase(id: string | undefined) {
   return useQuery({
     queryKey: kbKeys.detail(id ?? ""),
-    queryFn: () => unwrap(api.GET("/knowledge-bases/{kb_id}", { params: { path: { kb_id: id! } } })) as Promise<KnowledgeBase>,
+    queryFn: () => unwrap(api.GET("/knowledge-bases/{kb_id}", { params: { path: { kb_id: id! } } })),
     enabled: Boolean(id),
-    refetchInterval: (q) => ((q.state.data as KnowledgeBase | undefined)?.status === "processing" ? 3000 : false),
+    refetchInterval: (q) => (q.state.data?.status === "processing" ? 3000 : false),
   });
 }
 
 export function useDocuments(id: string | undefined, page = 1) {
   return useQuery({
     queryKey: kbKeys.documents(id ?? "", page),
-    queryFn: () =>
-      unwrap(api.GET("/knowledge-bases/{kb_id}/documents", { params: { path: { kb_id: id! }, query: { page, page_size: 50 } } })) as Promise<DocPage>,
+    queryFn: () => unwrap(api.GET("/knowledge-bases/{kb_id}/documents", { params: { path: { kb_id: id! }, query: { page, page_size: 50 } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
     // Poll while anything is still being processed (status column updates live).
-    refetchInterval: (q) =>
-      (q.state.data as DocPage | undefined)?.items.some((d) => d.status === "uploaded" || d.status === "processing") ? 2500 : false,
+    refetchInterval: (q) => (q.state.data?.items.some((d) => d.status === "uploaded" || d.status === "processing") ? 2500 : false),
   });
 }
 
@@ -105,12 +84,12 @@ export async function sha256Hex(file: Blob): Promise<string> {
 }
 
 export async function checkDuplicate(kbId: string, file: File, sha256: string) {
-  return (await unwrap(
+  return unwrap(
     api.POST("/knowledge-bases/{kb_id}/documents/check-duplicate", {
       params: { path: { kb_id: kbId } },
       body: { file_name: file.name, sha256, file_size: file.size },
     }),
-  )) as { verdict: DuplicateVerdict; matches: DuplicateMatch[] };
+  );
 }
 
 export interface UploadOptions {
@@ -148,14 +127,6 @@ export async function uploadDocument(kbId: string, file: File, opts: UploadOptio
 }
 
 export async function documentUrl(kbId: string, docId: string): Promise<string> {
-  const res = (await unwrap(api.GET("/knowledge-bases/{kb_id}/documents/{doc_id}/url", { params: { path: { kb_id: kbId, doc_id: docId } } }))) as {
-    url: string;
-  };
+  const res = await unwrap(api.GET("/knowledge-bases/{kb_id}/documents/{doc_id}/url", { params: { path: { kb_id: kbId, doc_id: docId } } }));
   return res.url;
-}
-
-export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10 * 1024 ? 1 : 0)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }

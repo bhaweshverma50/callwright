@@ -31,8 +31,9 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/Page'
+                  - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta'
                   - type: object
+                    required: [items]
                     properties:
                       items: {type: array, items: {$ref: '#/components/schemas/KnowledgeBase'}}
     post:
@@ -128,17 +129,18 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/Page'
+                  - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta'
                   - type: object
+                    required: [items]
                     properties:
                       items: {type: array, items: {$ref: '#/components/schemas/Document'}}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
     post:
       tags: [knowledge]
       operationId: uploadDocument
+      x-max-file-bytes: 20971520
       description: |
         Multipart upload, PDF or DOCX by content, at most 20,971,520 bytes. Returns 202 with the
-      x-max-file-bytes: 20971520
         document in status `uploaded`; ingestion runs in the background.
       requestBody:
         required: true
@@ -427,15 +429,6 @@ components:
       schema: {type: string, pattern: '^doc_[0-9A-HJKMNP-TV-Z]{26}$'}
 
   schemas:
-    Page:
-      type: object
-      required: [items, total, page, page_size, total_pages]
-      properties:
-        items: {type: array}
-        total: {type: integer}
-        page: {type: integer}
-        page_size: {type: integer}
-        total_pages: {type: integer}
 
     KnowledgeBaseWrite:
       type: object

@@ -48,7 +48,7 @@ export function PublishDialog({
       onPublished(out.version_number);
       onOpenChange(false);
     } catch (e) {
-      if (e instanceof FlowProblem && Array.isArray(e.body.issues)) onIssues(e.body.issues as ValidationIssue[]);
+      if (e instanceof FlowProblem && e.issues.length) onIssues(e.issues);
       toast({ tone: "error", title: "Not published", description: problemMessage(e, "flow") });
     } finally {
       setPending(false);

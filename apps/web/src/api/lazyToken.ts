@@ -8,14 +8,12 @@
  */
 import { useCallback, useRef, useState } from "react";
 
-export type LazyFeature = "voice_copilot" | "web_call" | "analytics_chat";
-
 export interface LazyToken {
   token: string;
   expires_at: number;
 }
 
-export function useLazyToken(_feature: LazyFeature, fetcher: () => Promise<LazyToken>) {
+export function useLazyToken(fetcher: () => Promise<LazyToken>) {
   const cache = useRef<LazyToken | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
 

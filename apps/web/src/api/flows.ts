@@ -1,12 +1,13 @@
 /**
- * Types and calls for spec 004 (flow agents, contracts/flows.yaml). The generated node config is
- * a loose union, so each node type gets a precise local config type here.
+ * Types and calls for spec 004 (flow agents, contracts/flows.yaml), typed from schema.d.ts. The
+ * contract lists a node's config as anyOf every node config (a draft may hold an incomplete one);
+ * the builder works on nodes whose config is the one their type names (`FlowNode<T>`).
  */
 import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import { ApiError, toProblem } from "./errors";
 import type { components } from "./schema";
-import type { HttpRequestConfig, TransferConfig } from "./tools";
+import type { BodyOf } from "./types";
 
 type S = components["schemas"];
 
@@ -14,76 +15,24 @@ export type NodeType = S["NodeType"];
 export type Trigger = S["Trigger"];
 export type ValidationIssue = S["ValidationIssue"];
 export type FlowValidationResult = S["FlowValidationResult"];
-export type FlowTransition = S["FlowTransition"];
 export type AssistantResponse = S["AssistantResponse"];
 export type FlowOperation = S["Operation"];
 export type CompileResult = S["CompileResult"];
 
-export type ContextStrategy = "inherit" | "summarize" | "reset";
-export interface Overrides {
-  llm: { provider: string; model: string; temperature?: number | null } | null;
-  tts: { provider: string; model?: string | null; voice_id: string; speed?: number | null; volume?: number | null } | null;
-  stt: { provider: string; model?: string | null } | null;
-  language: string | null;
-}
-export interface TaskField {
-  name: string;
-  type: "string" | "number" | "boolean" | "enum";
-  description: string;
-  required: boolean;
-  enum_values?: string[];
-}
-export interface ExtractField {
-  name: string;
-  type: "string" | "number" | "boolean";
-  description: string;
-}
-export interface Category {
-  name: string;
-  description: string;
-}
-
-export interface StartConfig {
-  start_speaker: "agent" | "user";
-  greeting_type: "static" | "generated";
-  greeting: string;
-}
-export interface ConversationalConfig {
-  instructions: string;
-  begin_message: string | null;
-  context_strategy: ContextStrategy;
-  overrides: Overrides;
-  tool_ids: string[];
-  kb_search_enabled: boolean;
-}
-export interface TaskConfig extends ConversationalConfig {
-  fields: TaskField[];
-  max_rounds: number;
-}
-export interface ConditionConfig {
-  kind: "classify" | "rule";
-  instructions: string;
-  categories: Category[];
-}
-export interface SayConfig {
-  message: string;
-  allow_interruptions: boolean;
-}
-export interface ExtractConfig {
-  instructions: string;
-  fields: ExtractField[];
-}
-export interface WebhookConfig {
-  request: HttpRequestConfig;
-  mock_response: string | null;
-}
-export interface TransferNodeConfig {
-  transfer: TransferConfig;
-}
-export interface EndConfig {
-  message: string;
-  reason: string;
-}
+export type Overrides = S["Overrides"];
+export type StartConfig = S["StartConfig"];
+export type ConversationalConfig = S["AgentConfigNode"];
+export type ContextStrategy = ConversationalConfig["context_strategy"];
+export type TaskConfig = S["TaskConfig"];
+export type TaskField = S["TaskField"];
+export type ConditionConfig = S["ConditionConfig"];
+export type Category = NonNullable<ConditionConfig["categories"]>[number];
+export type SayConfig = S["SayConfig"];
+export type ExtractConfig = S["ExtractConfig"];
+export type ExtractField = ExtractConfig["fields"][number];
+export type WebhookConfig = S["WebhookConfig"];
+export type TransferNodeConfig = S["TransferConfig"];
+export type EndConfig = S["EndConfig"];
 
 export interface ConfigByNode {
   start: StartConfig;
@@ -97,49 +46,21 @@ export interface ConfigByNode {
   end: EndConfig;
 }
 
-export interface FlowNode<T extends NodeType = NodeType> {
-  id: string;
-  type: T;
-  label: string;
-  position: { x: number; y: number };
-  config: ConfigByNode[T];
-}
+/** A node whose config is the one its type names. */
+export type FlowNode<T extends NodeType = NodeType> = { [K in T]: Omit<S["Node"], "type" | "config"> & { type: K; config: ConfigByNode[K] } }[T];
 
-export type RuleOperator = "equals" | "not_equals" | "contains" | "matches" | "exists" | "gt" | "lt";
-export interface FlowRule {
-  variable: string;
-  operator: RuleOperator;
-  value?: string | null;
-}
-export interface FlowEdge {
-  id: string;
-  source: string;
-  target: string;
-  trigger: Trigger;
-  label?: string | null;
-  condition?: string | null;
-  function_name?: string | null;
-  category?: string | null;
-  rule?: FlowRule | null;
-  sort_order: number;
-}
-export interface FlowGraph {
-  nodes: FlowNode[];
-  edges: FlowEdge[];
-  viewport: { x: number; y: number; zoom: number };
-}
-export interface Flow {
-  id: string;
-  agent_id: string;
-  name: string;
-  graph: FlowGraph;
-  revision: number;
-  last_validation: FlowValidationResult;
-  last_published_version_id?: string | null;
-  agent_draft_revision?: number;
-  created_at: string;
-  updated_at: string;
-}
+export type FlowEdge = S["Edge"];
+export type FlowRule = NonNullable<FlowEdge["rule"]>;
+export type RuleOperator = FlowRule["operator"];
+export type FlowGraph = Omit<S["FlowGraph"], "nodes"> & { nodes: FlowNode[] };
+export type Flow = Omit<S["Flow"], "graph"> & { graph: FlowGraph };
+export type AgentSettingsChange = S["AgentSettingsChange"];
+export type ChatTurn = BodyOf<"/flows/{flow_id}/assistant", "post">["messages"][number];
+
+/** The one place a contract node becomes a typed node: its type names its config. */
+const typedNode = (n: S["Node"]) => n as FlowNode;
+const typedGraph = (g: S["FlowGraph"]): FlowGraph => ({ ...g, nodes: g.nodes.map(typedNode) });
+const typedFlow = (f: S["Flow"]): Flow => ({ ...f, graph: typedGraph(f.graph) });
 
 export const flowKeys = {
   byAgent: (agentId: string) => ["flows", "agent", agentId] as const,
@@ -149,7 +70,7 @@ export const flowKeys = {
 export function useFlowByAgent(agentId: string | undefined) {
   return useQuery({
     queryKey: flowKeys.byAgent(agentId ?? ""),
-    queryFn: async () => (await unwrap(api.GET("/agents/{agent_id}/flow", { params: { path: { agent_id: agentId! } } }))) as unknown as Flow,
+    queryFn: () => fetchFlowByAgent(agentId!),
     enabled: Boolean(agentId),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
@@ -157,20 +78,20 @@ export function useFlowByAgent(agentId: string | undefined) {
 }
 
 export async function fetchFlowByAgent(agentId: string): Promise<Flow> {
-  return (await unwrap(api.GET("/agents/{agent_id}/flow", { params: { path: { agent_id: agentId } } }))) as unknown as Flow;
+  return typedFlow(await unwrap(api.GET("/agents/{agent_id}/flow", { params: { path: { agent_id: agentId } } })));
 }
 
 export async function createFlowAgent(name: string, language: string) {
   const body = await unwrap(api.POST("/flows", { body: { name, language } }));
-  return body as unknown as { agent_id: string; flow: Flow; warnings?: string[] };
+  return { ...body, flow: typedFlow(body.flow) };
 }
 
-/** A failed call with the full problem body kept (issues, current revision). */
+/** A failed call that keeps the validation issues the problem body carried (publish). */
 export class FlowProblem extends ApiError {
-  readonly body: Record<string, unknown>;
+  readonly issues: ValidationIssue[];
   constructor(status: number, body: unknown) {
     super(status, toProblem(status, body));
-    this.body = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+    this.issues = body && typeof body === "object" && "issues" in body && Array.isArray(body.issues) ? body.issues : [];
   }
 }
 
@@ -180,27 +101,22 @@ async function keep<T>(call: Promise<{ data?: T; error?: unknown; response: Resp
   throw new FlowProblem(response.status, error);
 }
 
-export interface AgentSettingsChange {
-  expected_draft_revision: number;
-  changes: Record<string, unknown>;
-}
-
 export async function saveFlow(flow: { id: string; revision: number }, name: string, graph: FlowGraph, agentSettings?: AgentSettingsChange) {
   const body = await keep(
     api.PUT("/flows/{flow_id}", {
       params: { path: { flow_id: flow.id }, header: { "If-Match": `"${flow.revision}"` } },
-      body: { name, graph: graph as never, ...(agentSettings ? { agent_settings: agentSettings as never } : {}) },
+      body: { name, graph, ...(agentSettings ? { agent_settings: agentSettings } : {}) },
     }),
   );
-  return body as unknown as Flow;
+  return typedFlow(body);
 }
 
 export async function validateFlow(flowId: string, graph: FlowGraph, signal?: AbortSignal) {
-  return unwrap(api.POST("/flows/{flow_id}/validate", { params: { path: { flow_id: flowId } }, body: { graph: graph as never }, signal }));
+  return unwrap(api.POST("/flows/{flow_id}/validate", { params: { path: { flow_id: flowId } }, body: { graph }, signal }));
 }
 
 export async function compileFlow(flowId: string) {
-  return (await unwrap(api.POST("/flows/{flow_id}/compile", { params: { path: { flow_id: flowId } } }))) as CompileResult;
+  return unwrap(api.POST("/flows/{flow_id}/compile", { params: { path: { flow_id: flowId } } }));
 }
 
 export async function publishFlow(flowId: string, expectedRevision: number, releaseNotes: string) {
@@ -212,17 +128,13 @@ export async function publishFlow(flowId: string, expectedRevision: number, rele
   );
 }
 
-export interface ChatTurn {
-  role: "user" | "assistant";
-  content: string;
-}
-
 export async function askAssistant(flowId: string, messages: ChatTurn[], baseRevision: number, graph: FlowGraph | null, signal?: AbortSignal) {
-  return keep(
+  const out = await keep(
     api.POST("/flows/{flow_id}/assistant", {
       params: { path: { flow_id: flowId } },
-      body: { messages, base_revision: baseRevision, ...(graph ? { graph: graph as never } : {}) },
+      body: { messages, base_revision: baseRevision, ...(graph ? { graph } : {}) },
       signal,
     }),
-  ) as Promise<AssistantResponse>;
+  );
+  return { ...out, proposed_graph: typedGraph(out.proposed_graph) };
 }

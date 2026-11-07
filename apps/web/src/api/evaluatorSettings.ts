@@ -8,7 +8,7 @@ import type { JudgeModel, SettingsField } from "./quality";
 export const fmtNumber = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 4 });
 
 export function schemaFields(schema: Record<string, unknown> | undefined): SettingsField[] {
-  const fields = (schema as { fields?: SettingsField[] } | undefined)?.fields;
+  const fields = schema?.fields;
   return Array.isArray(fields) ? fields : [];
 }
 

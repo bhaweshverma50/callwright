@@ -75,7 +75,7 @@ export function toSimTarget(
       type: "variant",
       agent_version_id: agent.draft_version.id,
       label: choice.variant.label.trim() || "Variant",
-      config: variantConfig(agent.draft_config, choice.variant, graph, tools) as unknown as Record<string, never>,
+      config: variantConfig(agent.draft_config, choice.variant, graph, tools),
     };
   }
   return { type: choice.type === "variant" || choice.type === "version" ? "draft" : choice.type };

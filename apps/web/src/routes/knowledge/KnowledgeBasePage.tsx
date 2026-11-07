@@ -19,7 +19,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, unwrap } from "../../api/client";
 import { ApiError, isApiError, toProblem } from "../../api/errors";
-import { documentUrl, formatBytes, type KbDocument, type KnowledgeBase, MAX_FILE_MB, useDocuments, useKnowledgeBase } from "../../api/knowledge";
+import { documentUrl, type KbDocument, kbKeys, type KnowledgeBase, MAX_FILE_MB, useDocuments, useKnowledgeBase } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import {
   Badge,
@@ -42,12 +42,12 @@ import {
   type Column,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
-import { relativeDate } from "../agents/AgentCard";
 import { CreateKbDialog } from "./CreateKbDialog";
 import { DocStatusBadge, ERROR_HELP, KbStatusBadge } from "./kbStatus";
 import { SearchPreviewPanel } from "./SearchPreviewPanel";
 import { UploadDialog } from "./UploadDialog";
 import { agentPath } from "../../lib/paths";
+import { formatBytes, timeAgo } from "../../lib/format";
 
 const ID = /^kb_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -93,7 +93,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
   const [deletingDoc, setDeletingDoc] = useState<KbDocument | null>(null);
   const docs = useDocuments(kb.id);
 
-  const refresh = () => void qc.invalidateQueries({ queryKey: ["knowledge"] });
+  const refresh = () => void qc.invalidateQueries({ queryKey: kbKeys.all });
   const removeDoc = useMutation({
     mutationFn: (d: KbDocument) =>
       unwrap(api.DELETE("/knowledge-bases/{kb_id}/documents/{doc_id}", { params: { path: { kb_id: kb.id, doc_id: d.id } } })),
@@ -205,7 +205,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
       key: "added",
       header: "Added",
       hideOnNarrow: true,
-      cell: (d) => <span className="whitespace-nowrap text-fg-2">{relativeDate(d.created_at)}</span>,
+      cell: (d) => <span className="whitespace-nowrap text-fg-2">{timeAgo(d.created_at)}</span>,
     },
     {
       key: "actions",

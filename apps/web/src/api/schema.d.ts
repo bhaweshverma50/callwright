@@ -6377,7 +6377,9 @@ export interface components {
             /** @description Required for version; base version for variant */
             agent_version_id?: string;
             /** @description Full agent snapshot (config */
-            config?: Record<string, never>;
+            config?: {
+                [key: string]: unknown;
+            };
             /** @description Display name for a variant */
             label?: string;
         };

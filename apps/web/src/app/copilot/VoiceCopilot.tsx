@@ -122,7 +122,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
     const cred = (await unwrap(api.POST("/voice-commands/stream-token"))) as StreamCredential;
     return { token: JSON.stringify(cred), expires_at: new Date(cred.expires_at).getTime() };
   }, []);
-  const lazy = useLazyToken("voice_copilot", fetchCredential);
+  const lazy = useLazyToken(fetchCredential);
 
   const fail = useCallback(
     (text: string, hint?: string) => {

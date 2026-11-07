@@ -7,6 +7,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect } from "react";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
+import type { BodyOf, ResponseOf } from "./types";
 
 type S = components["schemas"];
 
@@ -30,28 +31,8 @@ export type ScorecardRow = S["ScorecardRow"];
 export type Scorecard = S["Scorecard"];
 export type TargetType = SimTarget["type"];
 export type ExperimentSource = Experiment["source"];
-
-export interface PreflightRequest {
-  agent_id: string;
-  mode: SimMode;
-  target: SimTarget;
-  base_call_ids?: string[];
-  dataset_id?: string;
-}
-export interface Preflight {
-  run_count: number;
-  tools_missing_mock: { tool_id?: string | null; node_id?: string | null; name: string; kind: "tool" | "webhook_node" }[];
-  estimated_cost_usd: number;
-  invalid_calls: InvalidCall[];
-  warnings: string[];
-}
-export interface Paged<T> {
-  items: T[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
+export type PreflightRequest = BodyOf<"/simulations/preflight", "post">;
+export type Preflight = ResponseOf<"/simulations/preflight", "post">;
 
 export const SIM_POLL_MS = 3_000;
 export const SIM_PAGE_SIZE = 20;
@@ -76,10 +57,7 @@ export const isSimActive = (s: SimStatus | undefined) => s === "pending" || s ==
 export function useExperiments(agentId: string | null, page: number) {
   return useQuery({
     queryKey: simKeys.experiments(agentId ?? "", page),
-    queryFn: () =>
-      unwrap(api.GET("/experiments", { params: { query: { page, page_size: SIM_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } } })) as Promise<
-        Paged<Experiment>
-      >,
+    queryFn: () => unwrap(api.GET("/experiments", { params: { query: { page, page_size: SIM_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } } })),
     placeholderData: keepPreviousData,
     refetchOnMount: "always",
     refetchInterval: (q) => (q.state.data?.items.some((e) => isSimActive(e.status)) ? SIM_POLL_MS : false),
@@ -95,7 +73,7 @@ export function useStandaloneRuns(agentId: string | null, page: number) {
         api.GET("/simulation-runs", {
           params: { query: { standalone: true, page, page_size: SIM_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } },
         }),
-      ) as Promise<Paged<SimulationRun>>,
+      ),
     placeholderData: keepPreviousData,
     refetchOnMount: "always",
     refetchInterval: (q) => (q.state.data?.items.some((r) => isSimActive(r.status)) ? SIM_POLL_MS : false),
@@ -105,7 +83,7 @@ export function useStandaloneRuns(agentId: string | null, page: number) {
 export function useExperiment(id: string | undefined) {
   return useQuery({
     queryKey: simKeys.experiment(id ?? ""),
-    queryFn: () => unwrap(api.GET("/experiments/{experiment_id}", { params: { path: { experiment_id: id! } } })) as Promise<Experiment>,
+    queryFn: () => unwrap(api.GET("/experiments/{experiment_id}", { params: { path: { experiment_id: id! } } })),
     enabled: Boolean(id),
     retry: false,
     refetchInterval: (q) => (isSimActive(q.state.data?.status) ? SIM_POLL_MS : false),
@@ -116,9 +94,7 @@ export function useExperimentRuns(id: string | undefined, page: number, poll: bo
   return useQuery({
     queryKey: simKeys.experimentRuns(id ?? "", page),
     queryFn: () =>
-      unwrap(
-        api.GET("/experiments/{experiment_id}/runs", { params: { path: { experiment_id: id! }, query: { page, page_size: SIM_PAGE_SIZE } } }),
-      ) as Promise<Paged<SimulationRun>>,
+      unwrap(api.GET("/experiments/{experiment_id}/runs", { params: { path: { experiment_id: id! }, query: { page, page_size: SIM_PAGE_SIZE } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (poll || q.state.data?.items.some((r) => isSimActive(r.status)) ? SIM_POLL_MS : false),
@@ -136,7 +112,7 @@ export function useScorecard(id: string | undefined, baselineExperimentId: strin
             query: baselineExperimentId ? { baseline: "experiment", baseline_experiment_id: baselineExperimentId } : { baseline: "original" },
           },
         }),
-      ) as Promise<Scorecard>,
+      ),
     enabled: Boolean(id),
     retry: false,
     placeholderData: keepPreviousData,
@@ -148,23 +124,21 @@ export function useScorecard(id: string | undefined, baselineExperimentId: strin
 export function useAgentExperiments(agentId: string | undefined) {
   return useQuery({
     queryKey: [...simKeys.experimentsAll, "baseline-options", agentId ?? ""],
-    queryFn: async () =>
-      ((await unwrap(api.GET("/experiments", { params: { query: { agent_id: agentId!, page: 1, page_size: 100 } } }))) as Paged<Experiment>).items,
+    queryFn: async () => (await unwrap(api.GET("/experiments", { params: { query: { agent_id: agentId!, page: 1, page_size: 100 } } }))).items,
     enabled: Boolean(agentId),
     staleTime: 30_000,
   });
 }
 
 export function cancelExperiment(id: string) {
-  return unwrap(api.POST("/experiments/{experiment_id}/cancel", { params: { path: { experiment_id: id } } })) as Promise<Experiment>;
+  return unwrap(api.POST("/experiments/{experiment_id}/cancel", { params: { path: { experiment_id: id } } }));
 }
 
 export function useSimulationRun(id: string | undefined) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: simKeys.run(id ?? ""),
-    queryFn: () =>
-      unwrap(api.GET("/simulation-runs/{simulation_run_id}", { params: { path: { simulation_run_id: id! } } })) as Promise<SimulationRun>,
+    queryFn: () => unwrap(api.GET("/simulation-runs/{simulation_run_id}", { params: { path: { simulation_run_id: id! } } })),
     enabled: Boolean(id),
     retry: false,
     refetchInterval: (q) => (isSimActive(q.state.data?.status) ? SIM_POLL_MS : false),
@@ -190,8 +164,7 @@ const COMPARISON_POLLS = 40;
 export function useComparison(id: string | undefined, ready: boolean) {
   return useQuery({
     queryKey: simKeys.comparison(id ?? ""),
-    queryFn: () =>
-      unwrap(api.GET("/simulation-runs/{simulation_run_id}/comparison", { params: { path: { simulation_run_id: id! } } })) as Promise<Comparison>,
+    queryFn: () => unwrap(api.GET("/simulation-runs/{simulation_run_id}/comparison", { params: { path: { simulation_run_id: id! } } })),
     enabled: Boolean(id) && ready,
     retry: false,
     refetchInterval: (q) => (comparisonPending(q.state.data) && q.state.dataUpdateCount < COMPARISON_POLLS ? SIM_POLL_MS : false),
@@ -199,11 +172,11 @@ export function useComparison(id: string | undefined, ready: boolean) {
 }
 
 export function cancelSimulationRun(id: string) {
-  return unwrap(api.POST("/simulation-runs/{simulation_run_id}/cancel", { params: { path: { simulation_run_id: id } } })) as Promise<SimulationRun>;
+  return unwrap(api.POST("/simulation-runs/{simulation_run_id}/cancel", { params: { path: { simulation_run_id: id } } }));
 }
 
 export function preflight(body: PreflightRequest) {
-  return unwrap(api.POST("/simulations/preflight", { body })) as Promise<Preflight>;
+  return unwrap(api.POST("/simulations/preflight", { body }));
 }
 
 export function startSimulationRun(
@@ -218,7 +191,7 @@ export function startSimulationRun(
   },
   key: string,
 ) {
-  return unwrap(api.POST("/simulation-runs", { params: { header: { "Idempotency-Key": key } }, body })) as Promise<SimulationRun>;
+  return unwrap(api.POST("/simulation-runs", { params: { header: { "Idempotency-Key": key } }, body }));
 }
 
 export function startExperiment(
@@ -227,5 +200,5 @@ export function startExperiment(
   ),
   key: string,
 ) {
-  return unwrap(api.POST("/experiments", { params: { header: { "Idempotency-Key": key } }, body })) as Promise<Experiment>;
+  return unwrap(api.POST("/experiments", { params: { header: { "Idempotency-Key": key } }, body }));
 }

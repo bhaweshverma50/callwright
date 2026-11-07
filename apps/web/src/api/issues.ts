@@ -6,6 +6,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
+import type { BodyOf, QueryOf, ResponseOf } from "./types";
 import { operationExtensions, schemaLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
@@ -26,33 +27,19 @@ export type ValidationAttempt = S["ValidationAttempt"];
 export type ValidationReason = NonNullable<ValidationAttempt["reasons"]>[number];
 export type PostApply = S["PostApply"];
 export type ApplyBlocker = NonNullable<DetectedIssue["apply_blockers"]>[number];
-export type DismissReason = "not_a_problem" | "evaluator_wrong" | "wont_fix" | "duplicate" | "other";
-export type IssueScope = "real" | "real_and_simulated";
-export type StatusFilter = "all" | IssueStatus;
-export type WindowDays = 7 | 14 | 30 | 90;
-
-export interface Paged<T> {
-  items: T[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
-
-export interface ApplyResult {
-  issue: DetectedIssue;
-  agent_version_id: string;
-  published: boolean;
-  release_notes?: string;
-  tool_copies: { original_tool_id?: string; copy_tool_id?: string }[];
-  draft_updated?: boolean;
-}
+export type DismissRequest = BodyOf<"/issues/{issue_id}/dismiss", "post">;
+export type DismissReason = DismissRequest["reason"];
+type IssueQuery = QueryOf<"/issues", "get">;
+export type IssueScope = NonNullable<IssueQuery["scope"]>;
+export type StatusFilter = NonNullable<IssueQuery["status"]>;
+export type WindowDays = NonNullable<IssueQuery["window_days"]>;
+export type ValidationMode = NonNullable<ValidationRequest["mode"]>;
+export type ApplyRequest = BodyOf<"/issues/{issue_id}/apply", "post">;
+export type ApplyResult = ResponseOf<"/issues/{issue_id}/apply", "post">;
 
 export interface IssueFilters {
   agentId: string | null;
   status: StatusFilter;
-const VALIDATION = schemaLimits.ValidationRequest;
-const range = (c: { minimum: number; maximum: number; default: number }) => ({ min: c.minimum, max: c.maximum, default: c.default });
   scope: IssueScope;
   windowDays: WindowDays;
   page: number;
@@ -63,6 +50,8 @@ export const ISSUE_POLL_MS = 2_000;
 export const WINDOWS: WindowDays[] = [7, 14, 30, 90];
 export const DEFAULT_WINDOW: WindowDays = 14;
 
+const VALIDATION = schemaLimits.ValidationRequest;
+const range = (c: { minimum: number; maximum: number; default: number }) => ({ min: c.minimum, max: c.maximum, default: c.default });
 /** Threshold ranges the API accepts (FR-015). */
 export const THRESHOLDS = {
   min_improvement_pp: range(VALIDATION.min_improvement_pp),
@@ -82,6 +71,7 @@ export const issueKeys = {
   fixes: (id: string) => ["issues", "issue", id, "fixes"] as const,
   validations: (id: string) => ["issues", "issue", id, "validations"] as const,
   agentIssues: (agentId: string) => ["issues", "agent", agentId] as const,
+  estimate: (id: string, mode: ValidationMode) => ["issues", "issue", id, "estimate", mode] as const,
 };
 
 export function useIssues(f: IssueFilters) {
@@ -101,7 +91,7 @@ export function useIssues(f: IssueFilters) {
             },
           },
         }),
-      ) as Promise<Paged<IssueSummary>>,
+      ),
     placeholderData: keepPreviousData,
   });
 }
@@ -112,9 +102,9 @@ export function useAgentIssues(agentId: string | undefined, enabled: boolean) {
     queryKey: issueKeys.agentIssues(agentId ?? ""),
     queryFn: async () =>
       (
-        (await unwrap(
+        await unwrap(
           api.GET("/issues", { params: { query: { agent_id: agentId!, status: "all", scope: "real_and_simulated", page: 1, page_size: 100 } } }),
-        )) as Paged<IssueSummary>
+        )
       ).items,
     enabled: Boolean(agentId) && enabled,
     staleTime: 30_000,
@@ -124,7 +114,7 @@ export function useAgentIssues(agentId: string | undefined, enabled: boolean) {
 export function useLatestDetection(agentId: string | null) {
   return useQuery({
     queryKey: issueKeys.detection(agentId ?? ""),
-    queryFn: () => unwrap(api.GET("/issues/detection", { params: { query: { agent_id: agentId! } } })) as Promise<Detection | null>,
+    queryFn: () => unwrap(api.GET("/issues/detection", { params: { query: { agent_id: agentId! } } })),
     enabled: Boolean(agentId),
     refetchInterval: (q) => (q.state.data?.status === "running" ? ISSUE_POLL_MS : false),
   });
@@ -133,7 +123,7 @@ export function useLatestDetection(agentId: string | null) {
 export function useIssue(id: string | undefined) {
   return useQuery({
     queryKey: issueKeys.issue(id ?? ""),
-    queryFn: () => unwrap(api.GET("/issues/{issue_id}", { params: { path: { issue_id: id! } } })) as Promise<DetectedIssue>,
+    queryFn: () => unwrap(api.GET("/issues/{issue_id}", { params: { path: { issue_id: id! } } })),
     enabled: Boolean(id),
     retry: false,
     refetchInterval: (q) => (q.state.data?.status === "validating" ? ISSUE_POLL_MS : false),
@@ -144,9 +134,7 @@ export function useIssueSamples(id: string | undefined, page: number) {
   return useQuery({
     queryKey: issueKeys.samples(id ?? "", page),
     queryFn: () =>
-      unwrap(api.GET("/issues/{issue_id}/samples", { params: { path: { issue_id: id! }, query: { page, page_size: ISSUE_PAGE_SIZE } } })) as Promise<
-        Paged<IssueSample>
-      >,
+      unwrap(api.GET("/issues/{issue_id}/samples", { params: { path: { issue_id: id! }, query: { page, page_size: ISSUE_PAGE_SIZE } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
   });
@@ -155,8 +143,7 @@ export function useIssueSamples(id: string | undefined, page: number) {
 export function useIssueFixes(id: string | undefined) {
   return useQuery({
     queryKey: issueKeys.fixes(id ?? ""),
-    queryFn: async () =>
-      ((await unwrap(api.GET("/issues/{issue_id}/fixes", { params: { path: { issue_id: id! } } }))) as { items: FixRevision[] }).items,
+    queryFn: async () => (await unwrap(api.GET("/issues/{issue_id}/fixes", { params: { path: { issue_id: id! } } }))).items,
     enabled: Boolean(id),
   });
 }
@@ -164,8 +151,7 @@ export function useIssueFixes(id: string | undefined) {
 export function useIssueValidations(id: string | undefined, poll: boolean) {
   return useQuery({
     queryKey: issueKeys.validations(id ?? ""),
-    queryFn: async () =>
-      ((await unwrap(api.GET("/issues/{issue_id}/validations", { params: { path: { issue_id: id! } } }))) as { items: ValidationAttempt[] }).items,
+    queryFn: async () => (await unwrap(api.GET("/issues/{issue_id}/validations", { params: { path: { issue_id: id! } } }))).items,
     enabled: Boolean(id),
     refetchInterval: poll ? ISSUE_POLL_MS : false,
   });
@@ -174,7 +160,7 @@ export function useIssueValidations(id: string | undefined, poll: boolean) {
 const header = (key: string) => ({ "Idempotency-Key": key });
 
 export function detectIssues(body: { agent_id: string; window_days: WindowDays; include_simulated: boolean }, key: string) {
-  return unwrap(api.POST("/issues/detect", { params: { header: header(key) }, body })) as Promise<Detection>;
+  return unwrap(api.POST("/issues/detect", { params: { header: header(key) }, body }));
 }
 
 export function draftFixWithAi(issueId: string, body: { kind?: FixKind; guidance?: string | null }, key: string) {
@@ -183,57 +169,55 @@ export function draftFixWithAi(issueId: string, body: { kind?: FixKind; guidance
       params: { path: { issue_id: issueId }, header: header(key) },
       body: { mode: "ai", ...body },
     }),
-  ) as Promise<FixRevision>;
+  );
 }
 
 export function saveManualFix(issueId: string, kind: FixKind, payload: FixPayload) {
-  return unwrap(
-    api.POST("/issues/{issue_id}/fixes", { params: { path: { issue_id: issueId } }, body: { mode: "manual", kind, payload } }),
-  ) as Promise<FixRevision>;
+  return unwrap(api.POST("/issues/{issue_id}/fixes", { params: { path: { issue_id: issueId } }, body: { mode: "manual", kind, payload } }));
 }
 
 export type ValidationSettings = Pick<ValidationRequest, "mode" | "min_improvement_pp" | "max_regression_pp" | "min_sample">;
 
-export function estimateValidation(issueId: string, mode: ValidationRequest["mode"], key: string) {
-  return unwrap(
+/** A dry run answers with the estimate (200); a real run with the started attempt (202). */
+export async function estimateValidation(issueId: string, mode: ValidationMode, key: string): Promise<ValidationEstimate> {
+  const body = await unwrap(
     api.POST("/issues/{issue_id}/validate", {
       params: { path: { issue_id: issueId }, header: header(key) },
-      body: { dry_run: true, mode } as ValidationRequest,
+      body: { dry_run: true, mode },
     }),
-  ) as Promise<ValidationEstimate>;
+  );
+  if (!("affected_calls" in body)) throw new Error("A dry run answered with a validation attempt.");
+  return body;
 }
 
-export function validateFix(issueId: string, settings: ValidationSettings, key: string) {
-  return unwrap(
+export async function validateFix(issueId: string, settings: ValidationSettings, key: string): Promise<ValidationAttempt> {
+  const body = await unwrap(
     api.POST("/issues/{issue_id}/validate", {
       params: { path: { issue_id: issueId }, header: header(key) },
-      body: { dry_run: false, ...settings } as ValidationRequest,
+      body: { dry_run: false, ...settings },
     }),
-  ) as Promise<ValidationAttempt>;
+  );
+  if ("affected_calls" in body) throw new Error("A validation answered with an estimate.");
+  return body;
 }
 
 export function draftAndValidate(issueId: string, body: ValidationSettings & { kind?: FixKind; guidance?: string | null }, key: string) {
   return unwrap(
     api.POST("/issues/{issue_id}/draft-and-validate", {
       params: { path: { issue_id: issueId }, header: header(key) },
-      body: { dry_run: false, ...body } as ValidationRequest,
+      body: { dry_run: false, ...body },
     }),
-  ) as Promise<{ fix: FixRevision; validation: ValidationAttempt }>;
+  );
 }
 
 export function cancelValidation(issueId: string) {
-  return unwrap(api.POST("/issues/{issue_id}/validation/cancel", { params: { path: { issue_id: issueId } } })) as Promise<DetectedIssue>;
+  return unwrap(api.POST("/issues/{issue_id}/validation/cancel", { params: { path: { issue_id: issueId } } }));
 }
 
-export function applyFix(issueId: string, body: { fix_revision?: number; publish: boolean; release_notes_extra?: string | null }) {
-  return unwrap(api.POST("/issues/{issue_id}/apply", { params: { path: { issue_id: issueId } }, body })) as Promise<ApplyResult>;
+export function applyFix(issueId: string, body: ApplyRequest) {
+  return unwrap(api.POST("/issues/{issue_id}/apply", { params: { path: { issue_id: issueId } }, body }));
 }
 
-export function dismissIssue(issueId: string, body: { reason: DismissReason; note?: string | null; duplicate_of?: string }) {
-  return unwrap(
-    api.POST("/issues/{issue_id}/dismiss", {
-      params: { path: { issue_id: issueId } },
-      body: body as { reason: DismissReason; note?: string | null; duplicate_of?: string },
-    }),
-  ) as Promise<DetectedIssue>;
+export function dismissIssue(issueId: string, body: DismissRequest) {
+  return unwrap(api.POST("/issues/{issue_id}/dismiss", { params: { path: { issue_id: issueId } }, body }));
 }

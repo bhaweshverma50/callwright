@@ -84,6 +84,7 @@ paths:
                 config:
                   description: Optional partial config overlaid on defaults (and on the template if given)
                   type: object
+                  additionalProperties: true
       responses:
         '201':
           description: Created; ETag carries draft_revision
@@ -134,7 +135,7 @@ paths:
               required: [type, config]
               properties:
                 type: {$ref: '#/components/schemas/AgentType'}
-                config: {type: object}
+                config: {type: object, additionalProperties: true, description: A whole AgentConfig as edited; validation reports what is wrong with it}
                 agent_id:
                   $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'
                   description: Optional; lets attachment validators check workspace references

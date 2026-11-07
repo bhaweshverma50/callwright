@@ -100,7 +100,7 @@ export function httpErrors(c: HttpToolConfig, texts: { parameters?: string; body
     if (b) out.body_template = b;
   }
   const seen = new Set<string>();
-  c.headers.forEach((h, i) => {
+  (c.headers ?? []).forEach((h, i) => {
     if (!HEADER.test(h.name)) out[`headers.${i}.name`] = "Letters, digits and - only.";
     else if (seen.has(h.name.toLowerCase())) out[`headers.${i}.name`] = "This header is listed twice.";
     seen.add(h.name.toLowerCase());
@@ -108,7 +108,7 @@ export function httpErrors(c: HttpToolConfig, texts: { parameters?: string; body
     if (!h.secret && !h.value) out[`headers.${i}.value`] = "Enter a value.";
   });
   const vars = new Set<string>();
-  c.response_mappings.forEach((m, i) => {
+  (c.response_mappings ?? []).forEach((m, i) => {
     if (!isMachineName(m.variable_name)) out[`mappings.${i}.variable_name`] = "Lowercase letters, digits and underscores.";
     else if (vars.has(m.variable_name)) out[`mappings.${i}.variable_name`] = "Mapped twice.";
     vars.add(m.variable_name);

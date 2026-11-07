@@ -106,10 +106,39 @@ components:
         - type: object
           required: [config]
           properties:
-            config:
-              type: object
-              description: |
-                Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
-                llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
-                tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
-                fixed-temperature model, nor tts.voice_id (the language default voice applies).
+            config: {$ref: '#/components/schemas/TemplateConfig'}
+    TemplateConfig:
+      type: object
+      description: |
+        Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+        llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
+        tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
+        fixed-temperature model, nor tts.voice_id (the language default voice applies).
+      required: [agent_name, language, llm, prompt, begin_message, start_speaker, stt, tts, dynamic_variables]
+      properties:
+        agent_name: {type: string}
+        language: {type: string}
+        llm:
+          type: object
+          required: [provider, model]
+          properties:
+            provider: {type: string}
+            model: {type: string}
+        prompt: {type: string}
+        begin_message: {type: [string, 'null']}
+        start_speaker: {type: string, enum: [agent, user]}
+        stt:
+          type: object
+          required: [provider]
+          properties:
+            provider: {type: string}
+            model: {type: [string, 'null']}
+        tts:
+          type: object
+          required: [provider, model]
+          properties:
+            provider: {type: string}
+            model: {type: string}
+        dynamic_variables:
+          type: array
+          items: {$ref: './agents.yaml#/components/schemas/DynamicVariable'}

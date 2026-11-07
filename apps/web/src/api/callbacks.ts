@@ -7,13 +7,6 @@ type S = components["schemas"];
 
 export type Callback = S["Callback"];
 export type CallbackStatus = S["CallbackStatus"];
-export interface CallbackPage {
-  items: Callback[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
 
 export const CALLBACK_PAGE_SIZE = 20;
 
@@ -33,10 +26,7 @@ const openIn = (items: { status: string }[] | undefined) => !!items?.some((c) =>
 export function useCallbacks(status: CallbackStatus | null, page: number) {
   return useQuery({
     queryKey: callbackKeys.list(status, page),
-    queryFn: () =>
-      unwrap(
-        api.GET("/callbacks", { params: { query: { page, page_size: CALLBACK_PAGE_SIZE, ...(status && { status }) } } }),
-      ) as Promise<CallbackPage>,
+    queryFn: () => unwrap(api.GET("/callbacks", { params: { query: { page, page_size: CALLBACK_PAGE_SIZE, ...(status && { status }) } } })),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (openIn(q.state.data?.items) ? POLL_OPEN_MS : false),
   });
@@ -47,7 +37,7 @@ export function useCallCallbacks(callId: string | null) {
   return useQuery({
     queryKey: callbackKeys.forCall(callId ?? ""),
     queryFn: async () => {
-      const page = (await unwrap(api.GET("/callbacks", { params: { query: { source_call_id: callId!, page_size: 10 } } }))) as CallbackPage;
+      const page = await unwrap(api.GET("/callbacks", { params: { query: { source_call_id: callId!, page_size: 10 } } }));
       return page.items;
     },
     enabled: Boolean(callId),
@@ -60,7 +50,7 @@ export function useScheduledCallbackCount() {
   return useQuery({
     queryKey: callbackKeys.scheduledCount,
     queryFn: async () => {
-      const page = (await unwrap(api.GET("/callbacks", { params: { query: { status: "scheduled", page_size: 1 } } }))) as CallbackPage;
+      const page = await unwrap(api.GET("/callbacks", { params: { query: { status: "scheduled", page_size: 1 } } }));
       return page.total;
     },
     staleTime: 30_000,
@@ -73,7 +63,7 @@ export function useScheduledCallbackCount() {
 export function useCancelCallback() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => unwrap(api.POST("/callbacks/{callback_id}/cancel", { params: { path: { callback_id: id } } })) as Promise<Callback>,
+    mutationFn: (id: string) => unwrap(api.POST("/callbacks/{callback_id}/cancel", { params: { path: { callback_id: id } } })),
     onSettled: () => qc.invalidateQueries({ queryKey: callbackKeys.all }),
   });
 }

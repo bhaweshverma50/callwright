@@ -57,7 +57,7 @@ export const EdgePanel = memo(function EdgePanel({
   const labelTyped = (edge.label ?? "").length > 0;
   const labelError = labelTyped && !name ? "The label needs at least one letter or digit." : fieldIssue("label");
   const rule: FlowRule = edge.rule ?? { variable: "", operator: "equals", value: "" };
-  const categories = source?.type === "condition" ? (source.config as ConditionConfig).categories : [];
+  const categories = source?.type === "condition" ? ((source.config as ConditionConfig).categories ?? []) : [];
 
   return (
     <div className="flex h-full min-h-0 flex-col">

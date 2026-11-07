@@ -6,6 +6,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./client";
 import type { components } from "./schema";
+import type { ResponseOf } from "./types";
 import { bodyLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
@@ -20,11 +21,11 @@ export type TestTarget = S["TestTarget"];
 export type ToolCallRecord = S["ToolCallRecord"];
 export type TestRun = S["TestRun"];
 export type TestResult = S["TestResult"];
-export type TestRunDetail = TestRun & { results: TestResult[] };
+export type TestRunDetail = ResponseOf<"/test-runs/{test_run_id}", "get">;
 export type LastStatus = NonNullable<TestCase["last_status"]> | "not_run";
-export type ImportOutcome = { created: number; skipped_duplicates: number; created_ids?: string[]; duplicates?: number[]; errors: ImportRowError[] };
-export type ImportRowError = { index: number; field: string; message: string };
-export type GenerateResult = { drafts: TestCaseImportRow[]; cost_usd: number };
+export type ImportOutcome = ResponseOf<"/test-cases/import", "post">;
+export type ImportRowError = ImportOutcome["errors"][number];
+export type GenerateResult = ResponseOf<"/test-cases/generate", "post">;
 
 export const TEST_POLL_MS = 3_000;
 export const CASES_PAGE_SIZE = 50;
@@ -47,7 +48,7 @@ const byName = (a: TestCategory, b: TestCategory) => a.name.localeCompare(b.name
 export function useTestCategories() {
   return useQuery({
     queryKey: testingKeys.categories,
-    queryFn: async () => ((await unwrap(api.GET("/test-categories"))).items as TestCategory[]).slice().sort(byName),
+    queryFn: async () => (await unwrap(api.GET("/test-categories"))).items.slice().sort(byName),
     staleTime: 60_000,
   });
 }
@@ -66,18 +67,18 @@ export function useTestCases(agentId: string, category: string | null, page: num
         api.GET("/test-cases", {
           params: { query: { agent_id: agentId, page, page_size: CASES_PAGE_SIZE, ...(category && { category }) } },
         }),
-      ) as Promise<{ items: TestCase[]; total: number; page: number; page_size: number; total_pages: number }>,
+      ),
     enabled: Boolean(agentId),
     placeholderData: keepPreviousData,
   });
 }
 
 export function createTestCase(body: TestCaseCreate) {
-  return unwrap(api.POST("/test-cases", { body })) as Promise<TestCase>;
+  return unwrap(api.POST("/test-cases", { body }));
 }
 
 export function updateTestCase(id: string, body: TestCaseUpdate) {
-  return unwrap(api.PATCH("/test-cases/{test_case_id}", { params: { path: { test_case_id: id } }, body })) as Promise<TestCase>;
+  return unwrap(api.PATCH("/test-cases/{test_case_id}", { params: { path: { test_case_id: id } }, body }));
 }
 
 export function deleteTestCase(id: string) {
@@ -87,38 +88,34 @@ export function deleteTestCase(id: string) {
 export function importTestCases(agentId: string, rows: TestCaseImportRow[], dryRun: boolean) {
   return unwrap(
     api.POST("/test-cases/import", { body: { agent_id: agentId, dry_run: dryRun, format: "callwright.test_cases.v1", test_cases: rows } }),
-  ) as Promise<ImportOutcome>;
+  );
 }
 
 export function exportTestCases(agentId: string, template = false) {
-  return unwrap(api.GET("/test-cases/export", { params: { query: { agent_id: agentId, template } } })) as Promise<TestCaseFile>;
+  return unwrap(api.GET("/test-cases/export", { params: { query: { agent_id: agentId, template } } }));
 }
 
 export function generateTestCases(body: { agent_id: string; category: string | null; count: number; guidance: string | null }, key: string) {
-  return unwrap(api.POST("/test-cases/generate", { params: { header: { "Idempotency-Key": key } }, body })) as Promise<GenerateResult>;
+  return unwrap(api.POST("/test-cases/generate", { params: { header: { "Idempotency-Key": key } }, body }));
 }
 
-const active = (status: TestRun["status"] | undefined) => status === "queued" || status === "running";
+export const isRunActive = (status: TestRun["status"] | undefined) => status === "queued" || status === "running";
 
 export function useTestRuns(agentId: string) {
   return useQuery({
     queryKey: testingKeys.runs(agentId),
-    queryFn: () =>
-      unwrap(api.GET("/test-runs", { params: { query: { agent_id: agentId, page: 1, page_size: 20 } } })) as Promise<{
-        items: TestRun[];
-        total: number;
-      }>,
+    queryFn: () => unwrap(api.GET("/test-runs", { params: { query: { agent_id: agentId, page: 1, page_size: 20 } } })),
     enabled: Boolean(agentId),
-    refetchInterval: (q) => (q.state.data?.items.some((r) => active(r.status)) ? TEST_POLL_MS : false),
+    refetchInterval: (q) => (q.state.data?.items.some((r) => isRunActive(r.status)) ? TEST_POLL_MS : false),
   });
 }
 
 export function useTestRun(runId: string | null) {
   return useQuery({
     queryKey: testingKeys.run(runId ?? ""),
-    queryFn: () => unwrap(api.GET("/test-runs/{test_run_id}", { params: { path: { test_run_id: runId! } } })) as Promise<TestRunDetail>,
+    queryFn: () => unwrap(api.GET("/test-runs/{test_run_id}", { params: { path: { test_run_id: runId! } } })),
     enabled: Boolean(runId),
-    refetchInterval: (q) => (active(q.state.data?.status) ? TEST_POLL_MS : false),
+    refetchInterval: (q) => (isRunActive(q.state.data?.status) ? TEST_POLL_MS : false),
   });
 }
 
@@ -126,11 +123,11 @@ export function startTestRun(
   body: { agent_id: string; test_case_ids?: string[]; category?: string; target?: TestTarget; judge_model?: string },
   key: string,
 ) {
-  return unwrap(api.POST("/test-runs", { params: { header: { "Idempotency-Key": key } }, body })) as Promise<TestRun>;
+  return unwrap(api.POST("/test-runs", { params: { header: { "Idempotency-Key": key } }, body }));
 }
 
 export function cancelTestRun(runId: string) {
-  return unwrap(api.POST("/test-runs/{test_run_id}/cancel", { params: { path: { test_run_id: runId } } })) as Promise<TestRun>;
+  return unwrap(api.POST("/test-runs/{test_run_id}/cancel", { params: { path: { test_run_id: runId } } }));
 }
 
 export function overrideTestResult(runId: string, caseId: string, override_status: "passed" | "failed" | null, override_note: string | null = null) {
@@ -139,11 +136,9 @@ export function overrideTestResult(runId: string, caseId: string, override_statu
       params: { path: { test_run_id: runId, test_case_id: caseId } },
       body: { override_status, override_note },
     }),
-  ) as Promise<{ result: TestResult; run: TestRun }>;
+  );
 }
 
 export function exportTestRun(runId: string) {
   return unwrap(api.GET("/test-runs/{test_run_id}/export", { params: { path: { test_run_id: runId } } }));
 }
-
-export const isRunActive = active;

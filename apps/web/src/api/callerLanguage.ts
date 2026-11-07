@@ -9,13 +9,6 @@ export type LanguageRef = S["LanguageRef"];
 export type CallerPreference = S["CallerPreference"];
 export type CallLanguage = S["CallLanguage"];
 export type CallLanguageSwitch = S["CallLanguageSwitch"];
-export interface CallerPreferencePage {
-  items: CallerPreference[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
 
 export const callerLanguageKeys = {
   all: ["caller-language"] as const,
@@ -27,7 +20,7 @@ export const callerLanguageKeys = {
 export function useCallLanguage(callId: string | null) {
   return useQuery({
     queryKey: callerLanguageKeys.forCall(callId ?? ""),
-    queryFn: () => unwrap(api.GET("/calls/{call_id}/language", { params: { path: { call_id: callId! } } })) as Promise<CallLanguage>,
+    queryFn: () => unwrap(api.GET("/calls/{call_id}/language", { params: { path: { call_id: callId! } } })),
     enabled: Boolean(callId),
   });
 }
@@ -37,9 +30,7 @@ export function useCallerPreference(phoneNumber: string | null) {
   return useQuery({
     queryKey: callerLanguageKeys.forNumber(phoneNumber ?? ""),
     queryFn: async () => {
-      const page = (await unwrap(
-        api.GET("/caller-preferences", { params: { query: { phone_number: phoneNumber!, page_size: 1 } } }),
-      )) as CallerPreferencePage;
+      const page = await unwrap(api.GET("/caller-preferences", { params: { query: { phone_number: phoneNumber!, page_size: 1 } } }));
       return page.items[0] ?? null;
     },
     enabled: Boolean(phoneNumber),

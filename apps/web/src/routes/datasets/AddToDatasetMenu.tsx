@@ -6,10 +6,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Database, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
-import { addDatasetItems, datasetKeys, describeAddResult, useAgentDatasets, type Dataset } from "../../api/datasets";
+import { addDatasetItems, datasetKeys, useAgentDatasets, type Dataset } from "../../api/datasets";
 import { Button, MenuContent, MenuItem, MenuLabel, MenuSeparator, Menu, MenuTrigger, toast } from "../../components";
 import { NewDatasetDialog } from "./NewDatasetDialog";
 import { problemText } from "../../components/ProblemAlert";
+import { describeAddResult } from "../simulations/invalidCalls";
 
 export function AddToDatasetMenu({
   agentId,

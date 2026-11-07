@@ -31,8 +31,9 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/Page'
+                  - $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta'
                   - type: object
+                    required: [items]
                     properties:
                       items: {type: array, items: {$ref: '#/components/schemas/Tool'}}
         '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
@@ -321,18 +322,7 @@ components:
       schema: {type: string, pattern: '^tool_[0-9A-HJKMNP-TV-Z]{26}$'}
 
   schemas:
-    Page:
-      type: object
-      required: [items, total, page, page_size, total_pages]
-      properties:
-        items: {type: array}
-        total: {type: integer}
-        page: {type: integer}
-        page_size: {type: integer}
-        total_pages: {type: integer}
 
-      x-reserved-names: {kb_search: knowledge search}
-      x-reserved-prefixes: {route_to_: flows}
     ToolType:
       type: string
       enum: [end_call, transfer_call, press_digit, http]
@@ -341,6 +331,8 @@ components:
       type: string
       pattern: '^[a-z][a-z0-9_]{0,63}$'
       description: Must not be `kb_search` and must not start with `route_to_`.
+      x-reserved-names: {kb_search: knowledge search}
+      x-reserved-prefixes: {route_to_: flows}
 
     ToolCreate:
       type: object
@@ -497,6 +489,7 @@ components:
           properties:
             parameters:
               type: object
+              additionalProperties: true
               description: JSON Schema (Draft 2020-12) with type object.
               default: {type: object, properties: {}, required: []}
 

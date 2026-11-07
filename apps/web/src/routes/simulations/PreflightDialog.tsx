@@ -6,11 +6,11 @@
 import { Info, TriangleAlert, Wrench } from "lucide-react";
 import { Link } from "react-router";
 import type { AgentType } from "../../api/agents";
-import { INVALID_REASONS } from "../../api/datasets";
 import type { Preflight } from "../../api/simulations";
 import { Button, Figure } from "../../components";
 import { agentEditPath, agentFlowPath } from "../../lib/paths";
 import { costUsd, plural } from "../../lib/format";
+import { INVALID_REASONS } from "./invalidCalls";
 
 export function configureMocksPath(agentId: string, type: AgentType | undefined) {
   return type === "flow" ? agentFlowPath(agentId) : `${agentEditPath(agentId)}?tab=tools`;
