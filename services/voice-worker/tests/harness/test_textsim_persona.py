@@ -17,8 +17,7 @@ from tests.harness.textsim_support import (
     deps,
     sim_spec,
 )
-from worker.adapters.llm import supports_temperature
-from worker.adapters.registry import AdapterRegistry
+from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.textsim import runner
 from worker.textsim.llm import ScriptReply, ScriptRequest, default_factory
 from worker.textsim.persona_caller import (
@@ -164,7 +163,9 @@ async def test_persona_model_comes_from_settings() -> None:
     assert (spec.provider, spec.model) == ("openai", "gpt-5-mini")
     # The launch models only run at their default temperature; others get 0.7.
     assert "temperature" not in spec.options
-    assert supports_temperature("some-other-model") and not supports_temperature("gpt-5.1")
+    registry = AdapterRegistry()
+    assert registry.fixed_temperature(VendorSpec("llm", "openai", "gpt-5.1"))
+    assert not registry.fixed_temperature(VendorSpec("llm", "openai", "some-other-model"))
 
 
 async def test_missing_brief_fails_the_run() -> None:

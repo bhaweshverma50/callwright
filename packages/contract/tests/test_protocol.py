@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
+from dataclasses import fields
+from importlib import resources
+
 import pytest
 from pydantic import ValidationError
 
-from callwright_contract.adapters import load_catalog
+from callwright_contract.adapters import AdapterEntry, load_catalog
 from callwright_contract.diagnostics import (
     CALLER_NEVER_JOINED,
     FLOW_NOT_COMPILED,
@@ -60,3 +64,15 @@ def test_diagnostics_format_and_parse() -> None:
     assert parse(CALLER_NEVER_JOINED) == Diagnostic(CALLER_NEVER_JOINED)
     codes = [STT_LANGUAGE_UNSUPPORTED, FLOW_NOT_COMPILED, FLOW_RUNTIME_UNAVAILABLE, OUTBOUND_DIAL_MISSING]
     assert all(c.replace("_", "").isalpha() and c.islower() for c in codes)
+
+
+def test_every_adapter_catalog_key_is_read() -> None:
+    raw = json.loads(resources.files("callwright_contract").joinpath("adapters.json").read_text())
+    assert set(raw) == {"description", "entries", "ambience_clips"}
+    known = {f.name for f in fields(AdapterEntry)}
+    assert all(set(entry) <= known for entry in raw["entries"])
+    catalog = load_catalog()
+    for entry in catalog.entries:
+        capable = entry.builtin_turn_detection | entry.native_volume | entry.fixed_temperature
+        assert capable <= set(entry.models), entry.provider
+    assert catalog.ambience_clips["hold_music"] == "HOLD_MUSIC"

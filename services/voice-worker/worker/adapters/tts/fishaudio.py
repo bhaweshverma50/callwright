@@ -9,11 +9,6 @@ from worker.adapters.registry import VendorSpec
 from worker.adapters.tts import clamp, opt_float
 
 
-def native_volume(model: str | None) -> bool:
-    """Whether the vendor applies ``volume`` itself; otherwise the worker applies gain."""
-    return True
-
-
 def temperature_for(expressiveness: float) -> float:
     """Expressiveness 0..2 to Fish Audio sampling temperature 0.1..1.0."""
     return round(clamp(0.2 + 0.4 * expressiveness, 0.1, 1.0), 3)

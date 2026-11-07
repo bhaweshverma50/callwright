@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, TypeGuard
 
+from callwright_contract.adapters import load_catalog as load_adapter_catalog
 from pydantic import ValidationError
 
 from app.agents import defaults, variables
@@ -647,7 +648,8 @@ def _check_text_rules(cfg: dict[str, Any], agent_type: str, ctx: PureContext, ou
         if bg.get("enabled") is True and source is None:
             out.error("/advanced/background_audio/source", "required", "Choose a background sound.")
         if isinstance(source, dict) and source.get("kind") == "builtin" and _is_text(source.get("id")):
-            if source["id"] not in (ctx.voice_catalog or load_voice_catalog()).ambient_ids():
+            offered = (ctx.voice_catalog or load_voice_catalog()).ambient_ids()
+            if source["id"] not in offered or source["id"] not in load_adapter_catalog().ambience_clips:
                 out.error(
                     "/advanced/background_audio/source",
                     "not_in_catalog",

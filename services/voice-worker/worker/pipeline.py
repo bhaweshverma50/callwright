@@ -169,7 +169,9 @@ def plan_session(
     )
 
     adv: Mapping[str, Any] = config["advanced"]
-    background, warnings = resolve_background_audio(config, runtime.background_audio_url)
+    background, warnings = resolve_background_audio(
+        config, runtime.background_audio_url, registry.catalog.ambience_clips
+    )
     is_flow = runtime.agent_type == "flow" or config.get("type") == "flow"
     agent_type: Literal["single_prompt", "flow"] = "flow" if is_flow else "single_prompt"
     if is_flow:

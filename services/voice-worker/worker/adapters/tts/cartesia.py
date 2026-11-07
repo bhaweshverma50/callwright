@@ -9,14 +9,6 @@ from worker.adapters.registry import VendorSpec
 from worker.adapters.stt import language_base
 from worker.adapters.tts import clamp, opt_float
 
-# Speed and volume controls exist only on Sonic 3 (speed 0.6..2.0, volume 0.5..2.0). Other
-# models get the worker's output gain for volume and the vendor's natural pace.
-CONTROL_MODELS = frozenset({"sonic-3"})
-
-
-def native_volume(model: str | None) -> bool:
-    return model in CONTROL_MODELS
-
 
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import cartesia
@@ -27,7 +19,10 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
         "model": model,
         "language": language_base(str(spec.options.get("language", "en"))),
     }
-    if model in CONTROL_MODELS:
+    if spec.entry is not None and model in spec.entry.native_volume:
+        # Cartesia's speed and volume controls come together (the catalog's native_volume
+        # models: speed 0.6..2.0, volume 0.5..2.0). Other models get the worker's output gain
+        # for volume and the vendor's natural pace.
         kwargs["speed"] = clamp(opt_float(spec.options, "speed", 1.0), 0.6, 2.0)
         kwargs["volume"] = clamp(opt_float(spec.options, "volume", 1.0), 0.5, 2.0)
     voice_id = spec.options.get("voice_id")

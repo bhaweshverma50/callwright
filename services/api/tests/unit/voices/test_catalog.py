@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from callwright_contract.adapters import load_catalog as load_adapter_catalog
+
 from app.pricing import engine
 from app.voices.catalog import catalog_json, load_catalog
 
@@ -90,3 +92,8 @@ def test_withdrawn_stt_model_hidden_but_resolvable() -> None:
     body = catalog_json(None, catalog=patched, include_withdrawn=True)
     ids = [m["id"] for m in next(p for p in body["stt"] if p["provider"] == "deepgram")["models"]]
     assert "flux-general-en" in ids
+
+
+def test_offered_ambient_sounds_are_the_worker_clips() -> None:
+    """Every built-in background sound the editor offers is one the voice worker can play."""
+    assert set(load_catalog().ambient_ids()) == set(load_adapter_catalog().ambience_clips)

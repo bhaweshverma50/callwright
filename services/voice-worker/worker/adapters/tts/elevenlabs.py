@@ -36,11 +36,6 @@ _STABILITY = ((0.0, 0.9), (DEFAULT_EXPRESSIVENESS, 0.35), (2.0, 0.15))
 _STYLE = ((0.0, 0.0), (DEFAULT_EXPRESSIVENESS, 0.3), (2.0, 0.6))
 
 
-def native_volume(model: str | None) -> bool:
-    """Whether the vendor applies ``volume`` itself; otherwise the worker applies gain."""
-    return False
-
-
 def _piecewise(points: tuple[tuple[float, float], ...], x: float) -> float:
     x = clamp(x, points[0][0], points[-1][0])
     for (x0, y0), (x1, y1) in pairwise(points):

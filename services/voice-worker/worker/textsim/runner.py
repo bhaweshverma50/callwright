@@ -60,7 +60,6 @@ from callwright_contract.textsim import (
 from callwright_contract.variables import BUILTIN_VARIABLES
 
 from worker import telemetry
-from worker.adapters.llm import supports_temperature
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan, resolve_llm
 from worker.call_behavior import ends_with_goodbye
@@ -488,7 +487,9 @@ def persona_spec(spec: SimulationSpec, runtime: RuntimeConfig, registry: Adapter
     chosen = parse_model(spec.settings.persona_model, VendorSpec("llm", default.provider, None))
     if chosen.model is None:
         chosen = VendorSpec("llm", default.provider, default.model)
-    options = {"temperature": PERSONA_TEMPERATURE} if supports_temperature(chosen.model) else {}
+    # A model that only runs at the vendor's default temperature is left at it.
+    fixed = registry.fixed_temperature(chosen)
+    options = {} if fixed else {"temperature": PERSONA_TEMPERATURE}
     return VendorSpec("llm", chosen.provider, chosen.model, options)
 
 

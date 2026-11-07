@@ -7,7 +7,6 @@ from typing import Any
 import pytest
 
 from worker.adapters.llm import anthropic as adapter
-from worker.adapters.llm import supports_temperature
 from worker.adapters.registry import (
     AdapterRegistry,
     UnsupportedVendor,
@@ -86,8 +85,9 @@ async def test_sonnet_request_turns_thinking_off_between_tools() -> None:
 
 
 def test_claude_models_take_no_temperature() -> None:
-    assert not supports_temperature("claude-haiku-5-5")
-    assert supports_temperature(None)
+    registry = AdapterRegistry()
+    assert registry.fixed_temperature(VendorSpec("llm", "anthropic", "claude-haiku-5-5"))
+    assert not registry.fixed_temperature(VendorSpec("llm", "anthropic", None))
 
 
 def test_text_simulations_use_offline_scripts_without_a_key() -> None:

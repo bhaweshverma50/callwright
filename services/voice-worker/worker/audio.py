@@ -121,18 +121,6 @@ def _hold_back_start(tail: str, tokens: int) -> int:
     return spans[-tokens] if len(spans) >= tokens else 0
 
 
-# --------------------------------------------------------------------------------------------
-# Background audio
-
-BUILTIN_AMBIENCE: Mapping[str, str] = {
-    "office_ambience": "OFFICE_AMBIENCE",
-    "city_ambience": "CITY_AMBIENCE",
-    "forest_ambience": "FOREST_AMBIENCE",
-    "crowded_room": "CROWDED_ROOM",
-    "hold_music": "HOLD_MUSIC",
-    "keyboard_typing": "KEYBOARD_TYPING",
-    "keyboard_typing2": "KEYBOARD_TYPING2",
-}
 # The ambience player's ceiling: the builder's volume (the claim's background volume control)
 # above it is played at it, so loud ambience never clips.
 MAX_GAIN = 2.0
@@ -144,6 +132,7 @@ class BackgroundAudioSpec:
     ref: str  # builtin clip id or upload object key
     gain: float
     url: str | None = None
+    clip: str | None = None  # builtin: the LiveKit ``BuiltinAudioClip`` name
 
 
 @dataclass(frozen=True)
@@ -157,21 +146,22 @@ def clamp_gain(volume: float) -> float:
 
 
 def resolve_background_audio(
-    config: Mapping[str, Any], signed_url: str | None
+    config: Mapping[str, Any], signed_url: str | None, clips: Mapping[str, str]
 ) -> tuple[BackgroundAudioSpec | None, list[AudioWarning]]:
-    """Read ``advanced.background_audio`` and the claim's signed URL into a playable spec."""
+    """Read ``advanced.background_audio`` and the claim's signed URL into a playable spec;
+    ``clips`` are the adapter catalog's built-in sounds."""
     adv: Mapping[str, Any] = config.get("advanced") or {}
     raw: Mapping[str, Any] = adv.get("background_audio") or {}
     if not raw.get("enabled"):
         return None, []
     source: Mapping[str, Any] = raw.get("source") or {}
-    gain = clamp_gain(float(raw.get("volume", 0.8)))
+    gain = clamp_gain(float(raw["volume"]))
     kind = source.get("kind")
     if kind == "builtin":
         clip = str(source.get("id") or "")
-        if clip not in BUILTIN_AMBIENCE:
+        if clip not in clips:
             return None, [AudioWarning("background_audio_unavailable", f"unknown clip {clip}")]
-        return BackgroundAudioSpec("builtin", clip, gain), []
+        return BackgroundAudioSpec("builtin", clip, gain, clip=clips[clip]), []
     if kind == "upload":
         key = str(source.get("key") or "")
         if not signed_url:
@@ -216,7 +206,7 @@ def build_player(spec: BackgroundAudioSpec, local_file: Path | None = None) -> A
 
     source: Any
     if spec.kind == "builtin":
-        source = getattr(BuiltinAudioClip, BUILTIN_AMBIENCE[spec.ref])
+        source = getattr(BuiltinAudioClip, str(spec.clip))
     else:
         if local_file is None:
             raise ValueError("upload ambience needs a downloaded file")
