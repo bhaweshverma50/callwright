@@ -67,9 +67,6 @@ class Outcome:
     retry_in_s: float | None = None
 
 
-# Concurrency ----------------------------------------------------------------------------------
-
-
 async def acquire_slot(redis: Redis | None, workspace_id: str) -> bool:
     if redis is None:
         return True
@@ -87,9 +84,6 @@ async def release_slot(redis: Redis | None, workspace_id: str) -> None:
         await redis.decr(f"kb_ingest_slots:{workspace_id}")
 
 
-# Charging -------------------------------------------------------------------------------------
-
-
 async def ingestion_cost(session: Any, embedder: EmbeddingAdapter, tokens: int) -> tuple[Decimal, Decimal]:
     """(raw, billable) USD for ``tokens`` embedded tokens: tokens / 1000 x catalog rate, with
     the feature markup, rounded up to $0.000001."""
@@ -102,9 +96,6 @@ async def ingestion_cost(session: Any, embedder: EmbeddingAdapter, tokens: int) 
     per_k = rate.rate_per_min_usd if rate is not None else Decimal(0)
     raw = (Decimal(tokens) / Decimal(1000) * per_k).quantize(SIX, rounding=ROUND_CEILING)
     return raw, billable_cost(raw)
-
-
-# Ingestion ----------------------------------------------------------------------------------
 
 
 async def _fail(deps: IngestDeps, doc: Document, code: str, message: str) -> Outcome:
@@ -261,8 +252,6 @@ async def _ingest(deps: IngestDeps, doc: Document, span: Any) -> Outcome:
             await storage.delete(deps.store, replaced_key)
     return Outcome("ready")
 
-
-# Scheduling ---------------------------------------------------------------------------------
 
 Sleep = Callable[[float], Awaitable[None]]
 _inline_tasks: set[asyncio.Task[Any]] = set()

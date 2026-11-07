@@ -140,9 +140,6 @@ async def test_concurrent_publish_is_serialised(issue_env: IssueEnv) -> None:
         assert response.status_code == 409 and issue["status"] == "validated"
 
 
-# Tool description fixes (FR-022) ---------------------------------------------------------------
-
-
 TOOL = {
     "type": "http",
     "name": "lookup_price",

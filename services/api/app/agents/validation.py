@@ -155,9 +155,6 @@ class _Collector:
         self.warnings.append({"pointer": pointer, "code": code, "message": message})
 
 
-# Helpers ----------------------------------------------------------------------------------
-
-
 OTHER_RANGES: dict[str, tuple[int | float, int | float]] = {
     "/advanced/dtmf/digits": DTMF_DIGITS_RANGE,
     "/llm/temperature": TEMPERATURE_RANGE,
@@ -348,9 +345,6 @@ def _is_text(value: Any) -> TypeGuard[str]:
     return isinstance(value, str)
 
 
-# Defaults overlay -------------------------------------------------------------------------
-
-
 def _deep_fill(target: dict[str, Any], base: Mapping[str, Any]) -> None:
     """Fill keys missing from ``target`` with ``base`` values, recursing into objects present
     in both. Explicit values (including ``None``) are kept."""
@@ -383,9 +377,6 @@ def fill_defaults(
         stt["model"] = None
     _deep_fill(out, base)
     return out
-
-
-# Main ---------------------------------------------------------------------------------------
 
 
 def _check_llm(
@@ -857,9 +848,6 @@ def _normalize_with_errors(
             ]
             _reset_paths(working, locs, agent_type, language)
     return defaults.default_config(agent_type, language)
-
-
-# Overrides (FR-047, T104) ---------------------------------------------------------------------
 
 
 def validate_override(path: str, value: Any, vc: VoiceCatalog | None = None) -> list[Issue]:

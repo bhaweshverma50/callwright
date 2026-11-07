@@ -56,9 +56,6 @@ def name_conflict(names: Iterable[str]) -> ProblemError:
     )
 
 
-# Secret headers ---------------------------------------------------------------------------
-
-
 def _secret_name(tool_id: str) -> str:
     return f"tool_hdr:{tool_id}:{ULID()}"
 
@@ -169,9 +166,6 @@ def tool_view(tool: Tool, usage_count: int = 0) -> dict[str, Any]:
         "created_at": tool.created_at.isoformat(),
         "updated_at": tool.updated_at.isoformat(),
     }
-
-
-# CRUD ---------------------------------------------------------------------------------------
 
 
 def normalized_config(tool_type: str, config: Mapping[str, Any]) -> dict[str, Any]:
@@ -346,9 +340,6 @@ async def duplicate_tool(
     return tool
 
 
-# Usages -------------------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class Usage:
     agent_id: str
@@ -422,9 +413,6 @@ async def delete_tool(session: AsyncSession, actor: agents.Actor, tool_id: str, 
     return [a for a, _ in drafts]
 
 
-# Agent attach sets ----------------------------------------------------------------------------
-
-
 async def tools_by_id(session: AsyncSession, tool_ids: Sequence[str]) -> dict[str, Tool]:
     valid = [t for t in tool_ids if is_valid_id(t, "tool")]
     if not valid:
@@ -465,9 +453,6 @@ async def set_agent_tools(
         raise name_conflict(duplicates)
     await agents.attach(session, actor, agent_id, "tool_ids", tool_ids)
     return [found[t] for t in tool_ids]
-
-
-# Snapshots and secrets for calls ---------------------------------------------------------------
 
 
 def to_spec(tool: Tool) -> ToolSpec:
@@ -522,8 +507,6 @@ async def secrets_for_config(
             out[ref] = value
     return out
 
-
-# Mock coverage (US5) ---------------------------------------------------------------------------
 
 FlowMockHook = Callable[[AsyncSession, str], Awaitable[list[dict[str, str]]]]
 _flow_mock_hook: FlowMockHook | None = None

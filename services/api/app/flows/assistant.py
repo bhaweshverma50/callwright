@@ -73,9 +73,6 @@ def model_for(settings: Settings) -> str:
     return settings.prompt_ai_model
 
 
-# Operations -------------------------------------------------------------------------------------
-
-
 def _strip_overrides(config: Any) -> dict[str, Any]:
     cfg = dict(config) if isinstance(config, Mapping) else {}
     cfg.pop("overrides", None)
@@ -222,9 +219,6 @@ def apply_operations(
     return out, applied, name
 
 
-# Placement (FR-049) ---------------------------------------------------------------------------
-
-
 def _overlaps(x: float, y: float, others: Sequence[Mapping[str, Any]]) -> bool:
     for o in others:
         pos = o.get("position") or {}
@@ -280,9 +274,6 @@ def place_added(graph: dict[str, Any], removed_edges: Sequence[Mapping[str, Any]
         placed.append(n)
     for n in nodes:
         n.pop("_added", None)
-
-
-# Model answer ---------------------------------------------------------------------------------
 
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")

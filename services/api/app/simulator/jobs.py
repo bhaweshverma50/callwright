@@ -169,9 +169,6 @@ async def after_result(
         await fire_if_finished(db, workspace_id, experiment_id)
 
 
-# Crons ---------------------------------------------------------------------------------------------
-
-
 async def sweep_simulations(ctx: dict[str, Any]) -> int:
     """Fail runs whose runner went silent; returns how many were failed."""
     db: Database = ctx["db"]

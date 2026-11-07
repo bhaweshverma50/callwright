@@ -42,9 +42,6 @@ MAX_RESULT_CHARS = 4000
 EF_SEARCH = 40
 
 
-# Problems -------------------------------------------------------------------------------------
-
-
 def kb_in_use(rows: Sequence[tuple[str, str]]) -> ProblemError:
     return ProblemError(
         409,
@@ -67,9 +64,6 @@ def unsupported_type() -> ProblemError:
 
 def quota_exceeded(detail: str) -> ProblemError:
     return ProblemError(422, "quota_exceeded", "Quota exceeded", detail)
-
-
-# Views ----------------------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -160,9 +154,6 @@ def document_view(doc: Document) -> dict[str, Any]:
         "created_at": doc.created_at.isoformat(),
         "processed_at": doc.processed_at.isoformat() if doc.processed_at else None,
     }
-
-
-# Knowledge bases ------------------------------------------------------------------------------
 
 
 def _name_taken(name: str) -> ProblemError:
@@ -275,9 +266,6 @@ async def delete_kb(
     for key in keys:
         await storage.delete(store, key)
     return [a for a, _ in users]
-
-
-# Documents ------------------------------------------------------------------------------------
 
 
 async def get_document(session: AsyncSession, kb_id: str, doc_id: str) -> Document:
@@ -451,9 +439,6 @@ async def reprocess(session: AsyncSession, kb_id: str, doc_id: str) -> Document:
     return doc
 
 
-# Agents -------------------------------------------------------------------------------------
-
-
 async def kbs_by_id(session: AsyncSession, kb_ids: Sequence[str]) -> dict[str, KnowledgeBase]:
     valid = [k for k in kb_ids if is_valid_id(k, "kb")]
     if not valid:
@@ -514,9 +499,6 @@ async def describe_for_snapshot(session: AsyncSession, kb_ids: Sequence[str]) ->
     return [
         {"kb_id": k, "name": found[k].name, "description": found[k].description} for k in kb_ids if k in found
     ]
-
-
-# Search -------------------------------------------------------------------------------------
 
 
 def _normalize(query: str) -> str:

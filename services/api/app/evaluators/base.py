@@ -15,6 +15,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar, Literal
 
+from callwright_contract.values import KB_TOOL
+
 from app.calls.transcript import FlowTransition, Message, ToolEvent
 from app.core.errors import field_error
 from app.flows.compiled import compiled_view
@@ -85,7 +87,7 @@ class EvalContext:
 
     @property
     def kb_searches(self) -> list[ToolEvent]:
-        return [t for t in self.tools if t.name in KB_TOOL_NAMES]
+        return [t for t in self.tools if t.name == KB_TOOL]
 
     @property
     def flow_nodes(self) -> Mapping[str, Mapping[str, Any]]:
@@ -112,9 +114,6 @@ class EvalContext:
         out = [first] if first else []
         out += [t.to_node_id for t in self.transitions]
         return out
-
-
-KB_TOOL_NAMES = frozenset({"kb_search", "search_knowledge_base"})
 
 
 @dataclass(frozen=True)
@@ -247,11 +246,3 @@ class EvalTools:
 def quote(text: str, limit: int = 140) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
-
-
-def turn_label(message: Message) -> str:
-    return f"turn {message.index}"
-
-
-def first_n(values: Sequence[str], n: int = 3) -> str:
-    return ", ".join(values[:n]) + (f" and {len(values) - n} more" if len(values) > n else "")

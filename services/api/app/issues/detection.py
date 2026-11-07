@@ -102,9 +102,6 @@ async def calibration_flags(session: AsyncSession, agent_id: str, settings: Sett
     }
 
 
-# Phase 1 --------------------------------------------------------------------------------------
-
-
 @dataclass
 class Gathered:
     agent: Agent
@@ -263,9 +260,6 @@ async def gather(session: AsyncSession, run: IssueDetectionRun, settings: Settin
     )
 
 
-# Phase 2 --------------------------------------------------------------------------------------
-
-
 def embed_model_name() -> str:
 
     embedder = runtime().embedder
@@ -406,9 +400,6 @@ async def name_plan(plan: Plan, evaluator: EvaluatorRow | None, reasons: list[st
     plan.naming = naming
 
 
-# Phase 3 --------------------------------------------------------------------------------------
-
-
 def sample_rows(failures: Sequence[cl.Failure]) -> list[dict[str, Any]]:
     """One sample per call (most recent first), merging the call's failing results."""
     by_call: dict[str, dict[str, Any]] = {}
@@ -533,9 +524,6 @@ async def write(
         updated += 1
     await session.flush()
     return created, updated
-
-
-# Runs ------------------------------------------------------------------------------------------
 
 
 def detection_view(run: IssueDetectionRun) -> dict[str, Any]:

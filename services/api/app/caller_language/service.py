@@ -68,9 +68,6 @@ def preference_out(row: CallerPreference) -> dict[str, Any]:
     }
 
 
-# Claim ---------------------------------------------------------------------------------------
-
-
 async def start_language(
     session: AsyncSession, call: Call, options: Sequence[Mapping[str, Any]]
 ) -> str | None:
@@ -105,9 +102,6 @@ async def start_language(
         )
         await session.flush()
     return code
-
-
-# Worker report -------------------------------------------------------------------------------
 
 
 async def report_switch(
@@ -155,9 +149,6 @@ async def report_switch(
         pref.updated_at = now
         await session.flush()
     return {"recorded": True, "stored": True, "reason": "saved"}
-
-
-# Public ---------------------------------------------------------------------------------------
 
 
 async def list_preferences(

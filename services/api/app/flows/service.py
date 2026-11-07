@@ -86,9 +86,6 @@ def flow_has_errors(issues: Sequence[Mapping[str, Any]]) -> ProblemError:
     )
 
 
-# Reads --------------------------------------------------------------------------------------
-
-
 async def get_flow(session: AsyncSession, flow_id: str, *, lock: bool = False) -> Flow:
     stmt = select(Flow).where(Flow.id == flow_id)
     if lock:
@@ -149,9 +146,6 @@ def masked_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-# Validation context ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class FlowContext:
     agent: Agent
@@ -199,9 +193,6 @@ async def validate_graph(
         return result_of(validation.validate(graph, ctx.validation))
 
 
-# Create -------------------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class Created:
     agent: Agent
@@ -244,9 +235,6 @@ async def create_flow_agent(
         )
         await session.flush()
         return Created(saved.agent, flow, warnings)
-
-
-# Save ---------------------------------------------------------------------------------------
 
 
 def _settings_errors(changes: Mapping[str, Any]) -> list[dict[str, str]]:
@@ -348,9 +336,6 @@ async def save_flow(
         )
         await session.flush()
         return flow, agent
-
-
-# Compile and publish ----------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -468,9 +453,6 @@ async def publish(
         )
 
 
-# Call transitions (read projection) ---------------------------------------------------------
-
-
 def transition_view(event: CallEvent) -> dict[str, Any]:
     p = event.payload or {}
     t_ms = p.get("t_ms", event.offset_ms)
@@ -503,9 +485,6 @@ async def list_transitions(session: AsyncSession, call_id: str) -> list[dict[str
         )
     ).scalars()
     return [transition_view(e) for e in rows]
-
-
-# Hooks for 005 --------------------------------------------------------------------------------
 
 
 async def webhook_nodes_without_mock(session: AsyncSession, agent_id: str) -> list[dict[str, str]]:

@@ -89,9 +89,6 @@ async def quote(
     return engine.price(components, usage, await catalog_at(session, at))
 
 
-# Admin -----------------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class VersionSummary:
     version: int

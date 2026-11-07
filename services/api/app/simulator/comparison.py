@@ -76,9 +76,6 @@ async def verdict_rows(session: AsyncSession, keys: Mapping[str, str]) -> list[V
     ]
 
 
-# Transcripts -----------------------------------------------------------------------------------
-
-
 def node_labels(config: Mapping[str, Any]) -> dict[str, str]:
     return compiled_view(config).labels()
 
@@ -212,9 +209,6 @@ async def build_comparison(session: AsyncSession, run: SimulationRun) -> dict[st
         "unused_caller_turns": unused,
         "verdicts": await verdict_table(session, base.id if base is not None else None, simulated.id),
     }
-
-
-# Scorecard ---------------------------------------------------------------------------------------
 
 
 def excluded(runs: Sequence[SimulationRun]) -> list[ExcludedRun]:

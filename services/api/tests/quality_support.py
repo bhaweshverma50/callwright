@@ -93,9 +93,6 @@ async def scripted_call(
     return Scripted(setup.workspace_id, setup.call_id, row[0][0])
 
 
-# Owner-SQL seeding for review and calibration ----------------------------------------------------
-
-
 def seed_agent(workspace_id: str, agent_type: str = "single_prompt") -> tuple[str, str]:
     agent_id, version_id = new_id("agt"), new_id("agv")
     config = json.dumps({**agent_config(), "type": agent_type})

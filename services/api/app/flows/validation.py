@@ -164,7 +164,6 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
         {str(n.get("id")): i for i, n in enumerate(nodes)}, {str(e.get("id")): i for i, e in enumerate(edges)}
     )
 
-    # Limits ----------------------------------------------------------------------------------
     if len(nodes) > MAX_NODES:
         out.error("E_LIMIT", f"A flow can have at most {MAX_NODES} nodes.")
     if len(edges) > MAX_EDGES:
@@ -172,14 +171,12 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
     if len(ctx.persona_prompt) > MAX_PERSONA:
         out.error("E_LIMIT", f"The persona prompt can be at most {MAX_PERSONA:,} characters.")
 
-    # Start count -------------------------------------------------------------------------------
     starts = [n for n in nodes if n.get("type") == "start"]
     if not starts:
         out.error("E_START_COUNT", "A flow needs exactly one Start node.")
     for extra in starts[1:]:
         out.error("E_START_COUNT", "A flow needs exactly one Start node.", node_id=str(extra.get("id")))
 
-    # Edges: endpoints, then grouping by source -------------------------------------------------
     live: list[Mapping[str, Any]] = []
     for e in edges:
         if e.get("source") not in by_id or e.get("target") not in by_id:
@@ -328,7 +325,6 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
                     node_id=nid,
                 )
 
-    # Transitions leaving conversational nodes ---------------------------------------------------
     for n in nodes:
         if n.get("type") not in CONVERSATIONAL:
             continue
@@ -376,7 +372,6 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
                 else:
                     taken[name] = "edge"
 
-    # Reachability -------------------------------------------------------------------------------
     if len(starts) >= 1:
         start_id = str(starts[0].get("id"))
         reached = _bfs(start_id, {k: [str(e["target"]) for e in v] for k, v in outgoing.items()})

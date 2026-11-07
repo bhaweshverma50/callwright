@@ -13,8 +13,8 @@ from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id, require_id
 from app.evals import service, verdict_diff, views
-from app.evals.jobs import EVALUATE_CALL, start_evaluation
-from app.evals.runner import AlreadyRunning, already_running
+from app.evals.jobs import EVALUATE_CALL
+from app.evals.runner import AlreadyRunning, already_running, start_group
 from app.evals.schemas import RerunBody, SettingPut
 from app.evaluators.settings import judge_models
 
@@ -109,7 +109,7 @@ async def rerun(
                     "Checks can run once the call has finished.",
                 )
             try:
-                start = await start_evaluation(
+                start = await start_group(
                     session,
                     call,
                     trigger="rerun",

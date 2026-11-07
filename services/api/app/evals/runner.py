@@ -387,11 +387,10 @@ async def execute_group(
             version = await session.get(EvaluatorVersion, (run.evaluator_id, run.evaluator_version))
             if row is None or version is None:
                 continue
-            evaluator_type = row.evaluator_type if row.kind == "custom" else row.name
             plans.append(
                 Planned(
                     run.id,
-                    instance_for(evaluator_type, version.definition or {}),
+                    instance_for(row.evaluator_type, version.definition or {}),
                     row,
                     dict(run.settings_snapshot),
                 )

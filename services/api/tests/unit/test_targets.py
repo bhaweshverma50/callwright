@@ -8,26 +8,16 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from app.agent_versions.canonical import canonical_json
+from app.agent_versions.canonical import content_hash
 from app.agents.models import Agent
 from app.core.errors import ProblemError
 from app.testing.targets import (
     agent_model,
-    canonical_hash,
     resolve_target,
     runnable_problem,
 )
 from tests.conftest import Account
 from tests.sim_support import make_agent
-
-
-def test_canonical_hash_ignores_key_order_and_whitespace() -> None:
-    a = {"prompt": "Hi", "llm": {"model": "gpt-5.1", "provider": "openai"}, "n": 1.0}
-    b = {"n": 1, "llm": {"provider": "openai", "model": "gpt-5.1"}, "prompt": "Hi"}
-    assert canonical_hash(a) == canonical_hash(b)
-    assert canonical_json(a) == '{"llm":{"model":"gpt-5.1","provider":"openai"},"n":1,"prompt":"Hi"}'
-    assert canonical_hash({**a, "prompt": "Hello"}) != canonical_hash(a)
-    assert len(canonical_hash(a)) == 64
 
 
 def test_runnable_and_model_rules() -> None:
@@ -60,7 +50,7 @@ async def test_published_draft_and_version_targets(
             session, agent, {"type": "version", "agent_version_id": sim.version_id}
         )
     assert published.agent_version_id == sim.version_id and published.target_type == "published"
-    assert published.config_hash == canonical_hash(published.config)
+    assert published.config_hash == content_hash(published.config)
     assert draft.target_type == "draft" and draft.config["prompt"] == published.config["prompt"]
     assert version.config_hash == published.config_hash
     assert published.variant_diff is None
@@ -113,7 +103,7 @@ async def test_variant_is_validated_hashed_and_diffed(
             await resolve_target(session, agent, {"type": "variant", "config": broken})
     assert variant.target_type == "variant" and variant.agent_version_id == sim.version_id
     assert variant.variant_label == "Confirm twice"
-    assert variant.config_hash == canonical_hash(config) != base.config_hash
+    assert variant.config_hash == content_hash(config) != base.config_hash
     assert variant.variant_diff == [
         {"op": "replace", "path": "/prompt", "value": config["prompt"], "old": base.config["prompt"]}
     ]

@@ -345,9 +345,6 @@ def snapshot_copy(config: Mapping[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(dict(config))
 
 
-# Job environment ------------------------------------------------------------------------------
-
-
 @dataclass
 class TextsimRecorder:
     """Stands in for the ``arq:textsim`` queue: records what the API dispatched."""

@@ -187,8 +187,6 @@ async def generate(
     raise GenerationFailed("The model returned no usable test cases")
 
 
-# Offline drafts ----------------------------------------------------------------------------------
-
 _FAKE_LINES: dict[str, list[tuple[str, str, str]]] = {
     "out_of_scope": [
         (

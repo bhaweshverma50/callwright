@@ -41,9 +41,6 @@ def _money(value: Decimal | None) -> float | None:
     return float(value) if value is not None else None
 
 
-# Loading ---------------------------------------------------------------------------------------
-
-
 async def get_issue(session: AsyncSession, issue_id: str, *, lock: bool = False) -> Issue:
     if not is_valid_id(issue_id, "iss"):
         raise not_found("issue")
@@ -124,9 +121,6 @@ async def running_validation(session: AsyncSession, issue_id: str) -> IssueValid
             .with_for_update()
         )
     ).scalar_one_or_none()
-
-
-# Views -----------------------------------------------------------------------------------------
 
 
 def summary_view(issue: Issue, current_kind: str | None = None) -> dict[str, Any]:
@@ -232,9 +226,6 @@ async def samples(
     return list(rows.scalars()), total
 
 
-# Apply preconditions (FR-020) ------------------------------------------------------------------
-
-
 def _without_flow(config: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in config.items() if k != "flow"}
 
@@ -279,9 +270,6 @@ async def apply_blockers(
     if not await draft_matches(session, agent, attempt.base_agent_version_id):
         blockers.append("draft_changed")
     return blockers
-
-
-# Post-apply tracking (FR-024, research R8) -----------------------------------------------------
 
 
 _HEADLINE_SQL = (
@@ -351,9 +339,6 @@ async def post_apply(session: AsyncSession, issue: Issue) -> dict[str, Any] | No
     }
 
 
-# Detail ----------------------------------------------------------------------------------------
-
-
 async def detail_view(session: AsyncSession, issue: Issue) -> dict[str, Any]:
     agent = await agent_of(session, issue)
     fix = await current_fix(session, issue)
@@ -382,9 +367,6 @@ async def detail_view(session: AsyncSession, issue: Issue) -> dict[str, Any]:
         "dismissed_at": _iso(issue.dismissed_at),
         "sample_preview": [sample_view(s) for s in preview],
     }
-
-
-# Listing (FR-005, FR-026, T048, T060) ----------------------------------------------------------
 
 
 async def list_issues(
@@ -434,9 +416,6 @@ async def list_issues(
         wanted = set(keyed)
         kinds_by_issue = {i: k for i, r, k in found.all() if (i, r) in wanted}
     return [summary_view(i, kinds_by_issue.get(i.id)) for i in rows], total
-
-
-# Dismiss (FR-023, T050) ------------------------------------------------------------------------
 
 
 async def dismiss(

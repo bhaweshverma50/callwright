@@ -272,8 +272,7 @@ async def evaluate(
 ) -> tuple[dict[str, int], list[tuple[str, str]]]:
     """Start a ``dataset`` run group on every available call. Returns the counts and the
     (call id, run group id) pairs to execute after commit."""
-    from app.evals.jobs import start_evaluation
-    from app.evals.runner import AlreadyRunning
+    from app.evals.runner import AlreadyRunning, start_group
     from app.evals.service import resolve_all
     from app.evals.views import current_by_call, missing_evaluators
     from app.llms.runtime import runtime
@@ -305,7 +304,7 @@ async def evaluate(
             counts["skipped_up_to_date"] += 1
             continue
         try:
-            start = await start_evaluation(
+            start = await start_group(
                 session,
                 call,
                 trigger="dataset",

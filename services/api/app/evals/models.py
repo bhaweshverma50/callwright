@@ -6,7 +6,6 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -23,7 +22,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
-from app.llms.embeddings.base import DIMENSIONS
 
 
 class AgentEvalSetting(Base):
@@ -101,16 +99,3 @@ class EvaluatorResultItem(Base):
     score: Mapped[float | None] = mapped_column(Float)
     rationale: Mapped[str] = mapped_column(String, default="")
     evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-
-
-class CallEmbedding(Base):
-    __tablename__ = "call_embeddings"
-
-    call_id: Mapped[str] = mapped_column(String, primary_key=True)
-    workspace_id: Mapped[str] = mapped_column(String)
-    agent_id: Mapped[str] = mapped_column(String)
-    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    embedding: Mapped[list[float]] = mapped_column(Vector(DIMENSIONS))
-    model: Mapped[str] = mapped_column(String)
-    source_sha256: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

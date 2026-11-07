@@ -48,9 +48,6 @@ EXTENSIONS = {
 }
 
 
-# Voice browser -----------------------------------------------------------------------------
-
-
 def catalog_unavailable(provider: str) -> ProblemError:
     return ProblemError(
         503,
@@ -116,9 +113,6 @@ async def _vendor_page(
             await redis.set(full_key, json.dumps(voices), ex=CACHE_TTL_S)
         return await adapter.list_voices(filters, cursor, limit, voices)
     raise VoiceListingError(f"no listing adapter for {provider}")
-
-
-# Ambient audio uploads ---------------------------------------------------------------------
 
 
 def sniff_audio(head: bytes) -> str | None:

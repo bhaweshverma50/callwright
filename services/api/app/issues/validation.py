@@ -87,9 +87,6 @@ class Request:
         )
 
 
-# Call selection (T038) -------------------------------------------------------------------------
-
-
 @dataclass
 class Selection:
     affected: list[str]
@@ -162,9 +159,6 @@ async def select_calls(
     return Selection(affected, guard, len(wanted) - len(usable))
 
 
-# Estimate --------------------------------------------------------------------------------------
-
-
 async def estimate_cost(
     session: AsyncSession, agent: Agent, settings: Settings, mode: str, run_count: int
 ) -> Decimal:
@@ -211,9 +205,6 @@ def estimate_view(
         "tools_missing_mock": [str(m.get("name")) for m in missing],
         "warnings": warnings,
     }
-
-
-# Start (T039) ----------------------------------------------------------------------------------
 
 
 @dataclass
@@ -395,9 +386,6 @@ async def start(
     return Started(attempt, control_runs + treatment_runs)
 
 
-# Cancel (T041, FR-018) -------------------------------------------------------------------------
-
-
 @dataclass
 class Cancelled:
     attempt: IssueValidation
@@ -442,9 +430,6 @@ async def after_cancel(
         await dispatch.release(redis, workspace_id, run_id)
     for exp_id in cancelled.experiments:
         await fire_if_finished(state_db, workspace_id, exp_id)
-
-
-# Finalize (T040) -------------------------------------------------------------------------------
 
 
 async def attempt_for_experiment(session: AsyncSession, experiment_id: str) -> IssueValidation | None:

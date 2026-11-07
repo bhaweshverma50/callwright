@@ -29,7 +29,7 @@ from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
 from app.evaluators.settings import default_judge_model, judge_models
-from app.test_cases.models import TestCase, TestCategory
+from app.test_cases.models import TestCase
 from app.test_runs.counts import ResultState, run_counts
 from app.test_runs.models import TestResult, TestRun
 from app.testing.charges import charge_run, merge_usage
@@ -92,9 +92,6 @@ def result_view(r: TestResult) -> dict[str, Any]:
         "error_message": r.error_message,
         "duration_ms": r.duration_ms,
     }
-
-
-# Start ---------------------------------------------------------------------------------------
 
 
 async def _select_cases(
@@ -198,9 +195,6 @@ async def start_run(
     return run, [c.id for c in cases]
 
 
-# Reads ---------------------------------------------------------------------------------------
-
-
 async def get_run(session: AsyncSession, run_id: str, *, lock: bool = False) -> TestRun:
     query = select(TestRun).where(TestRun.id == run_id)
     if lock:
@@ -231,14 +225,6 @@ async def list_runs(
         .limit(page_size)
     )
     return list(rows.scalars()), total
-
-
-async def category_names(session: AsyncSession) -> dict[str, str]:
-    rows = await session.execute(select(TestCategory.slug, TestCategory.name))
-    return {slug: name for slug, name in rows.all()}
-
-
-# Counts, last status and finishing -------------------------------------------------------------
 
 
 async def recount(session: AsyncSession, run: TestRun) -> None:
@@ -345,9 +331,6 @@ async def override(
         )
     await session.flush()
     return result, run
-
-
-# Internal: the text runner ------------------------------------------------------------------
 
 
 async def case_spec(session: AsyncSession, run_id: str, case_id: str) -> dict[str, Any]:

@@ -15,7 +15,7 @@ Interface for 009 (issue validation):
 * ``start_experiment(session, settings, workspace_id=..., agent_id=..., mode=..., target=...,
   base_call_ids=..., source="issue_validation", issue_id=...)`` creates a batch; enqueue the
   returned run ids with ``jobs.DISPATCH_SIMULATION`` after commit (``enqueue_runs``).
-* ``targets.canonical_hash(snapshot)`` compares configurations.
+* ``agent_versions.canonical.content_hash(snapshot)`` compares configurations.
 * ``on_experiment_finished(source, callback)`` registers ``async callback(workspace_id,
   experiment_id)``, fired once per batch when it reaches a final status.
 * ``scorecard_for(session, experiment_id, ...)`` and ``scorecard.compute_scorecard`` /
@@ -217,9 +217,6 @@ async def views(session: AsyncSession, runs: Sequence[SimulationRun]) -> list[di
     return [run_view(r, agent_name=names.get(r.agent_id), eval_status=statuses[r.id]) for r in runs]
 
 
-# Base calls -----------------------------------------------------------------------------------
-
-
 def invalid_calls_problem(
     invalid: Sequence[tuple[int, str, str]], pointer: str = "/base_call_ids"
 ) -> ProblemError:
@@ -258,9 +255,6 @@ async def check_base_calls(session: AsyncSession, agent_id: str, call_ids: Seque
     if invalid:
         raise invalid_calls_problem(invalid)
     return [calls[c] for c in call_ids]
-
-
-# Individual runs ------------------------------------------------------------------------------
 
 
 async def start_run(
@@ -434,9 +428,6 @@ async def close_output_call(session: AsyncSession, run: SimulationRun) -> None:
             diagnostic="simulation_failed",
             billable_seconds=0,
         )
-
-
-# Batches ----------------------------------------------------------------------------------------
 
 
 def default_name(now: datetime) -> str:
@@ -698,9 +689,6 @@ async def claim_finished_hooks(session: AsyncSession, experiment_id: str) -> Sim
     return await session.get(SimulationExperiment, experiment_id)
 
 
-# Runner side -------------------------------------------------------------------------------------
-
-
 async def spec_for(session: AsyncSession, run_id: str) -> dict[str, Any]:
     """The runner's spec. Marks the run running and creates its simulated call."""
     run = await get_run(session, run_id, lock=True)
@@ -832,8 +820,7 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
     (research R7). Returns the run group id to execute after commit, or None."""
     if run.base_call_id is None or run.status != "completed":
         return None
-    from app.evals.jobs import start_evaluation
-    from app.evals.runner import AlreadyRunning
+    from app.evals.runner import AlreadyRunning, start_group
     from app.evals.service import resolve_all
     from app.evals.views import current_by_call, missing_evaluators
 
@@ -849,7 +836,7 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
     if not missing:
         return None
     try:
-        start = await start_evaluation(
+        start = await start_group(
             session, base, trigger="simulation", idempotency_key=f"sim:{run.id}", evaluator_ids=missing
         )
     except (AlreadyRunning, ProblemError):

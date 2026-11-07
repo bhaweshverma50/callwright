@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
+from app.agent_versions.canonical import content_hash
 from app.issues.fixes import AdvisoryFix, InvalidFix, RedraftNeeded, apply_fix, guardrail_text
-from app.testing.targets import canonical_hash
 
 PROMPT = "You book cleanings for Bright Smiles.\n\n## Style\n- Be brief."
 TOOL = {
@@ -94,9 +94,6 @@ def graph_node(config: dict[str, Any], nid: str) -> dict[str, Any]:
     return found
 
 
-# prompt_edit -------------------------------------------------------------------------------------
-
-
 def test_prompt_edit_replaces_prompt_and_leaves_input_untouched() -> None:
     base = single()
     before = copy.deepcopy(base)
@@ -123,9 +120,6 @@ def test_prompt_edit_on_flow_forces_recompile() -> None:
     )
     assert out["flow"]["compiled"] is None
     assert out["flow"]["graph"] == base["flow"]["graph"]
-
-
-# node_prompt_edit --------------------------------------------------------------------------------
 
 
 def test_node_prompt_edit_replaces_instructions_and_recompiles() -> None:
@@ -158,9 +152,6 @@ def test_node_prompt_edit_refuses_non_conversational_node() -> None:
         apply_fix(flow(), "node_prompt_edit", payload)
 
 
-# add_guardrail -----------------------------------------------------------------------------------
-
-
 RULE = "Only quote prices from the price list."
 
 
@@ -181,7 +172,7 @@ def test_guardrail_is_idempotent() -> None:
     once = apply_fix(single(), "add_guardrail", payload)
     twice = apply_fix(once, "add_guardrail", payload)
     assert once == twice
-    assert canonical_hash(once) == canonical_hash(twice)
+    assert content_hash(once) == content_hash(twice)
 
 
 def test_guardrail_text_helper() -> None:
@@ -210,9 +201,6 @@ def test_guardrail_node_must_exist() -> None:
 def test_guardrail_on_nodes_of_single_prompt_agent_is_invalid() -> None:
     with pytest.raises(InvalidFix):
         apply_fix(single(), "add_guardrail", {"placement": "all_agent_nodes", "rule_text": RULE})
-
-
-# tool_description_edit ---------------------------------------------------------------------------
 
 
 def test_tool_description_edit_updates_snapshot_tools() -> None:
@@ -252,9 +240,6 @@ def test_tool_description_edit_redraft_and_unknown_tool() -> None:
             "tool_description_edit",
             {"tool_id": "tool_01NOPE", "current_description": "", "proposed_description": "x"},
         )
-
-
-# transitions -------------------------------------------------------------------------------------
 
 
 def test_transition_condition_edit() -> None:
@@ -319,9 +304,6 @@ def test_add_transition_nodes_must_exist() -> None:
         apply_fix(flow(), "add_transition", payload)
 
 
-# node_tool_attachment ----------------------------------------------------------------------------
-
-
 def test_node_tool_attachment_attach_and_detach() -> None:
     out = apply_fix(
         flow(),
@@ -347,9 +329,6 @@ def test_node_tool_attachment_requires_agent_tools() -> None:
         )
 
 
-# kb_attach ---------------------------------------------------------------------------------------
-
-
 def test_kb_attach_extends_kb_ids_and_drops_stale_knowledge_block() -> None:
     out = apply_fix(single(), "kb_attach", {"kb_ids_to_attach": ["kb_01B", "kb_01A"], "uncovered_topics": []})
     assert out["kb_ids"] == ["kb_01A", "kb_01B"]
@@ -361,16 +340,13 @@ def test_kb_attach_without_knowledge_bases_is_advisory() -> None:
         apply_fix(single(), "kb_attach", {"kb_ids_to_attach": [], "uncovered_topics": ["Parking"]})
 
 
-# hashing -----------------------------------------------------------------------------------------
-
-
 def test_variant_hash_is_stable_across_key_order() -> None:
     payload = {"current_prompt": PROMPT, "proposed_prompt": "New prompt."}
     a = apply_fix(single(), "prompt_edit", payload)
     reordered = dict(reversed(list(single().items())))
     b = apply_fix(reordered, "prompt_edit", dict(reversed(list(payload.items()))))
-    assert canonical_hash(a) == canonical_hash(b)
-    assert canonical_hash(a) != canonical_hash(single())
+    assert content_hash(a) == content_hash(b)
+    assert content_hash(a) != content_hash(single())
 
 
 def test_unknown_kind_is_invalid() -> None:

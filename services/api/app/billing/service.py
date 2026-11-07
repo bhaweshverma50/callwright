@@ -60,9 +60,6 @@ def insufficient_credit(detail: str = "Add funds to continue.") -> ProblemError:
     return ProblemError(402, "insufficient_credit", "Not enough credit", detail)
 
 
-# Ledger --------------------------------------------------------------------------------------
-
-
 async def lock_workspace(session: AsyncSession, workspace_id: str) -> None:
     await session.execute(
         text("select pg_advisory_xact_lock(hashtextextended(:ws, 0))"), {"ws": workspace_id}
@@ -221,9 +218,6 @@ async def credit_check(session: AsyncSession, workspace_id: str) -> CreditCheck:
     return CreditCheck(True, None, balance)
 
 
-# History ---------------------------------------------------------------------------------
-
-
 async def list_transactions(
     session: AsyncSession,
     workspace_id: str,
@@ -275,9 +269,6 @@ async def call_costs_for(session: AsyncSession, call_ids: list[str]) -> dict[str
         return {}
     rows = (await session.execute(select(CallCost).where(CallCost.call_id.in_(call_ids)))).scalars()
     return {row.call_id: row for row in rows}
-
-
-# Top-ups (R11) -----------------------------------------------------------------------------
 
 
 def validate_top_up_amount(amount: Decimal) -> Decimal:
@@ -478,9 +469,6 @@ async def _dispute(db: Database, dispute: Mapping[str, Any]) -> str:
     return await _adjust_for_payment(db, _ref_id(dispute.get("payment_intent")), items)
 
 
-# Call charges (US3, US2.4) --------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class CallUsage:
     """What 003 sends after a call: the AgentConfig components and summed CallEvent meters."""
@@ -577,9 +565,6 @@ async def charge_call(session: AsyncSession, usage: CallUsage) -> CallCost:
     )
     await session.flush()
     return row
-
-
-# Feature charges (US4, FR-023) ----------------------------------------------------------------
 
 
 @dataclass(frozen=True)

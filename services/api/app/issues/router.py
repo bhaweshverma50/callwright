@@ -44,9 +44,6 @@ def _jobs(request: Request) -> Any:
     return getattr(request.app.state, "jobs", None)
 
 
-# Detection --------------------------------------------------------------------------------------
-
-
 @router.post("/issues/detect", status_code=202, responses=problem_responses(402, 409, 422))
 async def detect(
     request: Request,
@@ -117,9 +114,6 @@ async def latest_detection(
         return JSONResponse(detection.detection_view(run) if run is not None else None)
 
 
-# Issues -----------------------------------------------------------------------------------------
-
-
 @router.get("/issues")
 async def list_issues(
     request: Request,
@@ -171,9 +165,6 @@ async def list_samples(
         await service.get_issue(session, issue_id)
         rows, total = await service.samples(session, issue_id, page=page, page_size=page_size)
     return {**page_meta(total, page, page_size), "items": [service.sample_view(s) for s in rows]}
-
-
-# Fixes ------------------------------------------------------------------------------------------
 
 
 @router.get("/issues/{issue_id}/fixes", responses=problem_responses(404))
@@ -247,9 +238,6 @@ async def create_fix(
         handler=ai,
         instance=request.url.path,
     )
-
-
-# Validation -------------------------------------------------------------------------------------
 
 
 async def _enqueue_runs(request: Request, workspace_id: str, run_ids: list[str]) -> None:
@@ -393,9 +381,6 @@ async def cancel_validation(
     await validation.after_cancel(state.db, state.redis, principal.workspace_id, cancelled)
     async with principal_tx(request, principal) as session:
         return await service.detail_view(session, await service.get_issue(session, issue_id))
-
-
-# Apply and dismiss -----------------------------------------------------------------------------
 
 
 @router.post("/issues/{issue_id}/apply", responses=problem_responses(404, 409, 422))

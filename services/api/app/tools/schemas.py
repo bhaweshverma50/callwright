@@ -25,7 +25,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.agents.schemas import MAX_TOOLS
 
 ToolType = Literal["end_call", "transfer_call", "press_digit", "http"]
-TOOL_TYPES: tuple[ToolType, ...] = ("end_call", "transfer_call", "press_digit", "http")
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 NAME_PATTERN = r"^[a-z][a-z0-9_]{0,63}$"

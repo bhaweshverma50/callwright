@@ -66,9 +66,6 @@ def case_view(c: TestCase) -> dict[str, Any]:
     }
 
 
-# Categories ------------------------------------------------------------------------------------
-
-
 async def ensure_seeds(session: AsyncSession, workspace_id: str) -> None:
     for slug, name, color in SEED_CATEGORIES:
         await session.execute(
@@ -151,9 +148,6 @@ async def delete_category(session: AsyncSession, workspace_id: str, slug: str) -
 
 async def _category_names(session: AsyncSession, workspace_id: str) -> dict[str, str]:
     return {c.slug: c.name for c in await list_categories(session, workspace_id)}
-
-
-# Cases ---------------------------------------------------------------------------------------
 
 
 def default_name(category_name: str) -> str:

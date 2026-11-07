@@ -41,11 +41,6 @@ class ResolvedTarget:
     variant_diff: list[dict[str, Any]] | None = None
 
 
-def canonical_hash(snapshot: Any) -> str:
-    """SHA-256 over canonical JSON (sorted keys, no whitespace); 009 compares targets with it."""
-    return content_hash(snapshot)
-
-
 async def require_agent(session: AsyncSession, agent_id: str, *, pointer: str | None = None) -> Agent:
     agent = await session.get(Agent, agent_id)
     if agent is None or agent.deleted_at is not None:
@@ -185,17 +180,17 @@ async def resolve_target(
                 "This agent has no published version. Publish it or choose the saved draft.",
             )
         snapshot = await versions.get_snapshot(session, agent.pinned_version_id)
-        return ResolvedTarget(kind, snapshot.version_id, snapshot.config, canonical_hash(snapshot.config))
+        return ResolvedTarget(kind, snapshot.version_id, snapshot.config, content_hash(snapshot.config))
     if kind == "draft":
         version = await agents.snapshot_for_test(session, agent.id)
         snapshot = await versions.get_snapshot(session, version.id)
-        return ResolvedTarget(kind, snapshot.version_id, snapshot.config, canonical_hash(snapshot.config))
+        return ResolvedTarget(kind, snapshot.version_id, snapshot.config, content_hash(snapshot.config))
     if kind == "version":
         version_id = target.get("agent_version_id")
         if not isinstance(version_id, str) or not version_id:
             raise _target_error("/target/agent_version_id", "Choose a version of this agent")
         snapshot = await _snapshot(session, agent, version_id)
-        return ResolvedTarget(kind, snapshot.version_id, snapshot.config, canonical_hash(snapshot.config))
+        return ResolvedTarget(kind, snapshot.version_id, snapshot.config, content_hash(snapshot.config))
     # Variant: a complete configuration based on a version (the published one by default).
     raw = target.get("config")
     if not isinstance(raw, Mapping) or not raw:
@@ -229,7 +224,7 @@ async def resolve_target(
         kind,
         base.version_id,
         config,
-        canonical_hash(config),
+        content_hash(config),
         variant_label=str(label)[:60] if isinstance(label, str) and label.strip() else "Variant",
         variant_diff=variant_diff(base.config, config),
     )

@@ -2,13 +2,13 @@
 
 The pipeline step creates the call's ``pipeline`` run group in the step's transaction and
 enqueues ``evaluate_call`` once that transaction commits, so the slow evaluator work never holds
-the call row. Reruns (API) and 008's dataset and simulation runs use ``start_evaluation``.
+the call row. Reruns (API) and 008's dataset and simulation runs create their group with
+``runner.start_group`` and enqueue ``evaluate_call`` after their transaction commits.
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.calls.models import Call
 from app.calls.pipeline import step_deferred
 from app.core.db import Database
-from app.evals.runner import AlreadyRunning, GroupStart, execute_group, start_group
+from app.evals.runner import AlreadyRunning, execute_group, start_group
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
@@ -40,27 +40,6 @@ async def pipeline_handler(call_id: str, session: AsyncSession) -> None:
         deferred.add(EVALUATE_CALL, *job, job_id=f"evaluate:{start.group.run_group_id}")
     elif runtime().queue is not None:
         await runtime().queue.enqueue(EVALUATE_CALL, *job, job_id=f"evaluate:{start.group.run_group_id}")
-
-
-async def start_evaluation(
-    session: AsyncSession,
-    call: Call,
-    *,
-    trigger: str,
-    idempotency_key: str,
-    evaluator_ids: Sequence[str] | None = None,
-    user_id: str | None = None,
-) -> GroupStart:
-    """Create a run group (``rerun``, ``dataset`` or ``simulation``); enqueue ``evaluate_call``
-    with ``(workspace_id, call_id, run_group_id)`` after commit when the group is active."""
-    return await start_group(
-        session,
-        call,
-        trigger=trigger,
-        idempotency_key=idempotency_key,
-        evaluator_ids=evaluator_ids,
-        user_id=user_id,
-    )
 
 
 async def evaluate_call(ctx: dict[str, Any], workspace_id: str, call_id: str, run_group_id: str) -> str:

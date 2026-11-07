@@ -88,9 +88,6 @@ def kind_not_allowed(issue: Issue, kind: str) -> ProblemError:
     )
 
 
-# Configuration helpers -------------------------------------------------------------------------
-
-
 def _graph(config: Mapping[str, Any]) -> Mapping[str, Any]:
     flow = config.get("flow")
     graph = flow.get("graph") if isinstance(flow, Mapping) else None
@@ -164,9 +161,6 @@ def complete_payload(
     if kind == "add_guardrail" and config.get("type") != "flow":
         merged["placement"] = "agent_prompt"
     return merged
-
-
-# Drafting context ------------------------------------------------------------------------------
 
 
 @dataclass
@@ -350,9 +344,6 @@ async def call_drafter(data: DraftInput) -> Drafted:
                 out,
             )
     raise draft_failed()
-
-
-# Storing ---------------------------------------------------------------------------------------
 
 
 async def resolve_knowledge(session: AsyncSession, kind: str, config: dict[str, Any]) -> dict[str, Any]:

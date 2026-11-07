@@ -201,7 +201,6 @@ class VoiceCatalog:
     ambient_sounds: tuple[tuple[str, str], ...]
     controls: tuple[Control, ...] = field(default=())
 
-    # Lookups ---------------------------------------------------------------------------
     def language(self, code: str) -> Language | None:
         return next((lang for lang in self.languages if lang.code == code), None)
 
@@ -224,7 +223,6 @@ class VoiceCatalog:
         pointer = path if path.startswith("/") else "/" + path.replace(".", "/")
         return next((c for c in self.controls if c.path == pointer), None)
 
-    # Defaults ----------------------------------------------------------------------------
     def stt_default_for(self, language: str) -> dict[str, Any]:
         chosen = self.stt_by_language.get(language) or self.stt_default
         return {"provider": str(chosen["provider"]), "model": chosen.get("model")}

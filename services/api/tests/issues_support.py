@@ -224,9 +224,6 @@ async def issue_env(app: FastAPI, client: httpx.AsyncClient) -> AsyncIterator[Is
     model_runtime.runtime().queue = previous
 
 
-# Stubbed 008 batch completion ------------------------------------------------------------------
-
-
 def complete_batch(
     env: IssueEnv,
     experiment_id: str,

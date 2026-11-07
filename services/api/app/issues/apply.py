@@ -75,9 +75,6 @@ def refused(code: str) -> ProblemError:
     return ProblemError(409, code, title, detail)
 
 
-# Tool ids ---------------------------------------------------------------------------------------
-
-
 def remap(config: Mapping[str, Any], mapping: Mapping[str, str]) -> dict[str, Any]:
     """``config`` with every id in ``mapping`` replaced (tool ids and secret references), and the
     flow block's graph hashes recomputed for the rewritten graph."""
@@ -157,9 +154,6 @@ async def change_tool(
         }
     )
     return out
-
-
-# Apply ------------------------------------------------------------------------------------------
 
 
 @dataclass

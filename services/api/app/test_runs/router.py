@@ -130,9 +130,6 @@ async def export_run(request: Request, principal: CurrentPrincipal, test_run_id:
     return JSONResponse(document, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
-# Internal (voice-worker textsim role, service token) -----------------------------------------
-
-
 async def run_workspace(request: Request, test_run_id: str) -> str:
     if not is_valid_id(test_run_id, "trn"):
         raise not_found("test run")
