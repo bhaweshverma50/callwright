@@ -17,7 +17,7 @@ PLUGIN_MODELS = {
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import assemblyai
 
-    model = PLUGIN_MODELS[spec.model or "universal-streaming"]
+    model = PLUGIN_MODELS[spec.required_model]
     kwargs: dict[str, Any] = {"model": model, "api_key": creds.get("api_key", "")}
     if model == "universal-streaming-multilingual":
         # Language steering (``language_codes``) is limited to the Universal-3 Pro family in the

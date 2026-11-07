@@ -7,14 +7,16 @@ as on a live call. No network, no keys.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from callwright_contract.protocol import CallEventIn, Control, EventBatchResult
+from pydantic import TypeAdapter, ValidationError
+
 from tests.harness.script_schema import Fakes, LlmRule
 from worker.adapters.registry import AdapterRegistry, VendorSpec
-from worker.internal_api import CallClosed, Control, EventBatchResult
+from worker.internal_api import CallClosed
 
 # --------------------------------------------------------------------------------------------
 # Fake vendors
@@ -142,40 +144,6 @@ def fake_registry(fakes: Fakes, base: AdapterRegistry | None = None) -> AdapterR
 # --------------------------------------------------------------------------------------------
 # Fake internal API (events endpoint) with contract checks
 
-EVENT_TYPES = {
-    "status",
-    "turn",
-    "transcript_item",
-    "usage",
-    "tool_call",
-    "flow_transition",
-    "dtmf",
-    "warning",
-    "error",
-}
-REQUIRED = {
-    "status": ("status",),
-    "turn": ("turn_index",),
-    "transcript_item": ("item",),
-    "usage": ("usage",),
-    "tool_call": ("name",),
-    "flow_transition": ("to_node_id",),
-    "dtmf": ("digits", "direction"),
-    "warning": ("code",),
-    "error": ("code",),
-}
-STATUSES = {"ringing", "in_progress", "ended", "no_answer", "busy", "failed"}
-REASONS = {
-    "user_hangup",
-    "agent_hangup",
-    "call_transfer",
-    "voicemail_reached",
-    "inactivity",
-    "max_duration_reached",
-    "error",
-    "concurrency_limit",
-    "insufficient_credit",
-}
 SYSTEM_EVENTS = {
     "language_switched",
     "voicemail_detected",
@@ -186,51 +154,19 @@ SYSTEM_EVENTS = {
     "segment_override",
     "override_clamped",
 }
-DIGITS = re.compile(r"^[0-9*#]{1,99}$")
+EVENT = TypeAdapter(CallEventIn)
 
 
 def contract_errors(event: Mapping[str, Any]) -> list[str]:
-    """Check one event against ``contracts/call_events.yaml`` (the parts the worker controls)."""
-    errors: list[str] = []
-    for key in ("seq", "type", "occurred_at"):
-        if key not in event:
-            errors.append(f"missing {key}")
-    kind = event.get("type")
-    if kind not in EVENT_TYPES:
-        return [*errors, f"unknown type {kind}"]
-    if not isinstance(event.get("seq"), int) or event["seq"] < 1:
-        errors.append("seq must be an integer >= 1")
-    errors += [f"{kind} missing {k}" for k in REQUIRED[str(kind)] if k not in event]
-    if kind == "status":
-        if event.get("status") not in STATUSES:
-            errors.append(f"bad status {event.get('status')}")
-        reason = event.get("disconnect_reason")
-        if reason is not None and reason not in REASONS:
-            errors.append(f"bad disconnect_reason {reason}")
-    if kind == "dtmf" and not DIGITS.match(str(event.get("digits", ""))):
-        errors.append("bad digits")
-    if kind == "transcript_item":
-        item = event.get("item") or {}
-        if item.get("type") == "system" and item.get("event") not in SYSTEM_EVENTS:
-            errors.append(f"bad system event {item.get('event')}")
-        if len(str(item.get("output", ""))) > 8192:
-            errors.append("tool output too long")
-    if kind == "usage":
-        usage = event.get("usage") or {}
-        for comp, need in (
-            ("stt", ("provider", "model", "audio_ms")),
-            ("llm", ("provider", "model", "input_tokens", "output_tokens")),
-            ("tts", ("provider", "characters")),
-            ("nc", ("provider", "audio_ms")),
-        ):
-            for row in usage.get(comp, []):
-                errors += [f"usage.{comp} missing {k}" for k in need if k not in row]
-                errors += [
-                    f"usage.{comp}.{k} negative"
-                    for k, v in row.items()
-                    if isinstance(v, int) and v < 0
-                ]
-    return errors
+    """Check one event against the contract's event models, plus the system event names."""
+    try:
+        EVENT.validate_python(dict(event))
+    except ValidationError as exc:
+        return [f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()]
+    item = event.get("item") or {}
+    if item.get("type") == "system" and item.get("event") not in SYSTEM_EVENTS:
+        return [f"bad system event {item.get('event')}"]
+    return []
 
 
 @dataclass

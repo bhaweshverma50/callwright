@@ -1,8 +1,8 @@
 """``{{var}}`` substitution for flow text (T054).
 
-Same placeholders as the API (``app.flows.variables``), including dotted task results
-(``{{task_result.email}}``). A variable with no value renders empty and is reported, so the
-call record notes it (spec edge case "variable never set").
+The contract's dotted placeholders, which include task results (``{{task_result.email}}``). A
+variable with no value renders empty and is reported, so the call record notes it (spec edge case
+"variable never set").
 """
 
 from __future__ import annotations
@@ -11,9 +11,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-PLACEHOLDER = re.compile(
-    r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_]{0,63})?)\s*\}\}"
-)
+from callwright_contract.variables import DOTTED_PLACEHOLDER
 
 
 def as_text(value: Any) -> str:
@@ -37,4 +35,4 @@ def render(text: str | None, variables: Mapping[str, Any]) -> tuple[str, list[st
             return ""
         return as_text(value)
 
-    return PLACEHOLDER.sub(one, text or ""), missing
+    return DOTTED_PLACEHOLDER.sub(one, text or ""), missing

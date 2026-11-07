@@ -16,13 +16,16 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
 
-from worker import telemetry
-from worker.internal_api import (
+from callwright_contract.calls import WorkerStatus
+from callwright_contract.protocol import (
+    MAX_DETAIL_CHARS,
     MAX_EVENTS_PER_BATCH,
-    CallClosed,
+    MAX_TOOL_OUTPUT_CHARS,
     EventBatchResult,
-    InternalApiError,
 )
+
+from worker import telemetry
+from worker.internal_api import CallClosed, InternalApiError
 
 log = logging.getLogger("callwright.worker.metrics")
 
@@ -405,7 +408,7 @@ class EventRecorder:
 
     def status(
         self,
-        status: Literal["ringing", "in_progress", "ended", "no_answer", "busy", "failed"],
+        status: WorkerStatus,
         *,
         disconnect_reason: str | None = None,
         diagnostic: str | None = None,
@@ -469,7 +472,7 @@ class EventRecorder:
     def system(self, event: str, detail: str | None = None) -> Event:
         item: dict[str, Any] = {"type": "system", "event": event}
         if detail:
-            item["detail"] = detail[:2000]
+            item["detail"] = detail[:MAX_DETAIL_CHARS]
         at = self.offset_ms()
         if at is not None:
             item["at_ms"] = at
@@ -494,7 +497,7 @@ class EventRecorder:
         for key, value in (
             ("ref", ref),
             ("arguments", arguments),
-            ("output", output[:8192] if output is not None else None),
+            ("output", output[:MAX_TOOL_OUTPUT_CHARS] if output is not None else None),
             ("is_error", is_error),
             ("duration_ms", duration_ms),
         ):
@@ -544,7 +547,7 @@ class EventRecorder:
         if provider:
             body["provider"] = provider
         if detail:
-            body["detail"] = detail[:2000]
+            body["detail"] = detail[:MAX_DETAIL_CHARS]
         return self._emit(level, body)
 
     def drain(self, limit: int = MAX_EVENTS_PER_BATCH) -> list[Event]:

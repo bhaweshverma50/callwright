@@ -20,7 +20,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from worker.textsim.conversation import Conversation, EndReason, Outcome, agent_end_reason
+from callwright_contract.values import SimulationEndReason
+
+from worker.textsim.conversation import Conversation, Outcome, agent_end_reason
 
 MAX_AGENT_TURNS = 50
 
@@ -87,7 +89,7 @@ class ReplayCaller:
             turn = await conversation.send(text)
             sent += 1
             self._check_path(conversation, turn.index)
-        end: EndReason
+        end: SimulationEndReason
         ended = agent_end_reason(conversation.disconnect_reason)
         if ended is not None:
             end = ended

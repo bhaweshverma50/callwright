@@ -4,16 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Protocol
 
-EndReason = Literal[
-    "caller_turns_exhausted",
-    "caller_hung_up",
-    "agent_hangup",
-    "call_transfer",
-    "turn_limit_reached",
-    "error",
-]
+from callwright_contract.values import SimulationEndReason
 
 # Disconnect reason on the simulated call's final ``ended`` status for each end reason.
 DISCONNECT_REASON: dict[str, str] = {
@@ -60,13 +53,13 @@ class Conversation(Protocol):
 
 @dataclass(frozen=True)
 class Outcome:
-    end_reason: EndReason
+    end_reason: SimulationEndReason
     diverged_at_turn: int | None = None
     caller_turns: int = 0
     hang_up_reason: str | None = None
 
 
-def agent_end_reason(disconnect_reason: str | None) -> EndReason | None:
+def agent_end_reason(disconnect_reason: str | None) -> SimulationEndReason | None:
     """The end reason when the agent side ended the call (None while it is still running)."""
     if disconnect_reason is None:
         return None

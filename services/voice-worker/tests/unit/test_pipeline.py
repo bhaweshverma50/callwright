@@ -28,7 +28,6 @@ from worker.pipeline import (
     callback_instructions,
     plan_session,
     pronounce,
-    render_template,
     tts_gain_for,
     vendor_error_diagnostic,
 )
@@ -119,14 +118,6 @@ async def test_pipeline_assembles_for_every_vendor_combination(
     assert session.tts is components.tts
 
 
-def test_render_template() -> None:
-    variables = {"customer_name": "Priya", "order_id": "A1"}
-    assert render_template("Hi {{customer_name}}, order {{ order_id }}.", variables) == (
-        "Hi Priya, order A1."
-    )
-    assert render_template("{{missing}}|{{ 9bad }}", variables) == "|{{ 9bad }}"
-
-
 def test_plan_renders_prompt_and_greeting_with_variables() -> None:
     plan = plan_session(
         make_runtime(variables={"customer_name": "Priya", "company_name": "Northwind"}),
@@ -149,10 +140,8 @@ def test_auto_stt_uses_claim_resolved_model() -> None:
     assert plan.stt_auto and plan.stt.model == "nova-2"
 
 
-def test_noise_cancellation_default_and_off() -> None:
-    runtime = make_runtime()
-    runtime.config.pop("noise_cancellation")
-    assert plan_session(runtime, AdapterRegistry()).nc.key == "nc/sanas/vi"
+def test_noise_cancellation_from_the_claim_and_off() -> None:
+    assert plan_session(make_runtime(), AdapterRegistry()).nc.key == "nc/sanas/vi"
     off = plan_session(make_runtime({"noise_cancellation": None}), AdapterRegistry())
     assert off.nc.key == "nc/none/none"
 

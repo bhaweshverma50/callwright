@@ -67,7 +67,9 @@ def live_call(**config: Any) -> tuple[LiveCall, Ctx, Session]:
     api = InternalApiClient(BASE, "t", sleep=no_sleep)
     call = LiveCall(ctx, api, WorkerSettings(), CALL_ID, runtime)
     call.plan = plan_session(runtime, AdapterRegistry())
-    call.overrides = OverrideManager(call.plan, AdapterRegistry())
+    call.overrides = OverrideManager(
+        call.plan, AdapterRegistry(), runtime.controls, runtime.stt_auto_rules
+    )
     call.control = RuntimeCallControl(CALL_ID, call.recorder, call, overrides=call.overrides)
     session = Session()
     call.session = session

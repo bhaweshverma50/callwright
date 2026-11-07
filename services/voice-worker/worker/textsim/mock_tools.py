@@ -27,8 +27,9 @@ import logging
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from typing import Any, Literal
 
+from callwright_contract import http_core
+
 from worker.textsim.llm import complete
-from worker.tools import http_core
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 from worker.tools.registry import CallTools, function_schema
 

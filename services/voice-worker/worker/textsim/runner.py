@@ -41,6 +41,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+from callwright_contract.calls import AgentType, Channel, Direction
+from callwright_contract.protocol import RuntimeConfig, RuntimeValues
+from callwright_contract.variables import BUILTIN_VARIABLES
 
 from worker import telemetry
 from worker.adapters.llm import supports_temperature
@@ -48,7 +51,6 @@ from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.call_behavior import ends_with_goodbye
 from worker.control import RuntimeCallControl
 from worker.flow.runtime import CallwrightFlowRunner, FlowComponents
-from worker.internal_api import RuntimeConfig
 from worker.metrics import EventPoster, EventRecorder
 from worker.pipeline import (
     GENERATED_GREETING_INSTRUCTION,
@@ -100,70 +102,46 @@ class CallClosedByApi(Exception):
 # Runtime from a snapshot
 
 
-def normalize_snapshot(snapshot: Mapping[str, Any]) -> dict[str, Any]:
-    """The agent config the session runs. A snapshot is the version config itself (as in the
-    live claim) or ``{"config": {...}, "tools": [...], ...}``, whose siblings fill missing keys."""
-    inner = snapshot.get("config")
-    agent_keys = ("prompt", "llm", "flow", "type", "begin_message")
-    if isinstance(inner, Mapping) and not any(k in snapshot for k in agent_keys):
-        merged = dict(inner)
-        for key, value in snapshot.items():
-            if key != "config":
-                merged.setdefault(key, value)
-        return merged
-    return dict(snapshot)
-
-
 def build_runtime(
-    snapshot: Mapping[str, Any],
+    values: RuntimeValues,
     *,
     agent_id: str,
-    agent_type: str,
-    channel: str,
+    agent_type: AgentType,
+    channel: Channel,
     variables: Mapping[str, str],
     call_id: str,
-    language_options: Sequence[Mapping[str, Any]] = (),
 ) -> RuntimeConfig:
-    config = normalize_snapshot(snapshot)
-    values: dict[str, str] = {
+    """The claim's runtime for a text run: the API's resolved values, the version's variable
+    defaults and the built-ins (a text run has no phone numbers), then the run's own values."""
+    config = values.config
+    resolved: dict[str, str] = {
         str(v["name"]): str(v.get("default") or "")
         for v in config.get("dynamic_variables") or []
         if isinstance(v, Mapping) and v.get("name")
     }
     now = datetime.now(UTC)
-    direction = "outbound" if channel == "sip_outbound" else "inbound"
-    builtins = {
+    direction: Direction = "outbound" if channel == "sip_outbound" else "inbound"
+    known = {
         "call_id": call_id,
         "channel": channel,
         "direction": direction,
         "timezone": "UTC",
-        "current_date": now.date().isoformat(),
-        "current_time": now.time().isoformat(timespec="minutes"),
+        "current_time": now.strftime("%H:%M"),
+        "current_date": now.strftime("%Y-%m-%d"),
         "current_datetime": now.isoformat(timespec="minutes"),
     }
-    for key, value in builtins.items():
-        values.setdefault(key, value)
-    values.update(variables)
-    behavior = config.get("call_behavior") or {}
-    return RuntimeConfig.model_validate(
-        {
-            "channel": channel,
-            "direction": direction,
-            "agent_id": agent_id,
-            "agent_version_id": str(
-                config.get("agent_version_id") or snapshot.get("agent_version_id") or "agv_snapshot"
-            ),
-            "agent_type": agent_type,
-            "config": config,
-            "variables": values,
-            "limits": {
-                "end_on_silence_s": behavior.get("end_on_silence_s", 30),
-                "max_duration_s": behavior.get("max_duration_s", 600),
-                "ring_duration_ms": behavior.get("ring_duration_ms", 5000),
-            },
-            "simulation": True,
-            "language_options": [dict(o) for o in language_options],
-        }
+    for name in BUILTIN_VARIABLES:
+        resolved.setdefault(name, known.get(name, ""))
+    resolved.update(variables)
+    return RuntimeConfig(
+        **dict(values),
+        channel=channel,
+        direction=direction,
+        agent_id=agent_id,
+        agent_version_id=str(config.get("agent_version_id") or "agv_snapshot"),
+        agent_type=agent_type,
+        variables=resolved,
+        simulation=True,
     )
 
 
@@ -475,13 +453,12 @@ async def run_single_turn(
         }
         try:
             runtime = build_runtime(
-                spec.config_snapshot,
+                spec.runtime,
                 agent_id=spec.agent_id,
                 agent_type=spec.agent_type,
                 channel="web",
                 variables=spec.dynamic_variables,
                 call_id=test_run_id,
-                language_options=spec.language_options,
             )
             session = TextSession(
                 test_run_id, runtime, deps, answers=answers, recorder=recorder, meter=meter
@@ -578,13 +555,12 @@ async def _simulate(
         if poster.closed:
             raise CallClosedByApi(CALL_CLOSED)
         runtime = build_runtime(
-            spec.config_snapshot,
+            spec.runtime,
             agent_id=spec.agent_id,
             agent_type=spec.agent_type,
             channel=spec.channel,
             variables=spec.dynamic_variables,
             call_id=call_id,
-            language_options=spec.language_options,
         )
         session = TextSession(
             call_id,

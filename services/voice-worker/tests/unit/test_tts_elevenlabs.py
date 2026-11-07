@@ -5,8 +5,6 @@ model for new agents."""
 from __future__ import annotations
 
 import itertools
-import json
-from pathlib import Path
 
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.adapters.tts import elevenlabs
@@ -41,7 +39,9 @@ def test_style_only_for_models_that_support_it() -> None:
 
 def test_build_passes_settings_and_language_code_only_where_supported() -> None:
     built = elevenlabs.build(
-        VendorSpec("tts", "elevenlabs", None, {"voice_id": "v1", "expressiveness": 0.9}),
+        VendorSpec(
+            "tts", "elevenlabs", "eleven_multilingual_v2", {"voice_id": "v1", "expressiveness": 0.9}
+        ),
         {"api_key": "k"},
     )
     assert built.model == "eleven_multilingual_v2"
@@ -55,8 +55,3 @@ def test_build_passes_settings_and_language_code_only_where_supported() -> None:
 
 def test_multilingual_v2_is_the_default_model() -> None:
     assert AdapterRegistry().entry("tts", "elevenlabs").default_model == "eleven_multilingual_v2"
-    catalog = json.loads(
-        (Path(__file__).parents[2] / "worker" / "adapters" / "catalog.json").read_text()
-    )
-    entry = next(e for e in catalog["entries"] if e["provider"] == "elevenlabs")
-    assert entry["default_model"] == "eleven_multilingual_v2"

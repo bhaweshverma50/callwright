@@ -8,9 +8,14 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
+
+from callwright_contract.values import KEYPAD_DIGITS
+
+if TYPE_CHECKING:
+    from callwright_contract.protocol import ControlRange, Limits
 
 # --------------------------------------------------------------------------------------------
 # Clock
@@ -120,18 +125,8 @@ def map_responsiveness(responsiveness: float) -> EndpointingParams:
 
 
 # --------------------------------------------------------------------------------------------
-# Limits read from the version, clamped as defence in depth (003 data-model section 10)
-
-LIMIT_RANGES: Mapping[str, tuple[float, float]] = {
-    "end_on_silence_s": (10, 300),
-    "max_duration_s": (30, 3600),
-    "ring_duration_ms": (0, 30000),
-    "dtmf.timeout_ms": (1000, 10000),
-    "dtmf.digits": (1, 99),
-    "interruption_sensitivity": (0, 1),
-    "responsiveness": (0, 1),
-    "background_audio.volume": (0, 3),
-}
+# Call behaviour from the claim: the API applies every default; values are clamped to the claim's
+# control ranges as defence in depth (003 data-model section 10).
 
 
 @dataclass
@@ -141,9 +136,13 @@ class ClampNote:
     clamped_to: Any
 
 
-def clamp_limit(path: str, value: float, notes: list[ClampNote]) -> float:
-    low, high = LIMIT_RANGES[path]
-    clamped = max(low, min(high, value))
+def _clamp(
+    controls: Sequence[ControlRange], path: str, value: float, notes: list[ClampNote]
+) -> float:
+    control = next((c for c in controls if c.path == path), None)
+    if control is None:
+        return value
+    clamped = max(control.min, min(control.max, value))
     if clamped != value:
         notes.append(ClampNote(path, value, clamped))
     return clamped
@@ -151,10 +150,10 @@ def clamp_limit(path: str, value: float, notes: list[ClampNote]) -> float:
 
 @dataclass(frozen=True)
 class DtmfConfig:
-    enabled: bool = False
-    timeout_ms: int = 2500
-    termination_key: str | None = "#"
-    digits: int = 10
+    enabled: bool
+    timeout_ms: int
+    termination_key: str | None
+    digits: int
 
 
 @dataclass(frozen=True)
@@ -177,52 +176,36 @@ class CallBehavior:
 
 
 def behavior_from_config(
-    config: Mapping[str, Any], limits: Mapping[str, Any] | None = None
+    config: Mapping[str, Any], limits: Limits, controls: Sequence[ControlRange]
 ) -> CallBehavior:
-    """Build call behaviour from an AgentConfig and the claim's ``limits`` (limits win)."""
+    """Call behaviour from the claim's config and ``limits`` (limits win)."""
     notes: list[ClampNote] = []
-    cb: Mapping[str, Any] = config.get("call_behavior") or {}
-    adv: Mapping[str, Any] = config.get("advanced") or {}
-    lim: Mapping[str, Any] = limits or {}
+    cb: Mapping[str, Any] = config["call_behavior"]
+    adv: Mapping[str, Any] = config["advanced"]
 
-    silence = clamp_limit(
-        "end_on_silence_s",
-        float(lim.get("end_on_silence_s", cb.get("end_on_silence_s", 30))),
-        notes,
-    )
-    max_duration = clamp_limit(
-        "max_duration_s", float(lim.get("max_duration_s", cb.get("max_duration_s", 600))), notes
-    )
-    ring = clamp_limit(
-        "ring_duration_ms",
-        float(lim.get("ring_duration_ms", cb.get("ring_duration_ms", 5000))),
-        notes,
-    )
-    sensitivity = clamp_limit(
-        "interruption_sensitivity", float(cb.get("interruption_sensitivity", 0.9)), notes
-    )
-    responsiveness = clamp_limit("responsiveness", float(cb.get("responsiveness", 0.8)), notes)
+    def clamp(path: str, value: Any) -> float:
+        return _clamp(controls, path, float(value), notes)
 
-    dtmf_raw: Mapping[str, Any] = adv.get("dtmf") or {}
+    dtmf_raw: Mapping[str, Any] = adv["dtmf"]
     dtmf = DtmfConfig(
-        enabled=bool(dtmf_raw.get("enabled", False)),
-        timeout_ms=int(
-            clamp_limit("dtmf.timeout_ms", float(dtmf_raw.get("timeout_ms", 2500)), notes)
-        ),
-        termination_key=dtmf_raw.get("termination_key", "#"),
-        digits=int(clamp_limit("dtmf.digits", float(dtmf_raw.get("digits", 10)), notes)),
+        enabled=bool(dtmf_raw["enabled"]),
+        timeout_ms=int(clamp("/advanced/dtmf/timeout_ms", dtmf_raw["timeout_ms"])),
+        termination_key=dtmf_raw["termination_key"],
+        digits=int(dtmf_raw["digits"]),
     )
-    vm_raw: Mapping[str, Any] = adv.get("voicemail_detection") or {}
+    vm_raw: Mapping[str, Any] = adv["voicemail_detection"]
     message = vm_raw.get("message")
     voicemail = VoicemailConfig(
-        enabled=bool(vm_raw.get("enabled", False)),
-        action="leave_message" if vm_raw.get("action") == "leave_message" else "hang_up",
+        enabled=bool(vm_raw["enabled"]),
+        action="leave_message" if vm_raw["action"] == "leave_message" else "hang_up",
         message=str(message)[:500] if message else None,
     )
+    sensitivity = clamp("/call_behavior/interruption_sensitivity", cb["interruption_sensitivity"])
+    responsiveness = clamp("/call_behavior/responsiveness", cb["responsiveness"])
     return CallBehavior(
-        end_on_silence_s=silence,
-        max_duration_s=max_duration,
-        ring_duration_ms=int(ring),
+        end_on_silence_s=clamp("/call_behavior/end_on_silence_s", limits.end_on_silence_s),
+        max_duration_s=clamp("/call_behavior/max_duration_s", limits.max_duration_s),
+        ring_duration_ms=int(clamp("/call_behavior/ring_duration_ms", limits.ring_duration_ms)),
         interruption=map_interruption(sensitivity),
         endpointing=map_responsiveness(responsiveness),
         dtmf=dtmf,
@@ -388,7 +371,6 @@ class DurationTimer:
 # Keypad input (research R11)
 
 FlushReason = Literal["termination_key", "digit_limit", "timeout"]
-DTMF_DIGITS = frozenset("0123456789*#")
 
 
 class DtmfCollector:
@@ -411,7 +393,7 @@ class DtmfCollector:
         return "".join(self._digits)
 
     def add(self, digit: str) -> None:
-        if digit not in DTMF_DIGITS:
+        if digit not in KEYPAD_DIGITS:
             raise ValueError(f"invalid keypad digit {digit!r}")
         self._cancel()
         if self._config.termination_key and digit == self._config.termination_key:

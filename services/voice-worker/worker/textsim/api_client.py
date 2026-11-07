@@ -18,6 +18,8 @@ from __future__ import annotations
 from typing import Any, Literal
 
 import httpx
+from callwright_contract.calls import AgentType, Channel
+from callwright_contract.protocol import RuntimeValues
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from worker import telemetry
@@ -70,11 +72,10 @@ class CaseSpec(BaseModel):
 
     workspace_id: str
     agent_id: str
-    agent_type: Literal["single_prompt", "flow"] = "single_prompt"
-    config_snapshot: dict[str, Any]
+    agent_type: AgentType = "single_prompt"
+    runtime: RuntimeValues
     user_prompt: str
     dynamic_variables: dict[str, str] = Field(default_factory=dict)
-    language_options: list[dict[str, Any]] = Field(default_factory=list)
 
     @field_validator("dynamic_variables", mode="before")
     @classmethod
@@ -91,10 +92,10 @@ class SimulationSpec(BaseModel):
     simulation_run_id: str
     output_call_id: str
     agent_id: str
-    agent_type: Literal["single_prompt", "flow"] = "single_prompt"
-    channel: Literal["web", "sip_inbound", "sip_outbound", "whatsapp"] = "web"
+    agent_type: AgentType = "single_prompt"
+    channel: Channel = "web"
     mode: Literal["replay", "persona"]
-    config_snapshot: dict[str, Any]
+    runtime: RuntimeValues
     settings: SimSettings = Field(default_factory=SimSettings)
     dynamic_variables: dict[str, str] = Field(default_factory=dict)
     start_speaker: Literal["agent", "user"] | None = None
@@ -103,7 +104,6 @@ class SimulationSpec(BaseModel):
     recorded_tool_outputs: list[RecordedOutput] = Field(default_factory=list)
     original_node_path: list[str] = Field(default_factory=list)
     persona_brief: PersonaBrief | None = None
-    language_options: list[dict[str, Any]] = Field(default_factory=list)
 
     @field_validator("dynamic_variables", mode="before")
     @classmethod

@@ -26,7 +26,6 @@ from typing import Any
 from worker.adapters.registry import VendorSpec
 from worker.adapters.tts import clamp, opt_float
 
-DEFAULT_MODEL = "eleven_multilingual_v2"
 DEFAULT_EXPRESSIVENESS = 0.9
 SIMILARITY = 0.75
 STYLE_MODELS = frozenset({"eleven_multilingual_v2"})
@@ -75,7 +74,7 @@ def voice_settings(model: str, expressiveness: float, speed: float) -> dict[str,
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import elevenlabs
 
-    model = spec.model or DEFAULT_MODEL
+    model = spec.required_model
     settings = voice_settings(
         model,
         opt_float(spec.options, "expressiveness", DEFAULT_EXPRESSIVENESS),

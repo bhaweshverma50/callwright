@@ -30,13 +30,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import httpx
+from callwright_contract.values import SET_LANGUAGE_TOOL
 
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 log = logging.getLogger(__name__)
 
 TOOL_TYPE = "set_language"
-TOOL_NAME = "set_language"
 TIMEOUT_S = 5.0
 DESCRIPTION = (
     "Switch the call to another language when the caller asks for it or clearly speaks it. "
@@ -68,7 +68,7 @@ def spec_for(options: Sequence[Any]) -> ToolSpecView:
     return ToolSpecView(
         tool_id=None,
         type=TOOL_TYPE,
-        name=TOOL_NAME,
+        name=SET_LANGUAGE_TOOL,
         description=DESCRIPTION,
         config={"parameters": parameters(options)},
     )

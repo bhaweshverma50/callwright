@@ -1,14 +1,14 @@
 """Typed client for the API's internal worker endpoints (``/v1/internal/*``).
 
-Shapes follow ``specs/003-voice-runtime/contracts/calls.yaml`` (claim) and
-``contracts/call_events.yaml`` (events). Both endpoints authenticate with
+Shapes are the contract's (``callwright_contract.protocol``). Both endpoints authenticate with
 ``Authorization: Bearer <service token>`` (research R19).
 
 - ``POST {base}/calls/claim`` with :class:`ClaimRequest` returns :class:`ClaimResponse`.
   Idempotent per ``job_id``, so transport failures and 5xx are retried.
-- ``POST {base}/calls/{call_id}/events`` with ``{"events": [...]}`` (0 to 200 items; empty is a
-  pure heartbeat) returns :class:`EventBatchResult`. ``control.action == "end_call"`` orders the
-  worker to hang up with ``control.disconnect_reason`` (mid-call credit guard, FR-025).
+- ``POST {base}/calls/{call_id}/events`` with ``{"events": [...]}`` (up to
+  ``MAX_EVENTS_PER_BATCH`` items; empty is a pure heartbeat) returns :class:`EventBatchResult`.
+  ``control.action == "end_call"`` orders the worker to hang up with ``control.disconnect_reason``
+  (mid-call credit guard, FR-025).
   Duplicate ``seq`` values are ignored server side, so every retry is safe. 409 means the call is
   already terminal: the worker stops posting (:class:`CallClosed`).
 """
@@ -18,148 +18,17 @@ from __future__ import annotations
 import asyncio
 import random
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, Literal
+from typing import Any
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field
+from callwright_contract.protocol import (
+    MAX_EVENTS_PER_BATCH,
+    ClaimRequest,
+    ClaimResponse,
+    EventBatchResult,
+)
 
 from worker import telemetry
-
-Channel = Literal["web", "sip_inbound", "sip_outbound", "whatsapp"]
-DisconnectReason = Literal[
-    "user_hangup",
-    "agent_hangup",
-    "call_transfer",
-    "voicemail_reached",
-    "inactivity",
-    "max_duration_reached",
-    "error",
-    "concurrency_limit",
-    "insufficient_credit",
-]
-
-MAX_EVENTS_PER_BATCH = 200
-
-
-# --------------------------------------------------------------------------------------------
-# Claim
-
-
-class SipAttributes(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    call_id: str | None = None
-    trunk_id: str | None = None
-    trunk_phone_number: str | None = None
-    caller_number: str | None = None
-    participant_identity: str | None = None
-
-
-class ClaimRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    job_id: str
-    room_name: str
-    worker_id: str
-    dispatch_metadata: dict[str, Any]
-    sip: SipAttributes | None = None
-
-
-class Refusal(BaseModel):
-    disconnect_reason: Literal["insufficient_credit", "concurrency_limit", "error"]
-    diagnostic: str | None = None
-
-
-class Limits(BaseModel):
-    end_on_silence_s: int = 30
-    max_duration_s: int = 600
-    ring_duration_ms: int = 5000
-
-
-class OutboundDial(BaseModel):
-    sip_trunk_id: str
-    to_number: str
-    from_number: str
-    ring_timeout_s: int = 30
-
-
-class ControlRange(BaseModel):
-    """One row of 002's shared control range table (data-model 8.6), used to clamp overrides."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    path: str
-    min: float
-    max: float
-    step: float | None = None
-
-
-class LanguageOption(BaseModel):
-    """One language the caller can switch to (012); the agent's own language comes first."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    code: str
-    label: str
-    stt_model: str | None = None
-    tts_model: str | None = None
-
-
-class RuntimeConfig(BaseModel):
-    """Frozen configuration for one call (contract ``RuntimeConfig``)."""
-
-    model_config = ConfigDict(extra="allow")
-
-    channel: Channel
-    direction: Literal["inbound", "outbound"]
-    from_number: str | None = None
-    to_number: str | None = None
-    agent_id: str
-    agent_version_id: str
-    agent_type: Literal["single_prompt", "flow"] = "single_prompt"
-    config: dict[str, Any]
-    variables: dict[str, str] = Field(default_factory=dict)
-    limits: Limits = Field(default_factory=Limits)
-    background_audio_url: str | None = None
-    caller_join_timeout_s: int = 60
-    outbound_dial: OutboundDial | None = None
-    heartbeat_interval_s: int = 10
-    recording_enabled: bool | None = None
-    stt_resolved_model: str | None = None
-    controls: list[ControlRange] | None = None
-    # 012: languages set_language may switch to, and the phone caller's saved language.
-    language_options: list[LanguageOption] = Field(default_factory=list)
-    caller_language: str | None = None
-
-
-class ClaimResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    admitted: bool
-    call_id: str
-    refusal: Refusal | None = None
-    runtime: RuntimeConfig | None = None
-
-
-# --------------------------------------------------------------------------------------------
-# Events
-
-
-class Control(BaseModel):
-    action: Literal["none", "end_call"] = "none"
-    disconnect_reason: Literal["insufficient_credit", "error"] | None = None
-
-
-class EventBatchResult(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    accepted: int
-    duplicates: int
-    control: Control = Field(default_factory=Control)
-
-
-# --------------------------------------------------------------------------------------------
-# Errors
 
 
 class InternalApiError(Exception):

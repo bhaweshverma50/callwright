@@ -17,11 +17,11 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from callwright_contract.protocol import RuntimeConfig
 
 from tests.harness.runner import build_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.flow.runtime import CallwrightFlowRunner
-from worker.internal_api import RuntimeConfig
 from worker.pipeline import plan_session
 from worker.tools import OverrideResult, SegmentOverrides, ToolActivity
 from worker.tools.registry import build_call_tools

@@ -35,12 +35,19 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from callwright_contract import http_core
+from callwright_contract.values import (
+    E164_PATTERN,
+    END_CALL_TOOL,
+    KB_TOOL,
+    PRESS_DIGITS_PATTERN,
+    SCHEDULE_CALLBACK_TOOL,
+)
 
 from worker import telemetry
 from worker.tools import (
     CallControl,
     ToolActivity,
-    http_core,
     kb_search,
     register_tool_provider,
     secrets,
@@ -56,7 +63,8 @@ from worker.tools.set_language import spec_for as set_language_spec
 from worker.tools.transfer import TransferBackend, TransferExecutor
 
 if TYPE_CHECKING:
-    from worker.internal_api import RuntimeConfig
+    from callwright_contract.protocol import RuntimeConfig
+
     from worker.settings import WorkerSettings
 
 log = logging.getLogger(__name__)
@@ -87,7 +95,7 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
         destination: dict[str, Any] = {
             "type": "string",
             "description": "Phone number to transfer to, in +E.164 form",
-            "pattern": r"^\+[1-9]\d{6,14}$",
+            "pattern": E164_PATTERN,
         }
         if allowed:
             destination["enum"] = allowed
@@ -121,7 +129,7 @@ def function_schema(spec: ToolSpecView) -> dict[str, Any]:
                 "digits": {
                     "type": "string",
                     "description": "Keypad digits to press: 0-9, * and #",
-                    "pattern": r"^[0-9*#]{1,20}$",
+                    "pattern": PRESS_DIGITS_PATTERN,
                 }
             },
             "required": ["digits"],
@@ -251,7 +259,7 @@ def kb_spec(config: Mapping[str, Any]) -> ToolSpecView | None:
     return ToolSpecView(
         tool_id=None,
         type="kb_search",
-        name=kb_search.TOOL_NAME,
+        name=KB_TOOL,
         description=kb_search.description(knowledge),
         config={"kb_ids": kb_ids},
     )
@@ -463,14 +471,13 @@ def _raw_tool(tools: CallTools, schema: dict[str, Any]) -> Any:
 
 
 def is_simulation(runtime: RuntimeConfig) -> bool:
-    extra = runtime.model_extra or {}
-    return bool(extra.get("simulation") or runtime.config.get("simulation"))
+    return runtime.simulation or bool(runtime.config.get("simulation"))
 
 
 BUILTIN_END_CALL = ToolSpecView(
     tool_id=None,
     type="end_call",
-    name="end_call",
+    name=END_CALL_TOOL,
     description=(
         "Hang up the call. Call it in the same reply as your goodbye, or right away when the "
         "caller says goodbye or thanks you after your goodbye. Never speak after calling it."
@@ -481,7 +488,7 @@ BUILTIN_END_CALL = ToolSpecView(
 BUILTIN_SCHEDULE_CALLBACK = ToolSpecView(
     tool_id=None,
     type="schedule_callback",
-    name="schedule_callback",
+    name=SCHEDULE_CALLBACK_TOOL,
     description=(
         "Book a phone call back to the caller at a time they agreed to, when they ask to be "
         "called back later. The result says the confirmed time to tell the caller, or why it "

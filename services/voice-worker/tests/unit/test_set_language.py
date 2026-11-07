@@ -65,7 +65,11 @@ def setup(
         runtime = runtime.model_copy(update={"simulation": True})
     plan = plan_session(runtime, AdapterRegistry())
     recorder = EventRecorder()
-    manager = OverrideManager(plan, AdapterRegistry()) if overrides else None
+    manager = (
+        OverrideManager(plan, AdapterRegistry(), runtime.controls, runtime.stt_auto_rules)
+        if overrides
+        else None
+    )
     staged: list[bool] = []
     control = RuntimeCallControl(
         "call_test",

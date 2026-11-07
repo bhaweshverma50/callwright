@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from tests.harness.clock import VirtualClock
+from tests.harness.runner import load_agent_config
 from worker.call_behavior import DtmfCollector, DtmfConfig
 
 
@@ -13,7 +14,7 @@ def collector(**config: object) -> tuple[VirtualClock, DtmfCollector, list[tuple
     flushed: list[tuple[str, str]] = []
     c = DtmfCollector(
         clock,
-        DtmfConfig(enabled=True, **config),  # type: ignore[arg-type]
+        DtmfConfig(**{**load_agent_config()["advanced"]["dtmf"], "enabled": True, **config}),
         lambda digits, reason: flushed.append((digits, reason)),
     )
     return clock, c, flushed

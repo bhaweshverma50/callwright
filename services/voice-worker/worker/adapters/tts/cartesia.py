@@ -15,13 +15,13 @@ CONTROL_MODELS = frozenset({"sonic-3"})
 
 
 def native_volume(model: str | None) -> bool:
-    return (model or "sonic-2") in CONTROL_MODELS
+    return model in CONTROL_MODELS
 
 
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import cartesia
 
-    model = spec.model or "sonic-2"
+    model = spec.required_model
     kwargs: dict[str, Any] = {
         "api_key": creds.get("api_key", ""),
         "model": model,

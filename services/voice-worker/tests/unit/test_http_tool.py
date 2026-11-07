@@ -1,59 +1,15 @@
-"""HTTP tool on calls (005 T035, T039): shared vectors, timeout without retry, the waiting line
-after 400 ms only, address guard and mapped variables written to the call store."""
+"""HTTP tool on calls (005 T039): timeout without retry, the waiting line after 400 ms only,
+address guard and mapped variables written to the call store."""
 
 from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 from typing import Any
 
 import httpx
-import pytest
 
 from tests.unit.tool_support import http_spec, make
-from worker.tools import http_core
-
-HERE = Path(__file__).resolve().parent
-VECTORS: dict[str, Any] = json.loads((HERE / "fixtures" / "http_exec_vectors.json").read_text())
-
-
-@pytest.mark.parametrize("case", VECTORS["requests"], ids=lambda c: c["name"])
-def test_request_vectors(case: dict[str, Any]) -> None:
-    prepared = http_core.prepare_request(
-        case["spec"],
-        case["arguments"],
-        case.get("dynamic"),
-        case.get("mapped"),
-        case.get("secrets"),
-    )
-    expect = case["expect"]
-    assert (prepared.method, prepared.url, prepared.body) == (
-        expect["method"],
-        expect["url"],
-        expect["body"],
-    )
-    assert prepared.headers == expect["headers"]
-    assert prepared.missing_variables == expect["missing"]
-
-
-@pytest.mark.parametrize("case", VECTORS["mappings"], ids=lambda c: c["name"])
-def test_mapping_vectors(case: dict[str, Any]) -> None:
-    assert http_core.apply_mappings(case["body"], case["mappings"]) == (
-        case["expect"]["mapped"],
-        case["expect"]["missing"],
-    )
-
-
-@pytest.mark.parametrize("case", VECTORS["payloads"], ids=lambda c: c["name"])
-def test_payload_vectors(case: dict[str, Any]) -> None:
-    if "body_repeat" in case:
-        payload = http_core.success_payload(
-            case["body_repeat"]["text"] * case["body_repeat"]["times"]
-        )
-        assert len(payload) == case["expect_length"] and payload.endswith(case["expect_suffix"])
-    else:
-        assert http_core.success_payload(case["body"]) == case["expect"]
 
 
 def slots(request: httpx.Request) -> httpx.Response:

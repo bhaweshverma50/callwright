@@ -29,10 +29,18 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
+from callwright_contract.adapters import Kind
+from callwright_contract.calls import INBOUND_SIP_CHANNELS, PHONE_CHANNELS
+from callwright_contract.protocol import (
+    DISPATCH_CHANNEL,
+    ClaimRequest,
+    RuntimeConfig,
+    SipAttributes,
+)
+
 from worker import telemetry
 from worker.adapters.registry import (
     AdapterRegistry,
-    Kind,
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorSpec,
@@ -56,12 +64,7 @@ from worker.call_behavior import (
 from worker.control import RuntimeCallControl
 from worker.flow import FlowRuntimeUnavailable, get_flow_runner
 from worker.flow.runtime import FlowComponents
-from worker.internal_api import (
-    ClaimRequest,
-    InternalApiClient,
-    RuntimeConfig,
-    SipAttributes,
-)
+from worker.internal_api import InternalApiClient
 from worker.language import translate_greeting, translated_greeting_instruction
 from worker.metrics import (
     LATENCY_TOPIC,
@@ -102,7 +105,6 @@ from worker.turn_detection import DigitAwareTurnDetector
 
 log = logging.getLogger("callwright.worker")
 
-SIP_CHANNELS = frozenset({"sip_inbound", "whatsapp"})
 # A hang-up (end_call, a flow End node) waits for a caller who is still talking: up to
 # CALLER_QUIET_MAX_WAIT_S for CALLER_QUIET_S without transcribed words (``LiveCall.caller_quiet``).
 CALLER_QUIET_S = 1.0
@@ -335,7 +337,7 @@ class LiveCall:
     def _transfer_backend(self) -> LiveKitTransferBackend | None:
         """Transfers (005) on SIP calls through the LiveKit server API."""
         runtime = self.runtime
-        if runtime.channel not in ("sip_inbound", "sip_outbound"):
+        if runtime.channel not in PHONE_CHANNELS:
             return None
         settings = self.settings
 
@@ -630,7 +632,11 @@ class LiveCall:
             )
 
         self.overrides = OverrideManager(
-            plan, self.registry, runtime.controls, on_system_event=self.recorder.system
+            plan,
+            self.registry,
+            runtime.controls,
+            runtime.stt_auto_rules,
+            on_system_event=self.recorder.system,
         )
         self.control = RuntimeCallControl(
             self.call_id,
@@ -742,7 +748,7 @@ class LiveCall:
         except TimeoutError:
             await self._fail("caller_never_joined")
             return None
-        if runtime.channel in SIP_CHANNELS and self.plan is not None:
+        if runtime.channel in INBOUND_SIP_CHANNELS and self.plan is not None:
             # 010 R5: ring for the agent's ring duration before answering; never billed.
             ring_ms = self.plan.behavior.ring_duration_ms
             room = self.ctx.room
@@ -1000,7 +1006,7 @@ async def _replay(frames: list[Any]) -> AsyncIterator[Any]:
 async def claim_job(ctx: Any, api: InternalApiClient) -> tuple[str, RuntimeConfig | None, Any]:
     metadata = parse_dispatch_metadata(getattr(ctx.job, "metadata", None))
     sip: SipAttributes | None = None
-    if metadata.get("channel") in SIP_CHANNELS:
+    if metadata.get(DISPATCH_CHANNEL) in INBOUND_SIP_CHANNELS:
         participant = await ctx.wait_for_participant()
         sip = sip_attributes(dict(participant.attributes), participant.identity)
     response = await api.claim(

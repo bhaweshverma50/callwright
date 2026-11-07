@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import itertools
+from typing import Any
 
 import pytest
+from callwright_contract.protocol import Limits
 
 from tests.unit.conftest import make_runtime
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.call_behavior import (
     VAD_MIN_SILENCE_S,
+    CallBehavior,
     behavior_from_config,
     map_interruption,
     map_responsiveness,
@@ -17,6 +20,12 @@ from worker.call_behavior import (
 from worker.pipeline import plan_session, select_turn_detection, turn_handling_options
 
 STEPS = [i / 20 for i in range(21)]
+
+
+def behavior_for(limits: dict[str, int] | None = None, **call_behavior: Any) -> CallBehavior:
+    runtime = make_runtime({"call_behavior": call_behavior})
+    claimed = Limits(**{**runtime.limits.model_dump(), **(limits or {})})
+    return behavior_from_config(runtime.config, claimed, runtime.controls)
 
 
 def test_interruption_formulas_at_reference_points() -> None:
@@ -73,23 +82,18 @@ def test_endpointing_never_undercuts_the_vad_floor() -> None:
 def test_out_of_range_values_clamp() -> None:
     assert map_interruption(7) == map_interruption(1)
     assert map_responsiveness(-1) == map_responsiveness(0)
-    behavior = behavior_from_config(
-        {"call_behavior": {"end_on_silence_s": 5, "max_duration_s": 9000, "responsiveness": 2}}
-    )
+    behavior = behavior_for({"end_on_silence_s": 5, "max_duration_s": 9000}, responsiveness=2)
     assert behavior.end_on_silence_s == 10
     assert behavior.max_duration_s == 3600
     assert {n.path for n in behavior.notes} == {
-        "end_on_silence_s",
-        "max_duration_s",
-        "responsiveness",
+        "/call_behavior/end_on_silence_s",
+        "/call_behavior/max_duration_s",
+        "/call_behavior/responsiveness",
     }
 
 
 def test_claim_limits_win_over_config() -> None:
-    behavior = behavior_from_config(
-        {"call_behavior": {"end_on_silence_s": 30}}, {"end_on_silence_s": 60}
-    )
-    assert behavior.end_on_silence_s == 60
+    assert behavior_for({"end_on_silence_s": 60}, end_on_silence_s=30).end_on_silence_s == 60
 
 
 @pytest.mark.parametrize(
@@ -108,7 +112,7 @@ def test_turn_detection_selection(provider: str, model: str, expected: str) -> N
 
 
 def test_turn_handling_options_shape() -> None:
-    behavior = behavior_from_config({"call_behavior": {"interruption_sensitivity": 0.9}})
+    behavior = behavior_for(interruption_sensitivity=0.9)
     semantic = turn_handling_options(behavior, "semantic")
     assert semantic["endpointing"]["mode"] == "fixed"
     assert set(semantic["endpointing"]) == {"mode", "min_delay", "max_delay"}
@@ -119,13 +123,11 @@ def test_turn_handling_options_shape() -> None:
     assert semantic["preemptive_generation"] == {"enabled": True, "preemptive_tts": True}
     stt = turn_handling_options(behavior, "stt")
     assert set(stt["endpointing"]) == {"mode", "min_delay"}  # R4: only the minimum applies
-    off = turn_handling_options(
-        behavior_from_config({"call_behavior": {"interruption_sensitivity": 0}}), "semantic"
-    )
+    off = turn_handling_options(behavior_for(interruption_sensitivity=0), "semantic")
     assert off["interruption"] == {"enabled": False}
 
 
 def test_multi_language_uses_semantic_model() -> None:
     plan = plan_session(make_runtime({"language": "multi"}), AdapterRegistry())
-    assert plan.stt.model == "nova-2"
+    assert plan.stt.model == "nova-3"  # the speech catalog's rule, as admission picked
     assert plan.turn_detection == "semantic"

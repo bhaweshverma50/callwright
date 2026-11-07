@@ -13,7 +13,7 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import openai
 
     return openai.LLM(
-        model=spec.model or "gpt-5.1",
+        model=spec.required_model,
         api_key=creds.get("api_key", ""),
         **openai_kwargs(spec.options, creds),
     )

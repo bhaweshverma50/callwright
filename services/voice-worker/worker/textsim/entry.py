@@ -1,6 +1,6 @@
 """The ``textsim`` process (008 T019, research R1): an arq consumer on the platform Redis.
 
-Queue :data:`~worker.textsim.QUEUE_NAME` (``arq:textsim``); the API enqueues exactly two jobs:
+The contract's ``TEXTSIM_QUEUE``; the API enqueues exactly two jobs:
 
 - ``run_single_turn(ctx, test_run_id, test_case_id)``
 - ``run_simulation(ctx, simulation_run_id)``
@@ -25,11 +25,13 @@ import sys
 from typing import Any
 
 import httpx
+from arq.worker import func
+from callwright_contract.values import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
 
 from worker import telemetry
 from worker.adapters.registry import AdapterRegistry
 from worker.settings import WorkerSettings, get_settings
-from worker.textsim import QUEUE_NAME, runner
+from worker.textsim import runner
 from worker.textsim.api_client import TextsimApiClient
 from worker.textsim.llm import settings_factory
 from worker.tools import kb_search
@@ -85,7 +87,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["health"] = await asyncio.start_server(_health, "0.0.0.0", settings.health_port)
     log.info(
         "textsim consuming %s (max %d jobs), health on :%d",
-        QUEUE_NAME,
+        TEXTSIM_QUEUE,
         settings.textsim_max_jobs,
         settings.health_port,
     )
@@ -119,8 +121,11 @@ def redis_settings(url: str) -> Any:
 def worker_options(settings: WorkerSettings) -> dict[str, Any]:
     """Keyword arguments for ``arq.Worker``."""
     return {
-        "functions": [run_single_turn, run_simulation],
-        "queue_name": QUEUE_NAME,
+        "functions": [
+            func(run_single_turn, name=RUN_SINGLE_TURN),
+            func(run_simulation, name=RUN_SIMULATION),
+        ],
+        "queue_name": TEXTSIM_QUEUE,
         "redis_settings": redis_settings(settings.redis_url),
         "max_jobs": settings.textsim_max_jobs,
         "job_timeout": settings.textsim_job_timeout_s,

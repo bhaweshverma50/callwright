@@ -6,9 +6,10 @@ import asyncio
 from typing import Any
 
 import pytest
+from callwright_contract.values import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
 
 from worker.settings import WorkerSettings
-from worker.textsim import QUEUE_NAME, entry, runner
+from worker.textsim import entry, runner
 
 
 def settings(**env: str) -> WorkerSettings:
@@ -28,8 +29,8 @@ def test_worker_options() -> None:
         TEXTSIM_MAX_JOBS="4",
     )
     options = entry.worker_options(s)
-    assert options["queue_name"] == QUEUE_NAME == "arq:textsim"
-    assert [f.__name__ for f in options["functions"]] == ["run_single_turn", "run_simulation"]
+    assert options["queue_name"] == TEXTSIM_QUEUE
+    assert [f.name for f in options["functions"]] == [RUN_SINGLE_TURN, RUN_SIMULATION]
     assert options["max_jobs"] == 4 and options["job_timeout"] == 900
     redis = options["redis_settings"]
     assert (redis.host, redis.port, redis.database, redis.password) == ("10.0.0.5", 6379, 2, "p@ss")

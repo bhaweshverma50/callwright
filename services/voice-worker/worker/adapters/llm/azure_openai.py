@@ -19,7 +19,7 @@ DEFAULT_API_VERSION = "2024-10-21"
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import openai
 
-    model = spec.model or "gpt-5.1"
+    model = spec.required_model
     fallback = creds.get("fallback_openai_api_key")
     if fallback:
         return openai.LLM(model=model, api_key=fallback, **openai_kwargs(spec.options, creds))

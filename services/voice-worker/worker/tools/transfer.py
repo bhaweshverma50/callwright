@@ -18,14 +18,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any, Protocol
+
+from callwright_contract.values import CHANNEL_UNSUPPORTED, E164
 
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 log = logging.getLogger(__name__)
-E164 = re.compile(r"^\+[1-9]\d{6,14}$")
 DESTINATION_IDENTITY = "transfer-destination"
 
 
@@ -80,7 +80,7 @@ class TransferExecutor:
             return ToolResult(llm_payload='{"transferred":true}', output=number, mocked=True)
         if not ctx.is_sip or self.backend is None:
             return ToolResult.error(
-                "channel_unsupported", "Transfers work on phone calls only; offer another option."
+                CHANNEL_UNSUPPORTED, "Transfers work on phone calls only; offer another option."
             )
         hold = str(config.get("hold_message") or "").strip()
         if hold:

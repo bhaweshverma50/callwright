@@ -6,15 +6,18 @@ import json
 from pathlib import Path
 
 import pytest
+from callwright_contract.adapters import load_catalog
+from callwright_contract.protocol import SttAuto
 
+from tests.harness.runner import claim_tables
 from worker.adapters.registry import (
     AdapterRegistry,
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorSpec,
     has_module,
-    load_catalog,
 )
+from worker.pipeline import auto_stt
 from worker.settings import WorkerSettings
 
 REPO = Path(__file__).resolve().parents[4]
@@ -23,7 +26,7 @@ PROVIDERS_JSON = REPO / "research" / "live" / "config-providers.json"
 FAKE_CREDS = {"api_key": "test-key", "endpoint": "https://example.openai.azure.com"}
 OPTIONS = {"language": "en-US", "voice_id": "v1", "speed": 1.0, "expressiveness": 0.9}
 
-CASES = [(e.kind, e.provider, m) for e in load_catalog() for m in e.models]
+CASES = [(e.kind, e.provider, m) for e in load_catalog().entries for m in e.models]
 
 
 @pytest.mark.parametrize(("kind", "provider", "model"), CASES, ids=["/".join(c) for c in CASES])
@@ -37,7 +40,7 @@ async def test_every_catalog_entry_builds(kind: str, provider: str, model: str) 
 
 
 def test_every_catalog_entry_has_a_module() -> None:
-    for entry in load_catalog():
+    for entry in load_catalog().entries:
         assert has_module(entry.kind, entry.provider), entry
 
 
@@ -63,7 +66,7 @@ def test_azure_alias_normalises() -> None:
         ("deepgram", "en-US", "nova-3"),
         ("deepgram", "en-IN", "nova-3"),
         ("deepgram", "hi", "nova-2"),
-        ("deepgram", "multi", "nova-2"),
+        ("deepgram", "multi", "nova-3"),
         ("assemblyai", "en-GB", "universal-streaming"),
         ("assemblyai", "es", "universal-streaming-multilingual"),
         ("assemblyai", "pt-BR", "universal-streaming-multilingual"),
@@ -71,13 +74,18 @@ def test_azure_alias_normalises() -> None:
         ("sarvam", "ta", "saarika:v2.5"),
     ],
 )
-def test_auto_stt_rule(provider: str, language: str, model: str) -> None:
-    assert AdapterRegistry().resolve_auto_stt(provider, language) == model
+def test_auto_stt_follows_the_claim_rules(provider: str, language: str, model: str) -> None:
+    """The worker picks what admission picked: the API's rules from the claim (FR-045)."""
+    rules = {k: SttAuto.model_validate(v) for k, v in claim_tables()["stt_auto_rules"].items()}
+    assert auto_stt(rules, provider, language) == model
 
 
 def test_auto_stt_uncovered_language_raises() -> None:
+    rules = {k: SttAuto.model_validate(v) for k, v in claim_tables()["stt_auto_rules"].items()}
     with pytest.raises(UnsupportedLanguage):
-        AdapterRegistry().resolve_auto_stt("assemblyai", "hi")
+        auto_stt(rules, "assemblyai", "hi")
+    with pytest.raises(UnsupportedLanguage):
+        auto_stt(rules, "acme", "en")
 
 
 def test_builtin_turn_detection_flags() -> None:
@@ -104,5 +112,5 @@ def test_catalog_matches_live_provider_ids() -> None:
 
 def test_settings_have_credentials_for_every_provider() -> None:
     creds = WorkerSettings().vendor_credentials()
-    for entry in load_catalog():
+    for entry in load_catalog().entries:
         assert entry.provider in creds

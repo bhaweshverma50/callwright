@@ -4,9 +4,9 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from callwright_contract.protocol import RuntimeConfig
 
 from tests.harness.runner import build_runtime, deep_merge, load_agent_config
-from worker.internal_api import RuntimeConfig
 
 
 @pytest.fixture

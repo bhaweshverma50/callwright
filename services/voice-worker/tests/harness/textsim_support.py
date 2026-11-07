@@ -13,7 +13,7 @@ import httpx
 
 from tests.flow_support import compiled_config
 from tests.harness.fakes import contract_errors
-from tests.harness.runner import deep_merge, load_agent_config
+from tests.harness.runner import claim_tables, deep_merge, load_agent_config
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.textsim.api_client import TextsimApiClient
 from worker.textsim.llm import Role, Script, ScriptReply, ScriptRequest, make_script_llm
@@ -239,12 +239,27 @@ def flow(name: str) -> dict[str, Any]:
     return compiled_config(name)
 
 
-def case_spec(config: Mapping[str, Any], prompt: str, **extra: Any) -> dict[str, Any]:
+def runtime_values(
+    config: Mapping[str, Any], language_options: Sequence[Any] = ()
+) -> dict[str, Any]:
+    """What the API sends a text run for ``config`` (contract ``RuntimeValues``)."""
+    cb = config.get("call_behavior") or {}
+    return {
+        "config": dict(config),
+        "limits": {k: cb[k] for k in ("end_on_silence_s", "max_duration_s", "ring_duration_ms")},
+        **claim_tables(),
+        "language_options": list(language_options),
+    }
+
+
+def case_spec(
+    config: Mapping[str, Any], prompt: str, language_options: Sequence[Any] = (), **extra: Any
+) -> dict[str, Any]:
     return {
         "workspace_id": "ws_1",
         "agent_id": "agt_1",
         "agent_type": config.get("type", "single_prompt"),
-        "config_snapshot": dict(config),
+        "runtime": runtime_values(config, language_options),
         "user_prompt": prompt,
         "dynamic_variables": {},
         **extra,
@@ -257,6 +272,7 @@ def sim_spec(
     mode: str = "replay",
     srun: str = "srun_1",
     call_id: str = "call_sim_1",
+    language_options: Sequence[Any] = (),
     **extra: Any,
 ) -> dict[str, Any]:
     return {
@@ -267,7 +283,7 @@ def sim_spec(
         "agent_type": config.get("type", "single_prompt"),
         "channel": "web",
         "mode": mode,
-        "config_snapshot": dict(config),
+        "runtime": runtime_values(config, language_options),
         "settings": {"max_caller_turns": 20, "missing_mock_policy": "synthesize"},
         "dynamic_variables": {},
         **extra,

@@ -8,16 +8,10 @@ from typing import Any
 import httpx
 import pytest
 import respx
+from callwright_contract.protocol import ClaimRequest, SipAttributes
 
 from tests.harness.runner import CALL_ID as HARNESS_CALL_ID
-from worker.internal_api import (
-    CallClosed,
-    ClaimRejected,
-    ClaimRequest,
-    InternalApiClient,
-    InternalApiError,
-    SipAttributes,
-)
+from worker.internal_api import CallClosed, ClaimRejected, InternalApiClient, InternalApiError
 
 BASE = "http://api.test/v1/internal"
 CALL_ID = HARNESS_CALL_ID
@@ -36,7 +30,8 @@ RUNTIME: dict[str, Any] = {
     "heartbeat_interval_s": 10,
     "recording_enabled": False,
     "stt_resolved_model": "nova-3",
-    "controls": [{"path": "tts.speed", "min": 0.5, "max": 2.0, "step": 0.1}],
+    "controls": [{"path": "/tts/speed", "min": 0.5, "max": 2.0, "step": 0.1}],
+    "stt_auto_rules": {"deepgram": {"default": "nova-2", "languages": {"nova-2": ["en-US"]}}},
 }
 
 

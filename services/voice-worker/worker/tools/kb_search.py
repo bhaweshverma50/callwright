@@ -17,7 +17,6 @@ import httpx
 
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
-TOOL_NAME = "kb_search"
 TIMEOUT_S = 0.8
 TOP_K = 4
 MAX_CHARS = 4000

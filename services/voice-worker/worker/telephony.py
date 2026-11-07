@@ -21,8 +21,9 @@ import math
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, Literal, Protocol
 
+from callwright_contract.protocol import OutboundDial, SipAttributes
+
 from worker import telemetry
-from worker.internal_api import OutboundDial, SipAttributes
 
 # LiveKit SIP participant attribute names.
 SIP_ATTR_CALL_ID = "sip.callID"

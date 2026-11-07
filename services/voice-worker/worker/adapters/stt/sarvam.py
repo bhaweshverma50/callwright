@@ -21,5 +21,5 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
 
     language = sarvam_language(str(spec.options.get("language", "en-IN")))
     return sarvam.STT(
-        language=language, model=spec.model or "saarika:v2.5", api_key=creds.get("api_key", "")
+        language=language, model=spec.required_model, api_key=creds.get("api_key", "")
     )

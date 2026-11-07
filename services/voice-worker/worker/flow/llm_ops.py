@@ -17,7 +17,6 @@ CLASSIFY_TIMEOUT_S = 1.5
 EXTRACT_TIMEOUT_S = 8.0
 SUMMARY_TIMEOUT_S = 10.0
 GOODBYE_MAX_CHARS = 300
-STOCK_GOODBYE = "Thanks for calling. Goodbye."
 GOODBYE_SYSTEM = (
     "You are the voice agent on this phone call, and the call is ending now. Write only what you "
     "say as you hang up: one or two short spoken sentences that fit this conversation. If a "

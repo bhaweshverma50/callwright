@@ -8,6 +8,7 @@ import copy
 from typing import Any
 
 import pytest
+from callwright_contract.values import STOCK_GOODBYE
 
 from tests.flow_support import (
     FlowScript,
@@ -19,7 +20,7 @@ from tests.flow_support import (
 from tests.harness.runner import build_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.flow import runtime as flow_runtime
-from worker.flow.nodes.end import STOCK_END_MESSAGE, generates
+from worker.flow.nodes.end import generates
 from worker.flow.runtime import CallwrightFlowRunner
 from worker.pipeline import (
     CALLER_HAS_TO_GO,
@@ -104,7 +105,7 @@ def test_ending_rules_ask_before_hanging_up_on_a_busy_caller() -> None:
 
 def test_end_node_generates_only_without_a_line_of_its_own() -> None:
     assert generates({"end": {"message": ""}}) and generates({"end": {}})
-    assert generates({"end": {"message": f"  {STOCK_END_MESSAGE} "}})
+    assert generates({"end": {"message": f"  {STOCK_GOODBYE} "}})
     assert not generates({"end": {"message": "Thanks for calling Harbour Clinic. Bye!"}})
 
 
@@ -113,7 +114,7 @@ async def test_stock_end_message_becomes_a_goodbye_written_for_the_call() -> Non
     result = await run_flow_call(greeting_end(), script, ["Okay, that's all for now"])
     assert result.control.disconnect_reason == "agent_hangup"
     assert "We'll call you back in five minutes. Bye!" in result.replies
-    assert STOCK_END_MESSAGE not in result.replies
+    assert STOCK_GOODBYE not in result.replies
     (request,) = result.llm.goodbyes
     assert "Okay, that's all for now" in request.items[-1].text_content
 
@@ -137,7 +138,7 @@ async def test_custom_end_message_is_spoken_verbatim() -> None:
 async def test_failed_goodbye_falls_back_to_the_stock_line() -> None:
     script = FlowScript(rules=[WRAP_UP], goodbye=None)
     result = await run_flow_call(greeting_end(), script, ["that's all"])
-    assert STOCK_END_MESSAGE in result.replies
+    assert STOCK_GOODBYE in result.replies
     assert result.control.disconnect_reason == "agent_hangup"
 
 
@@ -146,7 +147,7 @@ async def test_slow_goodbye_falls_back_in_bounded_time(monkeypatch: pytest.Monke
     monkeypatch.setattr(flow_runtime, "GOODBYE_AFTER_PLAYOUT_S", 0.1)
     script = FlowScript(rules=[WRAP_UP], goodbye="Too late.", goodbye_delay_s=5.0)
     result = await run_flow_call(greeting_end(""), script, ["that's all"])
-    assert STOCK_END_MESSAGE in result.replies and "Too late." not in result.replies
+    assert STOCK_GOODBYE in result.replies and "Too late." not in result.replies
 
 
 async def test_no_second_goodbye_after_the_reply_said_one() -> None:
@@ -155,7 +156,7 @@ async def test_no_second_goodbye_after_the_reply_said_one() -> None:
     control = RecordingControl()
     call = flow_runtime.FlowCall(rt, control, plan, base_tools=build_call_tools(rt, control))
     call.reply_text = "Sure, I'll call you back in five minutes. Bye now!"
-    assert await call.closing_line(STOCK_END_MESSAGE) == ""
+    assert await call.closing_line(STOCK_GOODBYE) == ""
 
 
 class TalkingCaller(RecordingControl):

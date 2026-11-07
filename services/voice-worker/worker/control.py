@@ -11,8 +11,10 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
+from callwright_contract.protocol import MAX_TOOL_OUTPUT_CHARS
+from callwright_contract.values import KEYPAD_DIGITS
+
 from worker import telemetry
-from worker.call_behavior import DTMF_DIGITS
 from worker.metrics import EventRecorder
 from worker.pipeline import OverrideManager
 from worker.tools import OverrideResult, SegmentOverrides, ToolActivity
@@ -81,7 +83,7 @@ class RuntimeCallControl:
         await self._backend.speak(text, allow_interruptions)
 
     async def send_dtmf(self, digits: str) -> None:
-        if not digits or any(d not in DTMF_DIGITS for d in digits):
+        if not digits or any(d not in KEYPAD_DIGITS for d in digits):
             raise ValueError(f"invalid keypad digits {digits!r}")
         self._recorder.dtmf(digits, "sent")
         await self._backend.send_dtmf(digits)
@@ -121,7 +123,7 @@ class RuntimeCallControl:
             result: dict[str, Any] = {
                 "type": "tool_result",
                 "name": activity.name,
-                "output": activity.output[:8192],
+                "output": activity.output[:MAX_TOOL_OUTPUT_CHARS],
                 "is_error": activity.is_error,
             }
             if source:

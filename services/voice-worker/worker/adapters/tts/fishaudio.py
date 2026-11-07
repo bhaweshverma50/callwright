@@ -24,7 +24,7 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
 
     kwargs: dict[str, Any] = {
         "api_key": creds.get("api_key", ""),
-        "model": spec.model or "s2.1-pro",
+        "model": spec.required_model,
         "speed": opt_float(spec.options, "speed", 1.0),
         "volume": opt_float(spec.options, "volume", 1.0),
         "temperature": temperature_for(opt_float(spec.options, "expressiveness", 0.9)),

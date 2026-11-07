@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict, runtime_checkable
 
 if TYPE_CHECKING:
-    from worker.internal_api import RuntimeConfig
+    from callwright_contract.protocol import RuntimeConfig
 
 
 class LlmOverride(TypedDict, total=False):

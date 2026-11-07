@@ -133,9 +133,19 @@ async def test_fake_internal_api_claims_and_checks_events() -> None:
             assert body["admitted"] and body["call_id"] == "call_x"
             assert body["runtime"]["config"]["stt"]["provider"] == "deepgram"
             events = [
-                {"seq": 1, "type": "status", "occurred_at": "t", "status": "in_progress"},
-                {"seq": 1, "type": "bogus", "occurred_at": "t"},
-                {"seq": 3, "type": "status", "occurred_at": "t", "status": "ended"},
+                {
+                    "seq": 1,
+                    "type": "status",
+                    "occurred_at": "2026-10-16T12:00:00Z",
+                    "status": "in_progress",
+                },
+                {"seq": 1, "type": "bogus", "occurred_at": "2026-10-16T12:00:00Z"},
+                {
+                    "seq": 3,
+                    "type": "status",
+                    "occurred_at": "2026-10-16T12:00:00Z",
+                    "status": "ended",
+                },
             ]
             ok = await http.post(
                 f"{url}/calls/call_x/events", headers=headers, json={"events": events}

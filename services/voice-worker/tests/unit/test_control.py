@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import pytest
+from callwright_contract.protocol import ControlRange
 
 from tests.unit.conftest import make_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.control import RuntimeCallControl
-from worker.internal_api import ControlRange
 from worker.metrics import EventRecorder
 from worker.pipeline import OverrideManager, clamp_value, plan_session
 from worker.tools import (
@@ -39,9 +39,16 @@ def make_control(
     controls: list[ControlRange] | None = None, **config: object
 ) -> tuple[RuntimeCallControl, Backend, EventRecorder, OverrideManager]:
     registry = AdapterRegistry()
-    plan = plan_session(make_runtime(dict(config)), registry)
+    runtime = make_runtime(dict(config))
+    plan = plan_session(runtime, registry)
     recorder = EventRecorder()
-    manager = OverrideManager(plan, registry, controls, on_system_event=recorder.system)
+    manager = OverrideManager(
+        plan,
+        registry,
+        runtime.controls if controls is None else controls,
+        runtime.stt_auto_rules,
+        on_system_event=recorder.system,
+    )
     backend = Backend()
     return (
         RuntimeCallControl("call_x", recorder, backend, overrides=manager),
@@ -99,12 +106,12 @@ async def test_report_tool_and_transition() -> None:
 
 
 def test_clamp_value_snaps_to_step() -> None:
-    table = {"tts.speed": (0.5, 2.0, 0.1)}
-    assert clamp_value("tts.speed", 3.0, table) == (2.0, True)
-    assert clamp_value("tts.speed", 0.1, table) == (0.5, True)
-    assert clamp_value("tts.speed", 1.2, table) == (1.2, False)
-    assert clamp_value("tts.speed", 1.23, table) == (1.2, True)
-    assert clamp_value("llm.temperature", 9.0, table) == (9.0, False)
+    table = [ControlRange(path="/tts/speed", min=0.5, max=2.0, step=0.1)]
+    assert clamp_value("/tts/speed", 3.0, table) == (2.0, True)
+    assert clamp_value("/tts/speed", 0.1, table) == (0.5, True)
+    assert clamp_value("/tts/speed", 1.2, table) == (1.2, False)
+    assert clamp_value("/tts/speed", 1.23, table) == (1.2, True)
+    assert clamp_value("/llm/temperature", 9.0, table) == (9.0, False)
 
 
 async def test_overrides_clamp_and_apply_at_turn_boundary() -> None:
@@ -127,7 +134,7 @@ async def test_overrides_clamp_and_apply_at_turn_boundary() -> None:
 
 async def test_runtime_controls_table_wins() -> None:
     control, _, _, _ = make_control(
-        controls=[ControlRange(path="tts.speed", min=0.8, max=1.2, step=0.1)]
+        controls=[ControlRange(path="/tts/speed", min=0.8, max=1.2, step=0.1)]
     )
     result = await control.apply_overrides({"tts": {"speed": 1.5}})
     assert result.clamped[0].applied == 1.2

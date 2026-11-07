@@ -14,7 +14,7 @@ ENHANCER_MODELS = {"standard": "QUAIL_L"}
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import ai_coustics
 
-    model = getattr(ai_coustics.EnhancerModel, ENHANCER_MODELS[spec.model or "standard"])
+    model = getattr(ai_coustics.EnhancerModel, ENHANCER_MODELS[spec.required_model])
     kwargs: dict[str, Any] = {"model": model}
     license_key = creds.get("api_key")
     if license_key:

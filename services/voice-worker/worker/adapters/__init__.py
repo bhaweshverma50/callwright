@@ -2,20 +2,16 @@
 
 from worker.adapters.registry import (
     AdapterRegistry,
-    CatalogEntry,
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorNotConfigured,
     VendorSpec,
-    load_catalog,
 )
 
 __all__ = [
     "AdapterRegistry",
-    "CatalogEntry",
     "UnsupportedLanguage",
     "UnsupportedVendor",
     "VendorNotConfigured",
     "VendorSpec",
-    "load_catalog",
 ]

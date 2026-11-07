@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
+from callwright_contract.protocol import ClaimRequest
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -19,7 +20,7 @@ from tests.harness.script_schema import Script
 from tests.unit.conftest import make_runtime
 from worker import entry, telemetry
 from worker.control import RuntimeCallControl
-from worker.internal_api import CallClosed, ClaimRequest, InternalApiClient
+from worker.internal_api import CallClosed, InternalApiClient
 from worker.metrics import EventRecorder, TurnRecord
 from worker.settings import WorkerSettings
 from worker.tools import ToolActivity

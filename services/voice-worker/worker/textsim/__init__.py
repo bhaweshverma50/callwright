@@ -5,9 +5,8 @@ Simulated conversations run through the same session code as live calls (``pipel
 STT and TTS. The API owns all state; this package fetches run specs, drives the conversation
 and posts events and results back over the internal API.
 
-- ``entry``: the arq consumer (queue :data:`QUEUE_NAME`, jobs ``run_single_turn`` and
-  ``run_simulation``), started with ``WORKER_ROLE=textsim`` (``python -m worker.entry``) or
-  ``python -m worker.textsim.entry``.
+- ``entry``: the arq consumer (the contract's ``TEXTSIM_QUEUE`` and its two jobs), started
+  with ``WORKER_ROLE=textsim`` (``python -m worker.entry``) or ``python -m worker.textsim.entry``.
 - ``runner``: the text session and the two job flows (single-turn test case, simulation).
 - ``replay_caller`` and ``persona_caller``: who speaks for the caller (R5, R6).
 - ``mock_tools``: how HTTP tools and webhook nodes answer without network (R4).
@@ -18,5 +17,4 @@ and posts events and results back over the internal API.
 
 from __future__ import annotations
 
-QUEUE_NAME = "arq:textsim"
 ANSWER_SOURCES = ("mock", "recorded", "synthesized", "error")

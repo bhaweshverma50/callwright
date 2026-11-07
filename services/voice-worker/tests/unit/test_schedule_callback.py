@@ -11,7 +11,7 @@ import httpx
 
 from tests.unit.tool_support import make
 from worker.tools.registry import BUILTIN_SCHEDULE_CALLBACK, function_schema
-from worker.tools.schedule_callback import local_now, simulated, spoken_time
+from worker.tools.schedule_callback import local_now, simulated
 
 
 def recording(seen: list[httpx.Request]) -> Any:
@@ -99,7 +99,7 @@ async def test_browser_calls_are_refused_without_a_request() -> None:
     payload = json.loads(
         await h.tools.dispatch("schedule_callback", {"in_minutes": 30, "note": "x"})
     )
-    assert payload["error"] == "unsupported_channel" and "phone calls" in payload["message"]
+    assert payload["error"] == "channel_unsupported" and "phone calls" in payload["message"]
     assert seen == []
 
 
@@ -117,7 +117,6 @@ def test_simulated_reads_local_times_in_the_call_zone() -> None:
     variables: dict[str, Any] = {"current_datetime": "2026-11-03T14:05+05:30"}
     now = local_now(variables, datetime(2026, 11, 3, 8, 35, tzinfo=UTC))
     assert now.isoformat() == "2026-11-03T14:05:00+05:30"
-    assert spoken_time(now.replace(hour=17, minute=0), now) == "today at 5:00 pm"
     result = simulated({"at": "2099-01-01T09:00", "note": ""}, variables)
     assert not result.is_error and result.mocked and "9:00 am" in result.llm_payload
     past = simulated({"at": "2001-01-01T09:00"}, variables)

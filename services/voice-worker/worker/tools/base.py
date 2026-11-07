@@ -16,9 +16,11 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from callwright_contract import http_core
+from callwright_contract.calls import PHONE_CHANNELS
+
 from worker.tools import CallControl
 
-SIP_CHANNELS = frozenset({"sip_inbound", "sip_outbound"})
 Say = Callable[[str], Awaitable[None]]
 
 
@@ -74,7 +76,7 @@ class ToolContext:
 
     @property
     def is_sip(self) -> bool:
-        return self.channel in SIP_CHANNELS
+        return self.channel in PHONE_CHANNELS
 
     async def speak(self, text: str) -> None:
         if self.say is not None:
@@ -94,9 +96,7 @@ class ToolResult:
 
     @classmethod
     def error(cls, code: str, message: str, **extra: Any) -> ToolResult:
-        import json
-
-        payload = json.dumps({"error": code, "message": message}, separators=(",", ":"))
+        payload = http_core.error_payload(code, message, extra.get("http_status"))
         return cls(llm_payload=payload, is_error=True, error_code=code, extra=extra)
 
 

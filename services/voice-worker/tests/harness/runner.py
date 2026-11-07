@@ -40,11 +40,15 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from callwright_contract.adapters import Kind
+from callwright_contract.protocol import RuntimeConfig
+from callwright_contract.variables import BUILTIN_VARIABLES
+
 from tests.harness.bench.synth import segments
 from tests.harness.clock import VirtualClock, VirtualTimer
 from tests.harness.fakes import FakeEventSink, FakeLLM, FakeSTT, FakeTTS, fake_registry
 from tests.harness.script_schema import Script, Step, load_script
-from worker.adapters.registry import AdapterRegistry, Kind, VendorSpec
+from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.audio import BackgroundAudioSpec, PronunciationTransform
 from worker.call_behavior import (
     VAD_MIN_SILENCE_S,
@@ -56,7 +60,7 @@ from worker.call_behavior import (
     VoicemailHandler,
 )
 from worker.control import RuntimeCallControl
-from worker.internal_api import RuntimeConfig
+from worker.entry import SYSTEM_EVENT_FOR_REASON
 from worker.metrics import EventPoster, EventRecorder, LatencyTracker, TurnRecord, UsageMeters
 from worker.pipeline import (
     OverrideManager,
@@ -72,16 +76,11 @@ from worker.turn_detection import ends_with_digit_string
 
 HARNESS_DIR = Path(__file__).parent
 DEFAULT_CONFIG = HARNESS_DIR / "configs" / "default_agent.json"
+CLAIM_TABLES = HARNESS_DIR / "configs" / "claim_tables.json"
 SCRIPTS_DIR = HARNESS_DIR / "scripts"
 CALL_ID = "call_" + "01JA0HARNESS".ljust(26, "0")
 EPOCH = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
 WORDS_PER_SECOND = 2.6
-SYSTEM_EVENT_FOR_REASON = {
-    "inactivity": "silence_timeout",
-    "max_duration_reached": "max_duration",
-    "insufficient_credit": "credit_exhausted",
-    "voicemail_reached": "voicemail_detected",
-}
 
 
 def deep_merge(base: Mapping[str, Any], over: Mapping[str, Any]) -> dict[str, Any]:
@@ -110,18 +109,24 @@ def default_variables(config: Mapping[str, Any], channel: str) -> dict[str, str]
         for v in config.get("dynamic_variables") or []
         if v.get("name")
     }
-    values.update(
-        {
-            "call_id": CALL_ID,
-            "channel": channel,
-            "direction": "inbound",
-            "timezone": "UTC",
-            "current_date": EPOCH.date().isoformat(),
-            "current_time": EPOCH.time().isoformat(timespec="minutes"),
-            "current_datetime": EPOCH.isoformat(),
-        }
-    )
+    known = {
+        "call_id": CALL_ID,
+        "channel": channel,
+        "direction": "inbound",
+        "timezone": "UTC",
+        "current_date": EPOCH.date().isoformat(),
+        "current_time": EPOCH.time().isoformat(timespec="minutes"),
+        "current_datetime": EPOCH.isoformat(),
+    }
+    values.update({name: known.get(name, "") for name in BUILTIN_VARIABLES})
     return values
+
+
+def claim_tables() -> dict[str, Any]:
+    """The control ranges and STT Auto rules the API sends in every claim (written by the API's
+    ``tests/unit/test_worker_claim_fixture.py``)."""
+    tables: dict[str, Any] = json.loads(CLAIM_TABLES.read_text())
+    return tables
 
 
 def build_runtime(config: Mapping[str, Any], overrides: Mapping[str, Any]) -> RuntimeConfig:
@@ -138,11 +143,11 @@ def build_runtime(config: Mapping[str, Any], overrides: Mapping[str, Any]) -> Ru
         "config": dict(config),
         "variables": variables,
         "limits": {
-            "end_on_silence_s": cb.get("end_on_silence_s", 30),
-            "max_duration_s": cb.get("max_duration_s", 600),
-            "ring_duration_ms": cb.get("ring_duration_ms", 5000),
+            "end_on_silence_s": cb["end_on_silence_s"],
+            "max_duration_s": cb["max_duration_s"],
+            "ring_duration_ms": cb["ring_duration_ms"],
         },
-        "heartbeat_interval_s": 10,
+        **claim_tables(),
         "recording_enabled": True,
     }
     raw.update({k: v for k, v in overrides.items() if k not in ("variables", "channel")})
@@ -297,7 +302,11 @@ class HarnessCall:
             before_flush=self._update_time_meters,
         )
         self.overrides = OverrideManager(
-            self.plan, self.registry, self.runtime.controls, on_system_event=self.recorder.system
+            self.plan,
+            self.registry,
+            self.runtime.controls,
+            self.runtime.stt_auto_rules,
+            on_system_event=self.recorder.system,
         )
         self.control = RuntimeCallControl(CALL_ID, self.recorder, self, overrides=self.overrides)
         # 005: tools from the snapshot run through the real dispatch path (no telephony, no

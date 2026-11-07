@@ -1,0 +1,203 @@
+{
+  "controls": [
+    {
+      "max": 2.0,
+      "min": 0.5,
+      "path": "/tts/speed",
+      "step": 0.1
+    },
+    {
+      "max": 2.0,
+      "min": 0.0,
+      "path": "/tts/expressiveness",
+      "step": 0.1
+    },
+    {
+      "max": 2.0,
+      "min": 0.0,
+      "path": "/tts/volume",
+      "step": 0.05
+    },
+    {
+      "max": 300.0,
+      "min": 10.0,
+      "path": "/call_behavior/end_on_silence_s",
+      "step": 10.0
+    },
+    {
+      "max": 3600.0,
+      "min": 30.0,
+      "path": "/call_behavior/max_duration_s",
+      "step": 30.0
+    },
+    {
+      "max": 30000.0,
+      "min": 0.0,
+      "path": "/call_behavior/ring_duration_ms",
+      "step": 500.0
+    },
+    {
+      "max": 1.0,
+      "min": 0.0,
+      "path": "/call_behavior/interruption_sensitivity",
+      "step": 0.05
+    },
+    {
+      "max": 1.0,
+      "min": 0.0,
+      "path": "/call_behavior/responsiveness",
+      "step": 0.05
+    },
+    {
+      "max": 30000.0,
+      "min": 1000.0,
+      "path": "/advanced/webhook_timeout_ms",
+      "step": 500.0
+    },
+    {
+      "max": 10000.0,
+      "min": 1000.0,
+      "path": "/advanced/dtmf/timeout_ms",
+      "step": 500.0
+    },
+    {
+      "max": 3.0,
+      "min": 0.0,
+      "path": "/advanced/background_audio/volume",
+      "step": 0.05
+    }
+  ],
+  "stt_auto_rules": {
+    "assemblyai": {
+      "by_language": {
+        "de": "universal-streaming-multilingual",
+        "es": "universal-streaming-multilingual",
+        "fr": "universal-streaming-multilingual",
+        "it": "universal-streaming-multilingual",
+        "pt": "universal-streaming-multilingual"
+      },
+      "default": "universal-streaming",
+      "languages": {
+        "universal-streaming": [
+          "en",
+          "en-US",
+          "en-GB",
+          "en-AU",
+          "en-IN",
+          "en-NZ"
+        ],
+        "universal-streaming-multilingual": [
+          "es",
+          "es-419",
+          "fr",
+          "fr-CA",
+          "de",
+          "it",
+          "pt",
+          "pt-BR"
+        ]
+      }
+    },
+    "deepgram": {
+      "by_language": {
+        "ar": "nova-3",
+        "en": "nova-3",
+        "he": "nova-3",
+        "multi": "nova-3",
+        "taq": "nova-3",
+        "ur": "nova-3"
+      },
+      "default": "nova-2",
+      "languages": {
+        "flux-general-en": [
+          "en",
+          "en-US",
+          "en-GB",
+          "en-AU",
+          "en-IN",
+          "en-NZ"
+        ],
+        "nova-2": [
+          "en",
+          "en-US",
+          "en-GB",
+          "en-AU",
+          "en-IN",
+          "en-NZ",
+          "zh",
+          "zh-CN",
+          "zh-TW",
+          "da",
+          "nl",
+          "fr",
+          "fr-CA",
+          "de",
+          "hi",
+          "id",
+          "it",
+          "ja",
+          "ko",
+          "ms",
+          "no",
+          "pl",
+          "pt",
+          "pt-BR",
+          "ru",
+          "es",
+          "es-419",
+          "sv",
+          "th",
+          "tr",
+          "uk"
+        ],
+        "nova-3": [
+          "multi",
+          "en",
+          "en-US",
+          "en-GB",
+          "en-AU",
+          "en-IN",
+          "en-NZ",
+          "ar",
+          "he",
+          "ur",
+          "taq"
+        ]
+      }
+    },
+    "sarvam": {
+      "by_language": {},
+      "default": "saarika:v2.5",
+      "languages": {
+        "saaras:v3": [
+          "hi",
+          "hi-Latn",
+          "bn",
+          "gu",
+          "kn",
+          "ml",
+          "mr",
+          "or",
+          "pa",
+          "ta",
+          "te",
+          "en-IN"
+        ],
+        "saarika:v2.5": [
+          "hi",
+          "hi-Latn",
+          "bn",
+          "gu",
+          "kn",
+          "ml",
+          "mr",
+          "or",
+          "pa",
+          "ta",
+          "te",
+          "en-IN"
+        ]
+      }
+    }
+  }
+}

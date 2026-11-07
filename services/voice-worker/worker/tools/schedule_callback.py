@@ -15,15 +15,18 @@ from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import httpx
+from callwright_contract.values import (
+    CALLBACK_MAX_IN_MINUTES,
+    CALLBACK_MAX_NOTE_CHARS,
+    CALLBACK_NOT_A_PHONE_CALL,
+    CHANNEL_UNSUPPORTED,
+    spoken_time,
+)
 
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 TOOL_TYPE = "schedule_callback"
 TIMEOUT_S = 5.0
-NOT_A_PHONE_CALL = (
-    "Callbacks can only be booked on phone calls. Tell the caller you cannot book a callback on "
-    "this call."
-)
 UNAVAILABLE = (
     "The callback could not be booked right now. Tell the caller you could not book it and do "
     "not promise a callback."
@@ -43,14 +46,14 @@ PARAMETERS: dict[str, Any] = {
         "in_minutes": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 43200,
+            "maximum": CALLBACK_MAX_IN_MINUTES,
             "description": (
                 "Instead of at, for relative times: minutes from now (60 for 'in an hour')."
             ),
         },
         "note": {
             "type": "string",
-            "maxLength": 500,
+            "maxLength": CALLBACK_MAX_NOTE_CHARS,
             "description": "One sentence: why to call back and what to continue on the callback.",
         },
     },
@@ -68,17 +71,6 @@ def local_now(variables: Mapping[str, Any], now: datetime | None = None) -> date
     except ValueError:
         offset = None
     return now.astimezone(timezone(offset) if offset is not None else UTC)
-
-
-def spoken_time(local: datetime, now_local: datetime) -> str:
-    """Same wording as the API (``app.callbacks.service.spoken_time``)."""
-    clock = f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
-    day = f"{local.strftime('%A')} {local.day} {local.strftime('%B')}"
-    if local.date() == now_local.date():
-        return f"today at {clock}"
-    if local.date() == now_local.date() + timedelta(days=1):
-        return f"tomorrow, {day}, at {clock}"
-    return f"{day} at {clock}"
 
 
 def _confirmation(spoken: str) -> str:
@@ -136,10 +128,10 @@ class ScheduleCallbackExecutor:
         if ctx.simulation:
             return simulated(arguments, ctx.dynamic_variables)
         if not ctx.is_sip:
-            return ToolResult.error("unsupported_channel", NOT_A_PHONE_CALL)
+            return ToolResult.error(CHANNEL_UNSUPPORTED, CALLBACK_NOT_A_PHONE_CALL)
         if self.client is None:
             return ToolResult.error("unavailable", UNAVAILABLE)
-        body: dict[str, Any] = {"note": str(arguments.get("note") or "")[:500]}
+        body: dict[str, Any] = {"note": str(arguments.get("note") or "")[:CALLBACK_MAX_NOTE_CHARS]}
         if arguments.get("in_minutes") is not None:
             body["in_minutes"] = int(arguments["in_minutes"])
         else:

@@ -1,7 +1,8 @@
 """HTTP tool executor on calls (005 T047, research R4 to R7).
 
-The request is built by ``http_core`` (shared vectors with the API), sent to the vetted address
-with one keep-alive client per call, never retried, and read up to 64 KB. Mapped response values
+The request is built by the contract's ``http_core`` (shared with the API's editor test runs),
+sent to the address the contract's URL guard vetted with one keep-alive client per call, never
+retried, and read up to 64 KB. Mapped response values
 go into the call's variable store for later tools. When the request is still running after
 400 ms and nothing was said yet in this reply, the waiting line is spoken once without entering
 the LLM context; the agent's spoken filler (pipeline ``llm_node``) usually covers it first.
@@ -17,13 +18,12 @@ from typing import Any
 from urllib.parse import urljoin
 
 import httpx
+from callwright_contract import http_core, url_guard
+from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE
 
-from worker.tools import guard, http_core
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 WAITING_LINE_AFTER_S = 0.4
-MAX_REDIRECTS = 3
-REDIRECTS = frozenset({301, 302, 303, 307, 308})
 
 
 class HttpExecutor:
@@ -32,7 +32,7 @@ class HttpExecutor:
         client: httpx.AsyncClient,
         *,
         allow_http: bool = False,
-        resolver: guard.Resolver | None = None,
+        resolver: url_guard.Resolver | None = None,
         waiting_after_s: float = WAITING_LINE_AFTER_S,
     ) -> None:
         self.client = client
@@ -60,7 +60,7 @@ class HttpExecutor:
             if ctx.reply_spoke():
                 return
             spoke = True
-            await ctx.speak(str(config.get("execution_message") or "One moment."))
+            await ctx.speak(str(config.get("execution_message") or DEFAULT_EXECUTION_MESSAGE))
 
         waiter = (
             asyncio.create_task(waiting_line())
@@ -85,20 +85,22 @@ class HttpExecutor:
     async def _send(
         self, prepared: http_core.PreparedRequest, config: Mapping[str, Any]
     ) -> ToolResult:
-        timeout_s = int(config.get("timeout_ms") or 8000) / 1000
+        timeout_s = http_core.timeout_s(config)
         deadline = time.perf_counter() + timeout_s
         method, url, content = prepared.method, prepared.url, prepared.content()
         try:
-            for hop in range(MAX_REDIRECTS + 1):
-                target = await guard.check(url, allow_http=self.allow_http, resolver=self.resolver)
-                headers = {**prepared.headers, "Host": target.host_header()}
+            for hop in range(http_core.MAX_REDIRECTS + 1):
+                target = await url_guard.check_url(
+                    url, allow_http=self.allow_http, resolver=self.resolver
+                )
+                headers = {**prepared.headers, "Host": url_guard.host_header(target)}
                 remaining = max(0.05, deadline - time.perf_counter())
                 extensions: dict[str, Any] = {"timeout": httpx.Timeout(remaining).as_dict()}
                 if target.scheme == "https":
                     extensions["sni_hostname"] = target.host
                 request = self.client.build_request(
                     method,
-                    target.pinned_url(),
+                    url_guard.pinned_url(target, target.addresses[0]),
                     content=content,
                     headers=headers,
                     extensions=extensions,
@@ -107,28 +109,27 @@ class HttpExecutor:
                     self.client.send(request, stream=True, follow_redirects=False), remaining
                 )
                 location = response.headers.get("location")
-                if response.status_code in REDIRECTS and location and hop < MAX_REDIRECTS:
+                if (
+                    response.status_code in http_core.REDIRECT_STATUSES
+                    and location
+                    and hop < http_core.MAX_REDIRECTS
+                ):
                     await response.aclose()
                     url = urljoin(url, location)
-                    if response.status_code == 303 or (
-                        response.status_code in (301, 302) and method not in ("GET", "DELETE")
-                    ):
-                        method, content = "GET", None
+                    method, content = http_core.redirected(response.status_code, method, content)
                     continue
                 try:
                     body, too_large = await asyncio.wait_for(
-                        _read_capped(response), max(0.05, deadline - time.perf_counter())
+                        http_core.read_capped(response.aiter_bytes()),
+                        max(0.05, deadline - time.perf_counter()),
                     )
                 finally:
                     await response.aclose()
                 break
-        except guard.Blocked as exc:
-            code = (
-                "blocked_address"
-                if exc.reason in ("private_address", "https_required")
-                else ("connection_error")
+        except url_guard.UrlNotAllowed as exc:
+            return ToolResult.error(
+                http_core.blocked_error_code(exc.reason), "The request could not be sent."
             )
-            return ToolResult.error(code, "The request could not be sent.")
         except (TimeoutError, httpx.TimeoutException):
             return ToolResult.error("timeout", f"No answer within {timeout_s:g} seconds.")
         except httpx.HTTPError:
@@ -153,12 +154,3 @@ class HttpExecutor:
             output=payload,
             extra={"http_status": status, "mapped_variables": mapped, "missing_paths": missing},
         )
-
-
-async def _read_capped(response: httpx.Response) -> tuple[bytes, bool]:
-    data = bytearray()
-    async for chunk in response.aiter_bytes():
-        data.extend(chunk)
-        if len(data) > http_core.MAX_RESPONSE_BYTES:
-            return bytes(data[: http_core.MAX_RESPONSE_BYTES]), True
-    return bytes(data), False

@@ -21,8 +21,6 @@ from typing import Any
 
 from worker.adapters.registry import VendorNotConfigured, VendorSpec
 
-DEFAULT_MODEL = "claude-haiku-5-5"
-
 # Request fields per model family that keep thinking off (first matching prefix wins).
 THINKING_OFF: tuple[tuple[str, Mapping[str, Any]], ...] = (
     ("claude-sonnet-5", {"type": "between_tools"}),
@@ -61,7 +59,7 @@ def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins.anthropic import llm as plugin_llm
 
     _disable_prefill(plugin_llm)
-    model = spec.model or DEFAULT_MODEL
+    model = spec.required_model
     thinking = thinking_for(model)
     extra_body: dict[str, Any] = {"thinking": dict(thinking)} if thinking else {}
 

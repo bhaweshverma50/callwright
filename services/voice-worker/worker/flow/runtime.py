@@ -23,6 +23,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from callwright_contract.values import SCHEDULE_CALLBACK_TOOL, SET_LANGUAGE_TOOL, STOCK_GOODBYE
 
 from worker.adapters.registry import (
     AdapterRegistry,
@@ -47,7 +48,8 @@ from worker.tools.http import HttpExecutor
 from worker.tools.registry import CallTools, FillerPolicy, filler_texts, simulated_http
 
 if TYPE_CHECKING:
-    from worker.internal_api import RuntimeConfig
+    from callwright_contract.protocol import RuntimeConfig
+
     from worker.pipeline import SessionPlan
 
 log = logging.getLogger("callwright.flow")
@@ -87,7 +89,7 @@ def call_opening(config: Mapping[str, Any], variables: Mapping[str, Any]) -> Ope
 # Built-in tools of the call (005's registry) that every conversational node gets: booking a
 # callback (011) and, when the claim offers more than one language, switching language (012).
 # end_call is not one of them: a flow ends through its own routing (End nodes, end_call tools).
-NODE_BUILTINS = frozenset({"schedule_callback", "set_language"})
+NODE_BUILTINS = frozenset({SCHEDULE_CALLBACK_TOOL, SET_LANGUAGE_TOOL})
 
 
 def node_tools(base: CallTools, node: Mapping[str, Any]) -> CallTools:
@@ -392,7 +394,7 @@ class FlowCall:
         for item in reversed(items):
             if getattr(item, "type", None) != "function_call_output":
                 continue
-            if getattr(item, "name", None) != "schedule_callback":
+            if getattr(item, "name", None) != SCHEDULE_CALLBACK_TOOL:
                 continue
             with contextlib.suppress(ValueError, TypeError):
                 answer = json.loads(str(getattr(item, "output", "") or ""))
@@ -409,7 +411,7 @@ class FlowCall:
         """The generated goodbye (``start_goodbye``), said after the current reply. Empty when
         that reply already said goodbye; the configured text (else the stock line) when the
         model fails, answers nothing or is not back in time."""
-        fallback = configured or llm_ops.STOCK_GOODBYE
+        fallback = configured or STOCK_GOODBYE
         self.start_goodbye()
         task, started = self._goodbye, self._goodbye_started
         self._goodbye = None
@@ -532,7 +534,12 @@ class FlowCall:
             if tts != self.plan.tts:
                 out["tts"] = self.components.build(tts)
                 out["_tts_spec"] = tts
-            stt, _ = resolve_stt({"stt": node.get("stt") or {}}, registry, language=language)
+            stt, _ = resolve_stt(
+                {"stt": node.get("stt") or {}},
+                registry,
+                self.runtime.stt_auto_rules,
+                language=language,
+            )
             if stt != self.plan.stt:
                 out["stt"] = self.components.build(stt)
         except (UnsupportedVendor, UnsupportedLanguage) as exc:

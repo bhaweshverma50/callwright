@@ -16,7 +16,9 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from worker.textsim.conversation import Conversation, EndReason, Outcome, agent_end_reason
+from callwright_contract.values import SimulationEndReason
+
+from worker.textsim.conversation import Conversation, Outcome, agent_end_reason
 from worker.textsim.llm import complete
 
 HANG_UP = "hang_up"
@@ -130,7 +132,7 @@ class PersonaCaller:
         opening = await conversation.start()
         transcript += [("agent", t) for t in opening.texts]
         turns = 0
-        end: EndReason | None = None
+        end: SimulationEndReason | None = None
         while conversation.disconnect_reason is None:
             if turns >= self.max_turns:
                 end = "turn_limit_reached"

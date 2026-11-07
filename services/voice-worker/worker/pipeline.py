@@ -18,14 +18,15 @@ clamped to the shared ``controls`` table at once and applied at the next turn bo
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
+from callwright_contract.adapters import Kind
+from callwright_contract.variables import CALLBACK_NOTE, render
+
 from worker.adapters.registry import (
     AdapterRegistry,
-    Kind,
     UnsupportedLanguage,
     UnsupportedVendor,
     VendorSpec,
@@ -52,27 +53,12 @@ from worker.tools import (
 )
 
 if TYPE_CHECKING:
-    from worker.internal_api import ControlRange, RuntimeConfig
+    from callwright_contract.protocol import ControlRange, RuntimeConfig, SttAuto
 
-# --------------------------------------------------------------------------------------------
-# Defaults (002 data-model section 4) used when a config predates a field
-
-DEFAULT_LANGUAGE = "en-US"
-DEFAULT_LLM = ("azure_openai", "gpt-5.1")
-DEFAULT_STT_PROVIDER = "deepgram"
-DEFAULT_TTS_PROVIDER = "elevenlabs"
-DEFAULT_NC: Mapping[str, str] = {"provider": "sanas", "model": "vi"}
 GENERATED_GREETING_INSTRUCTION = (
     "Open the call with one short, friendly sentence that fits your instructions, then wait "
     "for the caller."
 )
-
-# 002 data-model 8.6: the shared range table. The claim's ``controls`` wins when present.
-DEFAULT_CONTROLS: Mapping[str, tuple[float, float, float]] = {
-    "tts.speed": (0.5, 2.0, 0.1),
-    "tts.expressiveness": (0.0, 2.0, 0.1),
-    "tts.volume": (0.0, 2.0, 0.05),
-}
 
 # Appended to every single-prompt agent. Speech starts once the first sentence is complete, so
 # a short opening sentence is heard sooner; markup is read out literally by TTS.
@@ -152,8 +138,8 @@ def callback_instructions(
         f"({zone}, {now.isoformat(timespec='minutes')}).",
         CALLBACK_INSTRUCTION.format(close=FLOW_CALLBACK_CLOSE if flow else CALLBACK_CLOSE),
     ]
-    if direction == "outbound" and "callback_note" in variables:
-        note = str(variables.get("callback_note") or "").strip()
+    if direction == "outbound" and CALLBACK_NOTE in variables:
+        note = str(variables.get(CALLBACK_NOTE) or "").strip()
         if note and note[-1] not in ".!?":
             note += "."
         parts.append(
@@ -171,18 +157,6 @@ def builtin_instructions(runtime: RuntimeConfig, *, flow: bool = False) -> str:
     options = runtime.language_options
     switching = set_language_instruction(options) if len(options) > 1 else ""
     return "\n\n".join(p for p in (callback, switching) if p)
-
-
-PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
-
-
-def render_template(text: str, variables: Mapping[str, str]) -> str:
-    """Replace ``{{name}}`` placeholders; whitespace inside the braces is tolerated (002).
-
-    The API resolves variables in order call value, agent default, empty (FR-005); a name the
-    worker does not know renders empty, never as the raw placeholder.
-    """
-    return PLACEHOLDER.sub(lambda m: str(variables.get(m.group(1), "")), text)
 
 
 # --------------------------------------------------------------------------------------------
@@ -233,20 +207,30 @@ def _section(config: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+def auto_stt(rules: Mapping[str, SttAuto], provider: str, language: str) -> str:
+    """The model speech recognition Auto runs, from the claim's table (the API's rule, FR-045)."""
+    rule = rules.get(provider)
+    model = rule.resolve(language) if rule is not None else None
+    if model is None:
+        raise UnsupportedLanguage(provider, language)
+    return model
+
+
 def resolve_stt(
     config: Mapping[str, Any],
     registry: AdapterRegistry,
+    stt_auto_rules: Mapping[str, SttAuto],
     *,
     language: str,
     resolved_model: str | None = None,
 ) -> tuple[VendorSpec, bool]:
     """STT spec with Auto (``model: null``) resolved for the language (FR-045)."""
     raw = _section(config, "stt")
-    provider = str(raw.get("provider") or DEFAULT_STT_PROVIDER)
+    provider = registry.normalize_provider("stt", str(raw.get("provider") or ""))
     model = raw.get("model")
     auto = model in (None, "")
     if auto:
-        model = resolved_model or registry.resolve_auto_stt(provider, language)
+        model = resolved_model or auto_stt(stt_auto_rules, provider, language)
     spec = registry.check(VendorSpec("stt", provider, str(model), {"language": language}))
     return spec, auto
 
@@ -256,21 +240,17 @@ def resolve_llm(config: Mapping[str, Any], registry: AdapterRegistry) -> VendorS
     options: dict[str, Any] = {}
     if raw.get("temperature") is not None:
         options["temperature"] = float(raw["temperature"])
-    return registry.check(
-        VendorSpec(
-            "llm",
-            str(raw.get("provider") or DEFAULT_LLM[0]),
-            str(raw.get("model") or DEFAULT_LLM[1]),
-            options,
-        )
-    )
+    provider, model = str(raw.get("provider") or ""), raw.get("model")
+    if not model:
+        raise UnsupportedVendor("llm", provider)
+    return registry.check(VendorSpec("llm", provider, str(model), options))
 
 
 def resolve_tts(
     config: Mapping[str, Any], registry: AdapterRegistry, *, language: str
 ) -> VendorSpec:
     raw = _section(config, "tts")
-    provider = str(raw.get("provider") or DEFAULT_TTS_PROVIDER)
+    provider = str(raw.get("provider") or "")
     entry = registry.entry("tts", provider)
     model = raw.get("model") or entry.default_model
     options: dict[str, Any] = {"language": language}
@@ -281,8 +261,8 @@ def resolve_tts(
 
 
 def resolve_nc(config: Mapping[str, Any], registry: AdapterRegistry) -> VendorSpec:
-    """``noise_cancellation: null`` is off (passthrough ``none``); absent means the default."""
-    raw = config.get("noise_cancellation", DEFAULT_NC)
+    """``noise_cancellation: null`` is off (passthrough ``none``)."""
+    raw = config.get("noise_cancellation")
     if not raw:
         return registry.check(VendorSpec("nc", "none", "none"))
     return registry.check(VendorSpec("nc", str(raw.get("provider")), raw.get("model")))
@@ -374,10 +354,14 @@ def own_language_label(runtime: RuntimeConfig, code: str) -> str:
 def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPlan:
     """Resolve everything a call needs from the frozen config. Raises ``UnsupportedVendor``."""
     config = runtime.config
-    agent_language = str(config.get("language") or DEFAULT_LANGUAGE)
+    agent_language = str(config["language"])
     language = agent_language
     stt, auto = resolve_stt(
-        config, registry, language=language, resolved_model=runtime.stt_resolved_model
+        config,
+        registry,
+        runtime.stt_auto_rules,
+        language=language,
+        resolved_model=runtime.stt_resolved_model,
     )
     llm = resolve_llm(config, registry)
     tts = resolve_tts(config, registry, language=language)
@@ -393,13 +377,13 @@ def plan_session(runtime: RuntimeConfig, registry: AdapterRegistry) -> SessionPl
         else:
             language, reply_language = caller.code, caller.label
 
-    behavior = behavior_from_config(config, runtime.limits.model_dump())
+    behavior = behavior_from_config(config, runtime.limits, runtime.controls)
     turn_detection = select_turn_detection(stt, registry)
 
     variables = runtime.variables
-    instructions = render_template(str(config.get("prompt") or ""), variables)
+    instructions = render(str(config.get("prompt") or ""), variables)
     raw_greeting = config.get("begin_message")
-    greeting = render_template(str(raw_greeting), variables).strip() if raw_greeting else None
+    greeting = render(str(raw_greeting), variables).strip() if raw_greeting else None
     start_speaker: Literal["agent", "user"] = (
         "user" if config.get("start_speaker") == "user" else "agent"
     )
@@ -732,24 +716,13 @@ def voicemail_tool(report: Callable[[], bool]) -> Any:
 # Segment overrides (FR-046, research R22)
 
 
-def _controls_table(
-    controls: Sequence[ControlRange] | None,
-) -> dict[str, tuple[float, float, float | None]]:
-    table: dict[str, tuple[float, float, float | None]] = {
-        k: (lo, hi, step) for k, (lo, hi, step) in DEFAULT_CONTROLS.items()
-    }
-    for row in controls or ():
-        table[row.path] = (row.min, row.max, row.step)
-    return table
-
-
-def clamp_value(
-    path: str, value: float, table: Mapping[str, tuple[float, float, float | None]]
-) -> tuple[float, bool]:
-    """Clamp to ``[min, max]`` and snap to the step grid. Returns (value, was_clamped)."""
-    if path not in table:
+def clamp_value(path: str, value: float, controls: Sequence[ControlRange]) -> tuple[float, bool]:
+    """Clamp to the control's ``[min, max]`` (``path`` is a JSON Pointer) and snap to its step
+    grid. Returns (value, was_clamped)."""
+    control = next((c for c in controls if c.path == path), None)
+    if control is None:
         return value, False
-    low, high, step = table[path]
+    low, high, step = control.min, control.max, control.step
     applied = max(low, min(high, value))
     if step:
         applied = low + round((applied - low) / step) * step
@@ -773,7 +746,8 @@ class OverrideManager:
 
     plan: SessionPlan
     registry: AdapterRegistry
-    controls: Sequence[ControlRange] | None = None
+    controls: Sequence[ControlRange]
+    stt_auto_rules: Mapping[str, SttAuto]
     on_system_event: Callable[[str, str], Any] | None = None
     current: dict[Kind, VendorSpec] = field(default_factory=dict)
     _pending: dict[Kind, VendorSpec] = field(default_factory=dict)
@@ -800,7 +774,6 @@ class OverrideManager:
             self.on_system_event(event, detail)
 
     def request(self, overrides: SegmentOverrides) -> OverrideResult:
-        table = _controls_table(self.controls)
         clamped: list[ClampedValue] = []
         applied: list[str] = []
         rejected: list[str] = []
@@ -836,7 +809,7 @@ class OverrideManager:
                     continue
                 path = f"tts.{key}"
                 requested = float(tts[key])
-                value, was_clamped = clamp_value(path, requested, table)
+                value, was_clamped = clamp_value(f"/tts/{key}", requested, self.controls)
                 if was_clamped:
                     clamped.append(ClampedValue(path, requested, value))
                 options[key] = value
@@ -880,7 +853,7 @@ class OverrideManager:
                 stt_model = spec.model
             try:
                 if stt_model is None:
-                    stt_model = self.registry.resolve_auto_stt(provider, lang)
+                    stt_model = auto_stt(self.stt_auto_rules, provider, lang)
             except (UnsupportedVendor, UnsupportedLanguage):
                 rejected.append("stt")
             else:

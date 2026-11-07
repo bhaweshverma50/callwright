@@ -16,7 +16,7 @@ FLUX_EAGER_EOT_THRESHOLD = 0.4
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
     from livekit.plugins import deepgram
 
-    model = spec.model or "nova-3"
+    model = spec.required_model
     api_key = creds.get("api_key", "")
     if model in FLUX_MODELS:
         # Flux runs on Deepgram's v2 listen API and supplies its own end-of-turn signal (R5).

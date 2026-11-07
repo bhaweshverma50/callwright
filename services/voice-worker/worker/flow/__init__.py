@@ -13,7 +13,8 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from worker.internal_api import RuntimeConfig
+    from callwright_contract.protocol import RuntimeConfig
+
     from worker.tools import CallControl
 
 FLOW_RUNTIME_UNAVAILABLE = "flow-runtime-unavailable"

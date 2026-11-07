@@ -17,13 +17,14 @@ from typing import Any
 import httpx
 import pytest
 import respx
+from callwright_contract.protocol import OutboundDial
 
 from tests.harness.fakes import FakeSipDialer, FakeSipRoom
 from tests.harness.runner import CALL_ID
 from tests.unit.conftest import make_runtime
 from worker.adapters.registry import AdapterRegistry
 from worker.entry import LiveCall
-from worker.internal_api import InternalApiClient, OutboundDial
+from worker.internal_api import InternalApiClient
 from worker.metrics import EventRecorder, UsageMeters
 from worker.pipeline import plan_session
 from worker.settings import WorkerSettings

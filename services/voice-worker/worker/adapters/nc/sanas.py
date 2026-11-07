@@ -180,6 +180,6 @@ def _processor_class() -> type[Any]:
 
 
 def build(spec: VendorSpec, creds: Mapping[str, str]) -> Any:
-    mode = MODELS[spec.model or "vi"]
+    mode = MODELS[spec.required_model]
     config = SanasConfig.from_creds(creds)
     return processor_class()(mode, make_engine(mode, config), config)
