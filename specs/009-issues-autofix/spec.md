@@ -293,8 +293,9 @@ before/after figures.
 - **FR-019**: Issue status MUST follow: `open` to `validating` (validation starts); `validating`
   to `validated` (passed) or back to `open` (failed, inconclusive, cancelled, error); `validated`
   to `open` (a new revision becomes current) or `validating` (re-validate); `validated` to
-  `applied`; `open`, `validating` or `validated` to `dismissed`. `applied` and `dismissed` are
-  final.
+  `applied`; `open`, `validating` or `validated` to `dismissed`; `applied` to `open` when the
+  issue's regression set fails again (019 FR-006, FR-007), marked "Regressed in version N" with
+  the version and run linked. `dismissed` is final.
 - **FR-020**: Apply MUST be refused unless the issue is validated, the latest validation of the
   current revision passed, the agent's published version still equals the validation base
   version, and the agent's saved draft has no changes since that version.

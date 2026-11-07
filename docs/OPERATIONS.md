@@ -33,7 +33,7 @@ and shows "Starting the call servers". Calls in progress keep the VM up.
 Image tags are the short git sha at build time, so commit before building.
 
 ```bash
-cd ~/Downloads/MyStuff/Projects/callwright
+cd ~/callwright
 ACCOUNT=bhaweshverma50@gmail.com; PROJECT=callwright-dev; ZONE=asia-south1-a
 TAG=$(git rev-parse --short HEAD)
 
@@ -45,12 +45,13 @@ deploy/cloudrun/deploy.sh $PROJECT $ACCOUNT build-voice
 # VM: copy compose files when deploy/vm changed, then roll the workers and prune old images
 gcloud compute instances start callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT
 gcloud compute scp --recurse deploy/vm/docker-compose.yml deploy/vm/render-env.sh \
-  deploy/vm/livekit.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx \
+  deploy/vm/roll-voice.sh deploy/vm/livekit.yaml.tmpl deploy/vm/sip.yaml.tmpl deploy/vm/sip-tls.yaml.tmpl deploy/vm/lab-pbx \
   callwright-rtc:/opt/callwright/ --zone $ZONE --account $ACCOUNT --project $PROJECT
 gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PROJECT -- \
   "cd /opt/callwright && CW_API_IMAGE=asia-south1-docker.pkg.dev/$PROJECT/callwright/api:$TAG \
    CW_VOICE_IMAGE=asia-south1-docker.pkg.dev/$PROJECT/callwright/voice-worker:$TAG ./render-env.sh \
-   && sudo docker compose pull worker voice && sudo docker compose up -d && sudo docker image prune -af"
+   && sudo docker compose pull worker textsim && sudo docker compose up -d worker textsim \
+   && sudo ./roll-voice.sh && sudo docker image prune -af"
 
 # Web
 cd apps/web && vercel deploy --prod --scope bhaweshverma50s-projects
