@@ -37,6 +37,7 @@ from callwright_contract.protocol import (
     RuntimeConfig,
     RuntimeValues,
 )
+from callwright_contract.variables import builtin_values
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +58,7 @@ from app.core.livekit import LiveKitError, LiveKitGateway
 from app.core.queue import Deferred, JobQueue, dispatch
 from app.core.storage import ObjectSigner
 from app.pricing import service as pricing
+from app.voices.catalog import Control
 from app.voices.catalog import load_catalog as load_speech_catalog
 from app.workspaces.models import Workspace
 
@@ -161,8 +163,15 @@ def recording_override(config: Mapping[str, Any]) -> Any:
     return advanced.get("recording") if isinstance(advanced, Mapping) else None
 
 
+def control_range(control: Control) -> ControlRange:
+    return ControlRange(
+        path=control.path, min=float(control.min), max=float(control.max), step=float(control.step)
+    )
+
+
 def limits(config: Mapping[str, Any]) -> Limits:
-    """Call limits from the version, clamped to the control ranges (defence in depth)."""
+    """Call limits from the version, clamped to the control ranges with the contract's rule
+    (``ControlRange.clamp``, the one the worker applies; defence in depth)."""
     behavior = config.get("call_behavior")
     cb: Mapping[str, Any] = behavior if isinstance(behavior, Mapping) else {}
     speech = load_speech_catalog()
@@ -174,7 +183,7 @@ def limits(config: Mapping[str, Any]) -> Limits:
             number = int(CALL_BEHAVIOR_DEFAULTS[key])
         control = speech.control(f"/call_behavior/{key}")
         assert control is not None, f"voices/catalog.yaml has no control for {key}"
-        return min(int(control.max), max(int(control.min), number))
+        return int(control_range(control).clamp(number))
 
     return Limits(
         end_on_silence_s=limit("end_on_silence_s"),
@@ -193,10 +202,7 @@ def runtime_values(config: Mapping[str, Any], catalog: AdapterCatalog) -> Runtim
     return RuntimeValues(
         config=resolved,
         limits=limits(resolved),
-        controls=[
-            ControlRange(path=c.path, min=float(c.min), max=float(c.max), step=float(c.step))
-            for c in speech.controls
-        ],
+        controls=[control_range(c) for c in speech.controls],
         stt_auto_rules=speech.stt_auto_rules(),
         stt_resolved_model=components.stt.model,
         language_options=claim_language_options(config, components),
@@ -332,7 +338,7 @@ async def admit_in_session(
     recording_enabled, source = resolve_recording(recording_override(config), workspace_default)
     # No egress on this deployment: the source still names where the setting came from.
     recording_enabled = recording_enabled and recordings_enabled
-    builtins = variables_mod.builtin_values(
+    builtins = builtin_values(
         call_id=call_id,
         channel=request.channel,
         direction=request.direction,

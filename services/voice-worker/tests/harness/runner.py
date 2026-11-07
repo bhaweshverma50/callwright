@@ -43,7 +43,7 @@ from typing import Any
 from callwright_contract.adapters import Kind
 from callwright_contract.calls import ControlReason, DisconnectReason
 from callwright_contract.protocol import FlushReason, RuntimeConfig
-from callwright_contract.variables import BUILTIN_VARIABLES
+from callwright_contract.variables import BUILTIN_VARIABLES, builtin_values
 
 from tests.harness.bench.synth import segments
 from tests.harness.clock import VirtualClock, VirtualTimer
@@ -118,16 +118,16 @@ def default_variables(config: Mapping[str, Any], channel: str) -> dict[str, str]
         for v in config.get("dynamic_variables") or []
         if v.get("name")
     }
-    known = {
-        "call_id": CALL_ID,
-        "channel": channel,
-        "direction": "inbound",
-        "timezone": "UTC",
-        "current_date": EPOCH.date().isoformat(),
-        "current_time": EPOCH.time().isoformat(timespec="minutes"),
-        "current_datetime": EPOCH.isoformat(timespec="minutes"),
-    }
-    values.update({name: known.get(name, "") for name in BUILTIN_VARIABLES})
+    known = builtin_values(
+        call_id=CALL_ID,
+        channel=channel,
+        direction="inbound",
+        from_number=None,
+        to_number=None,
+        timezone=None,
+        now=EPOCH,
+    )
+    values.update({name: known[name] for name in BUILTIN_VARIABLES})
     return values
 
 

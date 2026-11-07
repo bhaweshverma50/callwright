@@ -365,17 +365,11 @@ def voicemail_tool(report: Callable[[], bool]) -> Any:
 
 
 def clamp_value(path: str, value: float, controls: Sequence[ControlRange]) -> tuple[float, bool]:
-    """Clamp to the control's ``[min, max]`` (``path`` is a JSON Pointer) and snap to its step
-    grid. Returns (value, was_clamped)."""
+    """The control's clamp (``path`` is a JSON Pointer). Returns (value, was_clamped)."""
     control = next((c for c in controls if c.path == path), None)
     if control is None:
         return value, False
-    low, high, step = control.min, control.max, control.step
-    applied = max(low, min(high, value))
-    if step:
-        applied = low + round((applied - low) / step) * step
-        applied = max(low, min(high, applied))
-    applied = round(applied, 6)
+    applied = control.clamp(value)
     return applied, applied != round(value, 6)
 
 

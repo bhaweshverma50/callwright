@@ -10,7 +10,6 @@ import asyncio
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from callwright_contract.protocol import FlushReason
@@ -18,21 +17,6 @@ from callwright_contract.values import KEYPAD_DIGITS
 
 if TYPE_CHECKING:
     from callwright_contract.protocol import ControlRange, Limits
-
-# --------------------------------------------------------------------------------------------
-# Clock
-
-
-def local_now(variables: Mapping[str, Any], now: datetime | None = None) -> datetime:
-    """Now in the call's zone, from the ``current_datetime`` built-in (it carries the offset);
-    UTC when the call has none."""
-    now = now or datetime.now(UTC)
-    raw = str(variables.get("current_datetime") or "")
-    try:
-        offset = datetime.fromisoformat(raw).utcoffset()
-    except ValueError:
-        offset = None
-    return now.astimezone(timezone(offset) if offset is not None else UTC)
 
 
 class TimerHandle(Protocol):
@@ -156,8 +140,8 @@ def _clamp(
     control = next((c for c in controls if c.path == path), None)
     if control is None:
         return value
-    clamped = max(control.min, min(control.max, value))
-    if clamped != value:
+    clamped = control.clamp(value)
+    if clamped != round(value, 6):
         notes.append(ClampNote(path, value, clamped))
     return clamped
 

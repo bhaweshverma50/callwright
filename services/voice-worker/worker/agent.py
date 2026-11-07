@@ -17,7 +17,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from callwright_contract.adapters import Kind
-from callwright_contract.variables import CALLBACK_NOTE
+from callwright_contract.values import clock
+from callwright_contract.variables import CALLBACK_NOTE, local_now
 
 from worker.adapters.registry import (
     AdapterRegistry,
@@ -32,7 +33,7 @@ from worker.audio import (
     PronunciationEntry,
     PronunciationTransform,
 )
-from worker.call_behavior import CallBehavior, local_now
+from worker.call_behavior import CallBehavior
 from worker.language import FOLLOW_CALLER_LANGUAGE, set_language_instruction, with_reply_language
 
 if TYPE_CHECKING:
@@ -112,10 +113,9 @@ def callback_instructions(
     """The caller's current local time (to resolve "tomorrow at 5"), the callback rule and, on a
     callback call itself, why the agent is calling."""
     now = local_now(variables)
-    clock = f"{now.hour % 12 or 12}:{now.minute:02d} {'am' if now.hour < 12 else 'pm'}"
     zone = str(variables.get("timezone") or "UTC")
     parts = [
-        f"It is now {now:%A} {now.day} {now:%B %Y}, {clock} for the caller "
+        f"It is now {now:%A} {now.day} {now:%B %Y}, {clock(now)} for the caller "
         f"({zone}, {now.isoformat(timespec='minutes')}).",
         CALLBACK_INSTRUCTION.format(close=FLOW_CALLBACK_CLOSE if flow else CALLBACK_CLOSE),
     ]

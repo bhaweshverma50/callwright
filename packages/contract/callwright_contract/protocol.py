@@ -102,6 +102,15 @@ class ControlRange(BaseModel):
     max: float
     step: float | None = None
 
+    def clamp(self, value: float) -> float:
+        """``value`` within ``[min, max]`` and snapped to the step grid: the one rule for
+        values the worker receives (call behaviour) and changes mid-call (overrides)."""
+        applied = max(self.min, min(self.max, value))
+        if self.step:
+            applied = self.min + round((applied - self.min) / self.step) * self.step
+            applied = max(self.min, min(self.max, applied))
+        return round(applied, 6)
+
 
 class SttAuto(BaseModel):
     """How speech recognition Auto picks a model for one provider (002 data-model 8.3): the

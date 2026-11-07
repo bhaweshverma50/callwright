@@ -23,8 +23,8 @@ from callwright_contract.values import (
     ToolErrorCode,
     spoken_time,
 )
+from callwright_contract.variables import local_now
 
-from worker.call_behavior import local_now
 from worker.internal_api import InternalApiClient, InternalApiError
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 

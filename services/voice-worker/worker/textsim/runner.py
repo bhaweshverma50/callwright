@@ -57,7 +57,7 @@ from callwright_contract.textsim import (
     ToolCallRecord,
     UsageRow,
 )
-from callwright_contract.variables import BUILTIN_VARIABLES
+from callwright_contract.variables import BUILTIN_VARIABLES, builtin_values
 
 from worker import telemetry
 from worker.adapters.registry import AdapterRegistry, VendorSpec
@@ -124,19 +124,18 @@ def build_runtime(
         for v in config.get("dynamic_variables") or []
         if isinstance(v, Mapping) and v.get("name")
     }
-    now = datetime.now(UTC)
     direction: Direction = "outbound" if channel == "sip_outbound" else "inbound"
-    known = {
-        "call_id": call_id,
-        "channel": channel,
-        "direction": direction,
-        "timezone": "UTC",
-        "current_time": now.strftime("%H:%M"),
-        "current_date": now.strftime("%Y-%m-%d"),
-        "current_datetime": now.isoformat(timespec="minutes"),
-    }
+    known = builtin_values(
+        call_id=call_id,
+        channel=channel,
+        direction=direction,
+        from_number=None,
+        to_number=None,
+        timezone=None,
+        now=datetime.now(UTC),
+    )
     for name in BUILTIN_VARIABLES:
-        resolved.setdefault(name, known.get(name, ""))
+        resolved.setdefault(name, known[name])
     resolved.update(variables)
     return RuntimeConfig(
         **dict(values),

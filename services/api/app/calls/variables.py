@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -25,37 +24,6 @@ def referenced_names(texts: Iterable[str | None]) -> list[str]:
         for match in PLACEHOLDER.finditer(text or ""):
             seen.setdefault(match.group(1), None)
     return list(seen)
-
-
-def builtin_values(
-    *,
-    call_id: str,
-    channel: str,
-    direction: str,
-    from_number: str | None,
-    to_number: str | None,
-    timezone: str | None,
-    now: datetime,
-) -> dict[str, str]:
-    """Built-ins: the caller is ``from`` on inbound calls and ``to`` on outbound calls."""
-    tz_name = timezone or "UTC"
-    try:
-        tz = ZoneInfo(tz_name)
-    except (ZoneInfoNotFoundError, ValueError):
-        tz_name, tz = "UTC", ZoneInfo("UTC")
-    local = now.astimezone(tz)
-    inbound = direction == "inbound"
-    return {
-        "call_id": call_id,
-        "channel": channel,
-        "direction": direction,
-        "user_number": (from_number if inbound else to_number) or "",
-        "agent_number": (to_number if inbound else from_number) or "",
-        "timezone": tz_name,
-        "current_time": local.strftime("%H:%M"),
-        "current_date": local.strftime("%Y-%m-%d"),
-        "current_datetime": local.isoformat(timespec="minutes"),
-    }
 
 
 def number_timezone(number: str | None) -> str | None:

@@ -74,13 +74,18 @@ CALLBACK_NOT_A_PHONE_CALL: Final = (
 )
 
 
+def clock(local: datetime) -> str:
+    """``5:00 pm``: how a time is said to a caller and written in the agent's instructions."""
+    return f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
+
+
 def spoken_time(local: datetime, now_local: datetime) -> str:
     """``today at 5:00 pm``, ``tomorrow, Wednesday 4 November, at 5:00 pm`` or
     ``Friday 6 November at 9:30 am`` (both in the recipient's zone)."""
-    clock = f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
+    at = clock(local)
     day = f"{local.strftime('%A')} {local.day} {local.strftime('%B')}"
     if local.date() == now_local.date():
-        return f"today at {clock}"
+        return f"today at {at}"
     if local.date() == now_local.date() + timedelta(days=1):
-        return f"tomorrow, {day}, at {clock}"
-    return f"{day} at {clock}"
+        return f"tomorrow, {day}, at {at}"
+    return f"{day} at {at}"
