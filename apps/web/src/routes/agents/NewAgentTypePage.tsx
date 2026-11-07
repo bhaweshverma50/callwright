@@ -1,26 +1,15 @@
-import {
-  ArrowRight,
-  ArrowRightLeft,
-  BookOpen,
-  Braces,
-  ChevronLeft,
-  Copy,
-  Cpu,
-  GitBranch,
-  Info,
-  LayoutTemplate,
-  MessageSquareText,
-  PenLine,
-  Workflow,
-  Wrench,
-} from "lucide-react";
+import { ArrowRight, ArrowRightLeft, BookOpen, Braces, ChevronLeft, Copy, Cpu, GitBranch, Info, LayoutTemplate, PenLine, Wrench } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useId, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Badge, Button, ChoiceGroup, PageHeader, Textarea, cn } from "../../components";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
+import { AGENT_TYPES } from "./agentType";
 
 type Kind = "single" | "flow";
+
+const SingleIcon = AGENT_TYPES.single_prompt.icon;
+const FlowIcon = AGENT_TYPES.flow.icon;
 
 /**
  * New agent (T038, FR-001, US1.1). Leads with "describe it": a sentence or two opens a new single
@@ -113,8 +102,8 @@ export function NewAgentTypePage() {
         options={[
           {
             value: "single",
-            title: "Single prompt",
-            icon: <MessageSquareText aria-hidden />,
+            title: AGENT_TYPES.single_prompt.label,
+            icon: <SingleIcon aria-hidden />,
             description:
               "One system prompt runs the whole call. The model chooses the path turn by turn; best for open conversations and support lines.",
             children: (
@@ -132,8 +121,8 @@ export function NewAgentTypePage() {
           },
           {
             value: "flow",
-            title: "Flow",
-            icon: <Workflow aria-hidden />,
+            title: AGENT_TYPES.flow.label,
+            icon: <FlowIcon aria-hidden />,
             meta: <Badge tone="accent">Builder in preview</Badge>,
             description:
               "A canvas of steps: greet, ask, branch, transfer. Best for scripted journeys, qualification and hand-offs you control step by step.",

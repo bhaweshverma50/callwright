@@ -14,8 +14,6 @@ export function shortId(prefix: "n" | "e", taken?: Set<string>): string {
   }
 }
 
-export const NODE_TYPES: NodeType[] = ["start", "agent", "task", "condition", "say", "extract_variable", "webhook", "transfer", "end"];
-export const CONVERSATIONAL = new Set<NodeType>(["agent", "task"]);
 /** The End node's old default line; the voice worker treats it like an empty message (the agent says its own goodbye). */
 export const STOCK_END_MESSAGE = "Thanks for calling. Goodbye.";
 
@@ -129,7 +127,7 @@ export function outHandles(node: FlowNode): OutHandle[] {
           { id: "rule", label: "Rule", trigger: "rule" },
           { id: "else", label: "Otherwise", trigger: "else", tone: "neutral" },
         ];
-      return cfg.categories.map((c) => ({ id: `cat:${c.name}`, label: c.name, trigger: "category" as Trigger }));
+      return (cfg.categories ?? []).map((c) => ({ id: `cat:${c.name}`, label: c.name, trigger: "category" as Trigger }));
     }
     case "webhook":
       return [

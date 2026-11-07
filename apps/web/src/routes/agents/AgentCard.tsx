@@ -55,7 +55,7 @@ export function AgentCard({
           <span
             className={cn(
               "grid size-10 shrink-0 place-items-center rounded-control",
-              flow ? "bg-warning-soft text-warning-text" : "bg-accent-soft text-accent-text",
+              agent.type === "flow" ? "bg-warning-soft text-warning-text" : "bg-accent-soft text-accent-text",
             )}
           >
             <TypeIcon className="size-5" aria-hidden />

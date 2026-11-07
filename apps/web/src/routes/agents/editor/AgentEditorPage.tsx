@@ -3,8 +3,7 @@ import { ChevronLeft, CircleDot, History, MessageSquareText, Play, RefreshCw, Sa
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { useAgent, useAgentDefaults, useLlmCatalog, useVoiceCatalog, type AgentDetail, type ConfigIssue } from "../../../api/agents";
-import { isApiError } from "../../../api/errors";
+import { useAgent, useAgentDefaults, type AgentDetail, type ConfigIssue } from "../../../api/agents";
 import { problemMessage } from "../../../api/problems";
 import {
   Badge,
@@ -39,8 +38,9 @@ import { CostCard } from "./CostCard";
 import { EDITOR_PANELS } from "./panels";
 import { useAgentDraft, type DraftBase } from "./useAgentDraft";
 import { VoiceSection } from "./VoiceSection";
-import { agentEditPath, agentFlowPath, agentTestingPath, isAgentId } from "../../../lib/paths";
+import { agentEditPath, agentFlowPath, AGENTS_PATH, agentTestingPath, isAgentId } from "../../../lib/paths";
 import { type EditorSection, fieldId, sectionOf } from "../config/fields";
+import { LoadFailure, useCatalogs, useSaveShortcut } from "./editorShell";
 
 /**
  * Single-prompt agent editor (T039), at /agents/new/single (never saved) and /agents/:id/edit.
@@ -53,27 +53,18 @@ export function AgentEditorPage() {
   const valid = isNew || isAgentId(id);
   const agent = useAgent(valid && !isNew ? id : undefined);
   const defaults = useAgentDefaults("en-US", isNew);
-  const llm = useLlmCatalog();
-  const voice = useVoiceCatalog();
+  const { catalogs, error: catalogError } = useCatalogs();
 
-  if (!valid) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
-  const failed = agent.error ?? defaults.error ?? llm.error ?? voice.error;
-  if (failed) {
-    if (isApiError(failed) && failed.status === 404) return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
-    return (
-      <EmptyState icon={<Robot weight="duotone" />} title="The agent did not load">
-        {problemMessage(failed, "agent")}
-      </EmptyState>
-    );
-  }
-  const ready = llm.data && voice.data && (isNew ? defaults.data : agent.data);
-  if (!ready) return <EditorSkeleton />;
+  if (!valid) return <RecordNotFound kind="agent" backTo={AGENTS_PATH} backLabel="Back to Agents" />;
+  const failed = agent.error ?? defaults.error ?? catalogError;
+  if (failed) return <LoadFailure error={failed} icon={<Robot weight="duotone" />} what="agent" />;
+  if (!catalogs || !(isNew ? defaults.data : agent.data)) return <EditorSkeleton />;
   if (!isNew && agent.data!.type === "flow") return <FlowAgentNotice agent={agent.data!} />;
 
   const initial: DraftBase = isNew
     ? { id: null, name: "", config: defaults.data!, revision: 0, detail: null }
     : { id: agent.data!.id, name: agent.data!.name, config: agent.data!.draft_config, revision: agent.data!.draft_revision, detail: agent.data! };
-  return <Editor key={id ?? "new"} initial={initial} catalogs={{ llm: llm.data!, voice: voice.data! }} />;
+  return <Editor key={id ?? "new"} initial={initial} catalogs={catalogs} />;
 }
 
 type Tab = EditorSection | string;
@@ -101,24 +92,30 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
     if (params.has("describe") || params.has("history")) setParams((p) => (p.delete("describe"), p.delete("history"), p), { replace: true });
   }, [params, setParams]);
   const [note, setNote] = useState("");
-  const [goTo, setGoTo] = useState<string | null>(null);
+  const [goTo, setGoTo] = useState<{ to: string; replace: boolean } | null>(null);
+  const [focusPointer, setFocusPointer] = useState<string | null>(null);
 
   // Navigate only after the saved state has rendered, so the leave guard sees a clean form.
   useEffect(() => {
     if (goTo && !draft.dirty) {
-      navigate(goTo, { replace: goTo.endsWith("/edit") });
+      navigate(goTo.to, { replace: goTo.replace });
       setGoTo(null);
     }
   }, [goTo, draft.dirty, navigate]);
 
+  // Focus a field once its tab has rendered (the jump from the checks card opens the tab first).
+  useEffect(() => {
+    const el = focusPointer ? document.getElementById(fieldId(focusPointer)) : null;
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
+    setFocusPointer(null);
+  }, [focusPointer, tab]);
+
   const jump = useCallback(
     (pointer: string) => {
       setTab(sectionOf(pointer));
-      window.setTimeout(() => {
-        const el = document.getElementById(fieldId(pointer));
-        el?.scrollIntoView({ block: "center", behavior: "smooth" });
-        el?.focus({ preventScroll: true });
-      }, 120);
+      setFocusPointer(pointer);
     },
     [setTab],
   );
@@ -145,23 +142,13 @@ function Editor({ initial, catalogs }: { initial: DraftBase; catalogs: Catalogs 
             : undefined
           : "Nothing in the configuration changed, so no new version was recorded.",
       });
-      if (then === "test") setGoTo(agentTestingPath(out.detail.id));
-      else if (!draft.base.id) setGoTo(agentEditPath(out.detail.id));
+      if (then === "test") setGoTo({ to: agentTestingPath(out.detail.id), replace: false });
+      else if (!draft.base.id) setGoTo({ to: agentEditPath(out.detail.id), replace: true });
     },
     [draft, note, initial.id],
   );
 
-  // Cmd or Ctrl + S saves.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        if (!saving) void save();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [save, saving]);
+  useSaveShortcut(save, !saving);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};

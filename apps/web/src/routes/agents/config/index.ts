@@ -6,6 +6,7 @@
  */
 export { AdvancedSection } from "../editor/AdvancedSection";
 export { CallBehaviorSection } from "../editor/CallBehaviorSection";
+export { LoadFailure, useCatalogs, useSaveShortcut } from "../editor/editorShell";
 export type { Catalogs } from "../editor/catalogs";
 export { ModelPicker } from "../editor/ModelPicker";
 export { EDITOR_PANELS } from "../editor/panels";
