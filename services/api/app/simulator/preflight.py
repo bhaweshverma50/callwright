@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
+from app.flows.compiled import compiled_view
 from app.llms.client import billable_cost, token_cost
 from app.simulator.models import SimulationRun
 from app.simulator.service import MAX_BATCH, MIN_BATCH, dataset_calls
@@ -44,11 +45,8 @@ def tools_missing_mock(config: Mapping[str, Any]) -> list[dict[str, Any]]:
                     "kind": "tool",
                 }
             )
-    flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    nodes = compiled.get("nodes") if isinstance(compiled, Mapping) else None
-    for node_id, node in (nodes or {}).items() if isinstance(nodes, Mapping) else []:
-        if not isinstance(node, Mapping) or node.get("type") != "webhook":
+    for node_id, node in compiled_view(config).nodes.items():
+        if node.get("type") != "webhook":
             continue
         raw_spec = node.get("webhook")
         spec: Mapping[str, Any] = raw_spec if isinstance(raw_spec, Mapping) else {}

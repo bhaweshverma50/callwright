@@ -2,8 +2,8 @@
 
 Call list and drawer summaries, the list filter (viewer's label, evaluation status), dashboard
 window statistics with headline flags, verdict diffs for the compare view and the post-call
-analysis state of listed calls. Everything reads
-current runs: the newest unsuperseded run per call and evaluator.
+analysis state of listed calls. Everything reads current runs (``evals.views``), so the list
+filter and the row badge always agree.
 """
 
 from __future__ import annotations
@@ -13,16 +13,16 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, and_, exists, false, not_, or_, select, text, true
+from sqlalchemy import ColumnElement, and_, column, exists, false, not_, or_, select, text, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analysis_vars.models import CallAnalysis
 from app.annotations.models import Annotation
 from app.calls.quality_port import EvaluatorStat, QualitySummary, VerdictDiff
 from app.evals import verdict_diff
-from app.evals.models import AgentEvalSetting, EvaluatorRun
-from app.evals.scoring import RunState, call_eval_status, run_counts
-from app.evals.views import LATEST_CURRENT
+from app.evals.models import AgentEvalSetting
+from app.evals.scoring import EVAL_STATUSES, RunState, call_eval_status, run_counts
+from app.evals.views import current_runs_sql, eval_status_sql
 
 
 class QualityPort:
@@ -34,11 +34,7 @@ class QualityPort:
         ids = list(call_ids)
         rows = (
             await session.execute(
-                text(
-                    "select cur.call_id, cur.status, cur.verdict from ("  # noqa: S608
-                    + LATEST_CURRENT.format(where="and r.call_id = any(:ids)")
-                    + ") cur"
-                ),
+                text(current_runs_sql("and r.call_id = any(:ids)", columns="r.call_id, r.status, r.verdict")),
                 {"ids": ids},
             )
         ).all()
@@ -82,25 +78,16 @@ class QualityPort:
                 parts.append(not_(exists(mine)))
             clauses.append(or_(*parts) if parts else false())
         if eval_statuses:
-            current = select(EvaluatorRun.id).where(
-                EvaluatorRun.call_id == call_id_column, EvaluatorRun.superseded_at.is_(None)
-            )
-            any_run = exists(current)
-            running = exists(current.where(EvaluatorRun.status.in_(("pending", "running"))))
-            failed = exists(current.where(EvaluatorRun.status == "completed", EvaluatorRun.verdict == "fail"))
-            completed = exists(current.where(EvaluatorRun.status == "completed"))
-            not_skipped = exists(current.where(EvaluatorRun.status != "skipped"))
-            by_status: dict[str, ColumnElement[bool]] = {
-                "running": running,
-                "failed": and_(not_(running), failed),
-                "passed": and_(not_(running), not_(failed), completed),
-                "error": and_(
-                    not_(running), not_(completed), exists(current.where(EvaluatorRun.status == "error"))
-                ),
-                "not_evaluated": or_(not_(any_run), not_(not_skipped)),
-            }
-            parts = [by_status[s] for s in eval_statuses if s in by_status]
-            clauses.append(or_(*parts) if parts else false())
+            statuses = text(eval_status_sql()).columns(column("call_id"), column("eval_status")).subquery()
+            chosen_statuses = [s for s in eval_statuses if s in EVAL_STATUSES]
+            parts = [
+                call_id_column.in_(
+                    select(statuses.c.call_id).where(statuses.c.eval_status.in_(chosen_statuses))
+                )
+            ]
+            if "not_evaluated" in chosen_statuses:
+                parts.append(call_id_column.not_in(select(statuses.c.call_id)))
+            clauses.append(or_(*parts) if chosen_statuses else false())
         return and_(*clauses) if clauses else true()
 
     async def window_stats(
@@ -112,11 +99,10 @@ class QualityPort:
         agent_ids: Sequence[str],
     ) -> tuple[list[EvaluatorStat], int]:
         agent_filter = "and c.agent_id = any(:agents)" if agent_ids else ""
-        cur = (
-            "select distinct on (r.call_id, r.evaluator_id) r.call_id, r.evaluator_id, r.status, r.verdict, "  # noqa: S608
-            "r.score from evaluator_runs r join calls c on c.id = r.call_id where r.superseded_at is null "
-            f"and c.origin = 'live' and c.created_at >= :start and c.created_at < :end {agent_filter} "
-            "order by r.call_id, r.evaluator_id, r.created_at desc"
+        cur = current_runs_sql(
+            f"and c.origin = 'live' and c.created_at >= :start and c.created_at < :end {agent_filter}",
+            columns="r.call_id, r.evaluator_id, r.status, r.verdict, r.score",
+            join_calls=True,
         )
         sql = (
             "select e.id, e.name, e.display_name, e.scope, "  # noqa: S608

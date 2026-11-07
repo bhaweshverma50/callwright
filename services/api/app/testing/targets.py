@@ -26,6 +26,7 @@ from app.agents.checks import validate_config
 from app.agents.models import Agent
 from app.agents.schemas import upcast
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
+from app.flows.compiled import compiled_view
 
 TARGET_TYPES = ("published", "draft", "version", "variant")
 
@@ -62,12 +63,7 @@ def agent_type_of(agent: Agent | str) -> str:
 
 
 def has_agent_node(config: Mapping[str, Any]) -> bool:
-    flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    nodes = compiled.get("nodes") if isinstance(compiled, Mapping) else None
-    if not isinstance(nodes, Mapping):
-        return False
-    return any(isinstance(n, Mapping) and n.get("type") in ("agent", "task") for n in nodes.values())
+    return any(n.get("type") in ("agent", "task") for n in compiled_view(config).nodes.values())
 
 
 def runnable_problem(agent_type: str, config: Mapping[str, Any]) -> ProblemError | None:
@@ -110,12 +106,10 @@ async def _snapshot(session: AsyncSession, agent: Agent, version_id: str) -> ver
 
 def _flow_problems(config: Mapping[str, Any]) -> list[dict[str, str]]:
     flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    if not isinstance(compiled, Mapping):
+    if not (isinstance(flow, Mapping) and isinstance(flow.get("compiled"), Mapping)):
         return [field_error("/target/config/flow", "invalid_format", "The flow has errors. Fix them first.")]
-    nodes = compiled.get("nodes")
-    entry = compiled.get("entry_node_id")
-    if not isinstance(nodes, Mapping) or not entry or entry not in nodes:
+    view = compiled_view(config)
+    if view.entry_node_id not in view.nodes:
         return [field_error("/target/config/flow", "invalid_format", "The flow has no Start node.")]
     return []
 
@@ -154,13 +148,7 @@ async def _compile_variant_flow(
             for i in result.issues
             if i.get("severity") == "error"
         ] or [field_error("/target/config/flow", "invalid_format", "The flow has errors. Fix them first.")]
-    config["flow"] = {
-        "flow_id": flow.id,
-        "name": flow.name,
-        "graph": dict(graph),
-        "graph_hash": compiler.graph_hash(graph),
-        "compiled": result.compiled,
-    }
+    config["flow"] = flows.flow_block(flow, result.compiled, graph)
     return []
 
 

@@ -6,17 +6,13 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.evaluators.base import FLOW_ONLY, EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult
-
-FINAL_NODE_TYPES = frozenset({"end", "transfer"})
+from app.flows.compiled import TERMINAL_NODE_TYPES, compiled_view
 
 
 def last_node(ctx: EvalContext) -> str | None:
     if ctx.transitions:
         return ctx.transitions[-1].to_node_id
-    flow = ctx.config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    entry = compiled.get("entry_node_id") if isinstance(compiled, Mapping) else None
-    return str(entry) if entry else None
+    return compiled_view(ctx.config).entry_node_id
 
 
 class FlowCompletion(Evaluator):
@@ -33,7 +29,7 @@ class FlowCompletion(Evaluator):
             return EvalOutcome.not_applicable("no flow path was recorded")
         label = ctx.node_label(node)
         kind = ctx.node_type(node)
-        if kind in FINAL_NODE_TYPES:
+        if kind in TERMINAL_NODE_TYPES:
             item = ItemResult(
                 "pass",
                 1.0,

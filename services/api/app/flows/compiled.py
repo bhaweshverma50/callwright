@@ -1,8 +1,12 @@
-"""Pydantic model of the compiled flow (data-model section 4). ``export_schema.py`` writes its
-JSON Schema to the worker, which checks every compiled flow it runs against it."""
+"""Pydantic model of the compiled flow (data-model section 4) and ``compiled_view``, the one reader
+of a version's ``config.flow.compiled`` for other features (007 evaluators, 008, 009).
+``export_schema.py`` writes the model's JSON Schema to the worker, which checks every compiled
+flow it runs against it."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,3 +66,40 @@ class CompiledFlow(_Open):
     builtin_variables: list[str]
     declared_variables: list[DeclaredVariable]
     nodes: dict[str, CompiledNode]
+
+
+# A call that reaches one of these node types finished the flow.
+TERMINAL_NODE_TYPES = frozenset({"end", "transfer"})
+
+
+@dataclass(frozen=True)
+class CompiledView:
+    """The compiled flow of a config; empty when it has none (single prompt, or a draft with
+    errors). ``nodes`` are the config's own node dicts, keyed by node id."""
+
+    nodes: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+    entry_node_id: str | None = None
+    persona_prompt: str | None = None
+
+    @property
+    def present(self) -> bool:
+        return bool(self.nodes)
+
+    def node_type(self, node_id: str | None) -> str | None:
+        value = self.nodes.get(node_id or "", {}).get("type")
+        return str(value) if value else None
+
+    def labels(self) -> dict[str, str]:
+        return {node_id: str(node.get("label") or node_id) for node_id, node in self.nodes.items()}
+
+
+def compiled_view(config: Mapping[str, Any]) -> CompiledView:
+    flow = config.get("flow")
+    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
+    if not isinstance(compiled, Mapping):
+        return CompiledView()
+    raw = compiled.get("nodes")
+    nodes = {str(k): v for k, v in raw.items() if isinstance(v, Mapping)} if isinstance(raw, Mapping) else {}
+    entry = compiled.get("entry_node_id")
+    persona = compiled.get("persona_prompt")
+    return CompiledView(nodes, str(entry) if entry else None, str(persona) if persona else None)

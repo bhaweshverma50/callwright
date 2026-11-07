@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calls.quality_port import VerdictDiff
-from app.evals.views import LATEST_CURRENT
+from app.evals.views import current_runs_sql
 
 
 async def diffs(
@@ -19,7 +19,7 @@ async def diffs(
     sql = (
         "select cur.call_id, cur.evaluator_id, cur.evaluator_version, cur.verdict, cur.score, cur.rationale, "  # noqa: S608
         "e.name, e.display_name from ("
-        + LATEST_CURRENT.format(where="and r.call_id = any(:ids) and r.status = 'completed'")
+        + current_runs_sql("and r.call_id = any(:ids) and r.status = 'completed'")
         + ") cur join evaluators e on e.id = cur.evaluator_id"
     )
     rows = (await session.execute(text(sql), {"ids": [left_call_id, right_call_id]})).all()

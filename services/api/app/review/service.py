@@ -17,6 +17,8 @@ from typing import Any, Literal
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.evals.views import current_runs_sql
+
 Strategy = Literal["random", "failed", "disagreement"]
 
 _BASE = """
@@ -28,12 +30,7 @@ with scope as (
     left join lateral (
       select count(*) filter (where cur.verdict = 'pass') as p,
              count(*) filter (where cur.verdict = 'fail') as f
-        from (
-          select distinct on (r.evaluator_id) r.status, r.verdict
-            from evaluator_runs r
-           where r.call_id = c.id and r.workspace_id = c.workspace_id and r.superseded_at is null
-           order by r.evaluator_id, r.created_at desc
-        ) cur
+        from ({current}) cur
        where cur.status = 'completed'
     ) agg on true
    where c.origin = 'live' and c.status in ('completed', 'voicemail') and c.ended_at >= :since
@@ -42,6 +39,9 @@ with scope as (
 )
 """
 
+_CURRENT = current_runs_sql(
+    "and r.call_id = c.id and r.workspace_id = c.workspace_id", columns="r.status, r.verdict"
+)
 _STRATEGY = {
     "random": ("true", "md5(scope.id || :uid || :day)"),
     "failed": ("scope.f >= 1", "scope.f desc, scope.ended_at desc"),
@@ -61,7 +61,7 @@ def _params(
     agent = ""
     if agent_id:
         agent, params["agent"] = "and c.agent_id = :agent", agent_id
-    return _BASE.format(agent=agent), params
+    return _BASE.format(agent=agent, current=_CURRENT), params
 
 
 async def queue(

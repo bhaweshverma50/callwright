@@ -6,7 +6,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.evaluators.base import FLOW_ONLY, EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult
-from app.evaluators.builtins.flow_completion import FINAL_NODE_TYPES, last_node
+from app.evaluators.builtins.flow_completion import last_node
+from app.flows.compiled import TERMINAL_NODE_TYPES
 
 
 class NodeDeadEnd(Evaluator):
@@ -38,7 +39,7 @@ class NodeDeadEnd(Evaluator):
                         flow_node_label=label,
                     )
                 )
-            elif kind in FINAL_NODE_TYPES:
+            elif kind in TERMINAL_NODE_TYPES:
                 items.append(
                     ItemResult(
                         "pass",

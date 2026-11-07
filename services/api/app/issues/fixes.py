@@ -24,6 +24,8 @@ import hashlib
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from app.flows.compiled import compiled_view
+
 CONVERSATIONAL = ("agent", "task")
 RULES_HEADING = "## Rules"
 _BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -151,14 +153,12 @@ def _add_guardrail(config: dict[str, Any], p: Mapping[str, Any]) -> None:
 def _tool_description_edit(config: dict[str, Any], p: Mapping[str, Any]) -> None:
     tool_id = p.get("tool_id")
     specs = [t for t in config.get("tools") or [] if isinstance(t, dict) and t.get("tool_id") == tool_id]
-    compiled = (config.get("flow") or {}).get("compiled") if isinstance(config.get("flow"), dict) else None
-    node_specs: list[dict[str, Any]] = []
-    if isinstance(compiled, dict):
-        for node in (compiled.get("nodes") or {}).values():
-            if isinstance(node, dict):
-                node_specs += [
-                    t for t in node.get("tools") or [] if isinstance(t, dict) and t.get("tool_id") == tool_id
-                ]
+    node_specs: list[dict[str, Any]] = [
+        t
+        for node in compiled_view(config).nodes.values()
+        for t in node.get("tools") or []
+        if isinstance(t, dict) and t.get("tool_id") == tool_id
+    ]
     every = specs + node_specs
     if not every:
         raise RedraftNeeded(

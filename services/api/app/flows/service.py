@@ -387,12 +387,17 @@ async def compile_preview(
     return {"ok": result.compiled is not None, "issues": result.issues, "compiled": result.compiled}
 
 
-def flow_block(flow: Flow, compiled: Mapping[str, Any] | None) -> dict[str, Any]:
+def flow_block(
+    flow: Flow, compiled: Mapping[str, Any] | None, graph: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """The ``config.flow`` block of a version: ``graph`` (default the flow's own) and its
+    compiled form."""
+    graph = flow.graph if graph is None else graph
     return {
         "flow_id": flow.id,
         "name": flow.name,
-        "graph": copy.deepcopy(flow.graph),
-        "graph_hash": compiler.graph_hash(flow.graph),
+        "graph": copy.deepcopy(dict(graph)),
+        "graph_hash": compiler.graph_hash(graph),
         "compiled": copy.deepcopy(dict(compiled)) if compiled is not None else None,
     }
 

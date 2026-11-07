@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Any, ClassVar, Literal
 
 from app.calls.transcript import FlowTransition, Message, ToolEvent
+from app.flows.compiled import compiled_view
 
 Verdict = Literal["pass", "fail", "not_applicable"]
 Scope = Literal["call", "turn", "flow_node"]
@@ -80,10 +81,7 @@ class EvalContext:
     @property
     def flow_nodes(self) -> Mapping[str, Mapping[str, Any]]:
         """Compiled flow nodes of the version the call ran (004), keyed by node id."""
-        flow = self.config.get("flow")
-        compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-        nodes = compiled.get("nodes") if isinstance(compiled, Mapping) else None
-        return nodes if isinstance(nodes, Mapping) else {}
+        return compiled_view(self.config).nodes
 
     def node_label(self, node_id: str | None) -> str | None:
         if node_id is None:

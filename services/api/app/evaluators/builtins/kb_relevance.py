@@ -14,6 +14,7 @@ from app.evaluators.base import (
     judge_model_field,
 )
 from app.evaluators.builtins.common import judge_call
+from app.flows.compiled import compiled_view
 
 TASK = (
     "For each knowledge-base search (tool kb_search) in the call, compare the caller's question "
@@ -25,12 +26,7 @@ TASK = (
 def has_knowledge_base(config: Mapping[str, Any]) -> bool:
     if config.get("kb_ids"):
         return True
-    flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    nodes = compiled.get("nodes") if isinstance(compiled, Mapping) else None
-    return isinstance(nodes, Mapping) and any(
-        isinstance(n, Mapping) and n.get("kb_search") for n in nodes.values()
-    )
+    return any(n.get("kb_search") for n in compiled_view(config).nodes.values())
 
 
 class KbRelevance(Evaluator):

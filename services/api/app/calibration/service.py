@@ -19,17 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calibration import math
 from app.evals.models import AgentEvalSetting
+from app.evals.views import current_runs_sql
 from app.evaluators.models import EvaluatorRow
 from app.evaluators.settings import effective
 
-_CURRENT = """
-select distinct on (r.call_id, r.evaluator_id) r.id, r.call_id, r.evaluator_id, r.evaluator_version,
-       r.status, r.verdict, r.score
-  from evaluator_runs r
-  join calls c on c.id = r.call_id
- where r.superseded_at is null and c.origin = 'live' and c.ended_at >= :since {agent}
- order by r.call_id, r.evaluator_id, r.created_at desc
-"""
+_CURRENT = current_runs_sql(
+    "and c.origin = 'live' and c.ended_at >= :since {agent}",
+    columns="r.id, r.call_id, r.evaluator_id, r.evaluator_version, r.status, r.verdict, r.score",
+    join_calls=True,
+)
 
 
 def _scope(agent_id: str | None, lookback_days: int, now: datetime | None) -> tuple[str, dict[str, Any]]:

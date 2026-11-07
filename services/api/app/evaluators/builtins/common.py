@@ -8,6 +8,7 @@ from typing import Any
 from app.calls.transcript import Message, ToolEvent
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, ItemResult
 from app.evaluators.judge import JudgeResult
+from app.flows.compiled import compiled_view
 
 
 def judge_model(settings: Mapping[str, Any], tools: EvalTools) -> str:
@@ -16,11 +17,7 @@ def judge_model(settings: Mapping[str, Any], tools: EvalTools) -> str:
 
 def agent_goal(ctx: EvalContext, limit: int = 3000) -> str:
     """The agent's instructions from the version the call ran (prompt, or the flow persona)."""
-    prompt = ctx.config.get("prompt")
-    if not prompt:
-        flow = ctx.config.get("flow")
-        compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-        prompt = compiled.get("persona_prompt") if isinstance(compiled, Mapping) else None
+    prompt = ctx.config.get("prompt") or compiled_view(ctx.config).persona_prompt
     text = str(prompt or "(no written instructions)").strip()
     return text[:limit]
 

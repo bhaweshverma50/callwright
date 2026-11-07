@@ -182,8 +182,7 @@ async def agent_names(session: AsyncSession, agent_ids: Sequence[str]) -> dict[s
 
 async def eval_statuses(session: AsyncSession, runs: Sequence[SimulationRun]) -> dict[str, str]:
     """Evaluation progress of each run's simulated call (007 run states)."""
-    from app.evals.models import EvaluatorRun
-    from app.evals.views import split_current, status_of
+    from app.evals.views import current_by_call, status_of
 
     call_ids = [r.output_call_id for r in runs if r.output_call_id and r.status == "completed"]
     out = {r.id: "not_started" for r in runs}
@@ -192,15 +191,11 @@ async def eval_statuses(session: AsyncSession, runs: Sequence[SimulationRun]) ->
     pipeline = dict(
         (await session.execute(select(Call.id, Call.pipeline_status).where(Call.id.in_(call_ids)))).all()
     )
-    evals: dict[str, list[EvaluatorRun]] = {}
-    for row in (
-        await session.execute(select(EvaluatorRun).where(EvaluatorRun.call_id.in_(call_ids)))
-    ).scalars():
-        evals.setdefault(row.call_id, []).append(row)
+    evals = await current_by_call(session, call_ids)
     for run in runs:
         if run.output_call_id not in pipeline:
             continue
-        current, _ = split_current(evals.get(run.output_call_id, []))
+        current = evals.get(run.output_call_id, [])
         if not current:
             out[run.id] = (
                 "pending" if pipeline[run.output_call_id] in ("not_started", "running") else "not_started"
@@ -838,10 +833,9 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
     if run.base_call_id is None or run.status != "completed":
         return None
     from app.evals.jobs import start_evaluation
-    from app.evals.models import EvaluatorRun
     from app.evals.runner import AlreadyRunning
     from app.evals.service import resolve_all
-    from app.evals.views import split_current
+    from app.evals.views import current_by_call, missing_evaluators
 
     base = await session.get(Call, run.base_call_id)
     agent = await session.get(Agent, run.agent_id)
@@ -851,16 +845,7 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
 
     resolved = await resolve_all(session, agent, judge_models(runtime().settings))
     enabled = {r.row.id: r.row.current_version for r in resolved if r.enabled}
-    existing = list(
-        (await session.execute(select(EvaluatorRun).where(EvaluatorRun.call_id == base.id))).scalars()
-    )
-    current, _ = split_current(existing)
-    have = {
-        r.evaluator_id: r.evaluator_version
-        for r in current
-        if r.status in ("completed", "pending", "running")
-    }
-    missing = [e for e, version in enabled.items() if have.get(e) != version]
+    missing = missing_evaluators((await current_by_call(session, [base.id])).get(base.id, []), enabled)
     if not missing:
         return None
     try:

@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.ids import new_id
-from app.evals.views import LATEST_CURRENT
+from app.evals.views import current_runs_sql
 from app.evaluators.judge import json_object, neutralise
 from app.evaluators.models import EvaluatorRow
 from app.evaluators.settings import judge_models
@@ -63,7 +63,7 @@ NAMING_SYSTEM = (
 _ROWS = (
     "select r.id, r.call_id, r.evaluator_id, r.evaluator_version, e.scope, r.verdict, r.rationale, "  # noqa: S608
     "c.origin, c.agent_version_id, sr.base_call_id, c.ended_at from ("
-    + LATEST_CURRENT.format(where="and r.agent_id = :agent")
+    + current_runs_sql("and r.agent_id = :agent")
     + ") r join evaluators e on e.id = r.evaluator_id join calls c on c.id = r.call_id "
     "left join simulation_runs sr on sr.id = c.simulation_run_id "
     "where c.agent_id = :agent and c.status = 'completed' and c.origin = any(:origins) "

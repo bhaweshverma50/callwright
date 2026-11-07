@@ -262,21 +262,9 @@ async def list_items(
 
 
 async def eval_statuses(session: AsyncSession, call_ids: Sequence[str]) -> dict[str, str]:
-    from app.evals.models import EvaluatorRun
-    from app.evals.views import split_current, status_of
+    from app.evals.views import call_statuses
 
-    if not call_ids:
-        return {}
-    runs: dict[str, list[EvaluatorRun]] = {}
-    for row in (
-        await session.execute(select(EvaluatorRun).where(EvaluatorRun.call_id.in_(list(call_ids))))
-    ).scalars():
-        runs.setdefault(row.call_id, []).append(row)
-    out: dict[str, str] = {}
-    for call_id in call_ids:
-        current, _ = split_current(runs.get(call_id, []))
-        out[call_id] = status_of(current)[0]
-    return out
+    return dict(await call_statuses(session, call_ids))
 
 
 async def evaluate(
@@ -285,10 +273,9 @@ async def evaluate(
     """Start a ``dataset`` run group on every available call. Returns the counts and the
     (call id, run group id) pairs to execute after commit."""
     from app.evals.jobs import start_evaluation
-    from app.evals.models import EvaluatorRun
     from app.evals.runner import AlreadyRunning
     from app.evals.service import resolve_all
-    from app.evals.views import split_current
+    from app.evals.views import current_by_call, missing_evaluators
     from app.llms.runtime import runtime
 
     dataset = await get_dataset(session, dataset_id)
@@ -306,12 +293,7 @@ async def evaluate(
             for r in await resolve_all(session, agent, judge_models(runtime().settings))
             if r.enabled
         }
-    runs: dict[str, list[EvaluatorRun]] = {}
-    if only_missing and ids:
-        for row in (
-            await session.execute(select(EvaluatorRun).where(EvaluatorRun.call_id.in_(ids)))
-        ).scalars():
-            runs.setdefault(row.call_id, []).append(row)
+    current = await current_by_call(session, ids) if only_missing else {}
     counts = {"enqueued": 0, "skipped_up_to_date": 0, "skipped_unavailable": 0}
     jobs: list[tuple[str, str]] = []
     for call_id in ids:
@@ -319,12 +301,9 @@ async def evaluate(
         if call is None or not transcript.has_conversation(call.transcript):
             counts["skipped_unavailable"] += 1
             continue
-        if only_missing:
-            current, _ = split_current(runs.get(call_id, []))
-            have = {r.evaluator_id: r.evaluator_version for r in current if r.status == "completed"}
-            if all(have.get(e) == v for e, v in enabled.items()):
-                counts["skipped_up_to_date"] += 1
-                continue
+        if only_missing and not missing_evaluators(current.get(call_id, []), enabled):
+            counts["skipped_up_to_date"] += 1
+            continue
         try:
             start = await start_evaluation(
                 session,

@@ -23,6 +23,7 @@ from callwright_contract.variables import BUILTIN_VARIABLES, DOTTED_PLACEHOLDER
 from pydantic import ValidationError
 
 from app.flows import transitions
+from app.flows.compiled import TERMINAL_NODE_TYPES
 from app.flows.schemas import CONVERSATIONAL, MAX_EDGES, MAX_NODES
 from app.flows.variables import TASK_RESULT, placeholders
 from app.tools.schemas import HttpRequestSpec, TransferSpec
@@ -383,7 +384,7 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
             nid = str(n.get("id"))
             if nid not in reached and n.get("type") != "start":
                 out.warn("W_UNREACHABLE", "No path from Start reaches this node.", node_id=nid)
-        exits = [str(n.get("id")) for n in nodes if n.get("type") in ("end", "transfer")]
+        exits = [str(n.get("id")) for n in nodes if n.get("type") in TERMINAL_NODE_TYPES]
         reverse = {k: [str(e["source"]) for e in v] for k, v in incoming.items()}
         can_exit: set[str] = set()
         for x in exits:

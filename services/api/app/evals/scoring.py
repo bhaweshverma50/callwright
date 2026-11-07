@@ -9,12 +9,13 @@ from __future__ import annotations
 import statistics
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
 
 from app.evaluators.base import Verdict
 
 RunStatus = Literal["pending", "running", "completed", "skipped", "error"]
 EvalStatus = Literal["not_evaluated", "running", "passed", "failed", "error"]
+EVAL_STATUSES: tuple[str, ...] = get_args(EvalStatus)
 
 
 @dataclass(frozen=True)

@@ -24,7 +24,8 @@ from app.calls.lookups import config_for
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.evals.models import EvaluatorResultItem
-from app.evals.views import LATEST_CURRENT
+from app.evals.views import current_runs_sql
+from app.flows.compiled import compiled_view
 from app.simulator.models import SimulationExperiment, SimulationRun
 from app.simulator.scorecard import ExcludedRun, ItemVerdict, Scorecard, VerdictRow, compute_scorecard
 from app.simulator.service import experiment_runs, get_experiment, snapshot_of
@@ -37,7 +38,7 @@ async def current_runs(session: AsyncSession, call_ids: Sequence[str]) -> list[A
     sql = (
         "select cur.id, cur.call_id, cur.evaluator_id, cur.evaluator_version, cur.status, cur.verdict, "  # noqa: S608
         "cur.score, cur.rationale, e.name, e.display_name, e.scope from ("
-        + LATEST_CURRENT.format(where="and r.call_id = any(:ids)")
+        + current_runs_sql("and r.call_id = any(:ids)")
         + ") cur join evaluators e on e.id = cur.evaluator_id"
     )
     return list((await session.execute(text(sql), {"ids": list(call_ids)})).all())
@@ -79,12 +80,7 @@ async def verdict_rows(session: AsyncSession, keys: Mapping[str, str]) -> list[V
 
 
 def node_labels(config: Mapping[str, Any]) -> dict[str, str]:
-    flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    nodes = compiled.get("nodes") if isinstance(compiled, Mapping) else None
-    if not isinstance(nodes, Mapping):
-        return {}
-    return {str(k): str(v.get("label") or k) for k, v in nodes.items() if isinstance(v, Mapping)}
+    return compiled_view(config).labels()
 
 
 def transcript_view(items: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:

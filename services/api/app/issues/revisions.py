@@ -32,6 +32,7 @@ from app.calls import transcript
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.evaluators.judge import json_object, neutralise
+from app.flows.compiled import compiled_view
 from app.issues import charges, kinds
 from app.issues.fixes import AdvisoryFix, FixError, apply_fix, display_diff, is_advisory
 from app.issues.lifecycle import transition
@@ -109,10 +110,8 @@ def _tools(config: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     for t in config.get("tools") or []:
         if isinstance(t, Mapping) and t.get("tool_id"):
             out.setdefault(str(t["tool_id"]), t)
-    flow = config.get("flow")
-    compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    for node in ((compiled or {}).get("nodes") or {}).values() if isinstance(compiled, Mapping) else []:
-        for t in (node or {}).get("tools") or []:
+    for node in compiled_view(config).nodes.values():
+        for t in node.get("tools") or []:
             if isinstance(t, Mapping) and t.get("tool_id"):
                 out.setdefault(str(t["tool_id"]), t)
     return list(out.values())

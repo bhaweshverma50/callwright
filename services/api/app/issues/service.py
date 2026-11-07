@@ -22,6 +22,7 @@ from app.agents.schemas import upcast
 from app.agents.versions import draft_part
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id
+from app.evals.views import current_runs_sql
 from app.issues import kinds
 from app.issues.charges import charge, detect_key, draft_key  # noqa: F401  (re-exported)
 from app.issues.lifecycle import FINAL, transition
@@ -285,11 +286,13 @@ async def apply_blockers(
 
 _HEADLINE_SQL = (
     "select cur.verdict from ("  # noqa: S608
-    + "select distinct on (r.call_id) r.call_id, r.status, r.verdict from evaluator_runs r "
-    "join calls c on c.id = r.call_id where r.superseded_at is null and r.evaluator_id = :evaluator "
-    "and c.agent_id = :agent and c.origin = 'live' and c.status = 'completed' "
-    "and c.agent_version_id = :version and c.ended_at >= :since and c.ended_at < :until "
-    "order by r.call_id, r.created_at desc"
+    + current_runs_sql(
+        "and r.evaluator_id = :evaluator and c.agent_id = :agent and c.origin = 'live' "
+        "and c.status = 'completed' and c.agent_version_id = :version and c.ended_at >= :since "
+        "and c.ended_at < :until",
+        columns="r.call_id, r.status, r.verdict",
+        join_calls=True,
+    )
     + ") cur where cur.status = 'completed' and cur.verdict in ('pass', 'fail')"
 )
 

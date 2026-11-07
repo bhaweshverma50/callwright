@@ -1,6 +1,10 @@
-"""Run queries and JSON views shared by the evals router, the quality port, review and
-calibration. A call's *current* runs are its newest run per evaluator among the runs not yet
-superseded (a rerun in flight keeps the previous result current until it completes)."""
+"""The one "current run" rule and the run views shared by the evals router, the quality port,
+review, calibration, 008 and 009.
+
+A call's *current* runs are its newest run per evaluator among the runs not yet superseded.
+``current_runs_sql`` states the rule for SQL readers, ``split_current`` for loaded rows,
+``eval_status_sql`` and ``call_statuses`` derive a call's evaluation status from them exactly as
+``scoring.call_eval_status`` does."""
 
 from __future__ import annotations
 
@@ -16,10 +20,28 @@ from app.evals.scoring import EvalStatus, RunState, call_eval_status, run_counts
 from app.evaluators.models import EvaluatorRow
 from app.llms.client import billable_cost
 
-LATEST_CURRENT = (
-    "select distinct on (r.call_id, r.evaluator_id) r.* from evaluator_runs r "
-    "where r.superseded_at is null {where} order by r.call_id, r.evaluator_id, r.created_at desc"
-)
+
+def current_runs_sql(where: str = "", *, columns: str = "r.*", join_calls: bool = False) -> str:
+    """SQL selecting current runs (alias ``r``; ``c`` is the call when ``join_calls``); ``where``
+    adds conditions starting with ``and``."""
+    join = " join calls c on c.id = r.call_id" if join_calls else ""
+    return (
+        f"select distinct on (r.call_id, r.evaluator_id) {columns} from evaluator_runs r{join} "  # noqa: S608
+        f"where r.superseded_at is null {where} order by r.call_id, r.evaluator_id, r.created_at desc"
+    )
+
+
+def eval_status_sql(where: str = "") -> str:
+    """SQL with one ``(call_id, eval_status)`` row per call that has current runs; a call without
+    any is ``not_evaluated``."""
+    return (
+        "select cur.call_id, case "  # noqa: S608
+        "when bool_or(cur.status in ('pending', 'running')) then 'running' "
+        "when bool_or(cur.status = 'completed' and cur.verdict = 'fail') then 'failed' "
+        "when bool_or(cur.status = 'completed') then 'passed' "
+        "when bool_and(cur.status = 'skipped') then 'not_evaluated' "
+        f"else 'error' end as eval_status from ({current_runs_sql(where)}) cur group by cur.call_id"
+    )
 
 
 def split_current(runs: Sequence[EvaluatorRun]) -> tuple[list[EvaluatorRun], list[EvaluatorRun]]:
@@ -31,6 +53,32 @@ def split_current(runs: Sequence[EvaluatorRun]) -> tuple[list[EvaluatorRun], lis
     chosen = {r.id for r in current.values()}
     history = [r for r in sorted(runs, key=lambda r: r.created_at, reverse=True) if r.id not in chosen]
     return list(current.values()), history
+
+
+async def current_by_call(session: AsyncSession, call_ids: Sequence[str]) -> dict[str, list[EvaluatorRun]]:
+    """The current runs of each call (calls without runs are left out)."""
+    runs: dict[str, list[EvaluatorRun]] = {}
+    if call_ids:
+        rows = await session.execute(select(EvaluatorRun).where(EvaluatorRun.call_id.in_(list(call_ids))))
+        for row in rows.scalars():
+            runs.setdefault(row.call_id, []).append(row)
+    return {call_id: split_current(found)[0] for call_id, found in runs.items()}
+
+
+async def call_statuses(session: AsyncSession, call_ids: Sequence[str]) -> dict[str, EvalStatus]:
+    current = await current_by_call(session, call_ids)
+    return {call_id: status_of(current.get(call_id, []))[0] for call_id in call_ids}
+
+
+def missing_evaluators(current: Sequence[EvaluatorRun], enabled: dict[str, int]) -> list[str]:
+    """Enabled evaluators (id to current version) without a completed or in-flight current run of
+    that version."""
+    have = {
+        r.evaluator_id: r.evaluator_version
+        for r in current
+        if r.status in ("completed", "pending", "running")
+    }
+    return [e for e, version in enabled.items() if have.get(e) != version]
 
 
 def status_of(runs: Sequence[EvaluatorRun]) -> tuple[EvalStatus, int, int]:

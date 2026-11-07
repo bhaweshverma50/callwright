@@ -33,7 +33,7 @@ from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
-from app.evals.views import LATEST_CURRENT
+from app.evals.views import current_runs_sql
 from app.evaluators.models import EvaluatorRow
 from app.evaluators.settings import judge_models
 from app.issues import validation_rule as rule
@@ -136,7 +136,7 @@ async def select_calls(
         since = datetime.now(UTC) - timedelta(days=issue.window_days)
         sql = (
             "select c.id from calls c join ("  # noqa: S608
-            + LATEST_CURRENT.format(where="and r.evaluator_id = :evaluator")
+            + current_runs_sql("and r.evaluator_id = :evaluator")
             + ") r on r.call_id = c.id where c.agent_id = :agent and c.origin = 'live' "
             "and c.status = 'completed' and c.ended_at >= :since and r.status = 'completed' "
             "and r.verdict = 'pass' and not (c.id = any(:exclude)) order by c.ended_at desc, c.id limit :n"

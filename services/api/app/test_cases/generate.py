@@ -21,6 +21,7 @@ from typing import Any
 
 from app.agents.models import Agent
 from app.evaluators.judge import json_object
+from app.flows.compiled import compiled_view
 from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
 from app.llms.adapters.fake import PURPOSE_REPLIES
 from app.llms.client import token_cost
@@ -82,14 +83,11 @@ def plan_counts(slugs: Sequence[str], count: int) -> dict[str, int]:
 
 def config_text(agent: Agent, config: Mapping[str, Any]) -> str:
     if agent.type == "flow":
-        flow = config.get("flow") if isinstance(config.get("flow"), Mapping) else {}
-        compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-        parts = []
-        if isinstance(compiled, Mapping):
-            parts.append(str(compiled.get("persona_prompt") or ""))
-            for node in (compiled.get("nodes") or {}).values():
-                if isinstance(node, Mapping) and node.get("instructions"):
-                    parts.append(f"[{node.get('label') or node.get('type')}] {node['instructions']}")
+        view = compiled_view(config)
+        parts = [view.persona_prompt or ""]
+        for node in view.nodes.values():
+            if node.get("instructions"):
+                parts.append(f"[{node.get('label') or node.get('type')}] {node['instructions']}")
         text = "\n".join(p for p in parts if p)
     else:
         text = str(config.get("prompt") or "")
