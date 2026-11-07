@@ -20,7 +20,15 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Summary is not copied back: the retention purge clears calls.summary on purpose.
     op.execute("""
+    UPDATE calls c
+       SET sentiment = coalesce(c.sentiment, a.sentiment),
+           analysis = coalesce(c.analysis, a."values")
+      FROM call_analyses a
+     WHERE a.call_id = c.id
+       AND (c.sentiment IS NULL AND a.sentiment IS NOT NULL
+            OR c.analysis IS NULL AND a."values" IS NOT NULL);
     ALTER TABLE call_analyses DROP COLUMN summary, DROP COLUMN sentiment, DROP COLUMN "values";
     """)
 
