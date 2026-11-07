@@ -308,7 +308,8 @@ Dependent specs
 - Admins can read billing (balance, usage, invoices) but only the owner pays or changes payment.
 - No per-seat price in this version; the 50-member cap is a safety limit, adjustable per
   workspace by Callwright staff.
-- Invitation and ownership emails use the sign-up email sender that exists today.
+- The app sends no email of its own today (sign-up mail comes from the identity provider), so
+  invitation and ownership emails need a sender; research R5 adds one.
 - Existing workspaces migrate with their current user as Owner and Supervisor, assigned to every
   existing agent.
 - Callwright staff accounts (platform admin) keep their current support access, outside these

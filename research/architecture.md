@@ -93,6 +93,7 @@ has `llms/adapters/` (prompt assistant, judges, analytics), `voices/adapters/` (
 | 008 testing-simulation | test_cases, test_runs, simulator, datasets | /simulations, /simulations/runs/:runId, /datasets |
 | 009 issues-autofix | issues | /issues, /issues/:id |
 | 010 channels | phone_numbers, outbound, whatsapp, dialing_policy | /phone-numbers |
+| 023 team-roles | team (plus core permissions, mailer) | /settings/team, /invite/:token, /welcome |
 
 Build order: 001 > 002 > 003 > {004, 005, 006, 010} > 007 > 008 > 009.
 Real dependencies beyond the chain: 004 needs 005's tool schemas and worker tool code (webhook,
@@ -125,7 +126,7 @@ branch); 010 T082 into 001's shell navigation. 003 accepts a `use_draft` flag on
 - Shared schemas `Problem`, `PageMeta`, `MoneyUsd` live in `specs/001-platform-foundation/contracts/core.yaml`.
 - IDs are prefixed ULIDs: `ws_`, `usr_`, `agt_`, `agv_`, `flw_`, `tool_`, `kb_`, `doc_`, `call_`,
   `num_`, `wa_`, `wcr_` (WhatsApp caller route), `dnc_` (do-not-call entry), `whd_` (webhook
-  delivery), `var_`, `evl_`, `evr_`, `ann_`, `ds_`, `tc_`, `trn_`, `exp_`, `srun_`, `iss_`, `txn_`.
+  delivery), `var_`, `evl_`, `evr_`, `ann_`, `ds_`, `tc_`, `trn_`, `exp_`, `srun_`, `iss_`, `txn_`, `inv_` (team invitation, 023).
   Child rows scoped to one parent (test results, dataset items, fix revisions, validation attempts,
   catalog versions, templates, flow node ids `n_` and edge ids `e_`) use integers, slugs or local
   ids, not platform prefixes.

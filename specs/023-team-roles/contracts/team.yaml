@@ -1,0 +1,593 @@
+openapi: 3.1.0
+info:
+  title: Callwright API, team module
+  version: 0.1.0
+  description: >
+    Fragment owned by 023-team-roles. Workspace members and their roles, email invitations,
+    supervisor assignment of AI agents, ownership transfer, the team activity log, creating and
+    switching workspaces. Every authenticated request may send `Callwright-Workspace` to pick
+    the workspace; without it the API uses the last workspace the person switched to. Requests
+    a role does not allow return 403 problem+json `forbidden` naming who can grant access.
+servers:
+  - url: /v1
+paths:
+  /team/members:
+    get:
+      operationId: listTeamMembers
+      tags: [team]
+      summary: Active and removed members with roles and assigned agents (any member may read)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: status
+          in: query
+          schema: {type: string, enum: [active, removed], default: active}
+      responses:
+        '200':
+          description: Members, owner first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, limit, used]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/Member'}
+                  limit: {type: integer, description: Member cap, 50 by default}
+                  used: {type: integer, description: Active members plus pending invitations}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+  /team/members/{user_id}:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceHeader'}
+      - name: user_id
+        in: path
+        required: true
+        schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+    patch:
+      operationId: updateTeamMember
+      tags: [team]
+      summary: Change a member's roles (owner or admin; only the owner edits the owner's row)
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          description: The member revision the editor loaded
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              additionalProperties: false
+              properties:
+                roles: {$ref: '#/components/schemas/Roles'}
+      responses:
+        '200':
+          description: Updated member
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '412':
+          description: Changed by someone else since it was loaded (code member_changed); body has the current member
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+                  - type: object
+                    properties:
+                      current: {$ref: '#/components/schemas/Member'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+    delete:
+      operationId: removeTeamMember
+      tags: [team]
+      summary: Remove a member (owner or admin); the owner cannot be removed (code owner_protected)
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: Removed; their next request is refused}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '409': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Conflict'}
+  /team/invitations:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceHeader'}
+    get:
+      operationId: listTeamInvitations
+      tags: [team]
+      summary: Pending invitations (owner or admin)
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Pending invitations, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/Invitation'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+    post:
+      operationId: createTeamInvitation
+      tags: [team]
+      summary: Invite by email with roles (owner or admin); the email is sent by a background job
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, roles]
+              additionalProperties: false
+              properties:
+                email: {type: string, format: email, maxLength: 254}
+                roles: {$ref: '#/components/schemas/Roles'}
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Invitation'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '409':
+          description: >
+            Codes already_member, invitation_pending or member_limit (50 members including pending
+            invitations)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/TooManyRequests'}
+  /team/invitations/{invitation_id}:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceHeader'}
+      - {$ref: '#/components/parameters/InvitationIdPath'}
+    delete:
+      operationId: revokeTeamInvitation
+      tags: [team]
+      summary: Revoke a pending invitation; its link stops working at once
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: Revoked}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+  /team/invitations/{invitation_id}/resend:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceHeader'}
+      - {$ref: '#/components/parameters/InvitationIdPath'}
+    post:
+      operationId: resendTeamInvitation
+      tags: [team]
+      summary: Revoke the old link and send a new 7-day one
+      security: [{bearerAuth: []}]
+      responses:
+        '201':
+          description: The new invitation
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Invitation'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/TooManyRequests'}
+  /invitations/{token}:
+    parameters:
+      - {$ref: '#/components/parameters/InvitationTokenPath'}
+    get:
+      operationId: previewInvitation
+      tags: [team]
+      summary: Public preview of an invitation link (no sign-in needed)
+      responses:
+        '200':
+          description: What the link offers
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/InvitationPreview'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+  /invitations/{token}/accept:
+    parameters:
+      - {$ref: '#/components/parameters/InvitationTokenPath'}
+    post:
+      operationId: acceptInvitation
+      tags: [team]
+      summary: Join the workspace; the signed-in verified email must match the invitation
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Joined; the app switches to this workspace
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Membership'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '403':
+          description: Code email_mismatch (detail shows the masked invited email) or email_unverified
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '409':
+          description: Codes invitation_expired, invitation_revoked, invitation_used or member_limit
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+  /agents/{agent_id}/supervisors:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceHeader'}
+      - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/AgentIdPath'}
+    get:
+      operationId: listAgentSupervisors
+      tags: [team]
+      summary: Supervisors assigned to an agent
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Assigned supervisors; empty means approvals go to the owner and supervising admins
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentSupervisors'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+    put:
+      operationId: setAgentSupervisors
+      tags: [team]
+      summary: Replace the agent's supervisors (owner or admin)
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_ids]
+              additionalProperties: false
+              properties:
+                user_ids:
+                  type: array
+                  maxItems: 50
+                  uniqueItems: true
+                  items: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+      responses:
+        '200':
+          description: The new assignment
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AgentSupervisors'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '422':
+          description: A user id is not an active member holding the Supervisor role (code not_a_supervisor)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+  /team/members/{user_id}/agents:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceHeader'}
+      - name: user_id
+        in: path
+        required: true
+        schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+    put:
+      operationId: setMemberAgents
+      tags: [team]
+      summary: Replace the agents a supervisor looks after (owner or admin), from the Team row
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_ids]
+              additionalProperties: false
+              properties:
+                agent_ids:
+                  type: array
+                  maxItems: 1000
+                  uniqueItems: true
+                  items: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'}
+      responses:
+        '200':
+          description: The member with their new agents
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+  /workspaces/current/transfer-ownership:
+    post:
+      operationId: transferOwnership
+      tags: [team]
+      summary: Owner hands the workspace to an admin; the old owner becomes Admin and Supervisor
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_owner_user_id, confirm_workspace_name]
+              additionalProperties: false
+              properties:
+                new_owner_user_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+                confirm_workspace_name: {type: string, maxLength: 80}
+      responses:
+        '200':
+          description: Transferred; both people are emailed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [owner_user_id]
+                properties:
+                  owner_user_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+        '422':
+          description: Codes name_mismatch or not_an_admin
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+  /workspaces:
+    post:
+      operationId: createWorkspace
+      tags: [team]
+      summary: >
+        Create a workspace owned by the caller (for people with no workspace, or a second one);
+        grants the trial credit only to a person's first workspace
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80}
+      responses:
+        '201':
+          description: Created; the app switches to it
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Membership'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+        '422': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/ValidationFailed'}
+        '429': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/TooManyRequests'}
+  /me/workspace:
+    put:
+      operationId: switchWorkspace
+      tags: [team]
+      summary: Remember the workspace to use when a request sends no Callwright-Workspace header
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspace_id]
+              additionalProperties: false
+              properties:
+                workspace_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/WorkspaceId'}
+      responses:
+        '204': {description: Stored}
+        '403':
+          description: Not an active member of that workspace (code not_a_member)
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
+  /me/memberships:
+    get:
+      operationId: listMyMemberships
+      tags: [team]
+      summary: Workspaces the caller belongs to and invitations waiting for their email
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: For the switcher and the /welcome page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [memberships, pending_invitations]
+                properties:
+                  memberships:
+                    type: array
+                    items: {$ref: '#/components/schemas/Membership'}
+                  pending_invitations:
+                    type: array
+                    items: {$ref: '#/components/schemas/InvitationPreview'}
+        '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
+  /team/activity:
+    get:
+      operationId: listTeamActivity
+      tags: [team]
+      summary: Membership changes and refused requests (owner or admin)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/Page'}
+        - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/ActivityMember'}
+        - {$ref: '#/components/parameters/ActivityKind'}
+        - {$ref: '#/components/parameters/ActivityFrom'}
+        - {$ref: '#/components/parameters/ActivityTo'}
+      responses:
+        '200':
+          description: Entries, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/PageMeta'}
+                  - type: object
+                    required: [items]
+                    properties:
+                      items:
+                        type: array
+                        items: {$ref: '#/components/schemas/ActivityEntry'}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+  /team/activity/export:
+    get:
+      operationId: exportTeamActivity
+      tags: [team]
+      summary: The same filtered entries as CSV
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ActivityMember'}
+        - {$ref: '#/components/parameters/ActivityKind'}
+        - {$ref: '#/components/parameters/ActivityFrom'}
+        - {$ref: '#/components/parameters/ActivityTo'}
+      responses:
+        '200':
+          description: CSV, one row per entry
+          content:
+            text/csv:
+              schema: {type: string}
+        '403': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Forbidden'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    WorkspaceHeader:
+      name: Callwright-Workspace
+      in: header
+      required: false
+      description: Workspace for this request; defaults to the last one switched to
+      schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/WorkspaceId'}
+    InvitationIdPath:
+      name: invitation_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^inv_[0-9A-HJKMNP-TV-Z]{26}$'}
+    InvitationTokenPath:
+      name: token
+      in: path
+      required: true
+      description: The secret from the invitation link (base64url, 43 characters)
+      schema: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}
+    ActivityMember:
+      name: member
+      in: query
+      schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+    ActivityKind:
+      name: kind
+      in: query
+      schema: {$ref: '#/components/schemas/ActivityKind'}
+    ActivityFrom:
+      name: from
+      in: query
+      schema: {type: string, format: date-time}
+    ActivityTo:
+      name: to
+      in: query
+      schema: {type: string, format: date-time}
+  schemas:
+    Role:
+      type: string
+      enum: [admin, builder, supervisor, analyst]
+      description: Assignable roles; owner is not assignable (see transferOwnership)
+    Roles:
+      type: array
+      minItems: 1
+      maxItems: 4
+      uniqueItems: true
+      items: {$ref: '#/components/schemas/Role'}
+    Member:
+      type: object
+      required: [user_id, email, roles, is_owner, status, joined_at, agent_ids, revision]
+      properties:
+        user_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+        email: {type: string, format: email}
+        roles: {$ref: '#/components/schemas/Roles'}
+        is_owner: {type: boolean}
+        status: {type: string, enum: [active, removed]}
+        joined_at: {type: string, format: date-time}
+        removed_at: {type: [string, 'null'], format: date-time}
+        invited_by: {type: [string, 'null']}
+        agent_ids:
+          type: array
+          description: Agents this member supervises (empty unless they hold supervisor)
+          items: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'}
+        revision: {type: string, description: ETag for If-Match}
+    Invitation:
+      type: object
+      required: [id, email, roles, status, invited_by, created_at, expires_at, email_sent]
+      properties:
+        id: {type: string}
+        email: {type: string, format: email}
+        roles: {$ref: '#/components/schemas/Roles'}
+        status: {type: string, enum: [pending, accepted, revoked, expired]}
+        invited_by: {type: string, format: email}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        email_sent: {type: boolean, description: False until the mail job succeeds}
+    InvitationPreview:
+      type: object
+      required: [workspace_name, invited_by, roles, email_masked, status, expires_at]
+      properties:
+        token_hint: {type: string, description: Present only in /me/memberships, the link to open}
+        workspace_name: {type: string}
+        invited_by: {type: string, format: email}
+        roles: {$ref: '#/components/schemas/Roles'}
+        email_masked: {type: string, examples: ['s***@example.com']}
+        status: {type: string, enum: [pending, accepted, revoked, expired]}
+        expires_at: {type: string, format: date-time}
+    Membership:
+      type: object
+      required: [workspace_id, workspace_name, roles, is_owner]
+      properties:
+        workspace_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/WorkspaceId'}
+        workspace_name: {type: string}
+        roles: {$ref: '#/components/schemas/Roles'}
+        is_owner: {type: boolean}
+    AgentSupervisors:
+      type: object
+      required: [agent_id, user_ids, fallback]
+      properties:
+        agent_id: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/AgentId'}
+        user_ids:
+          type: array
+          items: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/UserId'}
+        fallback:
+          type: boolean
+          description: True when none is assigned, so alerts go to the owner and supervising admins
+    ActivityKind:
+      type: string
+      enum: [invitation_sent, invitation_accepted, invitation_revoked, invitation_expired,
+             roles_changed, member_removed, agent_assigned, agent_unassigned,
+             ownership_transferred, access_refused]
+    ActivityEntry:
+      type: object
+      required: [id, kind, created_at]
+      properties:
+        id: {type: integer}
+        kind: {$ref: '#/components/schemas/ActivityKind'}
+        actor_email: {type: [string, 'null']}
+        subject_email: {type: [string, 'null']}
+        agent_id: {type: [string, 'null']}
+        before: {type: [object, 'null']}
+        after: {type: [object, 'null']}
+        refused_count: {type: [integer, 'null']}
+        refused_permissions:
+          type: [array, 'null']
+          items: {type: string}
+        created_at: {type: string, format: date-time}
