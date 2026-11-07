@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
+from callwright_contract.calls import DisconnectReason
 from callwright_contract.protocol import MAX_TOOL_OUTPUT_CHARS
 from callwright_contract.values import KEYPAD_DIGITS
 
@@ -26,7 +27,7 @@ class CallBackend(Protocol):
         """True once the caller is not talking (waits briefly while they are)."""
         ...
 
-    async def end(self, reason: str, diagnostic: str | None) -> None:
+    async def end(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         """Stop speech, post the final status, close the session and the room."""
         ...
 
@@ -56,7 +57,7 @@ class RuntimeCallControl:
         self._overrides = overrides
         self._room = room
         self._on_staged = on_overrides_staged
-        self.disconnect_reason: str | None = None
+        self.disconnect_reason: DisconnectReason | None = None
         self.diagnostic: str | None = None
 
     @property
@@ -71,7 +72,7 @@ class RuntimeCallControl:
     def ending(self) -> bool:
         return self.disconnect_reason is not None
 
-    async def hang_up(self, reason: str, *, diagnostic: str | None = None) -> bool:
+    async def hang_up(self, reason: DisconnectReason, *, diagnostic: str | None = None) -> bool:
         """End the call once; later callers get False (first writer wins, data-model 9)."""
         if self.disconnect_reason is not None:
             return False

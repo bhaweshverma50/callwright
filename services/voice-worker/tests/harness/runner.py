@@ -41,7 +41,8 @@ from pathlib import Path
 from typing import Any
 
 from callwright_contract.adapters import Kind
-from callwright_contract.protocol import RuntimeConfig
+from callwright_contract.calls import ControlReason, DisconnectReason
+from callwright_contract.protocol import FlushReason, RuntimeConfig
 from callwright_contract.variables import BUILTIN_VARIABLES
 
 from tests.harness.bench.synth import segments
@@ -56,7 +57,6 @@ from worker.call_behavior import (
     VOICEMAIL_TOOL_NAME,
     DtmfCollector,
     DurationTimer,
-    FlushReason,
     InactivityTimer,
     VoicemailHandler,
 )
@@ -399,11 +399,11 @@ class HarnessCall:
     def _spawn(self, coro: Coroutine[Any, Any, Any]) -> None:
         self._pending.append(coro)
 
-    def _hang_up_soon(self, reason: str, diagnostic: str | None = None) -> None:
+    def _hang_up_soon(self, reason: DisconnectReason, diagnostic: str | None = None) -> None:
         if not self.control.ending:
             self._spawn(self.control.hang_up(reason, diagnostic=diagnostic))
 
-    def _on_control_end(self, reason: str) -> None:
+    def _on_control_end(self, reason: ControlReason) -> None:
         # Called inside the poster's flush: defer, the hang-up posts the final batch itself.
         self._hang_up_soon(reason)
 
@@ -462,7 +462,7 @@ class HarnessCall:
     async def caller_quiet(self) -> bool:
         return True
 
-    async def end(self, reason: str, diagnostic: str | None) -> None:
+    async def end(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         if self._speech is not None:
             self._speech_done(self._speech, interrupted=True, at=self.clock.now())
         if self._generation is not None:

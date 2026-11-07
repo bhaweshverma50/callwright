@@ -15,6 +15,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog, AdapterEntry, Kind, load_catalog
 
 Builder = Callable[["VendorSpec", Mapping[str, str]], Any]
@@ -23,7 +24,7 @@ Builder = Callable[["VendorSpec", Mapping[str, str]], Any]
 class UnsupportedVendor(Exception):
     """A provider or model that is not in the catalog."""
 
-    def __init__(self, kind: str, provider: str, model: str | None = None) -> None:
+    def __init__(self, kind: Kind, provider: str, model: str | None = None) -> None:
         self.kind = kind
         self.provider = provider
         self.model = model
@@ -32,8 +33,8 @@ class UnsupportedVendor(Exception):
 
     @property
     def diagnostic(self) -> str:
-        """Machine code stored on the call (003 data-model section 1)."""
-        return f"unsupported_vendor:{self.kind}/{self.provider}"
+        """Machine code stored on the call (contract ``diagnostics``)."""
+        return diag.diagnostic(diag.UNSUPPORTED_VENDOR, self.kind, self.provider, self.model)
 
 
 class VendorNotConfigured(UnsupportedVendor):
@@ -42,7 +43,7 @@ class VendorNotConfigured(UnsupportedVendor):
     Same diagnostic as :class:`UnsupportedVendor`: for this deployment the vendor does not exist.
     """
 
-    def __init__(self, kind: str, provider: str) -> None:
+    def __init__(self, kind: Kind, provider: str) -> None:
         super().__init__(kind, provider)
         self.args = (f"{kind}/{provider} has no API key on this deployment",)
 
@@ -54,6 +55,10 @@ class UnsupportedLanguage(Exception):
         self.provider = provider
         self.language = language
         super().__init__(f"stt/{provider} Auto has no model for language {language}")
+
+    @property
+    def diagnostic(self) -> str:
+        return diag.diagnostic(diag.STT_LANGUAGE_UNSUPPORTED, self.provider, self.language)
 
 
 @dataclass(frozen=True)

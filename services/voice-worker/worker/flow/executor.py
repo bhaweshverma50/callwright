@@ -18,6 +18,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from callwright_contract.calls import DisconnectReason
+
 from worker import telemetry
 from worker.flow import registry
 from worker.flow.events import FlowEvents
@@ -58,7 +60,7 @@ class FlowServices(Protocol):
         to ``message``) and hang up."""
         ...
 
-    async def hang_up(self, reason: str, diagnostic: str | None = None) -> None: ...
+    async def hang_up(self, reason: DisconnectReason, diagnostic: str | None = None) -> None: ...
 
 
 @dataclass

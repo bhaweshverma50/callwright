@@ -25,8 +25,8 @@ from worker.pipeline import (
     build_agent,
     build_components,
     build_session,
+    failed_vendor,
     plan_session,
-    vendor_error_diagnostic,
 )
 
 STT = [
@@ -205,14 +205,14 @@ async def test_pronounce_meters_text_sent_to_tts() -> None:
     assert sum(len(s) for s in sent) == len("We run sequel daily.")
 
 
-async def test_vendor_error_diagnostic(no_llm_prewarm: None) -> None:
+async def test_failed_vendor(no_llm_prewarm: None) -> None:
     registry = AdapterRegistry()
     plan = plan_session(make_runtime(), registry)
     components = build_components(plan, registry, CREDS)
-    assert vendor_error_diagnostic(components.stt, plan) == "vendor_error:stt/deepgram"
-    assert vendor_error_diagnostic(components.llm, plan) == "vendor_error:llm/azure_openai"
-    assert vendor_error_diagnostic(components.tts, plan) == "vendor_error:tts/elevenlabs"
-    assert vendor_error_diagnostic(object(), plan) == "vendor_error:runtime/unknown"
+    assert failed_vendor(components.stt, plan) == ("stt", "deepgram")
+    assert failed_vendor(components.llm, plan) == ("llm", "azure_openai")
+    assert failed_vendor(components.tts, plan) == ("tts", "elevenlabs")
+    assert failed_vendor(object(), plan) == ("runtime", "unknown")
 
 
 async def test_voicemail_tool_is_added_with_its_instruction() -> None:

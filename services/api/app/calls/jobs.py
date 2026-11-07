@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
 from sqlalchemy import select, text
 
@@ -107,7 +108,7 @@ async def reap_stuck(
                 if call.created_at > now - timedelta(seconds=queued_s) or (heartbeat and heartbeat > stale):
                     continue
                 diagnostic = (
-                    "caller_never_joined"
+                    diag.CALLER_NEVER_JOINED
                     if call.channel == "web" and call.claimed_at
                     else "worker_unavailable"
                 )

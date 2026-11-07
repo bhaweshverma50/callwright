@@ -16,12 +16,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
 
-from callwright_contract.calls import WorkerStatus
+from callwright_contract.calls import ControlReason, DisconnectReason, SystemEvent, WorkerStatus
 from callwright_contract.protocol import (
     MAX_DETAIL_CHARS,
     MAX_EVENTS_PER_BATCH,
     MAX_TOOL_OUTPUT_CHARS,
     EventBatchResult,
+    FlushReason,
+    WarningComponent,
 )
 
 from worker import telemetry
@@ -390,7 +392,7 @@ class EventRecorder:
         self,
         status: WorkerStatus,
         *,
-        disconnect_reason: str | None = None,
+        disconnect_reason: DisconnectReason | None = None,
         diagnostic: str | None = None,
         sip_status_code: int | None = None,
     ) -> Event:
@@ -449,7 +451,7 @@ class EventRecorder:
                 item[key] = value
         return self.transcript_item(item)
 
-    def system(self, event: str, detail: str | None = None) -> Event:
+    def system(self, event: SystemEvent, detail: str | None = None) -> Event:
         item: dict[str, Any] = {"type": "system", "event": event}
         if detail:
             item["detail"] = detail[:MAX_DETAIL_CHARS]
@@ -505,7 +507,7 @@ class EventRecorder:
         self,
         digits: str,
         direction: Literal["received", "sent"],
-        flush_reason: str | None = None,
+        flush_reason: FlushReason | None = None,
     ) -> Event:
         body: dict[str, Any] = {"digits": digits, "direction": direction}
         if flush_reason:
@@ -516,7 +518,7 @@ class EventRecorder:
         self,
         code: str,
         *,
-        component: str | None = None,
+        component: WarningComponent | None = None,
         provider: str | None = None,
         detail: str | None = None,
         level: Literal["warning", "error"] = "warning",
@@ -552,7 +554,7 @@ class EventSink(Protocol):
     ) -> EventBatchResult: ...
 
 
-EndCallHandler = Callable[[str], Awaitable[None] | None]
+EndCallHandler = Callable[[ControlReason], Awaitable[None] | None]
 
 
 class EventPoster:

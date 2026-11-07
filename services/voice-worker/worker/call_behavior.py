@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
+from callwright_contract.protocol import FlushReason
 from callwright_contract.values import KEYPAD_DIGITS
 
 if TYPE_CHECKING:
@@ -382,8 +383,6 @@ class DurationTimer:
 
 # --------------------------------------------------------------------------------------------
 # Keypad input (research R11)
-
-FlushReason = Literal["termination_key", "digit_limit", "timeout"]
 
 
 class DtmfCollector:

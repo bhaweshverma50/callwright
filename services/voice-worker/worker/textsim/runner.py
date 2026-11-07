@@ -40,7 +40,14 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from callwright_contract.calls import AgentType, Channel, Direction
+from callwright_contract import diagnostics as diag
+from callwright_contract.calls import (
+    AgentType,
+    Channel,
+    ControlReason,
+    Direction,
+    DisconnectReason,
+)
 from callwright_contract.protocol import RuntimeConfig, RuntimeValues
 from callwright_contract.textsim import (
     MAX_ERROR_CHARS,
@@ -159,7 +166,7 @@ class _SimBackend:
         if self.session is not None:
             self.session.say(text, allow_interruptions=allow_interruptions)
 
-    async def end(self, reason: str, diagnostic: str | None) -> None:
+    async def end(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         if self.session is not None:
             with contextlib.suppress(Exception):
                 self.session.interrupt()
@@ -379,7 +386,12 @@ class TextSession:
         self._error = f"model error: {getattr(error, 'error', error)}"[:MAX_ERROR_CHARS]
         if self.control.disconnect_reason is None:
             task = asyncio.ensure_future(
-                self.control.hang_up("error", diagnostic="vendor_error:llm")
+                self.control.hang_up(
+                    "error",
+                    diagnostic=diag.diagnostic(
+                        diag.VENDOR_ERROR, "llm", self.plan.llm.provider if self.plan else None
+                    ),
+                )
             )
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
@@ -506,7 +518,7 @@ async def _simulate(
     meter = TokenMeter()
     session: TextSession | None = None
 
-    async def on_control_end(reason: str) -> None:
+    async def on_control_end(reason: ControlReason) -> None:
         if session is not None:
             await session.control.hang_up(reason)
 

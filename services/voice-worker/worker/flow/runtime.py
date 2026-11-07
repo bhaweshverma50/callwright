@@ -23,6 +23,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from callwright_contract.calls import DisconnectReason
 from callwright_contract.values import (
     COMPLETE_TASK_TOOL,
     SCHEDULE_CALLBACK_TOOL,
@@ -224,7 +225,7 @@ class LiveFlowServices:
             await self.say(message, allow_interruptions=False)
         await call.control.hang_up("agent_hangup")
 
-    async def hang_up(self, reason: str, diagnostic: str | None = None) -> None:
+    async def hang_up(self, reason: DisconnectReason, diagnostic: str | None = None) -> None:
         await self.call.control.hang_up(reason, diagnostic=diagnostic)
 
     async def _say_line(self, text: str) -> None:

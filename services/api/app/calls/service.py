@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
 from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS, LIVE_CHANNELS
 from callwright_contract.protocol import (
@@ -235,9 +236,9 @@ async def _email_verified(session: AsyncSession, workspace_id: str) -> bool:
 
 def _replayed_refusal(call: Call) -> Refusal:
     diagnostic = call.diagnostic or "error"
-    code = diagnostic.split(":", 1)[0]
+    code = diag.parse(diagnostic).code
     if code not in REFUSALS:
-        code = "unsupported_vendor" if diagnostic.startswith("stt_language") else "pricing_unavailable"
+        code = diag.UNSUPPORTED_VENDOR if code == diag.STT_LANGUAGE_UNSUPPORTED else "pricing_unavailable"
     status, _ = REFUSALS[code]
     return Refusal(code, status, call.disconnect_reason or "error", diagnostic, _DETAILS[code])
 
@@ -253,7 +254,7 @@ async def _checks(
 ) -> Refusal | None:
     if snapshot.agent_type == "flow" and not _has_compiled_flow(snapshot.config):
         # The worker would fail the call with the same code after the caller joined (004).
-        return refusal("flow_not_compiled")
+        return refusal(diag.FLOW_NOT_COMPILED)
     components = comp.resolve(snapshot.config, catalog)
     diagnostic = comp.unsupported(components, catalog)
     if diagnostic is None and policy(request.origin).has_real_audio:

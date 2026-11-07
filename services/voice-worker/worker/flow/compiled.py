@@ -15,8 +15,10 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Literal, Self
 
+from callwright_contract.diagnostics import FLOW_NOT_COMPILED
+
 from worker import json_schema
-from worker.flow import FLOW_NOT_COMPILED, FlowRuntimeUnavailable
+from worker.flow import FlowRuntimeUnavailable
 
 SCHEMA: Mapping[str, Any] = json.loads(
     Path(__file__).with_name("compiled_schema.json").read_text(encoding="utf-8")

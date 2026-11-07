@@ -25,6 +25,7 @@ from callwright_contract.calls import (
     Direction,
     DisconnectReason,
     RefusalReason,
+    SystemEvent,
     WorkerStatus,
 )
 from callwright_contract.values import (
@@ -43,6 +44,10 @@ MAX_EVENTS_PER_BATCH: Final = 200
 MAX_TOOL_OUTPUT_CHARS: Final = 8192
 MAX_DETAIL_CHARS: Final = 2000
 MAX_DIAGNOSTIC_CHARS: Final = 500
+
+# What a ``warning``/``error`` event is about, and why buffered keypad digits were sent.
+WarningComponent = Literal["stt", "llm", "tts", "nc", "vad", "runtime", "recording"]
+FlushReason = Literal["termination_key", "digit_limit", "timeout"]
 
 
 class SipAttributes(BaseModel):
@@ -212,6 +217,7 @@ class TranscriptItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     type: Literal["message", "tool_call", "tool_result", "flow_transition", "system"]
+    event: SystemEvent | None = None
     output: str | None = Field(default=None, max_length=MAX_TOOL_OUTPUT_CHARS)
     detail: str | None = Field(default=None, max_length=MAX_DETAIL_CHARS)
     confidence: float | None = Field(default=None, ge=0, le=1)
@@ -286,13 +292,13 @@ class DtmfEvent(_Event):
     type: Literal["dtmf"]
     digits: str = Field(pattern=DTMF_EVENT_DIGITS_PATTERN)
     direction: Literal["received", "sent"]
-    flush_reason: Literal["termination_key", "digit_limit", "timeout"] | None = None
+    flush_reason: FlushReason | None = None
 
 
 class WarningEvent(_Event):
     type: Literal["warning", "error"]
     code: str
-    component: Literal["stt", "llm", "tts", "nc", "vad", "runtime", "recording"] | None = None
+    component: WarningComponent | None = None
     provider: str | None = None
     detail: str | None = Field(default=None, max_length=MAX_DETAIL_CHARS)
 

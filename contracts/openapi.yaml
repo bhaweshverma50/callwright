@@ -6273,9 +6273,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '422':
-          description: 'Invalid variables, unsupported vendor (`unsupported-vendor`), unpriced configuration
-            (`pricing-unavailable`), flow agent without flow runtime (`flow-runtime-unavailable`), or
-            idempotency key reused with a different body.
+          description: 'Invalid variables, unsupported vendor (`unsupported_vendor`), unpriced configuration
+            (`pricing_unavailable`), or idempotency key reused with a different body.
 
             '
           content:

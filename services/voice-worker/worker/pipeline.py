@@ -23,6 +23,8 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from callwright_contract.adapters import Kind
+from callwright_contract.calls import SystemEvent
+from callwright_contract.protocol import WarningComponent
 from callwright_contract.variables import render
 
 from worker.adapters.registry import (
@@ -273,8 +275,9 @@ def build_session(
     )
 
 
-def vendor_error_diagnostic(source: Any, plan: SessionPlan) -> str:
-    """``vendor_error:<kind>/<provider>`` for an unrecoverable component error (T056)."""
+def failed_vendor(source: Any, plan: SessionPlan) -> tuple[WarningComponent, str]:
+    """The component and provider behind a component error (T056); ``runtime``/``unknown``
+    when the source is none of the call's speech or language components."""
     from livekit.agents import llm as lk_llm
     from livekit.agents import stt as lk_stt
     from livekit.agents import tts as lk_tts
@@ -287,8 +290,8 @@ def vendor_error_diagnostic(source: Any, plan: SessionPlan) -> str:
     elif isinstance(source, lk_tts.TTS):
         kind = "tts"
     if kind is None:
-        return "vendor_error:runtime/unknown"
-    return f"vendor_error:{kind}/{plan.spec(kind).provider}"
+        return "runtime", "unknown"
+    return kind, plan.spec(kind).provider
 
 
 def build_agent(
@@ -391,7 +394,7 @@ class OverrideManager:
     registry: AdapterRegistry
     controls: Sequence[ControlRange]
     stt_auto_rules: Mapping[str, SttAuto]
-    on_system_event: Callable[[str, str], Any] | None = None
+    on_system_event: Callable[[SystemEvent, str], Any] | None = None
     current: dict[Kind, VendorSpec] = field(default_factory=dict)
     _pending: dict[Kind, VendorSpec] = field(default_factory=dict)
     _pending_paths: list[str] = field(default_factory=list)
@@ -412,7 +415,7 @@ class OverrideManager:
     def pending(self) -> bool:
         return bool(self._pending) or self._pending_language is not None
 
-    def _emit(self, event: str, detail: str) -> None:
+    def _emit(self, event: SystemEvent, detail: str) -> None:
         if self.on_system_event is not None:
             self.on_system_event(event, detail)
 
