@@ -282,6 +282,11 @@ figure matches a hand count.
   the other sees "Already answered by …".
 - Live checks and mood scores in a language the checking model does not support: mood and QA
   rules are off for that call and the live view says so.
+- A supervisor has the app open in a background tab and has denied browser notifications: the
+  sound and the tab-title count still fire, and after 30 seconds the alert goes to the workspace
+  destinations (FR-037).
+- A supervisor is signed in on two devices: the alert shows on both; acknowledging on one clears
+  it on the other within 2 seconds.
 
 ## Requirements *(mandatory)*
 
@@ -404,6 +409,21 @@ figure matches a hand count.
 - **FR-034**: A supervisor MUST be able to claim a call with "Joining in 15, 30 or 60 s", shown to
   others until it expires or they act, and keep a watch list of up to 4 calls side by side.
 
+**Step-in alerts (approvals in Phase 1, banners in Phase 2)**
+
+- **FR-036**: An approval card or a red banner MUST reach the call's supervisors (023 FR-012)
+  wherever they are in the app, not only on the Live page or the call's live view, within 2
+  seconds: an alert on every page with the reason, the triggering line and "Open call" (an
+  approval can be answered from the alert itself); a sound, on by default and mutable per person;
+  a browser notification when the tab is in the background or minimised (permission asked once,
+  on the first visit to Live); and the number of open alerts in the tab title. Amber banners
+  show only on the Live page and in the call's view.
+- **FR-037**: A red banner or approval card that no supervisor acknowledges ("I'm on it", Approve,
+  Deny or Handled) within 30 seconds MUST also go to the workspace's alert destinations (014
+  FR-019: Slack, email or webhook) with the reason, the agent and a link to the call, at most
+  once per call and reason. The delay MUST be editable per workspace from 10 to 300 seconds, or
+  off.
+
 **Human-help metrics (Phase 3)**
 
 - **FR-035**: System MUST report for a period, overall and per agent and supervisor: time to
@@ -456,6 +476,8 @@ figure matches a hand count.
 - **SC-009**: A single supervisor can handle approvals on 4 simultaneous calls with at least 90%
   answered before the first timeout in a usability test.
 - **SC-010**: Human-help figures match a hand count of seeded data in 100% of tests.
+- **SC-011**: In tests, a supervisor on any page other than Live, or with the app in a background
+  tab, is alerted to 100% of approval cards and red banners on their agents within 2 seconds.
 
 ## Assumptions
 
