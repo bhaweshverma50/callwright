@@ -28,7 +28,7 @@ function vendorsIn(entries: CatalogEntry[]) {
   const seen = new Map<string, CatalogEntry["component"]>();
   for (const e of entries) if (e.component !== "platform" && !seen.has(e.provider)) seen.set(e.provider, e.component);
   return [...seen].map(([provider, component]) => ({ provider, name: providerLabel(provider), component }));
-})();
+}
 
 function Wordmark({ provider, name }: { provider: string; name: string }) {
   const logo = LOGOS[provider];
