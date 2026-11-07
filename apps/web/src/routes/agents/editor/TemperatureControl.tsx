@@ -1,11 +1,11 @@
 import { Lock, Thermometer } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { FieldRow, Slider } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { isFixed, llmModel, type Catalogs } from "./catalogs";
 import { formatDecimal, snap } from "./formatters";
 import { FieldError, Note, ValuePill } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 /**
  * Temperature (FR-007, US1.3). A fixed-temperature model shows its value on a locked slider with
@@ -23,7 +23,12 @@ export function TemperatureControl({ draft, catalogs, clampNotice }: { draft: Ag
   const value = fixed ? rule.fixed : llm.temperature;
   const id = fieldId("/llm/temperature");
   return (
-    <FieldRow icon={<Thermometer />} label="Temperature" htmlFor={id} description="Lower is more predictable, higher is more varied.">
+    <FieldRow
+      icon={<Thermometer />}
+      label={fieldLabel("/llm/temperature")}
+      htmlFor={id}
+      description="Lower is more predictable, higher is more varied."
+    >
       <div className="flex w-full flex-col gap-1.5">
         <div className="flex items-center justify-end gap-2">
           {fixed && (

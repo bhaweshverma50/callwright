@@ -6,18 +6,21 @@ import { api, postForm, unwrap } from "../../../api/client";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
 import { Button, FieldRow, IconButton, Select, SwitchControl, TruncatedText, toast } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import type { Catalogs } from "./catalogs";
 import { controlFor, FieldError, SliderRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { usePreview } from "./usePreview";
+import { fieldId, fieldLabel } from "../config/fields";
+import { operationExtensions } from "../../../lib/contract.gen";
 
 const ACCEPT = ".mp3,.wav,.ogg,.flac,.aac,.opus";
-const MAX_BYTES = 10 * 1024 * 1024;
+const UPLOAD = operationExtensions["POST /voices/ambient-audio"];
+const MAX_BYTES = UPLOAD["x-max-file-bytes"];
+const MAX_MB = MAX_BYTES / (1024 * 1024);
 
 const UPLOAD_ERRORS: Record<number, string> = {
-  409: "You already have 20 uploads. Delete one to add another.",
-  413: "That file is larger than 10 MB.",
+  409: `You already have ${UPLOAD["x-max-uploads"]} uploads. Delete one to add another.`,
+  413: `That file is larger than ${MAX_MB} MB.`,
   415: "Use an mp3, wav, ogg, flac, aac or opus file.",
 };
 
@@ -33,7 +36,7 @@ function sizeLabel(bytes: number) {
 
 /**
  * Background audio (T043, FR-012): built-in ambience or the workspace's own uploads (common audio
- * formats, 10 MB each), with a preview and a volume shown as percent of normal (0.8 is 80%).
+ * formats, size-limited), with a preview and a volume shown as percent of normal (0.8 is 80%).
  */
 export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; catalogs: Catalogs }) {
   const bg = draft.config.advanced.background_audio;
@@ -85,7 +88,7 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
       <FieldRow
         inline
         icon={<Music4 />}
-        label="Play background audio"
+        label={fieldLabel("/advanced/background_audio/enabled")}
         htmlFor={fieldId("/advanced/background_audio/enabled")}
         description="Plays a quiet sound under the call, such as office ambience."
       >
@@ -105,9 +108,9 @@ export function BackgroundAudioField({ draft, catalogs }: { draft: AgentDraft; c
         <>
           <FieldRow
             icon={<FileAudio />}
-            label="Sound"
+            label={fieldLabel("/advanced/background_audio/source")}
             htmlFor={sourceId}
-            description="Built-in sounds, or your own file (mp3, wav, ogg, flac, aac or opus, up to 10 MB)."
+            description={`Built-in sounds, or your own file (mp3, wav, ogg, flac, aac or opus, up to ${MAX_MB} MB).`}
           >
             <div className="flex w-full items-center gap-2">
               <Select

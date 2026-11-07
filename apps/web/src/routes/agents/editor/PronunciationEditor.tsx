@@ -2,9 +2,9 @@ import { BookA, Plus, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef } from "react";
 import { Button, IconButton, Input } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId } from "../config/fields";
 
 /**
  * Pronunciation dictionary (FR-005): words are replaced before the voice speaks them. Rows with an

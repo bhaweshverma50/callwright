@@ -1,10 +1,10 @@
 import { BellRing, Clock4, Hourglass, MessageCircleReply, PhoneOff, Zap } from "lucide-react";
 import { FieldRow } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import type { Catalogs } from "./catalogs";
 import { controlFor, Section, SliderRow, UnitNumberInput } from "./fields";
 import { formatMs, formatSeconds } from "./formatters";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const minutes = (s: number) => Math.round((s / 60) * 100) / 100;
 const fromMinutes = (m: number) => Math.round(m * 60);
@@ -34,7 +34,7 @@ export function CallBehaviorSection({ draft, catalogs }: { draft: AgentDraft; ca
         />
         <FieldRow
           icon={<Hourglass />}
-          label="Maximum call duration"
+          label={fieldLabel("/call_behavior/max_duration_s")}
           htmlFor={fieldId("/call_behavior/max_duration_s")}
           description="Calls end at this length, between 0.5 and 60 minutes."
         >
@@ -51,7 +51,7 @@ export function CallBehaviorSection({ draft, catalogs }: { draft: AgentDraft; ca
         </FieldRow>
         <FieldRow
           icon={<BellRing />}
-          label="Ring time"
+          label={fieldLabel("/call_behavior/ring_duration_ms")}
           htmlFor={fieldId("/call_behavior/ring_duration_ms")}
           description="How long an inbound call rings before the agent answers, up to 30 seconds."
         >

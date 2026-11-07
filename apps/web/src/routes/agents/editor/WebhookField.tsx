@@ -1,9 +1,9 @@
 import { Link2, Timer } from "lucide-react";
 import { FieldRow, Input } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { FieldError, UnitNumberInput } from "./fields";
 import { formatMs } from "./formatters";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const seconds = (ms: number) => Math.round(ms / 100) / 10;
 const fromSeconds = (s: number) => Math.round(s * 1000);
@@ -16,7 +16,7 @@ export function WebhookField({ draft }: { draft: AgentDraft }) {
     <>
       <FieldRow
         icon={<Link2 />}
-        label="Webhook address"
+        label={fieldLabel("/advanced/webhook_url")}
         htmlFor={urlId}
         description="Receives call started, call ended and analysis events. Optional."
         hint="Events are sent as signed JSON POST requests. Only public https addresses are accepted, never private or local networks."
@@ -39,7 +39,7 @@ export function WebhookField({ draft }: { draft: AgentDraft }) {
       </FieldRow>
       <FieldRow
         icon={<Timer />}
-        label="Webhook timeout"
+        label={fieldLabel("/advanced/webhook_timeout_ms")}
         htmlFor={fieldId("/advanced/webhook_timeout_ms")}
         description="How long to wait for your server, 1 to 30 seconds."
       >

@@ -1,69 +1,15 @@
 /**
- * Readable names for AgentConfig paths (T061, FR-025): version compare, the error summary and
- * warnings all name fields the way the editor labels them ("System prompt", "Voice speed"), never
- * as JSON pointers. Keyed list items read as "Variable order_id" or "Pronunciation of SQL".
+ * Readable names and values for AgentConfig paths in version compare, the error summary and
+ * warnings (T061, FR-025): fields are named by the editor's own labels (config/fields.ts), never as
+ * JSON pointers. Keyed list items read as "Variable order_id" or "Pronunciation of SQL".
  */
 import { formatMs, formatMultiplier, formatPercentOfNormal, formatSeconds } from "../editor/formatters";
+import { CONFIG_FIELDS } from "../config/fields";
 
-export const PATH_LABELS: Record<string, string> = {
-  "/name": "Agent name",
+/** Version snapshot entries that are not editor fields. */
+const SNAPSHOT_LABELS: Record<string, string> = {
   "/schema_version": "Format version",
   "/type": "Agent type",
-  "/language": "Language",
-  "/llm": "Language model",
-  "/llm/provider": "Model provider",
-  "/llm/model": "Language model",
-  "/llm/temperature": "Temperature",
-  "/prompt": "System prompt",
-  "/begin_message": "Greeting",
-  "/start_speaker": "Who speaks first",
-  "/dynamic_variables": "Variables",
-  "/stt": "Speech recognition",
-  "/stt/provider": "Speech recognition provider",
-  "/stt/model": "Speech recognition model",
-  "/tts": "Voice",
-  "/tts/provider": "Voice provider",
-  "/tts/model": "Voice model",
-  "/tts/voice_id": "Voice",
-  "/tts/speed": "Voice speed",
-  "/tts/expressiveness": "Expressiveness",
-  "/tts/volume": "Volume",
-  "/noise_cancellation": "Noise cancellation",
-  "/noise_cancellation/provider": "Noise cancellation",
-  "/noise_cancellation/model": "Noise cancellation",
-  "/call_behavior": "Call behaviour",
-  "/call_behavior/end_on_silence_s": "End call after silence",
-  "/call_behavior/max_duration_s": "Maximum call duration",
-  "/call_behavior/ring_duration_ms": "Ring time",
-  "/call_behavior/interruption_sensitivity": "Interruption sensitivity",
-  "/call_behavior/responsiveness": "Responsiveness",
-  "/advanced": "Advanced settings",
-  "/advanced/webhook_url": "Webhook address",
-  "/advanced/webhook_timeout_ms": "Webhook timeout",
-  "/advanced/voicemail_detection": "Voicemail",
-  "/advanced/voicemail_detection/enabled": "Voicemail detection",
-  "/advanced/voicemail_detection/action": "When voicemail answers",
-  "/advanced/voicemail_detection/message": "Voicemail message",
-  "/advanced/dtmf": "Keypad input",
-  "/advanced/dtmf/enabled": "Keypad input",
-  "/advanced/dtmf/timeout_ms": "Keypad pause",
-  "/advanced/dtmf/termination_key": "End key",
-  "/advanced/dtmf/digits": "Digit limit",
-  "/advanced/background_audio": "Background audio",
-  "/advanced/background_audio/enabled": "Background audio",
-  "/advanced/background_audio/source": "Background sound",
-  "/advanced/background_audio/source/kind": "Background sound",
-  "/advanced/background_audio/source/id": "Background sound",
-  "/advanced/background_audio/source/key": "Background sound",
-  "/advanced/background_audio/volume": "Background volume",
-  "/advanced/analysis_model": "Analysis model",
-  "/advanced/analysis_model/provider": "Analysis model provider",
-  "/advanced/analysis_model/model": "Analysis model",
-  "/advanced/pronunciation": "Pronunciation dictionary",
-  "/advanced/recording": "Call recording",
-  "/advanced/language_switching": "Caller language switching",
-  "/advanced/language_switching/enabled": "Caller language switching",
-  "/advanced/language_switching/languages": "Caller languages",
   "/tool_ids": "Tools",
   "/kb_ids": "Knowledge bases",
   "/flow": "Flow",
@@ -72,6 +18,8 @@ export const PATH_LABELS: Record<string, string> = {
   "/knowledge": "Knowledge bases",
   "/note": "Version note",
 };
+
+const pathLabel = (path: string): string | undefined => CONFIG_FIELDS[path]?.label ?? SNAPSHOT_LABELS[path];
 
 const KEYED = /^(\/dynamic_variables|\/advanced\/pronunciation|\/tool_ids|\/kb_ids|\/tools|\/knowledge)\[([^\]]*)\](\/.*)?$/;
 
@@ -88,11 +36,11 @@ export function labelFor(path: string, names?: ReadonlyMap<string, string>): str
     const name = (key && names?.get(key)) ?? key;
     return rest ? `${kind} ${name}: ${humanize(rest.split("/").pop() ?? "")}` : `${kind} ${name}`;
   }
-  return PATH_LABELS[path] ?? PATH_LABELS[path.replace(/\/\d+$/, "")] ?? path.split("/").filter(Boolean).pop()?.replace(/_/g, " ") ?? path;
+  return pathLabel(path) ?? pathLabel(path.replace(/\/\d+$/, "")) ?? path.split("/").filter(Boolean).pop()?.replace(/_/g, " ") ?? path;
 }
 
 /** Long text gets a line diff in compare instead of old and new values side by side. */
-export const isLongText = (path: string) => path === "/prompt" || path === "/begin_message" || path === "/advanced/voicemail_detection/message";
+export const isLongText = (path: string) => CONFIG_FIELDS[path]?.long === true;
 
 /** A value as people read it in compare ("1.5 s", "On", "None"). ``languages`` maps language
  * codes to their catalog labels for the caller languages list. */
@@ -122,23 +70,6 @@ export function formatValue(path: string, v: unknown, languages?: ReadonlyMap<st
     return JSON.stringify(v);
   }
   return String(v);
-}
-
-export type EditorSection = "basics" | "voice" | "behaviour" | "advanced";
-
-/** The editor tab that holds a field, so the error summary can open it before focusing. */
-export function sectionOf(pointer: string): EditorSection {
-  // Caller language switching (012) sits under the agent's language on Basics.
-  if (pointer.startsWith("/advanced/language_switching")) return "basics";
-  if (/^\/(stt|tts|noise_cancellation)/.test(pointer)) return "voice";
-  if (pointer.startsWith("/call_behavior")) return "behaviour";
-  if (pointer.startsWith("/advanced")) return "advanced";
-  return "basics";
-}
-
-/** DOM id for the control of a pointer (`/tts/voice_id` -> `f-tts-voice_id`). */
-export function fieldId(pointer: string): string {
-  return `f${pointer.replace(/[^A-Za-z0-9_]+/g, "-")}`.replace(/-+$/, "");
 }
 
 /** "cooldown_ms" -> "Cooldown". Unit suffixes are dropped because values carry their unit. */

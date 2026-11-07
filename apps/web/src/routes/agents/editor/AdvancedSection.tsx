@@ -1,7 +1,6 @@
 import { Music4, BrainCircuit, CircleDot, Disc, Grid3x3, Hash, Hourglass, Mic, PhoneMissed, ScanSearch, Voicemail, Webhook } from "lucide-react";
 import { useMe } from "../../../api/queries";
 import { FieldRow, Input, Segmented, Select, SwitchControl, Textarea } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { BackgroundAudioField } from "./BackgroundAudioField";
 import { perMin, type Catalogs } from "./catalogs";
 import { controlFor, FieldError, Section, SliderRow, StackRow } from "./fields";
@@ -9,6 +8,7 @@ import { PronunciationEditor } from "./PronunciationEditor";
 import type { AgentDraft } from "./useAgentDraft";
 import { WebhookField } from "./WebhookField";
 import type { RecordingMode } from "../../../api/agents";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const KEYS = ["#", "*", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 const SAME = "same";
@@ -37,7 +37,7 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
         <FieldRow
           inline
           icon={<Voicemail />}
-          label="Detect voicemail"
+          label={fieldLabel("/advanced/voicemail_detection/enabled")}
           htmlFor={fieldId("/advanced/voicemail_detection/enabled")}
           description="Notice when an outbound call reaches a voicemail box."
         >
@@ -49,7 +49,11 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
         </FieldRow>
         {vm.enabled && (
           <>
-            <FieldRow icon={<PhoneMissed />} label="When voicemail answers" htmlFor={fieldId("/advanced/voicemail_detection/action")}>
+            <FieldRow
+              icon={<PhoneMissed />}
+              label={fieldLabel("/advanced/voicemail_detection/action")}
+              htmlFor={fieldId("/advanced/voicemail_detection/action")}
+            >
               <Segmented
                 id={fieldId("/advanced/voicemail_detection/action")}
                 aria-label="When voicemail answers"
@@ -63,7 +67,12 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
               />
             </FieldRow>
             {vm.action === "leave_message" && (
-              <StackRow icon={<Mic />} label="Message to leave" htmlFor={vmMsgId} description="Spoken once after the beep, then the call ends.">
+              <StackRow
+                icon={<Mic />}
+                label={fieldLabel("/advanced/voicemail_detection/message")}
+                htmlFor={vmMsgId}
+                description="Spoken once after the beep, then the call ends."
+              >
                 <Textarea
                   id={vmMsgId}
                   rows={3}
@@ -88,7 +97,7 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
         <FieldRow
           inline
           icon={<Grid3x3 />}
-          label="Listen for keypad input"
+          label={fieldLabel("/advanced/dtmf/enabled")}
           htmlFor={fieldId("/advanced/dtmf/enabled")}
           description="Let callers type numbers, such as an account or order number."
         >
@@ -112,7 +121,7 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
             />
             <FieldRow
               icon={<Hash />}
-              label="End key"
+              label={fieldLabel("/advanced/dtmf/termination_key")}
               htmlFor={fieldId("/advanced/dtmf/termination_key")}
               description="Pressing it sends what the caller typed straight away."
             >
@@ -128,7 +137,7 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
             </FieldRow>
             <FieldRow
               icon={<CircleDot />}
-              label="Digit limit"
+              label={fieldLabel("/advanced/dtmf/digits")}
               htmlFor={fieldId("/advanced/dtmf/digits")}
               description="The agent responds as soon as this many digits are entered."
             >
@@ -163,7 +172,7 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
       <Section icon={<Disc />} title="Recording and analysis" description="Whether calls are recorded, and which model reviews them afterwards.">
         <FieldRow
           icon={<Disc />}
-          label="Call recording"
+          label={fieldLabel("/advanced/recording")}
           htmlFor={fieldId("/advanced/recording")}
           description={
             recording === "inherit"
@@ -189,7 +198,7 @@ export function AdvancedSection({ draft, catalogs }: { draft: AgentDraft; catalo
         </FieldRow>
         <FieldRow
           icon={<BrainCircuit />}
-          label="Analysis model"
+          label={fieldLabel("/advanced/analysis_model")}
           htmlFor={fieldId("/advanced/analysis_model")}
           description="Reads the transcript after the call to fill in analysis results."
           hint="Post-call analysis is billed separately from the call, at the chosen model's rate."

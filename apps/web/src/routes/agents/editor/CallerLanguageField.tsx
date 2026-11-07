@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import type { Language } from "../../../api/agents";
 import { Button, FieldRow, Input, SwitchControl, cn, focusRing } from "../../../components";
 import { languageSwitchingOf, onePerBase, switchTargets } from "../../../lib/callerLanguages";
-import { fieldId } from "../versions/versionLabels";
 import type { Catalogs } from "./catalogs";
 import { FieldError, Note, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const ENABLED = "/advanced/language_switching/enabled";
 const LANGUAGES = "/advanced/language_switching/languages";
@@ -41,7 +41,7 @@ export function CallerLanguageField({ draft, catalogs }: { draft: AgentDraft; ca
       <FieldRow
         inline
         icon={<Languages />}
-        label="Let callers switch language"
+        label={fieldLabel(ENABLED)}
         htmlFor={fieldId(ENABLED)}
         description="The agent switches speech recognition, replies and voice when a caller speaks another language, and phone callers start their next call in it."
       >
@@ -93,7 +93,7 @@ function LanguagesRow({
   return (
     <StackRow
       icon={<ListChecks />}
-      label="Caller languages"
+      label={fieldLabel(LANGUAGES)}
       description={description}
       actions={!none && <LanguagePicker targets={targets} chosen={chosen} onChange={onChange} />}
     >
@@ -180,7 +180,7 @@ function LanguagePicker({ targets, chosen, onChange }: { targets: Language[]; ch
           align="end"
           sideOffset={6}
           collisionPadding={12}
-          aria-label="Caller languages"
+          aria-label={fieldLabel(LANGUAGES)}
           className="z-50 flex max-h-[min(460px,var(--radix-popover-content-available-height))] w-[min(380px,calc(100vw-24px))] flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-pop data-[state=open]:animate-pop-in"
         >
           <div className="flex flex-col gap-2.5 border-b border-line px-4 pb-3 pt-3.5">

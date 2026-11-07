@@ -28,7 +28,7 @@ import {
 import { RecordNotFound } from "../../NotFound";
 import { PublishButton } from "../versions/PublishButton";
 import { VersionDrawer } from "../versions/VersionDrawer";
-import { fieldId, labelFor, sectionOf, type EditorSection } from "../versions/versionLabels";
+import { labelFor } from "../versions/versionLabels";
 import { AdvancedSection } from "./AdvancedSection";
 import { AssistantPanel } from "./AssistantPanel";
 import { BasicSection } from "./BasicSection";
@@ -40,6 +40,7 @@ import { EDITOR_PANELS } from "./panels";
 import { useAgentDraft, type DraftBase } from "./useAgentDraft";
 import { VoiceSection } from "./VoiceSection";
 import { agentEditPath, agentFlowPath, agentTestingPath, isAgentId } from "../../../lib/paths";
+import { type EditorSection, fieldId, sectionOf } from "../config/fields";
 
 /**
  * Single-prompt agent editor (T039), at /agents/new/single (never saved) and /agents/:id/edit.

@@ -1,9 +1,9 @@
 import { AudioLines, Ban, Users, Feather } from "lucide-react";
 import { ChoiceGroup } from "../../../components";
-import { fieldId } from "../versions/versionLabels";
 import { perMin, type Catalogs } from "./catalogs";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 const OFF = "off";
 const ICONS: Record<string, typeof AudioLines> = { "sanas/vi": AudioLines, "sanas/st": Users, "ai_coustics/standard": Feather };
@@ -16,10 +16,14 @@ export function NoiseCancellationSelect({ draft, catalogs }: { draft: AgentDraft
   const nc = draft.config.noise_cancellation;
   const value = nc ? `${nc.provider}/${nc.model}` : OFF;
   return (
-    <StackRow icon={<AudioLines />} label="Noise cancellation" description="Cleans up the caller's audio before speech recognition hears it.">
+    <StackRow
+      icon={<AudioLines />}
+      label={fieldLabel("/noise_cancellation")}
+      description="Cleans up the caller's audio before speech recognition hears it."
+    >
       <ChoiceGroup
         id={fieldId("/noise_cancellation")}
-        aria-label="Noise cancellation"
+        aria-label={fieldLabel("/noise_cancellation")}
         size="sm"
         columns={2}
         value={value}

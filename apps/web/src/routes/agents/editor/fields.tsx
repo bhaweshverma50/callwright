@@ -8,9 +8,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { FieldRow, InfoTip, Input, Panel, PanelRows, Slider, cn, type SliderMark } from "../../../components";
 import type { ControlRange } from "../../../api/agents";
-import { fieldId } from "../versions/versionLabels";
 import { formatControl, parseNumber, snap } from "./formatters";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId } from "../config/fields";
 
 export function Section({
   icon,

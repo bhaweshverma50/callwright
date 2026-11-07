@@ -3,9 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Badge, Button, IconButton, InfoTip, Input, TruncatedText } from "../../../components";
 import { RESERVED_VARIABLES, scanPlaceholders, variableNameProblem } from "../../../lib/agentVariables";
-import { fieldId } from "../versions/versionLabels";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
+import { fieldId, fieldLabel } from "../config/fields";
 
 /**
  * Dynamic variables (FR-008, US1.4, US1.10). Names typed as `{{name}}` in the prompt or greeting
@@ -32,7 +32,7 @@ export function VariablesEditor({ draft }: { draft: AgentDraft }) {
   return (
     <StackRow
       icon={<Braces />}
-      label="Variables"
+      label={fieldLabel("/dynamic_variables")}
       htmlFor={addId}
       description="Values each call can fill in, such as a customer's name. Calls that leave one out use its default."
       hint={

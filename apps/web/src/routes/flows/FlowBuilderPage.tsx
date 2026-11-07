@@ -21,8 +21,6 @@ import {
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, CopyButton, Dialog, EmptyState, IconButton, Input, LeaveGuard, Skeleton, TabPanel, Tabs, cn, toast } from "../../components";
 import { RecordNotFound } from "../NotFound";
-import { useAgentDraft, stable } from "../agents/editor/useAgentDraft";
-import { VersionDrawer } from "../agents/versions/VersionDrawer";
 import { AssistantPanel } from "./assistant/AssistantPanel";
 import { ProposalBar, approveProposal, type Proposal } from "./assistant/ProposalBar";
 import { diffGraphs } from "./canvas/diffOverlay";
@@ -38,6 +36,7 @@ import { PublishDialog } from "./panels/PublishDialog";
 import { ValidationPanel } from "./panels/ValidationPanel";
 import { FlowTestPanel } from "./test/FlowTestPanel";
 import { isAgentId } from "../../lib/paths";
+import { stable, useAgentDraft, VersionDrawer } from "../agents/config";
 
 /**
  * Flow builder (T030, T108) at /agents/:id/flow: canvas, side panel and header. Loads the agent,
