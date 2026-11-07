@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from callwright_contract.variables import BUILTIN_VARIABLES
+
 from app.calls import variables as v
 
 NOW = datetime(2026, 10, 16, 14, 5, tzinfo=UTC)
@@ -61,7 +63,7 @@ def test_builtin_numbers_follow_direction() -> None:
     assert inbound["user_number"] == "+15550001" and inbound["agent_number"] == "+15559999"
     outbound = builtins(direction="outbound", from_number="+15559999", to_number="+15550001")
     assert outbound["user_number"] == "+15550001" and outbound["agent_number"] == "+15559999"
-    assert set(inbound) == set(v.BUILTIN_VARIABLES)
+    assert set(inbound) == set(BUILTIN_VARIABLES)
 
 
 def test_timezone_rendering_and_unknown_zone_falls_back() -> None:

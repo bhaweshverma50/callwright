@@ -4135,6 +4135,14 @@ paths:
                     $ref: '#/components/schemas/SimMode'
                   config_snapshot:
                     type: object
+                  runtime:
+                    type: object
+                    description: 'The run''s resolved values, as in the claim''s RuntimeConfig (config
+                      with defaults applied, limits, controls, stt_auto_rules, stt_resolved_model, language_options);
+                      the text runner builds its runtime from them.
+
+                      '
+                    additionalProperties: true
                   settings:
                     $ref: '#/components/schemas/SimSettings'
                   dynamic_variables:
@@ -4276,6 +4284,14 @@ paths:
                     - flow
                   config_snapshot:
                     type: object
+                  runtime:
+                    type: object
+                    description: 'The run''s resolved values, as in the claim''s RuntimeConfig (config
+                      with defaults applied, limits, controls, stt_auto_rules, stt_resolved_model, language_options);
+                      the text runner builds its runtime from them.
+
+                      '
+                    additionalProperties: true
                   user_prompt:
                     type: string
                   dynamic_variables:
@@ -15556,6 +15572,11 @@ components:
             type: integer
     RuntimeConfig:
       type: object
+      description: 'Everything the worker needs, resolved by the API, which owns the catalogs and defaults
+        (shape defined once in packages/contract, `callwright_contract.protocol`). The worker keeps no
+        defaults or tables of its own.
+
+        '
       required:
       - channel
       - direction
@@ -15564,6 +15585,8 @@ components:
       - config
       - variables
       - limits
+      - controls
+      - stt_auto_rules
       - heartbeat_interval_s
       properties:
         channel:
@@ -15597,7 +15620,11 @@ components:
           - flow
         config:
           type: object
-          description: Frozen AgentConfig from the agent version (schema owned by 002-agent-builder).
+          description: 'Frozen AgentConfig from the agent version (schema owned by 002-agent-builder)
+            with the language and every vendor resolved (`stt.model` stays null for Auto) and the call-behaviour,
+            keypad, voicemail and background-audio defaults applied.
+
+            '
           additionalProperties: true
         variables:
           type: object
@@ -15653,6 +15680,27 @@ components:
           - string
           - 'null'
           description: The speech recognition model Auto resolved to for the agent's language.
+        controls:
+          type: array
+          description: '002''s control range table (data-model 8.6). The worker clamps call behaviour
+            and segment overrides to it.
+
+            '
+          items:
+            $ref: '#/components/schemas/RuntimeControlRange'
+        stt_auto_rules:
+          type: object
+          description: 'How speech recognition Auto picks a model, per provider (002 data-model 8.3),
+            for flow nodes and overrides that change the language or provider. The same rules admission
+            used, so the worker runs the model admission priced.
+
+            '
+          additionalProperties:
+            $ref: '#/components/schemas/SttAutoRule'
+        simulation:
+          type: boolean
+          default: false
+          description: Text runs (008) and the offline harness; tools answer without side effects.
         language_options:
           type: array
           description: 'Languages the caller can switch to during the call (012), the agent''s own language
@@ -15671,6 +15719,27 @@ components:
             and a greeting with the same meaning).
 
             '
+    RuntimeControlRange:
+      type: object
+      description: One row of 002's ControlRange (voices.yaml) without its display fields.
+      required:
+      - path
+      - min
+      - max
+      properties:
+        path:
+          type: string
+          description: JSON Pointer into the agent config
+          examples:
+          - /tts/speed
+        min:
+          type: number
+        max:
+          type: number
+        step:
+          type:
+          - number
+          - 'null'
     RuntimeTranscriptItem:
       type: object
       required:
@@ -16394,6 +16463,28 @@ components:
         language:
           type: string
           default: en
+    SttAutoRule:
+      type: object
+      description: 'The language code exactly, then its base (`en-US` -> `en`), then the default; a model
+        whose `languages` does not list the language counts as none.
+
+        '
+      properties:
+        default:
+          type:
+          - string
+          - 'null'
+        by_language:
+          type: object
+          additionalProperties:
+            type: string
+        languages:
+          type: object
+          description: Languages each model covers.
+          additionalProperties:
+            type: array
+            items:
+              type: string
     SttModel:
       type: object
       required:

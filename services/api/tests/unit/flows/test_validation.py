@@ -198,6 +198,15 @@ def test_each_code_fires(code: str, mutate: Callable[[Graph], None]) -> None:
     assert all(i["severity"] == severity for i in issues if i["code"] == code)
 
 
+def test_call_builtins_are_set_and_old_names_are_not() -> None:
+    """Flows know the built-ins every call sets (``user_number``), not names no call sets."""
+    g = clinic()
+    _n(g, "n_booked01")["config"]["message"] = "We will call {{user_number}} from {{agent_number}}."
+    assert "W_UNSET_VARIABLE" not in codes(validate(g, _context()))
+    _n(g, "n_booked01")["config"]["message"] = "We will call {{from_number}}."
+    assert "W_UNSET_VARIABLE" in codes(validate(g, _context()))
+
+
 def test_end_without_message_is_valid() -> None:
     """An empty closing message means the agent says its own goodbye: no warning."""
     g = clinic()

@@ -19,11 +19,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from callwright_contract.adapters import AdapterCatalog
 from sqlalchemy import select, text
 
 from app.call_events.service import version_config
 from app.calls import pipeline
-from app.calls.catalog import AdapterCatalog
 from app.calls.effects import RUN_PIPELINE, Deferred, dispatch
 from app.calls.models import Call, billable_seconds
 from app.core.db import Database
@@ -289,8 +289,9 @@ async def reap_stuck_calls(ctx: dict[str, Any]) -> int:
 
 
 async def _replay(call_id: str) -> int:
+    from callwright_contract.adapters import load_catalog
+
     from app.agent_versions.runtime_port import register as register_agent_versions
-    from app.calls.catalog import load_catalog
     from app.core.config import get_settings
     from app.core.queue import ArqJobQueue
     from app.evals.install import install as install_quality
@@ -315,7 +316,7 @@ async def _replay(call_id: str) -> int:
             queue,
             str(workspace_id),
             call_id,
-            catalog=load_catalog(settings.adapter_catalog_path),
+            catalog=load_catalog(),
             recordings_bucket=settings.recordings_bucket,
             replay=True,
         )

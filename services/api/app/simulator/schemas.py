@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from callwright_contract.values import SimulationEndReason
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SimMode = Literal["replay", "persona"]
@@ -83,17 +84,7 @@ class SimResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     status: Literal["completed", "failed"]
-    end_reason: (
-        Literal[
-            "caller_turns_exhausted",
-            "caller_hung_up",
-            "agent_hangup",
-            "call_transfer",
-            "turn_limit_reached",
-            "error",
-        ]
-        | None
-    ) = None
+    end_reason: SimulationEndReason | None = None
     diverged_at_turn: int | None = None
     answer_source_counts: dict[str, int] = Field(default_factory=dict)
     persona_brief: dict[str, Any] | None = None

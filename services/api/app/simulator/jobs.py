@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from callwright_contract.values import RUN_SIMULATION
 from sqlalchemy import text
 
 from app.billing import service as billing
@@ -133,7 +134,7 @@ async def dispatch_simulation(ctx: dict[str, Any], workspace_id: str, simulation
             return "skipped"
         run.dispatched_at = datetime.now(UTC)
     await dispatch.textsim_queue(ctx).enqueue(
-        dispatch.RUN_SIMULATION, simulation_run_id, job_id=f"textsim:{simulation_run_id}"
+        RUN_SIMULATION, simulation_run_id, job_id=f"textsim:{simulation_run_id}"
     )
     return "dispatched"
 

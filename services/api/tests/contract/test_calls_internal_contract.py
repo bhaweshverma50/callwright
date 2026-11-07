@@ -1,10 +1,11 @@
 """POST /v1/internal/calls/claim against contracts/calls.yaml, driven by the worker's own client
-(003 T022). Proves the API and ``services/voice-worker/worker/internal_api.py`` agree."""
+(003 T022). Proves the API and the worker's client (``worker/internal_api.py``) agree."""
 
 from __future__ import annotations
 
 import httpx
 import pytest
+from callwright_contract.protocol import ClaimRequest, SipAttributes
 from fastapi import FastAPI
 
 from app.calls import ports
@@ -33,7 +34,7 @@ async def test_worker_claims_a_web_call(
     internal_api, _ = worker_modules()
     api, recorder, http = worker_client(app)
     call_id, room = await _web_call(client, account, runtime)
-    request = internal_api.ClaimRequest(
+    request = ClaimRequest(
         job_id="AJ_first",
         room_name=room,
         worker_id="AW_1",
@@ -68,7 +69,7 @@ async def test_worker_claims_a_web_call(
 async def test_unknown_call_is_404_and_bad_token_is_401(app: FastAPI, runtime: Runtime) -> None:
     internal_api, _ = worker_modules()
     api, _, http = worker_client(app)
-    request = internal_api.ClaimRequest(
+    request = ClaimRequest(
         job_id="AJ_x",
         room_name="call-x",
         worker_id="AW_1",
@@ -116,19 +117,19 @@ class Router:
 
 
 async def test_sip_inbound_without_router_is_refused(app: FastAPI, runtime: Runtime) -> None:
-    internal_api, _ = worker_modules()
+    worker_modules()
     api, _, http = worker_client(app)
     # 010 registers real routers at startup; this checks 003's behaviour without one.
     installed = dict(ports.registry.inbound_routers)
     ports.registry.inbound_routers.clear()
     try:
         result = await api.claim(
-            internal_api.ClaimRequest(
+            ClaimRequest(
                 job_id="AJ_sip0",
                 room_name="sip-room-0",
                 worker_id="AW",
                 dispatch_metadata={"channel": "sip_inbound", "route_ref": "r1"},
-                sip=internal_api.SipAttributes(caller_number="+15550001", trunk_phone_number="+15559999"),
+                sip=SipAttributes(caller_number="+15550001", trunk_phone_number="+15559999"),
             )
         )
     finally:
@@ -139,21 +140,19 @@ async def test_sip_inbound_without_router_is_refused(app: FastAPI, runtime: Runt
 
 
 async def test_sip_inbound_is_admitted_through_the_router(app: FastAPI, runtime: Runtime) -> None:
-    internal_api, _ = worker_modules()
+    worker_modules()
     _, ws = await runtime.workspace()
     agent = runtime.versions.add_agent(ws)
     installed = dict(ports.registry.inbound_routers)
     ports.register_inbound_router("sip_inbound", Router(InboundRoute(ws, agent.agent_id)))
     try:
         api, _, http = worker_client(app)
-        request = internal_api.ClaimRequest(
+        request = ClaimRequest(
             job_id="AJ_sip1",
             room_name="sip-room-1",
             worker_id="AW",
             dispatch_metadata={"channel": "sip_inbound", "route_ref": "r1"},
-            sip=internal_api.SipAttributes(
-                call_id="sip-1", caller_number="+15550001", trunk_phone_number="+15559999"
-            ),
+            sip=SipAttributes(call_id="sip-1", caller_number="+15550001", trunk_phone_number="+15559999"),
         )
         result = await api.claim(request)
         assert result.admitted and result.runtime.channel == "sip_inbound"
@@ -169,7 +168,7 @@ async def test_sip_inbound_is_admitted_through_the_router(app: FastAPI, runtime:
 async def test_sip_outbound_without_dial_provider_is_refused(app: FastAPI, runtime: Runtime) -> None:
     from app.calls import service as calls
 
-    internal_api, _ = worker_modules()
+    worker_modules()
     _, ws = await runtime.workspace()
     agent = runtime.versions.add_agent(ws)
     admission = await calls.admit(
@@ -179,7 +178,7 @@ async def test_sip_outbound_without_dial_provider_is_refused(app: FastAPI, runti
     )
     api, _, http = worker_client(app)
     result = await api.claim(
-        internal_api.ClaimRequest(
+        ClaimRequest(
             job_id="AJ_out",
             room_name="out-1",
             worker_id="AW",

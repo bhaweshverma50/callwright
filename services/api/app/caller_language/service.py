@@ -10,14 +10,16 @@ them.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract.calls import PHONE_CHANNELS
+from callwright_contract.values import E164
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.defaults import DEFAULT_LANGUAGE
 from app.caller_language.models import CallerPreference, CallLanguage
 from app.calls.models import Call
 from app.calls.service import config_for
@@ -26,10 +28,6 @@ from app.core.errors import field_error, not_found, validation_failed
 from app.core.ids import new_id
 from app.core.pagination import page_meta
 from app.voices.catalog import load_catalog as load_voice_catalog
-
-PHONE_CHANNELS = frozenset({"sip_inbound", "sip_outbound"})
-E164 = re.compile(r"^\+[1-9][0-9]{6,14}$")
-DEFAULT_LANGUAGE = "en-US"
 
 
 def label(code: str) -> str:

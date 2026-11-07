@@ -5,6 +5,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
+from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE, DEFAULT_HOLD_MESSAGE
+
 PRESETS: tuple[dict[str, Any], ...] = (
     {
         "preset_id": "end_call_polite",
@@ -37,7 +40,7 @@ PRESETS: tuple[dict[str, Any], ...] = (
                     "briefing_message_type": "static",
                     "briefing_message": "I have a caller who would like to speak with someone.",
                 },
-                "hold_message": "Please hold while I connect you.",
+                "hold_message": DEFAULT_HOLD_MESSAGE,
                 "ring_timeout_s": 30,
             },
         },
@@ -76,10 +79,10 @@ PRESETS: tuple[dict[str, Any], ...] = (
                 },
                 "headers": [{"name": "Content-Type", "value": "application/json", "secret": False}],
                 "body_template": None,
-                "timeout_ms": 8000,
+                "timeout_ms": DEFAULT_TIMEOUT_MS,
                 "response_mappings": [],
                 "speak_during_execution": True,
-                "execution_message": "One moment while I check that.",
+                "execution_message": DEFAULT_EXECUTION_MESSAGE,
             },
         },
     },

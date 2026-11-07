@@ -4,7 +4,7 @@ A language is offered when the agent's speech recognition provider has a model f
 voice speaks it:
 
 * speech recognition: the agent's model when it covers the language, else what Auto picks for
-  the language (``voices.resolve_auto_stt``), else the provider's first model that covers it.
+  the language (``VoiceCatalog.resolve_auto_stt``), else the provider's first model that covers it.
   The provider never changes, so the agent's vendor keys and pricing rows stay the same;
 * voice: the agent's model when it speaks the language, else that model's
   ``multilingual_model`` (English-only Flash v2 and Turbo v2 switch to their v2.5 versions,
@@ -21,12 +21,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from app.agents.defaults import DEFAULT_LANGUAGE
 from app.voices.catalog import VoiceCatalog
 from app.voices.catalog import load_catalog as load_voice_catalog
 
-DEFAULT_LANGUAGE = "en-US"
-DEFAULT_STT_PROVIDER = "deepgram"
-DEFAULT_TTS_PROVIDER = "elevenlabs"
 MAX_LANGUAGES = 30
 
 
@@ -74,10 +72,10 @@ def option_for(config: Mapping[str, Any], code: str, vc: VoiceCatalog) -> dict[s
     stt = _section(config, "stt")
     tts = _section(config, "tts")
     stt_model = stt_model_for(
-        str(stt.get("provider") or DEFAULT_STT_PROVIDER), stt.get("model") or None, code, vc
+        str(stt.get("provider") or vc.stt_default["provider"]), stt.get("model") or None, code, vc
     )
     tts_model = tts_model_for(
-        str(tts.get("provider") or DEFAULT_TTS_PROVIDER), tts.get("model") or None, code, vc
+        str(tts.get("provider") or vc.tts_default_provider), tts.get("model") or None, code, vc
     )
     if stt_model is None or tts_model is None:
         return None
@@ -102,8 +100,8 @@ def language_options(config: Mapping[str, Any], vc: VoiceCatalog | None = None) 
     own = vc.language(agent_code)
     stt = _section(config, "stt")
     tts = _section(config, "tts")
-    stt_provider: str = str(stt.get("provider") or DEFAULT_STT_PROVIDER)
-    voice = vc.tts_provider(str(tts.get("provider") or DEFAULT_TTS_PROVIDER))
+    stt_provider: str = str(stt.get("provider") or vc.stt_default["provider"])
+    voice = vc.tts_provider(str(tts.get("provider") or vc.tts_default_provider))
     first = {
         "code": agent_code,
         "label": own.label if own is not None else agent_code,

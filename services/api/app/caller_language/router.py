@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
+from callwright_contract.values import E164_PATTERN
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -35,7 +36,7 @@ async def list_caller_preferences(
     principal: CurrentPrincipal,
     page: PageParam = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 50,
-    phone_number: Annotated[str | None, Query(pattern=r"^\+[1-9]\d{6,14}$")] = None,
+    phone_number: Annotated[str | None, Query(pattern=E164_PATTERN)] = None,
 ) -> dict[str, Any]:
     async with request.app.state.db.transaction(workspace_id=principal.workspace_id) as session:
         return await service.list_preferences(

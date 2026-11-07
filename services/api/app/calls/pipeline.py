@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from callwright_contract.adapters import AdapterCatalog
+from callwright_contract.calls import PIPELINE_STEPS
 from opentelemetry import trace
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +39,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.billing import service as billing
 from app.call_events.models import CallEvent
 from app.calls import components as comp
-from app.calls.catalog import AdapterCatalog
 from app.calls.effects import Deferred
 from app.calls.models import Call, CallPipelineStep
 from app.calls.ports import registry
@@ -57,15 +58,8 @@ class StepSpec:
     blocking: bool
 
 
-STEPS: tuple[StepSpec, ...] = (
-    StepSpec("finalize_transcript", True),
-    StepSpec("price_and_charge", True),
-    StepSpec("analyze", False),
-    StepSpec("evaluate", False),
-    StepSpec("notify_analyzed", False),
-    StepSpec("complete", True),
-)
-STEP_NAMES = tuple(s.name for s in STEPS)
+BLOCKING_STEPS = frozenset({"finalize_transcript", "price_and_charge", "complete"})
+STEPS: tuple[StepSpec, ...] = tuple(StepSpec(name, name in BLOCKING_STEPS) for name in PIPELINE_STEPS)
 
 Outcome = Literal["done", "skipped"]
 # 007 registers ``async def handler(call_id, session) -> None`` for analyze and evaluate.

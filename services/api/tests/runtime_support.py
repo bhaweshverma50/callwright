@@ -444,7 +444,8 @@ class CallSetup:
 
 
 async def post_events(runtime: Runtime, call_id: str, events: list[dict[str, Any]]) -> Any:
-    from app.call_events.schemas import EventBatch
+    from callwright_contract.protocol import EventBatch
+
     from app.call_events.service import ingest
     from app.calls.effects import dispatch
 

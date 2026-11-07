@@ -23,16 +23,17 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+from callwright_contract.url_guard import UrlNotAllowed, check_url
+from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from opentelemetry import trace
 from sqlalchemy import text
 
 from app.calls.ports import InboundRoute
-from app.calls.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.ids import is_valid_id, new_id
 from app.core.secrets import LocalKeyWrapper
-from app.core.url_guard import UrlNotAllowed, check_url, guarded_request
+from app.core.url_guard import guarded_request
 from app.phone_numbers import validation
 from app.phone_numbers.shared import _resolver, agent_state
 from app.webhooks_out import service as webhooks

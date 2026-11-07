@@ -6,7 +6,6 @@
 * Ambient uploads: magic-byte checked audio up to 10 MB, 20 per workspace, stored at
   ``workspaces/{ws}/ambient/{ulid}.{ext}``, previewed by 10-minute signed URLs, and never
   deleted while a draft or the published version references the key.
-* ``resolve_auto_stt(provider, language)``: the model speech recognition Auto resolves to (003).
 """
 
 from __future__ import annotations
@@ -48,10 +47,6 @@ EXTENSIONS = {
     "audio/aac": "aac",
     "audio/opus": "opus",
 }
-
-
-def resolve_auto_stt(provider: str, language: str) -> str | None:
-    return load_catalog().resolve_auto_stt(provider, language)
 
 
 # Voice browser -----------------------------------------------------------------------------

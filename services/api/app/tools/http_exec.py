@@ -1,9 +1,9 @@
 """Editor test runs of HTTP tools (T043, research R4, R5).
 
-``run(spec, ...)`` prepares the request with ``http_core``, checks the address with the shared
-SSRF guard (``core/url_guard``), connects to the vetted IP with the original Host and TLS name,
-follows at most three redirects (each hop re-checked), reads at most 64 KB, applies the response
-mappings and returns the ``TestRunResult`` body with secret header values masked.
+``run(spec, ...)`` prepares the request with the shared ``http_core``, checks every hop with the
+shared URL guard, connects to the vetted IP with the original Host and TLS name, follows the
+core's redirect rules, reads at most 64 KB, applies the response mappings and returns the
+``TestRunResult`` body with secret header values masked.
 """
 
 from __future__ import annotations
@@ -14,27 +14,14 @@ from typing import Any
 from urllib.parse import urljoin
 
 import httpx
+from callwright_contract import http_core, url_guard
 
-from app.core import url_guard
 from app.core.secrets import mask_secret
-from app.tools import http_core
-
-MAX_REDIRECTS = 3
-REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
 
 def _masked_headers(prepared: http_core.PreparedRequest, spec: Mapping[str, Any]) -> dict[str, str]:
     secret_names = {str(h["name"]).lower() for h in spec.get("headers") or [] if h.get("secret")}
     return {k: (mask_secret(v) if k.lower() in secret_names else v) for k, v in prepared.headers.items()}
-
-
-async def _read_capped(response: httpx.Response) -> tuple[bytes, bool]:
-    data = bytearray()
-    async for chunk in response.aiter_bytes():
-        data.extend(chunk)
-        if len(data) > http_core.MAX_RESPONSE_BYTES:
-            return bytes(data[: http_core.MAX_RESPONSE_BYTES]), True
-    return bytes(data), False
 
 
 async def _send(
@@ -121,34 +108,33 @@ async def run(
             error_message=message,
             llm_payload=http_core.error_payload("missing_variable", message),
         )
-    timeout_s = int(spec.get("timeout_ms") or 8000) / 1000
+    timeout_s = http_core.timeout_s(spec)
     deadline = started + timeout_s
     method, url, content = prepared.method, prepared.url, prepared.content()
     try:
-        for hop in range(MAX_REDIRECTS + 1):
+        for hop in range(http_core.MAX_REDIRECTS + 1):
             checked = await url_guard.check_url(url, allow_http=allow_http, resolver=resolver)
             remaining = max(0.05, deadline - time.perf_counter())
             response = await _send(
                 client, method, checked, content=content, headers=prepared.headers, timeout_s=remaining
             )
             location = response.headers.get("location")
-            if response.status_code in REDIRECT_STATUSES and location and hop < MAX_REDIRECTS:
+            if (
+                response.status_code in http_core.REDIRECT_STATUSES
+                and location
+                and hop < http_core.MAX_REDIRECTS
+            ):
                 await response.aclose()
                 url = urljoin(url, location)
-                if response.status_code == 303 or (
-                    response.status_code in (301, 302) and method not in ("GET", "DELETE")
-                ):
-                    method, content = "GET", None
+                method, content = http_core.redirected(response.status_code, method, content)
                 continue
             try:
-                data, too_large = await _read_capped(response)
+                data, too_large = await http_core.read_capped(response.aiter_bytes())
             finally:
                 await response.aclose()
             break
     except url_guard.UrlNotAllowed as exc:
-        code = (
-            "blocked_address" if exc.reason in ("private_address", "https_required") else "connection_error"
-        )
+        code = http_core.blocked_error_code(exc.reason)
         return _result(
             started,
             prepared,

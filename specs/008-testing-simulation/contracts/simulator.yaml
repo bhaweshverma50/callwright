@@ -326,6 +326,13 @@ paths:
                   output_call_id: { type: string, description: Call row pre-created with origin simulation }
                   mode: { $ref: '#/components/schemas/SimMode' }
                   config_snapshot: { type: object }
+                  runtime:
+                    type: object
+                    description: >
+                      The run's resolved values, as in the claim's RuntimeConfig (config with
+                      defaults applied, limits, controls, stt_auto_rules, stt_resolved_model,
+                      language_options); the text runner builds its runtime from them.
+                    additionalProperties: true
                   settings: { $ref: '#/components/schemas/SimSettings' }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
                   language_options:

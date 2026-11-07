@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from callwright_contract.values import CALLBACK_MAX_IN_MINUTES, CALLBACK_MAX_NOTE_CHARS
+from callwright_contract.variables import MAX_VARIABLES, NAME
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.calls.variables import MAX_VARIABLES, NAME
 from app.outbound.schemas import VariableValue
 from app.phone_numbers.schemas import AGENT_ID, check_e164
 
-MAX_NOTE = 500
 # One slot stays free for ``callback_note``.
 MAX_CARRIED_VARIABLES = MAX_VARIABLES - 1
 
@@ -23,7 +23,7 @@ class CallbackCreate(BaseModel):
     agent_id: str | None = Field(default=None, pattern=AGENT_ID)
     scheduled_at: AwareDatetime
     recipient_timezone: str | None = Field(default=None, max_length=64)
-    note: str = Field(default="", max_length=MAX_NOTE)
+    note: str = Field(default="", max_length=CALLBACK_MAX_NOTE_CHARS)
     dynamic_variables: dict[str, VariableValue] = Field(
         default_factory=dict, max_length=MAX_CARRIED_VARIABLES
     )
@@ -49,8 +49,8 @@ class CallbackBookRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     at: str | None = Field(default=None, max_length=40)
-    in_minutes: int | None = Field(default=None, ge=1, le=43200)
-    note: str = Field(default="", max_length=MAX_NOTE)
+    in_minutes: int | None = Field(default=None, ge=1, le=CALLBACK_MAX_IN_MINUTES)
+    note: str = Field(default="", max_length=CALLBACK_MAX_NOTE_CHARS)
 
     @model_validator(mode="after")
     def _one_time(self) -> CallbackBookRequest:

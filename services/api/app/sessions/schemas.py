@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any
 
+from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
-
-from app.calls.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 
 ULID = "[0-9A-HJKMNP-TV-Z]{26}"
 MAX_METADATA_BYTES = 4096

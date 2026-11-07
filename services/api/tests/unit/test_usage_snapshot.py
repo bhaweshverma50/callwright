@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from callwright_contract.protocol import CallEventIn
 from pydantic import TypeAdapter
 
-from app.call_events.schemas import CallEventIn
 from app.call_events.service import latest_usage
 from app.calls.components import usage_meters
 

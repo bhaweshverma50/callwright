@@ -17,6 +17,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Final, Literal
 
+from callwright_contract.calls import CALL_STATUSES
 from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, Text, func, update
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,61 +26,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base
 
 logger = logging.getLogger(__name__)
-
-CallStatus = Literal[
-    "queued",
-    "ringing",
-    "in_progress",
-    "ended",
-    "processing",
-    "completed",
-    "failed",
-    "no_answer",
-    "busy",
-    "voicemail",
-]
-DisconnectReason = Literal[
-    "user_hangup",
-    "agent_hangup",
-    "call_transfer",
-    "voicemail_reached",
-    "inactivity",
-    "max_duration_reached",
-    "error",
-    "concurrency_limit",
-    "insufficient_credit",
-]
-Channel = Literal["web", "sip_inbound", "sip_outbound", "whatsapp"]
-Direction = Literal["inbound", "outbound"]
-Origin = Literal["live", "test", "simulation"]
-
-CALL_STATUSES: Final = (
-    "queued",
-    "ringing",
-    "in_progress",
-    "ended",
-    "processing",
-    "completed",
-    "failed",
-    "no_answer",
-    "busy",
-    "voicemail",
-)
-DISCONNECT_REASONS: Final = (
-    "user_hangup",
-    "agent_hangup",
-    "call_transfer",
-    "voicemail_reached",
-    "inactivity",
-    "max_duration_reached",
-    "error",
-    "concurrency_limit",
-    "insufficient_credit",
-)
-ACTIVE: Final = frozenset({"queued", "ringing", "in_progress"})
-NEVER_CONNECTED: Final = frozenset({"failed", "no_answer", "busy"})
-# States in which the worker may still post events (``ended`` accepts the final flush).
-ACCEPTS_EVENTS: Final = frozenset({"queued", "ringing", "in_progress", "ended"})
 
 # (from, to) pairs allowed by the state machine. ``None`` is "new row".
 TRANSITIONS: Final[frozenset[tuple[str | None, str]]] = frozenset(
@@ -174,9 +120,6 @@ class Call(Base):
     route_detail: Mapped[str | None] = mapped_column(String)
 
 
-PipelineStep = Literal[
-    "finalize_transcript", "price_and_charge", "analyze", "evaluate", "notify_analyzed", "complete"
-]
 StepStatus = Literal["pending", "running", "done", "failed", "skipped"]
 
 

@@ -18,12 +18,14 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from callwright_contract.values import COMPLETE_TASK_TOOL, E164
+from callwright_contract.variables import BUILTIN_VARIABLES, DOTTED_PLACEHOLDER
 from pydantic import ValidationError
 
 from app.flows import transitions
 from app.flows.schemas import CONVERSATIONAL, MAX_EDGES, MAX_NODES
-from app.flows.variables import BUILTIN_VARIABLES, PLACEHOLDER, TASK_RESULT, placeholders
-from app.tools.schemas import E164_PATTERN, HttpRequestSpec, TransferSpec
+from app.flows.variables import TASK_RESULT, placeholders
+from app.tools.schemas import HttpRequestSpec, TransferSpec
 
 Issue = dict[str, Any]
 OverrideChecker = Callable[[Mapping[str, Any]], list[tuple[str, str, str]]]
@@ -36,11 +38,9 @@ MAX_FIELDS = 30
 FIELD_NAME = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 CATEGORY_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$")
 END_REASON = re.compile(r"^[a-z_]{1,40}$")
-E164 = re.compile(E164_PATTERN)
 CONTEXT_STRATEGIES = ("inherit", "summarize", "reset")
 TASK_FIELD_TYPES = ("string", "number", "boolean", "enum")
 EXTRACT_FIELD_TYPES = ("string", "number", "boolean")
-RESERVED_TOOL_NAMES = frozenset({"complete_task"})
 
 ALLOWED_TRIGGERS: dict[str, frozenset[str]] = {
     "start": frozenset({"always"}),
@@ -138,7 +138,7 @@ def _kind(node: Mapping[str, Any]) -> str:
 
 def _json_ok(text: str) -> bool:
     try:
-        json.loads(PLACEHOLDER.sub("0", text))
+        json.loads(DOTTED_PLACEHOLDER.sub("0", text))
     except ValueError:
         return False
     return True
@@ -336,7 +336,7 @@ def validate(graph: Mapping[str, Any], ctx: ValidationContext | None = None) -> 
         attached = [tool_names[t] for t in cfg.get("tool_ids") or [] if t in tool_names]
         taken: dict[str, str] = {name: "tool" for name in [*attached, *ctx.flow_tool_names]}
         if n.get("type") == "task":
-            taken["complete_task"] = "tool"
+            taken[COMPLETE_TASK_TOOL] = "tool"
         for e in outgoing.get(nid, []):
             if e.get("trigger") != "llm_condition":
                 continue

@@ -26,9 +26,9 @@ def redis_settings() -> RedisSettings:
 
 async def startup(ctx: dict[str, Any]) -> None:
     import httpx
+    from callwright_contract.adapters import load_catalog
 
     from app.agent_versions.runtime_port import register as register_agent_versions
-    from app.calls.catalog import load_catalog
     from app.core.livekit import build_livekit
 
     settings = get_settings()
@@ -45,7 +45,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     from app.core.sip import build_sip
 
     ctx["sip"] = build_sip(settings)
-    ctx["adapter_catalog"] = load_catalog(settings.adapter_catalog_path)
+    ctx["adapter_catalog"] = load_catalog()
     ctx["http"] = httpx.AsyncClient(follow_redirects=False)
     # Quality and evaluations (007): the pipeline's analyze and evaluate steps run here.
     from app.evals.install import install as install_quality

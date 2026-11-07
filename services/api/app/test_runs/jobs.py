@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from callwright_contract.values import RUN_SINGLE_TURN
+
 from app.billing import service as billing
 from app.core.db import Database
 from app.evals.runtime import runtime
@@ -53,7 +55,7 @@ async def dispatch_test_case(
         )
         return "waiting"
     await dispatch.textsim_queue(ctx).enqueue(
-        dispatch.RUN_SINGLE_TURN, test_run_id, test_case_id, job_id=f"textsim:{test_run_id}:{test_case_id}"
+        RUN_SINGLE_TURN, test_run_id, test_case_id, job_id=f"textsim:{test_run_id}:{test_case_id}"
     )
     return "dispatched"
 

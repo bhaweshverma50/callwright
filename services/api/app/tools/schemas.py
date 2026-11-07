@@ -12,6 +12,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
+from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
+from callwright_contract.values import (
+    DEFAULT_EXECUTION_MESSAGE,
+    DEFAULT_HOLD_MESSAGE,
+    E164_PATTERN,
+    KB_TOOL,
+    ROUTE_TOOL_PREFIX,
+)
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ToolType = Literal["end_call", "transfer_call", "press_digit", "http"]
@@ -19,16 +27,12 @@ TOOL_TYPES: tuple[ToolType, ...] = ("end_call", "transfer_call", "press_digit", 
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 NAME_PATTERN = r"^[a-z][a-z0-9_]{0,63}$"
-E164_PATTERN = r"^\+[1-9]\d{6,14}$"
 HEADER_NAME_PATTERN = r"^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$"
-RESERVED_NAMES = frozenset({"kb_search"})
-RESERVED_PREFIXES = ("route_to_",)
+RESERVED_NAMES = frozenset({KB_TOOL})
+RESERVED_PREFIXES = (ROUTE_TOOL_PREFIX,)
 
 ToolName = Annotated[str, Field(pattern=NAME_PATTERN)]
 E164 = Annotated[str, Field(pattern=E164_PATTERN)]
-
-DEFAULT_HOLD_MESSAGE = "Please hold while I connect you."
-DEFAULT_EXECUTION_MESSAGE = "One moment while I check that."
 
 
 class _Strict(BaseModel):
@@ -95,7 +99,7 @@ class HttpRequestSpec(_Strict):
     url: str = Field(min_length=1, max_length=2048)
     headers: list[HeaderSpec] = Field(default_factory=_default_headers, max_length=20)
     body_template: Any = None
-    timeout_ms: int = Field(default=8000, ge=1000, le=30000)
+    timeout_ms: int = Field(default=DEFAULT_TIMEOUT_MS, ge=1000, le=30000)
     response_mappings: list[ResponseMapping] = Field(default_factory=list, max_length=20)
     speak_during_execution: bool = True
     execution_message: str = Field(default=DEFAULT_EXECUTION_MESSAGE, max_length=300)

@@ -11,26 +11,9 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
-PLACEHOLDER_RE = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
-_ANY_BRACES_RE = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
-MAX_VARIABLES = 50
-MAX_DEFAULT_LENGTH = 2000
-MAX_DESCRIPTION_LENGTH = 200
+from callwright_contract.variables import BUILTIN_VARIABLES, NAME, PLACEHOLDER
 
-RESERVED_NAMES = frozenset(
-    {
-        "call_id",
-        "channel",
-        "direction",
-        "user_number",
-        "agent_number",
-        "timezone",
-        "current_time",
-        "current_date",
-        "current_datetime",
-    }
-)
+_ANY_BRACES_RE = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -42,11 +25,11 @@ class Placeholders:
 
 
 def is_valid_name(name: str) -> bool:
-    return bool(NAME_RE.match(name))
+    return bool(NAME.match(name))
 
 
 def is_reserved(name: str) -> bool:
-    return name in RESERVED_NAMES
+    return name in BUILTIN_VARIABLES
 
 
 def extract(texts: Iterable[str | None]) -> Placeholders:
@@ -55,10 +38,10 @@ def extract(texts: Iterable[str | None]) -> Placeholders:
     for text in texts:
         if not text:
             continue
-        for match in PLACEHOLDER_RE.finditer(text):
+        for match in PLACEHOLDER.finditer(text):
             if match.group(1) not in names:
                 names.append(match.group(1))
-        stripped = PLACEHOLDER_RE.sub("", text)
+        stripped = PLACEHOLDER.sub("", text)
         for match in _ANY_BRACES_RE.finditer(stripped):
             raw = match.group(0)
             if raw not in invalid:

@@ -108,7 +108,7 @@ async def test_agent_built_published_called_and_charged(
     assert rt.agent_version_id == version_id
     assert rt.config["prompt"] == "You answer calls for {{company_name}}."
     assert rt.variables["customer_name"] == "Priya" and rt.variables["company_name"] == "Acme Dental"
-    assert rt.stt_resolved_model  # Auto resolved through voices.service.resolve_auto_stt
+    assert rt.stt_resolved_model  # Auto resolved through the speech catalog's rules
     await runtime.run_jobs("start_recording")
 
     # Events: greeting, one exchange, usage meters, the caller hangs up after 120 s.

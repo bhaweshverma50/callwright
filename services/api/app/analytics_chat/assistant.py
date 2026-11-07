@@ -22,6 +22,7 @@ from datetime import date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from callwright_contract.calls import ORIGINS
 from pydantic import ValidationError
 
 from app.analytics_chat.catalog import (
@@ -179,9 +180,7 @@ def _call_lookup(question: str) -> dict[str, Any] | None:
     """A question about specific calls, or None when it asks for an aggregate."""
     query: dict[str, Any] = {"kind": "calls"}
     if m := _CALL_ID.search(question):
-        query.update(
-            call_id="call_" + m.group(0)[5:].upper(), limit=1, origins=["live", "test", "simulation"]
-        )
+        query.update(call_id="call_" + m.group(0)[5:].upper(), limit=1, origins=list(ORIGINS))
         return query
     found = False
     for pattern, order, direction in _SUPERLATIVES:

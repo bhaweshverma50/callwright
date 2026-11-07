@@ -9,7 +9,8 @@ import copy
 import secrets
 from typing import Any
 
-from app.tools.schemas import DEFAULT_EXECUTION_MESSAGE, DEFAULT_HOLD_MESSAGE
+from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
+from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE, DEFAULT_HOLD_MESSAGE
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
 DEFAULT_GREETING = "Hi, thanks for calling. How can I help?"
@@ -82,7 +83,7 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
             "url": "",
             "headers": [{"name": "Content-Type", "value": "application/json", "secret": False}],
             "body_template": None,
-            "timeout_ms": 8000,
+            "timeout_ms": DEFAULT_TIMEOUT_MS,
             "response_mappings": [],
             "speak_during_execution": True,
             "execution_message": DEFAULT_EXECUTION_MESSAGE,

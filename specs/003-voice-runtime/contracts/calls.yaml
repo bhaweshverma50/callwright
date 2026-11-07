@@ -116,7 +116,12 @@ components:
           $ref: '#/components/schemas/RuntimeConfig'
     RuntimeConfig:
       type: object
-      required: [channel, direction, agent_id, agent_version_id, config, variables, limits, heartbeat_interval_s]
+      description: >
+        Everything the worker needs, resolved by the API, which owns the catalogs and defaults
+        (shape defined once in packages/contract, `callwright_contract.protocol`). The worker keeps
+        no defaults or tables of its own.
+      required:
+        [channel, direction, agent_id, agent_version_id, config, variables, limits, controls, stt_auto_rules, heartbeat_interval_s]
       properties:
         channel:
           type: string
@@ -137,7 +142,10 @@ components:
           enum: [single_prompt, flow]
         config:
           type: object
-          description: Frozen AgentConfig from the agent version (schema owned by 002-agent-builder).
+          description: >
+            Frozen AgentConfig from the agent version (schema owned by 002-agent-builder) with
+            the language and every vendor resolved (`stt.model` stays null for Auto) and the
+            call-behaviour, keypad, voicemail and background-audio defaults applied.
           additionalProperties: true
         variables:
           type: object
@@ -186,6 +194,23 @@ components:
         stt_resolved_model:
           type: [string, 'null']
           description: The speech recognition model Auto resolved to for the agent's language.
+        controls:
+          type: array
+          description: >
+            002's control range table (data-model 8.6). The worker clamps call behaviour and
+            segment overrides to it.
+          items: {$ref: '#/components/schemas/RuntimeControlRange'}
+        stt_auto_rules:
+          type: object
+          description: >
+            How speech recognition Auto picks a model, per provider (002 data-model 8.3), for
+            flow nodes and overrides that change the language or provider. The same rules
+            admission used, so the worker runs the model admission priced.
+          additionalProperties: {$ref: '#/components/schemas/SttAutoRule'}
+        simulation:
+          type: boolean
+          default: false
+          description: Text runs (008) and the offline harness; tools answer without side effects.
         language_options:
           type: array
           description: >
@@ -199,6 +224,31 @@ components:
             Phone calls only (012): the caller's saved language when it is one of
             `language_options` and differs from the agent's language. The call starts in it
             (speech recognition, replies and a greeting with the same meaning).
+    RuntimeControlRange:
+      type: object
+      description: One row of 002's ControlRange (voices.yaml) without its display fields.
+      required: [path, min, max]
+      properties:
+        path: {type: string, description: JSON Pointer into the agent config, examples: [/tts/speed]}
+        min: {type: number}
+        max: {type: number}
+        step: {type: [number, 'null']}
+    SttAutoRule:
+      type: object
+      description: >
+        The language code exactly, then its base (`en-US` -> `en`), then the default; a model
+        whose `languages` does not list the language counts as none.
+      properties:
+        default: {type: [string, 'null']}
+        by_language:
+          type: object
+          additionalProperties: {type: string}
+        languages:
+          type: object
+          description: Languages each model covers.
+          additionalProperties:
+            type: array
+            items: {type: string}
     LanguageOption:
       type: object
       required: [code, label, stt_model, tts_model]

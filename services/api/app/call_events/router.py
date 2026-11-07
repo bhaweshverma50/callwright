@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from callwright_contract.protocol import EventBatch
 from fastapi import APIRouter, Depends, Request
 
 from app.call_events import service
-from app.call_events.schemas import EventBatch
 from app.calls.effects import dispatch
 from app.core.auth import require_service
 from app.core.errors import problem_responses

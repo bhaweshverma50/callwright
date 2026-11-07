@@ -21,31 +21,41 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract.adapters import AdapterCatalog
+from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS, LIVE_CHANNELS
+from callwright_contract.protocol import (
+    DISPATCH_CALL_ID,
+    DISPATCH_CHANNEL,
+    DISPATCH_ROUTE_REF,
+    ClaimRequest,
+    ControlRange,
+    Limits,
+    OutboundDial,
+    RuntimeConfig,
+    RuntimeValues,
+)
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.defaults import CALL_BEHAVIOR_DEFAULTS
 from app.billing import service as billing
 from app.calls import components as comp
 from app.calls import variables as variables_mod
-from app.calls.catalog import AdapterCatalog
 from app.calls.effects import START_RECORDING, Deferred
-from app.calls.models import ACTIVE, Call
+from app.calls.models import Call
 from app.calls.ports import AgentSnapshot, ObjectSigner, registry
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
 from app.core.ids import is_valid_id, new_id
 from app.pricing import service as pricing
+from app.voices.catalog import load_catalog as load_speech_catalog
 from app.webhooks_out import service as webhooks
 from app.workspaces.models import Workspace
 
 logger = logging.getLogger(__name__)
 
-HEARTBEAT_INTERVAL_S = 10
-CALLER_JOIN_TIMEOUT_S = 60
 SIGNED_URL_TTL_S = 600
-LIVE_CHANNELS = frozenset({"sip_inbound", "sip_outbound", "whatsapp"})
-SIP_CHANNELS = frozenset({"sip_inbound", "whatsapp"})
 
 # Refusal codes: problem status, problem code, disconnect reason (FR-008, contract sessions.yaml).
 REFUSALS: dict[str, tuple[int, str]] = {
@@ -146,23 +156,46 @@ def recording_override(config: Mapping[str, Any]) -> Any:
     return advanced.get("recording") if isinstance(advanced, Mapping) else None
 
 
-def _int(value: Any, default: int, low: int, high: int) -> int:
-    try:
-        number = int(value)
-    except (TypeError, ValueError):
-        number = default
-    return min(high, max(low, number))
-
-
-def limits(config: Mapping[str, Any]) -> dict[str, int]:
-    """Call limits from the version, clamped to the contract ranges (defence in depth)."""
+def limits(config: Mapping[str, Any]) -> Limits:
+    """Call limits from the version, clamped to the control ranges (defence in depth)."""
     behavior = config.get("call_behavior")
     cb: Mapping[str, Any] = behavior if isinstance(behavior, Mapping) else {}
-    return {
-        "end_on_silence_s": _int(cb.get("end_on_silence_s"), 30, 10, 300),
-        "max_duration_s": _int(cb.get("max_duration_s"), 600, 30, 3600),
-        "ring_duration_ms": _int(cb.get("ring_duration_ms"), 5000, 0, 30000),
-    }
+    speech = load_speech_catalog()
+
+    def limit(key: str) -> int:
+        try:
+            number = int(cb[key])
+        except (KeyError, TypeError, ValueError):
+            number = int(CALL_BEHAVIOR_DEFAULTS[key])
+        control = speech.control(f"/call_behavior/{key}")
+        assert control is not None, f"voices/catalog.yaml has no control for {key}"
+        return min(int(control.max), max(int(control.min), number))
+
+    return Limits(
+        end_on_silence_s=limit("end_on_silence_s"),
+        max_duration_s=limit("max_duration_s"),
+        ring_duration_ms=limit("ring_duration_ms"),
+    )
+
+
+def runtime_values(config: Mapping[str, Any], catalog: AdapterCatalog) -> RuntimeValues:
+    """Everything a run of ``config`` needs resolved (contract ``RuntimeValues``): vendors and
+    call-behaviour defaults applied, limits, the control ranges, the STT Auto table and the model
+    Auto picked. Live calls get it in the claim, text runs (008) in their run specs."""
+    components = comp.resolve(config, catalog)
+    resolved = comp.with_defaults(config, components)
+    speech = load_speech_catalog()
+    return RuntimeValues(
+        config=resolved,
+        limits=limits(resolved),
+        controls=[
+            ControlRange(path=c.path, min=float(c.min), max=float(c.max), step=float(c.step))
+            for c in speech.controls
+        ],
+        stt_auto_rules=speech.stt_auto_rules(),
+        stt_resolved_model=components.stt.model,
+        language_options=claim_language_options(config, components),
+    )
 
 
 # Admission ---------------------------------------------------------------------------------
@@ -198,7 +231,7 @@ async def _active_calls(session: AsyncSession, workspace_id: str) -> int:
                 # 008: simulated calls run as text and never hold a concurrent-call slot.
                 .where(
                     Call.workspace_id == workspace_id,
-                    Call.status.in_(tuple(ACTIVE)),
+                    Call.status.in_(tuple(ACTIVE_STATUSES)),
                     Call.origin != "simulation",
                 )
             )
@@ -431,15 +464,6 @@ async def _snapshot(session: AsyncSession, call: Call) -> AgentSnapshot | None:
 # Claim --------------------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class ClaimInput:
-    job_id: str
-    room_name: str
-    worker_id: str
-    dispatch_metadata: Mapping[str, Any]
-    sip: Mapping[str, Any] | None = None
-
-
 @dataclass
 class ClaimOutcome:
     body: dict[str, Any]
@@ -457,7 +481,6 @@ def runtime_config(
 ) -> dict[str, Any]:
     """Contract ``RuntimeConfig`` for the worker (calls.yaml)."""
     config = dict(snapshot.config)
-    components = comp.resolve(config, catalog)
     background_url = None
     advanced = config.get("advanced")
     background = advanced.get("background_audio") if isinstance(advanced, Mapping) else None
@@ -467,26 +490,20 @@ def runtime_config(
             if signer is not None and media_bucket:
                 background_url = signer.presign_get(media_bucket, str(source["key"]), SIGNED_URL_TTL_S)
     agent_type = snapshot.agent_type if snapshot.agent_type in ("single_prompt", "flow") else "single_prompt"
-    return {
-        "channel": call.channel,
-        "direction": call.direction,
-        "from_number": call.from_number,
-        "to_number": call.to_number,
-        "agent_id": call.agent_id,
-        "agent_version_id": snapshot.version_id,
-        "agent_type": agent_type,
-        "config": config,
-        "variables": {k: str(v) for k, v in (call.dynamic_variables or {}).items()},
-        "limits": limits(config),
-        "background_audio_url": background_url,
-        "caller_join_timeout_s": CALLER_JOIN_TIMEOUT_S,
-        "outbound_dial": dict(outbound_dial) if outbound_dial else None,
-        "heartbeat_interval_s": HEARTBEAT_INTERVAL_S,
-        "recording_enabled": call.recording_enabled,
-        "stt_resolved_model": components.stt.model,
-        "language_options": claim_language_options(config, components),
-        "caller_language": None,
-    }
+    return RuntimeConfig(
+        **dict(runtime_values(config, catalog)),
+        channel=call.channel,
+        direction=call.direction,
+        from_number=call.from_number,
+        to_number=call.to_number,
+        agent_id=call.agent_id,
+        agent_version_id=snapshot.version_id,
+        agent_type=agent_type,
+        variables={k: str(v) for k, v in (call.dynamic_variables or {}).items()},
+        background_audio_url=background_url,
+        outbound_dial=OutboundDial(**outbound_dial) if outbound_dial else None,
+        recording_enabled=call.recording_enabled,
+    ).model_dump(mode="json")
 
 
 def claim_language_options(
@@ -514,7 +531,7 @@ async def _claim_existing(
     db: Database,
     workspace_id: str,
     call_id: str,
-    request: ClaimInput,
+    request: ClaimRequest,
     *,
     catalog: AdapterCatalog,
     media_bucket: str | None,
@@ -532,7 +549,7 @@ async def _claim_existing(
             # Refused at admission (inbound path): the worker hangs up without speaking.
             outcome.body = _refused_body(call.id, call.disconnect_reason or "error", call.diagnostic or "")
             return outcome
-        if call.status not in ACTIVE and not same_job:
+        if call.status not in ACTIVE_STATUSES and not same_job:
             raise ProblemError(409, "call_not_claimable", "Call is closed", "This call has already ended.")
         snapshot = await _snapshot(session, call)
         if snapshot is None:
@@ -581,7 +598,7 @@ async def _claim_existing(
 
 async def claim(
     db: Database,
-    request: ClaimInput,
+    request: ClaimRequest,
     *,
     catalog: AdapterCatalog,
     media_bucket: str | None = None,
@@ -589,7 +606,7 @@ async def claim(
 ) -> ClaimOutcome:
     now = now or datetime.now(UTC)
     metadata = request.dispatch_metadata
-    call_id = metadata.get("call_id")
+    call_id = metadata.get(DISPATCH_CALL_ID)
     if isinstance(call_id, str):
         if not is_valid_id(call_id, "call"):
             raise not_found("call")
@@ -602,14 +619,14 @@ async def claim(
         return await _claim_existing(
             db, str(workspace_id), call_id, request, catalog=catalog, media_bucket=media_bucket, now=now
         )
-    channel = metadata.get("channel")
-    if channel not in SIP_CHANNELS:
+    channel = metadata.get(DISPATCH_CHANNEL)
+    if channel not in INBOUND_SIP_CHANNELS:
         raise ProblemError(
             422, "invalid_dispatch", "Invalid dispatch", "Dispatch metadata needs call_id or a SIP channel."
         )
     router = registry.inbound_routers.get(str(channel))
-    sip = dict(request.sip or {})
-    route = await router.resolve(str(channel), sip, metadata.get("route_ref")) if router else None
+    sip = request.sip.model_dump(exclude_none=True) if request.sip else {}
+    route = await router.resolve(str(channel), sip, metadata.get(DISPATCH_ROUTE_REF)) if router else None
     if route is None:
         # No router (010 not installed) or no agent for the number: nothing to bill or record.
         diagnostic = "no_inbound_router" if router is None else "no_agent_for_caller"

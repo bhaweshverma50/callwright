@@ -1,4 +1,4 @@
-"""Auto speech recognition (003 T116, FR-045): resolved per language from the worker catalog,
+"""Auto speech recognition (003 T116, FR-045): resolved per language from 002's speech catalog,
 sent to the worker, and priced at the resolved model's rate."""
 
 from __future__ import annotations
@@ -9,7 +9,6 @@ from decimal import Decimal
 import pytest
 
 from app.calls import components as comp
-from app.calls.catalog import AdapterCatalog
 from app.pricing import engine
 from app.pricing import service as pricing
 from tests.runtime_support import Runtime, agent_config
@@ -28,9 +27,8 @@ from tests.runtime_support import Runtime, agent_config
         ("acme", "en", None),
     ],
 )
-def test_resolution(runtime: Runtime, provider: str, language: str, model: str | None) -> None:
-    catalog: AdapterCatalog = runtime.catalog
-    assert catalog.resolve_auto_stt(provider, language) == model
+def test_resolution(provider: str, language: str, model: str | None) -> None:
+    assert comp.auto_stt_model(provider, language) == model
 
 
 def test_explicit_model_is_kept(runtime: Runtime) -> None:
@@ -62,9 +60,8 @@ def test_metered_model_wins_for_pricing(runtime: Runtime) -> None:
 
 
 def test_auto_follows_the_agent_builder_rule(runtime: Runtime) -> None:
-    """Auto resolves with 002's speech catalog (``voices.service.resolve_auto_stt``): Nova-3 for
-    Arabic, where the worker catalog's own rule would pick Nova-2."""
-    assert runtime.catalog.resolve_auto_stt("deepgram", "ar") == "nova-2"
+    """Auto resolves with 002's speech catalog (``VoiceCatalog.stt_auto_rules``): Nova-3 for
+    Arabic, which the worker's old catalog rule sent to Nova-2."""
     resolved = comp.resolve(agent_config(language="ar"), runtime.catalog)
     assert resolved.stt_auto and resolved.stt.model == "nova-3"
 

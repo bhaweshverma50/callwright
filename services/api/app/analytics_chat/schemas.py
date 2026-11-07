@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
+from callwright_contract.calls import CallStatus, Channel, DisconnectReason, Origin
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.analytics_chat.catalog import METRICS, SOURCE_DIMENSIONS, SOURCE_FILTERS, Source
@@ -41,32 +42,7 @@ Dimension = Literal[
     "sentiment",
     "evaluator",
 ]
-ChannelName = Literal["web", "sip_inbound", "sip_outbound", "whatsapp"]
-StatusName = Literal[
-    "queued",
-    "ringing",
-    "in_progress",
-    "ended",
-    "processing",
-    "completed",
-    "failed",
-    "no_answer",
-    "busy",
-    "voicemail",
-]
-ReasonName = Literal[
-    "user_hangup",
-    "agent_hangup",
-    "call_transfer",
-    "voicemail_reached",
-    "inactivity",
-    "max_duration_reached",
-    "error",
-    "concurrency_limit",
-    "insufficient_credit",
-]
 SentimentName = Literal["positive", "neutral", "negative", "unknown"]
-Origin = Literal["live", "test", "simulation"]
 
 
 class QueryRejected(ValueError):
@@ -79,9 +55,9 @@ class _Strict(BaseModel):
 
 class Filters(_Strict):
     agent_ids: list[str] = Field(default_factory=list, max_length=50)
-    channels: list[ChannelName] = Field(default_factory=list, max_length=4)
-    statuses: list[StatusName] = Field(default_factory=list, max_length=10)
-    disconnect_reasons: list[ReasonName] = Field(default_factory=list, max_length=9)
+    channels: list[Channel] = Field(default_factory=list, max_length=4)
+    statuses: list[CallStatus] = Field(default_factory=list, max_length=10)
+    disconnect_reasons: list[DisconnectReason] = Field(default_factory=list, max_length=9)
     sentiments: list[SentimentName] = Field(default_factory=list, max_length=4)
     evaluator_names: list[str] = Field(default_factory=list, max_length=20)
 
@@ -166,8 +142,8 @@ class MetricQuery(_Strict):
 
 class CallFilters(_Strict):
     agent_ids: list[str] = Field(default_factory=list, max_length=50)
-    channels: list[ChannelName] = Field(default_factory=list, max_length=4)
-    statuses: list[StatusName] = Field(default_factory=list, max_length=10)
+    channels: list[Channel] = Field(default_factory=list, max_length=4)
+    statuses: list[CallStatus] = Field(default_factory=list, max_length=10)
 
 
 class CallQuery(_Strict):

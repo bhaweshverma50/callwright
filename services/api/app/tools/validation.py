@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlsplit
 
+from callwright_contract.http_core import PLACEHOLDER
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from pydantic import BaseModel, ValidationError
@@ -24,7 +25,6 @@ from app.tools.schemas import (
 
 Issue = dict[str, str]
 _NAME = re.compile(NAME_PATTERN)
-_PLACEHOLDER = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_.]*\s*\}\}")
 MAX_SCHEMA_DEPTH = 5
 MAX_SCHEMA_PROPERTIES = 30
 
@@ -140,7 +140,7 @@ def validate_url(url: str, *, allow_http: bool, pointer: str = "/config/url") ->
         return [issue(pointer, "invalid_url", "Enter a full URL such as https://api.example.com/path.")]
     if scheme == "http" and not allow_http:
         return [issue(pointer, "https_required", "The URL must start with https://.")]
-    if _PLACEHOLDER.search(parts.netloc) or "{" in parts.netloc:
+    if PLACEHOLDER.search(parts.netloc) or "{" in parts.netloc:
         return [issue(pointer, "invalid_url", "Placeholders are allowed in the path and query only.")]
     if parts.username or parts.password:
         return [issue(pointer, "invalid_url", "Credentials in the URL are not allowed; use a secret header.")]

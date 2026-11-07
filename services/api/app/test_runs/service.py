@@ -17,12 +17,14 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from callwright_contract.adapters import load_catalog
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
 from app.billing import service as billing
 from app.caller_language.options import language_options
+from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
@@ -367,6 +369,7 @@ async def case_spec(session: AsyncSession, run_id: str, case_id: str) -> dict[st
         "user_prompt": result.user_prompt,
         "dynamic_variables": dict(result.dynamic_variables or {}),
         "language_options": language_options(run.config_snapshot),
+        "runtime": runtime_values(run.config_snapshot, load_catalog()).model_dump(mode="json"),
     }
 
 

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from callwright_contract.calls import ACTIVE_STATUSES
+from callwright_contract.url_guard import UrlNotAllowed, check_url
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +19,6 @@ from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.core.secrets import KeyWrapper, LocalKeyWrapper
 from app.core.sip import SipGateway
-from app.core.url_guard import UrlNotAllowed, check_url
-from app.phone_numbers.models import ACTIVE_CALL_STATUSES
 
 
 @dataclass
@@ -100,7 +100,7 @@ async def active_counts(session: AsyncSession, column: Any, ids: Sequence[str]) 
         return {}
     rows = await session.execute(
         select(column, func.count())
-        .where(column.in_(list(ids)), Call.status.in_(ACTIVE_CALL_STATUSES))
+        .where(column.in_(list(ids)), Call.status.in_(tuple(ACTIVE_STATUSES)))
         .group_by(column)
     )
     return {str(k): int(n) for k, n in rows.all()}

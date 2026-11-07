@@ -187,6 +187,13 @@ paths:
                   agent_id: { type: string }
                   agent_type: { type: string, enum: [single_prompt, flow] }
                   config_snapshot: { type: object }
+                  runtime:
+                    type: object
+                    description: >
+                      The run's resolved values, as in the claim's RuntimeConfig (config with
+                      defaults applied, limits, controls, stt_auto_rules, stt_resolved_model,
+                      language_options); the text runner builds its runtime from them.
+                    additionalProperties: true
                   user_prompt: { type: string }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
                   language_options:

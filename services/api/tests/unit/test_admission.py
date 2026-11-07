@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from decimal import Decimal
 
 import pytest
+from callwright_contract.adapters import AdapterCatalog, AdapterEntry
 from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.calls import ports
 from app.calls import service as calls
-from app.calls.catalog import parse_catalog
 from app.calls.models import Call
 from app.core.errors import ProblemError
 from tests.runtime_support import Runtime, agent_config, owner_sql
@@ -144,9 +143,7 @@ async def test_anthropic_with_a_key_is_admitted_and_priced(
 async def test_unpriced_configuration_is_refused(runtime: Runtime) -> None:
     """A vendor the worker supports but the pricing catalog does not price."""
     _, ws = await runtime.workspace()
-    raw = json.loads(runtime.app.state.settings.adapter_catalog_path.read_text())
-    raw["entries"].append({"kind": "tts", "provider": "newvoice", "models": ["v1"]})
-    catalog = parse_catalog(raw)
+    catalog = AdapterCatalog((*runtime.catalog.entries, AdapterEntry("tts", "newvoice", ("v1",))))
     agent = runtime.versions.add_agent(ws, agent_config(tts={"provider": "newvoice", "model": "v1"}))
     admission = await calls.admit(runtime.db, request(ws, agent.agent_id), catalog=catalog)
     assert admission.refusal is not None and admission.refusal.code == "pricing_unavailable"

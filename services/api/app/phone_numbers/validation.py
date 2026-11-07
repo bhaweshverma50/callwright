@@ -15,8 +15,8 @@ import re
 from collections.abc import Sequence
 
 import phonenumbers
+from callwright_contract.values import E164
 
-E164 = re.compile(r"^\+[1-9]\d{6,14}$")
 MAX_CIDRS = 20
 _LABEL = re.compile(r"^(?!-)[a-z0-9-]{1,63}(?<!-)$")
 

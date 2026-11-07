@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
+from callwright_contract.values import E164
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 
@@ -15,7 +16,6 @@ from app.core.pagination import PageParam
 from app.outbound import calling_hours, dnc
 from app.outbound import service as outbound
 from app.outbound.schemas import CallingHoursUpdate, DncEntryCreate, OutboundCallRequest
-from app.phone_numbers.validation import E164
 
 router = APIRouter(tags=["outbound"])
 

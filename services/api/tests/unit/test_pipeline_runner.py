@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from callwright_contract.calls import PIPELINE_STEPS
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calls import pipeline
@@ -29,14 +30,7 @@ def steps(call_id: str) -> dict[str, tuple[str, int]]:
 
 
 def test_fixed_order_and_blocking_flags() -> None:
-    assert pipeline.STEP_NAMES == (
-        "finalize_transcript",
-        "price_and_charge",
-        "analyze",
-        "evaluate",
-        "notify_analyzed",
-        "complete",
-    )
+    assert [s.name for s in pipeline.STEPS] == list(PIPELINE_STEPS)
     assert [s.name for s in pipeline.STEPS if s.blocking] == [
         "finalize_transcript",
         "price_and_charge",
@@ -60,7 +54,7 @@ async def test_registered_handlers_run_in_order(runtime: Runtime) -> None:
     setup = await ended_call(runtime)
     result = await _run(runtime, setup.workspace_id, setup.call_id)
     assert result.status == "finished" and seen == ["analyze", "evaluate"]
-    assert list(result.steps) == list(pipeline.STEP_NAMES)
+    assert list(result.steps) == list(PIPELINE_STEPS)
     assert steps(setup.call_id)["analyze"] == ("done", 1)
 
 

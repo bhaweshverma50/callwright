@@ -20,17 +20,18 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from callwright_contract.adapters import AdapterCatalog
+from callwright_contract.calls import ACCEPTS_EVENTS_STATUSES
+from callwright_contract.protocol import Control, EventBatch, EventBatchResult, StatusEvent, UsageEvent
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
 from app.call_events.models import CallEvent
-from app.call_events.schemas import Control, EventBatch, EventBatchResult, StatusEvent, UsageEvent
 from app.calls import components as comp
-from app.calls.catalog import AdapterCatalog
 from app.calls.effects import RUN_PIPELINE, Deferred
-from app.calls.models import ACCEPTS_EVENTS, Call, billable_seconds, can_transition
+from app.calls.models import Call, billable_seconds, can_transition
 from app.calls.ports import registry
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
@@ -227,7 +228,7 @@ async def ingest(
     out = IngestResult(EventBatchResult(accepted=0, duplicates=0, control=Control()))
     async with db.transaction(workspace_id=workspace_id) as session:
         call = (await session.execute(select(Call).where(Call.id == call_id).with_for_update())).scalar_one()
-        if call.status not in ACCEPTS_EVENTS:
+        if call.status not in ACCEPTS_EVENTS_STATUSES:
             raise call_closed()
         events = list(batch.events)
         inserted: set[int] = set()

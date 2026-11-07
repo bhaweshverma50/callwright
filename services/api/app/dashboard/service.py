@@ -14,6 +14,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from callwright_contract.calls import ACTIVE_STATUSES, CHANNELS
 from sqlalchemy import Date, and_, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -25,16 +26,14 @@ from app.calls.quality_port import EvaluatorStat, quality_port
 from app.dashboard.aggregates import daily_average, delta_pp, top_with_others, zero_fill
 from app.dashboard.periods import Window
 
-ACTIVE = ("queued", "ringing", "in_progress")
 FINISHED = ("ended", "processing", "completed")
-CHANNELS = ("web", "sip_inbound", "sip_outbound", "whatsapp")
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")
 
 
 def _where(window: Window, agent_ids: Sequence[str]) -> list[ColumnElement[bool]]:
     where: list[ColumnElement[bool]] = [
         Call.origin == "live",
-        Call.status.not_in(ACTIVE),
+        Call.status.not_in(tuple(ACTIVE_STATUSES)),
         Call.created_at >= window.start,
         Call.created_at < window.end,
     ]

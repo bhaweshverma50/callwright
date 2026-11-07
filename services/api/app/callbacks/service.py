@@ -27,6 +27,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from callwright_contract.calls import ACTIVE_STATUSES, PHONE_CHANNELS
+from callwright_contract.values import CALLBACK_NOT_A_PHONE_CALL, spoken_time
+from callwright_contract.variables import BUILTIN_VARIABLES, CALLBACK_NOTE, MAX_VALUE_CHARS
 from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,8 +42,7 @@ from app.callbacks.schemas import (
     CallbackCreate,
     parse_local,
 )
-from app.calls.models import ACTIVE, Call
-from app.calls.variables import BUILTIN_VARIABLES, MAX_VALUE_CHARS
+from app.calls.models import Call
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, not_found
 from app.core.ids import new_id
@@ -52,27 +54,13 @@ from app.workspaces.models import Workspace
 
 logger = logging.getLogger(__name__)
 
-CALLBACK_NOTE = "callback_note"
 MIN_LEAD = timedelta(minutes=1)
 MAX_AHEAD = timedelta(days=30)
 MISSED_AFTER = timedelta(minutes=30)
 DUE_BATCH = 50
-PHONE_CHANNELS = frozenset({"sip_inbound", "sip_outbound"})
 
 
 # Time ------------------------------------------------------------------------------------------
-
-
-def spoken_time(local: datetime, now_local: datetime) -> str:
-    """``today at 5:00 pm``, ``tomorrow, Wednesday 4 November, at 5:00 pm`` or
-    ``Friday 6 November at 9:30 am`` (both in the recipient's zone)."""
-    clock = f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
-    day = f"{local.strftime('%A')} {local.day} {local.strftime('%B')}"
-    if local.date() == now_local.date():
-        return f"today at {clock}"
-    if local.date() == now_local.date() + timedelta(days=1):
-        return f"tomorrow, {day}, at {clock}"
-    return f"{day} at {clock}"
 
 
 def _local(instant: datetime, zone: str) -> datetime:
@@ -259,11 +247,6 @@ def refused(reason: str, detail: str, **extra: Any) -> ProblemError:
     )
 
 
-UNSUPPORTED = (
-    "Callbacks can only be booked on phone calls. Tell the caller you cannot book a callback on this call."
-)
-
-
 @dataclass(frozen=True)
 class Recipient:
     to_number: str
@@ -399,7 +382,7 @@ async def book_from_call(
                 raise refused("invalid_time", problem)
             return 200, _booked(None, at, zone, now, mocked=True, rescheduled=False)
         if call.channel not in PHONE_CHANNELS:
-            raise refused("unsupported_channel", UNSUPPORTED)
+            raise refused("unsupported_channel", CALLBACK_NOT_A_PHONE_CALL)
         recipient = recipient_of(call)
         at = resolve_time(body, recipient.timezone, now)
         problem = _time_problem(at, now)
@@ -477,7 +460,7 @@ async def _workspace_full(session: AsyncSession, workspace_id: str) -> bool:
             .select_from(Call)
             .where(
                 Call.workspace_id == workspace_id,
-                Call.status.in_(tuple(ACTIVE)),
+                Call.status.in_(tuple(ACTIVE_STATUSES)),
                 Call.origin != "simulation",
             )
         )

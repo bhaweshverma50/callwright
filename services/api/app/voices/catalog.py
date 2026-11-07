@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from callwright_contract.protocol import SttAuto
 
 from app.pricing import engine
 
@@ -233,15 +234,21 @@ class VoiceCatalog:
         assert tts is not None
         return {"provider": tts.provider, "model": tts.default_model, "voice_id": tts.voice_for(language)}
 
+    def stt_auto_rules(self) -> dict[str, SttAuto]:
+        """How Auto picks a model, per provider (data-model 8.3); sent to the worker in the claim."""
+        return {
+            p.provider: SttAuto(
+                default=p.auto_default if p.supports_auto else p.default_model,
+                by_language=dict(p.auto_by_language) if p.supports_auto else {},
+                languages={m.id: list(m.languages) for m in p.models},
+            )
+            for p in self.stt
+        }
+
     def resolve_auto_stt(self, provider: str, language: str) -> str | None:
-        """The model Auto resolves to for ``language`` (003 RuntimeConfig, data-model 8.3)."""
-        stt = self.stt_provider(provider)
-        if stt is None:
-            return None
-        if not stt.supports_auto:
-            return stt.default_model
-        rule = stt.auto_by_language
-        return rule.get(language) or rule.get(language.split("-")[0]) or stt.auto_default
+        """The model Auto picks for ``language`` by the provider's rule alone."""
+        auto = self.stt_auto_rules().get(provider)
+        return auto.pick(language) if auto is not None else None
 
 
 def _parse_language_map(raw: Mapping[str, Any] | None) -> dict[str, Mapping[str, Any]]:

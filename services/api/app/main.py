@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
+from callwright_contract.adapters import load_catalog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
@@ -36,7 +37,6 @@ from app.callbacks.router import internal_router as callbacks_internal_router
 from app.callbacks.router import router as callbacks_router
 from app.caller_language.router import internal_router as caller_language_internal_router
 from app.caller_language.router import router as caller_language_router
-from app.calls.catalog import load_catalog
 from app.calls.read_router import router as calls_read_router
 from app.calls.router import router as calls_router
 from app.core.auth import TokenVerifier
@@ -192,7 +192,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         register_flows()
         # Voice runtime (003): media server, worker catalog, job queue, outbound webhook client.
         app.state.livekit = build_livekit(settings)
-        app.state.adapter_catalog = load_catalog(settings.adapter_catalog_path)
+        app.state.adapter_catalog = load_catalog()
         jobs = ArqJobQueue()
         app.state.jobs = jobs
         app.state.webhook_http = httpx.AsyncClient(follow_redirects=False)

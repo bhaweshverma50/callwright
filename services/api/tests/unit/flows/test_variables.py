@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.flows.variables import BUILTIN_VARIABLES, is_builtin, placeholders, placeholders_in, snake_case
+from app.flows.variables import is_builtin, placeholders, placeholders_in, snake_case
 
 
 def test_placeholders_in_order_without_duplicates() -> None:
@@ -21,20 +21,9 @@ def test_placeholders_across_texts() -> None:
     assert placeholders_in(["{{a}}", None, "{{b}} {{a}}"]) == ["a", "b"]
 
 
-def test_builtin_list() -> None:
-    assert set(BUILTIN_VARIABLES) == {
-        "call_id",
-        "direction",
-        "channel",
-        "from_number",
-        "to_number",
-        "timezone",
-        "current_time",
-        "current_date",
-        "current_datetime",
-        "agent_name",
-    }
-    assert is_builtin("call_id") and not is_builtin("dob")
+def test_builtins_are_the_contract_list() -> None:
+    assert is_builtin("user_number") and is_builtin("call_id") and not is_builtin("dob")
+    assert not is_builtin("from_number")
 
 
 def test_snake_case_conversion() -> None:

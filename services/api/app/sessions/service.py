@@ -8,14 +8,17 @@ for 005 and 008 is the ``version: "draft"`` selector (the default).
 
 from __future__ import annotations
 
+import json
 import logging
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
+from callwright_contract.adapters import AdapterCatalog
+from callwright_contract.protocol import DISPATCH_CALL_ID
+
 from app.calls import service as calls
-from app.calls.catalog import AdapterCatalog
 from app.calls.effects import Deferred, dispatch
 from app.calls.models import Call
 from app.core.config import Settings
@@ -89,8 +92,9 @@ async def start_web_call(
         raise admission.refusal.problem(call.id)
     room = room_name(call.id)
     try:
-        await deps.livekit.create_room(room, metadata=f'{{"call_id":"{call.id}"}}')
-        await deps.livekit.dispatch_agent(room, deps.settings.worker_agent_name, {"call_id": call.id})
+        metadata = {DISPATCH_CALL_ID: call.id}
+        await deps.livekit.create_room(room, metadata=json.dumps(metadata, separators=(",", ":")))
+        await deps.livekit.dispatch_agent(room, deps.settings.worker_agent_name, metadata)
     except LiveKitError:
         logger.exception("room setup failed for %s", call.id)
         deferred = Deferred()

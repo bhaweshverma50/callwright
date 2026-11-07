@@ -8,7 +8,6 @@ prompt or greeting references with no value and no default renders empty and is 
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,23 +15,8 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import phonenumbers
+from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME, PLACEHOLDER
 from phonenumbers import timezone as pn_timezone
-
-BUILTIN_VARIABLES = (
-    "call_id",
-    "channel",
-    "direction",
-    "user_number",
-    "agent_number",
-    "timezone",
-    "current_time",
-    "current_date",
-    "current_datetime",
-)
-NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
-PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]{0,63})\s*\}\}")
-MAX_VARIABLES = 50
-MAX_VALUE_CHARS = 2000
 
 
 @dataclass(frozen=True)

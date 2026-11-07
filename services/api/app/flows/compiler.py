@@ -18,10 +18,12 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract.variables import BUILTIN_VARIABLES
+
 from app.flows import transitions
 from app.flows.schemas import CONVERSATIONAL
 from app.flows.starter import config_with_defaults
-from app.flows.variables import BUILTIN_VARIABLES, TASK_RESULT
+from app.flows.variables import TASK_RESULT
 from app.llms.service import load_catalog as load_llm_catalog
 
 SCHEMA_VERSION = 1

@@ -19,19 +19,21 @@ outbound trunk, the two numbers and the ring timeout stored on the call.
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract.adapters import AdapterCatalog
+from callwright_contract.protocol import DISPATCH_CALL_ID
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calls import service as calls
-from app.calls.catalog import AdapterCatalog
 from app.calls.effects import Deferred, dispatch
 from app.calls.models import Call
 from app.calls.ports import OutboundDial
@@ -397,8 +399,9 @@ async def _start_room(deps: OutboundDeps, call: Call) -> None:
     assert deps.livekit is not None
     room = room_name(call.id)
     try:
-        await deps.livekit.create_room(room, metadata=f'{{"call_id":"{call.id}"}}')
-        await deps.livekit.dispatch_agent(room, deps.settings.worker_agent_name, {"call_id": call.id})
+        metadata = {DISPATCH_CALL_ID: call.id}
+        await deps.livekit.create_room(room, metadata=json.dumps(metadata, separators=(",", ":")))
+        await deps.livekit.dispatch_agent(room, deps.settings.worker_agent_name, metadata)
     except LiveKitError:
         logger.exception("room setup failed for outbound call %s", call.id)
         deferred = Deferred()

@@ -15,6 +15,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from callwright_contract.protocol import DISPATCH_CHANNEL, DISPATCH_ROUTE_REF
 from opentelemetry import trace
 
 from app.core.sip import DispatchRuleSpec, InboundTrunkSpec, OutboundTrunkSpec, SipError, SipGateway
@@ -63,7 +64,7 @@ def dispatch_spec(trunk_id: str, channel: str, route_ref: str, agent_name: str) 
         name=f"callwright {route_ref}",
         trunk_ids=[trunk_id],
         agent_name=agent_name,
-        agent_metadata={"channel": channel, "route_ref": route_ref},
+        agent_metadata={DISPATCH_CHANNEL: channel, DISPATCH_ROUTE_REF: route_ref},
     )
 
 

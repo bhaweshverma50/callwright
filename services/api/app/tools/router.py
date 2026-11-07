@@ -6,13 +6,14 @@ from __future__ import annotations
 import hmac
 from typing import Annotated, Any
 
+from callwright_contract import url_guard
+from callwright_contract.calls import ACTIVE_STATUSES
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.agent_versions.models import AgentVersion
 from app.call_events.service import workspace_for_call
 from app.calls.models import Call
-from app.core import url_guard
 from app.core.auth import CurrentPrincipal, Principal, bearer_token
 from app.core.errors import ProblemError, not_found, problem_responses, too_many_requests, validation_failed
 from app.core.ids import path_id
@@ -31,7 +32,6 @@ AgentId = Annotated[str, Depends(path_id("agt", "agent", "agent_id"))]
 CallId = Annotated[str, Depends(path_id("call", "call", "call_id"))]
 
 TEST_RUNS_PER_MINUTE = 30
-LIVE_STATUSES = frozenset({"queued", "ringing", "in_progress"})
 
 # Tests replace this to avoid DNS lookups; ``None`` uses the system resolver.
 test_run_resolver: url_guard.Resolver | None = None
@@ -257,7 +257,7 @@ async def get_call_tool_secrets(call_id: CallId, request: Request) -> JSONRespon
         call = await session.get(Call, call_id)
         if call is None:
             raise not_found("call")
-        if call.status not in LIVE_STATUSES:
+        if call.status not in ACTIVE_STATUSES:
             raise ProblemError(
                 409, "call_closed", "Call is closed", "Secrets are only served for live calls."
             )

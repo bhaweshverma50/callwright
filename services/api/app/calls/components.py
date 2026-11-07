@@ -1,13 +1,13 @@
-"""Vendor selection of an AgentConfig, as the worker builds it (003 R8, R22, worker pipeline.py).
+"""Vendor selection of an AgentConfig (003 R8, R22): what a call runs, decided here and sent to
+the worker fully resolved.
 
-Defaults mirror the worker: STT Deepgram, LLM Azure OpenAI ``gpt-5.1``, TTS ElevenLabs with the
-provider's default model, noise cancellation Sanas ``vi`` when the key is absent and off when it
-is ``null``. ``stt.model = null`` is Auto, resolved per language by 002's speech catalog
-(``voices.service.resolve_auto_stt``, the rule the agent builder shows). A resolved model that
-does not list the call's language counts as no model (the call is refused with
-``stt_language_unsupported``, FR-045); providers that catalog does not list fall back to the
-worker's adapter catalog. ``unsupported`` then checks the result against the worker catalog, so a
-model the worker cannot run is still refused at admission.
+Missing choices take the platform defaults (002's catalogs: language, the speech catalog's STT
+and TTS providers and noise cancellation, the language model catalog's default model; TTS models
+the adapter's default); noise cancellation ``null`` is off. ``stt.model = null`` is Auto, picked
+per language by 002's speech catalog (``VoiceCatalog.stt_auto``, the rule the agent builder
+shows); a picked model that does not list the call's language counts as no model (refused with
+``stt_language_unsupported``, FR-045). ``unsupported`` checks the result against the vendors the
+worker can run, so a model it cannot run is refused at admission.
 """
 
 from __future__ import annotations
@@ -16,16 +16,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from app.calls.catalog import AdapterCatalog
-from app.pricing import engine
-from app.voices import service as voices
-from app.voices.catalog import load_catalog as load_speech_catalog
+from callwright_contract.adapters import AdapterCatalog
 
-DEFAULT_LANGUAGE = "en-US"
-DEFAULT_LLM = ("azure_openai", "gpt-5.1")
-DEFAULT_STT_PROVIDER = "deepgram"
-DEFAULT_TTS_PROVIDER = "elevenlabs"
-DEFAULT_NC: Mapping[str, str] = {"provider": "sanas", "model": "vi"}
+from app.agents.defaults import ADVANCED_DEFAULTS, CALL_BEHAVIOR_DEFAULTS, DEFAULT_LANGUAGE, nc_default
+from app.llms.service import load_catalog as load_llm_catalog
+from app.pricing import engine
+from app.voices.catalog import load_catalog as load_speech_catalog
 
 
 @dataclass(frozen=True)
@@ -76,31 +72,34 @@ def _first(usage: Mapping[str, Any] | None, kind: str) -> Mapping[str, Any] | No
     return None
 
 
-def auto_stt_model(provider: str, language: str, catalog: AdapterCatalog) -> str | None:
+def auto_stt_model(provider: str, language: str) -> str | None:
     """The model speech recognition Auto runs for ``language``, or None when none covers it."""
-    speech = load_speech_catalog().stt_provider(provider)
-    if speech is None:
-        return catalog.resolve_auto_stt(provider, language)
-    model = voices.resolve_auto_stt(provider, language)
-    return model if model is not None and speech.covers(model, language) else None
+    auto = load_speech_catalog().stt_auto_rules().get(provider)
+    return auto.resolve(language) if auto is not None else None
 
 
 def resolve(config: Mapping[str, Any], catalog: AdapterCatalog) -> ResolvedComponents:
+    speech = load_speech_catalog()
+    llms = load_llm_catalog()
     language = str(config.get("language") or DEFAULT_LANGUAGE)
     stt_raw = _section(config, "stt")
-    stt_provider = catalog.canonical_provider("stt", str(stt_raw.get("provider") or DEFAULT_STT_PROVIDER))
+    stt_provider = catalog.canonical_provider(
+        "stt", str(stt_raw.get("provider") or speech.stt_default["provider"])
+    )
     stt_model = stt_raw.get("model") or None
     stt_auto = stt_model is None
     if stt_auto:
-        stt_model = auto_stt_model(stt_provider, language, catalog)
+        stt_model = auto_stt_model(stt_provider, language)
     llm_raw = _section(config, "llm")
-    llm_provider = catalog.canonical_provider("llm", str(llm_raw.get("provider") or DEFAULT_LLM[0]))
-    llm_model = str(llm_raw.get("model") or DEFAULT_LLM[1])
+    llm_provider = catalog.canonical_provider("llm", str(llm_raw.get("provider") or llms.default_provider))
+    llm_model = str(llm_raw.get("model") or llms.default_model)
     tts_raw = _section(config, "tts")
-    tts_provider = catalog.canonical_provider("tts", str(tts_raw.get("provider") or DEFAULT_TTS_PROVIDER))
+    tts_provider = catalog.canonical_provider(
+        "tts", str(tts_raw.get("provider") or speech.tts_default_provider)
+    )
     tts_entry = catalog.entry("tts", tts_provider)
     tts_model = tts_raw.get("model") or (tts_entry.default_model if tts_entry else None)
-    nc_raw = config.get("noise_cancellation", DEFAULT_NC)
+    nc_raw = config.get("noise_cancellation", nc_default())
     nc: Vendor | None = None
     if isinstance(nc_raw, Mapping) and nc_raw and nc_raw.get("provider") not in (None, "none"):
         nc = Vendor("nc", str(nc_raw.get("provider")), nc_raw.get("model"))
@@ -112,6 +111,32 @@ def resolve(config: Mapping[str, Any], catalog: AdapterCatalog) -> ResolvedCompo
         nc=nc,
         stt_auto=stt_auto,
     )
+
+
+def with_defaults(config: Mapping[str, Any], components: ResolvedComponents) -> dict[str, Any]:
+    """``config`` as the worker runs it: language and vendors resolved (``stt.model`` stays null
+    for Auto) and the call-behaviour, keypad, voicemail and background-audio defaults applied."""
+    out = dict(config)
+    out["language"] = components.language
+    out["stt"] = {**_section(config, "stt"), "provider": components.stt.provider}
+    out["llm"] = {
+        **_section(config, "llm"),
+        "provider": components.llm.provider,
+        "model": components.llm.model,
+    }
+    out["tts"] = {
+        **_section(config, "tts"),
+        "provider": components.tts.provider,
+        "model": components.tts.model,
+    }
+    nc = components.nc
+    out["noise_cancellation"] = {"provider": nc.provider, "model": nc.model} if nc is not None else None
+    out["call_behavior"] = {**CALL_BEHAVIOR_DEFAULTS, **_section(config, "call_behavior")}
+    advanced = dict(_section(config, "advanced"))
+    for key in ("dtmf", "voicemail_detection", "background_audio"):
+        advanced[key] = {**ADVANCED_DEFAULTS[key], **_section(advanced, key)}
+    out["advanced"] = advanced
+    return out
 
 
 def unsupported(components: ResolvedComponents, catalog: AdapterCatalog) -> str | None:

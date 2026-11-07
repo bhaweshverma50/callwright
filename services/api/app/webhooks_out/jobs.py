@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+from callwright_contract.url_guard import Resolver, UrlNotAllowed, check_url
 from sqlalchemy import select, text
 
 from app.calls.effects import DELIVER_WEBHOOK
@@ -24,7 +25,7 @@ from app.core.config import Settings
 from app.core.db import Database
 from app.core.queue import JobQueue
 from app.core.secrets import KeyWrapper
-from app.core.url_guard import Resolver, UrlNotAllowed, check_url, guarded_request
+from app.core.url_guard import guarded_request
 from app.webhooks_out import service, signing
 from app.webhooks_out.models import WebhookDelivery
 

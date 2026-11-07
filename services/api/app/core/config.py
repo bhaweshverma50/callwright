@@ -115,9 +115,6 @@ class Settings(BaseSettings):
     livekit_api_key: SecretStr = SecretStr(DEV_LIVEKIT_KEY)
     livekit_api_secret: SecretStr = SecretStr(DEV_LIVEKIT_SECRET)
     worker_agent_name: str = "callwright-voice"
-    # The worker's adapter catalog (003 research R8), read at admission to refuse unsupported
-    # vendors before a room exists.
-    adapter_catalog_path: Path = _API_DIR.parent / "voice-worker" / "worker" / "adapters" / "catalog.json"
     # Recordings (research R13): room-composite egress uploads to this bucket with SSE-KMS.
     # RECORDINGS_ENABLED=false admits every call with recording off (``not_recorded``) whatever
     # the workspace and agent settings say: for deployments without a LiveKit egress service.

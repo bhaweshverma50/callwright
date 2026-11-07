@@ -15,9 +15,8 @@ from __future__ import annotations
 import time
 from typing import Any, Protocol
 
-TEXTSIM_QUEUE = "arq:textsim"
-RUN_SINGLE_TURN = "run_single_turn"
-RUN_SIMULATION = "run_simulation"
+from callwright_contract.values import TEXTSIM_QUEUE
+
 RETRY_DEFER_S = 5.0
 SLOT_TTL_S = 20 * 60
 

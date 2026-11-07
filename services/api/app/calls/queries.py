@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from callwright_contract.calls import ACTIVE_STATUSES, CALL_STATUSES, CHANNELS, DISCONNECT_REASONS, ORIGINS
 from sqlalchemy import Integer, and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -26,13 +27,11 @@ from app.agents.models import Agent
 from app.billing.models import CallCost
 from app.call_events.models import CallEvent
 from app.calls.cost_view import cost_view
-from app.calls.models import CALL_STATUSES, DISCONNECT_REASONS, Call
+from app.calls.models import Call
 from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary, quality_port
 from app.calls.transcript_text import normalize_items
 from app.core.errors import ProblemError, field_error, validation_failed
 
-CHANNELS = ("web", "sip_inbound", "sip_outbound", "whatsapp")
-ORIGINS = ("live", "test", "simulation")
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")
 SORTS = ("started_at", "duration_s", "cost_usd", "latency_avg_ms")
 DEFAULT_ORIGINS = ["live", "test"]
@@ -308,7 +307,6 @@ async def list_calls(
     return items, total
 
 
-LIVE_STATUSES = ("queued", "ringing", "in_progress")
 LIVE_LIMIT = 50
 LAST_MESSAGE_CHARS = 200
 
@@ -321,7 +319,7 @@ async def live_calls(session: AsyncSession) -> tuple[list[dict[str, Any]], int]:
     excluded: they are text runs, never on air. Calls a worker abandoned are swept out of these
     statuses by ``reap_stuck`` (jobs), so the list cannot fill with ghosts.
     """
-    where = and_(Call.status.in_(LIVE_STATUSES), Call.origin.in_(DEFAULT_ORIGINS))
+    where = and_(Call.status.in_(tuple(ACTIVE_STATUSES)), Call.origin.in_(DEFAULT_ORIGINS))
     count = int((await session.execute(select(func.count()).select_from(Call).where(where))).scalar_one())
     rows = (
         await session.execute(

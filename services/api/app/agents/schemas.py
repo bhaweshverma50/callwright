@@ -15,6 +15,7 @@ import copy
 from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
+from callwright_contract.variables import MAX_DESCRIPTION_CHARS, MAX_VALUE_CHARS, MAX_VARIABLES, NAME_PATTERN
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.voices.catalog import load_catalog as _voice_catalog
@@ -54,9 +55,9 @@ class LlmConfig(_Strict):
 
 
 class DynamicVariable(_Strict):
-    name: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
-    default: str | None = Field(default=None, max_length=2000)
-    description: str | None = Field(default=None, max_length=200)
+    name: str = Field(pattern=NAME_PATTERN)
+    default: str | None = Field(default=None, max_length=MAX_VALUE_CHARS)
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_CHARS)
 
 
 class SttConfig(_Strict):
@@ -144,7 +145,7 @@ class AgentConfigV1(_Strict):
     prompt: str = Field(max_length=MAX_PROMPT)
     begin_message: str | None = Field(default=None, max_length=MAX_GREETING)
     start_speaker: Literal["agent", "user"]
-    dynamic_variables: list[DynamicVariable] = Field(max_length=50)
+    dynamic_variables: list[DynamicVariable] = Field(max_length=MAX_VARIABLES)
     stt: SttConfig
     tts: TtsConfig
     noise_cancellation: ModelRef | None

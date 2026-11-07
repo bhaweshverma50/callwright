@@ -30,6 +30,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from callwright_contract.adapters import load_catalog
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +38,7 @@ from app.agents.models import Agent
 from app.billing import service as billing
 from app.caller_language.options import language_options
 from app.calls.models import Call, transition
+from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
@@ -745,6 +747,7 @@ async def spec_for(session: AsyncSession, run_id: str) -> dict[str, Any]:
         "dynamic_variables": {str(k): str(v) for k, v in (run.dynamic_variables or {}).items()},
         "start_speaker": "user" if config.get("start_speaker") == "user" else "agent",
         "language_options": language_options(config),
+        "runtime": runtime_values(config, load_catalog()).model_dump(mode="json"),
     }
     if base is not None:
         material = sim_calls.replay_material(sim_calls.items_of(base))

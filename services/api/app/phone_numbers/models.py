@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Final
 
 from sqlalchemy import DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR, ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
-
-ACTIVE_CALL_STATUSES: Final = ("queued", "ringing", "in_progress")
 
 
 def pg_enum(name: str, *values: str) -> ENUM:

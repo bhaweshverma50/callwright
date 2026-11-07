@@ -6,6 +6,8 @@ filter params below.
 
 from __future__ import annotations
 
+from callwright_contract.calls import CALL_STATUSES, CHANNELS
+
 ROUTES: dict[str, str] = {
     "/dashboard": "Dashboard",
     "/calls": "Calls",
@@ -24,21 +26,8 @@ ROUTES: dict[str, str] = {
 }
 
 CALL_FILTER_VALUES: dict[str, frozenset[str]] = {
-    "status": frozenset(
-        {
-            "queued",
-            "ringing",
-            "in_progress",
-            "ended",
-            "processing",
-            "completed",
-            "failed",
-            "no_answer",
-            "busy",
-            "voicemail",
-        }
-    ),
-    "channel": frozenset({"web", "sip_inbound", "sip_outbound", "whatsapp"}),
+    "status": frozenset(CALL_STATUSES),
+    "channel": frozenset(CHANNELS),
     "sentiment": frozenset({"positive", "neutral", "negative", "unknown"}),
 }
 DATE_RANGES = frozenset({"today", "yesterday", "this_week", "last_7_days"})

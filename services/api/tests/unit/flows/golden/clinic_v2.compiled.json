@@ -1,15 +1,14 @@
 {
   "builtin_variables": [
     "call_id",
-    "direction",
     "channel",
-    "from_number",
-    "to_number",
+    "direction",
+    "user_number",
+    "agent_number",
     "timezone",
     "current_time",
     "current_date",
-    "current_datetime",
-    "agent_name"
+    "current_datetime"
   ],
   "compiled_at": "2026-10-26T12:00:00+00:00",
   "declared_variables": [
