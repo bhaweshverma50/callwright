@@ -4,10 +4,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, toProblem } from "../../api/errors";
-import { Button, Field, Input, Logo, PanelLoader, cn, focusRing } from "../../components";
+import { Button, cn, Field, focusRing, Input, Logo, PanelLoader, TalkMinutes } from "../../components";
 import { env } from "../../lib/env";
 import { formatUsd, toMicros } from "../../lib/money";
-import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
 import { BILLING_PATH } from "../../lib/paths";
 
 /** The fake gateway's checkout session (services/api/app/dev/router.py). */
@@ -206,8 +205,11 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
           <p className="text-[14px] text-fg-2">Add funds to {info.workspace_name ?? "your workspace"}</p>
           <p className="mt-2 font-mono text-[40px] font-semibold leading-none tracking-[-0.02em] text-fg tnum">{amount}</p>
           <p className="mt-3 text-[14px] text-fg-3">
-            About <span className="font-mono text-fg-2 tnum">{talkMinutes(micros, SEED_PER_MINUTE_MICROS)}</span> minutes of calls on the default
-            stack.
+            About{" "}
+            <span className="font-mono text-fg-2 tnum">
+              <TalkMinutes micros={micros} />
+            </span>{" "}
+            minutes of calls on the default stack.
           </p>
         </div>
         <dl className="flex flex-col gap-3 border-t border-line pt-5 text-[14px]">

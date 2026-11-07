@@ -16,7 +16,6 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import { Link } from "react-router";
 import { env } from "../lib/env";
 import { formatUsd } from "../lib/money";
-import { SEED_PER_MINUTE_MICROS } from "../lib/stack";
 import { Badge } from "../components/Badge";
 import { Button, IconButton } from "../components/Button";
 import { cn } from "../components/cn";
@@ -37,6 +36,7 @@ import {
 import { createLiveDriver } from "./webCallLive";
 import { useWebCall, type CallPhase, type CallSummary, type WebCallState } from "./useWebCall";
 import { mss } from "../lib/format";
+import { useStackRate } from "../api/pricing";
 
 export type { CallPhase, CallSummary } from "./useWebCall";
 
@@ -60,7 +60,7 @@ export function WebCallPanel({
   agentId,
   version,
   variables,
-  perMinuteMicros = SEED_PER_MINUTE_MICROS,
+  perMinuteMicros: agentRate,
   mode = env.mocks ? "mock" : "live",
   mockOptions,
   driver: driverProp,
@@ -75,6 +75,8 @@ export function WebCallPanel({
   const { state: s, start, cancel, end, toggleMute, sendDigit, elapsed } = useWebCall(driver, request, onEnded);
   const [keypadOpen, setKeypadOpen] = useState(false);
   const reduce = useReducedMotion() ?? false;
+  const stackRate = useStackRate(agentRate === undefined);
+  const perMinuteMicros = agentRate ?? stackRate ?? 0n;
   const costMicros = (perMinuteMicros * BigInt(Math.max(0, Math.round(elapsed)))) / 60_000n;
   const onCall = s.phase === "live" || s.phase === "ending";
   const showKeypad = keypadOpen && onCall;

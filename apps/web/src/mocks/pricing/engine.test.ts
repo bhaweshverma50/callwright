@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceQuote, type CatalogLike } from "./pricing";
+import { priceQuote, type CatalogLike } from "./engine";
 
 const catalog: CatalogLike = {
   version: 1,

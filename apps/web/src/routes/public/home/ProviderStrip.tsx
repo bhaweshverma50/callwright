@@ -1,7 +1,8 @@
 import { motion, useReducedMotion } from "motion/react";
 import { COMPONENT_LABELS, cn } from "../../../components";
-import { catalogV1 } from "../../../lib/catalogSeed";
 import { providerLabel } from "../../../lib/providers";
+import { useCatalogEntries } from "../../../api/pricing";
+import type { CatalogEntry } from "../../../api/types";
 
 /**
  * Vendor wordmarks in public/logos/vendors, from each vendor's own site or brand kit (Sarvam,
@@ -23,9 +24,9 @@ const LOGOS: Record<string, { ratio: number; h: number }> = {
 };
 
 /** Every vendor in the catalog, tagged with the link of the chain it fills. */
-const VENDORS = (() => {
-  const seen = new Map<string, string>();
-  for (const e of catalogV1.entries) if (e.component !== "platform" && !seen.has(e.provider)) seen.set(e.provider, e.component);
+function vendorsIn(entries: CatalogEntry[]) {
+  const seen = new Map<string, CatalogEntry["component"]>();
+  for (const e of entries) if (e.component !== "platform" && !seen.has(e.provider)) seen.set(e.provider, e.component);
   return [...seen].map(([provider, component]) => ({ provider, name: providerLabel(provider), component }));
 })();
 
@@ -55,9 +56,10 @@ function Wordmark({ provider, name }: { provider: string; name: string }) {
 
 /** A slow strip of the vendors a call can run on. Static under reduced motion. */
 export function ProviderStrip() {
+  const vendors = vendorsIn(useCatalogEntries());
   const reduce = useReducedMotion();
   const items = (copy: number) =>
-    VENDORS.map((v) => (
+    vendors.map((v) => (
       <li key={`${copy}-${v.provider}`} aria-hidden={copy > 0 || undefined} className="group flex shrink-0 items-center pr-14">
         <Wordmark provider={v.provider} name={v.name} />
         <span className="sr-only">

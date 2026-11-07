@@ -4,9 +4,9 @@
  * Shapes are the contract types, so the mock cannot drift from the specs silently.
  */
 import type { Transaction, TransactionType, Workspace, CostBreakdown, Preferences } from "../api/types";
-import { priceQuote } from "../lib/pricing";
+import { priceQuote } from "./pricing/engine";
 import { microsToDecimal, toMicros } from "../lib/money";
-import { catalogV1 } from "../lib/catalogSeed";
+import { catalogV1 } from "./pricing/catalog";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "./demoAccount";
 
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";

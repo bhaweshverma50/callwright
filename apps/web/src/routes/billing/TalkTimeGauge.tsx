@@ -5,7 +5,7 @@ import { useQuote, useRecentTransactions } from "../../api/queries";
 import type { Transaction } from "../../api/types";
 import { InfoTip, MoneyText, Skeleton, Ticker, cn } from "../../components";
 import { formatUsd, toMicros } from "../../lib/money";
-import { DEFAULT_STACK, DEFAULT_STACK_LABELS, talkMinutes } from "../../lib/stack";
+import { DEFAULT_STACK, talkMinutes } from "../../api/pricing";
 
 const DAY_MS = 86_400_000;
 export const SPEND_WINDOW_DAYS = 14;
@@ -54,6 +54,7 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
   const quote = useQuote({ components: DEFAULT_STACK });
   const recent = useRecentTransactions();
   const perMinute = quote.data ? toMicros(quote.data.per_minute_total_usd) : null;
+  const name = (c: "stt" | "llm" | "tts") => quote.data?.lines.find((l) => l.component === c)?.label ?? DEFAULT_STACK[c].model;
   const balance = balanceUsd ? toMicros(balanceUsd) : null;
   const ready = balance !== null && perMinute !== null && recent.data;
   const facts = ready ? talkTimeFacts(balance, perMinute, recent.data.items) : null;
@@ -81,9 +82,8 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
                 minutes of calls
               </span>
               <InfoTip label="How talk time is worked out">
-                Your balance divided by the per-minute price of your current stack ({DEFAULT_STACK_LABELS.stt}, {DEFAULT_STACK_LABELS.llm},{" "}
-                {DEFAULT_STACK_LABELS.tts} and the platform fee), in whole minutes. Calls that run past their token or character bundle cost more per
-                minute, so they use it faster.
+                Your balance divided by the per-minute price of your current stack ({name("stt")}, {name("llm")}, {name("tts")} and the platform fee),
+                in whole minutes. Calls that run past their token or character bundle cost more per minute, so they use it faster.
               </InfoTip>
             </span>
           </div>
@@ -113,7 +113,7 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
             <li className="flex items-start gap-2.5">
               <Layers className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
               <span>
-                On your current stack: {DEFAULT_STACK_LABELS.stt}, {DEFAULT_STACK_LABELS.llm} and {DEFAULT_STACK_LABELS.tts}
+                On your current stack: {name("stt")}, {name("llm")} and {name("tts")}
                 {perMinute !== null && (
                   <>
                     {" "}

@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { FlowChain, LatencyChip, OnAir, Tooltip, Waveform, cn, focusRing, type FlowNode } from "../../components";
 import { formatUsd } from "../../lib/money";
 import { SAMPLE_CALL, SAMPLE_CALL_SECONDS } from "./sampleCall";
-import { SEED_PER_MINUTE_MICROS } from "../../lib/stack";
 import { mss } from "../../lib/format";
+import { useStackRate } from "../../api/pricing";
 
 const NODES: FlowNode[] = [
   { key: "caller", label: "Caller", icon: <Mic aria-hidden /> },
@@ -60,7 +60,8 @@ export function LiveCall({ className }: { className?: string }) {
   }, [inView, reduce, run]);
 
   const ended = t >= SAMPLE_CALL_SECONDS;
-  const costMicros = (SEED_PER_MINUTE_MICROS * BigInt(Math.round(t * 1000))) / 60_000n;
+  const rate = useStackRate();
+  const costMicros = ((rate ?? 0n) * BigInt(Math.round(t * 1000))) / 60_000n;
   const link = ended ? null : activeLink(t);
 
   return (

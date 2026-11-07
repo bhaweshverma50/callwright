@@ -6,7 +6,7 @@
  * model's `multilingual_model` (English-only Flash v2 and Turbo v2 switch to their v2.5 versions).
  * The agent's own language and its other variants are never a switch target.
  */
-import type { AgentConfig, Language, VoiceCatalog } from "../api/agents";
+import type { AgentConfig, Language, VoiceCatalog } from "./agents";
 
 export type LanguageSwitching = NonNullable<AgentConfig["advanced"]["language_switching"]>;
 

@@ -1,7 +1,7 @@
 /**
- * The 001 pricing rule in TypeScript, used by the mock API (quote endpoint) and by the public
- * calculator's worked example. The API's `pricing/engine.py` is the source of truth; this file
- * mirrors it exactly and is pinned by the same reference-call test (SC-004).
+ * The 001 pricing rule in TypeScript for the mock API's quote endpoint. The API's
+ * `pricing/engine.py` is the source of truth; this file mirrors it and is pinned by the same
+ * reference-call test (SC-004).
  *
  * Rules (spec US3, research R1, R4):
  * - Duration is rounded up to the whole second; duration_minutes = billed_seconds / 60.
@@ -11,7 +11,7 @@
  * - bundle_multiplier = billed_minutes / duration_minutes, 4 places.
  * All arithmetic is exact (BigInt rationals); nothing goes through floats.
  */
-import { microsToDecimal, toMicros } from "./money";
+import { microsToDecimal, toMicros } from "../../lib/money";
 
 export type Component = "stt" | "llm" | "tts" | "nc" | "platform";
 export type BundleUnit = "llm_input_tokens" | "llm_output_tokens" | "tts_chars";

@@ -1,27 +1,31 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Button, COMPONENT_LABELS, Reveal, RevealItem } from "../../components";
-import { catalogV1 } from "../../lib/catalogSeed";
+import { Button, COMPONENT_LABELS, Reveal, RevealItem, Skeleton, TalkMinutes } from "../../components";
 import { formatUsd, toMicros } from "../../lib/money";
-import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
 import { ChainDemo } from "./home/ChainDemo";
 import { ProductVideo } from "./home/ProductVideo";
 import { ProviderStrip } from "./home/ProviderStrip";
 import { QualityStory } from "./home/QualityStory";
 import { TemplateRail } from "./home/TemplateRail";
 import { Playground } from "./playground/Playground";
+import { useCatalogEntries } from "../../api/pricing";
+import type { CatalogEntry } from "../../api/types";
 
 const PARTS = ["stt", "llm", "tts", "nc", "platform"] as const;
 type Part = (typeof PARTS)[number];
 
-/** Lowest per-minute rate per component in the launch catalog (seed version 1). */
-function fromRate(component: Part): string {
-  const rates = catalogV1.entries.filter((e) => e.component === component).map((e) => toMicros(e.rate_per_min_usd) ?? 0n);
-  const min = rates.reduce((a, b) => (b < a ? b : a));
-  return formatUsd(min, { places: 4 });
+/** Lowest per-minute rate per component in the catalog in effect; null until it loads. */
+function fromRate(entries: CatalogEntry[], component: Part): string | null {
+  const rates = entries.filter((e) => e.component === component).map((e) => toMicros(e.rate_per_min_usd) ?? 0n);
+  if (!rates.length) return null;
+  return formatUsd(
+    rates.reduce((a, b) => (b < a ? b : a)),
+    { places: 4 },
+  );
 }
 
-const TRIAL_MINUTES = talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS);
+/** Trial credit a new workspace starts with (the API grants it on sign-up; not served before then). */
+const TRIAL_CREDIT_MICROS = 5_000_000n;
 
 const H2 = "font-display text-[26px] leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]";
 
@@ -59,6 +63,7 @@ function Stacked({ id, title, intro, children }: { id: string; title: string; in
 
 /** Public home (T044, FR-016). Product visuals are real components fed by the pricing engine. */
 export function Home() {
+  const entries = useCatalogEntries();
   return (
     <>
       <section>
@@ -85,7 +90,11 @@ export function Home() {
             </RevealItem>
             <RevealItem>
               <p className="mt-6 text-[14px] text-fg-3">
-                New workspaces start with $5.00, about <span className="font-mono text-fg-2 tnum">{TRIAL_MINUTES}</span> minutes of calls.
+                New workspaces start with $5.00, about{" "}
+                <span className="font-mono text-fg-2 tnum">
+                  <TalkMinutes micros={TRIAL_CREDIT_MICROS} />
+                </span>{" "}
+                minutes of calls.
               </p>
             </RevealItem>
           </Reveal>
@@ -141,7 +150,10 @@ export function Home() {
                 ) : (
                   <>
                     {c !== "platform" && "from "}
-                    <span className="font-mono text-[16px] text-fg tnum">{fromRate(c)}</span> a minute
+                    <span className="font-mono text-[16px] text-fg tnum">
+                      {fromRate(entries, c) ?? <Skeleton className="inline-block h-[1em] w-[7ch] align-middle" />}
+                    </span>{" "}
+                    a minute
                   </>
                 )}
               </dd>
@@ -153,7 +165,7 @@ export function Home() {
       <section aria-labelledby="start">
         <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:py-28">
           <h2 id="start" className="max-w-[20ch] text-balance font-display text-[30px] leading-[1.1] tracking-[-0.03em] text-fg sm:text-[40px]">
-            Your first $5 is about {TRIAL_MINUTES} minutes of calls.
+            Your first $5 is about <TalkMinutes micros={TRIAL_CREDIT_MICROS} /> minutes of calls.
           </h2>
           <p className="mt-4 max-w-[52ch] text-[16px] leading-relaxed text-fg-2">
             No card needed until you add funds. Calls are billed per second from your balance.

@@ -1,8 +1,9 @@
 /**
- * Pricing catalog version 1, exactly as seeded by 001 data-model.md (32 rows). Typed against the
- * contract so drift in the schema breaks the build.
+ * The mock API's pricing catalog: version 1 exactly as seeded by 001 data-model.md (32 rows), plus
+ * the rows a later migration added. Typed against the contract so drift in the schema breaks the
+ * build. The app reads prices from /pricing/catalog and /pricing/quote, never from here.
  */
-import type { Catalog, CatalogEntry } from "../api/types";
+import type { Catalog, CatalogEntry } from "../../api/types";
 
 const llmBundles: CatalogEntry["bundles"] = [
   { unit: "llm_input_tokens", per_min: 20000 },
@@ -61,7 +62,7 @@ export const catalogV1: Catalog = {
 
 /**
  * Rows a later migration added to the catalog in effect (services/api s003_0004, 003 T069). The
- * mock API serves `catalogCurrent`; the public pages keep describing the launch catalog.
+ * mock API serves `catalogCurrent`.
  */
 const addedRows: Row[] = [
   ["llm", "anthropic", "claude-haiku-5-5", "Claude Haiku 5.5", "0.0021"],
@@ -82,9 +83,3 @@ export const catalogCurrent: Catalog = {
     })),
   ],
 };
-
-/** Display name for a catalog row ("Nova-3", "GPT-5 Mini"); falls back to the raw model id. */
-export function modelLabel(component: string, provider: string, model: string | null | undefined): string | null {
-  const row = catalogCurrent.entries.find((e) => e.component === component && e.provider === provider && e.model === (model ?? null));
-  return row?.label ?? model ?? null;
-}

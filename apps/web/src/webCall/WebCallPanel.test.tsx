@@ -1,3 +1,4 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -10,6 +11,7 @@ import { WebCallPanel, type WebCallPanelProps } from "./WebCallPanel";
 import { ApiError } from "../api/errors";
 import { createMockDriver, problemFromError, type MockOptions, type MockStep, type WebCallDriver } from "./webCall";
 import { checkMicrophone, createLiveDriver, parseLatencyMessage } from "./webCallLive";
+import { createQueryClient } from "../api/queryClient";
 
 const AGENT = "agt_01JABCDEF0123456789ABCDEFG";
 
@@ -24,9 +26,11 @@ const FAST: MockOptions = { requestDelayMs: 5, connectDelayMs: 5, wordMs: 5, gap
 function renderPanel(props: Partial<WebCallPanelProps> = {}) {
   return render(
     <MemoryRouter>
-      <TooltipProvider>
-        <WebCallPanel agentId={AGENT} mode="mock" mockOptions={FAST} {...props} />
-      </TooltipProvider>
+      <QueryClientProvider client={createQueryClient()}>
+        <TooltipProvider>
+          <WebCallPanel agentId={AGENT} mode="mock" mockOptions={FAST} {...props} />
+        </TooltipProvider>
+      </QueryClientProvider>
     </MemoryRouter>,
   );
 }
@@ -221,9 +225,11 @@ describe("WebCallPanel", () => {
   it("does not label a live panel as simulated", () => {
     render(
       <MemoryRouter>
-        <TooltipProvider>
-          <WebCallPanel agentId={AGENT} mode="live" />
-        </TooltipProvider>
+        <QueryClientProvider client={createQueryClient()}>
+          <TooltipProvider>
+            <WebCallPanel agentId={AGENT} mode="live" />
+          </TooltipProvider>
+        </QueryClientProvider>
       </MemoryRouter>,
     );
     expect(screen.queryByText("Simulated")).not.toBeInTheDocument();

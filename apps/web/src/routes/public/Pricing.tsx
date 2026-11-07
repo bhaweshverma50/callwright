@@ -1,8 +1,7 @@
 import { Link } from "react-router";
-import { Button, COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard } from "../../components";
-import { SEED_PER_MINUTE_MICROS, talkMinutes } from "../../lib/stack";
+import { Button, COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard, Skeleton, TalkMinutes } from "../../components";
 import { PricingCalculator } from "./PricingCalculator";
-import { REFERENCE_USAGE, referenceBreakdown } from "./reference";
+import { REFERENCE_CALL, useReferenceBreakdown } from "../../api/pricing";
 import { formatUsd } from "../../lib/money";
 
 const PARTS: { c: keyof typeof COMPONENT_LABELS; text: string }[] = [
@@ -15,7 +14,8 @@ const PARTS: { c: keyof typeof COMPONENT_LABELS; text: string }[] = [
 
 /** Public pricing (T073, FR-013): the chain calculator first, then how the price is built. */
 export function Pricing() {
-  const llm = referenceBreakdown.lines.find((l) => l.component === "llm")!;
+  const reference = useReferenceBreakdown();
+  const llm = reference?.lines.find((l) => l.component === "llm");
   return (
     <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-12 sm:px-6 lg:pt-16">
       <h1 className="max-w-[18ch] text-balance font-display text-[32px] leading-[1.08] tracking-[-0.03em] text-fg sm:text-[44px]">
@@ -26,8 +26,11 @@ export function Pricing() {
         calls.
       </p>
       <p className="mt-3 text-[14px] text-fg-3">
-        $5.00 of trial credit is about <span className="font-mono text-fg-2 tnum">{talkMinutes(5_000_000n, SEED_PER_MINUTE_MICROS)}</span> minutes on
-        the default chain.
+        $5.00 of trial credit is about{" "}
+        <span className="font-mono text-fg-2 tnum">
+          <TalkMinutes micros={5_000_000n} />
+        </span>{" "}
+        minutes on the default chain.
       </p>
 
       <div className="mt-12">
@@ -70,20 +73,28 @@ export function Pricing() {
             {`billed minutes = max(call minutes, usage / bundle)
 cost           = rate x billed minutes`}
           </pre>
-          <p className="mt-6 text-[15px] leading-relaxed text-fg-2">
-            Example: a <span className="font-mono tnum">{Math.round(REFERENCE_USAGE.duration_ms / 1000)}</span> second call sent{" "}
-            <span className="font-mono tnum">{REFERENCE_USAGE.llm_input_tokens.toLocaleString()}</span> input tokens to the model. That is{" "}
-            <span className="font-mono tnum">{Number(llm.billed_minutes).toFixed(2)}</span> minutes of bundle on a{" "}
-            <span className="font-mono tnum">{Number(referenceBreakdown.duration_minutes).toFixed(2)}</span> minute call, so the model line bills at{" "}
-            <span className="font-mono tnum">{Number(llm.bundle_multiplier).toFixed(2)}x</span> and adds{" "}
-            <span className="font-mono tnum">{formatUsd(llm.surcharge_usd, { places: 4 })}</span>. The voice stayed inside its bundle and bills at the
-            call length.
-          </p>
+          {reference && llm ? (
+            <p className="mt-6 text-[15px] leading-relaxed text-fg-2">
+              Example: a <span className="font-mono tnum">{Math.round(REFERENCE_CALL.usage.duration_ms / 1000)}</span> second call sent{" "}
+              <span className="font-mono tnum">{REFERENCE_CALL.usage.llm_input_tokens.toLocaleString()}</span> input tokens to the model. That is{" "}
+              <span className="font-mono tnum">{Number(llm.billed_minutes).toFixed(2)}</span> minutes of bundle on a{" "}
+              <span className="font-mono tnum">{Number(reference.duration_minutes).toFixed(2)}</span> minute call, so the model line bills at{" "}
+              <span className="font-mono tnum">{Number(llm.bundle_multiplier).toFixed(2)}x</span> and adds{" "}
+              <span className="font-mono tnum">{formatUsd(llm.surcharge_usd, { places: 4 })}</span>. The voice stayed inside its bundle and bills at
+              the call length.
+            </p>
+          ) : (
+            <Skeleton className="mt-6 h-[100px] w-full" />
+          )}
           <Button asChild variant="link" className="mt-7 text-[15px]">
             <Link to="/enterprise">Talk to us about volume</Link>
           </Button>
         </div>
-        <CostBreakdownCard breakdown={referenceBreakdown} title="Worked example: support call, 4 min 31 s" className="shadow-2" />
+        {reference ? (
+          <CostBreakdownCard breakdown={reference} title="Worked example: support call, 4 min 31 s" className="shadow-2" />
+        ) : (
+          <Skeleton className="h-[360px] w-full rounded-panel" />
+        )}
       </section>
     </div>
   );

@@ -1,12 +1,15 @@
 import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { COMPONENT_ICONS, COMPONENT_LABELS, LatencyChip, Waveform, cn, focusRing } from "../../../components";
-import { catalogV1 } from "../../../lib/catalogSeed";
 import { providerLabel } from "../../../lib/providers";
+import { useCatalogEntries } from "../../../api/pricing";
+import type { CatalogEntry } from "../../../api/types";
 
 type Link = "nc" | "stt" | "llm" | "tts";
 
-const providersFor = (c: Link) => [...new Set(catalogV1.entries.filter((e) => e.component === c).map((e) => providerLabel(e.provider)))];
+const providersIn = (entries: CatalogEntry[], c: Link) => [
+  ...new Set(entries.filter((e) => e.component === c).map((e) => providerLabel(e.provider))),
+];
 
 const LINKS: { c: Link; text: string }[] = [
   { c: "nc", text: "Optional. Cleans the line before anything listens to it." },
@@ -27,6 +30,8 @@ const CALLER = "I've had a fever since Sunday and my throat really hurts.";
  * visitor. Reduced motion shows each scene's end state and never advances.
  */
 export function ChainDemo() {
+  const entries = useCatalogEntries();
+  const providersFor = (c: Link) => providersIn(entries, c);
   const [active, setActive] = useState<Link>("stt");
   const [auto, setAuto] = useState(true);
   const reduce = useReducedMotion() ?? false;
@@ -111,7 +116,7 @@ export function ChainDemo() {
               {active === "nc" && <NoiseScene reduce={reduce} />}
               {active === "stt" && <SpeechScene reduce={reduce} />}
               {active === "llm" && <ModelScene reduce={reduce} />}
-              {active === "tts" && <VoiceScene reduce={reduce} />}
+              {active === "tts" && <VoiceScene reduce={reduce} voices={providersFor("tts")} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -207,8 +212,7 @@ function ModelScene({ reduce }: { reduce: boolean }) {
   );
 }
 
-function VoiceScene({ reduce }: { reduce: boolean }) {
-  const voices = providersFor("tts");
+function VoiceScene({ reduce, voices }: { reduce: boolean; voices: string[] }) {
   return (
     <>
       <p className="max-w-[40ch] text-[18px] leading-snug">I have 9:30 or 11:15 tomorrow with the general clinic. Which works for you?</p>

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import type { Language } from "../../../api/agents";
 import { Button, FieldRow, Input, SwitchControl, cn, focusRing } from "../../../components";
-import { languageSwitchingOf, onePerBase, switchTargets } from "../../../lib/callerLanguages";
+import { languageSwitchingOf, onePerBase, switchTargets } from "../../../api/languageSwitching";
 import type { Catalogs } from "./catalogs";
 import { FieldError, Note, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
@@ -16,7 +16,7 @@ const LANGUAGES = "/advanced/language_switching/languages";
 /**
  * Caller language (spec 012), under the agent's language on Basics: a switch that lets callers
  * change the call's language, and an optional list that limits which languages they get. Only
- * languages the agent's speech recognition and voice both support are offered (lib/callerLanguages).
+ * languages the agent's speech recognition and voice both support are offered (api/languageSwitching.ts).
  */
 export function CallerLanguageField({ draft, catalogs }: { draft: AgentDraft; catalogs: Catalogs }) {
   const { config } = draft;
