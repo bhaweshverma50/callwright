@@ -7,12 +7,9 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service
-from app.agents import views
-from app.agents.models import Agent
-from app.core.auth import CurrentPrincipal, Principal
+from app.agents import service, versions, views
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import not_found, problem_responses, validation_failed
 from app.core.ids import is_valid_id, path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
@@ -36,19 +33,8 @@ class PublishRequest(BaseModel):
     version_id: str = Field(pattern=r"^agv_[0-9A-HJKMNP-TV-Z]{26}$")
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 def _allow_http(request: Request) -> bool:
     return bool(request.app.state.settings.allow_http_webhooks)
-
-
-async def _agent(session: AsyncSession, agent_id: str, *, include_deleted: bool = False) -> Agent:
-    agent = await session.get(Agent, agent_id)
-    if agent is None or (agent.deleted_at is not None and not include_deleted):
-        raise not_found("agent")
-    return agent
 
 
 @router.get("/agents/{agent_id}/versions", responses=problem_responses(401, 404))
@@ -60,9 +46,9 @@ async def list_agent_versions(
     page_size: PageSizeParam = 20,
     include_test: bool = False,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        agent = await _agent(session, agent_id, include_deleted=True)
-        rows, total = await service.list_versions(
+    async with principal_tx(request, principal) as session:
+        agent = await service.get_agent(session, agent_id, include_deleted=True)
+        rows, total = await versions.list_versions(
             session, agent.id, page=page, page_size=page_size, include_test=include_test
         )
         items = await views.version_summaries(session, agent, rows)
@@ -73,9 +59,9 @@ async def list_agent_versions(
 async def get_agent_version(
     agent_id: AgentId, version_id: VersionId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        agent = await _agent(session, agent_id, include_deleted=True)
-        version = await service.get_for_agent(session, agent.id, version_id)
+    async with principal_tx(request, principal) as session:
+        agent = await service.get_agent(session, agent_id, include_deleted=True)
+        version = await versions.get_for_agent(session, agent.id, version_id)
         return await views.version_detail(session, agent, version)
 
 
@@ -89,16 +75,16 @@ async def diff_agent_version(
         str | None, Query(description="Another version id of the same agent, or draft")
     ] = None,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        agent = await _agent(session, agent_id, include_deleted=True)
-        await service.get_for_agent(session, agent.id, version_id)
+    async with principal_tx(request, principal) as session:
+        agent = await service.get_agent(session, agent_id, include_deleted=True)
+        await versions.get_for_agent(session, agent.id, version_id)
         if against is None:
             raise validation_failed(
                 [{"pointer": "/query/against", "code": "required", "message": "Choose what to compare with."}]
             )
         if against != "draft" and not is_valid_id(against, "agv"):
             raise not_found("version")
-        return await service.diff(session, agent, version_id, against)
+        return await versions.diff(session, agent, version_id, against)
 
 
 @router.post(
@@ -114,7 +100,7 @@ async def restore_agent_version(
     body: Annotated[RestoreRequest | None, Body()] = None,
 ) -> JSONResponse:
     body = body or RestoreRequest()
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         outcome = await service.restore(
             session,
             agent_id,
@@ -140,7 +126,7 @@ async def restore_agent_version(
 async def publish_agent_version(
     agent_id: AgentId, body: PublishRequest, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         agent = await service.publish(
             session, agent_id, body.version_id, allow_http_webhook=_allow_http(request)
         )
@@ -149,6 +135,6 @@ async def publish_agent_version(
 
 @router.delete("/agents/{agent_id}/published-version", status_code=204, responses=problem_responses(404))
 async def unpublish_agent(agent_id: AgentId, request: Request, principal: CurrentPrincipal) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.unpublish(session, agent_id)
     return Response(status_code=204)

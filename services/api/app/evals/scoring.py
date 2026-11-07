@@ -2,7 +2,6 @@
 
 * ``run_verdict``: a run's overall verdict and score from its items.
 * ``call_eval_status``: a call's evaluation status from its current runs.
-* ``judge_item_verdict``: the server-side verdict of a judge score (the model never decides).
 """
 
 from __future__ import annotations
@@ -12,7 +11,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-Verdict = Literal["pass", "fail", "not_applicable"]
+from app.evaluators.base import Verdict
+
 RunStatus = Literal["pending", "running", "completed", "skipped", "error"]
 EvalStatus = Literal["not_evaluated", "running", "passed", "failed", "error"]
 
@@ -39,15 +39,6 @@ def run_verdict(items: Sequence[ItemOutcome], *, max_failed_items: int = 0) -> t
     verdict: Verdict = "fail" if failed > max_failed_items else "pass"
     scores = [i.score for i in applicable if i.score is not None]
     return verdict, (statistics.fmean(scores) if scores else None)
-
-
-def judge_item_verdict(score: float, cutoff: float) -> Verdict:
-    return "pass" if score >= cutoff else "fail"
-
-
-def process_reward_verdict(score: int) -> Verdict:
-    """-1 regression fails; 0 neutral and +1 progress pass."""
-    return "fail" if score <= -1 else "pass"
 
 
 def call_eval_status(runs: Sequence[RunState]) -> EvalStatus:

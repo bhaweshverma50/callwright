@@ -7,6 +7,8 @@
 * ``judge_result(workspace_id, test_run_id, test_case_id)`` judges a reply through 007's model
   client (``judge.py``), stores the verdict and finishes the run when it was the last result;
   finishing records the single ``testing.run`` charge.
+* ``sweep_test_results`` (cron, every minute): cases whose runner or judge never answered within
+  twice ``dispatch.STALE_RUN_S`` become ``error`` so their run finishes, and release their slots.
 """
 
 from __future__ import annotations
@@ -15,18 +17,22 @@ import logging
 from typing import Any
 
 from callwright_contract.values import RUN_SINGLE_TURN
+from sqlalchemy import text
 
 from app.billing import service as billing
 from app.core.db import Database
-from app.evals.runtime import runtime
-from app.simulator import dispatch
-from app.simulator.charges import merge_usage
+from app.llms.runtime import runtime
 from app.test_runs import judge, service
 from app.test_runs.models import TestResult
+from app.testing import dispatch
+from app.testing.charges import merge_usage
 
 logger = logging.getLogger(__name__)
 DISPATCH_TEST_CASE = "dispatch_test_case"
 JUDGE_RESULT = "judge_result"
+
+
+SWEEP_TEST_RESULTS = "sweep_test_results"
 
 
 def holder(test_run_id: str, test_case_id: str) -> str:
@@ -100,3 +106,20 @@ async def judge_result(ctx: dict[str, Any], workspace_id: str, test_run_id: str,
         await service.recount(session, run)
         await service.maybe_finish(session, run)
     return outcome.status
+
+
+async def sweep_test_results(ctx: dict[str, Any]) -> int:
+    """Fail test cases whose runner or judge went silent; returns how many were failed."""
+    db: Database = ctx["db"]
+    async with db.transaction() as session:
+        rows = (
+            await session.execute(
+                text("select test_run_id, test_case_id, workspace_id from test_results_stale(:s)"),
+                {"s": dispatch.STALE_RUN_S * 2},
+            )
+        ).all()
+    for run_id, case_id, workspace_id in rows:
+        async with db.transaction(workspace_id=workspace_id) as session:
+            await service.fail_case(session, run_id, case_id, "The test runner stopped answering.")
+        await dispatch.release(ctx["redis"], workspace_id, holder(run_id, case_id))
+    return len(rows)

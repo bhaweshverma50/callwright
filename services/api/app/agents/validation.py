@@ -31,9 +31,12 @@ from typing import Any, TypeGuard
 from pydantic import ValidationError
 
 from app.agents import defaults, variables
+from app.agents.defaults import CURRENT_SCHEMA_VERSION
 from app.agents.hooks import SNAPSHOT_ONLY_BLOCKS
+from app.agents.offered import llm_offer, stt_offer, tts_offer
 from app.agents.schemas import (
-    CURRENT_SCHEMA_VERSION,
+    DTMF_DIGITS_RANGE,
+    TEMPERATURE_RANGE,
     AgentConfigV1,
     UnsupportedSchemaVersion,
     upcast,
@@ -43,8 +46,9 @@ from app.caller_language import options as caller_options
 from app.llms.service import LlmCatalog
 from app.llms.service import load_catalog as load_llm_catalog
 from app.pricing import engine
-from app.voices.catalog import VoiceCatalog
+from app.voices.catalog import DEFAULT_LANGUAGE, VoiceCatalog
 from app.voices.catalog import load_catalog as load_voice_catalog
+from app.voices.service import ambient_prefix
 
 Issue = dict[str, str]
 
@@ -155,8 +159,8 @@ class _Collector:
 
 
 OTHER_RANGES: dict[str, tuple[int | float, int | float]] = {
-    "/advanced/dtmf/digits": (1, 99),
-    "/llm/temperature": (0, 2),
+    "/advanced/dtmf/digits": DTMF_DIGITS_RANGE,
+    "/llm/temperature": TEMPERATURE_RANGE,
 }
 
 
@@ -368,7 +372,7 @@ def fill_defaults(
     vc = vc or load_voice_catalog()
     out = copy.deepcopy(dict(config))
     language = out.get("language") if _is_text(out.get("language")) and out.get("language") else None
-    language = language or defaults.DEFAULT_LANGUAGE
+    language = language or DEFAULT_LANGUAGE
     base = defaults.default_config(agent_type, language)
     tts = out.get("tts")
     if isinstance(tts, dict) and _is_text(tts.get("provider")) and tts["provider"] != base["tts"]["provider"]:
@@ -394,16 +398,17 @@ def _check_llm(
     if not (_is_text(provider) and _is_text(model_id) and provider and model_id):
         return
     label = "analysis model" if analysis else "model"
-    if not lc.has_provider(provider):
+    offer = llm_offer(provider, model_id, lc)
+    if offer.status == "unknown_provider":
         out.error(
             f"{pointer}/provider", "not_in_catalog", f"The {label} provider {provider!r} is not offered."
         )
         return
-    model = lc.model(provider, model_id)
+    model = offer.model
     if model is None:
         out.error(f"{pointer}/model", "not_in_catalog", f"{model_id!r} is not offered by {provider}.")
         return
-    if model.withdrawn:
+    if offer.status == "withdrawn":
         out.blocker(
             f"{pointer}/model", "withdrawn", f"{model.label} is no longer offered. Choose another model."
         )
@@ -458,8 +463,9 @@ def _check_speech(cfg: dict[str, Any], ctx: PureContext, vc: VoiceCatalog, out: 
         )
     stt = cfg.get("stt")
     if isinstance(stt, dict) and _is_text(stt.get("provider")) and stt["provider"]:
-        provider = vc.stt_provider(stt["provider"])
         model_id = stt.get("model")
+        offer = stt_offer(stt["provider"], model_id if _is_text(model_id) else None, vc)
+        provider = offer.provider
         if provider is None:
             out.error(
                 "/stt/provider",
@@ -474,12 +480,13 @@ def _check_speech(cfg: dict[str, Any], ctx: PureContext, vc: VoiceCatalog, out: 
                 stt["model"] = provider.default_model
             else:
                 out.error("/stt/model", "required", "Choose a speech recognition model.")
-        elif _is_text(model_id) and provider.model(model_id) is None:
+        elif offer.status == "unknown_model":
             out.error("/stt/model", "not_in_catalog", f"{model_id!r} is not offered by {provider.label}.")
         if provider is not None:
             model_id = stt.get("model")
-            model = provider.model(model_id) if _is_text(model_id) else None
-            if model is not None and model.withdrawn:
+            offer = stt_offer(provider.provider, model_id if _is_text(model_id) else None, vc)
+            model = offer.model
+            if model is not None and offer.status == "withdrawn":
                 out.blocker(
                     "/stt/model", "withdrawn", f"{model.label} is no longer offered. Choose another model."
                 )
@@ -500,38 +507,34 @@ def _check_speech(cfg: dict[str, Any], ctx: PureContext, vc: VoiceCatalog, out: 
                 )
     tts = cfg.get("tts")
     if isinstance(tts, dict) and _is_text(tts.get("provider")) and tts["provider"]:
-        provider_t = vc.tts_provider(tts["provider"])
+        model_id = tts.get("model")
+        tts_found = tts_offer(tts["provider"], model_id if _is_text(model_id) and model_id else None, vc)
+        provider_t = tts_found.provider
         if provider_t is None:
             out.error(
                 "/tts/provider", "not_in_catalog", f"The voice provider {tts['provider']!r} is not offered."
             )
         else:
-            model_id = tts.get("model")
-            if _is_text(model_id) and model_id:
-                model_t = provider_t.model(model_id)
-                if model_t is None:
-                    out.error(
-                        "/tts/model", "not_in_catalog", f"{model_id!r} is not offered by {provider_t.label}."
+            model_t = tts_found.model
+            if tts_found.status == "unknown_model":
+                out.error(
+                    "/tts/model", "not_in_catalog", f"{model_id!r} is not offered by {provider_t.label}."
+                )
+            elif model_t is not None:
+                if tts_found.status == "withdrawn":
+                    out.blocker(
+                        "/tts/model", "withdrawn", f"{model_t.label} is no longer offered. Choose another."
                     )
-                else:
-                    if model_t.withdrawn:
-                        out.blocker(
-                            "/tts/model",
-                            "withdrawn",
-                            f"{model_t.label} is no longer offered. Choose another.",
-                        )
-                    if (
-                        ctx.pricing is not None
-                        and ctx.pricing.lookup("tts", provider_t.provider, model_id) is None
-                    ):
-                        out.blocker(
-                            "/tts/model",
-                            "unpriced",
-                            f"{model_t.label} has no price yet, so it cannot go live.",
-                        )
+                if (
+                    ctx.pricing is not None
+                    and ctx.pricing.lookup("tts", provider_t.provider, model_id) is None
+                ):
+                    out.blocker(
+                        "/tts/model", "unpriced", f"{model_t.label} has no price yet, so it cannot go live."
+                    )
             voice = tts.get("voice_id")
             if _is_text(voice) and voice.strip() and not provider_t.owns_voice(voice):
-                replacement = provider_t.voice_for(language if lang_ok else defaults.DEFAULT_LANGUAGE)
+                replacement = provider_t.voice_for(language if lang_ok else DEFAULT_LANGUAGE)
                 tts["voice_id"] = replacement
                 name = provider_t.curated_name(replacement) or replacement
                 out.warn(
@@ -662,7 +665,7 @@ def _check_text_rules(cfg: dict[str, Any], agent_type: str, ctx: PureContext, ou
                 )
         if isinstance(source, dict) and source.get("kind") == "upload" and _is_text(source.get("key")):
             key = source["key"]
-            if ctx.workspace_id is not None and not key.startswith(f"workspaces/{ctx.workspace_id}/ambient/"):
+            if ctx.workspace_id is not None and not key.startswith(ambient_prefix(ctx.workspace_id)):
                 out.error(
                     "/advanced/background_audio/source",
                     "missing_reference",
@@ -824,7 +827,7 @@ def validate_pure(agent_type: str, config: Any, ctx: PureContext | None = None) 
             loc = tuple(p for p in err.get("loc", ()) if p not in ("builtin", "upload"))
             out.reset.append(loc)
 
-    language = cfg.get("language") if _is_text(cfg.get("language")) else defaults.DEFAULT_LANGUAGE
+    language = cfg.get("language") if _is_text(cfg.get("language")) else DEFAULT_LANGUAGE
     if model is not None and not out.errors:
         normalized = model.model_dump(mode="json")
     else:
@@ -842,7 +845,7 @@ def _normalize_with_errors(
     cfg: dict[str, Any], resets: list[tuple[Any, ...]], agent_type: str, language: str, vc: VoiceCatalog
 ) -> dict[str, Any]:
     if vc.language(language) is None:
-        language = defaults.DEFAULT_LANGUAGE
+        language = DEFAULT_LANGUAGE
     working = copy.deepcopy(cfg)
     _reset_paths(working, resets, agent_type, language)
     for _ in range(3):
@@ -887,15 +890,3 @@ def validate_override(path: str, value: Any, vc: VoiceCatalog | None = None) -> 
             }
         ]
     return []
-
-
-def clamp_override(path: str, value: float, vc: VoiceCatalog | None = None) -> float:
-    """Clamp ``value`` into the control's range and snap it to the nearest step."""
-    vc = vc or load_voice_catalog()
-    control = vc.control(path)
-    if control is None:
-        raise KeyError(path)
-    number = min(max(Decimal(str(value)), control.min), control.max)
-    steps = ((number - control.min) / control.step).to_integral_value()
-    snapped = min(control.min + steps * control.step, control.max)
-    return float(snapped)

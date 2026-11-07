@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from app.issues.fixes import AdvisoryFix, InvalidFix, RedraftNeeded, apply_fix, guardrail_text
-from app.simulator.targets import canonical_hash
+from app.testing.targets import canonical_hash
 
 PROMPT = "You book cleanings for Bright Smiles.\n\n## Style\n- Be brief."
 TOOL = {

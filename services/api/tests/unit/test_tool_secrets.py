@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from sqlalchemy import select
 
+from app.agents.service import Actor
 from app.core.secrets import WorkspaceSecret, get_secret, key_wrapper
 from app.tools import service
 from app.tools.schemas import ToolCreate, ToolUpdate
@@ -23,7 +24,7 @@ async def _secret_names(session: Any) -> set[str]:
 
 async def test_secret_lifecycle(app: FastAPI) -> None:
     user_id, workspace_id = await make_workspace(app)
-    actor = service.ToolActor(workspace_id=workspace_id, user_id=user_id)
+    actor = Actor(workspace_id=workspace_id, user_id=user_id)
     wrapper = key_wrapper(app.state.settings)
     async with app.state.db.transaction(workspace_id=workspace_id) as session:
         tool = await service.create_tool(

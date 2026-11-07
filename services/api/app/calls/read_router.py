@@ -20,7 +20,7 @@ from app.calls.compare import align_turns, flow_diff, verdict_diffs_json
 from app.calls.export import EXPORT_LIMIT, csv_lines, pick_columns
 from app.calls.models import Call
 from app.calls.ports import registry
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, field_error, not_found, problem_responses, validation_failed
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
@@ -51,10 +51,6 @@ FILTER_KEYS = (
 )
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 def _params(request: Request) -> dict[str, str | None]:
     return {k: request.query_params.get(k) for k in FILTER_KEYS}
 
@@ -67,7 +63,7 @@ async def list_calls(
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
     q = queries.parse_list_query(_params(request))
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         items, total = await queries.list_calls(
             session, q, page=page, page_size=page_size, user_id=principal.user_id
         )
@@ -82,7 +78,7 @@ async def export_calls(
 ) -> StreamingResponse:
     q = queries.parse_list_query(_params(request))
     chosen = pick_columns(columns)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         total, rows = await queries.iter_export_rows(
             session, q, limit=EXPORT_LIMIT, user_id=principal.user_id
         )
@@ -106,7 +102,7 @@ async def export_calls(
 @router.get("/calls/live", responses=problem_responses(401))
 async def list_live_calls(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     """Calls on air now. Declared before ``/calls/{call_id}`` so "live" is not read as an id."""
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         items, count = await queries.live_calls(session)
     return {"items": items, "count": count, "server_time": datetime.now(UTC).isoformat()}
 
@@ -114,7 +110,7 @@ async def list_live_calls(request: Request, principal: CurrentPrincipal) -> dict
 @router.get("/calls/{call_id}", responses=problem_responses(401, 404))
 async def get_call(call_id: CallId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     with tracer.start_as_current_span("calls.detail", attributes={"call_id": call_id}):
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             detail = await queries.call_detail(session, call_id, principal.user_id)
     if detail is None:
         raise not_found("call")
@@ -123,7 +119,7 @@ async def get_call(call_id: CallId, request: Request, principal: CurrentPrincipa
 
 @router.get("/calls/{call_id}/transcript", responses=problem_responses(401, 404))
 async def get_transcript(call_id: CallId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         call = await session.get(Call, call_id)
         if call is None:
             raise not_found("call")
@@ -135,7 +131,7 @@ async def get_transcript(call_id: CallId, request: Request, principal: CurrentPr
 async def get_turn_latencies(
     call_id: CallId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         call = await session.get(Call, call_id)
         if call is None:
             raise not_found("call")
@@ -152,7 +148,7 @@ async def compare_calls(
     with_simulation_run_id: Annotated[str | None, Query(pattern=r"^srun_")] = None,
 ) -> dict[str, Any]:
     with tracer.start_as_current_span("calls.compare", attributes={"call_id": call_id}):
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             if await session.get(Call, call_id) is None:
                 raise ProblemError(404, "not_found", "Not found", "Call not found.")
             if (with_call_id is None) == (with_simulation_run_id is None):

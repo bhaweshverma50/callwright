@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.knowledge import service
-from app.knowledge.embeddings.fake import FakeEmbeddings
+from app.llms.embeddings.fake import FakeEmbeddings
 from tests.fixtures import knowledge as fx
 from tests.knowledge_helpers import add_document, new_kb, workspace
 

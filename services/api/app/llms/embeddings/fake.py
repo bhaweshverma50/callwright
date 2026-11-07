@@ -14,7 +14,7 @@ import itertools
 import math
 import re
 
-from app.knowledge.embeddings.base import DIMENSIONS, EmbeddingUnavailable
+from app.llms.embeddings.base import DIMENSIONS, EmbeddingUnavailable
 
 _WORD = re.compile(r"[a-z0-9]+")
 STOP_WORDS = frozenset(

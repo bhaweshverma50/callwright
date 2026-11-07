@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-from app.evals.settings import default_judge_model
+from app.evaluators.settings import default_judge_model
 from tests.conftest import Account
 from tests.contract.conftest import check
 

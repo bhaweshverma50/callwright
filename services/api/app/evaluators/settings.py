@@ -1,5 +1,5 @@
-"""Effective evaluator settings, schema validation and headline rules (007 T036, T084;
-FR-008, FR-036, FR-038, FR-039, data-model "Settings validation").
+"""Effective evaluator settings and schema validation (007 T036, T084; FR-008, FR-036, FR-038,
+FR-039, data-model "Settings validation").
 
 * ``served_schema`` fills judge model options from ``EVAL_JUDGE_MODELS`` and renders ``{default}``
   in helper texts, so a helper can never disagree with the field default.
@@ -19,9 +19,6 @@ from typing import Any
 
 from app.core.config import Settings
 from app.core.errors import field_error
-
-MAX_HEADLINE = 4
-HEADLINE_LIMIT_MESSAGE = "Up to 4 headline checks per agent"
 
 
 def judge_models(settings: Settings) -> list[str]:

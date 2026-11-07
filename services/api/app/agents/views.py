@@ -6,16 +6,27 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service as versions
 from app.agent_versions.models import AgentVersion
+from app.agents import versions
 from app.agents.models import Agent
 from app.agents.schemas import upcast
-from app.agents.service import voice_label
+from app.agents.service import Actor, voice_label
 from app.agents.validation import ConfigValidationResult
+from app.core.auth import Principal
 from app.workspaces.models import User
+
+
+def actor(request: Request, principal: Principal) -> Actor:
+    """The agents ``Actor`` for a request; http webhooks only where Settings allow them."""
+    return Actor(
+        workspace_id=principal.workspace_id,
+        user_id=principal.user_id,
+        allow_http_webhook=request.app.state.settings.allow_http_webhooks,
+    )
 
 
 def etag(agent: Agent) -> str:
@@ -148,7 +159,7 @@ def version_summary(
         "summary": row.summary,
         "created_by_email": emails.get(row.created_by or ""),
         "created_at": row.created_at.isoformat(),
-        "content_hash": row.content_hash.strip(),
+        "content_hash": row.content_hash,
         "is_published": agent.pinned_version_id == row.id,
         "is_draft": agent.draft_version_id == row.id,
         "has_publish_blockers": bool(row.publish_blockers),

@@ -31,13 +31,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.ids import new_id
-from app.evals.settings import judge_models
 from app.evals.views import LATEST_CURRENT
 from app.evaluators.judge import json_object, neutralise
 from app.evaluators.models import EvaluatorRow
+from app.evaluators.settings import judge_models
 from app.issues import clustering as cl
 from app.issues.models import Issue, IssueDetectionRun, IssueFailureEmbedding, IssueSample
+from app.issues.runtime import model as issues_model
 from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +267,6 @@ async def gather(session: AsyncSession, run: IssueDetectionRun, settings: Settin
 
 
 def embed_model_name() -> str:
-    from app.issues.runtime import runtime
 
     embedder = runtime().embedder
     return f"{getattr(embedder, 'provider', 'fake')}/{getattr(embedder, 'model', 'fake')}"
@@ -290,7 +291,6 @@ class Plan:
 
 
 async def embed_missing(gathered: Gathered, usage: Usage) -> dict[tuple[str, str], list[float]]:
-    from app.issues.runtime import runtime
 
     embedder = runtime().embedder
     missing: dict[tuple[str, str], str] = {}
@@ -370,7 +370,6 @@ def fallback_name(evaluator: EvaluatorRow | None, plan: Plan) -> dict[str, str]:
 
 
 async def name_plan(plan: Plan, evaluator: EvaluatorRow | None, reasons: list[str], usage: Usage) -> None:
-    from app.issues.runtime import runtime
 
     rt = runtime()
     label = plan.failures[0].node_label if plan.failures else None
@@ -384,7 +383,7 @@ async def name_plan(plan: Plan, evaluator: EvaluatorRow | None, reasons: list[st
     naming = fallback_name(evaluator, plan)
     try:
         completion = await rt.llm.complete(
-            rt.model,
+            issues_model(rt.settings),
             [ChatMessage("user", "<cluster>\n" + json.dumps(data, ensure_ascii=False) + "\n</cluster>")],
             system=NAMING_SYSTEM,
             max_tokens=600,

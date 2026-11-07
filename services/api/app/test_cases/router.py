@@ -10,26 +10,22 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.billing import service as billing
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, field_error, problem_responses, validation_failed
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
-from app.simulator.charges import charge_run
-from app.simulator.targets import require_agent, resolve_target, runnable_problem
 from app.test_cases import generate as drafting
 from app.test_cases import import_format, service
 from app.test_cases.schemas import CategoryCreate, GenerateBody, ImportBody, TestCaseCreate, TestCaseUpdate
+from app.testing.charges import charge_run
+from app.testing.targets import require_agent, resolve_target, runnable_problem
 
 router = APIRouter(tags=["test_cases"])
 
 TestCaseId = Annotated[str, Depends(path_id("tc", "test case", "test_case_id"))]
 AgentQuery = Annotated[str, Query(pattern=r"^agt_")]
 GENERATE = "POST /v1/test-cases/generate"
-
-
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
 
 
 def generator_model(request: Request) -> str:
@@ -39,7 +35,7 @@ def generator_model(request: Request) -> str:
 
 @router.get("/test-categories")
 async def list_categories(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows = await service.list_categories(session, principal.workspace_id)
         return {"items": [service.category_view(c) for c in rows]}
 
@@ -48,7 +44,7 @@ async def list_categories(request: Request, principal: CurrentPrincipal) -> dict
 async def create_category(
     request: Request, principal: CurrentPrincipal, body: CategoryCreate
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         category = await service.create_category(
             session, principal.workspace_id, name=body.name, slug=body.slug, color=body.color
         )
@@ -57,7 +53,7 @@ async def create_category(
 
 @router.delete("/test-categories/{slug}", status_code=204, responses=problem_responses(404, 409))
 async def delete_category(request: Request, principal: CurrentPrincipal, slug: str) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_category(session, principal.workspace_id, slug)
     return Response(status_code=204)
 
@@ -72,7 +68,7 @@ async def list_cases(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_cases(
             session, agent_id, category=category, last_status=last_status, page=page, page_size=page_size
         )
@@ -81,14 +77,14 @@ async def list_cases(
 
 @router.post("/test-cases", status_code=201, responses=problem_responses(409, 422))
 async def create_case(request: Request, principal: CurrentPrincipal, body: TestCaseCreate) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         case = await service.create_case(session, principal.workspace_id, body.model_dump())
         return service.case_view(case)
 
 
 @router.post("/test-cases/import", responses=problem_responses(422))
 async def import_cases(request: Request, principal: CurrentPrincipal, body: ImportBody) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         document = {"format": body.format, "test_cases": body.test_cases} if body.format else body.test_cases
         return await service.import_cases(
             session, principal.workspace_id, body.agent_id, document, dry_run=body.dry_run
@@ -103,7 +99,7 @@ async def export_cases(
         document = import_format.template_file()
         filename = "test_cases_template.json"
     else:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             cases = [service.case_view(c) for c in await service.all_cases(session, agent_id)]
         document = import_format.export_file(agent_id, cases)
         filename = f"test_cases_{agent_id}.json"
@@ -122,7 +118,7 @@ async def generate_cases(
     model = generator_model(request)
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             agent = await require_agent(session, body.agent_id, pointer="/agent_id")
             categories = await service.list_categories(session, principal.workspace_id)
             if body.category is not None and body.category not in {c.slug for c in categories}:
@@ -149,7 +145,7 @@ async def generate_cases(
             raise ProblemError(
                 503, "generation_unavailable", "Drafting failed", f"{exc}. Try again in a moment."
             ) from exc
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             charge = await charge_run(
                 session,
                 workspace_id=principal.workspace_id,
@@ -174,7 +170,7 @@ async def generate_cases(
 
 @router.get("/test-cases/{test_case_id}", responses=problem_responses(404))
 async def get_case(request: Request, principal: CurrentPrincipal, test_case_id: TestCaseId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return service.case_view(await service.get_case(session, test_case_id))
 
 
@@ -185,13 +181,13 @@ async def update_case(
     changes = body.model_dump(exclude_unset=True)
     if not changes:
         raise validation_failed([field_error("", "required", "Change at least one field")])
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         case = await service.update_case(session, principal.workspace_id, test_case_id, changes)
         return service.case_view(case)
 
 
 @router.delete("/test-cases/{test_case_id}", status_code=204, responses=problem_responses(404))
 async def delete_case(request: Request, principal: CurrentPrincipal, test_case_id: TestCaseId) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_case(session, test_case_id)
     return Response(status_code=204)

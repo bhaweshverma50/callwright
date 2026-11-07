@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from app.knowledge import jobs, service
-from app.knowledge.embeddings.fake import FakeEmbeddings
+from app.llms.embeddings.fake import FakeEmbeddings
 from tests.knowledge_helpers import add_document, deps, new_kb, workspace
 
 QA = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "knowledge" / "qa_set.json").read_text())

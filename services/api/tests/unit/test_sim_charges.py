@@ -18,7 +18,7 @@ from app.core.errors import ProblemError
 from app.core.ids import new_id
 from app.llms.client import billable_cost, token_cost
 from app.pricing.features import feature_family
-from app.simulator.charges import FEATURE_KEYS, charge_key, charge_run, usage_cost
+from app.testing.charges import FEATURE_KEYS, charge_key, charge_run, usage_cost
 from app.usage.models import UsageEvent
 from tests.conftest import make_workspace
 

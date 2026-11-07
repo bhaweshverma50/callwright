@@ -25,6 +25,7 @@ from ulid import ULID
 
 from app.agents import service as agents
 from app.agents.models import Agent
+from app.core.db import escape_like
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
 from app.core.secrets import KeyWrapper, delete_secret, get_secret, put_secret
@@ -32,20 +33,7 @@ from app.tools.models import Tool
 from app.tools.schemas import CONFIG_MODELS, ToolCreate, ToolSpec, ToolUpdate
 from app.tools.validation import Issue, issue, validate_tool
 
-MAX_TOOLS_PER_AGENT = 25
 COPY_SUFFIX = "_copy"
-
-
-@dataclass(frozen=True)
-class ToolActor:
-    workspace_id: str
-    user_id: str | None
-    allow_http: bool = False
-
-    def agent_actor(self) -> agents.Actor:
-        return agents.Actor(
-            workspace_id=self.workspace_id, user_id=self.user_id, allow_http_webhook=self.allow_http
-        )
 
 
 def tool_in_use(agent_rows: Sequence[tuple[str, str]]) -> ProblemError:
@@ -195,7 +183,7 @@ def normalized_config(tool_type: str, config: Mapping[str, Any]) -> dict[str, An
 async def _config_for_write(
     session: AsyncSession,
     wrapper: KeyWrapper,
-    actor: ToolActor,
+    actor: agents.Actor,
     tool_id: str,
     tool_type: str,
     name: str,
@@ -203,7 +191,7 @@ async def _config_for_write(
     mock_response: str | None,
     existing_headers: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    issues = validate_tool(tool_type, name, config, mock_response, allow_http=actor.allow_http)
+    issues = validate_tool(tool_type, name, config, mock_response, allow_http=actor.allow_http_webhook)
     if issues:
         raise validation_failed(issues)
     normalized = normalized_config(tool_type, config)
@@ -217,7 +205,9 @@ async def _config_for_write(
     return normalized
 
 
-async def create_tool(session: AsyncSession, actor: ToolActor, wrapper: KeyWrapper, body: ToolCreate) -> Tool:
+async def create_tool(
+    session: AsyncSession, actor: agents.Actor, wrapper: KeyWrapper, body: ToolCreate
+) -> Tool:
     tool_id = new_id("tool")
     config = await _config_for_write(
         session, wrapper, actor, tool_id, body.type, body.name, body.config, body.mock_response, []
@@ -245,10 +235,6 @@ async def get_tool(session: AsyncSession, tool_id: str) -> Tool:
     return tool
 
 
-def _escape_like(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
 async def list_tools(
     session: AsyncSession,
     *,
@@ -261,7 +247,7 @@ async def list_tools(
     if tool_type:
         query = query.where(Tool.type == tool_type)
     if search:
-        pattern = f"%{_escape_like(search.lower())}%"
+        pattern = f"%{escape_like(search.lower())}%"
         query = query.where(
             func.lower(Tool.name).like(pattern, escape="\\")
             | func.lower(Tool.description).like(pattern, escape="\\")
@@ -278,7 +264,7 @@ async def list_tools(
 
 
 async def update_tool(
-    session: AsyncSession, actor: ToolActor, wrapper: KeyWrapper, tool_id: str, body: ToolUpdate
+    session: AsyncSession, actor: agents.Actor, wrapper: KeyWrapper, tool_id: str, body: ToolUpdate
 ) -> Tool:
     tool = await get_tool(session, tool_id)
     sent = body.model_fields_set
@@ -313,11 +299,7 @@ async def update_tool(
 async def _unique_copy_name(session: AsyncSession, name: str) -> str:
     base = (name + COPY_SUFFIX)[:64]
     taken = set(
-        (
-            await session.execute(
-                select(Tool.name).where(Tool.name.like(f"{_escape_like(base)}%", escape="\\"))
-            )
-        )
+        (await session.execute(select(Tool.name).where(Tool.name.like(f"{escape_like(base)}%", escape="\\"))))
         .scalars()
         .all()
     )
@@ -330,7 +312,9 @@ async def _unique_copy_name(session: AsyncSession, name: str) -> str:
     return base
 
 
-async def duplicate_tool(session: AsyncSession, actor: ToolActor, wrapper: KeyWrapper, tool_id: str) -> Tool:
+async def duplicate_tool(
+    session: AsyncSession, actor: agents.Actor, wrapper: KeyWrapper, tool_id: str
+) -> Tool:
     source = await get_tool(session, tool_id)
     copy_id = new_id("tool")
     config = copy.deepcopy(source.config)
@@ -426,15 +410,12 @@ async def usage_counts(session: AsyncSession, tool_ids: Sequence[str]) -> dict[s
     return {str(r[0]): int(r[1]) for r in rows}
 
 
-async def delete_tool(session: AsyncSession, actor: ToolActor, tool_id: str, *, force: bool) -> list[str]:
+async def delete_tool(session: AsyncSession, actor: agents.Actor, tool_id: str, *, force: bool) -> list[str]:
     tool = await get_tool(session, tool_id)
     drafts = [(u.agent_id, u.agent_name) for u in await usages(session, tool_id) if u.in_draft]
     if drafts and not force:
         raise tool_in_use(drafts)
-    for agent_id, _ in drafts:
-        agent = await agents.get_agent(session, agent_id)
-        remaining = [t for t in agent.draft_config.get("tool_ids") or [] if t != tool_id]
-        await agents.update_draft(session, actor.agent_actor(), agent_id, patch={"tool_ids": remaining})
+    await agents.detach(session, actor, "tool_ids", tool_id, [a for a, _ in drafts])
     await _delete_all_secrets(session, tool)
     await session.delete(tool)
     await session.flush()
@@ -472,20 +453,17 @@ async def agent_tools(session: AsyncSession, agent_id: str) -> list[Tool]:
 
 
 async def set_agent_tools(
-    session: AsyncSession, actor: ToolActor, agent_id: str, tool_ids: list[str]
+    session: AsyncSession, actor: agents.Actor, agent_id: str, tool_ids: list[str]
 ) -> list[Tool]:
     await agents.get_agent(session, agent_id)
-    if len(tool_ids) > MAX_TOOLS_PER_AGENT:
-        raise validation_failed(
-            [issue("/tool_ids", "too_many", f"An agent can use at most {MAX_TOOLS_PER_AGENT} tools.")]
-        )
+    agents.check_attach_count("tool_ids", tool_ids)
     found = await tools_by_id(session, tool_ids)
     missing, duplicates = set_issues(tool_ids, found)
     if missing:
         raise validation_failed(missing)
     if duplicates:
         raise name_conflict(duplicates)
-    await agents.update_draft(session, actor.agent_actor(), agent_id, patch={"tool_ids": list(tool_ids)})
+    await agents.attach(session, actor, agent_id, "tool_ids", tool_ids)
     return [found[t] for t in tool_ids]
 
 
@@ -588,7 +566,6 @@ async def mock_coverage(session: AsyncSession, agent_id: str) -> dict[str, Any]:
 
 
 __all__ = [
-    "ToolActor",
     "agent_tools",
     "create_tool",
     "delete_tool",

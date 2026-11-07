@@ -1,4 +1,5 @@
-"""Usage report per feature family for a date window (T079, research R14, FR-014)."""
+"""Usage events and the usage report per feature family for a date window (T079, research R14,
+FR-014, FR-023). Events are written only through ``record`` (by 001 billing's charges)."""
 
 from __future__ import annotations
 
@@ -16,6 +17,49 @@ from app.usage.models import UsageEvent
 DEFAULT_DAYS = 30
 MAX_DAYS = 366
 ZERO = Decimal(0)
+
+
+async def find(session: AsyncSession, workspace_id: str, idempotency_key: str) -> UsageEvent | None:
+    return (
+        await session.execute(
+            select(UsageEvent).where(
+                UsageEvent.workspace_id == workspace_id, UsageEvent.idempotency_key == idempotency_key
+            )
+        )
+    ).scalar_one_or_none()
+
+
+def record(
+    session: AsyncSession,
+    *,
+    workspace_id: str,
+    feature_key: str,
+    quantity: Decimal,
+    unit: str,
+    raw_cost_usd: Decimal,
+    billable_cost_usd: Decimal,
+    ref_type: str | None,
+    ref_id: str | None,
+    txn_id: str | None,
+    idempotency_key: str,
+    occurred_at: datetime | None = None,
+) -> UsageEvent:
+    """Add one usage event to the session (flushed with the caller's charge)."""
+    event = UsageEvent(
+        workspace_id=workspace_id,
+        feature_key=feature_key,
+        quantity=quantity,
+        unit=unit,
+        raw_cost_usd=raw_cost_usd,
+        billable_cost_usd=billable_cost_usd,
+        ref_type=ref_type,
+        ref_id=ref_id,
+        txn_id=txn_id,
+        idempotency_key=idempotency_key,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+    session.add(event)
+    return event
 
 
 @dataclass

@@ -6,30 +6,34 @@ and cross-field rules live in ``agents/validation.py``; both run on every save, 
 ``POST /v1/agents/validate`` so every problem is reported in one response (SC-004).
 
 Stored versions are never rewritten. ``upcast`` brings any stored config to the current shape on
-read (research R4); later format versions register ``UPCASTERS[n]`` to go from ``n`` to ``n + 1``.
+read (research R4).
 """
 
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
 from callwright_contract.variables import MAX_DESCRIPTION_CHARS, MAX_VALUE_CHARS, MAX_VARIABLES, NAME_PATTERN
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.agents.defaults import ADVANCED_DEFAULTS, CURRENT_SCHEMA_VERSION, TTS_TUNING_DEFAULTS
 from app.voices.catalog import load_catalog as _voice_catalog
 
-CURRENT_SCHEMA_VERSION = 1
 AgentType = Literal["single_prompt", "flow"]
-AGENT_TYPES: tuple[str, ...] = ("single_prompt", "flow")
-DTMF_KEYS = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "#", "*")
+NAME_MAX = 80  # agents.name CHECK (migration s002_0001); a flow's name is its agent's name
 MAX_PROMPT = 50_000
 MAX_GREETING = 1_000
 MAX_TOOLS = 25
 MAX_KBS = 10
 MAX_PRONUNCIATION = 200
 MAX_SWITCH_LANGUAGES = 30
+# Ranges the catalog ``controls`` table does not hold: temperature per model is in
+# llms/catalog.yaml, this is only the outer bound.
+TEMPERATURE_RANGE = (0, 2)
+DTMF_DIGITS_RANGE = (1, 99)
+_DTMF = ADVANCED_DEFAULTS["dtmf"]
+_BACKGROUND = ADVANCED_DEFAULTS["background_audio"]
 
 
 def _rng(pointer: str) -> Any:
@@ -51,7 +55,7 @@ class ModelRef(_Strict):
 class LlmConfig(_Strict):
     provider: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$")
     model: str = Field(min_length=1, max_length=128)
-    temperature: float = Field(ge=0, le=2)
+    temperature: float = Field(ge=TEMPERATURE_RANGE[0], le=TEMPERATURE_RANGE[1])
 
 
 class DynamicVariable(_Strict):
@@ -69,9 +73,9 @@ class TtsConfig(_Strict):
     provider: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$")
     model: str = Field(min_length=1, max_length=128)
     voice_id: str = Field(min_length=1, max_length=200)
-    speed: Annotated[float, _rng("/tts/speed")] = 1.0
-    expressiveness: Annotated[float, _rng("/tts/expressiveness")] = 0.9
-    volume: Annotated[float, _rng("/tts/volume")] = 1.0
+    speed: Annotated[float, _rng("/tts/speed")] = TTS_TUNING_DEFAULTS["speed"]
+    expressiveness: Annotated[float, _rng("/tts/expressiveness")] = TTS_TUNING_DEFAULTS["expressiveness"]
+    volume: Annotated[float, _rng("/tts/volume")] = TTS_TUNING_DEFAULTS["volume"]
 
 
 class CallBehavior(_Strict):
@@ -90,9 +94,11 @@ class VoicemailDetection(_Strict):
 
 class Dtmf(_Strict):
     enabled: bool
-    timeout_ms: Annotated[int, _rng("/advanced/dtmf/timeout_ms")] = 2500
-    termination_key: Literal["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "#", "*"] | None = "#"
-    digits: int = Field(default=10, ge=1, le=99)
+    timeout_ms: Annotated[int, _rng("/advanced/dtmf/timeout_ms")] = _DTMF["timeout_ms"]
+    termination_key: Literal["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "#", "*"] | None = _DTMF[
+        "termination_key"
+    ]
+    digits: int = Field(default=_DTMF["digits"], ge=DTMF_DIGITS_RANGE[0], le=DTMF_DIGITS_RANGE[1])
 
 
 class BuiltinSource(_Strict):
@@ -108,7 +114,9 @@ class UploadSource(_Strict):
 class BackgroundAudio(_Strict):
     enabled: bool
     source: Annotated[BuiltinSource | UploadSource, Field(discriminator="kind")] | None = None
-    volume: Annotated[float, _rng("/advanced/background_audio/volume")] = 0.8
+    volume: Annotated[float, _rng("/advanced/background_audio/volume")] = ADVANCED_DEFAULTS[
+        "background_audio"
+    ]["volume"]
 
 
 class PronunciationEntry(_Strict):
@@ -119,7 +127,7 @@ class PronunciationEntry(_Strict):
 class LanguageSwitching(_Strict):
     """Caller language (012): switch to the caller's language and remember it per caller."""
 
-    enabled: bool = True
+    enabled: bool = ADVANCED_DEFAULTS["language_switching"]["enabled"]
     languages: list[Annotated[str, Field(min_length=2, max_length=16)]] = Field(
         default_factory=list, max_length=MAX_SWITCH_LANGUAGES
     )
@@ -127,13 +135,15 @@ class LanguageSwitching(_Strict):
 
 class Advanced(_Strict):
     webhook_url: str | None = Field(default=None, max_length=2048)
-    webhook_timeout_ms: Annotated[int, _rng("/advanced/webhook_timeout_ms")] = 3000
+    webhook_timeout_ms: Annotated[int, _rng("/advanced/webhook_timeout_ms")] = ADVANCED_DEFAULTS[
+        "webhook_timeout_ms"
+    ]
     voicemail_detection: VoicemailDetection
     dtmf: Dtmf
     background_audio: BackgroundAudio
     analysis_model: ModelRef | None = None
     pronunciation: list[PronunciationEntry] = Field(default_factory=list, max_length=MAX_PRONUNCIATION)
-    recording: Literal["inherit", "on", "off"] = "inherit"
+    recording: Literal["inherit", "on", "off"] = ADVANCED_DEFAULTS["recording"]
     language_switching: LanguageSwitching = Field(default_factory=LanguageSwitching)
 
 
@@ -161,11 +171,6 @@ class AgentConfigV1(_Strict):
     evals: dict[str, Any] | None = None
 
 
-# Upcasters (research R4) -----------------------------------------------------------------
-
-UPCASTERS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {}
-
-
 class UnsupportedSchemaVersion(ValueError):
     pass
 
@@ -181,19 +186,12 @@ def upcast(config: dict[str, Any]) -> dict[str, Any]:
     version = out.get("schema_version", CURRENT_SCHEMA_VERSION)
     if not isinstance(version, int) or version < 1 or version > CURRENT_SCHEMA_VERSION:
         raise UnsupportedSchemaVersion(f"AgentConfig schema_version {version!r} is not supported")
-    while version < CURRENT_SCHEMA_VERSION:
-        out = UPCASTERS[version](out)
-        version += 1
-        out["schema_version"] = version
     advanced = out.get("advanced")
-    if isinstance(advanced, dict) and "recording" not in advanced:
-        advanced["recording"] = "inherit"
-    if isinstance(advanced, dict) and "language_switching" not in advanced:
-        advanced["language_switching"] = {"enabled": True, "languages": []}
+    if isinstance(advanced, dict):
+        for key in ("recording", "language_switching"):
+            advanced.setdefault(key, copy.deepcopy(ADVANCED_DEFAULTS[key]))
     return out
 
-
-# API bodies ------------------------------------------------------------------------------
 
 AgentIdStr = Annotated[str, Field(pattern=r"^agt_[0-9A-HJKMNP-TV-Z]{26}$")]
 
@@ -210,7 +208,7 @@ class _NameMixin(BaseModel):
 class CreateAgentRequest(_NameMixin):
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=NAME_MAX)
     type: AgentType
     language: str | None = Field(default=None, min_length=1, max_length=16)
     template_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]{3,64}$")
@@ -228,13 +226,13 @@ class ValidateRequest(BaseModel):
 class RenameRequest(_NameMixin):
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=NAME_MAX)
 
 
 class SaveDraftRequest(_NameMixin):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: str | None = Field(default=None, min_length=1, max_length=NAME_MAX)
     config: dict[str, Any]
     note: str | None = Field(default=None, max_length=500)
 
@@ -242,5 +240,5 @@ class SaveDraftRequest(_NameMixin):
 class DuplicateRequest(_NameMixin):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: str | None = Field(default=None, min_length=1, max_length=NAME_MAX)
     version_id: str | None = Field(default=None, pattern=r"^agv_[0-9A-HJKMNP-TV-Z]{26}$")

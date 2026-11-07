@@ -3,7 +3,7 @@ reading ``catalog.yaml`` once.
 
 ``catalog_json`` joins every option with the 001 pricing catalog (``price_per_min_usd`` or
 ``null``). ``controls`` is the single range table for the editor and every override UI (FR-047);
-``app.agents.service.validate_override`` validates against it.
+``app.agents.validation.validate_override`` validates against it.
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from callwright_contract.protocol import SttAuto
 from app.pricing import engine
 
 CATALOG_PATH = Path(__file__).with_name("catalog.yaml")
+# The language of a new agent, and the fallback when a requested language is not offered.
+DEFAULT_LANGUAGE = "en-US"
 
 
 @dataclass(frozen=True)

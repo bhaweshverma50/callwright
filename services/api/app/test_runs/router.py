@@ -9,14 +9,14 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
-from app.core.auth import CurrentPrincipal, Principal, require_service
+from app.core.auth import CurrentPrincipal, principal_tx, require_service
 from app.core.errors import not_found, problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import is_valid_id, path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
-from app.simulator import dispatch
 from app.test_runs import jobs, service
 from app.test_runs.schemas import CaseResult, OverrideBody, StartRun
+from app.testing import dispatch
 
 router = APIRouter(tags=["test_runs"])
 internal_router = APIRouter(tags=["internal"], dependencies=[Depends(require_service)])
@@ -25,10 +25,6 @@ TestRunId = Annotated[str, Depends(path_id("trn", "test run", "test_run_id"))]
 TestCaseId = Annotated[str, Depends(path_id("tc", "test case", "test_case_id"))]
 START = "POST /v1/test-runs"
 EXPORT_FORMAT = "callwright.test_run_results.v1"
-
-
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
 
 
 async def _enqueue(request: Request, name: str, *args: Any) -> None:
@@ -45,7 +41,7 @@ async def list_runs(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_runs(session, agent_id, page=page, page_size=page_size)
         return {**page_meta(total, page, page_size), "items": [service.run_view(r) for r in rows]}
 
@@ -61,7 +57,7 @@ async def start_run(
     state = request.app.state
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             run, case_ids = await service.start_run(
                 session,
                 state.settings,
@@ -87,7 +83,7 @@ async def start_run(
 
 @router.get("/test-runs/{test_run_id}", responses=problem_responses(404))
 async def get_run(request: Request, principal: CurrentPrincipal, test_run_id: TestRunId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run = await service.get_run(session, test_run_id)
         results = await service.results_of(session, run.id)
         return {**service.run_view(run), "results": [service.result_view(r) for r in results]}
@@ -95,7 +91,7 @@ async def get_run(request: Request, principal: CurrentPrincipal, test_run_id: Te
 
 @router.post("/test-runs/{test_run_id}/cancel", responses=problem_responses(404, 409))
 async def cancel_run(request: Request, principal: CurrentPrincipal, test_run_id: TestRunId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run, released = await service.cancel(session, test_run_id)
         view = service.run_view(run)
     for case_id in released:
@@ -113,7 +109,7 @@ async def override_result(
     test_case_id: TestCaseId,
     body: OverrideBody,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         result, run = await service.override(
             session, test_run_id, test_case_id, body.override_status, body.override_note
         )
@@ -122,7 +118,7 @@ async def override_result(
 
 @router.get("/test-runs/{test_run_id}/export", responses=problem_responses(404))
 async def export_run(request: Request, principal: CurrentPrincipal, test_run_id: TestRunId) -> JSONResponse:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run = await service.get_run(session, test_run_id)
         results = await service.results_of(session, run.id)
         document = {

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.billing.service import breakdown_json
 from app.calls.cost_view import cost_view
 from app.pricing import engine
-from app.pricing.engine import Components, Selection, Usage
+from app.pricing.engine import Components, Selection, Usage, breakdown_json
 from tests.unit.pricing.test_engine import REFERENCE_COMPONENTS, REFERENCE_USAGE, _catalog
 
 

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.calls.models import Call
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id, require_id
@@ -16,7 +16,7 @@ from app.evals import service, verdict_diff, views
 from app.evals.jobs import EVALUATE_CALL, start_evaluation
 from app.evals.runner import AlreadyRunning, already_running
 from app.evals.schemas import RerunBody, SettingPut
-from app.evals.settings import judge_models
+from app.evaluators.settings import judge_models
 
 router = APIRouter(tags=["evals"])
 
@@ -26,17 +26,13 @@ CallId = Annotated[str, Depends(path_id("call", "call", "call_id"))]
 DONE_STATES = ("completed", "voicemail")
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 def _judge_models(request: Request) -> list[str]:
     return list(judge_models(request.app.state.settings))
 
 
 @router.get("/agents/{agent_id}/eval-settings", responses=problem_responses(404))
 async def list_settings(request: Request, principal: CurrentPrincipal, agent_id: AgentId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return {"items": await service.list_settings(session, agent_id, _judge_models(request))}
 
 
@@ -48,7 +44,7 @@ async def put_setting(
     evaluator_id: EvaluatorId,
     body: SettingPut,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await service.put_setting(
             session,
             workspace_id=principal.workspace_id,
@@ -83,7 +79,7 @@ async def get_evaluations(
     call_id: CallId,
     include_history: Annotated[bool, Query()] = False,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         if await session.get(Call, call_id) is None:
             raise not_found("call")
         return await evaluations_body(session, call_id, include_history)
@@ -101,7 +97,7 @@ async def rerun(
     evaluator_ids = body.evaluator_ids if body else None
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             call = await session.get(Call, call_id)
             if call is None:
                 raise not_found("call")
@@ -152,7 +148,7 @@ async def get_verdict_diff(
 ) -> dict[str, Any]:
     require_id(base_call_id, "call", "call")
     require_id(other_call_id, "call", "call")
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         for call_id in (base_call_id, other_call_id):
             if await session.get(Call, call_id) is None:
                 raise not_found("call")

@@ -34,10 +34,10 @@ from app.core.errors import ProblemError
 from app.core.storage import ObjectStore
 from app.knowledge import storage
 from app.knowledge.chunking import TooManyChunks, chunk_blocks
-from app.knowledge.embeddings import build_embedder
-from app.knowledge.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
 from app.knowledge.extract import ExtractError, extract
 from app.knowledge.models import Chunk, Document
+from app.llms.embeddings import build_embedder
+from app.llms.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
 from app.pricing import service as pricing
 
 log = logging.getLogger(__name__)

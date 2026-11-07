@@ -10,7 +10,8 @@ import httpx
 import pytest_asyncio
 from fastapi import FastAPI
 
-from app.agent_versions import service as versions
+from app.agents import service as agents
+from app.agents import versions
 from app.issues.apply import normalised_hash
 from app.issues.jobs import audit_applied_issues
 from tests.conftest import signup
@@ -89,7 +90,7 @@ async def test_apply_refused_when_another_version_was_published(issue_env: Issue
         snapshot = await versions.get_snapshot(session, env.agent.version_id)
         config = versions.draft_part(snapshot.config)
         config["prompt"] = config["prompt"] + "\nBe brief."
-        await versions.create_version(session, env.agent.agent_id, config, source="save", publish=True)
+        await agents.create_version(session, env.agent.agent_id, config, source="save", publish=True)
     detail = await env.issue(issue_id)
     assert "base_version_changed" in detail["apply_blockers"] and detail["can_apply"] is False
     refused = await env.post(f"/issues/{issue_id}/apply", {}, key=False)
@@ -128,7 +129,7 @@ async def test_concurrent_publish_is_serialised(issue_env: IssueEnv) -> None:
             snapshot = await versions.get_snapshot(session, env.agent.version_id)
             config = versions.draft_part(snapshot.config)
             config["prompt"] = config["prompt"] + "\nAnother edit."
-            await versions.create_version(session, env.agent.agent_id, config, source="save", publish=True)
+            await agents.create_version(session, env.agent.agent_id, config, source="save", publish=True)
 
     apply_task = env.post(f"/issues/{issue_id}/apply", {}, key=False)
     response, _ = await asyncio.gather(apply_task, publish_other())
@@ -159,7 +160,7 @@ TOOL = {
 
 @pytest_asyncio.fixture
 async def tool_envs(app: FastAPI, client: httpx.AsyncClient) -> AsyncIterator[tuple[IssueEnv, str, str]]:
-    from app.evals import runtime as quality_runtime
+    from app.llms import runtime as model_runtime
 
     account = await signup(client, app)
     created = await client.post("/v1/tools", json=TOOL, headers=account.headers)
@@ -171,10 +172,10 @@ async def tool_envs(app: FastAPI, client: httpx.AsyncClient) -> AsyncIterator[tu
     queue = RecordingQueue()
     previous = getattr(app.state, "jobs", None)
     app.state.jobs = queue
-    quality_runtime.set_queue(queue)
+    model_runtime.runtime().queue = queue
     yield IssueEnv(app, client, account, agent, queue), tool_id, other.agent_id
     app.state.jobs = previous
-    quality_runtime.set_queue(previous)
+    model_runtime.runtime().queue = previous
 
 
 TOOL_FIX = "Look up the listed price of one service. Never guess a price."
@@ -212,7 +213,7 @@ async def test_shared_tool_is_copied_for_this_agent(tool_envs: tuple[IssueEnv, s
 
 
 async def test_unshared_tool_is_edited_in_place(app: FastAPI, client: httpx.AsyncClient) -> None:
-    from app.evals import runtime as quality_runtime
+    from app.llms import runtime as model_runtime
 
     account = await signup(client, app)
     created = await client.post(
@@ -224,7 +225,7 @@ async def test_unshared_tool_is_edited_in_place(app: FastAPI, client: httpx.Asyn
     queue = RecordingQueue()
     previous = getattr(app.state, "jobs", None)
     app.state.jobs = queue
-    quality_runtime.set_queue(queue)
+    model_runtime.runtime().queue = queue
     try:
         env = IssueEnv(app, client, account, agent, queue)
         issue_id, detail = await validated(
@@ -249,4 +250,4 @@ async def test_unshared_tool_is_edited_in_place(app: FastAPI, client: httpx.Asyn
         assert version_hash == detail["latest_validation"]["variant_config_hash"]
     finally:
         app.state.jobs = previous
-        quality_runtime.set_queue(previous)
+        model_runtime.runtime().queue = previous

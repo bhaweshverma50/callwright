@@ -25,25 +25,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
-from app.agent_versions import service as versions
 from app.agents import service as agents
 from app.agents.defaults import default_config
 from app.agents.models import Agent
 from app.calls.models import Call, CallEvent
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import new_id
-from app.core.secrets import KeyWrapper, put_secret
+from app.core.secrets import KeyWrapper, mask_secret, put_secret
 from app.flows import compiler, validation
 from app.flows.catalogs import check_overrides
 from app.flows.models import Flow
 from app.flows.starter import starter_graph
 from app.tools import service as tools
 from app.tools.models import Tool
+from app.voices.catalog import DEFAULT_LANGUAGE
 from app.voices.catalog import load_catalog as load_voice_catalog
 
 tracer = trace.get_tracer("app.flows")
 
-FALLBACK_LANGUAGE = "en-US"
 # Keys the Start node owns for flow agents, and keys the flow module manages itself.
 START_OWNED = frozenset({"start_speaker", "begin_message"})
 NOT_SETTINGS = frozenset({"type", "flow", "schema_version", "tools", "knowledge"})
@@ -146,9 +145,7 @@ def masked_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
         for header in request.get("headers") or []:
             if isinstance(header, dict) and header.get("secret") and header.get("value"):
                 value = str(header.pop("value"))
-                header["masked_value"] = header.get("masked_value") or (
-                    "•" * 8 + value[-4:] if len(value) > 8 else "•" * 8
-                )
+                header["masked_value"] = header.get("masked_value") or mask_secret(value)
     return out
 
 
@@ -221,10 +218,10 @@ async def create_flow_agent(
         warnings: list[str] = []
         if load_voice_catalog().language(language) is None:
             warnings.append(
-                f"{language} has no voice and speech defaults yet, so the {FALLBACK_LANGUAGE} "
+                f"{language} has no voice and speech defaults yet, so the {DEFAULT_LANGUAGE} "
                 "defaults are used."
             )
-            language = FALLBACK_LANGUAGE
+            language = DEFAULT_LANGUAGE
         saved = await agents.create_agent(session, actor, name=name, agent_type="flow", language=language)
         graph = starter_graph()
         now = datetime.now(UTC)
@@ -440,14 +437,14 @@ async def publish(
         flow = await get_flow(session, flow_id, lock=True)
         if expected_revision != flow.revision:
             raise flow_revision_conflict(flow.revision, status=409)
-        agent = await versions.lock_agent(session, flow.agent_id)
+        agent = await agents.lock_agent(session, flow.agent_id)
         result = await compile_graph(
             session, flow, agent, flow.graph, allow_http_webhook=actor.allow_http_webhook
         )
         if result.compiled is None:
             raise flow_has_errors(result.issues)
         config = {**copy.deepcopy(agent.draft_config), "flow": flow_block(flow, result.compiled)}
-        recorded = await versions.create_version(
+        recorded = await agents.create_version(
             session,
             agent.id,
             config,

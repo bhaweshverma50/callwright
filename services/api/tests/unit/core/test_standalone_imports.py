@@ -9,7 +9,7 @@ import sys
 import pytest
 
 
-@pytest.mark.parametrize("module", ["app.usage.seed_demo", "app.billing.jobs", "app.dev.make_admin"])
+@pytest.mark.parametrize("module", ["app.dev.seed_usage", "app.billing.jobs", "app.dev.make_admin"])
 def test_module_mappers_configure_alone(module: str) -> None:
     code = (
         f"import {module}\n"

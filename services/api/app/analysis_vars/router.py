@@ -14,7 +14,7 @@ from app.analysis_vars.models import CallAnalysis
 from app.analysis_vars.schemas import VariableInput, VariableOrder, VariablePatch
 from app.billing import service as billing
 from app.calls.models import Call
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
@@ -28,13 +28,9 @@ STALE_RUNNING = timedelta(minutes=5)
 DONE_STATES = ("completed", "voicemail")
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 @router.get("/agents/{agent_id}/analysis-variables", responses=problem_responses(404))
 async def list_variables(request: Request, principal: CurrentPrincipal, agent_id: AgentId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.require_agent(session, agent_id)
         rows = await service.active_variables(session, agent_id)
     return {"items": [service.variable_view(v) for v in rows]}
@@ -44,7 +40,7 @@ async def list_variables(request: Request, principal: CurrentPrincipal, agent_id
 async def create_variable(
     request: Request, principal: CurrentPrincipal, agent_id: AgentId, body: VariableInput
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row = await service.create_variable(session, principal.workspace_id, agent_id, body.model_dump())
         return service.variable_view(row)
 
@@ -53,7 +49,7 @@ async def create_variable(
 async def reorder_variables(
     request: Request, principal: CurrentPrincipal, agent_id: AgentId, body: VariableOrder
 ) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.reorder(session, agent_id, body.variable_ids)
     return Response(status_code=204)
 
@@ -62,14 +58,14 @@ async def reorder_variables(
 async def update_variable(
     request: Request, principal: CurrentPrincipal, variable_id: VariableId, body: VariablePatch
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row = await service.update_variable(session, variable_id, body.model_dump(exclude_unset=True))
         return service.variable_view(row)
 
 
 @router.delete("/analysis-variables/{variable_id}", status_code=204, responses=problem_responses(404))
 async def delete_variable(request: Request, principal: CurrentPrincipal, variable_id: VariableId) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_variable(session, variable_id)
     return Response(status_code=204)
 
@@ -163,7 +159,7 @@ async def _load(session: Any, call_id: str) -> tuple[Call, CallAnalysis | None, 
 
 @router.get("/calls/{call_id}/analysis", responses=problem_responses(404))
 async def get_analysis(request: Request, principal: CurrentPrincipal, call_id: CallId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         call, row, current = await _load(session, call_id)
         return analysis_view(call, row, current)
 
@@ -178,7 +174,7 @@ async def rerun_analysis(
     key = require_key(idempotency_key)
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             call, row, current = await _load(session, call_id)
             if call.status not in DONE_STATES:
                 raise ProblemError(

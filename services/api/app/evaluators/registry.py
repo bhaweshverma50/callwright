@@ -18,7 +18,6 @@ from ulid import ULID
 
 from app.core.config import Settings
 from app.core.db import Database
-from app.evals.settings import default_judge_model
 from app.evaluators.base import Evaluator, SettingsField
 from app.evaluators.builtins.anomaly_detection import AnomalyDetection
 from app.evaluators.builtins.audio_silence import AudioSilence
@@ -34,6 +33,7 @@ from app.evaluators.builtins.tool_call_correctness import ToolCallCorrectness
 from app.evaluators.builtins.transition_correctness import TransitionCorrectness
 from app.evaluators.custom.llm_judge_custom import LlmJudgeCustom
 from app.evaluators.custom.phrase_check import PhraseCheck
+from app.evaluators.settings import default_judge_model
 
 BUILTIN_CLASSES: tuple[type[Evaluator], ...] = (
     AnomalyDetection,

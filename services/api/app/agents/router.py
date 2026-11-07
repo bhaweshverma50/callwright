@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from app.agents import service, views
+from app.agents import checks, service, views
 from app.agents.idempotency import AgentIdempotency
 from app.agents.schemas import (
     AgentType,
@@ -18,27 +18,16 @@ from app.agents.schemas import (
     SaveDraftRequest,
     ValidateRequest,
 )
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, Principal, principal_tx
 from app.core.errors import problem_responses
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.voices.catalog import DEFAULT_LANGUAGE
 
 router = APIRouter(tags=["agents"])
 
 AgentId = Annotated[str, Depends(path_id("agt", "agent", "agent_id"))]
 IdempotencyKey = Annotated[str | None, Header(alias="Idempotency-Key", max_length=255)]
-
-
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
-def actor(request: Request, principal: Principal) -> service.Actor:
-    return service.Actor(
-        workspace_id=principal.workspace_id,
-        user_id=principal.user_id,
-        allow_http_webhook=request.app.state.settings.allow_http_webhooks,
-    )
 
 
 Created = tuple[str, list[dict[str, str]]]
@@ -62,9 +51,9 @@ async def _idempotent_create(
             raise
         if guard:
             await guard.complete(agent_id)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         agent = await service.get_agent(session, agent_id)
-        result = await service.validate_config(
+        result = await checks.validate_config(
             agent.type, agent.draft_config, agent.id, session=session, workspace_id=agent.workspace_id
         )
         result.warnings[:0] = [w for w in created_warnings if w not in result.warnings]
@@ -83,7 +72,7 @@ async def list_agents(
     status: Annotated[Literal["live", "draft", "attention"] | None, Query()] = None,
     sort: Annotated[Literal["updated", "name", "created"], Query()] = "updated",
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total, counts = await service.list_agents(
             session,
             page=page,
@@ -118,10 +107,10 @@ async def create_agent(
     idempotency_key: IdempotencyKey = None,
 ) -> JSONResponse:
     async def create() -> Created:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             saved = await service.create_agent(
                 session,
-                actor(request, principal),
+                views.actor(request, principal),
                 name=body.name,
                 agent_type=body.type,
                 language=body.language,
@@ -137,7 +126,7 @@ async def create_agent(
 async def get_agent_defaults(
     principal: CurrentPrincipal,
     type: Annotated[AgentType, Query()] = "single_prompt",
-    language: Annotated[str, Query(max_length=16)] = "en-US",
+    language: Annotated[str, Query(max_length=16)] = DEFAULT_LANGUAGE,
 ) -> dict[str, Any]:
     return service.agent_defaults(type, language)
 
@@ -146,8 +135,8 @@ async def get_agent_defaults(
 async def validate_agent_config(
     body: ValidateRequest, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        result = await service.validate_config(
+    async with principal_tx(request, principal) as session:
+        result = await checks.validate_config(
             body.type,
             body.config,
             body.agent_id,
@@ -160,9 +149,9 @@ async def validate_agent_config(
 
 @router.get("/agents/{agent_id}", responses=problem_responses(401, 404))
 async def get_agent(agent_id: AgentId, request: Request, principal: CurrentPrincipal) -> JSONResponse:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         agent = await service.get_agent(session, agent_id)
-        result = await service.validate_config(
+        result = await checks.validate_config(
             agent.type, agent.draft_config, agent.id, session=session, workspace_id=agent.workspace_id
         )
         body = await views.agent_detail(session, agent, result)
@@ -173,15 +162,15 @@ async def get_agent(agent_id: AgentId, request: Request, principal: CurrentPrinc
 async def rename_agent(
     agent_id: AgentId, body: RenameRequest, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         agent = await service.rename_agent(session, agent_id, body.name)
         return await views.agent_summary_for(session, agent)
 
 
 @router.delete("/agents/{agent_id}", status_code=204, responses=problem_responses(404, 409))
 async def delete_agent(agent_id: AgentId, request: Request, principal: CurrentPrincipal) -> Response:
-    async with _tx(request, principal) as session:
-        await service.delete_agent(session, actor(request, principal), agent_id)
+    async with principal_tx(request, principal) as session:
+        await service.delete_agent(session, views.actor(request, principal), agent_id)
     return Response(status_code=204)
 
 
@@ -196,10 +185,10 @@ async def save_agent_draft(
     principal: CurrentPrincipal,
     if_match: Annotated[str, Header(alias="If-Match")],
 ) -> JSONResponse:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         saved = await service.update_draft(
             session,
-            actor(request, principal),
+            views.actor(request, principal),
             agent_id,
             config=body.config,
             expected_revision=views.parse_if_match(if_match),
@@ -226,10 +215,10 @@ async def duplicate_agent(
     body: Annotated[DuplicateRequest | None, Body()] = None,
 ) -> JSONResponse:
     async def create() -> Created:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             saved = await service.duplicate_agent(
                 session,
-                actor(request, principal),
+                views.actor(request, principal),
                 agent_id,
                 body.name if body else None,
                 body.version_id if body else None,

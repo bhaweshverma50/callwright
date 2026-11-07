@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from app.knowledge.embeddings.base import DIMENSIONS, EmbeddingUnavailable
+from app.llms.embeddings.base import DIMENSIONS, EmbeddingUnavailable
 
 MODEL = "text-embedding-3-small"
 BATCH = 128

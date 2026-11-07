@@ -158,7 +158,7 @@ idempotency on a second invocation, and `call_costs.catalog_version = 1`.
 ## 6. Usage report (US4, FR-014)
 
 ```bash
-uv run --directory services/api python -m app.usage.seed_demo --workspace ws_XXXX   # dev-only seeder: 1 call + 1 eval in window, 1 outside
+uv run --directory services/api python -m app.dev.seed_usage --workspace ws_XXXX   # dev-only seeder: 1 call + 1 eval in window, 1 outside
 curl -s "localhost:8000/v1/usage?from=2026-09-17&to=2026-10-16" -H "authorization: Bearer $TOKEN" | jq
 ```
 

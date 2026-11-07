@@ -28,12 +28,12 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
-from app.evals.settings import default_judge_model, judge_models
-from app.simulator.charges import charge_run, merge_usage
-from app.simulator.targets import agent_model, agent_type_of, require_agent, resolve_target, runnable_problem
+from app.evaluators.settings import default_judge_model, judge_models
 from app.test_cases.models import TestCase, TestCategory
 from app.test_runs.counts import ResultState, run_counts
 from app.test_runs.models import TestResult, TestRun
+from app.testing.charges import charge_run, merge_usage
+from app.testing.targets import agent_model, agent_type_of, require_agent, resolve_target, runnable_problem
 
 ACTIVE = ("queued", "running")
 UNFINISHED_RESULTS = ("pending", "running", "judging")

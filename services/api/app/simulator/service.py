@@ -42,11 +42,11 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
-from app.evals.settings import judge_models
-from app.simulator import calls as sim_calls
-from app.simulator.charges import charge_run, merge_usage
+from app.evaluators.settings import judge_models
 from app.simulator.models import SimulationExperiment, SimulationRun
-from app.simulator.targets import agent_type_of, require_agent, resolve_target, runnable_problem
+from app.testing import calls as sim_calls
+from app.testing.charges import charge_run, merge_usage
+from app.testing.targets import agent_type_of, require_agent, resolve_target, runnable_problem
 
 logger = logging.getLogger(__name__)
 
@@ -847,7 +847,7 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
     agent = await session.get(Agent, run.agent_id)
     if base is None or agent is None:
         return None
-    from app.evals.runtime import runtime
+    from app.llms.runtime import runtime
 
     resolved = await resolve_all(session, agent, judge_models(runtime().settings))
     enabled = {r.row.id: r.row.current_version for r in resolved if r.enabled}

@@ -1,11 +1,10 @@
 """Evaluator protocol and the data every evaluator reads (007 T008, research R3).
 
-``EvalContext`` is built once per call by ``app.evals.context`` from the finalised transcript
-(``calls.transcript``),
-turn events, the agent version the call ran (never the current draft) and the call's recording
-reference. Evaluators return ``EvalOutcome``: one ``ItemResult`` per call (call scope), per turn,
-per flow node or per silence, plus model usage for judges. The runner turns items into the run
-verdict with ``app.evals.scoring.run_verdict``.
+``EvalContext`` is built once per call by ``app.evaluators.context`` from the finalised
+transcript (``calls.transcript``), turn events, the agent version the call ran (never the current
+draft) and the call's recording reference. Evaluators return ``EvalOutcome``: one ``ItemResult``
+per call (call scope), per turn, per flow node or per silence, plus model usage for judges. The
+runner turns items into the run verdict with ``app.evals.scoring.run_verdict``.
 """
 
 from __future__ import annotations
@@ -17,14 +16,24 @@ from decimal import Decimal
 from typing import Any, ClassVar, Literal
 
 from app.calls.transcript import FlowTransition, Message, ToolEvent
-from app.evals.scoring import Verdict
 
+Verdict = Literal["pass", "fail", "not_applicable"]
 Scope = Literal["call", "turn", "flow_node"]
 CostClass = Literal["free", "llm_judge"]
 OutputKind = Literal["class", "anomaly", "audio_quality", "process_reward"]
 AgentType = Literal["single_prompt", "flow"]
 ALL_AGENT_TYPES: tuple[AgentType, ...] = ("single_prompt", "flow")
 FLOW_ONLY: tuple[AgentType, ...] = ("flow",)
+
+
+def judge_item_verdict(score: float, cutoff: float) -> Verdict:
+    """The server-side verdict of a judge score (the model never decides)."""
+    return "pass" if score >= cutoff else "fail"
+
+
+def process_reward_verdict(score: int) -> Verdict:
+    """-1 regression fails; 0 neutral and +1 progress pass."""
+    return "fail" if score <= -1 else "pass"
 
 
 @dataclass(frozen=True)

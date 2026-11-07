@@ -418,7 +418,7 @@ class SimEnv:
 @pytest_asyncio.fixture
 async def sim_env(app: Any, client: httpx.AsyncClient) -> AsyncIterator[SimEnv]:
     from app.evals import install as quality_install
-    from app.evals import runtime as quality_runtime
+    from app.llms import runtime as model_runtime
     from app.llms.adapters.base import ChatMessage
     from app.llms.adapters.fake import PURPOSE_REPLIES
     from tests.fakes.fake_llm import FakeLlm
@@ -430,16 +430,22 @@ async def sim_env(app: Any, client: httpx.AsyncClient) -> AsyncIterator[SimEnv]:
     quality = offline_llm()
 
     def responder(system: str, user: str, purpose: str | None) -> str:
-        if purpose in ("test_case_judge", "persona_extraction", "test_case_generation"):
+        if purpose in (
+            "test_case_judge",
+            "persona_extraction",
+            "test_case_generation",
+            "issue_naming",
+            "issue_fix_draft",
+        ):
             return PURPOSE_REPLIES[purpose]([ChatMessage("user", user)], system)
         assert quality.responder is not None
         return quality.responder(system, user, purpose)
 
     llm = FakeLlm(responder=responder)
-    quality_runtime.install(app.state.settings, llm=llm, queue=queue)
+    model_runtime.install(app.state.settings, llm=llm, queue=queue)
     quality_install.install_handlers()
     env = SimEnv(app, client, queue, TextsimRecorder(), FakeTextRunner(client), llm)
     yield env
-    quality_runtime.install(app.state.settings, queue=previous)
+    model_runtime.install(app.state.settings, queue=previous)
     quality_install.install_handlers()
     app.state.jobs = previous

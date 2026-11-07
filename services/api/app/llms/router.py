@@ -7,10 +7,10 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.agents.checks import pricing_now
 from app.core.auth import CurrentPrincipal
 from app.core.errors import problem_responses
 from app.llms import service
+from app.pricing import service as pricing_service
 
 router = APIRouter(tags=["llms"])
 
@@ -22,6 +22,6 @@ async def get_llm_catalog(
     include_withdrawn: Annotated[bool, Query()] = False,
 ) -> JSONResponse:
     async with request.app.state.db.transaction(workspace_id=principal.workspace_id) as session:
-        pricing = await pricing_now(session)
+        pricing = await pricing_service.catalog_now(session)
     body = service.catalog_json(pricing, include_withdrawn=include_withdrawn)
     return JSONResponse(body, headers={"Cache-Control": "private, max-age=300"})

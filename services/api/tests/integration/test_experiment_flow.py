@@ -223,7 +223,7 @@ async def test_cancel_charges_only_finished_runs(
 async def test_concurrency_cap_queues_the_rest(
     sim_env: SimEnv, client: httpx.AsyncClient, account: Account
 ) -> None:
-    from app.simulator import dispatch
+    from app.testing import dispatch
 
     h = account.headers
     agent = await make_agent(client, account)

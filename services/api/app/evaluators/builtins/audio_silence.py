@@ -6,9 +6,16 @@ from collections.abc import Mapping
 from typing import Any, ClassVar
 
 from app.calls.origins import policy
-from app.evals.scoring import Verdict
 from app.evaluators.audio import RecordingUnavailable, Silence, find_silences
-from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, SettingsField
+from app.evaluators.base import (
+    EvalContext,
+    EvalOutcome,
+    EvalTools,
+    Evaluator,
+    ItemResult,
+    SettingsField,
+    Verdict,
+)
 
 
 def clock(ms: int) -> str:

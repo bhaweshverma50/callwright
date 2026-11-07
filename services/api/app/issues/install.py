@@ -1,5 +1,5 @@
-"""Wire 009 into the app and the jobs worker: the issues runtime (model client, embedder and
-offline fakes), the 008 completion hook for validation batches, and the arq jobs and crons."""
+"""Wire 009 into the app and the jobs worker: offline fake replies for naming and drafting, the
+008 completion hook for validation batches, and the arq jobs and crons."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from app.simulator import service as simulator
 
 
 def install(runtime: Runtime) -> None:
-    issues_runtime.install(runtime.settings)
+    issues_runtime.register_fakes()
     # Hooks are process-wide; replace ours so repeated installs (tests, reloads) fire once.
     simulator.clear_hooks(SOURCE)
     simulator.on_experiment_finished(SOURCE, on_batch_finished_factory())

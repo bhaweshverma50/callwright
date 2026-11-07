@@ -12,9 +12,10 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.agent_versions.models import AgentVersion
+from app.agents.views import actor
 from app.calls.lookups import workspace_for_call
 from app.calls.models import Call
-from app.core.auth import CurrentPrincipal, Principal, bearer_token
+from app.core.auth import CurrentPrincipal, bearer_token, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses, too_many_requests, validation_failed
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
@@ -37,18 +38,6 @@ TEST_RUNS_PER_MINUTE = 30
 test_run_resolver: url_guard.Resolver | None = None
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
-def _actor(request: Request, principal: Principal) -> service.ToolActor:
-    return service.ToolActor(
-        workspace_id=principal.workspace_id,
-        user_id=principal.user_id,
-        allow_http=request.app.state.settings.allow_http_webhooks,
-    )
-
-
 def _wrapper(request: Request) -> Any:
     return key_wrapper(request.app.state.settings)
 
@@ -67,7 +56,7 @@ async def list_tools(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_tools(
             session, tool_type=type, search=search, page=page, page_size=page_size
         )
@@ -80,8 +69,8 @@ async def list_tools(
 
 @router.post("/tools", status_code=201, responses=problem_responses(422))
 async def create_tool(body: ToolCreate, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        tool = await service.create_tool(session, _actor(request, principal), _wrapper(request), body)
+    async with principal_tx(request, principal) as session:
+        tool = await service.create_tool(session, actor(request, principal), _wrapper(request), body)
         return service.tool_view(tool, 0)
 
 
@@ -103,7 +92,7 @@ async def test_run_tool(
         )
     allow_http = request.app.state.settings.allow_http_webhooks
     secrets: dict[str, str] = {}
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         if body.tool_id is not None:
             tool = await service.get_tool(session, body.tool_id)
             tool_type, spec = tool.type, dict(tool.config)
@@ -139,7 +128,7 @@ async def test_run_tool(
 
 @router.get("/tools/{tool_id}", responses=problem_responses(404))
 async def get_tool(tool_id: ToolId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await _view(session, await service.get_tool(session, tool_id))
 
 
@@ -147,10 +136,8 @@ async def get_tool(tool_id: ToolId, request: Request, principal: CurrentPrincipa
 async def update_tool(
     tool_id: ToolId, body: ToolUpdate, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        tool = await service.update_tool(
-            session, _actor(request, principal), _wrapper(request), tool_id, body
-        )
+    async with principal_tx(request, principal) as session:
+        tool = await service.update_tool(session, actor(request, principal), _wrapper(request), tool_id, body)
         return await _view(session, tool)
 
 
@@ -161,21 +148,21 @@ async def delete_tool(
     principal: CurrentPrincipal,
     force: Annotated[bool, Query()] = False,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        detached = await service.delete_tool(session, _actor(request, principal), tool_id, force=force)
+    async with principal_tx(request, principal) as session:
+        detached = await service.delete_tool(session, actor(request, principal), tool_id, force=force)
     return {"deleted": True, "detached_agent_ids": detached}
 
 
 @router.post("/tools/{tool_id}/duplicate", status_code=201, responses=problem_responses(404))
 async def duplicate_tool(tool_id: ToolId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        tool = await service.duplicate_tool(session, _actor(request, principal), _wrapper(request), tool_id)
+    async with principal_tx(request, principal) as session:
+        tool = await service.duplicate_tool(session, actor(request, principal), _wrapper(request), tool_id)
         return service.tool_view(tool, 0)
 
 
 @router.get("/tools/{tool_id}/usages", responses=problem_responses(404))
 async def get_tool_usages(tool_id: ToolId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.get_tool(session, tool_id)
         found = await service.usages(session, tool_id)
         nodes = await service.flow_node_usages(session, tool_id)
@@ -212,7 +199,7 @@ async def _tool_set(session: Any, agent_id: str, tools: list[Any]) -> dict[str, 
 
 @router.get("/agents/{agent_id}/tools", responses=problem_responses(404))
 async def get_agent_tools(agent_id: AgentId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await _tool_set(session, agent_id, await service.agent_tools(session, agent_id))
 
 
@@ -220,8 +207,8 @@ async def get_agent_tools(agent_id: AgentId, request: Request, principal: Curren
 async def set_agent_tools(
     agent_id: AgentId, body: SetAgentTools, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        tools = await service.set_agent_tools(session, _actor(request, principal), agent_id, body.tool_ids)
+    async with principal_tx(request, principal) as session:
+        tools = await service.set_agent_tools(session, actor(request, principal), agent_id, body.tool_ids)
         return await _tool_set(session, agent_id, tools)
 
 
@@ -229,7 +216,7 @@ async def set_agent_tools(
 async def get_agent_tool_mock_coverage(
     agent_id: AgentId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await service.mock_coverage(session, agent_id)
 
 

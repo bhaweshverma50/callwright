@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
-from typing import Literal
+from typing import Any, Literal
 
 CALL_COMPONENTS = ("stt", "llm", "tts", "nc", "platform")
 BUNDLE_UNITS = ("llm_input_tokens", "llm_output_tokens", "tts_chars")
@@ -273,3 +273,37 @@ def price_embedding(rate: Rate, tokens: int) -> Decimal:
 
 def total_of(lines: Iterable[CostLine]) -> Decimal:
     return sum((line.cost_usd for line in lines), ZERO)
+
+
+def cost_line_json(line: CostLine) -> dict[str, Any]:
+    return {
+        "component": line.component,
+        "provider": line.provider,
+        "model": line.model,
+        "rate_per_min_usd": fmt6(line.rate_per_min_usd),
+        "billed_minutes": fmt6(line.billed_minutes),
+        "cost_usd": fmt6(line.cost_usd),
+        "surcharge_usd": fmt6(line.surcharge_usd),
+        "bundle_multiplier": f"{line.bundle_multiplier:f}",
+        "meters": [
+            {
+                "unit": m.unit,
+                "used": m.used,
+                "bundle_per_min": m.bundle_per_min,
+                "included": fmt6(m.included),
+            }
+            for m in line.meters
+        ],
+    }
+
+
+def breakdown_json(breakdown: CostBreakdown, call_id: str | None) -> dict[str, Any]:
+    return {
+        "call_id": call_id,
+        "catalog_version": breakdown.catalog_version,
+        "duration_ms": breakdown.duration_ms,
+        "billed_seconds": breakdown.billed_seconds,
+        "duration_minutes": fmt6(breakdown.duration_minutes),
+        "lines": [cost_line_json(line) for line in breakdown.lines],
+        "total_usd": fmt6(breakdown.total_usd),
+    }

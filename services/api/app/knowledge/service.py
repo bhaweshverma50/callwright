@@ -23,32 +23,23 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import service as agents
+from app.core.db import escape_like
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
 from app.core.storage import ObjectStore
 from app.knowledge import storage
-from app.knowledge.embeddings.base import EmbeddingAdapter
 from app.knowledge.extract import sniff
 from app.knowledge.models import Document, KnowledgeBase
+from app.llms.embeddings.base import EmbeddingAdapter
 
 tracer = trace.get_tracer("app.knowledge")
 
 MAX_FILE_BYTES = 20 * 1024 * 1024
 MAX_DOCS_PER_KB = 200
 MAX_WORKSPACE_BYTES = 1024 * 1024 * 1024
-MAX_KBS_PER_AGENT = 10
 QUERY_CACHE_TTL_S = 24 * 3600
 MAX_RESULT_CHARS = 4000
 EF_SEARCH = 40
-
-
-@dataclass(frozen=True)
-class KnowledgeActor:
-    workspace_id: str
-    user_id: str | None
-
-    def agent_actor(self) -> agents.Actor:
-        return agents.Actor(workspace_id=self.workspace_id, user_id=self.user_id)
 
 
 # Problems -------------------------------------------------------------------------------------
@@ -188,9 +179,7 @@ async def _check_name(session: AsyncSession, name: str, exclude: str | None = No
         raise _name_taken(name)
 
 
-async def create_kb(
-    session: AsyncSession, actor: KnowledgeActor, name: str, description: str
-) -> KnowledgeBase:
+async def create_kb(session: AsyncSession, actor: agents.Actor, name: str, description: str) -> KnowledgeBase:
     name = name.strip()
     if not name:
         raise validation_failed([{"pointer": "/name", "code": "required", "message": "Enter a name."}])
@@ -231,17 +220,13 @@ async def update_kb(
     return kb
 
 
-def _escape_like(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
 async def list_kbs(
     session: AsyncSession, *, search: str | None, attachable: bool | None, page: int, page_size: int
 ) -> tuple[list[KnowledgeBase], int]:
     query = select(KnowledgeBase)
     if search:
         query = query.where(
-            func.lower(KnowledgeBase.name).like(f"%{_escape_like(search.lower())}%", escape="\\")
+            func.lower(KnowledgeBase.name).like(f"%{escape_like(search.lower())}%", escape="\\")
         )
     if attachable is not None:
         ready = (
@@ -275,16 +260,13 @@ async def agents_using(session: AsyncSession, kb_id: str) -> list[tuple[str, str
 
 
 async def delete_kb(
-    session: AsyncSession, actor: KnowledgeActor, store: ObjectStore, kb_id: str, *, confirm: bool
+    session: AsyncSession, actor: agents.Actor, store: ObjectStore, kb_id: str, *, confirm: bool
 ) -> list[str]:
     kb = await get_kb(session, kb_id)
     users = await agents_using(session, kb_id)
     if users and not confirm:
         raise kb_in_use(users)
-    for agent_id, _ in users:
-        agent = await agents.get_agent(session, agent_id)
-        remaining = [k for k in agent.draft_config.get("kb_ids") or [] if k != kb_id]
-        await agents.update_draft(session, actor.agent_actor(), agent_id, patch={"kb_ids": remaining})
+    await agents.detach(session, actor, "kb_ids", kb_id, [a for a, _ in users])
     keys = list(
         (await session.execute(select(Document.storage_key).where(Document.kb_id == kb_id))).scalars()
     )
@@ -378,7 +360,7 @@ class Upload:
 
 
 async def create_document(
-    session: AsyncSession, actor: KnowledgeActor, store: ObjectStore, kb_id: str, upload: Upload
+    session: AsyncSession, actor: agents.Actor, store: ObjectStore, kb_id: str, upload: Upload
 ) -> Document:
     """Validate and store an upload; the caller enqueues ingestion after commit."""
     await get_kb(session, kb_id)
@@ -488,19 +470,10 @@ async def agent_kbs(session: AsyncSession, agent_id: str) -> list[KnowledgeBase]
 
 
 async def set_agent_kbs(
-    session: AsyncSession, actor: KnowledgeActor, agent_id: str, kb_ids: list[str]
+    session: AsyncSession, actor: agents.Actor, agent_id: str, kb_ids: list[str]
 ) -> list[KnowledgeBase]:
     agent = await agents.get_agent(session, agent_id)
-    if len(kb_ids) > MAX_KBS_PER_AGENT:
-        raise validation_failed(
-            [
-                {
-                    "pointer": "/kb_ids",
-                    "code": "too_many",
-                    "message": "An agent can use at most 10 knowledge bases.",
-                }
-            ]
-        )
+    agents.check_attach_count("kb_ids", kb_ids)
     found = await kbs_by_id(session, kb_ids)
     missing = [
         {
@@ -532,7 +505,7 @@ async def set_agent_kbs(
                 for k in not_ready
             ],
         )
-    await agents.update_draft(session, actor.agent_actor(), agent_id, patch={"kb_ids": list(kb_ids)})
+    await agents.attach(session, actor, agent_id, "kb_ids", kb_ids)
     return [found[k] for k in kb_ids]
 
 

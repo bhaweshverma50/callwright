@@ -1,4 +1,5 @@
-"""Platform defaults for a blank agent (T012, spec Assumptions, research R23).
+"""Platform defaults for a blank agent (T012, spec Assumptions, research R23): the one defaults
+table; ``schemas.py`` field defaults and ``upcast`` read it.
 
 Speech and voice defaults depend on the language and come from ``voices/catalog.yaml``; the model
 default comes from ``llms/catalog.yaml``. Every numeric default lies on its control step
@@ -12,26 +13,13 @@ import copy
 from typing import Any
 
 from app.llms.service import load_catalog as load_llm_catalog
+from app.voices.catalog import DEFAULT_LANGUAGE
 from app.voices.catalog import load_catalog as load_voice_catalog
 
-SCHEMA_VERSION = 1
-DEFAULT_LANGUAGE = "en-US"
+CURRENT_SCHEMA_VERSION = 1
 DEFAULT_GREETING = "Hi, thanks for calling. How can I help you today?"
 
-# Numeric defaults, keyed by JSON Pointer (the same paths as the catalog ``controls``).
-NUMERIC_DEFAULTS: dict[str, float | int] = {
-    "/tts/speed": 1.0,
-    "/tts/expressiveness": 0.9,
-    "/tts/volume": 1.0,
-    "/call_behavior/end_on_silence_s": 30,
-    "/call_behavior/max_duration_s": 600,
-    "/call_behavior/ring_duration_ms": 5000,
-    "/call_behavior/interruption_sensitivity": 0.9,
-    "/call_behavior/responsiveness": 0.8,
-    "/advanced/webhook_timeout_ms": 3000,
-    "/advanced/dtmf/timeout_ms": 2500,
-    "/advanced/background_audio/volume": 0.8,
-}
+TTS_TUNING_DEFAULTS: dict[str, float] = {"speed": 1.0, "expressiveness": 0.9, "volume": 1.0}
 
 CALL_BEHAVIOR_DEFAULTS: dict[str, Any] = {
     "end_on_silence_s": 30,
@@ -72,7 +60,7 @@ def nc_default() -> dict[str, str] | None:
 
 def tts_defaults(language: str, provider: str | None = None) -> dict[str, Any]:
     base = load_voice_catalog().tts_default_for(language, provider)
-    return {**base, "speed": 1.0, "expressiveness": 0.9, "volume": 1.0}
+    return {**base, **TTS_TUNING_DEFAULTS}
 
 
 def stt_defaults(language: str) -> dict[str, Any]:
@@ -82,7 +70,7 @@ def stt_defaults(language: str) -> dict[str, Any]:
 def default_config(agent_type: str = "single_prompt", language: str = DEFAULT_LANGUAGE) -> dict[str, Any]:
     """A fully defaulted AgentConfig v1 (``GET /v1/agents/defaults``)."""
     return {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": CURRENT_SCHEMA_VERSION,
         "type": agent_type,
         "language": language,
         "llm": llm_defaults(),
@@ -100,13 +88,3 @@ def default_config(agent_type: str = "single_prompt", language: str = DEFAULT_LA
         "flow": None,
         "evals": None,
     }
-
-
-def default_at(pointer: str, agent_type: str = "single_prompt", language: str = DEFAULT_LANGUAGE) -> Any:
-    """The default value at a JSON Pointer (``/a/b``), or ``None`` when there is none."""
-    node: Any = default_config(agent_type, language)
-    for part in pointer.strip("/").split("/"):
-        if not isinstance(node, dict) or part not in node:
-            return None
-        node = node[part]
-    return copy.deepcopy(node)

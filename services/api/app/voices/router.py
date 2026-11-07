@@ -7,25 +7,21 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, File, Path, Query, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 
-from app.agents.checks import pricing_now
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import problem_responses
+from app.pricing import service as pricing_service
 from app.voices import catalog, service
 from app.voices.adapters.base import VoiceFilters
 
 router = APIRouter(tags=["voices"])
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 @router.get("/voices/catalog", responses=problem_responses(401))
 async def get_voice_catalog(
     request: Request, principal: CurrentPrincipal, include_withdrawn: Annotated[bool, Query()] = False
 ) -> JSONResponse:
-    async with _tx(request, principal) as session:
-        pricing = await pricing_now(session)
+    async with principal_tx(request, principal) as session:
+        pricing = await pricing_service.catalog_now(session)
     body = catalog.catalog_json(pricing, include_withdrawn=include_withdrawn)
     return JSONResponse(body, headers={"Cache-Control": "private, max-age=300"})
 
@@ -33,7 +29,7 @@ async def get_voice_catalog(
 @router.get("/voices/ambient-audio", responses=problem_responses(401))
 async def list_ambient_audio(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     store = request.app.state.storage
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows = await service.list_ambient(session, principal.workspace_id)
     return {"items": [await service.ambient_json(store, row) for row in rows]}
 
@@ -54,7 +50,7 @@ async def upload_ambient_audio(
     if len(data) > service.MAX_UPLOAD_BYTES:
         raise service.too_large()
     store = request.app.state.storage
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row = await service.upload_ambient(
             session,
             store,
@@ -70,7 +66,7 @@ async def upload_ambient_audio(
 async def delete_ambient_audio(
     request: Request, principal: CurrentPrincipal, key: Annotated[str, Query(max_length=300)]
 ) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_ambient(session, request.app.state.storage, principal.workspace_id, key)
     return Response(status_code=204)
 

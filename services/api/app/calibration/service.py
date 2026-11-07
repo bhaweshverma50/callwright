@@ -19,8 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calibration import math
 from app.evals.models import AgentEvalSetting
-from app.evals.settings import effective
 from app.evaluators.models import EvaluatorRow
+from app.evaluators.settings import effective
 
 _CURRENT = """
 select distinct on (r.call_id, r.evaluator_id) r.id, r.call_id, r.evaluator_id, r.evaluator_version,

@@ -17,13 +17,14 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any
 
 from app.calls.transcript import Message, ToolEvent
-from app.evals.scoring import Verdict, judge_item_verdict
-from app.evaluators.base import Unavailable, quote
+from app.core.config import Settings
+from app.evaluators.base import Unavailable, Verdict, judge_item_verdict, quote
 from app.llms.adapters.base import ChatMessage, Completion, ModelError, ModelTimeout
 from app.llms.client import token_cost
+from app.llms.runtime import CompletionClient
 
 PURPOSE = "eval_judge"
 TURN_BATCH = 40
@@ -49,20 +50,6 @@ TURN_FORMAT = (
 )
 
 _DELIMITER = re.compile(r"<\s*/?\s*call_data\s*>", re.IGNORECASE)
-
-
-class CompletionClient(Protocol):
-    async def complete(
-        self,
-        ref: Any,
-        messages: list[ChatMessage],
-        *,
-        system: str | None = None,
-        max_tokens: int = 2000,
-        timeout_s: float = 60.0,
-        json_mode: bool = False,
-        purpose: str | None = None,
-    ) -> Completion: ...
 
 
 @dataclass
@@ -212,6 +199,10 @@ class Judge:
         self.client = client
         self.timeout_s = timeout_s
         self.cutoff = cutoff
+
+    @classmethod
+    def from_settings(cls, client: CompletionClient, settings: Settings) -> Judge:
+        return cls(client, timeout_s=settings.eval_timeout_s, cutoff=settings.eval_judge_pass_cutoff)
 
     async def _complete(self, model: str, system: str, data: str, usage: Usage) -> str:
         try:

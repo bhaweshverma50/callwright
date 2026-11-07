@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import httpx
 
-from app.knowledge.embeddings.base import DIMENSIONS, EmbeddingUnavailable
-from app.knowledge.embeddings.openai import BATCH, MODEL, parse_vectors
+from app.llms.embeddings.base import DIMENSIONS, EmbeddingUnavailable
+from app.llms.embeddings.openai import BATCH, MODEL, parse_vectors
 
 
 class AzureOpenAIEmbeddings:

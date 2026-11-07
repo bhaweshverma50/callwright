@@ -20,10 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ProblemError, field_error, forbidden, not_found, validation_failed
 from app.core.ids import new_id
-from app.evals.settings import served_schema
 from app.evaluators.custom.phrase_check import PatternError, compile_pattern
 from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.registry import BUILTINS, CUSTOM_TYPES
+from app.evaluators.settings import served_schema
 
 MAX_CUSTOM = 50
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")

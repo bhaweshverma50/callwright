@@ -8,8 +8,8 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from app.agent_versions import service as versions
-from app.agents import hooks
+from app.agents import hooks, versions
+from app.agents import service as agents
 from tests.agent_helpers import create_ok
 from tests.conftest import Account
 
@@ -19,7 +19,7 @@ async def test_unchanged_draft_reuses_draft_version(
 ) -> None:
     agent = await create_ok(client, account)
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-        snap = await versions.snapshot_for_test(session, agent["id"])
+        snap = await agents.snapshot_for_test(session, agent["id"])
     assert snap.id == agent["draft_version"]["id"]
 
 
@@ -47,9 +47,9 @@ async def test_changed_resolved_tools_record_a_test_version(
         )
         tool_url["value"] = "https://tools.example.com/v2"
         async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-            snap = await versions.snapshot_for_test(session, agent["id"])
+            snap = await agents.snapshot_for_test(session, agent["id"])
         async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-            again = await versions.snapshot_for_test(session, agent["id"])
+            again = await agents.snapshot_for_test(session, agent["id"])
     assert snap.id != agent["draft_version"]["id"] and snap.source == "test"
     assert snap.created_by is None and snap.version_number == 2
     assert again.id == snap.id, "an identical draft reuses the test snapshot"
@@ -96,9 +96,9 @@ async def test_create_version_for_flow_publish(
     agent = await create_ok(client, account, agent_type="flow", config={"prompt": ""})
     config = {**agent["draft_config"], "flow": {"flow_id": "flw_1", "graph": {"nodes": [{"id": "n_1"}]}}}
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-        recorded = await versions.create_version(session, agent["id"], config, note="flow v1", publish=True)
+        recorded = await agents.create_version(session, agent["id"], config, note="flow v1", publish=True)
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-        again = await versions.create_version(session, agent["id"], config)
+        again = await agents.create_version(session, agent["id"], config)
     assert recorded.created and not again.created and again.version.id == recorded.version.id
     assert recorded.version.source == "flow_publish" and recorded.version.summary["node_count"] == 1
     detail = (await client.get(f"/v1/agents/{agent['id']}", headers=account.headers)).json()

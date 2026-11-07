@@ -19,10 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
 from app.llms.client import billable_cost, token_cost
-from app.simulator import calls as sim_calls
 from app.simulator.models import SimulationRun
 from app.simulator.service import MAX_BATCH, MIN_BATCH, dataset_calls
-from app.simulator.targets import resolve_target
+from app.testing import calls as sim_calls
+from app.testing.targets import resolve_target
 
 HISTORY = 50
 # Typical token use per run when the agent has no history (agent and caller sides).

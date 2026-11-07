@@ -26,7 +26,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service as versions
+from app.agents import versions
 from app.agents.models import Agent
 from app.calls import transcript
 from app.calls.models import Call
@@ -36,9 +36,11 @@ from app.issues import charges, kinds
 from app.issues.fixes import AdvisoryFix, FixError, apply_fix, display_diff, is_advisory
 from app.issues.lifecycle import transition
 from app.issues.models import Issue, IssueFix, IssueSample
+from app.issues.runtime import model as issues_model
 from app.issues.schemas import parse_payload
 from app.issues.service import get_issue, require_live_agent
 from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.runtime import runtime
 
 PURPOSE = "issue_fix_draft"
 SAMPLES = 8
@@ -313,7 +315,6 @@ def draft_failed() -> ProblemError:
 
 
 async def call_drafter(data: DraftInput) -> Drafted:
-    from app.issues.runtime import runtime
 
     rt = runtime()
     user = "<fix_context>\n" + json.dumps(data.context, ensure_ascii=False) + "\n</fix_context>"
@@ -323,7 +324,7 @@ async def call_drafter(data: DraftInput) -> Drafted:
     for _attempt in range(2):
         try:
             completion = await rt.llm.complete(
-                rt.model,
+                issues_model(rt.settings),
                 [ChatMessage("user", user)],
                 system=SYSTEM,
                 max_tokens=4000,
@@ -341,7 +342,14 @@ async def call_drafter(data: DraftInput) -> Drafted:
             kind = data.kind
         payload = parsed.get("payload")
         if kind in data.allowed and isinstance(payload, Mapping):
-            return Drafted(kind, dict(payload), str(parsed.get("rationale") or "")[:4000], rt.model, inp, out)
+            return Drafted(
+                kind,
+                dict(payload),
+                str(parsed.get("rationale") or "")[:4000],
+                issues_model(rt.settings),
+                inp,
+                out,
+            )
     raise draft_failed()
 
 
@@ -365,7 +373,7 @@ async def resolve_variant(
     session: AsyncSession, agent: Agent, base_version_id: str, config: dict[str, Any], kind: str
 ) -> tuple[dict[str, Any], str]:
     """008's variant resolution (full validation, flow compilation): (snapshot, hash)."""
-    from app.simulator.targets import resolve_target
+    from app.testing.targets import resolve_target
 
     config = await resolve_knowledge(session, kind, config)
     try:

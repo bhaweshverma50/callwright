@@ -3,8 +3,8 @@ against the database in tests/contract/test_evals_contract.py."""
 
 from __future__ import annotations
 
-from app.evals.settings import effective, fmt, served_schema, validate_overrides
 from app.evaluators.registry import BUILTINS, schema_json
+from app.evaluators.settings import effective, fmt, served_schema, validate_overrides
 
 MODELS = ["openai/gpt-5-mini", "azure_openai/gpt-5.1"]
 

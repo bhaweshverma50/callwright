@@ -32,22 +32,23 @@ from ulid import ULID
 from app.agents.models import Agent
 from app.billing import service as billing
 from app.calls.models import Call
+from app.calls.short_call import too_short
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.core.ids import new_id
 from app.evals import embeddings, sampling
-from app.evals.context import build_context
 from app.evals.models import EvaluatorResultItem, EvaluatorRun, EvaluatorRunGroup
-from app.evals.runtime import QualityRuntime, runtime
 from app.evals.scoring import ItemOutcome, run_verdict
 from app.evals.service import resolve_all
-from app.evals.settings import default_judge_model, judge_models, settings_hash
-from app.evals.short_call import too_short
 from app.evaluators import audio
 from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, Unavailable
+from app.evaluators.context import build_context
+from app.evaluators.judge import Judge
 from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.registry import instance_for
+from app.evaluators.settings import default_judge_model, judge_models, settings_hash
 from app.llms.client import billable_cost
+from app.llms.runtime import ModelRuntime, runtime
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.evals.runner")
@@ -227,13 +228,13 @@ def feature_key(row: EvaluatorRow) -> str:
     return "eval.llm_judge_custom" if row.evaluator_type == "llm_judge_custom" else f"eval.{row.name}"
 
 
-def tools_for(db: Database, workspace_id: str, rt: QualityRuntime, settings: dict[str, Any]) -> EvalTools:
+def tools_for(db: Database, workspace_id: str, rt: ModelRuntime, settings: dict[str, Any]) -> EvalTools:
     async def neighbours(ctx: EvalContext, values: Any) -> embeddings.Neighbours:
         async with db.transaction(workspace_id=workspace_id) as session:
             return await embeddings.neighbours(session, rt.embedder, ctx, values)
 
     return EvalTools(
-        judge=rt.judge,
+        judge=Judge.from_settings(rt.llm, rt.settings),
         read_levels=audio.read_levels,
         neighbours=neighbours if rt.embedder is not None else None,
         judge_model=str(settings.get("judge_model") or default_judge_model(rt.settings)),
@@ -317,7 +318,7 @@ async def _write(db: Database, workspace_id: str, plan: Planned, outcome: EvalOu
 
 
 async def execute_run(
-    db: Database, workspace_id: str, plan: Planned, ctx: EvalContext, rt: QualityRuntime
+    db: Database, workspace_id: str, plan: Planned, ctx: EvalContext, rt: ModelRuntime
 ) -> str:
     with tracer.start_as_current_span(
         "evals.run",
@@ -364,7 +365,7 @@ async def execute_run(
 
 
 async def execute_group(
-    db: Database, workspace_id: str, run_group_id: str, *, rt: QualityRuntime | None = None
+    db: Database, workspace_id: str, run_group_id: str, *, rt: ModelRuntime | None = None
 ) -> str:
     rt = rt or runtime()
     async with db.transaction(workspace_id=workspace_id) as session:

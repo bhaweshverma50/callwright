@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -22,8 +23,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
 
-from app.agent_versions.models import AgentVersion
-from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.errors import ProblemError, not_found
 from app.core.storage import ObjectStore
@@ -189,7 +188,7 @@ async def upload_ambient(
             "Upload limit reached",
             f"A workspace can keep at most {MAX_UPLOADS} uploads.",
         )
-    key = f"workspaces/{workspace_id}/ambient/{str(ULID()).lower()}.{EXTENSIONS[content_type]}"
+    key = f"{ambient_prefix(workspace_id)}{str(ULID()).lower()}.{EXTENSIONS[content_type]}"
     await store.put(key, data, content_type)
     row = AmbientAudioFile(
         workspace_id=workspace_id,
@@ -214,27 +213,29 @@ async def list_ambient(session: AsyncSession, workspace_id: str) -> list[Ambient
     return list(rows.scalars())
 
 
-async def ambient_in_use(session: AsyncSession, key: str) -> bool:
-    """Whether any live draft or published version references the uploaded ``key``."""
-    probe = {"advanced": {"background_audio": {"source": {"kind": "upload", "key": key}}}}
-    in_draft = (
-        await session.execute(
-            select(func.count())
-            .select_from(Agent)
-            .where(Agent.deleted_at.is_(None), Agent.draft_config.contains(probe))
+def ambient_prefix(workspace_id: str) -> str:
+    """Every upload of a workspace is stored under this key prefix."""
+    return f"workspaces/{workspace_id}/ambient/"
+
+
+async def ambient_exists(session: AsyncSession, key: str) -> bool:
+    """Whether ``key`` names an upload that has not been deleted."""
+    found = await session.execute(
+        select(AmbientAudioFile.id).where(
+            AmbientAudioFile.storage_key == key, AmbientAudioFile.deleted_at.is_(None)
         )
-    ).scalar_one()
-    if in_draft:
-        return True
-    in_published = (
-        await session.execute(
-            select(func.count())
-            .select_from(AgentVersion)
-            .join(Agent, Agent.pinned_version_id == AgentVersion.id)
-            .where(Agent.deleted_at.is_(None), AgentVersion.config.contains(probe))
-        )
-    ).scalar_one()
-    return bool(in_published)
+    )
+    return found.first() is not None
+
+
+AmbientUsage = Callable[[AsyncSession, str], Awaitable[bool]]
+_ambient_usage: AmbientUsage | None = None
+
+
+def set_ambient_usage(fn: AmbientUsage) -> None:
+    """002 agents registers whether an agent draft or published version uses an upload."""
+    global _ambient_usage
+    _ambient_usage = fn
 
 
 async def delete_ambient(session: AsyncSession, store: ObjectStore, workspace_id: str, key: str) -> None:
@@ -251,7 +252,7 @@ async def delete_ambient(session: AsyncSession, store: ObjectStore, workspace_id
     ).scalar_one_or_none()
     if row is None:
         raise not_found("upload")
-    if await ambient_in_use(session, key):
+    if _ambient_usage is not None and await _ambient_usage(session, key):
         raise ProblemError(
             409,
             "audio_in_use",

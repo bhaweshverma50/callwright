@@ -29,6 +29,7 @@ from app.core.ids import new_id
 from app.pricing import engine
 from app.pricing import service as pricing
 from app.pricing.features import is_valid_feature_key
+from app.usage import service as usage_events
 from app.usage.models import UsageEvent
 
 logger = logging.getLogger(__name__)
@@ -499,40 +500,6 @@ class PricingUnavailable(Exception):
         self.components = components
 
 
-def cost_line_json(line: engine.CostLine) -> dict[str, Any]:
-    return {
-        "component": line.component,
-        "provider": line.provider,
-        "model": line.model,
-        "rate_per_min_usd": engine.fmt6(line.rate_per_min_usd),
-        "billed_minutes": engine.fmt6(line.billed_minutes),
-        "cost_usd": engine.fmt6(line.cost_usd),
-        "surcharge_usd": engine.fmt6(line.surcharge_usd),
-        "bundle_multiplier": f"{line.bundle_multiplier:f}",
-        "meters": [
-            {
-                "unit": m.unit,
-                "used": m.used,
-                "bundle_per_min": m.bundle_per_min,
-                "included": engine.fmt6(m.included),
-            }
-            for m in line.meters
-        ],
-    }
-
-
-def breakdown_json(breakdown: engine.CostBreakdown, call_id: str | None) -> dict[str, Any]:
-    return {
-        "call_id": call_id,
-        "catalog_version": breakdown.catalog_version,
-        "duration_ms": breakdown.duration_ms,
-        "billed_seconds": breakdown.billed_seconds,
-        "duration_minutes": engine.fmt6(breakdown.duration_minutes),
-        "lines": [cost_line_json(line) for line in breakdown.lines],
-        "total_usd": engine.fmt6(breakdown.total_usd),
-    }
-
-
 def call_cost_json(row: CallCost) -> dict[str, Any]:
     return {
         "call_id": row.call_id,
@@ -589,26 +556,24 @@ async def charge_call(session: AsyncSession, usage: CallUsage) -> CallCost:
         duration_ms=breakdown.duration_ms,
         billed_seconds=breakdown.billed_seconds,
         duration_minutes=engine.q6(breakdown.duration_minutes),
-        lines=[cost_line_json(line) for line in breakdown.lines],
+        lines=[engine.cost_line_json(line) for line in breakdown.lines],
         total_usd=breakdown.total_usd,
         raw_cost_usd=engine.q6(breakdown.raw_cost_usd),
         txn_id=txn_id,
     )
     session.add(row)
-    session.add(
-        UsageEvent(
-            workspace_id=usage.workspace_id,
-            feature_key="calls",
-            quantity=engine.q6(breakdown.duration_minutes),
-            unit="minutes",
-            raw_cost_usd=engine.q6(breakdown.raw_cost_usd),
-            billable_cost_usd=breakdown.total_usd,
-            ref_type="call",
-            ref_id=usage.call_id,
-            txn_id=txn_id,
-            idempotency_key=f"call_charge:{usage.call_id}",
-            occurred_at=datetime.now(UTC),
-        )
+    usage_events.record(
+        session,
+        workspace_id=usage.workspace_id,
+        feature_key="calls",
+        quantity=engine.q6(breakdown.duration_minutes),
+        unit="minutes",
+        raw_cost_usd=engine.q6(breakdown.raw_cost_usd),
+        billable_cost_usd=breakdown.total_usd,
+        ref_type="call",
+        ref_id=usage.call_id,
+        txn_id=txn_id,
+        idempotency_key=f"call_charge:{usage.call_id}",
     )
     await session.flush()
     return row
@@ -661,13 +626,7 @@ async def charge_feature(
     if billable != billable_cost_usd:
         raise ValueError("billable_cost_usd carries at most six decimal places")
     await lock_workspace(session, workspace_id)
-    existing = (
-        await session.execute(
-            select(UsageEvent).where(
-                UsageEvent.workspace_id == workspace_id, UsageEvent.idempotency_key == idempotency_key
-            )
-        )
-    ).scalar_one_or_none()
+    existing = await usage_events.find(session, workspace_id, idempotency_key)
     if existing is not None:
         txn = await session.get(CreditTransaction, existing.txn_id) if existing.txn_id else None
         return FeatureCharge(existing, txn, created=False)
@@ -685,7 +644,8 @@ async def charge_feature(
             idempotency_key=idempotency_key,
         )
         txn = posted.txn
-    event = UsageEvent(
+    event = usage_events.record(
+        session,
         workspace_id=workspace_id,
         feature_key=feature_key,
         quantity=quantity.quantize(_SIX),
@@ -696,8 +656,7 @@ async def charge_feature(
         ref_id=ref_id,
         txn_id=txn.id if txn else None,
         idempotency_key=idempotency_key,
-        occurred_at=occurred_at or datetime.now(UTC),
+        occurred_at=occurred_at,
     )
-    session.add(event)
     await session.flush()
     return FeatureCharge(event, txn, created=True)

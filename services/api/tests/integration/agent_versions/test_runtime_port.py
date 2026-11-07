@@ -5,8 +5,8 @@ from __future__ import annotations
 import httpx
 from fastapi import FastAPI
 
-from app.agent_versions.runtime_port import AgentVersionsAdapter
 from app.calls import ports
+from app.calls.agent_versions import AgentVersionsAdapter
 from tests.agent_helpers import PROMPT, create_ok, save_prompt
 from tests.conftest import Account, signup
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import hmac
 import time
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from typing import Annotated, Any
 
@@ -20,6 +21,7 @@ from fastapi import Depends, Request
 from opentelemetry import trace
 from redis.asyncio import Redis
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.db import Database
@@ -185,6 +187,12 @@ async def require_service(request: Request) -> None:
     expected = request.app.state.settings.service_token.get_secret_value()
     if not hmac.compare_digest(token.encode(), expected.encode()):
         raise unauthorized("Service token is not valid.", "invalid_service_token")
+
+
+def principal_tx(request: Request, principal: Principal) -> AbstractAsyncContextManager[AsyncSession]:
+    """The request's transaction, scoped by RLS to the principal's workspace and user."""
+    db: Database = request.app.state.db
+    return db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
 
 
 CurrentClaims = Annotated[TokenClaims, Depends(current_claims)]

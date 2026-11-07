@@ -1,6 +1,6 @@
 """Dev-only usage seeder for quickstart section 6 (T081).
 
-``uv run python -m app.usage.seed_demo --workspace ws_...`` creates a demo agent and one completed
+``uv run python -m app.dev.seed_usage --workspace ws_...`` creates a demo agent and one completed
 call, charges that reference call, and records one evaluation inside the default 30-day window
 and one 60 days ago (outside it). ``call_costs.call_id`` references ``calls`` (s003_0002), so the
 charged call is a real row. Refuses to run with ENV=prod.
@@ -89,12 +89,12 @@ async def seed(db: Database, workspace_id: str) -> None:
 
 
 async def _main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="python -m app.usage.seed_demo")
+    parser = argparse.ArgumentParser(prog="python -m app.dev.seed_usage")
     parser.add_argument("--workspace", required=True)
     args = parser.parse_args(argv)
     settings = get_settings()
     if settings.env == "prod":
-        print("seed_demo is disabled in production", file=sys.stderr)
+        print("seed_usage is disabled in production", file=sys.stderr)
         return 2
     if not is_valid_id(args.workspace, "ws"):
         print("--workspace must be a ws_ id", file=sys.stderr)

@@ -108,16 +108,14 @@ def test_every_language_default_config_validates() -> None:
 
 def test_defaults_inside_ranges_and_on_steps() -> None:
     cat = voice_catalog()
-    assert {c.path for c in cat.controls} == set(defaults.NUMERIC_DEFAULTS)
-    for path, value in defaults.NUMERIC_DEFAULTS.items():
-        control = cat.control(path)
-        assert control is not None
+    config = defaults.default_config()
+    for control in cat.controls:
+        value: Any = config
+        for part in control.path.strip("/").split("/"):
+            value = value[part]
         number = Decimal(str(value))
-        assert control.min <= number <= control.max, path
-        assert control.on_step(number), path
-        assert defaults.default_at(path) == value, path
-    temperature = llm_catalog().model(llm_catalog().default_provider, llm_catalog().default_model)
-    assert temperature is not None
+        assert control.min <= number <= control.max, control.path
+        assert control.on_step(number), control.path
 
 
 def test_ambient_and_controls_unique() -> None:

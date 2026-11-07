@@ -8,7 +8,6 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.billing.service import breakdown_json
 from app.pricing import engine
 from app.pricing.service import EntryInput
 
@@ -129,5 +128,5 @@ def quote_json(quote: engine.Quote) -> dict[str, Any]:
         "complete": quote.complete,
     }
     if quote.call is not None:
-        body["call"] = breakdown_json(quote.call, None)
+        body["call"] = engine.breakdown_json(quote.call, None)
     return body

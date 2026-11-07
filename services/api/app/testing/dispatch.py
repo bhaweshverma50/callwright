@@ -2,7 +2,7 @@
 
 The voice-worker's ``textsim`` role consumes the arq queue ``arq:textsim`` with two jobs:
 ``run_single_turn(test_run_id, test_case_id)`` and ``run_simulation(simulation_run_id)``. Jobs on
-the API's own queue (``simulator.jobs``) gate them: a slot in the workspace's semaphore
+the API's own queue (``simulator.jobs``, ``test_runs.jobs``) gate them: a slot in the workspace's semaphore
 (``sim:sem:{workspace_id}``, a sorted set of holders scored by acquisition time, limit
 ``SIM_MAX_CONCURRENCY``, default 10) is taken before enqueueing, and released when the runner
 posts its result, the work is cancelled or the sweeper fails it. A holder older than
@@ -19,6 +19,8 @@ from callwright_contract.values import TEXTSIM_QUEUE
 
 RETRY_DEFER_S = 5.0
 SLOT_TTL_S = 20 * 60
+# A run whose runner has not answered for this long is failed by its feature's sweeper.
+STALE_RUN_S = 15 * 60
 
 _ACQUIRE = """
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])

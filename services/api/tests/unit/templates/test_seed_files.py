@@ -6,9 +6,10 @@ import re
 
 import pytest
 
+from app.agents.offered import template_overlay
 from app.agents.validation import validate_pure
 from app.templates.jobs import load_seed
-from app.templates.service import CATEGORIES, partial_config
+from app.templates.service import CATEGORIES
 
 SEEDS = load_seed()
 
@@ -22,7 +23,7 @@ def test_unique_slugs_and_categories() -> None:
 
 @pytest.mark.parametrize("seed", SEEDS, ids=[t["id"] for t in SEEDS])
 def test_overlay_validates(seed: dict) -> None:  # type: ignore[type-arg]
-    overlay, warnings = partial_config(seed["config"])
+    overlay, warnings = template_overlay(seed["config"])
     assert warnings == []
     result = validate_pure("single_prompt", overlay)
     assert result.valid, result.errors

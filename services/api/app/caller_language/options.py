@@ -21,8 +21,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from app.agents.defaults import DEFAULT_LANGUAGE
-from app.voices.catalog import VoiceCatalog
+from app.voices.catalog import DEFAULT_LANGUAGE, VoiceCatalog
 from app.voices.catalog import load_catalog as load_voice_catalog
 
 MAX_LANGUAGES = 30

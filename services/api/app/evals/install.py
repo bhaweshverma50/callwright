@@ -1,6 +1,6 @@
 """Wire 007 into the app and the jobs worker (T004, T022, T038, T040).
 
-* the quality runtime (``llms`` client, judge, embedder, job queue);
+* offline fake replies for judges and analysis (``evals.fakes``);
 * the 003 pipeline handlers for ``analyze`` and ``evaluate``;
 * 006's ``CallQualityPort``;
 * the built-in evaluator catalog sync (API only: the jobs worker does not touch the database at
@@ -12,7 +12,7 @@ from __future__ import annotations
 from app.analysis_vars.jobs import pipeline_handler as analyze
 from app.calls import ports
 from app.core.feature import Feature, Runtime
-from app.evals import runtime as quality_runtime
+from app.evals import fakes
 from app.evals.jobs import EVALUATE_CALL, evaluate_call
 from app.evals.jobs import pipeline_handler as evaluate
 from app.evals.quality_port import QualityPort
@@ -26,7 +26,7 @@ def install_handlers() -> None:
 
 
 async def install(runtime: Runtime) -> None:
-    quality_runtime.install(runtime.settings, queue=runtime.queue)
+    fakes.register()
     install_handlers()
     ports.set_quality_port(QualityPort())
     if runtime.role == "api":

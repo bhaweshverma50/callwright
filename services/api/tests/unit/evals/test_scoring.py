@@ -4,15 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.evals.scoring import (
-    ItemOutcome,
-    RunState,
-    call_eval_status,
-    judge_item_verdict,
-    process_reward_verdict,
-    run_counts,
-    run_verdict,
-)
+from app.evals.scoring import ItemOutcome, RunState, call_eval_status, run_counts, run_verdict
+from app.evaluators.base import judge_item_verdict, process_reward_verdict
 
 P, F, NA = "pass", "fail", "not_applicable"
 

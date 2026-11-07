@@ -8,14 +8,15 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
-from app.simulator import comparison, dispatch, jobs, preflight, service
+from app.simulator import comparison, jobs, preflight, service
 from app.simulator.schemas import PreflightBody, StartExperimentBody, StartRunBody
-from app.simulator.targets import require_agent
+from app.testing import dispatch
+from app.testing.targets import require_agent
 
 router = APIRouter(tags=["simulator"])
 
@@ -26,15 +27,11 @@ START_RUN = "POST /v1/simulation-runs"
 START_EXPERIMENT = "POST /v1/experiments"
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 @router.post("/simulations/preflight", responses=problem_responses(409, 422))
 async def simulation_preflight(
     request: Request, principal: CurrentPrincipal, body: PreflightBody
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         agent = await require_agent(session, body.agent_id, pointer="/agent_id")
         return await preflight.preflight(
             session,
@@ -59,7 +56,7 @@ async def list_runs(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_runs(
             session,
             agent_id=agent_id,
@@ -84,7 +81,7 @@ async def start_run(
     state = request.app.state
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             run = await service.start_run(
                 session,
                 state.settings,
@@ -109,7 +106,7 @@ async def start_run(
 
 @router.get("/simulation-runs/{simulation_run_id}", responses=problem_responses(404))
 async def get_run(request: Request, principal: CurrentPrincipal, simulation_run_id: RunId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run = await service.get_run(session, simulation_run_id)
         [view] = await service.views(session, [run])
         return view
@@ -119,7 +116,7 @@ async def get_run(request: Request, principal: CurrentPrincipal, simulation_run_
 async def get_comparison(
     request: Request, principal: CurrentPrincipal, simulation_run_id: RunId
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run = await service.get_run(session, simulation_run_id)
         return await comparison.build_comparison(session, run)
 
@@ -128,7 +125,7 @@ async def get_comparison(
 async def cancel_run(
     request: Request, principal: CurrentPrincipal, simulation_run_id: RunId
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run = await service.cancel_run(session, simulation_run_id)
         [view] = await service.views(session, [run])
         experiment_id = run.experiment_id
@@ -147,7 +144,7 @@ async def list_experiments(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_experiments(
             session, agent_id=agent_id, source=source, page=page, page_size=page_size
         )
@@ -169,7 +166,7 @@ async def start_experiment(
     state = request.app.state
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             exp, run_ids = await service.start_experiment(
                 session,
                 state.settings,
@@ -203,7 +200,7 @@ async def start_experiment(
 async def get_experiment(
     request: Request, principal: CurrentPrincipal, experiment_id: ExperimentId
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         exp = await service.get_experiment(session, experiment_id)
         names = await service.agent_names(session, [exp.agent_id])
         return service.experiment_view(exp, agent_name=names.get(exp.agent_id))
@@ -217,7 +214,7 @@ async def list_experiment_runs(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.get_experiment(session, experiment_id)
         rows, total = await service.list_runs(
             session,
@@ -240,7 +237,7 @@ async def get_scorecard(
     baseline: Annotated[str, Query(pattern="^(original|experiment)$")] = "original",
     baseline_experiment_id: Annotated[str | None, Query(pattern=r"^exp_")] = None,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         exp, card = await comparison.scorecard_for(
             session, experiment_id, baseline=baseline, baseline_experiment_id=baseline_experiment_id
         )
@@ -251,7 +248,7 @@ async def get_scorecard(
 async def cancel_experiment(
     request: Request, principal: CurrentPrincipal, experiment_id: ExperimentId
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         exp, released = await service.cancel_experiment(session, experiment_id)
         names = await service.agent_names(session, [exp.agent_id])
         view = service.experiment_view(exp, agent_name=names.get(exp.agent_id))

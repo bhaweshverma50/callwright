@@ -8,7 +8,7 @@ import json
 import httpx
 from fastapi import FastAPI
 
-from app.agent_versions import service as versions
+from app.agents import service as agents
 from app.flows import service
 from tests.conftest import Account, signup
 from tests.flow_helpers import clinic, create_flow, save
@@ -21,7 +21,7 @@ async def test_draft_test_snapshot_runs_the_canvas(
     flow = (await create_flow(client, account))["flow"]
     await save(client, account, flow, clinic())
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-        version = await versions.snapshot_for_test(session, flow["agent_id"])
+        version = await agents.snapshot_for_test(session, flow["agent_id"])
         block = version.config["flow"]
     assert block["compiled"]["entry_node_id"] == "n_start001"
     assert block["graph_hash"] == block["compiled"]["graph_hash"]
@@ -35,9 +35,9 @@ async def test_draft_with_errors_snapshots_without_compiled_flow(
     g["nodes"][4]["config"]["message"] = ""
     await save(client, account, flow, g)
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
-        version = await versions.snapshot_for_test(session, flow["agent_id"])
-        agent = await versions.lock_agent(session, flow["agent_id"])
-        blockers = await versions.current_blockers(session, agent, version)
+        version = await agents.snapshot_for_test(session, flow["agent_id"])
+        agent = await agents.lock_agent(session, flow["agent_id"])
+        blockers = await agents.current_blockers(session, agent, version)
     assert version.config["flow"]["compiled"] is None
     assert any(b["code"] == "flow_has_errors" for b in blockers)
 

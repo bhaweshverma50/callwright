@@ -8,17 +8,16 @@ Keyed lists are matched by key, not position, so inserting a variable never misl
 * ``tools`` by ``tool_id`` and ``knowledge`` by ``kb_id`` (snapshot blocks).
 
 Keyed items appear as ``/dynamic_variables[order_id]`` (whole item added or removed) or
-``/dynamic_variables[order_id]/default`` (field changed). Other lists, and the ``flow`` block
-unless 004 registers a differ, are compared as whole values.
+``/dynamic_variables[order_id]/default`` (field changed). Other lists are compared as whole
+values.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 Change = dict[str, Any]
-FlowDiffer = Callable[[Any, Any], list[Change]]
 
 KEYED_LISTS: dict[str, tuple[str, bool]] = {
     "/dynamic_variables": ("name", False),
@@ -27,13 +26,6 @@ KEYED_LISTS: dict[str, tuple[str, bool]] = {
     "/knowledge": ("kb_id", False),
 }
 VALUE_LISTS = frozenset({"/tool_ids", "/kb_ids"})
-_flow_differ: FlowDiffer | None = None
-
-
-def register_flow_differ(fn: FlowDiffer) -> None:
-    """004 registers a node-aware differ for the ``flow`` block."""
-    global _flow_differ
-    _flow_differ = fn
 
 
 def _escape(part: str) -> str:
@@ -75,9 +67,6 @@ def _diff_values(path: str, old: list[Any], new: list[Any], out: list[Change]) -
 
 
 def _diff(path: str, old: Any, new: Any, out: list[Change], *, keyed_item: bool = False) -> None:
-    if path == "/flow" and _flow_differ is not None:
-        out.extend(_flow_differ(old, new))
-        return
     if isinstance(old, Mapping) and isinstance(new, Mapping):
         for key in _ordered_keys(old, new):
             child = f"{path}/{_escape(str(key))}"

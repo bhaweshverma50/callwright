@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from app.agent_versions.canonical import canonical_json
 from app.agents.models import Agent
 from app.core.errors import ProblemError
-from app.simulator.targets import (
+from app.testing.targets import (
     agent_model,
     canonical_hash,
     resolve_target,

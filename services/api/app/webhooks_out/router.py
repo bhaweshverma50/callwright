@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.core import url_guard
-from app.core.auth import CurrentPrincipal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import new_id, path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
@@ -32,14 +32,10 @@ class TestRequest(BaseModel):
     timeout_ms: int = Field(default=3000, ge=1000, le=30000)
 
 
-def _tx(request: Request, principal: CurrentPrincipal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 @router.get("/webhooks/signing-secret", responses=problem_responses(401))
 async def get_signing_secret(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     wrapper = key_wrapper(request.app.state.settings)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         view = await service.masked_secret(session, wrapper, principal.workspace_id)
     return view.masked()
 
@@ -47,7 +43,7 @@ async def get_signing_secret(request: Request, principal: CurrentPrincipal) -> d
 @router.post("/webhooks/signing-secret/rotate", responses=problem_responses(401))
 async def rotate_signing_secret(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     wrapper = key_wrapper(request.app.state.settings)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         view = await service.rotate_secret(session, wrapper, principal.workspace_id)
     return {**view.masked(), "secret": view.secret}
 
@@ -70,7 +66,7 @@ async def list_deliveries(
         where.append(WebhookDelivery.event == event)
     if status:
         where.append(WebhookDelivery.status == status)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         total = int(
             (
                 await session.execute(select(func.count()).select_from(WebhookDelivery).where(*where))
@@ -90,7 +86,7 @@ async def list_deliveries(
 
 
 async def _get(request: Request, principal: CurrentPrincipal, delivery_id: str) -> WebhookDelivery:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row: WebhookDelivery | None = (
             await session.execute(
                 select(WebhookDelivery).where(
@@ -115,7 +111,7 @@ async def get_delivery(
 )
 async def redeliver(request: Request, principal: CurrentPrincipal, delivery_id: DeliveryId) -> JSONResponse:
     deferred = Deferred()
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         copy = await service.redeliver(session, principal.workspace_id, delivery_id, deferred)
         if copy is None:
             raise not_found("webhook delivery")
@@ -133,7 +129,7 @@ async def send_test(body: TestRequest, request: Request, principal: CurrentPrinc
     delivery_id = new_id("whd")
     payload = service.ping_body(delivery_id, now)
     wrapper = key_wrapper(settings)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         secrets = await service.signing_secrets(session, wrapper, principal.workspace_id, now)
     raw = payload.encode()
     headers = jobs.headers_for(delivery_id, "ping", raw, secrets, int(now.timestamp()))
@@ -150,7 +146,7 @@ async def send_test(body: TestRequest, request: Request, principal: CurrentPrinc
     if result.error == "url_not_allowed":
         raise ProblemError(422, "url_not_allowed", "URL not allowed", result.response_excerpt)
     attempt = jobs.attempt_json(1, now, result)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         session.add(
             WebhookDelivery(
                 id=delivery_id,

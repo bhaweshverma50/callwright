@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_versions.canonical import content_hash
 from app.agent_versions.models import AgentVersion
-from app.agent_versions.service import draft_part
 from app.agents.models import Agent
 from app.agents.schemas import upcast
+from app.agents.versions import draft_part
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id
 from app.issues import kinds

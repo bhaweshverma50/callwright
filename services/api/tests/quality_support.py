@@ -21,8 +21,8 @@ from fastapi import FastAPI
 
 from app.core.ids import new_id
 from app.evals import install as quality_install
-from app.evals import runtime as quality_runtime
 from app.evaluators.registry import builtin_id
+from app.llms import runtime as model_runtime
 from tests.fakes.fake_llm import FakeLlm
 from tests.runtime_support import Runtime, _owner_dsn, admitted_call, agent_config, owner_sql, post_events
 from tests.unit.evaluators.helpers import offline_llm
@@ -31,10 +31,10 @@ from tests.unit.evaluators.helpers import offline_llm
 @pytest_asyncio.fixture
 async def quality(app: FastAPI) -> AsyncIterator[FakeLlm]:
     llm = offline_llm()
-    quality_runtime.install(app.state.settings, llm=llm, queue=getattr(app.state, "jobs", None))
+    model_runtime.install(app.state.settings, llm=llm, queue=getattr(app.state, "jobs", None))
     quality_install.install_handlers()
     yield llm
-    quality_runtime.install(app.state.settings, queue=getattr(app.state, "jobs", None))
+    model_runtime.install(app.state.settings, queue=getattr(app.state, "jobs", None))
     quality_install.install_handlers()
 
 

@@ -1,8 +1,8 @@
-"""003's ``AgentVersionsPort`` over this module's service (wave 2 integration).
+"""003's ``AgentVersionsPort`` over 002's agents service and version reads (wave 2 integration).
 
-The voice runtime codes against ``app.calls.ports.AgentVersionsPort``; the feature's ``install``
-registers ``AgentVersionsAdapter`` with ``ports.set_agent_versions``. Every method runs in the caller's
-workspace-scoped session, so RLS hides other workspaces' agents and versions.
+The voice runtime codes against ``app.calls.ports.AgentVersionsPort``; the calls feature's
+``install`` registers ``AgentVersionsAdapter`` with ``ports.set_agent_versions``. Every method
+runs in the caller's workspace-scoped session, so RLS hides other workspaces' agents and versions.
 
 002's ``AgentSnapshot`` carries version bookkeeping (number, schema version, hash, source) that
 003 does not need; the adapter keeps the ids and the config and reads ``agent_type`` from the
@@ -13,13 +13,13 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service
+from app.agents import service, versions
 from app.agents.models import Agent
 from app.calls import ports
 from app.core.errors import ProblemError
 
 
-def to_runtime(snapshot: service.AgentSnapshot, agent_type: str | None = None) -> ports.AgentSnapshot:
+def to_runtime(snapshot: versions.AgentSnapshot, agent_type: str | None = None) -> ports.AgentSnapshot:
     config = snapshot.config
     return ports.AgentSnapshot(
         version_id=snapshot.version_id,
@@ -32,7 +32,7 @@ def to_runtime(snapshot: service.AgentSnapshot, agent_type: str | None = None) -
 
 
 class AgentVersionsAdapter:
-    """``AgentVersionsPort`` backed by ``agent_versions.service``."""
+    """``AgentVersionsPort`` backed by ``agents.service`` and ``agents.versions``."""
 
     async def _agent(self, session: AsyncSession, agent_id: str) -> Agent | None:
         agent = await session.get(Agent, agent_id)
@@ -40,8 +40,8 @@ class AgentVersionsAdapter:
 
     async def _snapshot(self, session: AsyncSession, version_id: str) -> ports.AgentSnapshot | None:
         try:
-            snapshot = await service.get_snapshot(session, version_id)
-        except service.VersionNotFound:
+            snapshot = await versions.get_snapshot(session, version_id)
+        except versions.VersionNotFound:
             return None
         agent_type = None
         if not snapshot.config.get("type"):
@@ -65,9 +65,5 @@ class AgentVersionsAdapter:
         return await self._snapshot(session, version.id)
 
     async def get_published(self, session: AsyncSession, agent_id: str) -> ports.AgentSnapshot | None:
-        version = await service.get_published(session, agent_id)
+        version = await versions.get_published(session, agent_id)
         return await self._snapshot(session, version.id) if version is not None else None
-
-
-def register() -> None:
-    ports.set_agent_versions(AgentVersionsAdapter())

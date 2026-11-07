@@ -8,7 +8,8 @@
 * ``after_result(...)``: what follows a runner result once its transaction committed: release
   the slot, evaluate the base call when needed, fire the batch's completion hooks once.
 * ``sweep_simulations`` (cron, every minute): runs whose runner went silent for longer than
-  ``STALE_RUN_S`` fail ("the simulation runner stopped answering") and release their slots;
+  ``dispatch.STALE_RUN_S`` fail ("the simulation runner stopped answering") and release their
+  slots;
   batches whose last run ended fire their hooks.
 * ``purge_simulation_data`` (cron, daily): retention (research R13). Simulated calls follow their
   base call: when the base call's transcript is gone, the persona brief and the simulated
@@ -31,15 +32,15 @@ from app.calls.models import Call
 from app.core.db import Database
 from app.core.errors import ProblemError
 from app.evals.jobs import EVALUATE_CALL
-from app.evals.runtime import runtime
-from app.simulator import dispatch, service
-from app.simulator.charges import charge_run, merge_usage
+from app.llms.runtime import runtime
+from app.simulator import service
 from app.simulator.models import SimulationRun
 from app.simulator.persona import ExtractionFailed, extract_brief
+from app.testing import dispatch
+from app.testing.charges import charge_run, merge_usage
 
 logger = logging.getLogger(__name__)
 DISPATCH_SIMULATION = "dispatch_simulation"
-STALE_RUN_S = 15 * 60
 LOST_DISPATCH_S = 30 * 60
 
 
@@ -179,31 +180,12 @@ async def sweep_simulations(ctx: dict[str, Any]) -> int:
         rows = (
             await session.execute(
                 text("select run_id, workspace_id from simulation_runs_stale(:stale, :lost)"),
-                {"stale": STALE_RUN_S, "lost": LOST_DISPATCH_S},
+                {"stale": dispatch.STALE_RUN_S, "lost": LOST_DISPATCH_S},
             )
         ).all()
     for run_id, workspace_id in rows:
         await _fail(db, workspace_id, run_id, "The simulation runner stopped answering.")
         await dispatch.release(redis, workspace_id, run_id)
-    return len(rows) + await sweep_test_cases(db, redis)
-
-
-async def sweep_test_cases(db: Database, redis: Any) -> int:
-    """Test cases whose runner or judge never answered become ``error`` so their run finishes."""
-    from app.test_runs import service as test_runs
-    from app.test_runs.jobs import holder
-
-    async with db.transaction() as session:
-        rows = (
-            await session.execute(
-                text("select test_run_id, test_case_id, workspace_id from test_results_stale(:s)"),
-                {"s": STALE_RUN_S * 2},
-            )
-        ).all()
-    for run_id, case_id, workspace_id in rows:
-        async with db.transaction(workspace_id=workspace_id) as session:
-            await test_runs.fail_case(session, run_id, case_id, "The test runner stopped answering.")
-        await dispatch.release(redis, workspace_id, holder(run_id, case_id))
     return len(rows)
 
 

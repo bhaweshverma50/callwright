@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, Principal, principal_tx
 from app.core.errors import ProblemError, problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
@@ -40,10 +40,6 @@ VALIDATE = "POST /v1/issues/{id}/validate"
 DRAFT_AND_VALIDATE = "POST /v1/issues/{id}/draft-and-validate"
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 def _jobs(request: Request) -> Any:
     return getattr(request.app.state, "jobs", None)
 
@@ -64,9 +60,9 @@ async def detect(
         from datetime import UTC, datetime, timedelta
 
         from app.billing import service as billing
-        from app.simulator.targets import require_agent
+        from app.testing.targets import require_agent
 
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             agent = await require_agent(session, body.agent_id, pointer="/agent_id")
             running = (
                 await session.execute(
@@ -116,7 +112,7 @@ async def detect(
 async def latest_detection(
     request: Request, principal: CurrentPrincipal, agent_id: Annotated[str, Query(pattern="^agt_")]
 ) -> JSONResponse:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         run = await detection.latest_run(session, agent_id)
         return JSONResponse(detection.detection_view(run) if run is not None else None)
 
@@ -142,7 +138,7 @@ async def list_issues(
         raise validation_failed(
             [field_error("/window_days", "invalid_format", "Choose 7, 14, 30 or 90 days.")]
         )
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         items, total = await service.list_issues(
             session,
             agent_id=agent_id,
@@ -158,7 +154,7 @@ async def list_issues(
 
 @router.get("/issues/{issue_id}", responses=problem_responses(404))
 async def get_issue(request: Request, principal: CurrentPrincipal, issue_id: IssueId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         issue = await service.get_issue(session, issue_id)
         return await service.detail_view(session, issue)
 
@@ -171,7 +167,7 @@ async def list_samples(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.get_issue(session, issue_id)
         rows, total = await service.samples(session, issue_id, page=page, page_size=page_size)
     return {**page_meta(total, page, page_size), "items": [service.sample_view(s) for s in rows]}
@@ -182,7 +178,7 @@ async def list_samples(
 
 @router.get("/issues/{issue_id}/fixes", responses=problem_responses(404))
 async def list_fixes(request: Request, principal: CurrentPrincipal, issue_id: IssueId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         issue = await service.get_issue(session, issue_id)
         fixes = await service.fixes_of(session, issue.id)
         return {"items": [service.fix_view(f, issue.current_fix_revision) for f in fixes]}
@@ -191,7 +187,7 @@ async def list_fixes(request: Request, principal: CurrentPrincipal, issue_id: Is
 async def _draft(
     request: Request, principal: Principal, issue_id: str, kind: str | None, guidance: str | None
 ) -> revisions.Drafted:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await revisions.balance_ok(session, principal.workspace_id)
         data = await revisions.draft_input(session, issue_id, kind, guidance)
     return await revisions.call_drafter(data)
@@ -209,7 +205,7 @@ async def create_fix(
 ) -> JSONResponse:
     async def manual() -> tuple[int, Any]:
         assert body.kind is not None and body.payload is not None
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             fix = await revisions.store(
                 session,
                 issue_id,
@@ -224,7 +220,7 @@ async def create_fix(
 
     async def ai() -> tuple[int, Any]:
         drafted = await _draft(request, principal, issue_id, body.kind, body.guidance)
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             fix = await revisions.store(
                 session,
                 issue_id,
@@ -279,7 +275,7 @@ async def validate(
     settings = request.app.state.settings
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             prepared = await validation.prepare(
                 session, settings, issue_id, req, lock=not body.dry_run, estimate_only=body.dry_run
             )
@@ -321,7 +317,7 @@ async def draft_and_validate(
     settings = request.app.state.settings
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             # Refuse early (status, calls) before paying for a draft.
             issue = await service.get_issue(session, issue_id)
             transition(issue.status, "new_revision")
@@ -333,7 +329,7 @@ async def draft_and_validate(
                 min_sample=req.thresholds.min_sample,
             )
         drafted = await _draft(request, principal, issue_id, body.kind, body.guidance)
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             fix = await revisions.store(
                 session,
                 issue_id,
@@ -373,7 +369,7 @@ async def draft_and_validate(
 async def list_validations(
     request: Request, principal: CurrentPrincipal, issue_id: IssueId
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.get_issue(session, issue_id)
         rows = await service.validations_of(session, issue_id)
         return {"items": [service.validation_view(v) for v in rows]}
@@ -384,7 +380,7 @@ async def cancel_validation(
     request: Request, principal: CurrentPrincipal, issue_id: IssueId
 ) -> dict[str, Any]:
     state = request.app.state
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         issue = await service.get_issue(session, issue_id, lock=True)
         cancelled = await validation.cancel_running(session, issue)
         if cancelled is None:
@@ -395,7 +391,7 @@ async def cancel_validation(
                 "This issue has no validation to cancel.",
             )
     await validation.after_cancel(state.db, state.redis, principal.workspace_id, cancelled)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await service.detail_view(session, await service.get_issue(session, issue_id))
 
 
@@ -407,7 +403,7 @@ async def apply(
     request: Request, principal: CurrentPrincipal, issue_id: IssueId, body: ApplyBody | None = None
 ) -> dict[str, Any]:
     body = body or ApplyBody()
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         applied = await apply_fix(
             session,
             request.app.state.settings,
@@ -432,7 +428,7 @@ async def dismiss(
     request: Request, principal: CurrentPrincipal, issue_id: IssueId, body: DismissBody
 ) -> dict[str, Any]:
     state = request.app.state
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         _, cancelled = await service.dismiss(
             session,
             issue_id,
@@ -442,5 +438,5 @@ async def dismiss(
             user_id=principal.user_id,
         )
     await validation.after_cancel(state.db, state.redis, principal.workspace_id, cancelled)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await service.detail_view(session, await service.get_issue(session, issue_id))

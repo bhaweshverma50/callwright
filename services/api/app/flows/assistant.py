@@ -24,6 +24,7 @@ from typing import Any
 from opentelemetry import trace
 
 from app.agents import service as agents
+from app.agents.schemas import NAME_MAX
 from app.billing import service as billing
 from app.core.config import Settings
 from app.core.db import Database
@@ -80,16 +81,6 @@ def _strip_overrides(config: Any) -> dict[str, Any]:
     cfg = dict(config) if isinstance(config, Mapping) else {}
     cfg.pop("overrides", None)
     return cfg
-
-
-def _deep_merge(base: Mapping[str, Any], patch: Mapping[str, Any]) -> dict[str, Any]:
-    out = copy.deepcopy(dict(base))
-    for key, value in patch.items():
-        if isinstance(value, Mapping) and isinstance(out.get(key), dict):
-            out[key] = _deep_merge(out[key], value)
-        else:
-            out[key] = copy.deepcopy(value)
-    return out
 
 
 def remap_ids(graph: Mapping[str, Any], operations: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -185,7 +176,7 @@ def apply_operations(
                 target["label"] = clean["label"] = changes["label"].strip()[:80]
             if isinstance(changes.get("config"), Mapping):
                 patch = _strip_overrides(changes["config"])
-                target["config"] = _deep_merge(target.get("config") or {}, patch)
+                target["config"] = agents.deep_merge(dict(target.get("config") or {}), patch)
                 clean["config"] = patch
             applied.append({"op": "update_node", "node_id": target["id"], "changes": clean})
         elif kind == "remove_node":
@@ -226,7 +217,7 @@ def apply_operations(
             edges.remove(target_edge)
             applied.append({"op": "remove_edge", "edge_id": target_edge["id"]})
         elif kind == "rename_flow":
-            name = str(op.get("name") or "").strip()[:80] or None
+            name = str(op.get("name") or "").strip()[:NAME_MAX] or None
             if name:
                 applied.append({"op": "rename_flow", "name": name})
     return out, applied, name

@@ -18,9 +18,10 @@ from typing import Any
 
 from callwright_contract.adapters import AdapterCatalog
 
-from app.agents.defaults import ADVANCED_DEFAULTS, CALL_BEHAVIOR_DEFAULTS, DEFAULT_LANGUAGE, nc_default
+from app.agents.defaults import ADVANCED_DEFAULTS, CALL_BEHAVIOR_DEFAULTS, nc_default
 from app.llms.service import load_catalog as load_llm_catalog
 from app.pricing import engine
+from app.voices.catalog import DEFAULT_LANGUAGE
 from app.voices.catalog import load_catalog as load_speech_catalog
 
 

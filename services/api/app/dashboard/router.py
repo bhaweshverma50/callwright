@@ -7,7 +7,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, Request
 
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import problem_responses
 from app.dashboard import service
 from app.dashboard.periods import Window, resolve_period, zone
@@ -23,10 +23,6 @@ TzParam = Annotated[str, Query()]
 
 def _agents(raw: str | None) -> list[str]:
     return list(dict.fromkeys(a.strip() for a in (raw or "").split(",") if _AGENT.match(a.strip())))
-
-
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
 
 
 async def _window(
@@ -49,7 +45,7 @@ async def dashboard_stats(
     tz: TzParam = "UTC",
 ) -> dict[str, Any]:
     agents = _agents(agent_ids)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         window = await _window(session, period, start_date, end_date, tz, agents)
         return await service.stats(session, window, agents)
 
@@ -66,7 +62,7 @@ async def dashboard_quality(
     compare: bool = True,
 ) -> dict[str, Any]:
     agents = _agents(agent_ids)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         window = await _window(session, period, start_date, end_date, tz, agents)
         return await service.quality(session, window, agents, compare)
 
@@ -80,5 +76,5 @@ async def dashboard_agent_health(
 ) -> dict[str, Any]:
     agents = _agents(agent_ids)
     window = resolve_period("last_30_days", None, None, tz)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await service.agent_health(session, window, agents)

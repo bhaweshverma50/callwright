@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, Header, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.billing import service as billing
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import field_error, problem_responses, validation_failed
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
@@ -24,10 +24,6 @@ CallId = Annotated[str, Depends(path_id("call", "call", "call_id"))]
 EVALUATE = "POST /v1/datasets/{id}/evaluate"
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 @router.get("/datasets")
 async def list_datasets(
     request: Request,
@@ -36,7 +32,7 @@ async def list_datasets(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_datasets(session, agent_id=agent_id, page=page, page_size=page_size)
         return {**page_meta(total, page, page_size), "items": [service.dataset_view(d, n) for d, n in rows]}
 
@@ -45,7 +41,7 @@ async def list_datasets(
 async def create_dataset(
     request: Request, principal: CurrentPrincipal, body: DatasetCreate
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         dataset = await service.create_dataset(
             session,
             principal.workspace_id,
@@ -62,7 +58,7 @@ async def create_dataset(
 
 @router.get("/datasets/{dataset_id}", responses=problem_responses(404))
 async def get_dataset(request: Request, principal: CurrentPrincipal, dataset_id: DatasetId) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         dataset = await service.get_dataset(session, dataset_id)
         return service.dataset_view(dataset, await service.agent_name(session, dataset.agent_id))
 
@@ -74,14 +70,14 @@ async def update_dataset(
     changes = body.model_dump(exclude_unset=True)
     if not changes:
         raise validation_failed([field_error("", "required", "Change the name or the description")])
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         dataset = await service.update_dataset(session, dataset_id, changes)
         return service.dataset_view(dataset, await service.agent_name(session, dataset.agent_id))
 
 
 @router.delete("/datasets/{dataset_id}", status_code=204, responses=problem_responses(404))
 async def delete_dataset(request: Request, principal: CurrentPrincipal, dataset_id: DatasetId) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_dataset(session, dataset_id)
     return Response(status_code=204)
 
@@ -94,7 +90,7 @@ async def list_items(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         items, total = await service.list_items(session, dataset_id, page=page, page_size=page_size)
         return {**page_meta(total, page, page_size), "items": items}
 
@@ -103,7 +99,7 @@ async def list_items(
 async def add_items(
     request: Request, principal: CurrentPrincipal, dataset_id: DatasetId, body: AddItems
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await service.add_items(session, dataset_id, body.call_ids)
 
 
@@ -111,7 +107,7 @@ async def add_items(
 async def remove_item(
     request: Request, principal: CurrentPrincipal, dataset_id: DatasetId, call_id: CallId
 ) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.remove_item(session, dataset_id, call_id)
     return Response(status_code=204)
 
@@ -129,7 +125,7 @@ async def evaluate_dataset(
     options = body or EvaluateBody()
 
     async def handler() -> tuple[int, Any]:
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             await service.get_dataset(session, dataset_id)
             if await billing.get_balance(session, principal.workspace_id) <= 0:
                 raise billing.insufficient_credit("Add funds to run checks.")

@@ -17,8 +17,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.calls.transcript import Message, ToolEvent
-from app.evaluators.judge import PREAMBLE, CompletionClient, Usage, json_object, render_call
+from app.evaluators.judge import PREAMBLE, Usage, json_object, render_call
 from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.runtime import CompletionClient
 
 PURPOSE = "call_analysis"
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")

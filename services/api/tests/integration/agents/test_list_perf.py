@@ -10,9 +10,9 @@ from sqlalchemy import insert
 
 from app.agent_versions.canonical import content_hash
 from app.agent_versions.models import AgentVersion
-from app.agent_versions.service import summary_of
 from app.agents.defaults import default_config
 from app.agents.models import Agent
+from app.agents.versions import summary_of
 from app.core.ids import new_id
 from tests.conftest import signup
 

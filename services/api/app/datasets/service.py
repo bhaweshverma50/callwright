@@ -24,9 +24,9 @@ from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
 from app.datasets.models import Dataset, DatasetItem
-from app.evals.settings import judge_models
-from app.simulator import calls as sim_calls
-from app.simulator.targets import require_agent
+from app.evaluators.settings import judge_models
+from app.testing import calls as sim_calls
+from app.testing.targets import require_agent
 
 MAX_ITEMS = 1000
 
@@ -287,9 +287,9 @@ async def evaluate(
     from app.evals.jobs import start_evaluation
     from app.evals.models import EvaluatorRun
     from app.evals.runner import AlreadyRunning
-    from app.evals.runtime import runtime
     from app.evals.service import resolve_all
     from app.evals.views import split_current
+    from app.llms.runtime import runtime
 
     dataset = await get_dataset(session, dataset_id)
     agent = await session.get(Agent, dataset.agent_id)

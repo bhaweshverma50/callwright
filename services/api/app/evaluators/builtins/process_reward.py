@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
-from app.evals.scoring import process_reward_verdict
 from app.evaluators.base import (
     EvalContext,
     EvalOutcome,
@@ -14,6 +13,7 @@ from app.evaluators.base import (
     ItemResult,
     SettingsField,
     judge_model_field,
+    process_reward_verdict,
 )
 from app.evaluators.builtins.common import agent_goal, judge_model
 

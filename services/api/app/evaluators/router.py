@@ -14,26 +14,23 @@ from fastapi.responses import JSONResponse
 
 from app.billing import service as billing
 from app.calls.models import Call
-from app.core.auth import CurrentPrincipal, Principal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses, validation_failed
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id, require_id
-from app.evals import settings as eval_settings
-from app.evals.context import build_context
-from app.evals.runtime import runtime
 from app.evaluators import service
+from app.evaluators import settings as eval_settings
 from app.evaluators.base import EvalTools, Unavailable
+from app.evaluators.context import build_context
+from app.evaluators.judge import Judge
 from app.evaluators.registry import instance_for
 from app.evaluators.schemas import CustomInput, CustomPatch, TrialInput
 from app.llms.client import billable_cost
+from app.llms.runtime import runtime
 
 router = APIRouter(tags=["evaluators"])
 EvaluatorId = Annotated[str, Depends(path_id("evl", "evaluator", "evaluator_id"))]
 SIX = Decimal("0.000001")
-
-
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
 
 
 def _models(request: Request) -> list[str]:
@@ -48,7 +45,7 @@ async def list_evaluators(
     agent_type: Annotated[Literal["single_prompt", "flow"] | None, Query()] = None,
     include_deleted: Annotated[bool, Query()] = False,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows = await service.list_evaluators(
             session, kind=kind, agent_type=agent_type, include_deleted=include_deleted
         )
@@ -60,7 +57,7 @@ async def list_evaluators(
 @router.post("/evaluators", status_code=201, responses=problem_responses(409, 422))
 async def create_custom(request: Request, principal: CurrentPrincipal, body: CustomInput) -> dict[str, Any]:
     models = _models(request)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row, config = await service.create_custom(
             session, principal.workspace_id, principal.user_id, body.model_dump(exclude_unset=True), models
         )
@@ -94,7 +91,7 @@ async def trial(
             raise validation_failed(errors)
         require_id(body.call_id, "call", "call")
         judged = body.evaluator_type == "llm_judge_custom"
-        async with _tx(request, principal) as session:
+        async with principal_tx(request, principal) as session:
             call = await session.get(Call, body.call_id)
             if call is None:
                 raise not_found("call")
@@ -104,7 +101,7 @@ async def trial(
         rt = runtime()
         evaluator = instance_for(body.evaluator_type, config)
         tools = EvalTools(
-            judge=rt.judge,
+            judge=Judge.from_settings(rt.llm, rt.settings),
             judge_model=str(config.get("judge_model") or models[0]),
             cutoff=rt.settings.eval_judge_pass_cutoff,
         )
@@ -115,7 +112,7 @@ async def trial(
         charged = None
         if judged and (outcome.input_tokens or outcome.output_tokens):
             billable = billable_cost(outcome.raw_cost_usd)
-            async with _tx(request, principal) as session:
+            async with principal_tx(request, principal) as session:
                 await billing.charge_feature(
                     session,
                     workspace_id=principal.workspace_id,
@@ -156,7 +153,7 @@ async def trial(
 async def get_evaluator(
     request: Request, principal: CurrentPrincipal, evaluator_id: EvaluatorId
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row = await service.get_evaluator(session, evaluator_id)
         config = (await service.current_definitions(session, [row])).get(row.id)
         versions = await service.versions_of(session, evaluator_id)
@@ -170,7 +167,7 @@ async def update_custom(
     request: Request, principal: CurrentPrincipal, evaluator_id: EvaluatorId, body: CustomPatch
 ) -> dict[str, Any]:
     models = _models(request)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row, config = await service.update_custom(
             session, evaluator_id, principal.user_id, body.model_dump(exclude_unset=True), models
         )
@@ -179,6 +176,6 @@ async def update_custom(
 
 @router.delete("/evaluators/{evaluator_id}", status_code=204, responses=problem_responses(403, 404))
 async def delete_custom(request: Request, principal: CurrentPrincipal, evaluator_id: EvaluatorId) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_custom(session, evaluator_id)
     return Response(status_code=204)

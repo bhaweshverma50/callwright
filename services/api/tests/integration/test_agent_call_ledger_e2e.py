@@ -2,7 +2,7 @@
 
 An agent is built and published through the 002 routes, a test call is started on the
 published version through ``POST /v1/sessions/web-call`` (003, resolved by the real
-``AgentVersionsAdapter`` over ``agent_versions.service``), the voice worker's own
+``AgentVersionsAdapter`` over ``agents.service``), the voice worker's own
 ``InternalApiClient``, ``EventRecorder`` and ``EventPoster`` claim it and stream a two-minute
 conversation, the call ends, the post-call steps run, and the call is priced and charged in the
 001 ledger: one ``call_charge`` transaction, a stored cost breakdown, and the balance lowered by
@@ -22,8 +22,8 @@ from typing import Any
 import httpx
 from fastapi import FastAPI
 
-from app.agent_versions.runtime_port import AgentVersionsAdapter
 from app.calls import ports
+from app.calls.agent_versions import AgentVersionsAdapter
 from tests.agent_helpers import create_ok
 from tests.conftest import Account
 from tests.contract.worker_compat import worker_client, worker_modules

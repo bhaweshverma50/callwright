@@ -28,14 +28,14 @@ from typing import Any
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service as versions
+from app.agents import versions
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
-from app.evals.settings import judge_models
 from app.evals.views import LATEST_CURRENT
 from app.evaluators.models import EvaluatorRow
+from app.evaluators.settings import judge_models
 from app.issues import validation_rule as rule
 from app.issues.fixes import FixError, apply_fix
 from app.issues.lifecycle import transition
@@ -43,9 +43,9 @@ from app.issues.models import Issue, IssueFix, IssueSample, IssueValidation
 from app.issues.revisions import not_published, problem
 from app.issues.service import current_fix, get_issue, require_live_agent, running_validation
 from app.llms.client import billable_cost, token_cost
-from app.simulator import calls as sim_calls
 from app.simulator import service as sim
 from app.simulator.scorecard import VerdictRow, collapse, display_pp, display_rate, pair_verdicts
+from app.testing import calls as sim_calls
 
 logger = logging.getLogger(__name__)
 SOURCE = "issue_validation"
@@ -435,8 +435,8 @@ async def after_cancel(
     """Release runner slots of cancelled runs and fire the batches' hooks (after commit)."""
     if cancelled is None:
         return
-    from app.simulator import dispatch
     from app.simulator.jobs import fire_if_finished
+    from app.testing import dispatch
 
     for run_id in cancelled.release:
         await dispatch.release(redis, workspace_id, run_id)

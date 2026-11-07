@@ -19,17 +19,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.evals.models import AgentEvalSetting
-from app.evals.settings import (
-    HEADLINE_LIMIT_MESSAGE,
-    MAX_HEADLINE,
-    effective,
-    served_schema,
-    validate_overrides,
-)
 from app.evaluators import service as catalog
 from app.evaluators.models import EvaluatorRow
+from app.evaluators.settings import effective, served_schema, validate_overrides
 from app.llms.client import billable_cost, token_cost
 
+MAX_HEADLINE = 4
+HEADLINE_LIMIT_MESSAGE = "Up to 4 headline checks per agent"
 # Rough size of one judge request (a few minutes of transcript and the reply) for the cost hint.
 EST_INPUT_TOKENS = 3_000
 EST_OUTPUT_TOKENS = 250

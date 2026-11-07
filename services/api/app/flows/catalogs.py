@@ -10,8 +10,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from app.agents.offered import llm_offer, stt_offer, tts_offer
 from app.agents.validation import validate_override
-from app.llms.service import load_catalog as load_llm_catalog
 from app.voices.catalog import load_catalog as load_voice_catalog
 
 Problem = tuple[str, str, str]
@@ -25,14 +25,14 @@ def _section(overrides: Mapping[str, Any], key: str) -> Mapping[str, Any] | None
 
 def check_overrides(overrides: Mapping[str, Any]) -> list[Problem]:
     out: list[Problem] = []
-    llms = load_llm_catalog()
     voices = load_voice_catalog()
 
     llm = _section(overrides, "llm")
     if llm is not None:
         provider, model_id = str(llm.get("provider") or ""), str(llm.get("model") or "")
-        model = llms.model(provider, model_id) if provider and model_id else None
-        if model is None or model.withdrawn:
+        offer = llm_offer(provider, model_id) if provider and model_id else None
+        model = offer.model if offer is not None else None
+        if offer is None or model is None or offer.status == "withdrawn":
             out.append(
                 ("E_UNKNOWN_CATALOG", "llm.model", "This model is not offered any more. Choose another.")
             )
@@ -57,14 +57,15 @@ def check_overrides(overrides: Mapping[str, Any]) -> list[Problem]:
 
     tts = _section(overrides, "tts")
     if tts is not None:
-        tts_provider = voices.tts_provider(str(tts.get("provider") or ""))
+        tts_model = tts.get("model")
+        tts_found = tts_offer(str(tts.get("provider") or ""), str(tts_model) if tts_model else None, voices)
+        tts_provider = tts_found.provider
         if tts_provider is None:
             out.append(
                 ("E_UNKNOWN_CATALOG", "tts.provider", "This voice provider is not available. Choose another.")
             )
         else:
-            tts_model = tts.get("model")
-            if tts_model and tts_provider.model(str(tts_model)) is None:
+            if tts_found.status == "unknown_model":
                 out.append(("E_UNKNOWN_CATALOG", "tts.model", "This voice model is not offered any more."))
             voice = tts.get("voice_id")
             if not voice:
@@ -80,12 +81,13 @@ def check_overrides(overrides: Mapping[str, Any]) -> list[Problem]:
 
     stt = _section(overrides, "stt")
     if stt is not None:
-        provider_s = voices.stt_provider(str(stt.get("provider") or ""))
-        if provider_s is None:
+        stt_model = stt.get("model")
+        stt_found = stt_offer(str(stt.get("provider") or ""), str(stt_model) if stt_model else None, voices)
+        if stt_found.provider is None:
             out.append(
                 ("E_UNKNOWN_CATALOG", "stt.provider", "This speech recognition provider is not available.")
             )
-        elif stt.get("model") and provider_s.model(str(stt["model"])) is None:
+        elif stt_found.status == "unknown_model":
             out.append(
                 ("E_UNKNOWN_CATALOG", "stt.model", "This speech recognition model is not offered any more.")
             )

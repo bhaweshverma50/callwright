@@ -13,6 +13,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.agents.schemas import NAME_MAX
 from app.tools.schemas import HttpRequestSpec, TransferSpec
 
 __all__ = [
@@ -38,7 +39,6 @@ MAX_EDGES = 500
 NODE_ID = r"^n_[a-z0-9]{8}$"
 EDGE_ID = r"^e_[a-z0-9]{8}$"
 FUNCTION_NAME = r"^route_to_[a-z0-9_]{1,48}$"
-NAME_MAX = 80  # the flow name is the agent name (FR-048), limited by 002
 
 NodeType = Literal[
     "start", "agent", "task", "condition", "say", "extract_variable", "webhook", "transfer", "end"
@@ -121,7 +121,7 @@ def _name(value: str) -> str:
 
 
 class CreateFlowAgentRequest(_Model):
-    name: str = Field(max_length=120)
+    name: str = Field(max_length=NAME_MAX)
     language: str = Field(min_length=1, max_length=16)
 
     @field_validator("name")
@@ -136,7 +136,7 @@ class AgentSettingsChange(_Model):
 
 
 class SaveFlowRequest(_Model):
-    name: str = Field(max_length=120)
+    name: str = Field(max_length=NAME_MAX)
     graph: FlowGraph
     agent_settings: AgentSettingsChange | None = None
 

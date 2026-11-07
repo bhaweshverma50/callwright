@@ -17,7 +17,7 @@ from app.calls.models import Call
 from app.calls.pipeline import step_deferred
 from app.core.db import Database
 from app.evals.runner import AlreadyRunning, GroupStart, execute_group, start_group
-from app.evals.runtime import runtime
+from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
 EVALUATE_CALL = "evaluate_call"

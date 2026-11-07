@@ -17,8 +17,7 @@ from app.agents import hooks as agent_hooks
 from app.calls import ports
 from app.core.config import Settings
 from app.core.feature import Runtime
-from app.evals import runtime as quality_runtime
-from app.issues import runtime as issues_runtime
+from app.llms import runtime as model_runtime
 from app.main import create_app
 
 
@@ -53,8 +52,7 @@ def _installed() -> dict[str, Any]:
 async def test_api_and_worker_install_the_same_features(
     migrated: None, settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(quality_runtime, "_runtime", quality_runtime._runtime)
-    monkeypatch.setattr(issues_runtime, "_runtime", issues_runtime._runtime)
+    monkeypatch.setattr(model_runtime, "_runtime", model_runtime._runtime)
     roles: dict[str, list[str]] = {}
     install = features.install
 

@@ -32,6 +32,11 @@ _TRUE = {"1", "true", "yes", "on"}
 _ASYNC_ONLY = ("pgbouncer", "prepared_statement_cache_size", "statement_cache_size")
 
 
+def escape_like(text: str) -> str:
+    """``text`` as a literal inside a LIKE pattern (backslash is the default escape character)."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _with_driver(raw: str, driver: str) -> URL:
     url = make_url(raw)
     if url.drivername in ("postgres", "postgresql") or url.drivername.startswith("postgresql+"):

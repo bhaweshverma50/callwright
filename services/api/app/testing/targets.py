@@ -18,9 +18,10 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service as versions
 from app.agent_versions.canonical import content_hash
 from app.agent_versions.diff import diff_configs
+from app.agents import service as agents
+from app.agents import versions
 from app.agents.checks import validate_config
 from app.agents.models import Agent
 from app.agents.schemas import upcast
@@ -198,7 +199,7 @@ async def resolve_target(
         snapshot = await versions.get_snapshot(session, agent.pinned_version_id)
         return ResolvedTarget(kind, snapshot.version_id, snapshot.config, canonical_hash(snapshot.config))
     if kind == "draft":
-        version = await versions.snapshot_for_test(session, agent.id)
+        version = await agents.snapshot_for_test(session, agent.id)
         snapshot = await versions.get_snapshot(session, version.id)
         return ResolvedTarget(kind, snapshot.version_id, snapshot.config, canonical_hash(snapshot.config))
     if kind == "version":

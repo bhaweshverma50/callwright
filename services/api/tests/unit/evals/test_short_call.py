@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.calls.models import Call
-from app.evals.short_call import too_short
+from app.calls.short_call import too_short
 from tests.conftest import make_settings
 
 START = datetime(2026, 11, 2, 10, 0, tzinfo=UTC)

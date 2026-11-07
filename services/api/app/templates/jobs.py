@@ -60,7 +60,7 @@ async def sync(db: Database, seed_dir: Path = SEED_DIR) -> SyncReport:
             if row is None:
                 session.add(Template(id=slug, is_active=True, content_hash=digest, **values))
                 inserted += 1
-            elif row.content_hash.strip() != digest or not row.is_active:
+            elif row.content_hash != digest or not row.is_active:
                 for name, value in values.items():
                     setattr(row, name, value)
                 row.content_hash = digest

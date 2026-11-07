@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.agents.service import Actor
 from app.knowledge import jobs, service
-from app.knowledge.embeddings.fake import FakeEmbeddings
 from app.knowledge.models import Document
+from app.llms.embeddings.fake import FakeEmbeddings
 from tests.conftest import make_workspace
 
 
-async def workspace(app: FastAPI) -> service.KnowledgeActor:
+async def workspace(app: FastAPI) -> Actor:
     user_id, workspace_id = await make_workspace(app)
-    return service.KnowledgeActor(workspace_id=workspace_id, user_id=user_id)
+    return Actor(workspace_id=workspace_id, user_id=user_id)
 
 
 def deps(app: FastAPI, embedder: FakeEmbeddings | None = None) -> jobs.IngestDeps:
@@ -21,7 +22,7 @@ def deps(app: FastAPI, embedder: FakeEmbeddings | None = None) -> jobs.IngestDep
     )
 
 
-async def new_kb(app: FastAPI, actor: service.KnowledgeActor, name: str = "Policies") -> str:
+async def new_kb(app: FastAPI, actor: Actor, name: str = "Policies") -> str:
     async with app.state.db.transaction(workspace_id=actor.workspace_id) as session:
         kb = await service.create_kb(session, actor, name, "Clinic policies")
         return kb.id
@@ -29,7 +30,7 @@ async def new_kb(app: FastAPI, actor: service.KnowledgeActor, name: str = "Polic
 
 async def add_document(
     app: FastAPI,
-    actor: service.KnowledgeActor,
+    actor: Actor,
     kb_id: str,
     data: bytes,
     name: str = "doc.pdf",
@@ -48,7 +49,7 @@ async def add_document(
         return doc.id
 
 
-async def document(app: FastAPI, actor: service.KnowledgeActor, doc_id: str) -> Document | None:
+async def document(app: FastAPI, actor: Actor, doc_id: str) -> Document | None:
     async with app.state.db.transaction(workspace_id=actor.workspace_id) as session:
         doc = await session.get(Document, doc_id)
         if doc is not None:

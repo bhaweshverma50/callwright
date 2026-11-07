@@ -8,9 +8,10 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
+from app.agents.views import actor
 from app.calls.lookups import config_for, workspace_for_call
 from app.calls.models import Call
-from app.core.auth import CurrentPrincipal, Principal, require_service
+from app.core.auth import CurrentPrincipal, principal_tx, require_service
 from app.core.errors import forbidden, not_found, problem_responses, too_many_requests
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
@@ -35,14 +36,6 @@ READ_CHUNK = 1024 * 1024
 DocumentStatus = Annotated[str | None, Query(pattern="^(uploaded|processing|ready|failed)$")]
 
 
-def _tx(request: Request, principal: Principal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
-def _actor(principal: Principal) -> service.KnowledgeActor:
-    return service.KnowledgeActor(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 async def _kb_body(session: Any, kb: Any) -> dict[str, Any]:
     [view] = await service.kb_views(session, [kb])
     return view
@@ -57,7 +50,7 @@ async def list_knowledge_bases(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_kbs(
             session, search=search, attachable=attachable, page=page, page_size=page_size
         )
@@ -69,14 +62,16 @@ async def list_knowledge_bases(
 async def create_knowledge_base(
     body: KnowledgeBaseWrite, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        kb = await service.create_kb(session, _actor(principal), body.name or "", body.description or "")
+    async with principal_tx(request, principal) as session:
+        kb = await service.create_kb(
+            session, actor(request, principal), body.name or "", body.description or ""
+        )
         return await _kb_body(session, kb)
 
 
 @router.get("/knowledge-bases/{kb_id}", responses=problem_responses(404))
 async def get_knowledge_base(kb_id: KbId, request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await _kb_body(session, await service.get_kb(session, kb_id))
 
 
@@ -84,7 +79,7 @@ async def get_knowledge_base(kb_id: KbId, request: Request, principal: CurrentPr
 async def update_knowledge_base(
     kb_id: KbId, body: KnowledgeBaseWrite, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         kb = await service.update_kb(session, kb_id, body.name, body.description)
         return await _kb_body(session, kb)
 
@@ -96,9 +91,9 @@ async def delete_knowledge_base(
     principal: CurrentPrincipal,
     confirm: Annotated[bool, Query()] = False,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         detached = await service.delete_kb(
-            session, _actor(principal), request.app.state.storage, kb_id, confirm=confirm
+            session, actor(request, principal), request.app.state.storage, kb_id, confirm=confirm
         )
     return {"deleted": True, "detached_agent_ids": detached}
 
@@ -112,7 +107,7 @@ async def list_documents(
     page: PageParam = 1,
     page_size: PageSizeParam = 20,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_documents(
             session, kb_id, status=status, page=page, page_size=page_size
         )
@@ -150,9 +145,9 @@ async def upload_document(
         replace_doc_id=replace_doc_id,
         acknowledge_duplicate=acknowledge_duplicate,
     )
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         doc = await service.create_document(
-            session, _actor(principal), request.app.state.storage, kb_id, upload
+            session, actor(request, principal), request.app.state.storage, kb_id, upload
         )
         body = service.document_view(doc)
     await jobs.schedule(request.app.state, doc.id)
@@ -163,7 +158,7 @@ async def upload_document(
 async def check_duplicate_document(
     kb_id: KbId, body: CheckDuplicate, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.get_kb(session, kb_id)
         verdict, matches = await service.duplicate_matches(session, kb_id, body.file_name, body.sha256)
     return {"verdict": verdict, "matches": [m.__dict__ for m in matches]}
@@ -173,7 +168,7 @@ async def check_duplicate_document(
 async def get_document(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return service.document_view(await service.get_document(session, kb_id, doc_id))
 
 
@@ -183,7 +178,7 @@ async def get_document(
 async def delete_document(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal
 ) -> Response:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.delete_document(session, request.app.state.storage, kb_id, doc_id)
     return Response(status_code=204)
 
@@ -196,7 +191,7 @@ async def delete_document(
 async def reprocess_document(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal
 ) -> JSONResponse:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         doc = await service.reprocess(session, kb_id, doc_id)
         body = service.document_view(doc)
     await jobs.schedule(request.app.state, doc_id)
@@ -207,7 +202,7 @@ async def reprocess_document(
 async def get_document_url(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         doc = await service.get_document(session, kb_id, doc_id)
         key = doc.storage_key
     url, expires_at = await storage.signed_url(request.app.state.storage, key)
@@ -225,7 +220,7 @@ async def preview_search(
     if not limit.allowed:
         raise too_many_requests(limit.retry_after_s, "Preview searches are limited to 60 a minute.")
     deps = jobs.deps_from_state(state)
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         await service.get_kb(session, kb_id)
         return await service.search(session, state.redis, deps.embedder, [kb_id], body.query, body.top_k)
 
@@ -238,7 +233,7 @@ async def _agent_set(session: Any, agent_id: str, kbs: list[Any]) -> dict[str, A
 async def get_agent_knowledge_bases(
     agent_id: AgentId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         return await _agent_set(session, agent_id, await service.agent_kbs(session, agent_id))
 
 
@@ -246,8 +241,8 @@ async def get_agent_knowledge_bases(
 async def set_agent_knowledge_bases(
     agent_id: AgentId, body: SetAgentKnowledge, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
-        kbs = await service.set_agent_kbs(session, _actor(principal), agent_id, body.kb_ids)
+    async with principal_tx(request, principal) as session:
+        kbs = await service.set_agent_kbs(session, actor(request, principal), agent_id, body.kb_ids)
         return await _agent_set(session, agent_id, kbs)
 
 

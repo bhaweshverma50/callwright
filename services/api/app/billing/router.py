@@ -11,10 +11,11 @@ from fastapi.responses import JSONResponse
 from app.billing import service
 from app.billing.schemas import BalanceOut, CheckoutOut, CheckoutRequest, transaction_json
 from app.billing.stripe_gateway import SignatureError
-from app.core.auth import CurrentPrincipal
+from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.pricing.engine import fmt6
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +24,11 @@ router = APIRouter(tags=["billing"])
 TransactionId = Annotated[str, Depends(path_id("txn", "transaction", "transaction_id"))]
 
 
-def _tx(request: Request, principal: CurrentPrincipal) -> Any:
-    return request.app.state.db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id)
-
-
 @router.get("/billing/balance", response_model=BalanceOut, responses=problem_responses(401))
 async def get_balance(request: Request, principal: CurrentPrincipal) -> BalanceOut:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         seq, balance = await service.latest_seq_and_balance(session, principal.workspace_id)
-    return BalanceOut(balance_usd=f"{balance:.6f}", as_of_seq=seq)
+    return BalanceOut(balance_usd=fmt6(balance), as_of_seq=seq)
 
 
 @router.post(
@@ -46,7 +43,7 @@ async def create_checkout_session(
     principal: CurrentPrincipal,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key", max_length=255)] = None,
 ) -> CheckoutOut:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         row = await service.create_checkout(
             session,
             request.app.state.stripe,
@@ -66,7 +63,7 @@ async def list_transactions(
     page_size: PageSizeParam = 20,
     type: Annotated[str | None, Query(pattern="^(" + "|".join(service.TXN_TYPES) + ")$")] = None,
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         rows, total = await service.list_transactions(
             session, principal.workspace_id, page=page, page_size=page_size, type=type
         )
@@ -81,7 +78,7 @@ async def list_transactions(
 async def get_transaction(
     transaction_id: TransactionId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    async with _tx(request, principal) as session:
+    async with principal_tx(request, principal) as session:
         found = await service.get_transaction(session, principal.workspace_id, transaction_id)
     if found is None:
         raise not_found("transaction")

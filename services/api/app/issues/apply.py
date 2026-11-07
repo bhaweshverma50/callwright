@@ -11,7 +11,7 @@ concurrent publish cannot slip between the checks and the write:
    attempt recorded. A tool description fix edits the tool itself when only this agent uses it,
    otherwise an agent-specific copy (same name, new description; secret headers re-stored) and
    the configuration points at the copy (FR-022).
-3. ``agent_versions.create_version`` records (and unless ``publish`` is false, publishes) the
+3. ``agents.service.create_version`` records (and unless ``publish`` is false, publishes) the
    version with release notes ``Fix for <issue id>: <title>``. The new version's content hash,
    with copied tool ids and secret references mapped back to the originals, must equal the
    validated hash; anything else (a tool or knowledge base edited since validation) rolls back.
@@ -30,9 +30,10 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_versions import service as versions
 from app.agent_versions.canonical import content_hash
+from app.agents import service as agents
 from app.agents.models import Agent
+from app.agents.versions import draft_part
 from app.core.config import Settings
 from app.core.errors import ProblemError
 from app.core.secrets import key_wrapper
@@ -137,7 +138,7 @@ async def change_tool(
         tool.updated_at = datetime.now(UTC)
         await session.flush()
         return out
-    actor = tools.ToolActor(workspace_id=agent.workspace_id, user_id=user_id, allow_http=True)
+    actor = agents.Actor(workspace_id=agent.workspace_id, user_id=user_id, allow_http_webhook=True)
     copy_ = await tools.duplicate_tool(session, actor, key_wrapper(settings), tool_id)
     copy_.name = tool.name
     copy_.description = description
@@ -190,7 +191,7 @@ async def apply(
 ) -> Applied:
     issue = await get_issue(session, issue_id, lock=True)
     try:
-        agent = await versions.lock_agent(session, issue.agent_id)
+        agent = await agents.lock_agent(session, issue.agent_id)
     except ProblemError as exc:
         raise agent_deleted() from exc
     if issue.status in FINAL:
@@ -219,7 +220,7 @@ async def apply(
     config = remap(validated, change.forward)
     notes = release_notes(issue, extra_notes)
     is_flow = agent.type == "flow"
-    recorded = await versions.create_version(
+    recorded = await agents.create_version(
         session,
         agent.id,
         config,
@@ -234,8 +235,8 @@ async def apply(
         raise refused("config_changed")
 
     # The editor shows what was applied: the draft (and a flow agent's graph).
-    draft = {k: v for k, v in versions.draft_part(config).items() if k != "flow"}
-    versions.apply_draft(agent, draft, version)
+    draft = {k: v for k, v in draft_part(config).items() if k != "flow"}
+    agents.apply_draft(agent, draft, version)
     if is_flow:
         from app.flows import service as flows
 

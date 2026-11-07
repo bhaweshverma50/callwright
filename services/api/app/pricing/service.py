@@ -65,6 +65,14 @@ async def catalog_at(session: AsyncSession, at: datetime | None = None) -> engin
     return await _load_version(session, version)
 
 
+async def catalog_now(session: AsyncSession) -> engine.Catalog | None:
+    """The catalog in effect now, or ``None`` before the first version (prices shown as unknown)."""
+    try:
+        return await catalog_at(session)
+    except CatalogUnavailable:
+        return None
+
+
 async def catalog_version(session: AsyncSession, version: int) -> engine.Catalog:
     row = await session.get(CatalogVersion, version)
     if row is None:

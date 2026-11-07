@@ -29,6 +29,7 @@ from app.calls.models import Call, CallEvent
 from app.calls.ports import registry
 from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary
 from app.calls.transcript import normalize_items, stored_items
+from app.core.db import escape_like
 from app.core.errors import ProblemError, field_error, validation_failed
 
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")
@@ -170,7 +171,7 @@ def parse_list_query(params: Mapping[str, str | None]) -> CallListQuery:
 
 
 def _like_prefix(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    return escape_like(value) + "%"
 
 
 def conditions(q: CallListQuery, user_id: str) -> list[ColumnElement[bool]]:

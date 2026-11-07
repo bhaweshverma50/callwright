@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 
 from app.knowledge import jobs
-from app.knowledge.embeddings.fake import FakeEmbeddings
+from app.llms.embeddings.fake import FakeEmbeddings
 from app.llms.service import load_catalog
 from app.usage.models import UsageEvent
 from tests.fixtures import knowledge as fx

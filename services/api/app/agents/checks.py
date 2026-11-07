@@ -2,8 +2,6 @@
 
 Used by draft saves, creates, restores, publishing, ``POST /v1/agents/validate`` and other
 features (004 global settings, 008 variants), so the editor and the server never disagree.
-Lives apart from ``agents.service`` so ``agent_versions.service`` can use it without an import
-cycle; ``agents.service.validate_config`` re-exports it.
 """
 
 from __future__ import annotations
@@ -11,16 +9,17 @@ from __future__ import annotations
 from typing import Any
 
 from opentelemetry import trace
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_versions.models import AgentVersion
 from app.agents import hooks
+from app.agents.models import Agent
 from app.agents.validation import ConfigValidationResult, PureContext, validate_pure
 from app.agents.webhook_url import Resolver, check_resolved
 from app.core import url_guard
-from app.pricing import engine
 from app.pricing import service as pricing
-from app.voices.models import AmbientAudioFile
+from app.voices import service as voices
 
 tracer = trace.get_tracer("app.agents")
 
@@ -37,11 +36,8 @@ def _host_resolver() -> Resolver | None:
     return resolve
 
 
-async def pricing_now(session: AsyncSession) -> engine.Catalog | None:
-    try:
-        return await pricing.catalog_at(session)
-    except pricing.CatalogUnavailable:
-        return None
+def _upload_source(key: str) -> dict[str, Any]:
+    return {"advanced": {"background_audio": {"source": {"kind": "upload", "key": key}}}}
 
 
 def _upload_key(config: Any) -> str | None:
@@ -56,12 +52,31 @@ def _upload_key(config: Any) -> str | None:
 async def _ambient_keys(session: AsyncSession, key: str | None) -> frozenset[str] | None:
     if key is None:
         return None
-    rows = await session.execute(
-        select(AmbientAudioFile.storage_key).where(
-            AmbientAudioFile.storage_key == key, AmbientAudioFile.deleted_at.is_(None)
+    return frozenset({key}) if await voices.ambient_exists(session, key) else frozenset()
+
+
+async def ambient_in_use(session: AsyncSession, key: str) -> bool:
+    """Whether any live draft or published version references the uploaded ``key`` (registered
+    with ``voices.service`` so an upload in use cannot be deleted)."""
+    probe = _upload_source(key)
+    in_draft = (
+        await session.execute(
+            select(func.count())
+            .select_from(Agent)
+            .where(Agent.deleted_at.is_(None), Agent.draft_config.contains(probe))
         )
-    )
-    return frozenset(str(k) for k in rows.scalars())
+    ).scalar_one()
+    if in_draft:
+        return True
+    in_published = (
+        await session.execute(
+            select(func.count())
+            .select_from(AgentVersion)
+            .join(Agent, Agent.pinned_version_id == AgentVersion.id)
+            .where(Agent.deleted_at.is_(None), AgentVersion.config.contains(probe))
+        )
+    ).scalar_one()
+    return bool(in_published)
 
 
 async def validate_config(
@@ -84,7 +99,7 @@ async def validate_config(
     with tracer.start_as_current_span("agents.validate_config") as span:
         span.set_attribute("agent.type", agent_type)
         ctx = PureContext(
-            pricing=await pricing_now(session) if session is not None else None,
+            pricing=await pricing.catalog_now(session) if session is not None else None,
             allow_http_webhook=allow_http_webhook,
             previous_llm=previous_llm,
             workspace_id=workspace_id,

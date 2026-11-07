@@ -22,7 +22,7 @@ class AgentVersion(Base):
     version_number: Mapped[int] = mapped_column(Integer)
     schema_version: Mapped[int] = mapped_column(Integer)
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    content_hash: Mapped[str] = mapped_column(String(64))
+    content_hash: Mapped[str] = mapped_column(String)
     source: Mapped[str] = mapped_column(String)
     restored_from_version_id: Mapped[str | None] = mapped_column(String)
     parent_version_id: Mapped[str | None] = mapped_column(String)

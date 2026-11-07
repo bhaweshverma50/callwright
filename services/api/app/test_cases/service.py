@@ -21,9 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
-from app.simulator.targets import require_agent
 from app.test_cases.import_format import ImportResult, dedupe_key, parse_import
 from app.test_cases.models import TestCase, TestCategory
+from app.testing.targets import require_agent
 
 # Design palette for category chips (FR-032); seeds take fixed entries.
 CATEGORY_PALETTE: tuple[str, ...] = (

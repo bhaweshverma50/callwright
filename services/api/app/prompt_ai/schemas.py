@@ -6,6 +6,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.voices.catalog import DEFAULT_LANGUAGE
+
 
 class ChatTurn(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -26,6 +28,6 @@ class GenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     agent_id: str | None = Field(default=None, pattern=r"^agt_[0-9A-HJKMNP-TV-Z]{26}$")
-    language: str = Field(default="en-US", max_length=16)
+    language: str = Field(default=DEFAULT_LANGUAGE, max_length=16)
     messages: list[ChatTurn] = Field(min_length=1, max_length=40)
     current: CurrentValues | None = None

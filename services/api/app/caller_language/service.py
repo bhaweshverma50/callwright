@@ -19,7 +19,6 @@ from callwright_contract.values import E164
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.defaults import DEFAULT_LANGUAGE
 from app.caller_language.models import CallerPreference, CallLanguage
 from app.calls.lookups import config_for
 from app.calls.models import Call
@@ -28,6 +27,7 @@ from app.core.db import Database
 from app.core.errors import field_error, not_found, validation_failed
 from app.core.ids import new_id
 from app.core.pagination import page_meta
+from app.voices.catalog import DEFAULT_LANGUAGE
 from app.voices.catalog import load_catalog as load_voice_catalog
 
 

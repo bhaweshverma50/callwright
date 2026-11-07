@@ -25,10 +25,10 @@ from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.evals.models import EvaluatorResultItem
 from app.evals.views import LATEST_CURRENT
-from app.simulator import calls as sim_calls
 from app.simulator.models import SimulationExperiment, SimulationRun
 from app.simulator.scorecard import ExcludedRun, ItemVerdict, Scorecard, VerdictRow, compute_scorecard
 from app.simulator.service import experiment_runs, get_experiment, snapshot_of
+from app.testing import calls as sim_calls
 
 
 async def current_runs(session: AsyncSession, call_ids: Sequence[str]) -> list[Any]:

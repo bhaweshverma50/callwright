@@ -5,8 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
-from app.evals.scoring import Verdict
-from app.evaluators.base import EvalContext, EvalOutcome, EvalTools, Evaluator, ItemResult, SettingsField
+from app.evaluators.base import (
+    EvalContext,
+    EvalOutcome,
+    EvalTools,
+    Evaluator,
+    ItemResult,
+    SettingsField,
+    Verdict,
+)
 
 
 class AnomalyDetection(Evaluator):

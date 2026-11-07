@@ -213,15 +213,15 @@ async def make_env(
 
 @pytest_asyncio.fixture
 async def issue_env(app: FastAPI, client: httpx.AsyncClient) -> AsyncIterator[IssueEnv]:
-    from app.evals import runtime as quality_runtime
+    from app.llms import runtime as model_runtime
 
     previous = getattr(app.state, "jobs", None)
     env = await make_env(app, client)
     app.state.jobs = env.queue
-    quality_runtime.set_queue(env.queue)
+    model_runtime.runtime().queue = env.queue
     yield env
     app.state.jobs = previous
-    quality_runtime.set_queue(previous)
+    model_runtime.runtime().queue = previous
 
 
 # Stubbed 008 batch completion ------------------------------------------------------------------

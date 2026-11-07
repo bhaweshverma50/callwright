@@ -25,6 +25,7 @@ from app.flows.schemas import CONVERSATIONAL
 from app.flows.starter import config_with_defaults
 from app.flows.variables import TASK_RESULT
 from app.llms.service import load_catalog as load_llm_catalog
+from app.voices.catalog import DEFAULT_LANGUAGE
 
 SCHEMA_VERSION = 1
 
@@ -151,7 +152,7 @@ def compile_flow(
         return next((str(e["target"]) for e in outgoing[nid] if e.get("trigger") == trigger), None)
 
     persona = str(agent_config.get("prompt") or "")
-    language_default = str(agent_config.get("language") or "en-US")
+    language_default = str(agent_config.get("language") or DEFAULT_LANGUAGE)
     flow_tool_ids = [str(t) for t in agent_config.get("tool_ids") or []]
     kb_ids = [str(k) for k in agent_config.get("kb_ids") or []]
     entry = next(str(n["id"]) for n in nodes if n.get("type") == "start")

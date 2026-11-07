@@ -9,8 +9,8 @@ from fastapi import FastAPI
 from sqlalchemy import func, select
 
 from app.knowledge import jobs
-from app.knowledge.embeddings.fake import FakeEmbeddings
 from app.knowledge.models import Chunk, Document
+from app.llms.embeddings.fake import FakeEmbeddings
 from tests.fixtures import knowledge as fx
 from tests.knowledge_helpers import add_document, deps, document, new_kb, workspace
 

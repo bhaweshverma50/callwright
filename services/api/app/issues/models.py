@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
-from app.knowledge.embeddings.base import DIMENSIONS
+from app.llms.embeddings.base import DIMENSIONS
 
 
 class Issue(Base):

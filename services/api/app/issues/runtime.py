@@ -1,9 +1,7 @@
-"""Process-wide services for 009: the model client for naming and drafting, and 005's embedder.
-
-``install(settings)`` is called by ``create_app`` and the jobs worker's startup; tests swap parts
-with ``install(..., llm=FakeLlm(...), embedder=...)``. Offline (no vendor key) the fake model
-adapter answers ``purpose="issue_naming"`` and ``purpose="issue_fix_draft"`` deterministically
-from the structured context block the prompts carry, so detection and drafting work without keys.
+"""009's model calls on the shared ``llms.runtime``: the model that names issues and drafts fixes,
+and the offline replies. Offline (no vendor key) the fake model adapter answers
+``purpose="issue_naming"`` and ``purpose="issue_fix_draft"`` deterministically from the structured
+context block the prompts carry, so detection and drafting work without keys.
 """
 
 from __future__ import annotations
@@ -11,11 +9,9 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Any
 
-from app.core.config import Settings, get_settings
-from app.evaluators.judge import CompletionClient
+from app.core.config import Settings
 from app.llms.adapters.base import ChatMessage
 
 NAMING = "issue_naming"
@@ -26,42 +22,9 @@ FAKE_RULE = (
 )
 
 
-@dataclass
-class IssuesRuntime:
-    settings: Settings
-    llm: CompletionClient
-    embedder: Any
-
-    @property
-    def model(self) -> str:
-        return self.settings.issues_model or self.settings.simulator_model
-
-
-_runtime: IssuesRuntime | None = None
-
-
-def install(
-    settings: Settings | None = None, *, llm: CompletionClient | None = None, embedder: Any = None
-) -> IssuesRuntime:
-    global _runtime
-    from app.knowledge.embeddings import build_embedder
-    from app.llms.client import LlmClient
-
-    settings = settings or get_settings()
-    register_fakes()
-    _runtime = IssuesRuntime(
-        settings=settings,
-        llm=llm or LlmClient(settings),
-        embedder=embedder if embedder is not None else build_embedder(settings),
-    )
-    return _runtime
-
-
-def runtime() -> IssuesRuntime:
-    return _runtime or install()
-
-
-# Offline answers -------------------------------------------------------------------------------
+def model(settings: Settings) -> str:
+    """The model that names issues and drafts fixes."""
+    return settings.issues_model or settings.simulator_model
 
 
 def block(text: str, tag: str) -> dict[str, Any]:

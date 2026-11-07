@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 from fastapi import FastAPI
 
-from app.usage.seed_demo import seed
+from app.dev.seed_usage import seed
 from tests.conftest import Account
 
 

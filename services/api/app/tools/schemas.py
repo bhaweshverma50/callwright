@@ -22,6 +22,8 @@ from callwright_contract.values import (
 )
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.agents.schemas import MAX_TOOLS
+
 ToolType = Literal["end_call", "transfer_call", "press_digit", "http"]
 TOOL_TYPES: tuple[ToolType, ...] = ("end_call", "transfer_call", "press_digit", "http")
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
@@ -160,7 +162,7 @@ class ToolSpec(BaseModel):
 
 
 class SetAgentTools(_Strict):
-    tool_ids: list[Annotated[str, Field(pattern=r"^tool_")]] = Field(max_length=25)
+    tool_ids: list[Annotated[str, Field(pattern=r"^tool_")]] = Field(max_length=MAX_TOOLS)
 
 
 class TestRunRequest(_Strict):

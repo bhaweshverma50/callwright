@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from app.agent_versions.diff import diff_configs, register_flow_differ
+from app.agent_versions.diff import diff_configs
 from app.agents.defaults import default_config
 
 
@@ -118,24 +118,3 @@ def test_numbers_compare_by_value() -> None:
     new = base()
     new["tts"]["speed"] = 1
     assert diff_configs(base(), new) == []
-
-
-def test_flow_differ_hook() -> None:
-    calls: list[tuple[Any, Any]] = []
-
-    def differ(old: Any, new: Any) -> list[dict[str, Any]]:
-        calls.append((old, new))
-        return [{"op": "replace", "path": "/flow/nodes[n_1]/prompt", "old": "a", "new": "b"}]
-
-    old = {**default_config("flow"), "flow": {"graph": {"nodes": [{"id": "n_1", "prompt": "a"}]}}}
-    new = {**default_config("flow"), "flow": {"graph": {"nodes": [{"id": "n_1", "prompt": "b"}]}}}
-    register_flow_differ(differ)
-    try:
-        assert diff_configs(old, new) == [
-            {"op": "replace", "path": "/flow/nodes[n_1]/prompt", "old": "a", "new": "b"}
-        ]
-    finally:
-        import app.agent_versions.diff as module
-
-        module._flow_differ = None
-    assert len(calls) == 1

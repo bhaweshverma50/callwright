@@ -145,7 +145,7 @@ def insert_call(workspace_id: str, *, status: str = "completed") -> str:
 
 @dataclass
 class FakeAgentVersions:
-    """In-memory stand-in for 002's ``agent_versions.service`` (RLS emulated by workspace).
+    """In-memory stand-in for ``calls.agent_versions`` (RLS emulated by workspace).
 
     With ``materialize`` (the ``runtime`` fixture) every version is also written to the database so
     the call foreign keys hold; the port answers stay in memory.

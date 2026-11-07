@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import httpx
 
-from app.simulator import dispatch
 from app.simulator.jobs import purge_simulation_data, sweep_simulations
+from app.test_runs.jobs import sweep_test_results
+from app.testing import dispatch
 from tests.conftest import Account
 from tests.runtime_support import SERVICE_HEADERS, idem, owner_sql
 from tests.sim_support import SimEnv, make_agent, seed_live_call
@@ -55,11 +56,11 @@ async def test_sweeper_finishes_unanswered_test_cases(
         await client.post("/v1/test-runs", json={"agent_id": agent.agent_id}, headers={**h, **idem()})
     ).json()
     await sim_env.run_api_jobs()
-    assert await sweep_simulations(sim_env.ctx()) == 0
+    assert await sweep_test_results(sim_env.ctx()) == 0
     owner_sql(
         "update test_runs set created_at = now() - interval '2 hours' where id = %s", (run["test_run_id"],)
     )
-    assert await sweep_simulations(sim_env.ctx()) == 1
+    assert await sweep_test_results(sim_env.ctx()) == 1
     done = (await client.get(f"/v1/test-runs/{run['test_run_id']}", headers=h)).json()
     assert done["status"] == "completed" and done["errored"] == 1
     assert done["results"][0]["error_message"] == "The test runner stopped answering."

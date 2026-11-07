@@ -9,7 +9,6 @@ import inspect
 from arq.cron import CronJob
 from fastapi import APIRouter
 
-from app.agent_versions.install import FEATURE as agent_versions
 from app.agents.install import FEATURE as agents
 from app.analysis_vars.install import FEATURE as analysis_vars
 from app.analytics_chat.install import FEATURE as analytics_chat
@@ -70,7 +69,6 @@ FEATURES: tuple[Feature, ...] = (
     webhooks_out,
     livekit_hooks,
     agents,
-    agent_versions,
     templates,
     llms,
     voices,

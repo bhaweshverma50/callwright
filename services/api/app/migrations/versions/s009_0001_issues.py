@@ -30,7 +30,7 @@ branch_labels = None
 depends_on = None
 
 WS = "current_setting('app.workspace_id', true)"
-DIMENSIONS = 1536  # 005's embedding dimension (app.knowledge.embeddings.base.DIMENSIONS)
+DIMENSIONS = 1536  # 005's embedding dimension (app.llms.embeddings.base.DIMENSIONS)
 
 
 def _rls(table: str) -> str:

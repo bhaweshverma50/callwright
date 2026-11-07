@@ -4,12 +4,12 @@
 features. Instead of importing them (which would invert the build order, architecture section
 3), 002 calls whatever they register here from their feature's ``install`` hook:
 
-* ``register_validator(block, fn)``: called by ``agents.service.validate_config`` (save, publish,
+* ``register_validator(block, fn)``: called by ``agents.checks.validate_config`` (save, publish,
   ``POST /v1/agents/validate``) with a :class:`HookContext`. Returns a :class:`HookIssues`
   (errors block save, publish blockers block publish, warnings inform). Used by 004 (``flow``),
   005 (``tool_ids``, ``kb_ids``: ``missing_reference``), 007 (``evals``) and 010.
 * ``register_snapshot_resolver(block, fn)``: called when a version is recorded
-  (``agent_versions.service.create_version`` and ``snapshot_for_test``). The return value is
+  (``agents.service``: saves, ``create_version`` and ``snapshot_for_test``). The return value is
   written to ``config[block]`` of the version only, never to the draft. 005 registers ``tools``
   (full tool definitions, secrets as masked refs, FR-028) and ``knowledge`` (kb ids plus retrieval
   settings, T089); 004 may register ``flow`` (compiled graph). The content hash covers resolved
@@ -21,7 +21,7 @@ features. Instead of importing them (which would invert the build order, archite
   is written, in the same transaction (004 copies the flow draft).
 
 Flow-node overrides (004): every per-node model, voice or STT override MUST be validated with
-``agents.service.validate_override(path, value)``, which uses the same ``controls`` range table
+``agents.validation.validate_override(path, value)``, which uses the same ``controls`` range table
 that ``GET /v1/voices/catalog`` serves (FR-047, T104). Do not keep a second range table.
 
 Hooks may be plain functions or coroutines. Registration is process-wide and registering the same

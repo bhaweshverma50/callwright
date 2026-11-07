@@ -23,11 +23,11 @@ from typing import Any
 
 import psycopg
 
-from app.billing.service import breakdown_json
 from app.calls.pipeline import latency_stats
 from app.core.ids import new_id
 from app.pricing import engine
 from app.pricing.engine import Bundle, Catalog, Components, Rate, Selection, Usage
+from app.voices.catalog import DEFAULT_LANGUAGE
 
 CATALOG = Catalog(
     version=1,
@@ -63,7 +63,7 @@ COMPONENTS = Components(
 AGENT_CONFIG: dict[str, Any] = {
     "schema_version": 1,
     "type": "single_prompt",
-    "language": "en-US",
+    "language": DEFAULT_LANGUAGE,
     "llm": {"provider": "azure_openai", "model": "gpt-5-mini", "temperature": 1.0},
     "prompt": "You are a helpful agent.",
     "begin_message": "Hi, thanks for calling.",
@@ -298,7 +298,7 @@ def seed(
             )
             quote = engine.price(COMPONENTS, usage, CATALOG)
             assert quote.call is not None
-            cost = breakdown_json(quote.call, call_id)
+            cost = engine.breakdown_json(quote.call, call_id)
             total = quote.call.total_usd
         done = status == "completed"
         sentiment = rng.choice(("positive", "positive", "neutral", "negative", "unknown")) if done else None

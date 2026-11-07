@@ -30,6 +30,8 @@ from app.core.db import Database
 from app.core.errors import ProblemError
 from app.issues import charges, detection, validation
 from app.issues.models import IssueDetectionRun
+from app.issues.runtime import model as issues_model
+from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.issues")
@@ -72,7 +74,6 @@ async def detect_issues(ctx: dict[str, Any], workspace_id: str, run_id: str) -> 
                     await detection.name_plan(
                         plan, gathered.evaluators.get(plan.evaluator_id), reasons, usage
                     )
-            from app.issues.runtime import runtime
 
             async with db.transaction(workspace_id=workspace_id) as session:
                 run = await session.get(IssueDetectionRun, rid, with_for_update=True)
@@ -80,7 +81,10 @@ async def detect_issues(ctx: dict[str, Any], workspace_id: str, run_id: str) -> 
                     return "skipped"
                 created, updated = await detection.write(session, run, gathered, plans, fresh)
                 raw = charges.raw_cost(
-                    runtime().model, usage.input_tokens, usage.output_tokens, embed_raw=usage.embed_raw
+                    issues_model(runtime().settings),
+                    usage.input_tokens,
+                    usage.output_tokens,
+                    embed_raw=usage.embed_raw,
                 )
                 billed = await charges.charge(
                     session,
@@ -201,9 +205,8 @@ async def audit_applied_issues(ctx: dict[str, Any]) -> int:
 def on_batch_finished_factory() -> Any:
     async def on_batch_finished(workspace_id: str, experiment_id: str) -> None:
         """008 completion hook: queue the finalize job on the process's job queue."""
-        from app.evals.runtime import runtime as quality_runtime
 
-        queue = quality_runtime().queue
+        queue = runtime().queue
         if queue is not None:
             await queue.enqueue(FINALIZE_VALIDATION, workspace_id, experiment_id)
 

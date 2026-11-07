@@ -5,7 +5,7 @@ Later or parallel features register implementations in ``registry`` from their `
 keep the API working with clear refusals.
 
 * ``AgentVersionsPort`` (002): frozen agent versions. 003 codes against this protocol; the
-  integrator registers 002's ``agent_versions.service`` with ``set_agent_versions`` at merge.
+  calls feature registers ``calls.agent_versions`` with ``set_agent_versions`` at merge.
   ``get_snapshot(version_id)`` returns the frozen AgentConfig of one version;
   ``snapshot_for_test(agent_id)`` the version for the current draft (created with
   ``source = test`` when the draft changed, never published); ``get_published(agent_id)`` the

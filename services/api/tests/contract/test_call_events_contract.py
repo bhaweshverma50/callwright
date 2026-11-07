@@ -76,7 +76,8 @@ async def test_worker_event_stream_round_trip(
     api, contract_hooks, http = worker_client(app)
     call_id = await _claimed_call(app, client, account, runtime, api)
     ended: list[str] = []
-    recorder = metrics.EventRecorder()
+    sent: list[dict] = []  # type: ignore[type-arg]
+    recorder = metrics.EventRecorder(on_event=sent.append)
     poster = metrics.EventPoster(call_id, recorder, api, on_end_call=ended.append)
 
     _full_call(metrics, recorder)
@@ -85,7 +86,7 @@ async def test_worker_event_stream_round_trip(
     assert result.control.action == "none" and ended == []
 
     # A retried batch is accepted as duplicates and changes nothing (idempotent per seq).
-    replay = await api.post_events(call_id, recorder.history[:5])
+    replay = await api.post_events(call_id, sent[:5])
     assert (replay.accepted, replay.duplicates) == (0, 5)
 
     # An empty batch is a pure heartbeat.

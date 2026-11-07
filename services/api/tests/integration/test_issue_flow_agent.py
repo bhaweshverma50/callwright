@@ -6,7 +6,7 @@ from __future__ import annotations
 import httpx
 from fastapi import FastAPI
 
-from app.evals import runtime as quality_runtime
+from app.llms import runtime as model_runtime
 from tests.conftest import signup
 from tests.flow_helpers import basic, create_flow, save
 from tests.issues_support import FACT, IssueEnv, complete_batch, enable, verdict_plan
@@ -37,7 +37,7 @@ async def test_node_fix_validates_and_applies_to_the_flow(app: FastAPI, client: 
     queue = RecordingQueue()
     previous = getattr(app.state, "jobs", None)
     app.state.jobs = queue
-    quality_runtime.set_queue(queue)
+    model_runtime.runtime().queue = queue
     try:
         env = IssueEnv(app, client, account, agent, queue)
         env.seed_calls(8, items=ITEMS, reason="Triage failed.")
@@ -86,4 +86,4 @@ async def test_node_fix_validates_and_applies_to_the_flow(app: FastAPI, client: 
         assert triage["config"]["instructions"] == body["payload"]["proposed_instructions"]
     finally:
         app.state.jobs = previous
-        quality_runtime.set_queue(previous)
+        model_runtime.runtime().queue = previous

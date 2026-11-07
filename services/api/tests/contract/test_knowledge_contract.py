@@ -11,7 +11,7 @@ import pytest_asyncio
 from fastapi import FastAPI
 
 from app.knowledge import jobs
-from app.knowledge.embeddings.fake import FakeEmbeddings
+from app.llms.embeddings.fake import FakeEmbeddings
 from tests.agent_helpers import create_ok
 from tests.conftest import Account
 from tests.contract.conftest import check
