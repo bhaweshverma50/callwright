@@ -27,27 +27,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import hooks as agent_hooks
 from app.calls.models import Call
-from app.core.auth import Principal
-from app.core.errors import ProblemError, field_error, not_found, validation_failed
-from app.core.ids import new_id
-from app.core.pagination import page_meta
-from app.core.secrets import delete_secret, get_secret, put_secret
-from app.phone_numbers import validation
-from app.phone_numbers.provisioning import dispatch_spec
-from app.phone_numbers.shared import (
+from app.channels import validation
+from app.channels.provisioning import dispatch_spec
+from app.channels.shared import (
     ChannelDeps,
     active_counts,
     agent_state,
     check_webhook_url,
     conflict,
+    delete_or_drain,
     iso,
     require_published,
+    sip_host,
+    status_view,
 )
-from app.phone_numbers.sip import InboundTrunkSpec, SipError
-from app.whatsapp.graph_client import GraphError, WhatsAppGraph
-from app.whatsapp.models import WhatsAppCallerRoute, WhatsAppChannel
-from app.whatsapp.schemas import CallerRouteCreate, WhatsAppChannelCreate, WhatsAppChannelUpdate
-from app.whatsapp.signatures import verify_signature, verify_token_hash
+from app.channels.sip import InboundTrunkSpec, SipError
+from app.channels.whatsapp.graph_client import GraphError, WhatsAppGraph
+from app.channels.whatsapp.models import WhatsAppCallerRoute, WhatsAppChannel
+from app.channels.whatsapp.schemas import CallerRouteCreate, WhatsAppChannelCreate, WhatsAppChannelUpdate
+from app.channels.whatsapp.signatures import verify_signature, verify_token_hash
+from app.core.auth import Principal
+from app.core.errors import ProblemError, field_error, not_found, validation_failed
+from app.core.ids import new_id
+from app.core.pagination import page_meta
+from app.core.secrets import delete_secret, get_secret, put_secret
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +94,7 @@ def to_out(channel: WhatsAppChannel, active: int, routes: int) -> dict[str, Any]
         "inbound_agent_id": channel.inbound_agent_id,
         "inbound_webhook_url": channel.inbound_webhook_url,
         "caller_route_count": routes,
-        "status": "draining" if channel.status == "deleted" else channel.status,
+        "status": status_view(channel.status),
         "status_detail": channel.status_detail,
         "credentials_verified_at": iso(channel.credentials_verified_at),
         "calling_enabled_at": iso(channel.calling_enabled_at),
@@ -136,10 +139,6 @@ def _last4(value: str) -> str:
     return value[-4:] if len(value) >= 8 else "****"
 
 
-def _digits(value: str | None) -> str:
-    return "".join(ch for ch in value or "" if ch.isdigit())
-
-
 def _graph_problem(exc: GraphError) -> ProblemError:
     if exc.kind == "unreachable":
         return ProblemError(
@@ -159,7 +158,9 @@ async def _check_credentials(deps: WhatsAppDeps, token: str, version: str, meta_
         info = await _graph(deps).check_number(token, version, meta_id)
     except GraphError as exc:
         raise _graph_problem(exc) from None
-    if info.display_phone_number is not None and _digits(info.display_phone_number) != _digits(e164):
+    if info.display_phone_number is not None and validation.digits(
+        info.display_phone_number
+    ) != validation.digits(e164):
         reported = info.display_phone_number
         raise ProblemError(
             422,
@@ -283,14 +284,15 @@ async def _setup_and_store(deps: WhatsAppDeps, workspace_id: str, channel_id: st
         channel = await _load(s, channel_id)
         token = await _secret(deps, s, channel, channel.access_token_secret) or ""
         needs_rule = channel.inbound_agent_id is not None or await _has_routes(s, channel_id)
-    sip_host = deps.settings.livekit_sip_host or "sip.not-configured.invalid"
     created: list[tuple[str, str]] = []
     error: str | None = None
     credentials = None
     calling_enabled = False
     trunk_id, rule_id = channel.lk_inbound_trunk_id, channel.lk_dispatch_rule_id
     try:
-        await graph.enable_calling(token, channel.graph_api_version, channel.meta_phone_number_id, sip_host)
+        await graph.enable_calling(
+            token, channel.graph_api_version, channel.meta_phone_number_id, sip_host(deps.settings)
+        )
         calling_enabled = True
         credentials = await graph.sip_credentials(
             token, channel.graph_api_version, channel.meta_phone_number_id, channel.e164
@@ -512,28 +514,15 @@ async def delete_channel(
                 f"{active} call(s) are using this channel. Delete when idle to remove it after they end.",
                 extra={"active_call_count": active},
             )
-        if channel.lk_dispatch_rule_id:
-            try:
-                await deps.sip.delete_dispatch_rule(channel.lk_dispatch_rule_id)
-                channel.lk_dispatch_rule_id = None
-            except SipError as exc:
-                raise ProblemError(502, "routing_update_failed", "Routing update failed", str(exc)) from None
-        token = await _secret(deps, s, channel, channel.access_token_secret) or ""
-        await _disable_calling(deps, channel, token)
-        channel.updated_at = datetime.now(UTC)
-        if active:
-            channel.status = "draining"
-            await s.flush()
+
+        async def calling_off() -> None:
+            token = await _secret(deps, s, channel, channel.access_token_secret) or ""
+            await _disable_calling(deps, channel, token)
+
+        if not await delete_or_drain(
+            deps.sip, s, channel, active=active, finish=finish_delete, after_rule=calling_off
+        ):
             return 202, await _out(s, channel)
-        try:
-            if channel.lk_inbound_trunk_id:
-                await deps.sip.delete_trunk(channel.lk_inbound_trunk_id)
-        except SipError as exc:
-            channel.status = "draining"
-            channel.status_detail = f"Cleanup pending: {exc}"[:500]
-            await s.flush()
-            return 202, await _out(s, channel)
-        await finish_delete(s, channel)
     return 204, None
 
 
@@ -656,7 +645,7 @@ async def list_routes(
     async with deps.db.transaction(workspace_id=workspace_id) as s:
         await _load(s, channel_id)
         query = select(WhatsAppCallerRoute).where(WhatsAppCallerRoute.channel_id == channel_id)
-        digits = _digits(caller)
+        digits = validation.digits(caller)
         if digits and (caller or "").strip().startswith("+"):
             query = query.where(WhatsAppCallerRoute.caller_e164.startswith("+" + digits, autoescape=True))
         elif digits:

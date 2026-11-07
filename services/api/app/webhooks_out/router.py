@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+from app.core import url_guard
 from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import new_id, path_id
@@ -144,7 +145,7 @@ async def send_test(body: TestRequest, request: Request, principal: CurrentPrinc
         body.timeout_ms,
         allow_http=settings.webhooks_allow_http,
         allow_private=settings.webhooks_allow_private,
-        resolver=getattr(state, "webhook_resolver", None),
+        resolver=url_guard.resolver,
     )
     if result.error == "url_not_allowed":
         raise ProblemError(422, "url_not_allowed", "URL not allowed", result.response_excerpt)

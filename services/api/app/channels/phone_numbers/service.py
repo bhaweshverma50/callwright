@@ -5,7 +5,7 @@ guard), then creates the LiveKit SIP objects synchronously and stores ``active``
 Edits that touch routing call the SIP service before the database, so a failed SIP update
 changes nothing (502 ``routing_update_failed``). Deleting a number with active calls is refused
 unless ``when_idle``: the dispatch rule goes at once, the number turns ``draining`` and the drain
-cron (``jobs.py``) removes the trunks once the last call ends. Rows are soft-deleted so past
+cron (``channels.jobs``) removes the trunks once the last call ends. Rows are soft-deleted so past
 calls keep their number and label.
 
 Agents in use by a number cannot be deleted (002 ``register_usage_checker``): the builder
@@ -24,36 +24,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import hooks as agent_hooks
 from app.calls.models import Call
+from app.channels import provisioning, validation
+from app.channels.phone_numbers.models import PhoneNumber
+from app.channels.phone_numbers.schemas import PhoneNumberImport, PhoneNumberUpdate
+from app.channels.shared import (
+    ChannelDeps,
+    active_counts,
+    check_webhook_url,
+    conflict,
+    delete_or_drain,
+    iso,
+    require_published,
+    sip_host,
+    status_view,
+)
+from app.channels.sip import SipError
 from app.core.auth import Principal
 from app.core.errors import ProblemError, not_found
 from app.core.ids import new_id
 from app.core.pagination import page_meta
 from app.core.secrets import delete_secret, get_secret, put_secret
-from app.phone_numbers import provisioning, validation
-from app.phone_numbers.models import PhoneNumber
-from app.phone_numbers.schemas import PhoneNumberImport, PhoneNumberUpdate
-from app.phone_numbers.shared import (
-    ChannelDeps,
-    active_counts,
-    check_webhook_url,
-    conflict,
-    iso,
-    require_published,
-)
-from app.phone_numbers.sip import SipError
 
 logger = logging.getLogger(__name__)
 
 PASSWORD_SECRET = "phone_numbers/{id}/auth_password"  # noqa: S105 - a secret name, not a value
-NOT_CONFIGURED_HOST = "sip.not-configured.invalid"
-
-
-def sip_host(deps: ChannelDeps) -> str:
-    return deps.settings.livekit_sip_host or NOT_CONFIGURED_HOST
 
 
 def sip_settings(deps: ChannelDeps) -> dict[str, Any]:
-    host = sip_host(deps)
+    host = sip_host(deps.settings)
     return {
         "origination_uri": f"sip:{host}",
         "direct_uri_template": f"sip:{{e164}}@{host}",
@@ -63,7 +61,6 @@ def sip_settings(deps: ChannelDeps) -> dict[str, Any]:
 
 
 def to_out(deps: ChannelDeps, number: PhoneNumber, active: int) -> dict[str, Any]:
-    status = "draining" if number.status == "deleted" else number.status
     return {
         "id": number.id,
         "e164": number.e164,
@@ -76,8 +73,8 @@ def to_out(deps: ChannelDeps, number: PhoneNumber, active: int) -> dict[str, Any
         "inbound_agent_id": number.inbound_agent_id,
         "outbound_agent_id": number.outbound_agent_id,
         "inbound_webhook_url": number.inbound_webhook_url,
-        "direct_uri": f"sip:{number.e164}@{sip_host(deps)}",
-        "status": status,
+        "direct_uri": f"sip:{number.e164}@{sip_host(deps.settings)}",
+        "status": status_view(number.status),
         "status_detail": number.status_detail,
         "active_call_count": active,
         "created_at": iso(number.created_at),
@@ -405,26 +402,8 @@ async def delete_number(
                 f"{active} call(s) are using this number. Delete when idle to remove it after they end.",
                 extra={"active_call_count": active},
             )
-        if number.lk_dispatch_rule_id:
-            try:
-                await deps.sip.delete_dispatch_rule(number.lk_dispatch_rule_id)
-                number.lk_dispatch_rule_id = None
-            except SipError as exc:
-                raise ProblemError(502, "routing_update_failed", "Routing update failed", str(exc)) from None
-        number.updated_at = datetime.now(UTC)
-        if active:
-            number.status = "draining"
-            await s.flush()
+        if not await delete_or_drain(deps.sip, s, number, active=active, finish=finish_delete):
             return 202, to_out(deps, number, active)
-        try:
-            await provisioning.remove_all(deps.sip, number)
-        except SipError as exc:
-            # The drain cron retries the trunk removal; new calls are already refused.
-            number.status = "draining"
-            number.status_detail = f"Cleanup pending: {exc}"[:500]
-            await s.flush()
-            return 202, to_out(deps, number, 0)
-        await finish_delete(s, number)
     return 204, None
 
 

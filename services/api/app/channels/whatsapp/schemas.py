@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.phone_numbers.schemas import AGENT_ID, check_e164, check_webhook_format
+from app.channels.phone_numbers.schemas import AGENT_ID, check_e164, check_webhook_format
 
 GRAPH_VERSION = r"^v?\d+\.\d+$"
 

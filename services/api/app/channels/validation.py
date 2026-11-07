@@ -21,6 +21,10 @@ MAX_CIDRS = 20
 _LABEL = re.compile(r"^(?!-)[a-z0-9-]{1,63}(?<!-)$")
 
 
+def digits(value: str | None) -> str:
+    return "".join(ch for ch in value or "" if ch.isdigit())
+
+
 class InvalidValue(ValueError):
     """A value that breaks a channel rule; the message is safe to show."""
 

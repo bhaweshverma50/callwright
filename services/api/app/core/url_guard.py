@@ -3,6 +3,10 @@
 ``callwright_contract.url_guard.check_url`` vets the URL; ``guarded_request`` then connects to
 the checked address with the original ``Host`` header and TLS server name, so DNS rebinding
 cannot move the request. Redirects are never followed.
+
+``resolver`` is the one test seam for webhook host lookups (agent webhooks, channel inbound
+webhooks, the test ping): tests set it so hosts resolve without DNS; ``None`` uses the system
+resolver.
 """
 
 from __future__ import annotations
@@ -10,7 +14,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 import httpx
-from callwright_contract.url_guard import CheckedUrl, host_header, pinned_url
+from callwright_contract.url_guard import CheckedUrl, Resolver, host_header, pinned_url
+
+resolver: Resolver | None = None
 
 
 async def guarded_request(

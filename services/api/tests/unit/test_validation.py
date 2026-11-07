@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.phone_numbers.validation import (
+from app.channels.validation import (
     InvalidValue,
     normalize_number,
     normalize_whatsapp_caller,

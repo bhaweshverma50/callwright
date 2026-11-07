@@ -12,9 +12,6 @@ transaction and releases the Idempotency-Key, so a retry with the same key is ev
 Every other outcome (success or problem) is stored against the key and replayed for 24 hours;
 a replayed success carries ``idempotent_replay: true``. The unique
 ``calls(workspace_id, idempotency_key)`` index is the second guard against double dialling.
-
-``SipOutboundDial`` is the ``OutboundDialProvider`` 003 calls at claim time: the number's
-outbound trunk, the two numbers and the ring timeout stored on the call.
 """
 
 from __future__ import annotations
@@ -32,7 +29,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calls import service as calls
-from app.calls.ports import OutboundDial
+from app.channels.phone_numbers.models import PhoneNumber
+from app.channels.shared import ChannelDeps, agent_state, conflict
 from app.core import idempotency
 from app.core.auth import Principal
 from app.core.errors import ProblemError, field_error, too_many_requests, validation_failed
@@ -43,8 +41,6 @@ from app.core.rate_limit import TokenBucket
 from app.outbound import calling_hours, dnc
 from app.outbound.models import OutboundCallingHours, OutboundPolicyDecision
 from app.outbound.schemas import OutboundCallRequest
-from app.phone_numbers.models import PhoneNumber
-from app.phone_numbers.shared import ChannelDeps, agent_state, conflict
 
 logger = logging.getLogger(__name__)
 
@@ -459,18 +455,3 @@ async def list_decisions(
 
 
 # Dial provider (003 extension point) ----------------------------------------------------------------
-
-
-class SipOutboundDial:
-    async def dial_spec(self, session: AsyncSession, call: Any) -> OutboundDial | None:
-        if not call.phone_number_id or not call.to_number or not call.from_number:
-            return None
-        number = await session.get(PhoneNumber, call.phone_number_id)
-        if number is None or number.lk_outbound_trunk_id is None:
-            return None
-        return OutboundDial(
-            sip_trunk_id=number.lk_outbound_trunk_id,
-            to_number=call.to_number,
-            from_number=call.from_number,
-            ring_timeout_s=int(call.ring_timeout_s or 30),
-        )

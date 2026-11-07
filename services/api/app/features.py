@@ -21,6 +21,7 @@ from app.call_events.install import FEATURE as call_events
 from app.callbacks.install import FEATURE as callbacks
 from app.caller_language.install import FEATURE as caller_language
 from app.calls.install import FEATURE as calls
+from app.channels.install import FEATURE as channels
 from app.core.config import Settings
 from app.core.feature import Feature, JobFunction, Runtime
 from app.dashboard.install import FEATURE as dashboard
@@ -35,7 +36,6 @@ from app.knowledge.install import FEATURE as knowledge
 from app.livekit_hooks.install import FEATURE as livekit_hooks
 from app.llms.install import FEATURE as llms
 from app.outbound.install import FEATURE as outbound
-from app.phone_numbers.install import FEATURE as phone_numbers
 from app.preferences.install import FEATURE as preferences
 from app.pricing.install import FEATURE as pricing
 from app.prompt_ai.install import FEATURE as prompt_ai
@@ -51,7 +51,6 @@ from app.usage.install import FEATURE as usage
 from app.voice_commands.install import FEATURE as voice_commands
 from app.voices.install import FEATURE as voices
 from app.webhooks_out.install import FEATURE as webhooks_out
-from app.whatsapp.install import FEATURE as whatsapp
 from app.workspaces.install import FEATURE as workspaces
 
 # Router order is mount order.
@@ -78,12 +77,11 @@ FEATURES: tuple[Feature, ...] = (
     prompt_ai,
     tools,
     knowledge,
-    phone_numbers,
+    channels,
     outbound,
     callbacks,
     caller_language,
     preferences,
-    whatsapp,
     flows,
     demo,
     analysis_vars,

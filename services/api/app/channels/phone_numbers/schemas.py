@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.phone_numbers import validation
+from app.channels import validation
 
 ULID = "[0-9A-HJKMNP-TV-Z]{26}"
 AGENT_ID = f"^agt_{ULID}$"

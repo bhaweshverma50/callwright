@@ -7,7 +7,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from app.whatsapp import service as whatsapp
+from app.channels.whatsapp import service as whatsapp
 from tests.conftest import Account
 from tests.fakes.livekit_fake import Channels
 from tests.runtime_support import owner_sql

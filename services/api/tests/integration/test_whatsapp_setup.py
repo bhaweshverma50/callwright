@@ -12,7 +12,7 @@ import pytest_asyncio
 import respx
 from fastapi import FastAPI
 
-from app.whatsapp.graph_client import LiveWhatsAppGraph
+from app.channels.whatsapp.graph_client import LiveWhatsAppGraph
 from tests.conftest import Account
 from tests.fakes.livekit_fake import Channels, whatsapp_body
 from tests.runtime_support import owner_sql

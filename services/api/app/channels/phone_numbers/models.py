@@ -48,6 +48,10 @@ class PhoneNumber(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     @property
+    def trunk_ids(self) -> tuple[str | None, ...]:
+        return (self.lk_inbound_trunk_id, self.lk_outbound_trunk_id)
+
+    @property
     def termination_address(self) -> str:
         if self.termination_port is None:
             return self.termination_host

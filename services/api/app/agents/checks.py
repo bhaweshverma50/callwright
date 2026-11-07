@@ -17,14 +17,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents import hooks
 from app.agents.validation import ConfigValidationResult, PureContext, validate_pure
 from app.agents.webhook_url import Resolver, check_resolved
+from app.core import url_guard
 from app.pricing import engine
 from app.pricing import service as pricing
 from app.voices.models import AmbientAudioFile
 
 tracer = trace.get_tracer("app.agents")
 
-# Tests replace this to avoid DNS lookups; ``None`` uses the system resolver.
-webhook_resolver: Resolver | None = None
+
+def _host_resolver() -> Resolver | None:
+    """``core.url_guard.resolver`` (the test seam) in the host-only form ``check_resolved`` takes."""
+    seam = url_guard.resolver
+    if seam is None:
+        return None
+
+    async def resolve(host: str) -> list[str]:
+        return await seam(host, 443)
+
+    return resolve
 
 
 async def pricing_now(session: AsyncSession) -> engine.Catalog | None:
@@ -88,7 +98,7 @@ async def validate_config(
             and url
             and not any(e["pointer"] == "/advanced/webhook_url" for e in result.errors)
         ):
-            issue = await check_resolved(url, webhook_resolver)
+            issue = await check_resolved(url, _host_resolver())
             if issue is not None:
                 result.errors.append(
                     {"pointer": "/advanced/webhook_url", "code": issue.code, "message": issue.message}

@@ -26,6 +26,8 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from app import features
 from app.auth.idp import build_idp
 from app.billing.stripe_gateway import build_gateway
+from app.channels.sip import build_sip
+from app.channels.whatsapp.graph_client import build_graph as build_whatsapp_graph
 from app.core.auth import TokenVerifier
 from app.core.config import Settings, get_settings
 from app.core.db import Database
@@ -38,8 +40,6 @@ from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
 from app.llms.client import LlmClient
-from app.phone_numbers.sip import build_sip
-from app.whatsapp.graph_client import build_graph as build_whatsapp_graph
 
 logger = logging.getLogger(__name__)
 API_PREFIX = "/v1"

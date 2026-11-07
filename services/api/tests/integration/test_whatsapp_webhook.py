@@ -9,7 +9,7 @@ import time
 
 import httpx
 
-from app.whatsapp.signatures import sign
+from app.channels.whatsapp.signatures import sign
 from tests.conftest import Account
 from tests.fakes.livekit_fake import Channels, whatsapp_body
 

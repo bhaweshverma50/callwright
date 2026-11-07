@@ -20,11 +20,11 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.channels import validation
 from app.core.errors import ProblemError, not_found
 from app.core.ids import new_id
 from app.core.pagination import page_meta
 from app.outbound.models import DncEntry
-from app.phone_numbers import validation
 
 MAX_ENTRIES = 1_000_000
 MAX_ROWS = 100_000

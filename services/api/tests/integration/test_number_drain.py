@@ -7,7 +7,7 @@ from __future__ import annotations
 import httpx
 from fastapi import FastAPI
 
-from app.phone_numbers.jobs import drain_channels_once
+from app.channels.jobs import drain_channels_once
 from tests.conftest import Account
 from tests.fakes.livekit_fake import Channels, fresh_e164
 from tests.runtime_support import owner_sql

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 
-from app.whatsapp.signatures import sign, verify_signature, verify_token_hash
+from app.channels.whatsapp.signatures import sign, verify_signature, verify_token_hash
 
 BODY = b'{"object":"whatsapp_business_account","entry":[]}'
 

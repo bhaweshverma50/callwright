@@ -22,8 +22,8 @@ from typing import Any, Literal, Protocol
 
 import httpx
 
+from app.channels.sip import sip_live
 from app.core.config import Settings
-from app.phone_numbers.sip import sip_live
 
 SIP_PORT = 5061
 

@@ -154,12 +154,8 @@ async def test_send_test_event(
         received.append(request)
         return httpx.Response(204)
 
-    async def public(host: str, port: int) -> list[str]:
-        return ["93.184.216.34"]
-
     original = app.state.webhook_http
     app.state.webhook_http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    app.state.webhook_resolver = public
     try:
         ok = check(await client.post("/v1/webhooks/test", json={"url": HOOK}, headers=account.headers))
         assert ok.status_code == 200
@@ -185,4 +181,3 @@ async def test_send_test_event(
     finally:
         await app.state.webhook_http.aclose()
         app.state.webhook_http = original
-        app.state.webhook_resolver = None

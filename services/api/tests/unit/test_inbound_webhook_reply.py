@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from app.phone_numbers.routing import MAX_REPLY_BYTES, WebhookOutcome, parse_reply, route_detail
+from app.channels.routing import MAX_REPLY_BYTES, WebhookOutcome, parse_reply, route_detail
 
 
 def test_full_reply() -> None:

@@ -16,12 +16,10 @@ import httpx
 import pytest_asyncio
 from fastapi import FastAPI
 
+from app.channels.install import FEATURE as channels_feature
+from app.channels.sip import FakeSip
+from app.channels.whatsapp.graph_client import FakeWhatsAppGraph
 from app.core.feature import Runtime as FeatureRuntime
-from app.outbound.install import FEATURE as outbound
-from app.phone_numbers.install import FEATURE as phone_numbers
-from app.phone_numbers.sip import FakeSip
-from app.whatsapp.graph_client import FakeWhatsAppGraph
-from app.whatsapp.install import FEATURE as whatsapp
 from tests.conftest import Account
 from tests.runtime_support import SERVICE_HEADERS, Runtime
 
@@ -139,9 +137,8 @@ async def channels(app: FastAPI, runtime: Runtime) -> AsyncIterator[Channels]:
     sip, graph = FakeSip(), FakeWhatsAppGraph()
     app.state.sip, app.state.whatsapp_graph = sip, graph
     state = app.state
-    for feature in (phone_numbers, outbound, whatsapp):
-        assert feature.install is not None
-        feature.install(FeatureRuntime("api", state.settings, state.db, state.jobs, state.webhook_http))
+    assert channels_feature.install is not None
+    channels_feature.install(FeatureRuntime("api", state.settings, state.db, state.jobs, state.webhook_http))
     await app.state.redis.delete(*[k async for k in app.state.redis.scan_iter("tb:outbound:*")] or ["-"])
     try:
         yield Channels(app, sip, graph, runtime)

@@ -7,13 +7,13 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 
+from app.channels.phone_numbers import service
+from app.channels.phone_numbers.schemas import PhoneNumberImport, PhoneNumberUpdate
+from app.channels.shared import ChannelDeps
 from app.core.auth import CurrentPrincipal
 from app.core.errors import problem_responses
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam
-from app.phone_numbers import service
-from app.phone_numbers.schemas import PhoneNumberImport, PhoneNumberUpdate
-from app.phone_numbers.shared import ChannelDeps
 
 router = APIRouter(tags=["phone-numbers"])
 

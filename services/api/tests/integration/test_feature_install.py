@@ -89,6 +89,6 @@ async def test_api_and_worker_install_the_same_features(
     assert api["inbound_routers"] == {"sip_inbound": "PhoneNumberRouter", "whatsapp": "WhatsAppRouter"}
     assert api["outbound_dial"] == "SipOutboundDial"
     assert api["usage_checkers"] == [
-        "app.phone_numbers.service.attachments_for_agent",
-        "app.whatsapp.service.attachments_for_agent",
+        "app.channels.phone_numbers.service.attachments_for_agent",
+        "app.channels.whatsapp.service.attachments_for_agent",
     ]

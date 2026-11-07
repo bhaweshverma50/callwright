@@ -9,8 +9,8 @@ from sqlalchemy import BigInteger, DateTime, Identity, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.channels.phone_numbers.models import pg_enum
 from app.core.db import Base
-from app.phone_numbers.models import pg_enum
 
 
 class DncEntry(Base):

@@ -27,6 +27,7 @@ from callwright_contract.adapters import load_catalog
 from app import features
 from app.calls.jobs import run_pipeline_for
 from app.calls.lookups import workspace_for_call
+from app.channels.sip import build_sip
 from app.core.config import Settings, get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError
@@ -35,7 +36,6 @@ from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue, redis_settings_for
 from app.core.worker_health import serve_health
-from app.phone_numbers.sip import build_sip
 
 logger = logging.getLogger("app.worker")
 

@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
-from app.phone_numbers.schemas import AGENT_ID, check_e164
+from app.channels.phone_numbers.schemas import AGENT_ID, check_e164
 
 MAX_METADATA_BYTES = 4096
 VariableValue = Annotated[str, StringConstraints(max_length=MAX_VALUE_CHARS)]

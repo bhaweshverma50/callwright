@@ -7,8 +7,8 @@ from datetime import datetime
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.channels.phone_numbers.models import pg_enum
 from app.core.db import Base
-from app.phone_numbers.models import pg_enum
 
 
 class WhatsAppChannel(Base):
@@ -44,6 +44,10 @@ class WhatsAppChannel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def trunk_ids(self) -> tuple[str | None, ...]:
+        return (self.lk_inbound_trunk_id,)
 
 
 class WhatsAppCallerRoute(Base):

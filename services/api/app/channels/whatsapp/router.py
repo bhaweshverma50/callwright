@@ -7,17 +7,17 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from app.core.auth import CurrentPrincipal
-from app.core.errors import problem_responses
-from app.core.ids import path_id
-from app.core.pagination import PageParam, PageSizeParam
-from app.whatsapp import service
-from app.whatsapp.schemas import (
+from app.channels.whatsapp import service
+from app.channels.whatsapp.schemas import (
     CallerRouteCreate,
     CallerRouteUpdate,
     WhatsAppChannelCreate,
     WhatsAppChannelUpdate,
 )
+from app.core.auth import CurrentPrincipal
+from app.core.errors import problem_responses
+from app.core.ids import path_id
+from app.core.pagination import PageParam, PageSizeParam
 
 router = APIRouter(tags=["whatsapp"])
 public_router = APIRouter(tags=["whatsapp-public"])

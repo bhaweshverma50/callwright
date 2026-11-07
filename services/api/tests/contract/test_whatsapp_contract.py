@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-from app.whatsapp.signatures import sign
+from app.channels.whatsapp.signatures import sign
 from tests.conftest import Account
 from tests.contract.conftest import check
 from tests.fakes.livekit_fake import Channels, whatsapp_body

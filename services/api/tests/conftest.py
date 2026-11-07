@@ -99,14 +99,14 @@ def settings() -> Settings:
 
 @pytest_asyncio.fixture(scope="session")
 async def app(migrated: None, settings: Settings) -> AsyncIterator[FastAPI]:
-    from app.agents import checks
+    from app.core import url_guard
     from app.templates.jobs import sync as sync_templates
 
-    async def no_dns(host: str) -> list[str]:
+    async def no_dns(host: str, port: int) -> list[str]:
         # Webhook hosts resolve to a public address in tests; no network lookups.
         return ["93.184.216.34"] if host != "private.test.example" else ["10.0.0.5"]
 
-    checks.webhook_resolver = no_dns
+    url_guard.resolver = no_dns
     application = create_app(settings)
     async with application.router.lifespan_context(application):
         await application.state.redis.flushdb()

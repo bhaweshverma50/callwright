@@ -8,8 +8,8 @@ from callwright_contract.values import CALLBACK_MAX_IN_MINUTES, CALLBACK_MAX_NOT
 from callwright_contract.variables import MAX_VARIABLES, NAME
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.channels.phone_numbers.schemas import AGENT_ID, check_e164
 from app.outbound.schemas import VariableValue
-from app.phone_numbers.schemas import AGENT_ID, check_e164
 
 # One slot stays free for ``callback_note``.
 MAX_CARRIED_VARIABLES = MAX_VARIABLES - 1
