@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { TOP_UP_RANGE } from "../../lib/money";
 
 function LegalPage({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
   return (
@@ -64,7 +65,7 @@ export function Terms() {
       <section>
         <h2>Credit and billing</h2>
         <ul>
-          <li>Usage is paid from a prepaid balance in US dollars. Top-ups range from $5 to $10,000.</li>
+          <li>Usage is paid from a prepaid balance in US dollars. Top-ups range from {TOP_UP_RANGE}.</li>
           <li>Calls are billed per second, rounded up, at the catalog rates in effect when each call starts.</li>
           <li>New calls are refused when the balance reaches zero. A call in progress may finish within a small grace amount.</li>
           <li>Refunds and disputes appear as separate adjustments; past transactions are never edited.</li>

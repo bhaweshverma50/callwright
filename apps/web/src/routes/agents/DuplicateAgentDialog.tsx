@@ -9,6 +9,7 @@ import { agentPath } from "../../lib/paths";
 import { timeAgo } from "../../lib/format";
 import { AGENT_TYPES } from "./agentType";
 import { idempotencyKey } from "../../lib/idempotency";
+import { bodyLimits } from "../../lib/contract.gen";
 
 const DRAFT = "draft";
 const KEEPS = ["Prompt, greeting and variables", "Model, voice, speech and call settings", "Tools and knowledge bases, linked to the same ones"];
@@ -139,7 +140,7 @@ export function DuplicateAgentDialog({
           {({ id, describedBy, invalid }) => (
             <Input
               id={id}
-              maxLength={80}
+              maxLength={bodyLimits["POST /agents/{agent_id}/duplicate"].name.maxLength}
               value={copyName}
               onChange={(e) => setName(e.target.value)}
               aria-describedby={describedBy}

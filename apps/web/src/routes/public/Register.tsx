@@ -11,6 +11,7 @@ import { AuthLayout } from "./AuthLayout";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 import { demoHints } from "../../lib/demoHints";
 import { AUTH_PAGES } from "../../lib/paths";
+import { bodyLimits } from "../../lib/contract.gen";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -135,7 +136,7 @@ export function Register() {
               autoComplete="new-password"
               inputSize="lg"
               minLength={MIN_PASSWORD}
-              maxLength={128}
+              maxLength={bodyLimits["POST /auth/register"].password.maxLength}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               aria-describedby={describedBy}

@@ -4,6 +4,7 @@ import { compileFlow, publishFlow, publishIssues, type CompileResult, type FlowV
 import { problemMessage } from "../../../api/problems";
 import { Button, Dialog, Field, Skeleton, Textarea, toast } from "../../../components";
 import { CompilePreview } from "./CompilePreview";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 /**
  * Publish (T045, FR-027): release notes, the warning count, and the errors that block it. The
@@ -110,7 +111,14 @@ export function PublishDialog({
         ) : null}
         <Field label="Release notes (optional)" hint="Shown in the version history.">
           {({ id, describedBy }) => (
-            <Textarea id={id} rows={3} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} aria-describedby={describedBy} />
+            <Textarea
+              id={id}
+              rows={3}
+              maxLength={bodyLimits["POST /flows/{flow_id}/publish"].release_notes.maxLength}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              aria-describedby={describedBy}
+            />
           )}
         </Field>
         {previewing && <Skeleton className="h-40 w-full" />}

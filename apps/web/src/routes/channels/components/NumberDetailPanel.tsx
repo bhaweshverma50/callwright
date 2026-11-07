@@ -18,6 +18,7 @@ import { DeleteNumberDialog } from "./DeleteNumberDialog";
 import { OutboundCallDialog } from "./OutboundCallDialog";
 import { ActiveCalls, AgentSelect, ChannelStatusBadge } from "./shared";
 import { useAllAgents } from "../../../api/agents";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 const TRANSPORTS: { value: Transport; label: string }[] = [
   { value: "auto", label: "Automatic" },
@@ -299,7 +300,7 @@ function NumberDetail({ number, onClosed }: { number: PhoneNumber; onClosed: () 
             {({ id, describedBy, invalid }) => (
               <Input
                 id={id}
-                maxLength={100}
+                maxLength={bodyLimits["PATCH /phone-numbers/{number_id}"].label.maxLength}
                 disabled={!editable}
                 aria-describedby={describedBy}
                 aria-invalid={invalid}

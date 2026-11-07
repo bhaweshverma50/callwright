@@ -8,6 +8,7 @@ import { createFlowAgent } from "../../api/flows";
 import { problemMessage } from "../../api/problems";
 import { Button, Field, Input, Select, Skeleton, cn, toast } from "../../components";
 import { agentFlowPath } from "../../lib/paths";
+import { bodyLimits } from "../../lib/contract.gen";
 
 /** What a new flow starts with (FR-003): one row each, the text column aligned when it wraps. */
 const STARTER = [
@@ -74,7 +75,7 @@ export function NewFlowAgentPage() {
                   id={id}
                   autoFocus
                   inputSize="lg"
-                  maxLength={80}
+                  maxLength={bodyLimits["POST /agents"].name.maxLength}
                   value={name}
                   placeholder="Clinic intake"
                   prefix={<Tag className="size-4" aria-hidden />}

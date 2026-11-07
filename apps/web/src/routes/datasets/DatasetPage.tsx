@@ -53,6 +53,7 @@ import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { mss, plural, shortId, timeAgo, when } from "../../lib/format";
 import { CallStatusBadge, SentimentBadge } from "../../components/callVocabulary";
 import { ProblemAlert } from "../../components/ProblemAlert";
+import { bodyLimits } from "../../lib/contract.gen";
 
 // The call's evaluation status from 007: its current checks passed, one failed, still running,
 // none ran, or a check errored.
@@ -175,7 +176,7 @@ function EditDialog({ dataset, onClose }: { dataset: Dataset; onClose: () => voi
               id={id}
               aria-describedby={describedBy}
               aria-invalid={invalid}
-              maxLength={80}
+              maxLength={bodyLimits["PATCH /datasets/{dataset_id}"].name.maxLength}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -187,7 +188,7 @@ function EditDialog({ dataset, onClose }: { dataset: Dataset; onClose: () => voi
               id={id}
               aria-describedby={describedBy}
               rows={2}
-              maxLength={500}
+              maxLength={bodyLimits["PATCH /datasets/{dataset_id}"].description.maxLength}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

@@ -41,6 +41,7 @@ import { VoiceSection } from "./VoiceSection";
 import { agentEditPath, agentFlowPath, AGENTS_PATH, agentTestingPath, isAgentId } from "../../../lib/paths";
 import { type EditorSection, fieldId, sectionOf } from "../config/fields";
 import { LoadFailure, useCatalogs, useSaveShortcut } from "./editorShell";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 /**
  * Single-prompt agent editor (T039), at /agents/new/single (never saved) and /agents/:id/edit.
@@ -389,7 +390,7 @@ function SaveBar({
               className="min-w-0 flex-1 sm:w-[280px] sm:flex-none"
               placeholder="Note for this version (optional)"
               aria-label="Note for this version"
-              maxLength={500}
+              maxLength={bodyLimits["PUT /agents/{agent_id}/draft"].note.maxLength}
               value={note}
               onChange={(e) => onNote(e.target.value)}
             />

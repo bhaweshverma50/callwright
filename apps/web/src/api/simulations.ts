@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { api, fetchAll, unwrap } from "./client";
 import type { components } from "./schema";
 import type { BodyOf, ResponseOf } from "./types";
+import { bodyLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -36,8 +37,9 @@ export type Preflight = ResponseOf<"/simulations/preflight", "post">;
 
 export const SIM_POLL_MS = 3_000;
 export const SIM_PAGE_SIZE = 20;
-export const BATCH_MIN = 2;
-export const BATCH_MAX = 100;
+const BATCH = bodyLimits["POST /experiments"].base_call_ids;
+export const BATCH_MIN = BATCH.minItems;
+export const BATCH_MAX = BATCH.maxItems;
 
 export const simKeys = {
   all: ["simulations"] as const,

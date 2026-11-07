@@ -4,6 +4,7 @@ import type { ConditionConfig, FlowEdge, FlowGraph, FlowNode, FlowRule, RuleOper
 import { Field, IconButton, Input, Select, Textarea } from "../../../components";
 import { NODE_META } from "../canvas/nodeMeta";
 import { transitionDescription, transitionName } from "./transitionName";
+import { schemaLimits } from "../../../lib/contract.gen";
 
 const OPERATORS: { value: RuleOperator; label: string }[] = [
   { value: "equals", label: "equals" },
@@ -95,7 +96,7 @@ export const EdgePanel = memo(function EdgePanel({
                     id={id}
                     autoFocus={!edge.label}
                     value={edge.label ?? ""}
-                    maxLength={60}
+                    maxLength={schemaLimits.Edge.label.maxLength}
                     onChange={(e) => update({ label: e.target.value })}
                     aria-describedby={describedBy}
                     aria-invalid={invalid || undefined}
@@ -111,7 +112,7 @@ export const EdgePanel = memo(function EdgePanel({
                   <Textarea
                     id={id}
                     rows={3}
-                    maxLength={1000}
+                    maxLength={schemaLimits.Edge.condition.maxLength}
                     value={edge.condition ?? ""}
                     onChange={(e) => update({ condition: e.target.value })}
                     aria-describedby={describedBy}

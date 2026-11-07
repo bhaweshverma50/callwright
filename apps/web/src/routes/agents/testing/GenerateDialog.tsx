@@ -233,7 +233,7 @@ export function GenerateDialog({
                 id={id}
                 aria-describedby={describedBy}
                 rows={3}
-                maxLength={1000}
+                maxLength={bodyLimits["POST /test-cases/generate"].guidance.maxLength}
                 value={guidance}
                 onChange={(e) => {
                   setGuidance(e.target.value);

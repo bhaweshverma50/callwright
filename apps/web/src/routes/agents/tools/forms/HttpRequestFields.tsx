@@ -5,6 +5,7 @@ import { Button, Field, IconButton, Input, Select, Switch, Textarea, Tooltip, cn
 import { urlError, type Errors } from "./fieldRules";
 import { FormSection } from "./FormSection";
 import { SecretHeaderInput } from "./SecretHeaderInput";
+import { schemaLimits } from "../../../../lib/contract.gen";
 
 export const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
@@ -296,7 +297,7 @@ export function HttpRequestFields({
                 {({ id, describedBy, invalid }) => (
                   <Input
                     id={id}
-                    maxLength={300}
+                    maxLength={schemaLimits.HttpRequestSpec.execution_message.maxLength}
                     aria-describedby={describedBy}
                     aria-invalid={invalid}
                     value={value.execution_message}

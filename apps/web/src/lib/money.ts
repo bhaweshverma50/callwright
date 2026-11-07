@@ -74,6 +74,8 @@ const TOP_UP = bodyLimits["POST /billing/checkout-sessions"].amount_usd;
 export const TOP_UP_MIN = toMicros(TOP_UP["x-minimum-usd"])!;
 export const TOP_UP_MAX = toMicros(TOP_UP["x-maximum-usd"])!;
 const whole = (micros: bigint) => formatUsd(micros, { places: 0 });
+/** "$5 to $10,000", from the contract's top-up range. */
+export const TOP_UP_RANGE = `${whole(TOP_UP_MIN)} to ${whole(TOP_UP_MAX)}`;
 
 /**
  * Validates a custom top-up amount typed by the user (FR-008): within the contract's range, whole

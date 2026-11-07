@@ -21,8 +21,9 @@ import {
   WorkLayout,
   toast,
 } from "../../components";
+import { bodyLimits } from "../../lib/contract.gen";
 
-const NAME_MAX = 80;
+const NAME_MAX = bodyLimits["PATCH /workspaces/current"].name.maxLength;
 
 export function nameError(name: string): string | null {
   if (name.trim().length === 0) return "Enter a workspace name.";

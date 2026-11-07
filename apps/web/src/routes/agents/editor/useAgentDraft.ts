@@ -22,6 +22,7 @@ import {
 import { useDebounced } from "../../../lib/useDebounced";
 import { idempotencyKey } from "../../../lib/idempotency";
 import { stable } from "../../../lib/stable";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 export interface DraftBase {
   id: string | null;
@@ -37,7 +38,7 @@ export type SaveOutcome =
   | { status: "conflict"; currentRevision: number | null }
   | { status: "error"; error: unknown };
 
-const NAME_MAX = 80;
+const NAME_MAX = bodyLimits["PUT /agents/{agent_id}/draft"].name.maxLength;
 
 export function nameProblem(name: string): string | null {
   if (!name.trim()) return "Give the agent a name.";

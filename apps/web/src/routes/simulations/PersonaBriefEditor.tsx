@@ -6,6 +6,7 @@ import { UserRound } from "lucide-react";
 import { useState } from "react";
 import type { PersonaBrief } from "../../api/simulations";
 import { Badge, Field, Input, Textarea } from "../../components";
+import { schemaLimits } from "../../lib/contract.gen";
 
 export const emptyBrief = (): PersonaBrief => ({
   goal: "",
@@ -85,7 +86,7 @@ export function PersonaBriefEditor({
             aria-describedby={describedBy}
             aria-invalid={invalid}
             rows={2}
-            maxLength={1000}
+            maxLength={schemaLimits.PersonaBrief.goal.maxLength}
             value={value.goal}
             placeholder="Move Thursday's 3 pm cleaning to next week"
             onChange={(e) => set({ goal: e.target.value })}
@@ -109,7 +110,7 @@ export function PersonaBriefEditor({
           {({ id }) => (
             <Input
               id={id}
-              maxLength={300}
+              maxLength={schemaLimits.PersonaBrief.temperament.maxLength}
               value={value.temperament ?? ""}
               placeholder="Short on time"
               onChange={(e) => set({ temperament: e.target.value })}
@@ -120,7 +121,7 @@ export function PersonaBriefEditor({
           {({ id }) => (
             <Input
               id={id}
-              maxLength={300}
+              maxLength={schemaLimits.PersonaBrief.speaking_style.maxLength}
               value={value.speaking_style ?? ""}
               placeholder="Brief answers, no small talk"
               onChange={(e) => set({ speaking_style: e.target.value })}
@@ -138,7 +139,7 @@ export function PersonaBriefEditor({
           <Input
             id={id}
             aria-describedby={describedBy}
-            maxLength={500}
+            maxLength={schemaLimits.PersonaBrief.opening_line.maxLength}
             value={value.opening_line ?? ""}
             placeholder="Hi, I need to move my cleaning."
             onChange={(e) => set({ opening_line: e.target.value })}

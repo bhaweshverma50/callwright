@@ -8,8 +8,9 @@ import { problemMessage } from "../../../api/problems";
 import { deleteMyAnnotation, putMyAnnotation, qualityKeys, useAnnotations, type Annotation } from "../../../api/quality";
 import { Badge, Button, ConfirmDialog, Skeleton, Textarea, cn, focusRing, toast } from "../../../components";
 import { when } from "../../../lib/format";
+import { bodyLimits } from "../../../lib/contract.gen";
 
-export const NOTE_LIMIT = 2000;
+export const NOTE_LIMIT = bodyLimits["PUT /calls/{call_id}/annotations/me"].note.maxLength;
 type Label = "good" | "bad";
 
 function Thumb({ label, active, disabled, onClick }: { label: Label; active: boolean; disabled: boolean; onClick: () => void }) {

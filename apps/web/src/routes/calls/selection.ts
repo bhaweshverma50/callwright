@@ -4,9 +4,9 @@
  * call starts an individual run, more start a batch).
  */
 import { useCallback, useState } from "react";
-import { bodyLimits } from "../../lib/contract.gen";
+import { BATCH_MAX } from "../../api/simulations";
 
-export const MAX_SELECTION = bodyLimits["POST /experiments"].base_call_ids.maxItems;
+export const MAX_SELECTION = BATCH_MAX;
 
 export type Selection = ReadonlyMap<string, string>; // call id -> agent id
 

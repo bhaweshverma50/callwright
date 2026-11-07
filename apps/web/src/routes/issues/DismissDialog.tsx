@@ -10,6 +10,7 @@ import { dismissIssue, issueKeys, useAgentIssues, type DetectedIssue, type Dismi
 import { Button, ChoiceGroup, Dialog, Field, Select, Textarea, toast } from "../../components";
 import { DISMISS_REASONS } from "./shared";
 import { ProblemAlert } from "../../components/ProblemAlert";
+import { bodyLimits } from "../../lib/contract.gen";
 
 export function DismissDialog({ open, onOpenChange, issue }: { open: boolean; onOpenChange: (open: boolean) => void; issue: DetectedIssue }) {
   const qc = useQueryClient();
@@ -127,7 +128,7 @@ export function DismissDialog({ open, onOpenChange, issue }: { open: boolean; on
               id={id}
               aria-describedby={describedBy}
               aria-invalid={bad}
-              maxLength={500}
+              maxLength={bodyLimits["POST /issues/{issue_id}/dismiss"].note.maxLength}
               className="min-h-[80px]"
               value={note}
               onChange={(e) => setNote(e.target.value)}

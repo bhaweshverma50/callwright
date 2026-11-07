@@ -3,9 +3,17 @@
  * task and extraction fields (40 characters). Lowercase letters, digits and underscores, starting
  * with a letter. The API applies the same rule; these checks only point at the field early.
  */
+import { scalarLimits, schemaLimits } from "./contract.gen";
 
-export const MACHINE_NAME_MAX = 64;
-export const FLOW_FIELD_NAME_MAX = 40;
+/** Longest name a `^[first][rest]{0,N}$` name pattern accepts: N + 1. */
+export function patternMaxLength(pattern: string): number {
+  const m = /\{0,(\d+)\}\$$/.exec(pattern);
+  if (!m) throw new Error(`No length bound in the name pattern ${pattern}`);
+  return Number(m[1]) + 1;
+}
+
+export const MACHINE_NAME_MAX = patternMaxLength(scalarLimits.VariableName.pattern);
+export const FLOW_FIELD_NAME_MAX = patternMaxLength(schemaLimits.TaskField.name.pattern);
 export const NAME_RULE = "Use lowercase letters, digits and underscores, starting with a letter";
 
 export function isMachineName(name: string, max = MACHINE_NAME_MAX): boolean {

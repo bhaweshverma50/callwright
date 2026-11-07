@@ -3,6 +3,7 @@ import type { StartConfig } from "../../../../api/flows";
 import { Field, Segmented } from "../../../../components";
 import { ExpandEditor } from "./ExpandEditor";
 import { Group, issueFor, type FormProps } from "./shared";
+import { schemaLimits } from "../../../../lib/contract.gen";
 
 /**
  * Start node (FR-019, FR-042, T107): who speaks first, then the greeting. When the caller speaks
@@ -67,7 +68,7 @@ export function StartForm({ config, onChange, issues, nextLabel }: FormProps<Sta
                 id={id}
                 label="Greeting"
                 rows={3}
-                maxLength={500}
+                maxLength={schemaLimits.StartConfig.greeting.maxLength}
                 value={config.greeting ?? ""}
                 onChange={(greeting) => set({ greeting })}
                 describedBy={describedBy}

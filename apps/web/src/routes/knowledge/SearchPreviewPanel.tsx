@@ -5,6 +5,7 @@ import { useState } from "react";
 import { searchKnowledgeBase } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, Input, Panel } from "../../components";
+import { bodyLimits } from "../../lib/contract.gen";
 
 /** Passages repeat their heading on the first line; the card shows it separately. */
 function withoutHeading(content: string, heading?: string | null): string {
@@ -40,7 +41,7 @@ export function SearchPreviewPanel({ kbId, disabled }: { kbId: string; disabled?
           prefix={<Search aria-hidden />}
           placeholder="How long do refunds take?"
           aria-label="Question"
-          maxLength={1000}
+          maxLength={bodyLimits["POST /knowledge-bases/{kb_id}/search"].query.maxLength}
           disabled={disabled}
           value={query}
           onChange={(e) => setQuery(e.target.value)}

@@ -14,12 +14,14 @@ import {
 } from "../../../api/quality";
 import { Button, Dialog, Field, Input, Segmented, Textarea, toast } from "../../../components";
 import { NAME_RULE, toMachineName } from "../../../lib/machineName";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 export const TYPE_LABELS: Record<VariableType, string> = { boolean: "Yes or no", string: "Text", number: "Number", choice: "One of a set" };
 export const TYPE_ICONS = { boolean: ToggleLeft, string: Type, number: Hash, choice: ListChecks } as const;
 
-const MAX_DESCRIPTION = 500;
-const MAX_CHOICES = 20;
+const VARIABLE = bodyLimits["POST /agents/{agent_id}/analysis-variables"];
+const MAX_DESCRIPTION = VARIABLE.description.maxLength;
+const MAX_CHOICES = VARIABLE.choices.maxItems;
 
 /** Problems with the form as it stands; "Save variable" stays disabled while any exist (FR-046). */
 export function variableFormErrors(v: { name: string; type: VariableType; description: string; choices: string[] }) {
@@ -218,7 +220,7 @@ function VariableForm({ agentId, existing, onDone }: { agentId: string; existing
                       id={ids.id}
                       aria-describedby={ids.describedBy}
                       value={choiceText}
-                      maxLength={64}
+                      maxLength={VARIABLE.choices.items.maxLength}
                       placeholder="Type a choice and press Enter"
                       onChange={(e) => setChoiceText(e.target.value)}
                       onKeyDown={onChoiceKey}

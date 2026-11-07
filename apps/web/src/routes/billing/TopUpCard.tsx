@@ -6,7 +6,7 @@ import { fieldErrors, problemMessage } from "../../api/problems";
 import { createCheckoutSession, qk } from "../../api/queries";
 import type { Balance } from "../../api/types";
 import { Button, Chip, Field, Input, Panel, Tooltip } from "../../components";
-import { checkTopUpAmount, formatUsd } from "../../lib/money";
+import { checkTopUpAmount, formatUsd, TOP_UP_RANGE } from "../../lib/money";
 import { talkMinutes } from "../../api/pricing";
 
 export const PRESETS = ["25", "100", "500", "1000"] as const;
@@ -91,7 +91,7 @@ export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLIn
                 About <span className="font-mono text-fg-2 tnum">{minutes.toLocaleString()}</span> minutes of calls on your current stack.
               </>
             ) : (
-              "Between $5 and $10,000, in whole cents."
+              `${TOP_UP_RANGE}, in whole cents.`
             )
           }
         >

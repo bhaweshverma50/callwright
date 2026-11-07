@@ -3,6 +3,7 @@ import type { SayConfig } from "../../../../api/flows";
 import { Field, Switch } from "../../../../components";
 import { ExpandEditor } from "./ExpandEditor";
 import { Group, issueFor, type FormProps } from "./shared";
+import { schemaLimits } from "../../../../lib/contract.gen";
 
 /** Say node (FR-014): a fixed line, spoken without the model. */
 export function SayForm({ config, onChange, issues }: FormProps<SayConfig>) {
@@ -19,7 +20,7 @@ export function SayForm({ config, onChange, issues }: FormProps<SayConfig>) {
             onChange={(message) => set({ message })}
             describedBy={describedBy}
             invalid={invalid}
-            maxLength={1000}
+            maxLength={schemaLimits.SayConfig.message.maxLength}
             placeholder="Your appointment is booked for {{appointment_time}}."
           />
         )}

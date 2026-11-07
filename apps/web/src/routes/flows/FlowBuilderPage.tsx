@@ -40,6 +40,7 @@ import { LoadFailure, useCatalogs, useSaveShortcut } from "../agents/editor/edit
 import { useAgentDraft } from "../agents/editor/useAgentDraft";
 import { VersionDrawer } from "../agents/versions/VersionDrawer";
 import { stable } from "../../lib/stable";
+import { bodyLimits } from "../../lib/contract.gen";
 
 /**
  * Flow builder (T030, T108) at /agents/:id/flow: canvas, side panel and header. Loads the agent,
@@ -264,7 +265,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
             <Input
               aria-label="Flow name"
               value={draft.name}
-              maxLength={80}
+              maxLength={bodyLimits["PUT /agents/{agent_id}/draft"].name.maxLength}
               onChange={(e) => draft.setName(e.target.value)}
               aria-invalid={Boolean(nameError) || undefined}
               className="-ml-2 h-10 w-full max-w-[520px] border-transparent bg-transparent px-2 font-display text-[20px] tracking-[-0.02em] shadow-none hover:border-line focus:border-line-strong sm:text-[22px]"

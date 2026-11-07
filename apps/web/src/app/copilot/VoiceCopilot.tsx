@@ -12,7 +12,9 @@ import { highlight, highlightableElements, registeredActions, runAction } from "
 import { openDeepgramStream, type LiveTranscriber } from "./stt/deepgram";
 import { viewerTimeZone } from "../../lib/format";
 import { CALLS_PATH, callsPath } from "../../lib/paths";
+import { bodyLimits } from "../../lib/contract.gen";
 
+const TRANSCRIPT_MAX = bodyLimits["POST /voice-commands/interpret"].transcript.maxLength;
 type Interpret = components["schemas"]["InterpretResult"];
 type Phase = "idle" | "starting" | "listening" | "transcribing" | "thinking" | "done";
 type Notice = { tone: "info" | "error"; text: string; hint?: string; icon?: "offline" | "mic" } | null;
@@ -181,7 +183,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
       history.current = [...history.current, { role: "user" as const, content: text }].slice(-12);
       try {
         const result = await interpretCommand({
-          transcript: text.slice(0, 1000),
+          transcript: text.slice(0, TRANSCRIPT_MAX),
           visual_state: {
             current_route: location.pathname,
             page_title: document.title,
@@ -497,7 +499,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   placeholder="Show failed calls from yesterday"
-                  maxLength={1000}
+                  maxLength={TRANSCRIPT_MAX}
                   autoFocus
                   className={cn(
                     "h-8 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-2.5 text-[13px] text-fg placeholder:text-fg-3",

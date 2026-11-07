@@ -24,6 +24,7 @@ import { PreflightStep } from "./PreflightDialog";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, variantChanges, type TargetChoice } from "./VariantEditor";
 import { plural } from "../../lib/format";
 import { ProblemAlert } from "../../components/ProblemAlert";
+import { bodyLimits } from "../../lib/contract.gen";
 
 export interface StartSimulationProps {
   open: boolean;
@@ -233,7 +234,7 @@ export function StartSimulationDialog({ open, onOpenChange, agentId, agentName, 
                 <Input
                   id={id}
                   aria-describedby={describedBy}
-                  maxLength={120}
+                  maxLength={bodyLimits["POST /experiments"].name.maxLength}
                   value={name}
                   placeholder={dataset ? `${dataset.name}, replay` : "Shorter greeting check"}
                   onChange={(e) => {

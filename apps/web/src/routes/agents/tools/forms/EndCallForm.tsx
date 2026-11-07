@@ -2,6 +2,9 @@ import { MessageSquareQuote } from "lucide-react";
 import type { EndCallConfig } from "../../../../api/tools";
 import { Field, Textarea } from "../../../../components";
 import { FormSection } from "./FormSection";
+import { schemaLimits } from "../../../../lib/contract.gen";
+
+const MESSAGE_MAX = schemaLimits.EndCallConfig.message.maxLength;
 
 export function EndCallForm({ config, onChange }: { config: EndCallConfig; onChange: (c: EndCallConfig) => void }) {
   const message = config.message ?? "";
@@ -11,12 +14,12 @@ export function EndCallForm({ config, onChange }: { config: EndCallConfig; onCha
       icon={<MessageSquareQuote aria-hidden />}
       description="Usually left empty: the agent says its own goodbye, then hangs up. A line here is spoken after that goodbye."
     >
-      <Field label="Goodbye line" hint={`${message.length} / 500`}>
+      <Field label="Goodbye line" hint={`${message.length} / ${MESSAGE_MAX}`}>
         {({ id, describedBy }) => (
           <Textarea
             id={id}
             aria-describedby={describedBy}
-            maxLength={500}
+            maxLength={MESSAGE_MAX}
             className="min-h-20"
             placeholder="Thanks for calling. Goodbye!"
             value={message}

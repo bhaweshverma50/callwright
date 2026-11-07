@@ -10,9 +10,10 @@ import { TemperatureControl } from "./TemperatureControl";
 import type { AgentDraft } from "./useAgentDraft";
 import { VariablesEditor } from "./VariablesEditor";
 import { fieldId, fieldLabel } from "../config/fields";
+import { schemaLimits } from "../../../lib/contract.gen";
 
-const PROMPT_MAX = 50_000;
-const GREETING_MAX = 1000;
+const PROMPT_MAX = schemaLimits.AgentConfig.prompt.maxLength;
+const GREETING_MAX = schemaLimits.AgentConfig.begin_message.maxLength;
 
 /**
  * Basics tab: identity, model, prompt, greeting and variables (T040). Language changes reseed

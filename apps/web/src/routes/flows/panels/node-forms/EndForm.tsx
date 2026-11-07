@@ -4,6 +4,7 @@ import { Field, Input } from "../../../../components";
 import { ExpandEditor } from "./ExpandEditor";
 import { reasonError } from "./fieldRules";
 import { Group, issueFor, type FormProps } from "./shared";
+import { schemaLimits } from "../../../../lib/contract.gen";
 
 /** End node (FR-018): a closing line (or the agent's own goodbye), then hang up with a recorded reason. */
 export function EndForm({ config, onChange, issues }: FormProps<EndConfig>) {
@@ -21,7 +22,7 @@ export function EndForm({ config, onChange, issues }: FormProps<EndConfig>) {
               id={id}
               label="Closing message"
               rows={3}
-              maxLength={500}
+              maxLength={schemaLimits.EndConfig.message.maxLength}
               value={config.message}
               placeholder="Leave empty to let the agent say goodbye in its own words"
               onChange={(message) => set({ message })}
