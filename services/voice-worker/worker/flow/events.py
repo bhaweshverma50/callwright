@@ -2,8 +2,8 @@
 
 Every move becomes a ``flow_transition`` CallEvent through ``CallControl.report_transition``
 with the full payload (labels, trigger, turn, timing, variables set). Node entries are announced
-on the LiveKit data channel, topic ``callwright.flow``, so the builder highlights the active
-node during a test call (FR-033).
+on the LiveKit data channel (contract ``data_channel.FLOW_TOPIC``), so the builder highlights
+the active node during a test call (FR-033).
 """
 
 from __future__ import annotations
@@ -15,10 +15,11 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from callwright_contract.data_channel import NODE_ENTERED
+
 from worker.tools import CallControl
 
 log = logging.getLogger(__name__)
-TOPIC = "callwright.flow"
 Publisher = Callable[[bytes], Awaitable[None]]
 
 
@@ -85,7 +86,7 @@ class FlowEvents:
         if self.publish is None:
             return
         data = json.dumps(
-            {"type": "node_entered", "node_id": node_id, "at_ms": self.now_ms()}
+            {"type": NODE_ENTERED, "node_id": node_id, "at_ms": self.now_ms()}
         ).encode()
         import asyncio
 

@@ -30,12 +30,13 @@ from zoneinfo import ZoneInfo
 from callwright_contract.calls import PHONE_CHANNELS
 from callwright_contract.protocol import CallbackRequest
 from callwright_contract.values import CALLBACK_NOT_A_PHONE_CALL, CallbackRefusal, spoken_time
-from callwright_contract.variables import BUILTIN_VARIABLES, CALLBACK_NOTE, MAX_VALUE_CHARS
+from callwright_contract.variables import BUILTIN_VARIABLES, CALLBACK_NOTE
 from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
+from app.agents.variables import MAX_VALUE_CHARS
 from app.callbacks.models import ScheduledCallback
 from app.callbacks.schemas import (
     MAX_CARRIED_VARIABLES,

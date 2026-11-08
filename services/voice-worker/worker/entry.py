@@ -38,6 +38,7 @@ from callwright_contract.calls import (
     DisconnectReason,
     SystemEvent,
 )
+from callwright_contract.data_channel import LATENCY_TOPIC
 from callwright_contract.protocol import (
     DISPATCH_CHANNEL,
     ClaimRequest,
@@ -75,7 +76,6 @@ from worker.flow.runtime import CallwrightFlowRunner
 from worker.internal_api import InternalApiClient
 from worker.language import translate_greeting, translated_greeting_instruction
 from worker.metrics import (
-    LATENCY_TOPIC,
     EventPoster,
     EventRecorder,
     LatencyTracker,

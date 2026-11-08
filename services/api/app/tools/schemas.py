@@ -14,17 +14,15 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
-from callwright_contract.values import (
-    DEFAULT_EXECUTION_MESSAGE,
-    DEFAULT_HOLD_MESSAGE,
-    E164_PATTERN,
-    KB_TOOL,
-    ROUTE_TOOL_PREFIX,
-)
+from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE, E164_PATTERN, KB_TOOL
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import to_jsonable_python
 
 from app.agents.schemas import MAX_TOOLS
+
+# Function names the flow compiler gives transitions (004); a tool may not take one.
+ROUTE_TOOL_PREFIX = "route_to_"
+DEFAULT_HOLD_MESSAGE = "Please hold while I connect you."
 
 ToolType = Literal["end_call", "transfer_call", "press_digit", "http"]
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]

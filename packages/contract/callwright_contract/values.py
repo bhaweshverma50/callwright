@@ -22,7 +22,6 @@ SCHEDULE_CALLBACK_TOOL: Final = "schedule_callback"
 SET_LANGUAGE_TOOL: Final = "set_language"
 KB_TOOL: Final = "kb_search"
 COMPLETE_TASK_TOOL: Final = "complete_task"
-ROUTE_TOOL_PREFIX: Final = "route_to_"
 
 # Why the API refuses to book a callback from a call (011 ``CallbackRefusedProblem.reason``); the
 # agent's tool result carries the same code.
@@ -60,11 +59,8 @@ ToolErrorCode = (
     | CallbackRefusal
 )
 
-DEFAULT_HOLD_MESSAGE: Final = "Please hold while I connect you."
+# What an HTTP tool or webhook node says while it waits, unless the builder wrote its own line.
 DEFAULT_EXECUTION_MESSAGE: Final = "One moment while I check that."
-# The goodbye an End node (004) says when the builder wrote none: the flow starter used to store
-# it, and the worker treats it as "no fixed line" and writes one for the call.
-STOCK_GOODBYE: Final = "Thanks for calling. Goodbye."
 
 # 011 callbacks booked from a call.
 CALLBACK_MAX_NOTE_CHARS: Final = 500

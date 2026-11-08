@@ -22,7 +22,6 @@ from datetime import date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from callwright_contract.calls import ORIGINS
 from pydantic import ValidationError
 
 from app.analytics_chat.catalog import (
@@ -42,6 +41,7 @@ from app.analytics_chat.schemas import (
     check_agents,
     parse_query,
 )
+from app.calls.origins import ORIGINS
 from app.core.db import Database
 from app.llms.adapters.base import ChatMessage, estimate_tokens
 from app.llms.adapters.fake import FakeAdapter

@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from callwright_contract.values import CALLBACK_MAX_NOTE_CHARS
-from callwright_contract.variables import MAX_VARIABLES, NAME
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
+from app.agents.variables import MAX_VARIABLES, NAME
 from app.channels.phone_numbers.schemas import AGENT_ID, check_e164
 from app.outbound.schemas import VariableValue
 

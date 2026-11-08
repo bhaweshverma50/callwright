@@ -5,9 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from callwright_contract.values import DEFAULT_HOLD_MESSAGE
 
-from app.tools.schemas import with_config_defaults
+from app.tools.schemas import DEFAULT_HOLD_MESSAGE, with_config_defaults
 from app.tools.validation import (
     validate_config,
     validate_mock,

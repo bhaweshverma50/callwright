@@ -8,17 +8,12 @@ import re
 from typing import get_args
 
 import pytest
-from callwright_contract.calls import (
-    CALL_STATUSES,
-    CHANNELS,
-    DISCONNECT_REASONS,
-    ORIGINS,
-    PIPELINE_STEPS,
-    Direction,
-)
+from callwright_contract.calls import CALL_STATUSES, CHANNELS, DISCONNECT_REASONS, Direction
 from callwright_contract.protocol import MAX_DIAGNOSTIC_CHARS
 from callwright_contract.textsim import SimulationEndReason
 
+from app.calls.origins import ORIGINS
+from app.calls.pipeline import PIPELINE_STEPS
 from tests.runtime_support import Runtime, owner_sql
 
 

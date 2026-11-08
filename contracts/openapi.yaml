@@ -13432,6 +13432,25 @@ components:
                   same values the compiler fills in.
 
                   '
+    FlowNodeEnteredMessage:
+      type: object
+      description: A flow call entered a node (004 FR-033); the builder highlights it during a test call.
+      x-data-channel:
+        topic: callwright.flow
+      required:
+      - type
+      - node_id
+      - at_ms
+      properties:
+        type:
+          type: string
+          const: node_entered
+        node_id:
+          type: string
+        at_ms:
+          type: integer
+          minimum: 0
+          description: Milliseconds since the call connected
     FlowTransition:
       type: object
       required:
@@ -17911,6 +17930,41 @@ components:
           type:
           - integer
           - 'null'
+    TurnLatencyMessage:
+      type: object
+      description: 'One finished agent turn''s latency, for the chip on the latest agent turn. The chip''s
+        total is stt_ms + llm_ms + tts_ms, equal to e2e_ms when the answer time was measured. Not sent
+        for the greeting (turn 0) or a turn with no measurement.
+
+        '
+      x-data-channel:
+        topic: cw.turn_latency
+      required:
+      - turn_index
+      - stt_ms
+      - llm_ms
+      - tts_ms
+      properties:
+        turn_index:
+          type: integer
+          minimum: 1
+        stt_ms:
+          type: integer
+          minimum: 0
+          description: Speech to text and end-of-turn detection
+        llm_ms:
+          type: integer
+          minimum: 0
+          description: The model's time to first token plus tool time
+        tts_ms:
+          type: integer
+          minimum: 0
+          description: The voice's time to first byte
+        e2e_ms:
+          type: integer
+          minimum: 0
+          description: The measured answer time
+          when there is one: null
     UsageDetail:
       type: object
       required:

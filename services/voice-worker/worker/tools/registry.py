@@ -41,10 +41,10 @@ from callwright_contract.values import (
     KB_TOOL,
     PRESS_DIGITS_PATTERN,
     SCHEDULE_CALLBACK_TOOL,
-    STOCK_GOODBYE,
 )
 
 from worker import json_schema, telemetry
+from worker.call_behavior import STOCK_GOODBYE
 from worker.internal_api import InternalApiClient
 from worker.tools import CallControl, ToolActivity, kb_search
 from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecView

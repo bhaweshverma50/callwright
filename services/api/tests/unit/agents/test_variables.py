@@ -7,6 +7,7 @@ from typing import Any
 from app.agents import variables
 from app.agents.defaults import default_config
 from app.agents.validation import validate_pure
+from app.agents.variables import NAME
 
 
 def run(prompt: str, declared: list[dict[str, Any]] | None = None, greeting: str | None = None) -> Any:
@@ -97,3 +98,8 @@ def test_flow_text_counts() -> None:
     cfg["flow"] = {"graph": {"nodes": [{"prompt": "Ask {{account_no}}"}]}}
     result = validate_pure("flow", cfg)
     assert [v["name"] for v in result.normalized_config["dynamic_variables"]] == ["account_no"]
+
+
+def test_name_rule() -> None:
+    assert NAME.match("_a1") and NAME.match("a" * 64)
+    assert not NAME.match("1a") and not NAME.match("a" * 65) and not NAME.match("a-b")

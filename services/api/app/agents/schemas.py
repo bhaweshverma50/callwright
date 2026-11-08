@@ -15,10 +15,10 @@ import copy
 from typing import Annotated, Any, Literal
 
 from callwright_contract.protocol import MAX_KNOWLEDGE_BASES
-from callwright_contract.variables import MAX_DESCRIPTION_CHARS, MAX_VALUE_CHARS, MAX_VARIABLES, NAME_PATTERN
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.agents.defaults import ADVANCED_DEFAULTS, CURRENT_SCHEMA_VERSION, TTS_TUNING_DEFAULTS
+from app.agents.variables import MAX_DESCRIPTION_CHARS, MAX_VALUE_CHARS, MAX_VARIABLES, NAME_PATTERN
 from app.voices.catalog import load_catalog as _voice_catalog
 
 AgentType = Literal["single_prompt", "flow"]

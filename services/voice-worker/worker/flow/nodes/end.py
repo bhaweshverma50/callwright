@@ -12,8 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from callwright_contract.values import STOCK_GOODBYE
-
+from worker.call_behavior import STOCK_GOODBYE
 from worker.flow import registry
 from worker.flow.compiled import EndSection
 from worker.flow.registry import Outcome, Stop

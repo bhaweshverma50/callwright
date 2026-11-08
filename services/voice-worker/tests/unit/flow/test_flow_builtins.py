@@ -8,7 +8,6 @@ import copy
 from typing import Any
 
 import pytest
-from callwright_contract.values import STOCK_GOODBYE
 
 from tests.flow_support import (
     FlowScript,
@@ -25,6 +24,7 @@ from worker.agent import (
     FLOW_CALLBACK_CLOSE,
     FLOW_ENDING_INSTRUCTION,
 )
+from worker.call_behavior import STOCK_GOODBYE
 from worker.flow import FlowComponents
 from worker.flow import runtime as flow_runtime
 from worker.flow.nodes.end import generates

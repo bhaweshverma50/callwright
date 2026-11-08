@@ -24,12 +24,8 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 from callwright_contract.calls import DisconnectReason
-from callwright_contract.values import (
-    COMPLETE_TASK_TOOL,
-    SCHEDULE_CALLBACK_TOOL,
-    SET_LANGUAGE_TOOL,
-    STOCK_GOODBYE,
-)
+from callwright_contract.data_channel import FLOW_TOPIC
+from callwright_contract.values import COMPLETE_TASK_TOOL, SCHEDULE_CALLBACK_TOOL, SET_LANGUAGE_TOOL
 
 from worker.adapters.registry import (
     UnsupportedLanguage,
@@ -44,12 +40,12 @@ from worker.agent import (
     resolve_tts,
     tts_gain_for,
 )
-from worker.call_behavior import ends_with_goodbye
+from worker.call_behavior import STOCK_GOODBYE, ends_with_goodbye
 from worker.flow import FlowComponents, llm_ops
 from worker.flow import nodes as _handlers  # noqa: F401  (registers the node handlers)
 from worker.flow.compiled import TaskSection, load_compiled
 from worker.flow.context import BackgroundSummarizer, Message, handoff, known_facts
-from worker.flow.events import TOPIC, FlowEvents
+from worker.flow.events import FlowEvents
 from worker.flow.executor import FlowRun, WebhookResult
 from worker.flow.nodes.end import generates as end_generates
 from worker.flow.nodes.start import Opening, opening
@@ -538,7 +534,7 @@ def _publisher(control: CallControl) -> Any:
         return None
 
     async def publish(data: bytes) -> None:
-        await participant.publish_data(data, reliable=True, topic=TOPIC)
+        await participant.publish_data(data, reliable=True, topic=FLOW_TOPIC)
 
     return publish
 

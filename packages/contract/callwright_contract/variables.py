@@ -1,5 +1,6 @@
-"""Dynamic variables: built-in names, the name rule, limits and the ``{{name}}`` grammar
-(002 FR-008, 003 FR-005, 004 research R6).
+"""Dynamic variables: built-in names and values and the ``{{name}}`` grammar (002 FR-008, 003
+FR-005, 004 research R6). The name rule and limits the API enforces live in
+``app.agents.variables``.
 
 Built-ins are set by the API at admission for every call (:func:`builtin_values`; the text runner
 and the offline harness use the same function) and may appear in any text but cannot be
@@ -32,14 +33,8 @@ BUILTIN_VARIABLES: Final[tuple[str, ...]] = (
 CALLBACK_NOTE: Final = "callback_note"
 
 _NAME = r"[A-Za-z_][A-Za-z0-9_]{0,63}"
-NAME_PATTERN: Final = rf"^{_NAME}$"
-NAME = re.compile(NAME_PATTERN)
 PLACEHOLDER = re.compile(rf"\{{\{{\s*({_NAME})\s*\}}\}}")
 DOTTED_PLACEHOLDER = re.compile(rf"\{{\{{\s*({_NAME}(?:\.{_NAME})?)\s*\}}\}}")
-
-MAX_VARIABLES: Final = 50
-MAX_VALUE_CHARS: Final = 2000
-MAX_DESCRIPTION_CHARS: Final = 200
 
 
 def render(text: str, variables: Mapping[str, str]) -> str:

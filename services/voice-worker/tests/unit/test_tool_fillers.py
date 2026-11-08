@@ -14,13 +14,13 @@ from typing import Any
 
 import httpx
 import pytest
-from callwright_contract.values import STOCK_GOODBYE
 from livekit.agents import llm
 
 from tests.unit.conftest import make_runtime
 from tests.unit.tool_support import http_spec, make, tool
 from worker.adapters.registry import AdapterRegistry
 from worker.agent import with_fillers
+from worker.call_behavior import STOCK_GOODBYE
 from worker.pipeline import build_agent, plan_session
 from worker.tools.base import ToolSpecView
 from worker.tools.registry import (

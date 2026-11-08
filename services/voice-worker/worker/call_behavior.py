@@ -216,6 +216,10 @@ def behavior_from_config(
 # Timers (research R9)
 
 
+# The goodbye an End node (004) or end_call stands on when the builder wrote none: the worker
+# treats it as "no fixed line" and has the agent write one for the call (older flows stored it).
+STOCK_GOODBYE = "Thanks for calling. Goodbye."
+
 # Agent goodbye: when the agent's reply closes the call but it did not call end_call, the worker
 # hangs up this long after that reply finished playing, unless the caller starts speaking.
 GOODBYE_HANGUP_DELAY_S = 2.0

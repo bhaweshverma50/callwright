@@ -24,7 +24,7 @@ from typing import Any
 
 from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
-from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS, LIVE_CHANNELS
+from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS
 from callwright_contract.protocol import (
     COMPILED_FLOW_SCHEMA_VERSION,
     DISPATCH_CALL_ID,
@@ -65,6 +65,9 @@ from app.workspaces.models import Workspace
 logger = logging.getLogger(__name__)
 
 SIGNED_URL_TTL_S = 600
+
+# Calls that reach real people outside the editor: always run the published version.
+LIVE_CHANNELS = frozenset({"sip_inbound", "sip_outbound", "whatsapp"})
 
 # Refusal codes: problem status, problem code, disconnect reason (FR-008, contract sessions.yaml).
 REFUSALS: dict[str, tuple[int, str]] = {

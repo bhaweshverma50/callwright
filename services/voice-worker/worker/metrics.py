@@ -236,14 +236,9 @@ class LatencyTracker:
         return turn
 
 
-LATENCY_TOPIC = "cw.turn_latency"
-"""LiveKit data topic for per-turn latency; the browser test call panel (``WebCallPanel``) draws
-a latency chip on the latest agent turn from it."""
-
-
 def latency_payload(record: TurnRecord) -> dict[str, int] | None:
-    """The ``cw.turn_latency`` message for a finished agent turn, or None when there is nothing
-    to show (the greeting, or a turn with no measurement).
+    """The ``LATENCY_TOPIC`` message (contract ``data_channel``) for a finished agent turn, or
+    None when there is nothing to show (the greeting, or a turn with no measurement).
 
     The panel draws one chip per agent turn whose total is ``stt_ms + llm_ms + tts_ms``. The
     total is the measured answer time (``e2e_ms``) whenever it exists: ``llm_ms`` is the model's

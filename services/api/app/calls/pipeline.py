@@ -29,10 +29,9 @@ from collections.abc import Awaitable, Callable, Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Final, Literal, get_args
 
 from callwright_contract.adapters import AdapterCatalog
-from callwright_contract.calls import PIPELINE_STEPS
 from opentelemetry import trace
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,6 +61,10 @@ class StepSpec:
 
 
 BLOCKING_STEPS = frozenset({"finalize_transcript", "price_and_charge", "complete"})
+PipelineStep = Literal[
+    "finalize_transcript", "price_and_charge", "analyze", "evaluate", "notify_analyzed", "complete"
+]
+PIPELINE_STEPS: Final[tuple[PipelineStep, ...]] = get_args(PipelineStep)
 STEPS: tuple[StepSpec, ...] = tuple(StepSpec(name, name in BLOCKING_STEPS) for name in PIPELINE_STEPS)
 
 Outcome = Literal["done", "skipped"]

@@ -31,10 +31,10 @@ from typing import Any, ClassVar
 
 import httpx
 from callwright_contract.url_guard import UrlNotAllowed, send_pinned
-from callwright_contract.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from opentelemetry import trace
 from sqlalchemy import text
 
+from app.agents.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
 from app.calls.ports import InboundRoute
 from app.channels import validation
 from app.channels.shared import agent_state, checked_webhook_url
