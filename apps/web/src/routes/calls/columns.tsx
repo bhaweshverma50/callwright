@@ -1,5 +1,6 @@
 import {
   Globe,
+  Info,
   MessageCircle,
   MessagesSquare,
   PhoneIncoming,
@@ -228,11 +229,20 @@ const ALL: CallColumn[] = [
     required: true,
     cell: (r) => {
       const why = r.status === "failed" ? diagnosticText(r.diagnostic) : null;
+      if (!why) return <CallStatusBadge status={r.status} />;
+      // The reason sits behind the badge so every row stays one line; the call drawer shows it in full.
       return (
-        <span className="flex flex-col items-start gap-0.5">
-          <CallStatusBadge status={r.status} />
-          {why && <span className="max-w-[22rem] whitespace-normal text-[12px] leading-snug text-danger-text">{why}</span>}
-        </span>
+        <Tooltip content={why}>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Failed: ${why}`}
+            className={cn("group inline-flex cursor-help items-center gap-1 rounded-full", focusRing)}
+          >
+            <CallStatusBadge status={r.status} />
+            <Info className="size-3.5 shrink-0 text-fg-3 transition-colors group-hover:text-danger-text group-focus-visible:text-danger-text" aria-hidden />
+          </button>
+        </Tooltip>
       );
     },
   },

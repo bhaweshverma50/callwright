@@ -75,7 +75,7 @@ export function diagnosticText(diagnostic: string | null | undefined): string | 
     case "vendor_error":
       return `${vendor} failed during the call.`;
     case "worker_exception":
-      return "The call failed unexpectedly on the platform.";
+      return "A platform error ended the call.";
     case "heartbeat_lost":
       return "The call was lost.";
     default:
