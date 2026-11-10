@@ -1,4 +1,4 @@
-"""``AgentVersionsAdapter``: the calls runtime's agent version reads over 002's service (wave 2 integration)."""
+"""``AgentVersionsAdapter``: the runtime's agent version reads over 002's service (wave 2 integration)."""
 
 from __future__ import annotations
 
