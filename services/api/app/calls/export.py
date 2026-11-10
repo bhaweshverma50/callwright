@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import Any
 
@@ -50,12 +51,17 @@ def pick_columns(raw: str | None) -> list[str]:
     return list(dict.fromkeys(chosen)) or list(COLUMNS)
 
 
+FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
+NUMBER = re.compile(r"[+-]?\d+(\.\d+)?([eE][+-]?\d+)?")
+
+
 def _cell(value: Any) -> str:
     if value is None:
         return ""
     text = str(value)
-    # Spreadsheet formula injection: a leading =, +, - or @ is read as a formula.
-    return "'" + text if text[:1] in ("=", "+", "-", "@") and not text[1:2].isdigit() else text
+    # Spreadsheet formula injection: a leading =, +, -, @, tab or CR starts a formula (or hides one),
+    # unless the whole value is a plain number.
+    return "'" + text if text[:1] in FORMULA_STARTS and not NUMBER.fullmatch(text) else text
 
 
 def csv_lines(rows: Sequence[Mapping[str, Any]], columns: Sequence[str]) -> Iterator[str]:
