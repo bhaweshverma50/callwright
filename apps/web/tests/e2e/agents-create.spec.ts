@@ -68,26 +68,34 @@ test("use a template: preview creates nothing until Use template", async ({ page
 
 test("find, duplicate and delete agents", async ({ page }) => {
   await signIn(page, "/agents");
-  await expect(page.getByText("4 agents")).toBeVisible();
+  const all = (n: number) => page.getByRole("tab", { name: new RegExp(`^All\\s*${n}$`) });
+  await expect(all(4)).toBeVisible();
   await page.getByLabel("Search agents by name or agent ID").fill("desk");
   await expect(page.getByRole("link", { name: "Front desk agent" })).toBeVisible();
-  await expect(page.getByText("1 agent found")).toBeVisible();
+  await expect(all(1)).toBeVisible();
   await page.getByLabel("Search agents by name or agent ID").fill("zzz");
   await expect(page.getByRole("heading", { name: 'No agents match "zzz"' })).toBeVisible();
-  await page.getByRole("button", { name: "Clear search and filter" }).click();
+  await page.getByRole("button", { name: "Show all agents" }).click();
+  await expect(all(4)).toBeVisible();
 
-  await page.getByRole("button", { name: "Duplicate Front desk agent" }).dblclick();
+  await page.getByRole("button", { name: "Actions for Front desk agent" }).click();
+  await page.getByRole("menuitem", { name: "Duplicate…" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Duplicate and open" }).dblclick();
   await expect(page.getByText("Agent duplicated", { exact: true }).first()).toBeVisible();
+  await expect(page).toHaveURL(/\/agents\/agt_[0-9A-Z]{26}\/edit$/);
+  await page.getByRole("link", { name: "Agents" }).first().click();
   await expect(page.getByRole("link", { name: "Front desk agent (copy)" })).toHaveCount(1);
-  await expect(page.getByText("5 agents")).toBeVisible();
+  await expect(all(5)).toBeVisible();
 
-  await page.getByRole("button", { name: "Delete Front desk agent (copy)" }).click();
+  await page.getByRole("button", { name: "Actions for Front desk agent (copy)" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete agent" }).click();
   await expect(page.getByText("Agent deleted", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Front desk agent (copy)" })).toHaveCount(0);
 
   // Still attached to a phone number: refused with the attachment.
-  await page.getByRole("button", { name: "Delete Billing line" }).click();
+  await page.getByRole("button", { name: "Actions for Billing line" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete agent" }).click();
   await expect(page.getByRole("dialog", { name: "Billing line is still taking calls" })).toBeVisible();
   await expect(page.getByText("+1 (415) 555-0142")).toBeVisible();

@@ -74,6 +74,7 @@ def bulk_seed(ws: str, user: str) -> None:
 async def p95(
     client: httpx.AsyncClient, url: str, headers: dict[str, str], params: dict[str, str] | None = None
 ) -> float:
+    await client.get(url, params=params, headers=headers)  # warm-up: first request pays setup
     times = []
     for _ in range(12):
         start = time.perf_counter()
