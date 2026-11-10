@@ -37,8 +37,9 @@ class Settings(BaseSettings):
 
     # dev and test run with offline defaults; staging is a hosted non-production deployment (the
     # demo): dev secrets are refused like prod, but the local IdP, fake Stripe and fake LiveKit
-    # are allowed. "production" and "development" are accepted as aliases.
-    env: Literal["dev", "test", "staging", "prod"] = "dev"
+    # are allowed. "production" and "development" are accepted as aliases. No default: a deployment
+    # that forgets ENV must fail to start, not come up as dev (dev routes, dev secrets).
+    env: Literal["dev", "test", "staging", "prod"]
     version: str = "0.1.0+dev"
     log_level: str = "INFO"
     log_json: bool = False

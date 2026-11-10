@@ -49,6 +49,8 @@ jobs:
         ports: ["56379:6379"]
         options: >-
           --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      ENV: test
     defaults:
       run:
         working-directory: services/api

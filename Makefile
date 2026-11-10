@@ -2,6 +2,9 @@
 API := services/api
 UV := uv run --directory $(API)
 
+# Local commands run as dev unless ENV says otherwise (the API requires ENV; there is no default).
+export ENV ?= dev
+
 .PHONY: help up down migrate templates-sync db-reset api worker test test-unit test-contract test-integration lint fmt typecheck contracts contracts-check
 
 help:
