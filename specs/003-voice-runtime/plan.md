@@ -46,7 +46,7 @@ minute; 5 API modules, about 12 worker modules, 1 web route.
 
 | Gate | Principle | How this plan satisfies it | Status |
 |---|---|---|---|
-| Vendor behind adapter | I | `worker/adapters/{stt,llm,tts,nc}/<vendor>.py` plus `registry.py`; config chooses provider strings; a new vendor is one adapter file, one `adapters/catalog.json` entry and one pricing row (001); no schema change (usage arrays are keyed by provider and model). Runtime reads the frozen `AgentVersion` and never writes it. | Pass |
+| Vendor behind adapter | I | `worker/adapters/{stt,llm,tts,nc}/<vendor>.py` plus `registry.py`; config chooses provider strings; a new vendor is one adapter file, one `adapters.json` entry in the contract package and one pricing row (001); no schema change (usage arrays are keyed by provider and model). Runtime reads the frozen `AgentVersion` and never writes it. | Pass |
 | Latency impact stated | II | This feature is the hot path. Every turn stores `e2e_ms` and components in `call_events`. Benchmark gate T105 (with T102, T103) blocks merges touching `services/voice-worker/worker/**` on p50 800 ms and p95 1,500 ms and on no more than 10% regression versus `benchmarks/baseline.json`. Added hot-path work (pronunciation transform, metrics hooks) is O(text) and measured in the same benchmark. Event posting is async and off the audio path. | Pass |
 | Metering impact stated | III | Worker meters STT audio, LLM input, cached and output tokens, TTS characters and NC seconds as cumulative snapshots; API computes `billable_seconds` with whole-second round-up from connected to ended; `price_and_charge` calls 001's pricing and ledger with idempotency key `call_charge:{call_id}`; mid-call guard ends calls on credit exhaustion. Ringing and queue time are never billed. | Pass |
 | Measurability path | IV | Full transcript, tool and flow items, per-turn latency and the immutable version id are stored per call, which 007 evaluators and 008 simulations consume; pipeline steps `analyze` and `evaluate` are reserved hooks for 007. The harness replays scripted callers against any version. | Pass |
@@ -122,13 +122,14 @@ services/voice-worker/
 │   ├── call_behavior.py      # NEW: inactivity and duration timers, DTMF collector, voicemail
 │   ├── audio.py              # NEW: background audio, pronunciation streaming transform
 │   ├── adapters/
-│   │   ├── registry.py  catalog.json
+│   │   ├── registry.py   # vendors come from the contract package's adapters.json
 │   │   ├── stt/{deepgram,assemblyai,sarvam}.py
 │   │   ├── llm/{openai,azure_openai,anthropic}.py
 │   │   ├── tts/{elevenlabs,cartesia,fishaudio}.py
 │   │   └── nc/{sanas,ai_coustics,none}.py
-│   ├── tools/__init__.py     # extension point: ToolProvider protocol, CallControl, NullToolProvider (005 implements)
-│   └── flow/__init__.py      # extension point: FlowRunner protocol, NullFlowRunner (004 implements)
+│   ├── control.py            # CallControl implementation (hang-up, overrides, tool reports)
+│   ├── tools/                # CallControl protocol, per-call tools (005)
+│   └── flow/                 # FlowRunner protocol and the flow runtime (004)
 └── tests/
     ├── unit/   test_turn_mapping.py  test_pronunciation.py  test_dtmf_collector.py
     │           test_timers.py  test_metrics.py  test_registry.py  test_variables_render.py
@@ -156,9 +157,9 @@ in the existing `tools/` and `flow/` packages so 005 and 004 implement them in p
 
 | Point | Location | Contract | Default without the owning feature |
 |---|---|---|---|
-| `ToolProvider.tools_for(runtime, control) -> list[FunctionTool]` | `worker/tools/__init__.py` | 005 returns function tools (end_call, transfer, press_digit, http, kb_search) built from `config.tool_ids` and `config.kb_ids`; tool activity reported via `control.report_tool(...)` | `NullToolProvider`: no tools |
-| `CallControl` | `worker/tools/__init__.py` | `hang_up(reason)`, `say(text, allow_interruptions)`, `send_dtmf(digits)`, `report_tool(...)`, `report_transition(...)`, `apply_overrides(overrides)` (FR-046, research R22), `room`, `call_id` | implemented here |
-| `FlowRunner.build_agent(runtime, control, tools) -> Agent` | `worker/flow/__init__.py` | 004 returns the entry agent for a flow and drives handoffs | `NullFlowRunner`: fails flow calls with `flow_runtime_unavailable` |
+| `build_call_tools(runtime, control) -> CallTools` | `worker/tools/registry.py` | 005 builds function tools (end_call, transfer, press_digit, http, kb_search, set_language) from the claim's tool specs and knowledge; tool activity reported via `control.report_tool(...)` | implemented by 005 |
+| `CallControl` | `worker/tools/__init__.py` (protocol), `worker/control.py` (implementation) | `hang_up(reason)`, `say(text, allow_interruptions)`, `send_dtmf(digits)`, `report_tool(...)`, `report_transition(...)`, `apply_overrides(overrides)` (FR-046, research R22), `room`, `call_id` | implemented here |
+| `FlowRunner.build_agent(runtime, control, tools) -> Agent` | `worker/flow/__init__.py` (protocol), `worker/flow/runtime.py` | 004 returns the entry agent for a flow and drives handoffs | flow calls fail with `flow_runtime_unavailable` when no runner is installed |
 | `InboundRouter.resolve(channel, sip_attrs, route_ref) -> InboundRoute` | `services/api/app/calls/service.py` | 010 registers routers for `sip_inbound` and `whatsapp` returning workspace, agent, variables, phone_number_id / whatsapp_channel_id | none registered: SIP claims refused with `error` |
 | `OutboundDialProvider.dial_spec(call) -> OutboundDial` | `services/api/app/calls/service.py` | 010 supplies trunk and numbers for `sip_outbound` claims | none: outbound claims refused |
 | Pipeline handlers `analyze`, `evaluate` | `services/api/app/calls/pipeline.py` | 007 registers `async def handler(call_id, session)` | step `skipped` |
@@ -183,7 +184,7 @@ recomputed; later changes to either setting affect only new calls.
 | Deviation from architecture.md | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
 | Extra worker modules `internal_api.py`, `settings.py`, `call_behavior.py`, `audio.py` (not in section 2 layout) | Keep `entry.py` and `pipeline.py` small and unit-testable; timers and DTMF need a fake clock in the harness | Folding into `entry.py` makes it untestable without a room |
-| `adapters/registry.py` and `adapters/catalog.json` | API must reject unsupported vendors at admission without importing worker code | Hard-coding the vendor list in the API duplicates it |
+| `adapters/registry.py` and the contract package's `adapters.json` | API must reject unsupported vendors at admission without importing worker code | Hard-coding the vendor list in the API duplicates it |
 | New ID prefix `whd_` for webhook deliveries | Deliveries are user-visible and re-sendable by id | Reusing `call_` ids cannot identify one of several deliveries per call |
 | `core/livekit.py`, `core/url_guard.py`, possibly `core/idempotency.py` in a 001-owned package | Shared by 003 and 010 (LiveKit) and 005 (URL guard); idempotency is cross-cutting | Duplicating per module; coordinate with 001's plan |
 | `calls/pipeline.py` step table instead of plain chained jobs | Architecture section 6 requires per-step idempotency keyed by call and step, plus visibility of failed non-blocking steps | Chained arq jobs alone lose step state on retry |

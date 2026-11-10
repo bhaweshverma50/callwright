@@ -62,15 +62,20 @@ services/api/app/
   migrations/     Alembic, forward-only
 services/api/tests/{unit,contract,integration}/
 services/voice-worker/worker/
-  entry.py, settings.py, internal_api.py   job entry, config, client for /v1/internal/*
-  pipeline.py     session assembly from an AgentVersion snapshot
-  call_behavior.py, audio.py, telephony.py silence/max-duration, background audio and
-                  pronunciation, SIP specifics (ring duration, DTMF)
-  adapters/{stt,llm,tts,nc}/<vendor>.py, adapters/registry.py
-  flow/           executor, registry, nodes/<type>.py, rules, templating (004)
-  tools/          ToolProvider, CallControl, builtin tools, http tool, kb_search (005)
-  textsim/        runner, replay_caller, persona_caller, mock_tools (008)
-  metrics.py      per-turn latency and usage meters, posted to /v1/internal/calls/{id}/events
+  entry.py, settings.py, internal_api.py   job entry (LiveCall), config, client for /v1/internal/*
+  pipeline.py, agent.py   session assembly from an AgentVersion snapshot; the agent and its
+                  overrides at turn boundaries
+  control.py      CallControl: hang-up, overrides, tool reports
+  call_behavior.py, audio.py, telephony.py, turn_detection.py, language.py   silence and
+                  max-duration timers, DTMF and voicemail, background audio and pronunciation,
+                  SIP specifics, endpointing, language switching
+  adapters/{stt,llm,tts,nc}/<vendor>.py, adapters/registry.py   vendors from the contract's
+                  adapters.json
+  flow/           runtime, executor, compiled, registry, nodes/<type>.py, rules, templating (004)
+  tools/          registry (CallTools), builtin tools, http tool, kb_search, set_language (005)
+  textsim/        runner, conversation, replay_caller, persona_caller, mock_tools, llm (008)
+  metrics.py, telemetry.py, json_schema.py   per-turn latency and usage meters posted to
+                  /v1/internal/calls/{id}/events; spans; the argument and compiled-flow check
 services/voice-worker/tests/harness/       scripted-caller harness; bench/ holds latency benchmarks
 packages/contract/callwright_contract/     what the API and worker share (a uv path dependency of
                   both, pure Python): call vocabulary (calls), worker protocol models (protocol),

@@ -200,7 +200,7 @@ first task that touches them; none changes the design if it turns out differentl
   `build(config, ctx) -> framework component` plus a `capabilities` record (streaming, built-in
   turn detection, supported languages, meter units). `worker/adapters/registry.py` maps
   `(kind, provider)` to the module; unknown pairs raise `UnsupportedVendor`. The API checks the
-  same provider list (exported from the worker package as data, `adapters/catalog.json`) during
+  same provider list (shared as data in the contract package, `adapters.json`) during
   admission so unsupported vendors are refused before a room exists.
   Initial set (matches 002's launch catalog): STT `deepgram`, `assemblyai`, `sarvam`; LLM
   `openai`, `azure_openai`; TTS `elevenlabs`, `cartesia`, `fishaudio`; NC `sanas` (models `vi`
