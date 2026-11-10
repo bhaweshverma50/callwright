@@ -21,6 +21,7 @@ import { problemMessage } from "../../api/problems";
 import { useQuote } from "../../api/queries";
 import { Button, EmptyState, Field, Input, PageHeader, Panel, PanelLoader, Segmented, Skeleton, TabPanel, Tabs, WorkLayout } from "../../components";
 import { WebCallPanel } from "../../webCall/WebCallPanel";
+import { schemaLimits } from "../../lib/contract.gen";
 import { toMicros } from "../../lib/money";
 import { RecordNotFound } from "../NotFound";
 import { quoteRequestFor } from "./editor/CostCard";
@@ -161,7 +162,7 @@ export function AgentTestingPage() {
                               <Input
                                 id={inputId}
                                 aria-describedby={describedBy}
-                                maxLength={2000}
+                                maxLength={schemaLimits.DynamicVariable.default.maxLength}
                                 placeholder={v.default ?? ""}
                                 value={values[v.name] ?? ""}
                                 onChange={(e) => setValues((prev) => ({ ...prev, [v.name]: e.target.value }))}
