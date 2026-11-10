@@ -237,7 +237,7 @@ async def list_items(
                 "from dataset_items i join calls c on c.id = i.call_id "
                 "where i.dataset_id = :ds order by i.added_at desc, i.call_id offset :off limit :lim"
             ),
-            {"ds": dataset.id, "off": (page - 1) * page_size, "lim": page_size},
+            {"ds": dataset.id, "off": page_window(page, page_size)[0], "lim": page_size},
         )
     ).all()
     statuses = await eval_statuses(session, [r.call_id for r in rows])

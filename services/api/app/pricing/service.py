@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import field_error, validation_failed
+from app.core.pagination import page_window
 from app.pricing import engine
 from app.pricing.models import CatalogVersion, PricingRate
 
@@ -114,8 +115,8 @@ async def list_versions(
             VersionSummary(row.version, row.effective_from, next_from, row.notes, row.created_at)
         )
         next_from = row.effective_from
-    start = (page - 1) * page_size
-    return summaries[start : start + page_size], total
+    start, stop = page_window(page, page_size)
+    return summaries[start:stop], total
 
 
 @dataclass(frozen=True)
