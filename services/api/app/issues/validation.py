@@ -34,6 +34,7 @@ from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
 from app.evals.current import current_runs_sql
+from app.evals.views import billed_for_calls
 from app.evaluators.models import EvaluatorRow
 from app.evaluators.settings import judge_models
 from app.issues import validation_rule as rule
@@ -525,21 +526,6 @@ def evidence_rows(
     return out
 
 
-async def _eval_cost(session: AsyncSession, call_ids: Sequence[str]) -> Decimal:
-    if not call_ids:
-        return Decimal(0)
-    billed = (
-        await session.execute(
-            text(
-                "select coalesce(-sum(t.amount_usd), 0) from evaluator_runs r "
-                "join credit_transactions t on t.id = r.charge_txn_id where r.call_id = any(:ids)"
-            ),
-            {"ids": list(call_ids)},
-        )
-    ).scalar_one()
-    return Decimal(billed)
-
-
 async def finalize(
     session: AsyncSession, settings: Settings, issue_id: str, attempt_no: int, *, now: datetime | None = None
 ) -> str:
@@ -630,7 +616,7 @@ async def finalize(
     cost = (
         Decimal(control.cost_usd or 0)
         + Decimal(treatment.cost_usd or 0)
-        + await _eval_cost(session, output_calls)
+        + await billed_for_calls(session, output_calls)
     )
     attempt.status = "completed"
     attempt.decision = result.decision
