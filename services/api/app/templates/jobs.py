@@ -23,7 +23,7 @@ from app.core.db import Database
 from app.templates.models import Template
 
 SEED_DIR = Path(__file__).with_name("seed")
-FIELDS = ("category", "name", "description", "icon", "direction", "config", "sort_order")
+FIELDS = ("category", "name", "description", "icon", "direction", "agent_type", "config", "sort_order")
 
 
 @dataclass(frozen=True)

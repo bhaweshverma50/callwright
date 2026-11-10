@@ -36,6 +36,7 @@ from app.flows import compiler, validation
 from app.flows.catalogs import check_overrides
 from app.flows.models import Flow
 from app.flows.starter import starter_graph
+from app.templates.service import get_template
 from app.tools import service as tools
 from app.tools.models import Tool
 from app.voices.catalog import DEFAULT_LANGUAGE
@@ -201,10 +202,16 @@ class Created:
 
 
 async def create_flow_agent(
-    session: AsyncSession, actor: agents.Actor, *, name: str, language: str
+    session: AsyncSession,
+    actor: agents.Actor,
+    *,
+    name: str,
+    language: str,
+    template_id: str | None = None,
 ) -> Created:
-    """The agent (002, type ``flow``, language defaults) and its flow with the starter graph, in
-    the caller's transaction (FR-001, FR-003, research R15)."""
+    """The agent (002, type ``flow``, language defaults) and its flow with the starter graph, or
+    with a flow template's persona settings and graph, in the caller's transaction (FR-001,
+    FR-003, research R15)."""
     with tracer.start_as_current_span("flows.create"):
         warnings: list[str] = []
         if load_voice_catalog().language(language) is None:
@@ -213,8 +220,14 @@ async def create_flow_agent(
                 "defaults are used."
             )
             language = DEFAULT_LANGUAGE
-        saved = await agents.create_agent(session, actor, name=name, agent_type="flow", language=language)
+        saved = await agents.create_agent(
+            session, actor, name=name, agent_type="flow", language=language, template_id=template_id
+        )
         graph = starter_graph()
+        if template_id is not None:
+            template = await get_template(session, template_id)
+            if template is not None:
+                graph = copy.deepcopy(template.config["graph"])
         now = datetime.now(UTC)
         flow = Flow(
             id=new_id("flw"),

@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import escape_like
@@ -23,18 +23,39 @@ CATEGORIES: dict[str, str] = {
     "ecommerce": "E-commerce",
     "healthcare": "Healthcare",
     "telecom": "Telecom",
+    "insurance": "Insurance",
+    "real_estate": "Real estate",
+    "hospitality": "Travel and hospitality",
+    "logistics": "Logistics and delivery",
+    "utilities": "Utilities",
 }
 
 
-async def list_templates(
-    session: AsyncSession, *, category: str | None = None, search: str | None = None
-) -> list[Template]:
+def _filtered(
+    category: str | None, search: str | None, direction: str | None, agent_type: str | None
+) -> Select[Any]:
     query = select(Template).where(Template.is_active.is_(True))
     if category:
         query = query.where(Template.category == category)
+    if direction:
+        query = query.where(Template.direction == direction)
+    if agent_type:
+        query = query.where(Template.agent_type == agent_type)
     if search and search.strip():
         pattern = f"%{escape_like(search.strip())}%"
         query = query.where(or_(Template.name.ilike(pattern), Template.description.ilike(pattern)))
+    return query
+
+
+async def list_templates(
+    session: AsyncSession,
+    *,
+    category: str | None = None,
+    search: str | None = None,
+    direction: str | None = None,
+    agent_type: str | None = None,
+) -> list[Template]:
+    query = _filtered(category, search, direction, agent_type)
     rows = await session.execute(query.order_by(Template.sort_order, Template.id))
     return list(rows.scalars())
 
@@ -48,12 +69,17 @@ async def get_template(
     return template
 
 
-async def categories(session: AsyncSession) -> list[dict[str, Any]]:
-    rows = await session.execute(
-        select(Template.category, func.count())
-        .where(Template.is_active.is_(True))
-        .group_by(Template.category)
-    )
+async def categories(
+    session: AsyncSession,
+    *,
+    search: str | None = None,
+    direction: str | None = None,
+    agent_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """Per-category counts under the same filters as the list, except the category itself, so
+    the chips show how many templates each category would give with the other filters on."""
+    matching = _filtered(None, search, direction, agent_type).subquery()
+    rows = await session.execute(select(matching.c.category, func.count()).group_by(matching.c.category))
     counts = {str(cat): int(n) for cat, n in rows}
     return [
         {"id": cat, "label": label, "count": counts[cat]}
@@ -70,6 +96,7 @@ def summary_json(template: Template) -> dict[str, Any]:
         "description": template.description,
         "icon": template.icon,
         "direction": template.direction,
+        "agent_type": template.agent_type,
         "language": str(template.config.get("language") or DEFAULT_LANGUAGE),
     }
 

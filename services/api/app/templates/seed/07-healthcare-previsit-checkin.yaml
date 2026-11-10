@@ -5,6 +5,7 @@ name: Pre-visit patient check-in
 description: Calls patients ahead of an appointment to confirm details, update their record and explain how to prepare.
 icon: clipboard-check
 direction: outbound
+agent_type: single_prompt
 config:
   agent_name: Pre-visit check-in agent
   language: en-US

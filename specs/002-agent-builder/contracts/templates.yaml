@@ -20,6 +20,8 @@ paths:
         - name: search
           in: query
           schema: {type: string, maxLength: 100}
+        - {$ref: '#/components/parameters/Direction'}
+        - {$ref: '#/components/parameters/AgentTypeFilter'}
       responses:
         '200':
           description: Active templates ordered by sort_order (no config bodies)
@@ -38,9 +40,18 @@ paths:
       operationId: listTemplateCategories
       tags: [templates]
       security: [{bearerAuth: []}]
+      parameters:
+        - name: search
+          in: query
+          schema: {type: string, maxLength: 100}
+        - {$ref: '#/components/parameters/Direction'}
+        - {$ref: '#/components/parameters/AgentTypeFilter'}
       responses:
         '200':
-          description: Categories that have at least one active template
+          description: |
+            Categories that have at least one active template under the given filters. Counts
+            follow the same filters as the list (without the category), so a chip's count is
+            what selecting it would return.
           content:
             application/json:
               schema:
@@ -76,6 +87,15 @@ paths:
         '401': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Unauthorized'}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/NotFound'}
 components:
+  parameters:
+    Direction:
+      name: direction
+      in: query
+      schema: {type: string, enum: [inbound, outbound]}
+    AgentTypeFilter:
+      name: agent_type
+      in: query
+      schema: {type: string, enum: [single_prompt, flow]}
   securitySchemes:
     bearerAuth:
       type: http
@@ -84,11 +104,13 @@ components:
   schemas:
     TemplateCategory:
       type: string
-      enum: [automotive, banking, ecommerce, healthcare, telecom]
-      description: Launch categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom
+      enum: [automotive, banking, ecommerce, healthcare, telecom, insurance, real_estate, hospitality, logistics, utilities]
+      description: |
+        Categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom,
+        Insurance, Real estate, Travel and hospitality, Logistics and delivery, Utilities
     TemplateSummary:
       type: object
-      required: [id, name, category, description, icon, direction]
+      required: [id, name, category, description, icon, direction, agent_type]
       properties:
         id: {type: string, examples: [healthcare-triage-booking]}
         name: {type: string}
@@ -99,6 +121,12 @@ components:
           type: string
           enum: [inbound, outbound]
           description: Informs the preview; not part of the agent config
+        agent_type:
+          type: string
+          enum: [single_prompt, flow]
+          description: |
+            The type of agent the template creates. A flow template's config also carries the
+            flow graph (see TemplateConfig).
         language: {type: string}
     TemplateDetail:
       allOf:
@@ -110,12 +138,16 @@ components:
     TemplateConfig:
       type: object
       description: |
-        Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+        Partial AgentConfig (FR-046); a flow template also carries `graph` (a flow graph, see the
+        flows contract) in place of the greeting-driven fields. Always includes agent_name, language, llm.provider,
         llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
         tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
         fixed-temperature model, nor tts.voice_id (the language default voice applies).
-      required: [agent_name, language, llm, prompt, begin_message, start_speaker, stt, tts, dynamic_variables]
+      required: [agent_name, language, llm, prompt, stt, tts, dynamic_variables]
       properties:
+        graph:
+          type: object
+          description: Flow templates only; the graph a new flow agent starts with
         agent_name: {type: string}
         language: {type: string}
         llm:

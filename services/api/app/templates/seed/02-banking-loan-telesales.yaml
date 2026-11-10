@@ -5,6 +5,7 @@ name: Personal loan offer
 description: Presents a pre-approved personal loan, answers questions, and completes the application with the customer's consent.
 icon: hand-coins
 direction: outbound
+agent_type: single_prompt
 config:
   agent_name: Loan offer agent
   language: en-US

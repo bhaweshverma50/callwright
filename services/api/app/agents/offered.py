@@ -81,10 +81,13 @@ def _replaced(pointer: str, message: str) -> dict[str, str]:
     return {"pointer": pointer, "code": "component_replaced", "message": message}
 
 
+TEMPLATE_ONLY = ("agent_name", "graph")  # a flow template's graph belongs to the flow, not the config
+
+
 def template_overlay(template_config: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str]]]:
-    """A template's AgentConfig overlay for ``create_agent`` (``agent_name`` dropped) and a
+    """A template's AgentConfig overlay for ``create_agent`` (``TEMPLATE_ONLY`` keys dropped) and a
     ``component_replaced`` warning for each component replaced with the language default."""
-    config = {k: copy.deepcopy(v) for k, v in template_config.items() if k != "agent_name"}
+    config = {k: copy.deepcopy(v) for k, v in template_config.items() if k not in TEMPLATE_ONLY}
     warnings: list[dict[str, str]] = []
     language = str(config.get("language") or DEFAULT_LANGUAGE)
     vc = load_voice_catalog()

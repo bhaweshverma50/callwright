@@ -13,7 +13,20 @@ from app.templates import service
 
 router = APIRouter(tags=["templates"])
 SLUG = re.compile(r"^[a-z0-9-]{3,64}$")
-Category = Literal["automotive", "banking", "ecommerce", "healthcare", "telecom"]
+Category = Literal[
+    "automotive",
+    "banking",
+    "ecommerce",
+    "healthcare",
+    "telecom",
+    "insurance",
+    "real_estate",
+    "hospitality",
+    "logistics",
+    "utilities",
+]
+Direction = Literal["inbound", "outbound"]
+TemplateAgentType = Literal["single_prompt", "flow"]
 
 
 @router.get("/templates", responses=problem_responses(401))
@@ -22,16 +35,27 @@ async def list_templates(
     principal: CurrentPrincipal,
     category: Annotated[Category | None, Query()] = None,
     search: Annotated[str | None, Query(max_length=100)] = None,
+    direction: Annotated[Direction | None, Query()] = None,
+    agent_type: Annotated[TemplateAgentType | None, Query()] = None,
 ) -> dict[str, Any]:
     async with request.app.state.db.transaction(workspace_id=principal.workspace_id) as session:
-        rows = await service.list_templates(session, category=category, search=search)
+        rows = await service.list_templates(
+            session, category=category, search=search, direction=direction, agent_type=agent_type
+        )
     return {"items": [service.summary_json(t) for t in rows]}
 
 
 @router.get("/templates/categories", responses=problem_responses(401))
-async def list_template_categories(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
+async def list_template_categories(
+    request: Request,
+    principal: CurrentPrincipal,
+    search: Annotated[str | None, Query(max_length=100)] = None,
+    direction: Annotated[Direction | None, Query()] = None,
+    agent_type: Annotated[TemplateAgentType | None, Query()] = None,
+) -> dict[str, Any]:
     async with request.app.state.db.transaction(workspace_id=principal.workspace_id) as session:
-        return {"items": await service.categories(session)}
+        items = await service.categories(session, search=search, direction=direction, agent_type=agent_type)
+    return {"items": items}
 
 
 @router.get("/templates/{template_id}", responses=problem_responses(401, 404))

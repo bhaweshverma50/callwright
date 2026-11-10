@@ -5,6 +5,7 @@ name: Loan payment reminder
 description: Calls borrowers about an overdue instalment and ends with a payment or a firm promise-to-pay date.
 icon: landmark
 direction: outbound
+agent_type: single_prompt
 config:
   agent_name: Payment reminder agent
   language: en-US

@@ -5,6 +5,7 @@ name: Collections return call
 description: Answers borrowers who call back about an overdue account, verifies the right party, gives the mini-Miranda debt-collection disclosure and agrees a payment or a promise to pay.
 icon: hand-coins
 direction: inbound
+agent_type: single_prompt
 config:
   agent_name: Account services agent
   language: en-US

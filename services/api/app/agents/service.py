@@ -335,13 +335,14 @@ async def create_agent(
             template = await templates.get_template(session, template_id)
             if template is None:
                 raise not_found("template")
-            if agent_type != "single_prompt":
+            if template.agent_type != agent_type:
+                made = "a flow agent" if template.agent_type == "flow" else "a single-prompt agent"
                 raise validation_failed(
                     [
                         {
                             "pointer": "/template_id",
                             "code": "invalid_format",
-                            "message": "Templates create single-prompt agents.",
+                            "message": f"This template creates {made}; create that type from it.",
                         }
                     ]
                 )
