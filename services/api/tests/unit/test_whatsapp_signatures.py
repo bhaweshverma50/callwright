@@ -31,3 +31,7 @@ def test_malformed_headers() -> None:
 def test_verify_token_hash() -> None:
     assert verify_token_hash("verify-me-123") == hashlib.sha256(b"verify-me-123").hexdigest()
     assert verify_token_hash("a") != verify_token_hash("b")
+
+
+def test_empty_secret_never_verifies() -> None:
+    assert not verify_signature("", BODY, sign("", BODY))

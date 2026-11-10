@@ -21,7 +21,7 @@ def sign(app_secret: str, body: bytes) -> str:
 
 def verify_signature(app_secret: str, body: bytes, header: str | None) -> bool:
     match = _HEADER.match((header or "").strip().lower())
-    if match is None:
+    if not app_secret or match is None:  # an empty secret would let anyone sign with ""
         return False
     expected = hmac.new(app_secret.encode(), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, match.group(1))
