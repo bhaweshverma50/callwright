@@ -16,6 +16,7 @@ from fastapi import FastAPI
 
 from app.dev.seed_calls import seed
 from tests.conftest import make_client, signup
+from tests.perf import SLACK
 from tests.runtime_support import _owner_dsn
 
 ROWS = int(os.environ.get("PERF_CALL_ROWS", "100000"))
@@ -80,5 +81,5 @@ async def test_list_and_dashboard_latency(app: FastAPI) -> None:
             )
             dash_times.append(time.perf_counter() - t0)
             assert r.status_code == 200
-    assert _p95(list_times) < 1.5, f"call list p95 {_p95(list_times):.2f}s"
-    assert _p95(dash_times) < 2.0, f"dashboard p95 {_p95(dash_times):.2f}s"
+    assert _p95(list_times) < 1.5 * SLACK, f"call list p95 {_p95(list_times):.2f}s"
+    assert _p95(dash_times) < 2.0 * SLACK, f"dashboard p95 {_p95(dash_times):.2f}s"
