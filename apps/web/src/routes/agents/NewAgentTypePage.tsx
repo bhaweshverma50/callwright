@@ -124,7 +124,6 @@ export function NewAgentTypePage() {
             value: "flow",
             title: AGENT_TYPES.flow.label,
             icon: <FlowIcon aria-hidden />,
-            meta: <Badge tone="accent">Builder in preview</Badge>,
             description:
               "A canvas of steps: greet, ask, branch, transfer. Best for scripted journeys, qualification and hand-offs you control step by step.",
             children: (
