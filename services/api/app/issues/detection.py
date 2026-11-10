@@ -22,7 +22,6 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select, text
@@ -38,7 +37,7 @@ from app.evaluators.settings import judge_models
 from app.issues import clustering as cl
 from app.issues.models import Issue, IssueDetectionRun, IssueFailureEmbedding, IssueSample
 from app.issues.runtime import model as issues_model
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout, estimate_tokens
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,6 @@ WINDOWS = (7, 14, 30, 90)
 MAX_SAMPLES = 50
 REPRESENTATIVE = 8
 EMBED_BATCH = 96
-EMBED_USD_PER_MTOK = Decimal("0.02")
 CALIBRATION_LOOKBACK_DAYS = 90
 LOW_AGREEMENT = ("low", "over_eager")
 NAMING_SYSTEM = (
@@ -269,7 +267,6 @@ def embed_model_name() -> str:
 @dataclass
 class Usage:
     embed_tokens: int = 0
-    embed_raw: Decimal = Decimal(0)
     input_tokens: int = 0
     output_tokens: int = 0
 
@@ -300,10 +297,7 @@ async def embed_missing(gathered: Gathered, usage: Usage) -> dict[tuple[str, str
         vectors = await embedder.embed(texts)
         for key, vector in zip(chunk, vectors, strict=True):
             fresh[key] = [float(x) for x in vector]
-        tokens = sum(max(1, len(t) // 4) for t in texts)
-        usage.embed_tokens += tokens
-        if getattr(embedder, "provider", "") != "fake":
-            usage.embed_raw += Decimal(tokens) * EMBED_USD_PER_MTOK / Decimal(1_000_000)
+        usage.embed_tokens += sum(estimate_tokens(t) for t in texts)
     return fresh
 
 

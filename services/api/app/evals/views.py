@@ -15,10 +15,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing.models import CreditTransaction
 from app.evals.models import EvaluatorResultItem, EvaluatorRun
 from app.evals.scoring import EvalStatus, RunState, call_eval_status, run_counts
 from app.evaluators.models import EvaluatorRow
-from app.llms.client import billable_cost
 
 
 def current_runs_sql(where: str = "", *, columns: str = "r.*", join_calls: bool = False) -> str:
@@ -88,9 +88,8 @@ def status_of(runs: Sequence[EvaluatorRun]) -> tuple[EvalStatus, int, int]:
 
 
 def run_view(
-    run: EvaluatorRun, row: EvaluatorRow | None, items: Sequence[EvaluatorResultItem]
+    run: EvaluatorRun, row: EvaluatorRow | None, items: Sequence[EvaluatorResultItem], charged: Decimal | None
 ) -> dict[str, Any]:
-    charged = billable_cost(Decimal(run.raw_cost_usd)) if run.charge_txn_id else None
     return {
         "id": run.id,
         "evaluator_id": run.evaluator_id,
@@ -158,7 +157,19 @@ async def views_for(session: AsyncSession, runs: Sequence[EvaluatorRun]) -> list
             )
         ).scalars()
     }
-    return [run_view(r, rows.get(r.evaluator_id), items.get(r.id, [])) for r in runs]
+    txn_ids = [r.charge_txn_id for r in runs if r.charge_txn_id]
+    billed: dict[str, Decimal] = {}
+    if txn_ids:
+        billed = {
+            t.id: -Decimal(t.amount_usd)
+            for t in (
+                await session.execute(select(CreditTransaction).where(CreditTransaction.id.in_(txn_ids)))
+            ).scalars()
+        }
+    return [
+        run_view(r, rows.get(r.evaluator_id), items.get(r.id, []), billed.get(r.charge_txn_id or ""))
+        for r in runs
+    ]
 
 
 def ordered(views: list[dict[str, Any]]) -> list[dict[str, Any]]:

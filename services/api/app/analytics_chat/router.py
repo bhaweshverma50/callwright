@@ -29,12 +29,12 @@ from app.billing import service as billing
 from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, field_error, problem_responses, too_many_requests, validation_failed
 from app.core.rate_limit import RateLimiter
-from app.llms.client import ModelError, ModelTimeout, billable_cost, token_cost
+from app.llms.charges import charge_tokens
+from app.llms.client import SIX, ModelError, ModelTimeout, token_cost
 from app.llms.runtime import runtime
 
 router = APIRouter(tags=["analytics"])
 tracer = trace.get_tracer("app.analytics_chat")
-SIX = Decimal("0.000001")
 
 
 def unavailable() -> ProblemError:
@@ -138,7 +138,7 @@ async def ask(
                 request, principal, f"{idempotency_key}#failed-{uuid.uuid4().hex[:8]}", question, "failed"
             )
             raise unavailable() from exc
-    raw = token_cost(result.model or "gpt-5-mini", result.input_tokens, result.output_tokens).quantize(SIX)
+    raw = token_cost(result.model, result.input_tokens, result.output_tokens).quantize(SIX)
     charged: Decimal | None = None
     txn_id: str | None = None
     response = dict(result.body)
@@ -147,17 +147,15 @@ async def ask(
         workspace_id=principal.workspace_id, user_id=principal.user_id
     ) as session:
         if result.body["outcome"] == "answered":
-            charged = billable_cost(raw)
-            charge = await billing.charge_feature(
+            charge = await charge_tokens(
                 session,
                 workspace_id=principal.workspace_id,
                 feature_key="analytics_chat",
-                quantity=Decimal(1),
-                unit="requests",
+                tokens=result.input_tokens + result.output_tokens,
                 raw_cost_usd=raw,
-                billable_cost_usd=charged,
                 idempotency_key=f"analytics_chat:{idempotency_key}",
             )
+            charged = charge.usage_event.billable_cost_usd
             txn_id = charge.txn.id if charge.txn is not None else None
         response["charged_usd"] = float(charged) if charged is not None else None
         session.add(

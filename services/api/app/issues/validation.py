@@ -533,16 +533,16 @@ def evidence_rows(
 async def _eval_cost(session: AsyncSession, call_ids: Sequence[str]) -> Decimal:
     if not call_ids:
         return Decimal(0)
-    raw = (
+    billed = (
         await session.execute(
             text(
-                "select coalesce(sum(raw_cost_usd), 0) from evaluator_runs where call_id = any(:ids) "
-                "and charge_txn_id is not null"
+                "select coalesce(-sum(t.amount_usd), 0) from evaluator_runs r "
+                "join credit_transactions t on t.id = r.charge_txn_id where r.call_id = any(:ids)"
             ),
             {"ids": list(call_ids)},
         )
     ).scalar_one()
-    return billable_cost(Decimal(raw)) if raw else Decimal(0)
+    return Decimal(billed)
 
 
 async def finalize(

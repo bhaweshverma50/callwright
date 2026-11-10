@@ -14,21 +14,19 @@ import hashlib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.billing import service as billing
 from app.calls import transcript
 from app.calls.models import Call
 from app.calls.transcript import Message, ToolEvent
 from app.evaluators.base import EvalContext
+from app.llms.adapters.base import estimate_tokens
+from app.llms.charges import charge_tokens, embedding_cost
 
 MAX_CHARS = 8000
-# Embedding list price per million tokens (005 adapters use text-embedding-3-small class models).
-EMBED_USD_PER_MTOK = Decimal("0.02")
 
 
 @dataclass(frozen=True)
@@ -52,18 +50,14 @@ def _literal(vector: Sequence[float]) -> str:
 async def _record_usage(
     session: AsyncSession, workspace_id: str, call_id: str, source: str, embedder: Any
 ) -> None:
-    tokens = max(1, len(source) // 4)
-    raw = (Decimal(tokens) * EMBED_USD_PER_MTOK / Decimal(1_000_000)).quantize(Decimal("0.000001"))
-    if getattr(embedder, "provider", "") == "fake":
-        raw = Decimal(0)
-    await billing.charge_feature(
+    tokens = estimate_tokens(source)
+    await charge_tokens(
         session,
         workspace_id=workspace_id,
         feature_key="embedding",
-        quantity=Decimal(tokens),
-        unit="tokens",
-        raw_cost_usd=raw,
-        billable_cost_usd=Decimal(0),
+        tokens=tokens,
+        raw_cost_usd=await embedding_cost(session, embedder, tokens),
+        billable=False,
         idempotency_key=f"call_embedding:{call_id}:{hashlib.sha256(source.encode()).hexdigest()[:16]}",
         ref_type="call",
         ref_id=call_id,

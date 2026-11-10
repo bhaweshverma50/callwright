@@ -20,7 +20,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import ROUND_CEILING, Decimal
+from decimal import Decimal
 from typing import Any
 
 from opentelemetry import trace
@@ -36,9 +36,10 @@ from app.knowledge import storage
 from app.knowledge.chunking import TooManyChunks, chunk_blocks
 from app.knowledge.extract import ExtractError, extract
 from app.knowledge.models import Chunk, Document
+from app.llms.charges import embedding_cost
+from app.llms.client import billable_cost
 from app.llms.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
 from app.llms.runtime import runtime
-from app.pricing import service as pricing
 
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.knowledge")
@@ -49,8 +50,6 @@ SLOT_WAIT_S = 5.0
 MAX_CONCURRENT_PER_WORKSPACE = 2
 SLOT_TTL_S = 900
 EMBED_BATCH = 64
-FALLBACK_RATE = ("openai", "text-embedding-3-small")
-SIX = Decimal("0.000001")
 
 
 @dataclass
@@ -85,16 +84,8 @@ async def release_slot(redis: Redis | None, workspace_id: str) -> None:
 
 
 async def ingestion_cost(session: Any, embedder: EmbeddingAdapter, tokens: int) -> tuple[Decimal, Decimal]:
-    """(raw, billable) USD for ``tokens`` embedded tokens: tokens / 1000 x catalog rate, with
-    the feature markup, rounded up to $0.000001."""
-    from app.llms.client import billable_cost
-
-    catalog = await pricing.catalog_at(session)
-    rate = catalog.lookup("embedding", embedder.provider, embedder.model) or catalog.lookup(
-        "embedding", *FALLBACK_RATE
-    )
-    per_k = rate.rate_per_min_usd if rate is not None else Decimal(0)
-    raw = (Decimal(tokens) / Decimal(1000) * per_k).quantize(SIX, rounding=ROUND_CEILING)
+    """(raw, billable) USD for ``tokens`` embedded tokens, with the feature markup."""
+    raw = await embedding_cost(session, embedder, tokens)
     return raw, billable_cost(raw)
 
 

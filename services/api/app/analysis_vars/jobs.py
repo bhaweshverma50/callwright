@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Any
 
 from opentelemetry import trace
@@ -30,12 +29,12 @@ from app.core.errors import ProblemError
 from app.evaluators.context import build_context
 from app.evaluators.settings import default_judge_model
 from app.llms.charges import charge_tokens
+from app.llms.client import SIX
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.analysis_vars")
 RERUN_ANALYSIS = "rerun_analysis"
-SIX = Decimal("0.000001")
 
 
 async def ensure_row(session: AsyncSession, call: Call) -> CallAnalysis:

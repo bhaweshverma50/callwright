@@ -32,6 +32,7 @@ from app.core.queue import JobQueue
 from app.issues import charges, detection, validation
 from app.issues.models import IssueDetectionRun
 from app.issues.runtime import model as issues_model
+from app.llms.charges import embedding_cost
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ async def detect_issues(ctx: dict[str, Any], workspace_id: str, run_id: str) -> 
                     issues_model(runtime().settings),
                     usage.input_tokens,
                     usage.output_tokens,
-                    embed_raw=usage.embed_raw,
+                    embed_raw=await embedding_cost(session, runtime().embedder, usage.embed_tokens),
                 )
                 billed = await charges.charge(
                     session,
