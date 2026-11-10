@@ -109,21 +109,3 @@ async def update_workspace(
             workspace.recording_default = recording_default
         await session.flush()
         return workspace
-
-
-async def concurrency_limit(db: Database, workspace_id: str) -> int:
-    """Workspace call concurrency limit (R13); counted against calls by 003's admission."""
-    async with db.transaction(workspace_id=workspace_id) as session:
-        value = (
-            await session.execute(select(Workspace.concurrency_limit).where(Workspace.id == workspace_id))
-        ).scalar_one()
-    return int(value)
-
-
-async def recording_default(db: Database, workspace_id: str) -> bool:
-    """Workspace call recording default (T089), read by 003 admission."""
-    async with db.transaction(workspace_id=workspace_id) as session:
-        value = (
-            await session.execute(select(Workspace.recording_default).where(Workspace.id == workspace_id))
-        ).scalar_one()
-    return bool(value)

@@ -50,6 +50,7 @@ from app.agents.versions import draft_part, find_by_hash, get_for_agent, summary
 from app.core.db import escape_like
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
+from app.core.pagination import page_window
 from app.templates import service as templates
 from app.voices.catalog import DEFAULT_LANGUAGE
 from app.voices.catalog import load_catalog as load_voice_catalog
@@ -755,8 +756,7 @@ async def list_agents(
         .outerjoin(draft, and_(draft.id == Agent.draft_version_id))
         .where(*where)
         .order_by(*order)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     out = [
         ListedAgent(agent, number, created, bool(blockers)) for agent, number, created, blockers in rows.all()

@@ -12,7 +12,6 @@ Rules:
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
@@ -269,10 +268,6 @@ def price_embedding(rate: Rate, tokens: int) -> Decimal:
     if tokens == 0:
         return ZERO
     return (rate.rate_per_min_usd * Decimal(tokens) / THOUSAND).quantize(SIX, rounding=ROUND_CEILING)
-
-
-def total_of(lines: Iterable[CostLine]) -> Decimal:
-    return sum((line.cost_usd for line in lines), ZERO)
 
 
 def cost_line_json(line: CostLine) -> dict[str, Any]:

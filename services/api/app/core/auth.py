@@ -127,9 +127,10 @@ async def resolve_subject(db: Database, subject: str) -> SubjectRow | None:
     )
 
 
-async def revoke_session(redis: Redis, claims: TokenClaims) -> None:
-    ttl = max(1, claims.expires_at - int(time.time()) + 5)
-    await redis.set(REVOKED_KEY.format(session_id=claims.session_id), "1", ex=ttl)
+async def revoke_session(redis: Redis, session_id: str, *, expires_at: int) -> None:
+    """Refuse the session's access tokens until the latest of them (``expires_at``) has expired."""
+    ttl = max(1, expires_at - int(time.time()) + 5)
+    await redis.set(REVOKED_KEY.format(session_id=session_id), "1", ex=ttl)
 
 
 def bearer_token(request: Request) -> str:

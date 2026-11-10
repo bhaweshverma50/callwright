@@ -54,9 +54,6 @@ _TURN_COLUMNS = (
 )
 
 
-# Pure rules (money tests T025, T047) --------------------------------------------------------
-
-
 def latest_usage(stored_seq: int, events: Sequence[Any]) -> tuple[int, dict[str, Any]] | None:
     """The usage snapshot to store: highest ``seq`` above ``stored_seq``, else None."""
     best: UsageEvent | None = None
@@ -104,9 +101,6 @@ async def running_cost(
     if quote.call is None or not quote.call.complete:
         return None
     return quote.call.total_usd
-
-
-# Ingest ---------------------------------------------------------------------------------------
 
 
 @dataclass

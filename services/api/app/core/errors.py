@@ -156,8 +156,6 @@ def _pointer(loc: Sequence[int | str]) -> str:
     parts = [str(p) for p in loc]
     if parts and parts[0] == "body":
         parts = parts[1:]
-    elif parts and parts[0] in {"query", "header", "path", "cookie"}:
-        pass
     return "/" + "/".join(p.replace("~", "~0").replace("/", "~1") for p in parts)
 
 

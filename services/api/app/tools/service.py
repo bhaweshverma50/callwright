@@ -29,6 +29,7 @@ from app.agents.models import Agent
 from app.core.db import escape_like
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
+from app.core.pagination import page_window
 from app.core.secrets import KeyWrapper, delete_secret, get_secret, put_secret
 from app.tools.models import Tool
 from app.tools.schemas import CONFIG_MODELS, ToolCreate, ToolSpec, ToolUpdate, with_config_defaults
@@ -250,9 +251,7 @@ async def list_tools(
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(
-            query.order_by(Tool.updated_at.desc(), Tool.id.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.order_by(Tool.updated_at.desc(), Tool.id.desc()).slice(*page_window(page, page_size))
         )
     ).scalars()
     return list(rows), total

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
+from app.core.pagination import page_window
 from app.test_cases.import_format import ImportResult, dedupe_key, parse_import
 from app.test_cases.models import TestCase, TestCategory
 from app.testing.targets import require_agent
@@ -269,8 +270,7 @@ async def list_cases(
         select(TestCase)
         .where(*where)
         .order_by(TestCase.created_at, TestCase.id)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 

@@ -12,7 +12,7 @@ features. Instead of importing them (which would invert the build order, archite
   (``agents.service``: saves, ``create_version`` and ``snapshot_for_test``). The return value is
   written to ``config[block]`` of the version only, never to the draft. 005 registers ``tools``
   (full tool definitions, secrets as masked refs, FR-028) and ``knowledge`` (kb ids plus retrieval
-  settings, T089); 004 may register ``flow`` (compiled graph). The content hash covers resolved
+  settings, T089); 004 registers ``flow`` (compiled graph). The content hash covers resolved
   blocks, so a changed tool definition yields a new test snapshot.
 * ``register_usage_checker(fn)``: called by ``agents.service.delete_agent``; returns the live
   attachments (phone numbers, WhatsApp channels, outbound campaigns) that block deletion with

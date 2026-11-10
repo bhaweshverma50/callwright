@@ -23,6 +23,7 @@ from app.calls import transcript
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
+from app.core.pagination import page_window
 from app.datasets.models import Dataset, DatasetItem
 from app.testing import calls as sim_calls
 from app.testing.targets import require_agent
@@ -218,8 +219,7 @@ async def list_datasets(
         .join(Agent, Agent.id == Dataset.agent_id, isouter=True)
         .where(*where)
         .order_by(Dataset.updated_at.desc(), Dataset.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return [(d, n) for d, n in rows.all()], total
 

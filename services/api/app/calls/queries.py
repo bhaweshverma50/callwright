@@ -32,6 +32,7 @@ from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary
 from app.calls.transcript import normalize_items, stored_items
 from app.core.db import escape_like
 from app.core.errors import ProblemError, field_error, validation_failed
+from app.core.pagination import page_window
 
 SENTIMENTS = ("positive", "neutral", "negative", "unknown")
 SORTS = ("started_at", "duration_s", "cost_usd", "latency_avg_ms")
@@ -285,7 +286,7 @@ async def list_calls(
     )
     rows = (
         await session.execute(
-            _base().where(and_(*where)).order_by(*_order(q)).offset((page - 1) * page_size).limit(page_size)
+            _base().where(and_(*where)).order_by(*_order(q)).slice(*page_window(page, page_size))
         )
     ).all()
     ids = [r[0].id for r in rows]

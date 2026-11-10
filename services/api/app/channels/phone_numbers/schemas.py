@@ -117,13 +117,6 @@ class PhoneNumberUpdate(BaseModel):
         return check_webhook_format(value)
 
 
-class SipSettings(BaseModel):
-    origination_uri: str
-    direct_uri_template: str
-    transports: list[str]
-    telephony_enabled: bool
-
-
 class PhoneNumberOut(BaseModel):
     id: str
     e164: str
@@ -142,11 +135,3 @@ class PhoneNumberOut(BaseModel):
     active_call_count: int
     created_at: str
     updated_at: str
-
-
-class PhoneNumberPage(BaseModel):
-    items: list[PhoneNumberOut]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int

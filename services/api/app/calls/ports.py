@@ -33,6 +33,9 @@ EXTERNAL_STEPS = ("analyze", "evaluate")
 RunSnapshot = Callable[[AsyncSession, str], Awaitable[Mapping[str, Any] | None]]
 
 
+DECLINED_BY_WEBHOOK = "declined_by_webhook"
+
+
 @dataclass(frozen=True)
 class InboundRoute:
     workspace_id: str

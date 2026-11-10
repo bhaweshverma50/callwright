@@ -26,6 +26,7 @@ from app.billing.stripe_gateway import StripeGateway
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.core.ids import new_id
+from app.core.pagination import page_window
 from app.pricing import engine
 from app.pricing import service as pricing
 from app.pricing.features import is_valid_feature_key
@@ -239,8 +240,7 @@ async def list_transactions(
             select(CreditTransaction)
             .where(*where)
             .order_by(CreditTransaction.seq.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            .slice(*page_window(page, page_size))
         )
     ).scalars()
     return list(rows), total

@@ -110,8 +110,6 @@ async def judge(
     return JudgeOutcome(reply.value[0], reply.value[1], model, inp, out)
 
 
-# Offline judge ------------------------------------------------------------------------------------
-
 _REFUSAL_EXPECTED = re.compile(
     r"\b(refus|declin|does not|doesn't|never|without nam|not share|not reveal)", re.I
 )

@@ -51,6 +51,7 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
+from app.core.pagination import page_window
 from app.simulator.models import SimulationExperiment, SimulationRun
 from app.testing import calls as sim_calls
 from app.testing.charges import charge_run, merge_usage
@@ -371,8 +372,7 @@ async def list_runs(
         select(SimulationRun)
         .where(*where)
         .order_by(SimulationRun.created_at.desc(), SimulationRun.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 
@@ -604,8 +604,7 @@ async def list_experiments(
         select(SimulationExperiment)
         .where(*where)
         .order_by(SimulationExperiment.created_at.desc(), SimulationExperiment.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 

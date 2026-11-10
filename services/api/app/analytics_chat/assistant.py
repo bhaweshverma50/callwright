@@ -81,7 +81,6 @@ class Answer:
 
 Runner = Callable[[MetricQuery], Any]
 
-# Deterministic planner -----------------------------------------------------------------------------
 
 _HOSTILE = re.compile(
     r"\b(delete|drop|truncate|update|insert|alter|grant|sql|select\s|workspace|ws_|ignore (all|previous)|system prompt|password|token)\b",
@@ -248,8 +247,6 @@ def keyword_plan(messages: Sequence[ChatMessageIn]) -> Plan:
     return Plan(queries=[query], chart=chart)
 
 
-# Model planner -----------------------------------------------------------------------------------
-
 PLAN_SYSTEM = """You turn questions about a voice-agent workspace's call data into typed queries.
 You never write SQL. Reply with one JSON object only:
 {"decline": null or a short reason, "queries": [MetricQuery or CallQuery, ...] (at most 3), "chart": "bar" | "line" | "area" | "pie" | null}
@@ -315,8 +312,6 @@ async def model_plan(
         output_tokens=completion.output_tokens,
     )
 
-
-# Presentation ----------------------------------------------------------------------------------------
 
 UNIT_TYPES = {"count": "integer", "seconds": "seconds", "usd": "usd", "ms": "ms", "ratio": "ratio"}
 
@@ -508,9 +503,6 @@ async def _excluded_test_calls(
     )
     rows, _ = await run_query(db, workspace_id, compile_query(count, tz=tz, today=today), 1)
     return int(rows[0].get("call_count") or 0) if rows else 0
-
-
-# Loop --------------------------------------------------------------------------------------------------
 
 
 def declined(

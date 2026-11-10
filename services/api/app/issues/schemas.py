@@ -132,9 +132,6 @@ def parse_payload(kind: str, raw: Any) -> dict[str, Any]:
 __all__ = ["FIX_KINDS", "ValidationError", "parse_payload"]
 
 
-# Requests -------------------------------------------------------------------------------------
-
-
 class DetectBody(_Strict):
     agent_id: str = Field(pattern=r"^agt_")
     window_days: Literal[7, 14, 30, 90] = 14

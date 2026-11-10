@@ -35,7 +35,7 @@ from app.core import idempotency
 from app.core.auth import Principal
 from app.core.errors import ProblemError, field_error, too_many_requests, validation_failed
 from app.core.livekit import LiveKitGateway
-from app.core.pagination import page_meta
+from app.core.pagination import page_meta, page_window
 from app.core.queue import JobQueue, dispatch
 from app.core.rate_limit import TokenBucket
 from app.outbound import calling_hours, dnc
@@ -115,9 +115,6 @@ class PolicyBlocked(Exception):
         )
         self.reason = reason
         self.decision = decision
-
-
-# Policies ---------------------------------------------------------------------------------------
 
 
 async def same_number(ctx: Context) -> None:
@@ -249,9 +246,6 @@ OUTBOUND_POLICIES: list[Policy] = [
     dnc_listed,
     outside_calling_hours,
 ]
-
-
-# Request ----------------------------------------------------------------------------------------
 
 
 def zones_for(body: OutboundCallRequest) -> tuple[list[str], str]:
@@ -405,9 +399,6 @@ async def place(
     }
 
 
-# Decision log -------------------------------------------------------------------------------------
-
-
 def decision_out(row: OutboundPolicyDecision) -> dict[str, Any]:
     return {
         "id": row.id,
@@ -446,12 +437,9 @@ async def list_decisions(
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(
-            query.order_by(OutboundPolicyDecision.decided_at.desc(), OutboundPolicyDecision.id.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.order_by(OutboundPolicyDecision.decided_at.desc(), OutboundPolicyDecision.id.desc()).slice(
+                *page_window(page, page_size)
+            )
         )
     ).scalars()
     return {"items": [decision_out(r) for r in rows], **page_meta(total, page, page_size)}
-
-
-# Dial provider (003 extension point) ----------------------------------------------------------------

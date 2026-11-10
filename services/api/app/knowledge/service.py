@@ -26,6 +26,7 @@ from app.agents import service as agents
 from app.core.db import escape_like
 from app.core.errors import ProblemError, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
+from app.core.pagination import page_window
 from app.core.storage import ObjectStore
 from app.knowledge import storage
 from app.knowledge.extract import sniff
@@ -227,9 +228,9 @@ async def list_kbs(
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(
-            query.order_by(KnowledgeBase.updated_at.desc(), KnowledgeBase.id.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.order_by(KnowledgeBase.updated_at.desc(), KnowledgeBase.id.desc()).slice(
+                *page_window(page, page_size)
+            )
         )
     ).scalars()
     return list(rows), total
@@ -286,9 +287,9 @@ async def list_documents(
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(
-            query.order_by(Document.created_at.desc(), Document.id.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.order_by(Document.created_at.desc(), Document.id.desc()).slice(
+                *page_window(page, page_size)
+            )
         )
     ).scalars()
     return list(rows), total

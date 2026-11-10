@@ -17,3 +17,8 @@ def page_meta(total: int, page: int, page_size: int) -> dict[str, Any]:
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size,
     }
+
+
+def page_window(page: int, page_size: int) -> tuple[int, int]:
+    """``(start, stop)`` for ``select(...).slice(*page_window(page, page_size))``."""
+    return (page - 1) * page_size, page * page_size

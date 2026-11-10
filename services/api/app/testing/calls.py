@@ -25,7 +25,6 @@ from app.calls.models import Call
 from app.calls.origins import policy
 from app.core.ids import is_valid_id, new_id
 
-REASONS = ("not_found", "wrong_agent", "simulated_call", "not_completed", "unavailable")
 REASON_TEXT = {
     "not_found": "No call with that id exists in this workspace.",
     "wrong_agent": "The call belongs to another agent.",

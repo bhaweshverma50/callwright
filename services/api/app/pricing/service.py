@@ -15,7 +15,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import ProblemError, field_error, validation_failed
+from app.core.errors import field_error, validation_failed
 from app.pricing import engine
 from app.pricing.models import CatalogVersion, PricingRate
 
@@ -244,12 +244,3 @@ async def publish_version(
             )
     await admin_session.flush()
     return await catalog_version(admin_session, new_version)
-
-
-def unpriced_problem(components: Sequence[str]) -> ProblemError:
-    return ProblemError(
-        409,
-        "pricing_unavailable",
-        "Price unavailable",
-        f"No catalog rate for: {', '.join(components)}.",
-    )

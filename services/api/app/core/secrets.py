@@ -92,9 +92,6 @@ def mask_secret(value: str | None) -> str:
     return "****" + value[-4:]
 
 
-# Encrypted configuration values (T084) ------------------------------------------------------
-
-
 def encrypt_config_value(plaintext: str, master_key: SecretStr | str) -> str:
     key = master_key.get_secret_value() if isinstance(master_key, SecretStr) else master_key
     sealed = seal(plaintext, LocalKeyWrapper(key), aad=b"config")
@@ -115,9 +112,6 @@ def decrypt_config_value(value: str, master_key: SecretStr | str) -> str:
         key_id=wrapper.key_id,
     )
     return unseal(sealed, wrapper, aad=b"config")
-
-
-# Workspace secrets table ------------------------------------------------------------------
 
 
 class WorkspaceSecret(Base):

@@ -26,7 +26,7 @@ from app.calls.origins import policy
 from app.core.db import Database
 from app.core.errors import field_error, not_found, validation_failed
 from app.core.ids import new_id
-from app.core.pagination import page_meta
+from app.core.pagination import page_meta, page_window
 from app.voices.catalog import DEFAULT_LANGUAGE
 from app.voices.catalog import load_catalog as load_voice_catalog
 
@@ -161,9 +161,9 @@ async def list_preferences(
     rows = (
         (
             await session.execute(
-                query.order_by(CallerPreference.updated_at.desc(), CallerPreference.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
+                query.order_by(CallerPreference.updated_at.desc(), CallerPreference.id.desc()).slice(
+                    *page_window(page, page_size)
+                )
             )
         )
         .scalars()

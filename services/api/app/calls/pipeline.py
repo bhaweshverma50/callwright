@@ -91,9 +91,6 @@ class StepContext:
 StepHandler = Callable[[StepContext], Awaitable[Outcome]]
 
 
-# Step handlers ---------------------------------------------------------------------------------
-
-
 def latency_stats(turns: list[CallEvent]) -> dict[str, Any]:
     """data-model section 7, from ``turn`` events with ``turn_index > 0``; greeting from turn 0."""
     replies = [t for t in turns if (t.turn_index or 0) > 0]
@@ -213,9 +210,6 @@ HANDLERS: dict[str, StepHandler] = {
     "notify_analyzed": notify_analyzed,
     "complete": complete,
 }
-
-
-# Runner ------------------------------------------------------------------------------------------
 
 
 @dataclass

@@ -10,7 +10,6 @@ validate with the same models, so the tool form and the node form accept the sam
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
@@ -151,18 +150,6 @@ class ToolUpdate(_Strict):
     description: str | None = Field(default=None, min_length=1, max_length=1000)
     config: dict[str, Any] | None = None
     mock_response: str | None = Field(default=None, max_length=16384)
-
-
-class ToolOut(BaseModel):
-    id: str
-    type: ToolType
-    name: str
-    description: str
-    config: dict[str, Any]
-    mock_response: str | None
-    usage_count: int
-    created_at: datetime
-    updated_at: datetime
 
 
 class ToolSpec(BaseModel):

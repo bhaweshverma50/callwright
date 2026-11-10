@@ -49,7 +49,7 @@ from app.channels.whatsapp.signatures import verify_signature, verify_token_hash
 from app.core.auth import Principal
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
-from app.core.pagination import page_meta
+from app.core.pagination import page_meta, page_window
 from app.core.secrets import delete_secret, get_secret, put_secret
 
 logger = logging.getLogger(__name__)
@@ -171,9 +171,6 @@ async def _check_credentials(deps: WhatsAppDeps, token: str, version: str, meta_
                 field_error("/e164", "whatsapp_number_mismatch", f"WhatsApp reports {reported} for this ID.")
             ],
         )
-
-
-# Create, read ---------------------------------------------------------------------------------
 
 
 async def create_channel(
@@ -363,9 +360,9 @@ async def list_channels(deps: ChannelDeps, workspace_id: str, *, page: int, page
         rows = list(
             (
                 await s.execute(
-                    query.order_by(WhatsAppChannel.created_at.desc(), WhatsAppChannel.id.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
+                    query.order_by(WhatsAppChannel.created_at.desc(), WhatsAppChannel.id.desc()).slice(
+                        *page_window(page, page_size)
+                    )
                 )
             ).scalars()
         )
@@ -404,9 +401,6 @@ async def retry_setup(deps: WhatsAppDeps, workspace_id: str, channel_id: str) ->
         channel = await _load(s, channel_id, lock=True)
         channel.credentials_verified_at = datetime.now(UTC)
     return await _setup_and_store(deps, workspace_id, channel_id)
-
-
-# Edit -----------------------------------------------------------------------------------------
 
 
 async def sync_rule(deps: ChannelDeps, session: AsyncSession, channel: WhatsAppChannel) -> None:
@@ -495,9 +489,6 @@ async def update_channel(
         return await _out(s, channel)
 
 
-# Delete ---------------------------------------------------------------------------------------
-
-
 async def delete_channel(
     deps: WhatsAppDeps, workspace_id: str, channel_id: str, *, when_idle: bool
 ) -> tuple[int, dict[str, Any] | None]:
@@ -550,9 +541,6 @@ async def finish_delete(session: AsyncSession, channel: WhatsAppChannel) -> None
     channel.updated_at = now
     channel.lk_dispatch_rule_id = channel.lk_inbound_trunk_id = None
     await session.flush()
-
-
-# Public webhook ---------------------------------------------------------------------------------
 
 
 async def verify_challenge(
@@ -625,9 +613,6 @@ async def receive_notification(deps: ChannelDeps, body: bytes, signature: str | 
     return 200
 
 
-# Caller routes (US5) ----------------------------------------------------------------------------
-
-
 def route_out(route: WhatsAppCallerRoute, published: bool) -> dict[str, Any]:
     return {
         "id": route.id,
@@ -654,9 +639,9 @@ async def list_routes(
         rows = list(
             (
                 await s.execute(
-                    query.order_by(WhatsAppCallerRoute.created_at.desc(), WhatsAppCallerRoute.id.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
+                    query.order_by(
+                        WhatsAppCallerRoute.created_at.desc(), WhatsAppCallerRoute.id.desc()
+                    ).slice(*page_window(page, page_size))
                 )
             ).scalars()
         )
@@ -748,9 +733,6 @@ async def delete_route(deps: ChannelDeps, workspace_id: str, channel_id: str, ro
         await s.delete(route)
         await s.flush()
         await sync_rule(deps, s, channel)
-
-
-# Agent deletion (002 hook) ----------------------------------------------------------------------
 
 
 async def attachments_for_agent(ctx: agent_hooks.UsageContext) -> list[agent_hooks.Attachment]:

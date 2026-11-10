@@ -51,7 +51,7 @@ from app.calls.agent_versions import AgentSnapshot
 from app.calls.lookups import concurrency_full, snapshot_for, workspace_for_call
 from app.calls.models import Call
 from app.calls.origins import policy
-from app.calls.ports import registry
+from app.calls.ports import DECLINED_BY_WEBHOOK, registry
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
@@ -80,7 +80,7 @@ REFUSALS: dict[str, tuple[int, str]] = {
     "pricing_unavailable": (422, "error"),
     "insufficient_credit": (402, "insufficient_credit"),
     "concurrency_limit": (429, "concurrency_limit"),
-    "declined_by_webhook": (409, "error"),
+    DECLINED_BY_WEBHOOK: (409, "error"),
 }
 _DETAILS = {
     "email_unverified": "Verify your email address before placing calls.",
@@ -90,7 +90,7 @@ _DETAILS = {
     "pricing_unavailable": "The agent's configuration is not fully priced.",
     "insufficient_credit": "Your balance is too low to start a call. Add funds to continue.",
     "concurrency_limit": "Concurrent call limit reached. Try again when a call ends.",
-    "declined_by_webhook": "The inbound webhook declined this call.",
+    DECLINED_BY_WEBHOOK: "The inbound webhook declined this call.",
 }
 
 
@@ -152,9 +152,6 @@ class Admission:
     created: bool = True
 
 
-# Pure rules -------------------------------------------------------------------------------
-
-
 def resolve_recording(override: Any, workspace_default: bool) -> tuple[bool, str]:
     """FR-043: ``on``/``off`` on the agent win; ``inherit`` (or missing) uses the workspace."""
     value = override if override in ("inherit", "on", "off") else "inherit"
@@ -212,9 +209,6 @@ def runtime_values(config: Mapping[str, Any], catalog: AdapterCatalog) -> Runtim
         stt_resolved_model=components.stt.model,
         language_options=claim_language_options(config, components),
     )
-
-
-# Admission ---------------------------------------------------------------------------------
 
 
 async def _resolve_version(
@@ -326,7 +320,7 @@ async def admit_in_session(
     if refused is None and snapshot is not None:
         refused = await _checks(session, request, snapshot, catalog)
     if refused is None and request.declined:
-        refused = refusal("declined_by_webhook")
+        refused = refusal(DECLINED_BY_WEBHOOK)
     if refused is None:
         await _lock_admissions(session, request.workspace_id)
         if await concurrency_full(session, request.workspace_id):
@@ -461,9 +455,6 @@ async def start_room(
         assert row is not None
         row.room_name = room
     return room
-
-
-# Claim --------------------------------------------------------------------------------------
 
 
 @dataclass

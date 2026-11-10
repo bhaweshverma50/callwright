@@ -28,6 +28,7 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import new_id
+from app.core.pagination import page_window
 from app.evaluators.settings import default_judge_model, judge_models
 from app.test_cases.models import TestCase
 from app.test_runs.counts import ResultState, run_counts
@@ -221,8 +222,7 @@ async def list_runs(
         select(TestRun)
         .where(*where)
         .order_by(TestRun.created_at.desc(), TestRun.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 

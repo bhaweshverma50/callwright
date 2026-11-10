@@ -141,8 +141,6 @@ def validate(raw: Mapping[str, Any], request: InterpretRequest) -> tuple[dict[st
     return _decline(speak or "I can't help with that here.", suggestion, highlight), False
 
 
-# Keyword interpreter -------------------------------------------------------------------------------
-
 _PAGES = [
     (r"\b(billing|balance|credit|funds)\b", "/billing"),
     (r"\bdashboard\b", "/dashboard"),

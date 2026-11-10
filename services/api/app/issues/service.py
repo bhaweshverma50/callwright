@@ -22,15 +22,14 @@ from app.agents.schemas import upcast
 from app.agents.versions import draft_part
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id
+from app.core.pagination import page_window
 from app.evals.current import current_runs_sql
 from app.issues import kinds
-from app.issues.charges import charge, detect_key, draft_key  # noqa: F401  (re-exported)
 from app.issues.lifecycle import FINAL, transition
 from app.issues.models import Issue, IssueFix, IssueSample, IssueValidation
 from app.simulator.scorecard import display_pp, display_rate
 
 READY_AFTER = 10
-STATUS_FILTERS = ("all", "open", "validating", "validated", "applied", "dismissed")
 
 
 def _iso(value: datetime | None) -> str | None:
@@ -220,8 +219,7 @@ async def samples(
         select(IssueSample)
         .where(*where)
         .order_by(IssueSample.failed_at.desc(), IssueSample.call_id)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 
@@ -400,8 +398,7 @@ async def list_issues(
                 select(Issue)
                 .where(*where)
                 .order_by(Issue.affected_call_count.desc(), Issue.last_seen_at.desc(), Issue.id)
-                .offset((page - 1) * page_size)
-                .limit(page_size)
+                .slice(*page_window(page, page_size))
             )
         ).scalars()
     )
