@@ -1,7 +1,7 @@
 import { AudioLines, Ban, Users, Feather } from "lucide-react";
 import { ChoiceGroup } from "../../../components";
 import { perMin, type Catalogs } from "./catalogs";
-import { FieldError, StackRow } from "./fields";
+import { FieldError, FieldWarning, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { fieldId, fieldLabel } from "../config/fields";
 
@@ -42,7 +42,7 @@ export function NoiseCancellationSelect({ draft, catalogs }: { draft: AgentDraft
             const Icon = ICONS[`${o.provider}/${o.model}`] ?? AudioLines;
             return {
               value: `${o.provider}/${o.model}`,
-              title: o.label,
+              title: o.available === false ? `${o.label} (not set up on this platform)` : o.label,
               description: o.description ?? undefined,
               meta: perMin(o.price_per_min_usd),
               icon: <Icon aria-hidden />,
@@ -51,6 +51,7 @@ export function NoiseCancellationSelect({ draft, catalogs }: { draft: AgentDraft
           { value: OFF, title: "Off", description: "The caller's audio goes to speech recognition untouched.", icon: <Ban aria-hidden /> },
         ]}
       />
+      <FieldWarning draft={draft} pointer="/noise_cancellation/provider" />
       <FieldError message={draft.errorFor("/noise_cancellation")} />
     </StackRow>
   );

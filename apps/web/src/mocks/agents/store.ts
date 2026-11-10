@@ -159,13 +159,20 @@ export function toDetail(a: MockAgent): AgentDetail {
 }
 
 export function toSummary(a: MockAgent): AgentSummary {
+  // Cards show what calls run: the published version's vendors, else the draft's.
+  const shown = versionById(a.pinned_version_id)?.config ?? a.draft_config;
   return {
     id: a.id,
     name: a.name,
     type: a.type,
     language: a.language,
-    llm_model: `${a.draft_config.llm.provider}/${a.draft_config.llm.model}`,
-    voice_label: voiceLabel(a.draft_config),
+    llm_model: `${shown.llm.provider}/${shown.llm.model}`,
+    llm_extra_models: [],
+    voice_label: voiceLabel(shown),
+    voice_extra_labels: [],
+    stt_label: `${shown.stt.provider} ${shown.stt.model ?? "(Auto)"}`,
+    stt_extra_labels: [],
+    vendor_warnings: [],
     published_version: ref(versionById(a.pinned_version_id)),
     has_publish_blockers: validateConfig(a.type, a.draft_config).publish_blockers.length > 0,
     created_at: a.created_at,

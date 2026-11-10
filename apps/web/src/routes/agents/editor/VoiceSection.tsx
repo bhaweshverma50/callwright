@@ -3,8 +3,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useProviderVoices } from "../../../api/agents";
 import { Button, FieldRow, Select, Skeleton } from "../../../components";
-import { languageLabel, perMin, type Catalogs } from "./catalogs";
-import { controlFor, FieldError, Note, Section, SliderRow } from "./fields";
+import { languageLabel, perMin, providerLabel, type Catalogs } from "./catalogs";
+import { controlFor, FieldError, FieldWarning, Note, Section, SliderRow } from "./fields";
 import { NoiseCancellationSelect } from "./NoiseCancellationSelect";
 import { SttPicker } from "./SttPicker";
 import type { AgentDraft } from "./useAgentDraft";
@@ -64,8 +64,9 @@ export function VoiceSection({ draft, catalogs }: { draft: AgentDraft; catalogs:
               setSwitched({ provider: p, voice });
               draft.touch("/tts/provider");
             }}
-            options={catalogs.voice.tts.map((p) => ({ value: p.provider, label: p.label }))}
+            options={catalogs.voice.tts.map((p) => ({ value: p.provider, label: providerLabel(p) }))}
           />
+          <FieldWarning draft={draft} pointer="/tts/provider" />
         </FieldRow>
         <FieldRow
           icon={<AudioWaveform />}

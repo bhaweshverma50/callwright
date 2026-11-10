@@ -60,7 +60,7 @@ import {
 } from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
 import { AgentActions } from "./AgentActions";
-import { AgentCard } from "./AgentCard";
+import { AgentCard, WithExtras, attentionReason } from "./AgentCard";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { languageLabel, llmLabel } from "./editor/catalogs";
 import { agentPath, NEW_AGENT_PATH, TEMPLATES_PATH } from "../../lib/paths";
@@ -186,16 +186,24 @@ export function AgentsListPage() {
           ) : (
             <Badge>Not published</Badge>
           )}
-          {a.has_publish_blockers && (
-            <Badge tone="warning" icon={<TriangleAlert />}>
-              Needs attention
-            </Badge>
+          {(a.has_publish_blockers || (a.vendor_warnings?.length ?? 0) > 0) && (
+            <span title={attentionReason(a)}>
+              <Badge tone="warning" icon={<TriangleAlert />}>
+                Needs attention
+              </Badge>
+            </span>
           )}
         </div>
       ),
     },
-    { key: "model", header: "Model", hideOnNarrow: true, cell: (a) => <TruncatedText>{llmLabel(llm.data, a.llm_model)}</TruncatedText> },
-    { key: "voice", header: "Voice", hideOnNarrow: true, cell: (a) => <TruncatedText>{a.voice_label}</TruncatedText> },
+    {
+      key: "model",
+      header: "Model",
+      hideOnNarrow: true,
+      cell: (a) => <WithExtras value={llmLabel(llm.data, a.llm_model)} extras={a.llm_extra_models?.map((m) => llmLabel(llm.data, m))} />,
+    },
+    { key: "speech", header: "Speech", hideOnNarrow: true, cell: (a) => <WithExtras value={a.stt_label ?? ""} extras={a.stt_extra_labels} /> },
+    { key: "voice", header: "Voice", hideOnNarrow: true, cell: (a) => <WithExtras value={a.voice_label} extras={a.voice_extra_labels} /> },
     {
       key: "updated",
       header: "Last edited",
@@ -388,6 +396,7 @@ export function AgentsListPage() {
                             key={a.id}
                             agent={a}
                             modelLabel={llmLabel(llm.data, a.llm_model)}
+                            modelExtras={a.llm_extra_models?.map((m) => llmLabel(llm.data, m))}
                             languageLabel={languageLabel(voice.data, a.language)}
                             onDuplicate={() => setCopying(a)}
                             onDelete={() => setDeleting(a)}

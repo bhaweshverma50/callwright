@@ -59,6 +59,21 @@ export function FieldError({ id, message }: { id?: string; message: string | nul
   );
 }
 
+/** The platform's warnings for a field (a vendor this deployment cannot run), under its control. */
+export function FieldWarning({ draft, pointer }: { draft: AgentDraft; pointer: string }) {
+  return (
+    <>
+      {(draft.validation?.warnings ?? [])
+        .filter((w) => w.pointer === pointer)
+        .map((w) => (
+          <Note key={w.message} tone="warning">
+            {w.message}
+          </Note>
+        ))}
+    </>
+  );
+}
+
 /** A quiet note under a control (helper text that is not an error). */
 export function Note({ children, tone = "neutral", id }: { children: ReactNode; tone?: "neutral" | "warning" | "accent"; id?: string }) {
   const Icon = tone === "warning" ? TriangleAlert : Info;

@@ -14,6 +14,11 @@ export function perMin(price: string | null | undefined): string {
   return price == null ? "Price unavailable" : `${formatUsd(price, { places: 4 })}/min`;
 }
 
+/** A provider's name in a picker; "Not set up on this platform" when the voice worker has no key for it. */
+export function providerLabel(p: { label: string; available?: boolean }): string {
+  return p.available === false ? `${p.label} (not set up on this platform)` : p.label;
+}
+
 export function llmModel(cat: LlmCatalog, provider: string, model: string): LlmModel | undefined {
   return cat.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
 }

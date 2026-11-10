@@ -1,7 +1,7 @@
 import { Captions, Cpu, Wand2 } from "lucide-react";
 import { ChoiceGroup, FieldRow, Select } from "../../../components";
-import { languageLabel, perMin, type Catalogs } from "./catalogs";
-import { FieldError, StackRow } from "./fields";
+import { languageLabel, perMin, providerLabel, type Catalogs } from "./catalogs";
+import { FieldError, FieldWarning, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { fieldId, fieldLabel } from "../config/fields";
 
@@ -68,8 +68,9 @@ export function SttPicker({ draft, catalogs }: { draft: AgentDraft; catalogs: Ca
             draft.update((c) => void (c.stt = { provider: p, model: next?.supports_auto ? null : (only ?? next?.default_model ?? null) }));
             draft.touch("/stt/provider");
           }}
-          options={catalogs.voice.stt.map((p) => ({ value: p.provider, label: p.label }))}
+          options={catalogs.voice.stt.map((p) => ({ value: p.provider, label: providerLabel(p) }))}
         />
+        <FieldWarning draft={draft} pointer="/stt/provider" />
         <FieldError message={draft.errorFor("/stt/provider")} />
       </FieldRow>
       <StackRow

@@ -1,7 +1,7 @@
 import { BrainCircuit, Building2 } from "lucide-react";
 import { FieldRow, Select } from "../../../components";
-import { isFixed, llmModel, perMin, type Catalogs } from "./catalogs";
-import { FieldError } from "./fields";
+import { isFixed, llmModel, perMin, providerLabel, type Catalogs } from "./catalogs";
+import { FieldError, FieldWarning } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { fieldId, fieldLabel } from "../config/fields";
 
@@ -46,8 +46,9 @@ export function ModelPicker({ draft, catalogs, onClamp }: { draft: AgentDraft; c
             const keep = next?.models.some((m) => m.id === llm.model && !m.withdrawn);
             setModel(p, keep ? llm.model : (next?.models.find((m) => !m.withdrawn)?.id ?? llm.model));
           }}
-          options={catalogs.llm.providers.map((p) => ({ value: p.id, label: p.label }))}
+          options={catalogs.llm.providers.map((p) => ({ value: p.id, label: providerLabel(p) }))}
         />
+        <FieldWarning draft={draft} pointer="/llm/provider" />
       </FieldRow>
       <FieldRow
         icon={<BrainCircuit />}
