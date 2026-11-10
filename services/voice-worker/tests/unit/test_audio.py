@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from callwright_contract.adapters import load_catalog
 
 from worker.audio import (
     BackgroundAudioCache,
@@ -17,35 +18,38 @@ from worker.audio import (
     scale_frame,
 )
 
+CLIPS = load_catalog().ambience_clips
+
 
 def bg(**raw: Any) -> dict[str, Any]:
-    return {"advanced": {"background_audio": raw}}
+    return {"advanced": {"background_audio": {"volume": 0.8, **raw}}}
 
 
 def test_disabled_or_missing() -> None:
-    assert resolve_background_audio({}, None) == (None, [])
-    assert resolve_background_audio(bg(enabled=False), None) == (None, [])
+    assert resolve_background_audio({}, None, CLIPS) == (None, [])
+    assert resolve_background_audio(bg(enabled=False), None, CLIPS) == (None, [])
 
 
 def test_builtin_clip_and_gain_clamp() -> None:
     spec, warnings = resolve_background_audio(
-        bg(enabled=True, source={"kind": "builtin", "id": "hold_music"}, volume=3), None
+        bg(enabled=True, source={"kind": "builtin", "id": "hold_music"}, volume=3), None, CLIPS
     )
-    assert warnings == [] and spec == BackgroundAudioSpec("builtin", "hold_music", 2.0)
+    assert warnings == []
+    assert spec == BackgroundAudioSpec("builtin", "hold_music", 2.0, clip="HOLD_MUSIC")
     assert clamp_gain(-1) == 0.0 and clamp_gain(0.8) == 0.8
 
 
 def test_unknown_clip_and_missing_url_warn() -> None:
     spec, warnings = resolve_background_audio(
-        bg(enabled=True, source={"kind": "builtin", "id": "jungle"}), None
+        bg(enabled=True, source={"kind": "builtin", "id": "jungle"}), None, CLIPS
     )
     assert spec is None and warnings[0].code == "background_audio_unavailable"
     spec, warnings = resolve_background_audio(
-        bg(enabled=True, source={"kind": "upload", "key": "k.mp3"}), None
+        bg(enabled=True, source={"kind": "upload", "key": "k.mp3"}), None, CLIPS
     )
     assert spec is None and warnings[0].code == "background_audio_unavailable"
     spec, _ = resolve_background_audio(
-        bg(enabled=True, source={"kind": "upload", "key": "k.mp3"}), "https://signed/k.mp3"
+        bg(enabled=True, source={"kind": "upload", "key": "k.mp3"}), "https://signed/k.mp3", CLIPS
     )
     assert spec is not None and spec.url == "https://signed/k.mp3"
 
@@ -80,7 +84,8 @@ async def test_upload_download_is_cached_by_key(tmp_path: Path) -> None:
 
 
 async def test_build_player_for_builtin_clip() -> None:
-    player = build_player(BackgroundAudioSpec("builtin", "office_ambience", 0.8))
+    spec = BackgroundAudioSpec("builtin", "office_ambience", 0.8, clip="OFFICE_AMBIENCE")
+    player = build_player(spec)
     assert type(player).__name__ == "BackgroundAudioPlayer"
 
 

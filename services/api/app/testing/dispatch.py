@@ -15,7 +15,7 @@ from __future__ import annotations
 import time
 from typing import Any, Protocol
 
-from callwright_contract.values import TEXTSIM_QUEUE
+from callwright_contract.textsim import TEXTSIM_QUEUE
 
 RETRY_DEFER_S = 5.0
 SLOT_TTL_S = 20 * 60

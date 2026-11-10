@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from callwright_contract.adapters import load_catalog as load_adapter_catalog
+
 from app.llms.service import catalog_json, load_catalog, parse_catalog
 from app.pricing import engine
 
@@ -79,3 +81,12 @@ def test_withdrawn_hidden_unless_asked() -> None:
     assert [m["id"] for m in body["providers"][0]["models"]] == ["m1"]
     body = catalog_json(None, include_withdrawn=True, catalog=parse_catalog(RANGED))
     assert [m["id"] for m in body["providers"][0]["models"]] == ["m1", "m0"]
+
+
+def test_fixed_temperatures_agree_with_the_worker_catalog() -> None:
+    """The editor locks temperature for exactly the models the voice worker runs at the default."""
+    adapters = load_adapter_catalog()
+    for model in load_catalog().models:
+        for provider in model.providers:
+            entry = adapters.entry("llm", provider)
+            assert entry is not None and (model.id in entry.fixed_temperature) == model.temperature.is_fixed

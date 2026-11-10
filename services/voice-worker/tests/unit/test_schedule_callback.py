@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+from callwright_contract.variables import local_now
 
 from tests.unit.tool_support import make
-from worker.call_behavior import local_now
 from worker.tools.registry import BUILTIN_SCHEDULE_CALLBACK, function_schema
 from worker.tools.schedule_callback import simulated
 

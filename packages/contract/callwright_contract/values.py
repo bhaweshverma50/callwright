@@ -1,11 +1,11 @@
 """Small values both services use: phone number and keypad syntax, tool names, error codes and
-default texts, callback limits and wording (011), stock lines and the text runner's queue (008)."""
+default texts, callback limits and wording (011) and stock lines."""
 
 from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from typing import Final, Literal
+from typing import Final, Literal, get_args
 
 E164_PATTERN: Final = r"^\+[1-9]\d{6,14}$"
 E164 = re.compile(E164_PATTERN)
@@ -22,31 +22,45 @@ SCHEDULE_CALLBACK_TOOL: Final = "schedule_callback"
 SET_LANGUAGE_TOOL: Final = "set_language"
 KB_TOOL: Final = "kb_search"
 COMPLETE_TASK_TOOL: Final = "complete_task"
-ROUTE_TOOL_PREFIX: Final = "route_to_"
+
+# Why the API refuses to book a callback from a call (011 ``CallbackRefusedProblem.reason``); the
+# agent's tool result carries the same code.
+CallbackRefusal = Literal[
+    "channel_unsupported",
+    "number_unavailable",
+    "agent_unavailable",
+    "unknown_timezone",
+    "invalid_time",
+    "dnc_listed",
+    "outside_calling_hours",
+]
+CALLBACK_REFUSALS: Final[tuple[CallbackRefusal, ...]] = get_args(CallbackRefusal)
 
 # Codes a tool result carries in ``{"error": code, "message": ...}`` (005 data-model ToolCall).
-ToolErrorCode = Literal[
-    "invalid_arguments",
-    "missing_variable",
-    "secret_unavailable",
-    "blocked_address",
-    "connection_error",
-    "timeout",
-    "http_status",
-    "response_too_large",
-    "channel_unsupported",
-    "transfer_failed",
-    "no_mock_response",
-    "invalid_time",
-    "unavailable",
-]
-CHANNEL_UNSUPPORTED: Final = "channel_unsupported"
+ToolErrorCode = (
+    Literal[
+        "invalid_arguments",
+        "missing_variable",
+        "secret_unavailable",
+        "blocked_address",
+        "connection_error",
+        "timeout",
+        "http_status",
+        "response_too_large",
+        "transfer_failed",
+        "unsupported_language",
+        "unavailable",
+        "internal",
+        # 008 simulations: no canned answer, or the stand-in answer could not be written.
+        "no_mock_response",
+        "no_mock_configured",
+        "synthesis_failed",
+    ]
+    | CallbackRefusal
+)
 
-DEFAULT_HOLD_MESSAGE: Final = "Please hold while I connect you."
+# What an HTTP tool or webhook node says while it waits, unless the builder wrote its own line.
 DEFAULT_EXECUTION_MESSAGE: Final = "One moment while I check that."
-# The goodbye an End node (004) says when the builder wrote none: the flow starter used to store
-# it, and the worker treats it as "no fixed line" and writes one for the call.
-STOCK_GOODBYE: Final = "Thanks for calling. Goodbye."
 
 # 011 callbacks booked from a call.
 CALLBACK_MAX_NOTE_CHARS: Final = 500
@@ -56,28 +70,18 @@ CALLBACK_NOT_A_PHONE_CALL: Final = (
 )
 
 
+def clock(local: datetime) -> str:
+    """``5:00 pm``: how a time is said to a caller and written in the agent's instructions."""
+    return f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
+
+
 def spoken_time(local: datetime, now_local: datetime) -> str:
     """``today at 5:00 pm``, ``tomorrow, Wednesday 4 November, at 5:00 pm`` or
     ``Friday 6 November at 9:30 am`` (both in the recipient's zone)."""
-    clock = f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
+    at = clock(local)
     day = f"{local.strftime('%A')} {local.day} {local.strftime('%B')}"
     if local.date() == now_local.date():
-        return f"today at {clock}"
+        return f"today at {at}"
     if local.date() == now_local.date() + timedelta(days=1):
-        return f"tomorrow, {day}, at {clock}"
-    return f"{day} at {clock}"
-
-
-# 008 text runner: the arq queue the voice worker's ``textsim`` role consumes, its two jobs and
-# why a simulated conversation ended.
-TEXTSIM_QUEUE: Final = "arq:textsim"
-RUN_SINGLE_TURN: Final = "run_single_turn"
-RUN_SIMULATION: Final = "run_simulation"
-SimulationEndReason = Literal[
-    "caller_turns_exhausted",
-    "caller_hung_up",
-    "agent_hangup",
-    "call_transfer",
-    "turn_limit_reached",
-    "error",
-]
+        return f"tomorrow, {day}, at {at}"
+    return f"{day} at {at}"

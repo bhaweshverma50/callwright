@@ -11,10 +11,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from callwright_contract.calls import CallStatus, Channel, DisconnectReason, Origin
+from callwright_contract.calls import CallStatus, Channel, DisconnectReason
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.analytics_chat.catalog import METRICS, SOURCE_DIMENSIONS, SOURCE_FILTERS, Source
+from app.calls.origins import Origin
 
 MetricName = Literal[
     "call_count",

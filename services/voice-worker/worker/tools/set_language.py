@@ -29,6 +29,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from callwright_contract.protocol import LanguageReport
 from callwright_contract.values import SET_LANGUAGE_TOOL
 
 from worker.internal_api import InternalApiClient
@@ -156,7 +157,5 @@ class SetLanguageExecutor:
     async def _report(self, call_id: str, code: str, offset_ms: int | None) -> None:
         if self.api is None:
             return
-        body: dict[str, Any] = {"language": code}
-        if offset_ms is not None:
-            body["offset_ms"] = offset_ms
+        body = LanguageReport(language=code, offset_ms=offset_ms)
         await self.api.report_language(call_id, body, timeout_s=self.timeout_s)

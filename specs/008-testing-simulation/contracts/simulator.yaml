@@ -316,7 +316,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [workspace_id, simulation_run_id, output_call_id, agent_id, agent_type, channel, mode, config_snapshot, settings, dynamic_variables]
+                required: [workspace_id, simulation_run_id, output_call_id, agent_id, agent_type, channel, mode, runtime, settings, dynamic_variables]
                 properties:
                   workspace_id: { type: string }
                   agent_id: { type: string }
@@ -325,7 +325,6 @@ paths:
                   simulation_run_id: { type: string }
                   output_call_id: { type: string, description: Call row pre-created with origin simulation }
                   mode: { $ref: '#/components/schemas/SimMode' }
-                  config_snapshot: { type: object }
                   runtime:
                     type: object
                     description: >
@@ -335,11 +334,10 @@ paths:
                     additionalProperties: true
                   settings: { $ref: '#/components/schemas/SimSettings' }
                   dynamic_variables: { type: object, additionalProperties: { type: string } }
-                  language_options:
-                    type: array
-                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
-                    items: { $ref: '../../003-voice-runtime/contracts/calls.yaml#/components/schemas/LanguageOption' }
-                  start_speaker: { type: string, enum: [agent, user] }
+                  start_speaker:
+                    type: string
+                    enum: [agent, user]
+                    description: Replay only; who spoke first on the base call, so the replay opens the same way
                   caller_turns:
                     type: array
                     description: Replay only

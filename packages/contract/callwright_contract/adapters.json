@@ -1,101 +1,87 @@
 {
-  "schema_version": 1,
-  "description": "Vendors the voice worker can run (Principle I, 003 research R8). The worker builds only these; the API refuses any other vendor at admission, before a room exists. Speech recognition Auto is resolved by the API from its speech catalog (voices/catalog.yaml) and sent in the claim.",
+  "description": "Vendors the voice worker can run (Principle I, 003 research R8). The worker builds only these; the API refuses any other vendor at admission, before a room exists. Speech recognition Auto is resolved by the API from its speech catalog (voices/catalog.yaml) and sent in the claim. Per model: builtin_turn_detection (STT models with their own end of turn), native_volume (TTS models whose vendor applies the volume control itself; others get the worker's output gain) and fixed_temperature (LLM models that only run at the vendor's default temperature). ambience_clips maps each built-in background sound id to its LiveKit BuiltinAudioClip.",
   "entries": [
     {
       "kind": "stt",
       "provider": "deepgram",
       "models": ["nova-3", "nova-2", "flux-general-en"],
-      "builtin_turn_detection": ["flux-general-en"],
-      "streaming": true,
-      "meter": "audio_ms"
+      "builtin_turn_detection": ["flux-general-en"]
     },
     {
       "kind": "stt",
       "provider": "assemblyai",
       "models": ["universal-streaming", "universal-streaming-multilingual"],
-      "builtin_turn_detection": ["universal-streaming", "universal-streaming-multilingual"],
-      "streaming": true,
-      "meter": "audio_ms"
+      "builtin_turn_detection": ["universal-streaming", "universal-streaming-multilingual"]
     },
     {
       "kind": "stt",
       "provider": "sarvam",
       "models": ["saarika:v2.5", "saaras:v3"],
-      "builtin_turn_detection": [],
-      "streaming": true,
-      "meter": "audio_ms"
+      "builtin_turn_detection": []
     },
     {
       "kind": "llm",
       "provider": "azure_openai",
       "aliases": ["azure"],
       "models": ["gpt-5.1", "gpt-5.2", "gpt-5-mini"],
-      "streaming": true,
-      "meter": "tokens"
+      "fixed_temperature": ["gpt-5.1", "gpt-5.2", "gpt-5-mini"]
     },
     {
       "kind": "llm",
       "provider": "openai",
       "models": ["gpt-5.1", "gpt-5.2", "gpt-5-mini"],
-      "streaming": true,
-      "meter": "tokens"
+      "fixed_temperature": ["gpt-5.1", "gpt-5.2", "gpt-5-mini"]
     },
     {
       "kind": "llm",
       "provider": "anthropic",
       "models": ["claude-haiku-5-5", "claude-sonnet-5-5"],
-      "streaming": true,
-      "meter": "tokens"
+      "fixed_temperature": ["claude-haiku-5-5", "claude-sonnet-5-5"]
     },
     {
       "kind": "tts",
       "provider": "elevenlabs",
       "models": ["eleven_flash_v2_5", "eleven_flash_v2", "eleven_turbo_v2_5", "eleven_turbo_v2", "eleven_multilingual_v2"],
       "default_model": "eleven_multilingual_v2",
-      "capabilities": {"speed": true, "expressiveness": true, "volume": true},
-      "streaming": true,
-      "meter": "characters"
+      "native_volume": []
     },
     {
       "kind": "tts",
       "provider": "cartesia",
       "models": ["sonic-2", "sonic-2-2025-03-07", "sonic-3", "sonic-turbo"],
       "default_model": "sonic-2",
-      "capabilities": {"speed": true, "expressiveness": true, "volume": true},
-      "streaming": true,
-      "meter": "characters"
+      "native_volume": ["sonic-3"]
     },
     {
       "kind": "tts",
       "provider": "fishaudio",
       "models": ["s2.1-pro", "s2-pro", "s1"],
       "default_model": "s2.1-pro",
-      "capabilities": {"speed": true, "expressiveness": true, "volume": true},
-      "streaming": true,
-      "meter": "characters"
+      "native_volume": ["s2.1-pro", "s2-pro", "s1"]
     },
     {
       "kind": "nc",
       "provider": "sanas",
-      "models": ["vi", "st"],
-      "streaming": true,
-      "meter": "audio_ms"
+      "models": ["vi", "st"]
     },
     {
       "kind": "nc",
       "provider": "ai_coustics",
-      "models": ["standard"],
-      "streaming": true,
-      "meter": "audio_ms"
+      "models": ["standard"]
     },
     {
       "kind": "nc",
       "provider": "none",
-      "models": ["none"],
-      "streaming": true,
-      "meter": "none",
-      "internal": true
+      "models": ["none"]
     }
-  ]
+  ],
+  "ambience_clips": {
+    "office_ambience": "OFFICE_AMBIENCE",
+    "city_ambience": "CITY_AMBIENCE",
+    "forest_ambience": "FOREST_AMBIENCE",
+    "crowded_room": "CROWDED_ROOM",
+    "hold_music": "HOLD_MUSIC",
+    "keyboard_typing": "KEYBOARD_TYPING",
+    "keyboard_typing2": "KEYBOARD_TYPING2"
+  }
 }

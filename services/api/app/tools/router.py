@@ -6,8 +6,8 @@ from __future__ import annotations
 import hmac
 from typing import Annotated, Any
 
-from callwright_contract import url_guard
 from callwright_contract.calls import ACTIVE_STATUSES
+from callwright_contract.protocol import ToolSecrets
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
@@ -15,6 +15,7 @@ from app.agent_versions.models import AgentVersion
 from app.agents.views import actor
 from app.calls.lookups import workspace_for_call
 from app.calls.models import Call
+from app.core import url_guard
 from app.core.auth import CurrentPrincipal, bearer_token, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses, too_many_requests, validation_failed
 from app.core.ids import path_id
@@ -33,9 +34,6 @@ AgentId = Annotated[str, Depends(path_id("agt", "agent", "agent_id"))]
 CallId = Annotated[str, Depends(path_id("call", "call", "call_id"))]
 
 TEST_RUNS_PER_MINUTE = 30
-
-# Tests replace this to avoid DNS lookups; ``None`` uses the system resolver.
-test_run_resolver: url_guard.Resolver | None = None
 
 
 def _wrapper(request: Request) -> Any:
@@ -122,7 +120,7 @@ async def test_run_tool(
         client=client,
         secrets=secrets,
         allow_http=allow_http,
-        resolver=test_run_resolver,
+        resolver=url_guard.resolver,
     )
 
 
@@ -253,4 +251,4 @@ async def get_call_tool_secrets(call_id: CallId, request: Request) -> JSONRespon
         version = await session.get(AgentVersion, call.agent_version_id)
         config = version.config if version is not None else {}
         secrets = await service.secrets_for_config(session, key_wrapper(state.settings), workspace_id, config)
-    return JSONResponse({"secrets": secrets}, headers={"Cache-Control": "no-store"})
+    return JSONResponse(ToolSecrets(secrets=secrets).model_dump(), headers={"Cache-Control": "no-store"})

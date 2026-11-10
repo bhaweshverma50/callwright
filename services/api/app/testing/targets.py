@@ -27,6 +27,7 @@ from app.agents.models import Agent
 from app.agents.schemas import upcast
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.flows.compiled import compiled_view
+from app.flows.schemas import CONVERSATIONAL
 
 TARGET_TYPES = ("published", "draft", "version", "variant")
 
@@ -58,7 +59,7 @@ def agent_type_of(agent: Agent | str) -> str:
 
 
 def has_agent_node(config: Mapping[str, Any]) -> bool:
-    return any(n.get("type") in ("agent", "task") for n in compiled_view(config).nodes.values())
+    return any(n.get("type") in CONVERSATIONAL for n in compiled_view(config).nodes.values())
 
 
 def runnable_problem(agent_type: str, config: Mapping[str, Any]) -> ProblemError | None:

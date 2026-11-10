@@ -23,12 +23,9 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from callwright_contract.values import (
-    COMPLETE_TASK_TOOL,
-    SCHEDULE_CALLBACK_TOOL,
-    SET_LANGUAGE_TOOL,
-    STOCK_GOODBYE,
-)
+from callwright_contract.calls import DisconnectReason
+from callwright_contract.data_channel import FLOW_TOPIC
+from callwright_contract.values import COMPLETE_TASK_TOOL, SCHEDULE_CALLBACK_TOOL, SET_LANGUAGE_TOOL
 
 from worker.adapters.registry import (
     UnsupportedLanguage,
@@ -43,12 +40,12 @@ from worker.agent import (
     resolve_tts,
     tts_gain_for,
 )
-from worker.call_behavior import ends_with_goodbye
+from worker.call_behavior import STOCK_GOODBYE, ends_with_goodbye
 from worker.flow import FlowComponents, llm_ops
 from worker.flow import nodes as _handlers  # noqa: F401  (registers the node handlers)
-from worker.flow.compiled import ConversationNode, TaskSection, load_compiled
+from worker.flow.compiled import TaskSection, load_compiled
 from worker.flow.context import BackgroundSummarizer, Message, handoff, known_facts
-from worker.flow.events import TOPIC, FlowEvents
+from worker.flow.events import FlowEvents
 from worker.flow.executor import FlowRun, WebhookResult
 from worker.flow.nodes.end import generates as end_generates
 from worker.flow.nodes.start import Opening, opening
@@ -224,7 +221,7 @@ class LiveFlowServices:
             await self.say(message, allow_interruptions=False)
         await call.control.hang_up("agent_hangup")
 
-    async def hang_up(self, reason: str, diagnostic: str | None = None) -> None:
+    async def hang_up(self, reason: DisconnectReason, diagnostic: str | None = None) -> None:
         await self.call.control.hang_up(reason, diagnostic=diagnostic)
 
     async def _say_line(self, text: str) -> None:
@@ -537,7 +534,7 @@ def _publisher(control: CallControl) -> Any:
         return None
 
     async def publish(data: bytes) -> None:
-        await participant.publish_data(data, reliable=True, topic=TOPIC)
+        await participant.publish_data(data, reliable=True, topic=FLOW_TOPIC)
 
     return publish
 
@@ -585,7 +582,7 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
             self.rounds = 0
             self.completed = False
             node = self.node
-            strategy = "inherit" if rebuild else ConversationNode.of(node).context_strategy
+            strategy = "inherit" if rebuild else node["context_strategy"]
             ctx, extra = call.node_chat_ctx(strategy, chat_ctx)
             instructions = call.run.render(node.get("instructions"))
             self.task = TaskSection.of(node["task"]) if node.get("task") else None
@@ -690,11 +687,11 @@ def flow_agent_classes() -> tuple[type[Any], type[Any]]:
         async def _complete(self, values: Mapping[str, Any], *, complete: bool) -> Any:
             call = self.call
             self.completed = True
-            task = self.task or TaskSection()
+            task = self.task
             found = {k: v for k, v in values.items() if v not in (None, "")}
             variables: dict[str, Any] = {f"task_result.{k}": v for k, v in found.items()}
             variables["task_result"] = dict(found)
-            if not task.success_target:
+            if task is None or not task.success_target:
                 return "There is no next step."
             if not call.run.claim_turn(call.turns) and complete:
                 return IGNORED

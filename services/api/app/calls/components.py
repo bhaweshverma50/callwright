@@ -16,6 +16,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
 
 from app.agents.defaults import ADVANCED_DEFAULTS, CALL_BEHAVIOR_DEFAULTS, nc_default
@@ -143,13 +144,13 @@ def with_defaults(config: Mapping[str, Any], components: ResolvedComponents) -> 
 def unsupported(components: ResolvedComponents, catalog: AdapterCatalog) -> str | None:
     """Diagnostic for the first vendor the worker cannot run, else None."""
     if components.stt.model is None:
-        return f"stt_language_unsupported:{components.stt.provider}/{components.language}"
+        return diag.diagnostic(diag.STT_LANGUAGE_UNSUPPORTED, components.stt.provider, components.language)
     for vendor in components.vendors():
         if not catalog.supports(vendor.kind, vendor.provider, vendor.model):
-            suffix = (
-                f"/{vendor.model}" if vendor.model and catalog.entry(vendor.kind, vendor.provider) else ""
+            known = catalog.entry(vendor.kind, vendor.provider) is not None
+            return diag.diagnostic(
+                diag.UNSUPPORTED_VENDOR, vendor.kind, vendor.provider, vendor.model if known else None
             )
-            return f"unsupported_vendor:{vendor.kind}/{vendor.provider}{suffix}"
     return None
 
 
@@ -165,7 +166,7 @@ def unconfigured(components: ResolvedComponents, settings: object) -> str | None
     attr = KEYED_LLM_PROVIDERS.get(components.llm.provider)
     if attr is None or getattr(settings, attr, None):
         return None
-    return f"unsupported_vendor:llm/{components.llm.provider}"
+    return diag.diagnostic(diag.UNSUPPORTED_VENDOR, "llm", components.llm.provider)
 
 
 def usage_meters(usage: Mapping[str, Any] | None) -> dict[str, int]:

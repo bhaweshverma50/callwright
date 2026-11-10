@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from callwright_contract.values import CALLBACK_MAX_IN_MINUTES, CALLBACK_MAX_NOTE_CHARS
-from callwright_contract.variables import MAX_VARIABLES, NAME
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
+from callwright_contract.values import CALLBACK_MAX_NOTE_CHARS
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
+from app.agents.variables import MAX_VARIABLES, NAME
 from app.channels.phone_numbers.schemas import AGENT_ID, check_e164
 from app.outbound.schemas import VariableValue
 
@@ -43,20 +43,6 @@ class CallbackCreate(BaseModel):
                 f"underscores (max 64 characters): {', '.join(sorted(bad))[:200]}"
             )
         return value
-
-
-class CallbackBookRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    at: str | None = Field(default=None, max_length=40)
-    in_minutes: int | None = Field(default=None, ge=1, le=CALLBACK_MAX_IN_MINUTES)
-    note: str = Field(default="", max_length=CALLBACK_MAX_NOTE_CHARS)
-
-    @model_validator(mode="after")
-    def _one_time(self) -> CallbackBookRequest:
-        if (self.at is None) == (self.in_minutes is None):
-            raise ValueError("Give exactly one of at and in_minutes.")
-        return self
 
 
 def parse_local(value: str) -> datetime:

@@ -5,9 +5,13 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from callwright_contract.protocol import (
+    KB_DEFAULT_TOP_K,
+    KB_MAX_TOP_K,
+    KB_QUERY_MAX_CHARS,
+    MAX_KNOWLEDGE_BASES,
+)
 from pydantic import BaseModel, ConfigDict, Field
-
-from app.agents.schemas import MAX_KBS
 
 
 class _Strict(BaseModel):
@@ -26,17 +30,9 @@ class CheckDuplicate(_Strict):
 
 
 class SearchRequest(_Strict):
-    query: str = Field(min_length=1, max_length=1000)
-    top_k: int = Field(default=4, ge=1, le=8)
+    query: str = Field(min_length=1, max_length=KB_QUERY_MAX_CHARS)
+    top_k: int = Field(default=KB_DEFAULT_TOP_K, ge=1, le=KB_MAX_TOP_K)
 
 
 class SetAgentKnowledge(_Strict):
-    kb_ids: list[Annotated[str, Field(pattern=r"^kb_")]] = Field(max_length=MAX_KBS)
-
-
-class InternalSearch(_Strict):
-    # A call id, or a test run id for 008's single-turn test cases (no call exists).
-    call_id: str = Field(pattern=r"^(call|trn)_")
-    query: str = Field(min_length=1, max_length=1000)
-    kb_ids: list[Annotated[str, Field(pattern=r"^kb_")]] = Field(min_length=1, max_length=MAX_KBS)
-    top_k: int = Field(default=4, ge=1, le=8)
+    kb_ids: list[Annotated[str, Field(pattern=r"^kb_")]] = Field(max_length=MAX_KNOWLEDGE_BASES)

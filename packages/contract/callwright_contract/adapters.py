@@ -1,11 +1,13 @@
 """The vendors the voice worker can run (``adapters.json``): the worker's adapter registry builds
-from it and the API's admission refuses anything else (003 research R8, R22)."""
+from it and the API's admission refuses anything else (003 research R8, R22). It also owns what
+the worker needs to know per model (built-in end of turn, native volume, fixed temperature) and
+the built-in background sounds the worker can play."""
 
 from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from importlib import resources
 from typing import Any, Literal
@@ -21,11 +23,15 @@ class AdapterEntry:
     aliases: tuple[str, ...] = ()
     default_model: str | None = None
     builtin_turn_detection: frozenset[str] = frozenset()
+    native_volume: frozenset[str] = frozenset()
+    fixed_temperature: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
 class AdapterCatalog:
     entries: tuple[AdapterEntry, ...]
+    # Built-in background sound id -> LiveKit ``BuiltinAudioClip`` name.
+    ambience_clips: Mapping[str, str] = field(default_factory=dict)
 
     def entry(self, kind: str, provider: str) -> AdapterEntry | None:
         return next(
@@ -52,9 +58,12 @@ def parse_catalog(data: Mapping[str, Any]) -> AdapterCatalog:
                 aliases=tuple(str(a) for a in e.get("aliases", ())),
                 default_model=e.get("default_model"),
                 builtin_turn_detection=frozenset(e.get("builtin_turn_detection", ())),
+                native_volume=frozenset(e.get("native_volume", ())),
+                fixed_temperature=frozenset(e.get("fixed_temperature", ())),
             )
             for e in data.get("entries", ())
-        )
+        ),
+        {str(k): str(v) for k, v in (data.get("ambience_clips") or {}).items()},
     )
 
 

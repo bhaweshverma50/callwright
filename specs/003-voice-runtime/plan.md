@@ -158,7 +158,7 @@ in the existing `tools/` and `flow/` packages so 005 and 004 implement them in p
 |---|---|---|---|
 | `ToolProvider.tools_for(runtime, control) -> list[FunctionTool]` | `worker/tools/__init__.py` | 005 returns function tools (end_call, transfer, press_digit, http, kb_search) built from `config.tool_ids` and `config.kb_ids`; tool activity reported via `control.report_tool(...)` | `NullToolProvider`: no tools |
 | `CallControl` | `worker/tools/__init__.py` | `hang_up(reason)`, `say(text, allow_interruptions)`, `send_dtmf(digits)`, `report_tool(...)`, `report_transition(...)`, `apply_overrides(overrides)` (FR-046, research R22), `room`, `call_id` | implemented here |
-| `FlowRunner.build_agent(runtime, control, tools) -> Agent` | `worker/flow/__init__.py` | 004 returns the entry agent for a flow and drives handoffs | `NullFlowRunner`: refuses flow agents at claim (`flow-runtime-unavailable`) |
+| `FlowRunner.build_agent(runtime, control, tools) -> Agent` | `worker/flow/__init__.py` | 004 returns the entry agent for a flow and drives handoffs | `NullFlowRunner`: fails flow calls with `flow_runtime_unavailable` |
 | `InboundRouter.resolve(channel, sip_attrs, route_ref) -> InboundRoute` | `services/api/app/calls/service.py` | 010 registers routers for `sip_inbound` and `whatsapp` returning workspace, agent, variables, phone_number_id / whatsapp_channel_id | none registered: SIP claims refused with `error` |
 | `OutboundDialProvider.dial_spec(call) -> OutboundDial` | `services/api/app/calls/service.py` | 010 supplies trunk and numbers for `sip_outbound` claims | none: outbound claims refused |
 | Pipeline handlers `analyze`, `evaluate` | `services/api/app/calls/pipeline.py` | 007 registers `async def handler(call_id, session)` | step `skipped` |

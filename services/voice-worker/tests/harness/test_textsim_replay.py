@@ -30,15 +30,11 @@ async def replay(api: FakeInternalApi, config: dict[str, Any], turns: list[Any],
     return status, api.sim_results.get("srun_1"), models
 
 
-def test_interrupted_fragments_merge_with_the_next_fragment() -> None:
-    raw = [
-        {"text": "I wanted to", "interrupted": True},
-        {"text": "book a table", "interrupted": False},
-        "  ",
-        "for  two  people",
-        {"text": "at eight", "interrupted": True},
+def test_turns_are_trimmed_and_empty_ones_dropped() -> None:
+    assert normalize_turns(["I wanted to book", "  ", "for  two  people"]) == [
+        "I wanted to book",
+        "for two people",
     ]
-    assert normalize_turns(raw) == ["I wanted to book a table", "for two people", "at eight"]
 
 
 def test_path_divergence() -> None:
@@ -80,17 +76,18 @@ async def test_caller_first_sends_turn_one_before_any_agent_line() -> None:
     assert api.messages(CALL) == [("user", "Hello?"), ("agent", "Sure, I can help with that.")]
 
 
+async def test_replay_opens_as_the_base_call_did() -> None:
+    """The base call's caller spoke first: the replay sends turn 1 before any agent line, even
+    though the agent is set to speak first."""
+    api = FakeInternalApi()
+    await replay(api, agent_config(), ["Hello?"], start_speaker="user")
+    assert api.messages(CALL) == [("user", "Hello?"), ("agent", "Sure, I can help with that.")]
+
+
 async def test_generated_greeting_when_the_agent_has_no_begin_message() -> None:
     api = FakeInternalApi()
     await replay(api, agent_config(begin_message=None), ["Hi"])
     assert api.messages(CALL)[0] == ("agent", "Welcome to Acme.")
-
-
-async def test_fragments_are_merged_before_sending() -> None:
-    api = FakeInternalApi()
-    turns = [{"text": "I need", "interrupted": True}, {"text": "a refund"}]
-    await replay(api, agent_config(), turns)
-    assert [t for r, t in api.messages(CALL) if r == "user"] == ["I need a refund"]
 
 
 async def test_agent_hangup_before_turns_run_out_diverges() -> None:

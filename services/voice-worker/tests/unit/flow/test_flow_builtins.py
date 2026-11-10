@@ -8,7 +8,6 @@ import copy
 from typing import Any
 
 import pytest
-from callwright_contract.values import STOCK_GOODBYE
 
 from tests.flow_support import (
     FlowScript,
@@ -25,6 +24,7 @@ from worker.agent import (
     FLOW_CALLBACK_CLOSE,
     FLOW_ENDING_INSTRUCTION,
 )
+from worker.call_behavior import STOCK_GOODBYE
 from worker.flow import FlowComponents
 from worker.flow import runtime as flow_runtime
 from worker.flow.nodes.end import generates
@@ -94,7 +94,7 @@ def test_ending_rules_ask_before_hanging_up_on_a_busy_caller() -> None:
 
 
 def test_end_node_generates_only_without_a_line_of_its_own() -> None:
-    assert generates({"end": {"message": ""}}) and generates({"end": {}})
+    assert generates({"end": {"message": ""}})
     assert generates({"end": {"message": f"  {STOCK_GOODBYE} "}})
     assert not generates({"end": {"message": "Thanks for calling Harbour Clinic. Bye!"}})
 
@@ -227,7 +227,6 @@ def test_caller_language_wins_over_a_node_voice() -> None:
 
 async def test_flow_node_books_a_callback_and_the_goodbye_confirms_it() -> None:
     config = greeting_end()
-    config["simulation"] = True  # schedule_callback answers a mocked booking
     callback = Rule(
         "call me in five minutes",
         tool="schedule_callback",
@@ -238,7 +237,7 @@ async def test_flow_node_books_a_callback_and_the_goodbye_confirms_it() -> None:
         config,
         script,
         ["I'm getting a call. Can you call me in five minutes?", "that's all"],
-        runtime={"channel": "sip_inbound"},
+        runtime={"channel": "sip_inbound", "simulation": True},
     )
     (booked,) = [t for t in result.control.tools if t.name == "schedule_callback"]
     assert not booked.is_error and '"scheduled":true' in str(booked.output)

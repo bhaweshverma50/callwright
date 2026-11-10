@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog, AdapterEntry, Kind, load_catalog
 
 Builder = Callable[["VendorSpec", Mapping[str, str]], Any]
@@ -23,7 +24,7 @@ Builder = Callable[["VendorSpec", Mapping[str, str]], Any]
 class UnsupportedVendor(Exception):
     """A provider or model that is not in the catalog."""
 
-    def __init__(self, kind: str, provider: str, model: str | None = None) -> None:
+    def __init__(self, kind: Kind, provider: str, model: str | None = None) -> None:
         self.kind = kind
         self.provider = provider
         self.model = model
@@ -32,8 +33,8 @@ class UnsupportedVendor(Exception):
 
     @property
     def diagnostic(self) -> str:
-        """Machine code stored on the call (003 data-model section 1)."""
-        return f"unsupported_vendor:{self.kind}/{self.provider}"
+        """Machine code stored on the call (contract ``diagnostics``)."""
+        return diag.diagnostic(diag.UNSUPPORTED_VENDOR, self.kind, self.provider, self.model)
 
 
 class VendorNotConfigured(UnsupportedVendor):
@@ -42,7 +43,7 @@ class VendorNotConfigured(UnsupportedVendor):
     Same diagnostic as :class:`UnsupportedVendor`: for this deployment the vendor does not exist.
     """
 
-    def __init__(self, kind: str, provider: str) -> None:
+    def __init__(self, kind: Kind, provider: str) -> None:
         super().__init__(kind, provider)
         self.args = (f"{kind}/{provider} has no API key on this deployment",)
 
@@ -55,15 +56,22 @@ class UnsupportedLanguage(Exception):
         self.language = language
         super().__init__(f"stt/{provider} Auto has no model for language {language}")
 
+    @property
+    def diagnostic(self) -> str:
+        return diag.diagnostic(diag.STT_LANGUAGE_UNSUPPORTED, self.provider, self.language)
+
 
 @dataclass(frozen=True)
 class VendorSpec:
-    """One resolved vendor choice: kind, provider, model and provider-specific options."""
+    """One resolved vendor choice: kind, provider, model and provider-specific options.
+    :meth:`AdapterRegistry.check` attaches the catalog ``entry``, so an adapter reads the
+    model's capabilities from it."""
 
     kind: Kind
     provider: str
     model: str | None
     options: Mapping[str, Any] = field(default_factory=dict)
+    entry: AdapterEntry | None = field(default=None, compare=False, repr=False)
 
     @property
     def key(self) -> str:
@@ -96,54 +104,41 @@ class AdapterRegistry:
         builders: Mapping[tuple[Kind, str], Builder] | None = None,
         default_builder: Builder | None = None,
     ) -> None:
-        self._entries: dict[tuple[str, str], AdapterEntry] = {}
-        self._aliases: dict[tuple[str, str], str] = {}
-        for entry in (catalog or load_catalog()).entries:
-            self._entries[(entry.kind, entry.provider)] = entry
-            for alias in entry.aliases:
-                self._aliases[(entry.kind, alias)] = entry.provider
+        self.catalog = catalog or load_catalog()
         self._builders: dict[tuple[Kind, str], Builder] = dict(builders or {})
         self._default_builder = default_builder
 
-    # catalog -------------------------------------------------------------
-
-    def entries(self, kind: Kind | None = None) -> list[AdapterEntry]:
-        return [e for e in self._entries.values() if kind is None or e.kind == kind]
-
     def normalize_provider(self, kind: Kind, provider: str) -> str:
-        return self._aliases.get((kind, provider), provider)
+        return self.catalog.canonical_provider(kind, provider)
 
     def entry(self, kind: Kind, provider: str) -> AdapterEntry:
-        provider = self.normalize_provider(kind, provider)
-        try:
-            return self._entries[(kind, provider)]
-        except KeyError:
-            raise UnsupportedVendor(kind, provider) from None
+        found = self.catalog.entry(kind, provider)
+        if found is None:
+            raise UnsupportedVendor(kind, provider)
+        return found
 
     def check(self, spec: VendorSpec) -> VendorSpec:
-        """Validate a spec and return it with the canonical provider id."""
+        """Validate a spec and return it with the canonical provider id and its catalog entry."""
         entry = self.entry(spec.kind, spec.provider)
         if spec.model is not None and spec.model not in entry.models:
             raise UnsupportedVendor(spec.kind, entry.provider, spec.model)
-        if spec.provider != entry.provider:
-            return VendorSpec(spec.kind, entry.provider, spec.model, spec.options)
-        return spec
+        return replace(spec, provider=entry.provider, entry=entry)
 
     def native_volume(self, spec: VendorSpec) -> bool:
-        """Whether the TTS vendor applies ``volume`` itself (the adapter's ``native_volume``);
-        otherwise the worker applies it as output gain."""
-        module = importlib.import_module(
-            _module_path(spec.kind, self.entry(spec.kind, spec.provider).provider)
-        )
-        native: Callable[[str | None], bool] | None = getattr(module, "native_volume", None)
-        return native is not None and native(spec.model)
+        """Whether the TTS vendor applies ``volume`` itself; otherwise the worker applies it as
+        output gain."""
+        return spec.model in self.entry(spec.kind, spec.provider).native_volume
+
+    def fixed_temperature(self, spec: VendorSpec) -> bool:
+        """Whether the model only runs at the vendor's default temperature (callers that want
+        another one, such as 008's simulated caller, leave it unset)."""
+        entry = self.catalog.entry(spec.kind, spec.provider)
+        return entry is not None and spec.model in entry.fixed_temperature
 
     def builtin_turn_detection(self, spec: VendorSpec) -> bool:
         if spec.kind != "stt" or spec.model is None:
             return False
         return spec.model in self.entry("stt", spec.provider).builtin_turn_detection
-
-    # building ------------------------------------------------------------
 
     def with_builders(
         self,
@@ -151,7 +146,7 @@ class AdapterRegistry:
         default_builder: Builder | None = None,
     ) -> AdapterRegistry:
         """Return a copy whose builders are replaced (fakes in tests and the harness)."""
-        clone = AdapterRegistry(AdapterCatalog(tuple(self._entries.values())))
+        clone = AdapterRegistry(self.catalog)
         clone._builders = {**self._builders, **(builders or {})}
         clone._default_builder = default_builder or self._default_builder
         return clone

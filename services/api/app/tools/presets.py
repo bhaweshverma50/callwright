@@ -6,7 +6,9 @@ from __future__ import annotations
 from typing import Any
 
 from callwright_contract.http_core import DEFAULT_TIMEOUT_MS
-from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE, DEFAULT_HOLD_MESSAGE
+from callwright_contract.values import DEFAULT_EXECUTION_MESSAGE
+
+from app.tools.schemas import DEFAULT_HOLD_MESSAGE
 
 PRESETS: tuple[dict[str, Any], ...] = (
     {

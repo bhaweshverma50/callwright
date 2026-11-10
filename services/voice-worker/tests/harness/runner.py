@@ -41,8 +41,9 @@ from pathlib import Path
 from typing import Any
 
 from callwright_contract.adapters import Kind
-from callwright_contract.protocol import RuntimeConfig
-from callwright_contract.variables import BUILTIN_VARIABLES
+from callwright_contract.calls import ControlReason, DisconnectReason
+from callwright_contract.protocol import FlushReason, RuntimeConfig
+from callwright_contract.variables import BUILTIN_VARIABLES, builtin_values
 
 from tests.harness.bench.synth import segments
 from tests.harness.clock import VirtualClock, VirtualTimer
@@ -56,12 +57,11 @@ from worker.call_behavior import (
     VOICEMAIL_TOOL_NAME,
     DtmfCollector,
     DurationTimer,
-    FlushReason,
     InactivityTimer,
     VoicemailHandler,
 )
 from worker.control import RuntimeCallControl
-from worker.entry import SYSTEM_EVENT_FOR_REASON
+from worker.entry import record_ending
 from worker.internal_api import InternalApiClient
 from worker.metrics import EventPoster, EventRecorder, LatencyTracker, TurnRecord, UsageMeters
 from worker.pipeline import OverrideManager, SessionComponents, build_components, plan_session
@@ -118,16 +118,16 @@ def default_variables(config: Mapping[str, Any], channel: str) -> dict[str, str]
         for v in config.get("dynamic_variables") or []
         if v.get("name")
     }
-    known = {
-        "call_id": CALL_ID,
-        "channel": channel,
-        "direction": "inbound",
-        "timezone": "UTC",
-        "current_date": EPOCH.date().isoformat(),
-        "current_time": EPOCH.time().isoformat(timespec="minutes"),
-        "current_datetime": EPOCH.isoformat(timespec="minutes"),
-    }
-    values.update({name: known.get(name, "") for name in BUILTIN_VARIABLES})
+    known = builtin_values(
+        call_id=CALL_ID,
+        channel=channel,
+        direction="inbound",
+        from_number=None,
+        to_number=None,
+        timezone=None,
+        now=EPOCH,
+    )
+    values.update({name: known[name] for name in BUILTIN_VARIABLES})
     return values
 
 
@@ -399,11 +399,11 @@ class HarnessCall:
     def _spawn(self, coro: Coroutine[Any, Any, Any]) -> None:
         self._pending.append(coro)
 
-    def _hang_up_soon(self, reason: str, diagnostic: str | None = None) -> None:
+    def _hang_up_soon(self, reason: DisconnectReason, diagnostic: str | None = None) -> None:
         if not self.control.ending:
             self._spawn(self.control.hang_up(reason, diagnostic=diagnostic))
 
-    def _on_control_end(self, reason: str) -> None:
+    def _on_control_end(self, reason: ControlReason) -> None:
         # Called inside the poster's flush: defer, the hang-up posts the final batch itself.
         self._hang_up_soon(reason)
 
@@ -462,7 +462,7 @@ class HarnessCall:
     async def caller_quiet(self) -> bool:
         return True
 
-    async def end(self, reason: str, diagnostic: str | None) -> None:
+    async def end(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         if self._speech is not None:
             self._speech_done(self._speech, interrupted=True, at=self.clock.now())
         if self._generation is not None:
@@ -472,10 +472,7 @@ class HarnessCall:
         self.duration.stop()
         if self.dtmf is not None:
             self.dtmf.close()
-        system = SYSTEM_EVENT_FOR_REASON.get(reason)
-        if system:
-            self.recorder.system(system, diagnostic)
-        self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
+        record_ending(self.recorder, reason, diagnostic)
         self.ended = True
         self.end_reason = reason
         self.ended_at = self.clock.now()

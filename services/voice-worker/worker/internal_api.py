@@ -1,8 +1,7 @@
 """The worker's client for every internal API route (``/v1/internal/*``, research R19).
 
-All routes authenticate with ``Authorization: Bearer <service token>``. Shapes are the
-contract's (``callwright_contract.protocol``) where it has them; the text runner's run specs
-(``specs/008-text-simulations/contracts``) are modelled here.
+All routes authenticate with ``Authorization: Bearer <service token>``. Every body is
+a contract model (``callwright_contract.protocol`` and, for the text runner, ``.textsim``).
 
 Retried with exponential backoff (transport errors, 408, 425, 429 and 5xx; every route is
 idempotent or deduplicated server side):
@@ -31,18 +30,21 @@ import asyncio
 import logging
 import random
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, Literal
+from typing import Any
 
 import httpx
-from callwright_contract.calls import AgentType, Channel
 from callwright_contract.protocol import (
     MAX_EVENTS_PER_BATCH,
+    CallbackRequest,
     ClaimRequest,
     ClaimResponse,
     EventBatchResult,
-    RuntimeValues,
+    KbSearchRequest,
+    LanguageReport,
+    ToolSecrets,
 )
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from callwright_contract.textsim import CaseResult, CaseSpec, SimResult, SimulationSpec
+from pydantic import BaseModel, ValidationError
 
 from worker import telemetry
 from worker.settings import WorkerSettings
@@ -69,95 +71,6 @@ RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 GONE = frozenset({404, 409})
 
 Sleep = Callable[[float], Awaitable[None]]
-
-
-# Text run specs (008) ----------------------------------------------------------------------------
-
-
-class PersonaBrief(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    goal: str = ""
-    known_facts: list[str] = Field(default_factory=list)
-    temperament: str | None = None
-    speaking_style: str | None = None
-    constraints: list[str] = Field(default_factory=list)
-    opening_line: str | None = None
-
-
-class SimSettings(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    max_caller_turns: int = 20
-    missing_mock_policy: Literal["synthesize", "error"] = "synthesize"
-    persona_model: str | None = None
-
-
-class RecordedOutput(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    name: str
-    output: str
-
-
-def _string_map(value: Any) -> dict[str, str]:
-    if not isinstance(value, dict):
-        return {}
-    return {str(k): "" if v is None else str(v) for k, v in value.items()}
-
-
-class CaseSpec(BaseModel):
-    """One single-turn test case (``internalGetTestCaseSpec``)."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    workspace_id: str
-    agent_id: str
-    agent_type: AgentType = "single_prompt"
-    runtime: RuntimeValues
-    user_prompt: str
-    dynamic_variables: dict[str, str] = Field(default_factory=dict)
-
-    @field_validator("dynamic_variables", mode="before")
-    @classmethod
-    def _vars(cls, value: Any) -> dict[str, str]:
-        return _string_map(value)
-
-
-class SimulationSpec(BaseModel):
-    """One simulation run (``internalGetSimulationSpec``)."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    workspace_id: str
-    simulation_run_id: str
-    output_call_id: str
-    agent_id: str
-    agent_type: AgentType = "single_prompt"
-    channel: Channel = "web"
-    mode: Literal["replay", "persona"]
-    runtime: RuntimeValues
-    settings: SimSettings = Field(default_factory=SimSettings)
-    dynamic_variables: dict[str, str] = Field(default_factory=dict)
-    start_speaker: Literal["agent", "user"] | None = None
-    # Strings; the worker also accepts ``{"text", "interrupted"}`` items (replay_caller).
-    caller_turns: list[Any] = Field(default_factory=list)
-    recorded_tool_outputs: list[RecordedOutput] = Field(default_factory=list)
-    original_node_path: list[str] = Field(default_factory=list)
-    persona_brief: PersonaBrief | None = None
-
-    @field_validator("dynamic_variables", mode="before")
-    @classmethod
-    def _vars(cls, value: Any) -> dict[str, str]:
-        return _string_map(value)
-
-    @field_validator("settings", mode="before")
-    @classmethod
-    def _settings(cls, value: Any) -> Any:
-        return value if value is not None else {}
-
-
-# Client --------------------------------------------------------------------------------------
 
 
 class InternalApiClient:
@@ -230,8 +143,6 @@ class InternalApiClient:
                 await self._sleep(self.backoff_delay(attempt))
         raise InternalApiError(None, f"gave up after {self._max_attempts} attempts: {last_error}")
 
-    # calls -------------------------------------------------------------------------------
-
     async def claim(self, request: ClaimRequest) -> ClaimResponse:
         attrs = {
             "http.request.method": "POST",
@@ -276,8 +187,6 @@ class InternalApiClient:
             span.set_attribute("control.action", result.control.action)
             return result
 
-    # tools -------------------------------------------------------------------------------
-
     async def tool_secrets(self, call_id: str) -> dict[str, str]:
         """The call's secret map, or an empty map when the API cannot provide it (tools then
         answer ``secret_unavailable`` and the call goes on). Values are never logged."""
@@ -289,15 +198,18 @@ class InternalApiClient:
         if response.status_code != 200:
             log.warning("tool secrets unavailable for %s: HTTP %s", call_id, response.status_code)
             return {}
-        secrets = response.json().get("secrets") or {}
-        return {str(k): str(v) for k, v in secrets.items()}
+        try:
+            return ToolSecrets.model_validate(response.json()).secrets
+        except (ValueError, ValidationError):
+            log.warning("tool secrets unreadable for %s", call_id)
+            return {}
 
-    async def kb_search(self, body: dict[str, Any], *, timeout_s: float) -> dict[str, Any]:
+    async def kb_search(self, body: KbSearchRequest, *, timeout_s: float) -> dict[str, Any]:
         """Search results, or ``{}`` when the API fails. Raises ``TimeoutError`` after
         ``timeout_s``."""
         try:
             response = await asyncio.wait_for(
-                self._once("POST", "/knowledge/search", body), timeout_s
+                self._once("POST", "/knowledge/search", _json(body, sparse=True)), timeout_s
             )
             data = response.json() if response.status_code == 200 else {}
         except httpx.TimeoutException as exc:
@@ -307,28 +219,30 @@ class InternalApiClient:
         return data if isinstance(data, dict) else {}
 
     async def schedule_callback(
-        self, call_id: str, body: dict[str, Any], *, timeout_s: float
+        self, call_id: str, body: CallbackRequest, *, timeout_s: float
     ) -> tuple[int, Any]:
         """The status and JSON answer of a booking. Raises :class:`InternalApiError` when the
         API cannot be reached or answers no JSON."""
         try:
-            response = await self._once("POST", f"/calls/{call_id}/callbacks", body, timeout_s)
+            response = await self._once(
+                "POST", f"/calls/{call_id}/callbacks", _json(body, sparse=True), timeout_s
+            )
             return response.status_code, response.json()
         except (httpx.HTTPError, ValueError) as exc:
             raise InternalApiError(None, type(exc).__name__) from exc
 
     async def report_language(
-        self, call_id: str, body: dict[str, Any], *, timeout_s: float
+        self, call_id: str, body: LanguageReport, *, timeout_s: float
     ) -> None:
         try:
-            response = await self._once("POST", f"/calls/{call_id}/language", body, timeout_s)
+            response = await self._once(
+                "POST", f"/calls/{call_id}/language", _json(body, sparse=True), timeout_s
+            )
         except httpx.HTTPError as exc:
             log.warning("language report for %s failed: %s", call_id, exc)
             return
         if response.status_code != 200:
             log.warning("language report for %s: HTTP %s", call_id, response.status_code)
-
-    # text runs (008) ---------------------------------------------------------------------
 
     async def _spec(self, path: str, route: str) -> dict[str, Any] | None:
         attrs = {"http.request.method": "GET", "url.path": f"/v1/internal{route}"}
@@ -341,11 +255,11 @@ class InternalApiClient:
             body: dict[str, Any] = response.json()
             return body
 
-    async def _result(self, path: str, route: str, body: dict[str, Any]) -> bool:
+    async def _result(self, path: str, route: str, body: BaseModel) -> bool:
         """Post a result. False when the run is gone (404 or 409)."""
         attrs = {"http.request.method": "POST", "url.path": f"/v1/internal{route}"}
         with telemetry.span("internal_api.textsim_result", attrs) as span:
-            response = await self._retried("POST", path, body, span)
+            response = await self._retried("POST", path, _json(body), span)
             if response.status_code in GONE:
                 return False
             if response.status_code not in (200, 202, 204):
@@ -359,9 +273,7 @@ class InternalApiClient:
         )
         return CaseSpec.model_validate(raw) if raw is not None else None
 
-    async def post_case_result(
-        self, test_run_id: str, test_case_id: str, body: dict[str, Any]
-    ) -> bool:
+    async def post_case_result(self, test_run_id: str, test_case_id: str, body: CaseResult) -> bool:
         return await self._result(
             f"/test-runs/{test_run_id}/cases/{test_case_id}/result",
             "/test-runs/{test_run_id}/cases/{test_case_id}/result",
@@ -375,12 +287,17 @@ class InternalApiClient:
         )
         return SimulationSpec.model_validate(raw) if raw is not None else None
 
-    async def post_simulation_result(self, simulation_run_id: str, body: dict[str, Any]) -> bool:
+    async def post_simulation_result(self, simulation_run_id: str, body: SimResult) -> bool:
         return await self._result(
             f"/simulation-runs/{simulation_run_id}/result",
             "/simulation-runs/{simulation_run_id}/result",
             body,
         )
+
+
+def _json(body: BaseModel, *, sparse: bool = False) -> dict[str, Any]:
+    """The body as JSON; ``sparse`` leaves out unset optional fields (tool requests)."""
+    return body.model_dump(mode="json", exclude_none=sparse)
 
 
 def _problem_detail(response: httpx.Response) -> str:

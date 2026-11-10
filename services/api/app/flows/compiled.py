@@ -27,7 +27,37 @@ class CompiledTransition(_Open):
     label: str | None = None
 
 
+class TaskSection(_Open):
+    json_schema: dict[str, Any]
+    max_rounds: int
+    success_target: str | None
+    success_edge_id: str | None
+
+
+class StartSection(_Open):
+    start_speaker: Literal["agent", "user"]
+    greeting_type: Literal["static", "generated"]
+    greeting: str
+    next: str | None
+    edge_id: str | None
+
+
+class SaySection(_Open):
+    message: str
+    allow_interruptions: bool
+    next: str | None
+    edge_id: str | None
+
+
+class EndSection(_Open):
+    message: str
+    reason: str
+
+
 class CompiledNode(_Open):
+    """One node; the compiler writes every value of the sections it fills (agent and task nodes
+    carry ``context_strategy``), so the worker reads them as given."""
+
     type: NodeType
     label: str
     instructions: str | None = None
@@ -40,14 +70,14 @@ class CompiledNode(_Open):
     tools: list[dict[str, Any]] | None = None
     kb_search: dict[str, Any] | None = None
     transitions: list[CompiledTransition] | None = None
-    task: dict[str, Any] | None = None
-    start: dict[str, Any] | None = None
-    say: dict[str, Any] | None = None
+    task: TaskSection | None = None
+    start: StartSection | None = None
+    say: SaySection | None = None
     condition: dict[str, Any] | None = None
     extract: dict[str, Any] | None = None
     webhook: dict[str, Any] | None = None
     transfer: dict[str, Any] | None = None
-    end: dict[str, Any] | None = None
+    end: EndSection | None = None
 
 
 class DeclaredVariable(BaseModel):

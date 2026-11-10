@@ -3571,6 +3571,22 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationProblem'
       x-spec: 004-flow-agents
+  /flows/node-defaults:
+    get:
+      tags:
+      - flows
+      operationId: getFlowNodeDefaults
+      summary: What a new node of each type starts with in the builder (label and full config)
+      responses:
+        '200':
+          description: One entry per node type, in palette order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowNodeDefaults'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 004-flow-agents
   /flows/{flow_id}:
     parameters:
     - $ref: '#/components/parameters/FlowId'
@@ -4115,7 +4131,7 @@ paths:
                 - agent_type
                 - channel
                 - mode
-                - config_snapshot
+                - runtime
                 - settings
                 - dynamic_variables
                 properties:
@@ -4142,8 +4158,6 @@ paths:
                     description: Call row pre-created with origin simulation
                   mode:
                     $ref: '#/components/schemas/SimMode'
-                  config_snapshot:
-                    type: object
                   runtime:
                     type: object
                     description: 'The run''s resolved values, as in the claim''s RuntimeConfig (config
@@ -4158,16 +4172,13 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
-                  language_options:
-                    type: array
-                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
-                    items:
-                      $ref: '#/components/schemas/LanguageOption'
                   start_speaker:
                     type: string
                     enum:
                     - agent
                     - user
+                    description: Replay only; who spoke first on the base call, so the replay opens the
+                      same way
                   caller_turns:
                     type: array
                     description: Replay only
@@ -4278,7 +4289,7 @@ paths:
                 - workspace_id
                 - agent_id
                 - agent_type
-                - config_snapshot
+                - runtime
                 - user_prompt
                 - dynamic_variables
                 properties:
@@ -4291,8 +4302,6 @@ paths:
                     enum:
                     - single_prompt
                     - flow
-                  config_snapshot:
-                    type: object
                   runtime:
                     type: object
                     description: 'The run''s resolved values, as in the claim''s RuntimeConfig (config
@@ -4307,11 +4316,6 @@ paths:
                     type: object
                     additionalProperties:
                       type: string
-                  language_options:
-                    type: array
-                    description: Languages set_language may switch to (012, same as the claim's RuntimeConfig).
-                    items:
-                      $ref: '#/components/schemas/LanguageOption'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -6285,9 +6289,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '422':
-          description: 'Invalid variables, unsupported vendor (`unsupported-vendor`), unpriced configuration
-            (`pricing-unavailable`), flow agent without flow runtime (`flow-runtime-unavailable`), or
-            idempotency key reused with a different body.
+          description: 'Invalid variables, unsupported vendor (`unsupported_vendor`), unpriced configuration
+            (`pricing_unavailable`), or idempotency key reused with a different body.
 
             '
           content:
@@ -10820,7 +10823,7 @@ components:
           reason:
             type: string
             enum:
-            - unsupported_channel
+            - channel_unsupported
             - number_unavailable
             - agent_unavailable
             - unknown_timezone
@@ -13402,6 +13405,52 @@ components:
               type: number
               minimum: 0.1
               maximum: 4
+    FlowNodeDefaults:
+      type: object
+      required:
+      - node_types
+      properties:
+        node_types:
+          type: array
+          items:
+            type: object
+            required:
+            - type
+            - label
+            - config
+            properties:
+              type:
+                $ref: '#/components/schemas/NodeType'
+              label:
+                type: string
+                description: The label a new node of this type gets
+              config:
+                type: object
+                additionalProperties: true
+                description: 'Every config value a new node of this type starts with (StartConfig, AgentConfigNode,
+                  ... by type). Webhook requests and transfers carry the tool schemas'' defaults, the
+                  same values the compiler fills in.
+
+                  '
+    FlowNodeEnteredMessage:
+      type: object
+      description: A flow call entered a node (004 FR-033); the builder highlights it during a test call.
+      x-data-channel:
+        topic: callwright.flow
+      required:
+      - type
+      - node_id
+      - at_ms
+      properties:
+        type:
+          type: string
+          const: node_entered
+        node_id:
+          type: string
+        at_ms:
+          type: integer
+          minimum: 0
+          description: Milliseconds since the call connected
     FlowTransition:
       type: object
       required:
@@ -17881,6 +17930,41 @@ components:
           type:
           - integer
           - 'null'
+    TurnLatencyMessage:
+      type: object
+      description: 'One finished agent turn''s latency, for the chip on the latest agent turn. The chip''s
+        total is stt_ms + llm_ms + tts_ms, equal to e2e_ms when the answer time was measured. Not sent
+        for the greeting (turn 0) or a turn with no measurement.
+
+        '
+      x-data-channel:
+        topic: cw.turn_latency
+      required:
+      - turn_index
+      - stt_ms
+      - llm_ms
+      - tts_ms
+      properties:
+        turn_index:
+          type: integer
+          minimum: 1
+        stt_ms:
+          type: integer
+          minimum: 0
+          description: Speech to text and end-of-turn detection
+        llm_ms:
+          type: integer
+          minimum: 0
+          description: The model's time to first token plus tool time
+        tts_ms:
+          type: integer
+          minimum: 0
+          description: The voice's time to first byte
+        e2e_ms:
+          type: integer
+          minimum: 0
+          description: The measured answer time
+          when there is one: null
     UsageDetail:
       type: object
       required:

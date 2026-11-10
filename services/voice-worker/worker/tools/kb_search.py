@@ -12,11 +12,12 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from callwright_contract.protocol import KB_DEFAULT_TOP_K, KB_QUERY_MAX_CHARS, KbSearchRequest
+
 from worker.internal_api import InternalApiClient
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
 TIMEOUT_S = 0.8
-TOP_K = 4
 MAX_CHARS = 4000
 NOTHING_FOUND = "No relevant information was found in the knowledge base."
 
@@ -76,7 +77,7 @@ class KbSearchExecutor:
     async def execute(
         self, spec: ToolSpecView, arguments: Mapping[str, Any], ctx: ToolContext
     ) -> ToolResult:
-        query = str(arguments.get("query") or "").strip()[:1000]
+        query = str(arguments.get("query") or "").strip()[:KB_QUERY_MAX_CHARS]
         kb: dict[str, Any] = {
             "kb_ids": self.kb_ids,
             "result_count": 0,
@@ -88,7 +89,9 @@ class KbSearchExecutor:
         if not query:
             return ToolResult.error("invalid_arguments", "Pass a search query.", kb=kb)
         started = time.perf_counter()
-        body = {"call_id": ctx.call_id, "query": query, "kb_ids": self.kb_ids, "top_k": TOP_K}
+        body = KbSearchRequest(
+            call_id=ctx.call_id, query=query, kb_ids=self.kb_ids, top_k=KB_DEFAULT_TOP_K
+        )
         data: dict[str, Any] = {}
         try:
             if self.api is not None:

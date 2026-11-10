@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,7 +59,7 @@ async def load_calls(session: AsyncSession, call_ids: Sequence[str]) -> dict[str
 
 @dataclass
 class ReplayMaterial:
-    start_speaker: str = "agent"
+    start_speaker: Literal["agent", "user"] = "agent"
     caller_turns: list[str] = field(default_factory=list)
     recorded_tool_outputs: list[dict[str, str]] = field(default_factory=list)
     node_path: list[str] = field(default_factory=list)

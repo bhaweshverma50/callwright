@@ -6,11 +6,11 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from callwright_contract.calls import PIPELINE_STEPS
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
 from app.calls import pipeline, ports
+from app.calls.pipeline import PIPELINE_STEPS
 from tests.runtime_support import Runtime, agent_config, ended_call, owner_sql
 
 

@@ -13,6 +13,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
+from callwright_contract.diagnostics import FLOW_RUNTIME_UNAVAILABLE
+
 if TYPE_CHECKING:
     from callwright_contract.protocol import RuntimeConfig
 
@@ -21,9 +23,6 @@ if TYPE_CHECKING:
     from worker.flow.nodes.start import Opening
     from worker.tools import CallControl
     from worker.tools.registry import CallTools
-
-FLOW_RUNTIME_UNAVAILABLE = "flow-runtime-unavailable"
-FLOW_NOT_COMPILED = "flow_not_compiled"
 
 
 class FlowRuntimeUnavailable(Exception):

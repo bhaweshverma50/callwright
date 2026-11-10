@@ -20,7 +20,6 @@ from decimal import Decimal
 from typing import Any
 
 from callwright_contract.adapters import AdapterCatalog
-from callwright_contract.calls import ACCEPTS_EVENTS_STATUSES
 from callwright_contract.protocol import Control, EventBatch, EventBatchResult, StatusEvent, UsageEvent
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -37,6 +36,9 @@ from app.core.errors import ProblemError
 from app.core.queue import Deferred
 from app.pricing import engine
 from app.pricing import service as pricing
+
+# The worker may still post events in these (``ended`` accepts the final flush).
+ACCEPTS_EVENTS_STATUSES = frozenset({"queued", "ringing", "in_progress", "ended"})
 
 logger = logging.getLogger(__name__)
 

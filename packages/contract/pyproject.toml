@@ -3,7 +3,7 @@ name = "callwright-contract"
 version = "0.1.0"
 description = "Values and shapes the Callwright API and voice worker share: call vocabulary, worker protocol, variables, the HTTP tool core and the outbound URL guard"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pydantic>=2.7"]
+dependencies = ["httpx>=0.27", "pydantic>=2.7"]
 
 [build-system]
 requires = ["hatchling"]

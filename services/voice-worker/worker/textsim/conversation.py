@@ -6,10 +6,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from callwright_contract.values import SimulationEndReason
+from callwright_contract.calls import DisconnectReason
+from callwright_contract.textsim import SimulationEndReason
 
 # Disconnect reason on the simulated call's final ``ended`` status for each end reason.
-DISCONNECT_REASON: dict[str, str] = {
+DISCONNECT_REASON: dict[SimulationEndReason, DisconnectReason] = {
     "caller_turns_exhausted": "user_hangup",
     "caller_hung_up": "user_hangup",
     "turn_limit_reached": "user_hangup",

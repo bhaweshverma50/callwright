@@ -20,7 +20,7 @@ import logging
 from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any, Protocol
 
-from callwright_contract.values import CHANNEL_UNSUPPORTED, E164
+from callwright_contract.values import E164
 
 from worker.tools.base import ToolContext, ToolResult, ToolSpecView
 
@@ -77,12 +77,12 @@ class TransferExecutor:
             return ToolResult(llm_payload='{"transferred":true}', output=number, mocked=True)
         if not ctx.is_sip or self.backend is None:
             return ToolResult.error(
-                CHANNEL_UNSUPPORTED, "Transfers work on phone calls only; offer another option."
+                "channel_unsupported", "Transfers work on phone calls only; offer another option."
             )
         hold = str(config.get("hold_message") or "").strip()
         if hold:
             await ctx.speak(hold)
-        ring_timeout = int(config.get("ring_timeout_s") or 30)
+        ring_timeout = int(config["ring_timeout_s"])
         try:
             if config.get("transfer_type") != "warm":
                 await self.backend.cold(number)

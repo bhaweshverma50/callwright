@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+from callwright_contract.textsim import SimSettings
+from pydantic import ValidationError
+
 from tests.harness.textsim_support import (
     FakeInternalApi,
     Models,
@@ -13,14 +17,12 @@ from tests.harness.textsim_support import (
     deps,
     sim_spec,
 )
-from worker.adapters.llm import supports_temperature
-from worker.adapters.registry import AdapterRegistry
+from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.textsim import runner
 from worker.textsim.llm import ScriptReply, ScriptRequest, default_factory
 from worker.textsim.persona_caller import (
     CONNECTED,
     HANG_UP,
-    clamp_turns,
     clean_caller_text,
     instructions,
 )
@@ -95,12 +97,11 @@ async def test_turn_limit_defaults_to_twenty() -> None:
     assert result["end_reason"] == "turn_limit_reached" and len(caller_lines(api)) == 20
 
 
-async def test_turn_limit_is_at_most_fifty() -> None:
-    assert clamp_turns(None) == 20 and clamp_turns(0) == 20
-    assert clamp_turns(80) == 50 and clamp_turns(3) == 3
-    api = FakeInternalApi()
-    _, result, _ = await persona(api, chatty, settings={"max_caller_turns": 80})
-    assert result["end_reason"] == "turn_limit_reached" and len(caller_lines(api)) == 50
+def test_turn_limit_is_one_to_fifty() -> None:
+    assert SimSettings().max_caller_turns == 20
+    for turns in (0, 51):
+        with pytest.raises(ValidationError):
+            SimSettings(max_caller_turns=turns)
 
 
 async def test_explicit_turn_limit() -> None:
@@ -162,7 +163,9 @@ async def test_persona_model_comes_from_settings() -> None:
     assert (spec.provider, spec.model) == ("openai", "gpt-5-mini")
     # The launch models only run at their default temperature; others get 0.7.
     assert "temperature" not in spec.options
-    assert supports_temperature("some-other-model") and not supports_temperature("gpt-5.1")
+    registry = AdapterRegistry()
+    assert registry.fixed_temperature(VendorSpec("llm", "openai", "gpt-5.1"))
+    assert not registry.fixed_temperature(VendorSpec("llm", "openai", "some-other-model"))
 
 
 async def test_missing_brief_fails_the_run() -> None:

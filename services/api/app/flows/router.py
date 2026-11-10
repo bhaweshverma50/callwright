@@ -17,6 +17,7 @@ from app.core.ids import path_id
 from app.core.secrets import key_wrapper
 from app.flows import assistant, service
 from app.flows.schemas import (
+    NODE_TYPES,
     AssistantRequest,
     CreateFlowAgentRequest,
     PublishRequest,
@@ -24,6 +25,7 @@ from app.flows.schemas import (
     ValidateRequest,
     graph_json,
 )
+from app.flows.starter import DEFAULT_LABELS, node_defaults
 
 router = APIRouter(tags=["flows"])
 
@@ -50,6 +52,16 @@ async def create_flow_agent(
             "warnings": created.warnings,
         }
     return JSONResponse(out, status_code=201, headers=_etag(created.flow.revision))
+
+
+@router.get("/flows/node-defaults", responses=problem_responses(401))
+async def get_node_defaults(principal: CurrentPrincipal) -> dict[str, Any]:
+    """What a node of each type starts with in the builder: its label and full config."""
+    return {
+        "node_types": [
+            {"type": t, "label": DEFAULT_LABELS[t], "config": node_defaults(t)} for t in NODE_TYPES
+        ]
+    }
 
 
 @router.get("/flows/{flow_id}", responses=problem_responses(404))

@@ -31,12 +31,21 @@ from decimal import Decimal
 from typing import Any
 
 from callwright_contract.adapters import load_catalog
+from callwright_contract.textsim import (
+    ANSWER_SOURCES,
+    DEFAULT_CALLER_TURNS,
+    MAX_CALLER_TURNS,
+    MAX_ERROR_CHARS,
+    PersonaBrief,
+    RecordedOutput,
+    SimSettings,
+    SimulationSpec,
+)
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
 from app.billing import service as billing
-from app.caller_language.options import language_options
 from app.calls.models import Call, transition
 from app.calls.service import runtime_values
 from app.core.config import Settings
@@ -52,8 +61,6 @@ logger = logging.getLogger(__name__)
 
 MIN_BATCH = 2
 MAX_BATCH = 100
-DEFAULT_TURNS = 20
-MAX_TURNS = 50
 ACTIVE = ("pending", "running")
 FINAL = ("completed", "failed", "cancelled")
 MODE_FEATURE = {"replay": "simulation.replay", "persona": "simulation.persona"}
@@ -84,14 +91,14 @@ async def fire_hooks(source: str, workspace_id: str, experiment_id: str) -> None
 def run_settings(raw: Mapping[str, Any] | None, settings: Settings) -> dict[str, Any]:
     raw = dict(raw or {})
     try:
-        turns = int(raw.get("max_caller_turns") or DEFAULT_TURNS)
+        turns = int(raw.get("max_caller_turns") or DEFAULT_CALLER_TURNS)
     except (TypeError, ValueError):
-        turns = DEFAULT_TURNS
+        turns = DEFAULT_CALLER_TURNS
     policy = (
         raw.get("missing_mock_policy") if raw.get("missing_mock_policy") in ("synthesize", "error") else None
     )
     return {
-        "max_caller_turns": max(1, min(MAX_TURNS, turns)),
+        "max_caller_turns": max(1, min(MAX_CALLER_TURNS, turns)),
         "missing_mock_policy": policy or "synthesize",
         "persona_model": str(raw.get("persona_model") or settings.simulator_model),
     }
@@ -107,7 +114,7 @@ def _money(value: Decimal | None) -> float | None:
 
 def counts_view(raw: Mapping[str, Any] | None) -> dict[str, int]:
     raw = raw or {}
-    return {k: int(raw.get(k) or 0) for k in ("mock", "recorded", "synthesized", "error")}
+    return {k: int(raw.get(k) or 0) for k in ANSWER_SOURCES}
 
 
 def run_view(
@@ -391,7 +398,7 @@ async def fail_run(session: AsyncSession, run: SimulationRun, message: str) -> N
         return
     run.status = "failed"
     run.end_reason = run.end_reason or "error"
-    run.error_message = message[:2000]
+    run.error_message = message[:MAX_ERROR_CHARS]
     run.finished_at = datetime.now(UTC)
     await close_output_call(session, run)
     await session.flush()
@@ -689,7 +696,7 @@ async def claim_finished_hooks(session: AsyncSession, experiment_id: str) -> Sim
     return await session.get(SimulationExperiment, experiment_id)
 
 
-async def spec_for(session: AsyncSession, run_id: str) -> dict[str, Any]:
+async def spec_for(session: AsyncSession, run_id: str) -> SimulationSpec:
     """The runner's spec. Marks the run running and creates its simulated call."""
     run = await get_run(session, run_id, lock=True)
     if run.status not in ACTIVE or (run.status == "running" and run.output_call_id is None):
@@ -718,30 +725,27 @@ async def spec_for(session: AsyncSession, run_id: str) -> dict[str, Any]:
     else:
         existing = await session.get(Call, run.output_call_id)
         channel = existing.channel if existing is not None else "web"
-    spec: dict[str, Any] = {
-        "workspace_id": run.workspace_id,
-        "simulation_run_id": run.id,
-        "output_call_id": run.output_call_id,
-        "agent_id": run.agent_id,
-        "agent_type": "flow" if config.get("type") == "flow" else "single_prompt",
-        "channel": channel,
-        "mode": run.mode,
-        "config_snapshot": config,
-        "settings": dict(run.settings or {}),
-        "dynamic_variables": {str(k): str(v) for k, v in (run.dynamic_variables or {}).items()},
-        "start_speaker": "user" if config.get("start_speaker") == "user" else "agent",
-        "language_options": language_options(config),
-        "runtime": runtime_values(config, load_catalog()).model_dump(mode="json"),
-    }
+    spec = SimulationSpec(
+        workspace_id=run.workspace_id,
+        simulation_run_id=run.id,
+        output_call_id=run.output_call_id,
+        agent_id=run.agent_id,
+        agent_type="flow" if config.get("type") == "flow" else "single_prompt",
+        channel=channel,
+        mode=run.mode,
+        runtime=runtime_values(config, load_catalog()),
+        settings=SimSettings.model_validate(run.settings or {}),
+        dynamic_variables=run.dynamic_variables or {},
+    )
     if base is not None:
         material = sim_calls.replay_material(base)
-        spec["original_node_path"] = material.node_path
+        spec.original_node_path = material.node_path
         if run.mode == "replay":
-            spec["start_speaker"] = material.start_speaker
-            spec["caller_turns"] = material.caller_turns
-            spec["recorded_tool_outputs"] = material.recorded_tool_outputs
+            spec.start_speaker = material.start_speaker
+            spec.caller_turns = material.caller_turns
+            spec.recorded_tool_outputs = [RecordedOutput(**o) for o in material.recorded_tool_outputs]
     if run.persona_brief:
-        spec["persona_brief"] = run.persona_brief
+        spec.persona_brief = PersonaBrief.model_validate(run.persona_brief)
     return spec
 
 
@@ -772,7 +776,7 @@ async def record_result(session: AsyncSession, run_id: str, body: Mapping[str, A
     run.finished_at = now
     if body.get("status") != "completed":
         run.status = "failed"
-        run.error_message = str(body.get("error_message") or "The simulation failed.")[:2000]
+        run.error_message = str(body.get("error_message") or "The simulation failed.")[:MAX_ERROR_CHARS]
         await close_output_call(session, run)
     else:
         try:

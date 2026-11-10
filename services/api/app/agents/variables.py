@@ -11,8 +11,13 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from callwright_contract.variables import BUILTIN_VARIABLES, NAME, PLACEHOLDER
+from callwright_contract.variables import BUILTIN_VARIABLES, PLACEHOLDER
 
+NAME_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+NAME = re.compile(NAME_PATTERN)
+MAX_VARIABLES = 50
+MAX_VALUE_CHARS = 2000
+MAX_DESCRIPTION_CHARS = 200
 _ANY_BRACES_RE = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
 
 

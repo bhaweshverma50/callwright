@@ -84,7 +84,7 @@ async def test_replay_end_to_end(sim_env: SimEnv, client: httpx.AsyncClient, acc
             {"name": HTTP_TOOL_NO_MOCK, "output": '{"slots": ["10:00"]}'}
         ]
         assert spec["dynamic_variables"]["customer_name"] == "Priya"
-        assert spec["config_snapshot"]["prompt"]
+        assert spec["runtime"]["config"]["prompt"]
 
     await sim_env.drain(runner)
     done = (await client.get(f"/v1/simulation-runs/{run['simulation_run_id']}", headers=h)).json()

@@ -9,7 +9,7 @@ import pytest
 
 from tests.flow_support import compiled_config
 from worker.flow import FlowRuntimeUnavailable
-from worker.flow.compiled import SCHEMA_VERSION, StartSection, TaskSection, load_compiled
+from worker.flow.compiled import SCHEMA_VERSION, load_compiled
 
 
 def compiled() -> dict[str, Any]:
@@ -53,7 +53,9 @@ def test_another_schema_version_is_not_run() -> None:
         load_compiled({"flow": {"compiled": flow}})
 
 
-def test_views_carry_the_compiler_defaults() -> None:
-    start = StartSection.of({"next": "n_1", "greeting_type": None})
-    assert (start.start_speaker, start.greeting_type, start.next) == ("agent", "static", "n_1")
-    assert TaskSection.of({"json_schema": {"type": "object"}}).max_rounds == 5
+def test_a_section_without_its_values_is_not_run() -> None:
+    """The compiler writes every value of a section; the worker has no defaults for them."""
+    flow = compiled()
+    del flow["nodes"]["n_end00000"]["end"]["reason"]
+    with pytest.raises(FlowRuntimeUnavailable):
+        load_compiled({"flow": {"compiled": flow}})

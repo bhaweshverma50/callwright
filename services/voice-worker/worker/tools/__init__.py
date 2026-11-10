@@ -12,6 +12,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
+from callwright_contract.calls import DisconnectReason
+
 
 class LlmOverride(TypedDict, total=False):
     provider: str
@@ -99,7 +101,7 @@ class CallControl(Protocol):
         """True once the call is ending (a hang-up reason is set)."""
         ...
 
-    async def hang_up(self, reason: str, *, diagnostic: str | None = None) -> bool:
+    async def hang_up(self, reason: DisconnectReason, *, diagnostic: str | None = None) -> bool:
         """End the call. First writer wins: returns False when a reason was already set."""
         ...
 

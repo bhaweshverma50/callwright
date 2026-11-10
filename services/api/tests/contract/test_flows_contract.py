@@ -5,6 +5,8 @@ from __future__ import annotations
 import httpx
 from fastapi import FastAPI
 
+from app.flows.schemas import NODE_TYPES
+from app.tools.schemas import TransferSpec, config_defaults
 from tests.agent_helpers import create_ok
 from tests.conftest import Account, signup
 from tests.contract.conftest import check
@@ -65,3 +67,16 @@ async def test_errors(client: httpx.AsyncClient, app: FastAPI, account: Account)
     )
     other = await signup(client, app)
     assert check(await save(client, other, flow, clinic())).status_code == 404
+
+
+async def test_node_defaults(client: httpx.AsyncClient, account: Account) -> None:
+    """The builder's starting configs; requests and transfers carry the tool schemas' defaults."""
+    response = check(await client.get("/v1/flows/node-defaults", headers=account.headers))
+    assert response.status_code == 200
+    by_type = {n["type"]: n for n in response.json()["node_types"]}
+    assert list(by_type) == list(NODE_TYPES)
+    assert by_type["start"]["label"] == "Start"
+    assert by_type["transfer"]["config"]["transfer"] == config_defaults(TransferSpec)
+    request = by_type["webhook"]["config"]["request"]
+    assert request["speak_during_execution"] is True and request["url"] == ""
+    assert check(await client.get("/v1/flows/node-defaults")).status_code == 401

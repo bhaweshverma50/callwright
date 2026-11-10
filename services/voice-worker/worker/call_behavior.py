@@ -10,28 +10,13 @@ import asyncio
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
+from callwright_contract.protocol import FlushReason
 from callwright_contract.values import KEYPAD_DIGITS
 
 if TYPE_CHECKING:
     from callwright_contract.protocol import ControlRange, Limits
-
-# --------------------------------------------------------------------------------------------
-# Clock
-
-
-def local_now(variables: Mapping[str, Any], now: datetime | None = None) -> datetime:
-    """Now in the call's zone, from the ``current_datetime`` built-in (it carries the offset);
-    UTC when the call has none."""
-    now = now or datetime.now(UTC)
-    raw = str(variables.get("current_datetime") or "")
-    try:
-        offset = datetime.fromisoformat(raw).utcoffset()
-    except ValueError:
-        offset = None
-    return now.astimezone(timezone(offset) if offset is not None else UTC)
 
 
 class TimerHandle(Protocol):
@@ -155,8 +140,8 @@ def _clamp(
     control = next((c for c in controls if c.path == path), None)
     if control is None:
         return value
-    clamped = max(control.min, min(control.max, value))
-    if clamped != value:
+    clamped = control.clamp(value)
+    if clamped != round(value, 6):
         notes.append(ClampNote(path, value, clamped))
     return clamped
 
@@ -230,6 +215,10 @@ def behavior_from_config(
 # --------------------------------------------------------------------------------------------
 # Timers (research R9)
 
+
+# The goodbye an End node (004) or end_call stands on when the builder wrote none: the worker
+# treats it as "no fixed line" and has the agent write one for the call (older flows stored it).
+STOCK_GOODBYE = "Thanks for calling. Goodbye."
 
 # Agent goodbye: when the agent's reply closes the call but it did not call end_call, the worker
 # hangs up this long after that reply finished playing, unless the caller starts speaking.
@@ -382,8 +371,6 @@ class DurationTimer:
 
 # --------------------------------------------------------------------------------------------
 # Keypad input (research R11)
-
-FlushReason = Literal["termination_key", "digit_limit", "timeout"]
 
 
 class DtmfCollector:

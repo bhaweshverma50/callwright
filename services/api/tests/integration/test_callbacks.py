@@ -151,7 +151,7 @@ async def test_booking_refusals_the_agent_can_relay(
 
     owner_sql("update calls set channel = 'web' where id = %s", (call_id,))
     web = await book(client, call_id, in_minutes=30)
-    assert web.status_code == 422 and web.json()["reason"] == "unsupported_channel"
+    assert web.status_code == 422 and web.json()["reason"] == "channel_unsupported"
     assert "phone calls" in web.json()["detail"]
 
     owner_sql("update calls set origin = 'simulation' where id = %s", (call_id,))

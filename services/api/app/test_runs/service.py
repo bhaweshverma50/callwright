@@ -18,12 +18,12 @@ from decimal import Decimal
 from typing import Any
 
 from callwright_contract.adapters import load_catalog
+from callwright_contract.textsim import MAX_ERROR_CHARS, CaseSpec
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
 from app.billing import service as billing
-from app.caller_language.options import language_options
 from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
@@ -333,7 +333,7 @@ async def override(
     return result, run
 
 
-async def case_spec(session: AsyncSession, run_id: str, case_id: str) -> dict[str, Any]:
+async def case_spec(session: AsyncSession, run_id: str, case_id: str) -> CaseSpec:
     run = await get_run(session, run_id, lock=True)
     result = await session.get(TestResult, (run_id, case_id), with_for_update=True)
     if result is None:
@@ -345,16 +345,14 @@ async def case_spec(session: AsyncSession, run_id: str, case_id: str) -> dict[st
     if run.status == "queued":
         run.status = "running"
         run.started_at = now
-    return {
-        "workspace_id": run.workspace_id,
-        "agent_id": run.agent_id,
-        "agent_type": "flow" if run.config_snapshot.get("type") == "flow" else "single_prompt",
-        "config_snapshot": run.config_snapshot,
-        "user_prompt": result.user_prompt,
-        "dynamic_variables": dict(result.dynamic_variables or {}),
-        "language_options": language_options(run.config_snapshot),
-        "runtime": runtime_values(run.config_snapshot, load_catalog()).model_dump(mode="json"),
-    }
+    return CaseSpec(
+        workspace_id=run.workspace_id,
+        agent_id=run.agent_id,
+        agent_type="flow" if run.config_snapshot.get("type") == "flow" else "single_prompt",
+        runtime=runtime_values(run.config_snapshot, load_catalog()),
+        user_prompt=result.user_prompt,
+        dynamic_variables=result.dynamic_variables or {},
+    )
 
 
 async def record_result(session: AsyncSession, run_id: str, case_id: str, body: Mapping[str, Any]) -> str:
@@ -375,7 +373,7 @@ async def record_result(session: AsyncSession, run_id: str, case_id: str, body: 
         return "judge"
     result.state = "done"
     result.judge_status = "error"
-    result.error_message = str(body.get("error_message") or "The agent could not answer.")[:2000]
+    result.error_message = str(body.get("error_message") or "The agent could not answer.")[:MAX_ERROR_CHARS]
     await session.flush()
     await maybe_finish(session, run)
     return "done"

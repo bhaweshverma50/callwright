@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from callwright_contract.variables import BUILTIN_VARIABLES
+from callwright_contract.variables import BUILTIN_VARIABLES, builtin_values
 
 from app.calls import variables as v
 
@@ -22,7 +22,7 @@ def builtins(**overrides: str | None) -> dict[str, str]:
         "now": NOW,
     }
     args.update(overrides)
-    return v.builtin_values(**args)  # type: ignore[arg-type]
+    return builtin_values(**args)  # type: ignore[arg-type]
 
 
 CONFIG = {

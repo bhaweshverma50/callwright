@@ -106,10 +106,14 @@
         "failure_edge_id": "e_deskno01",
         "failure_target": "n_end00001",
         "transfer": {
+          "allowed_numbers": [],
           "hold_message": "Please hold.",
           "number": "+14155550100",
+          "ring_timeout_s": 30,
+          "routing_instructions": null,
           "routing_type": "static",
-          "transfer_type": "cold"
+          "transfer_type": "cold",
+          "warm_transfer": null
         }
       },
       "type": "transfer"

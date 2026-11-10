@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from callwright_contract.protocol import MAX_KNOWLEDGE_BASES
 from opentelemetry import trace
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +44,7 @@ from app.agents.checks import validate_config
 from app.agents.defaults import CURRENT_SCHEMA_VERSION
 from app.agents.models import Agent
 from app.agents.offered import template_overlay
-from app.agents.schemas import MAX_KBS, MAX_TOOLS, NAME_MAX, upcast
+from app.agents.schemas import MAX_TOOLS, NAME_MAX, upcast
 from app.agents.validation import ConfigValidationResult
 from app.agents.versions import draft_part, find_by_hash, get_for_agent, summary_of
 from app.core.db import escape_like
@@ -591,7 +592,7 @@ async def unpublish(session: AsyncSession, agent_id: str) -> Agent:
     return agent
 
 
-ATTACHABLE = {"tool_ids": (MAX_TOOLS, "tools"), "kb_ids": (MAX_KBS, "knowledge bases")}
+ATTACHABLE = {"tool_ids": (MAX_TOOLS, "tools"), "kb_ids": (MAX_KNOWLEDGE_BASES, "knowledge bases")}
 
 
 def check_attach_count(key: str, ids: list[str]) -> None:

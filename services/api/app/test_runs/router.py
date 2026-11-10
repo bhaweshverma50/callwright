@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
+from callwright_contract.textsim import CaseResult
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
@@ -15,7 +16,7 @@ from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import is_valid_id, path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.test_runs import jobs, service
-from app.test_runs.schemas import CaseResult, OverrideBody, StartRun
+from app.test_runs.schemas import OverrideBody, StartRun
 from app.testing import dispatch
 
 router = APIRouter(tags=["test_runs"])
@@ -148,7 +149,8 @@ async def run_workspace(request: Request, test_run_id: str) -> str:
 async def internal_case_spec(request: Request, test_run_id: str, test_case_id: str) -> dict[str, Any]:
     workspace_id = await run_workspace(request, test_run_id)
     async with request.app.state.db.transaction(workspace_id=workspace_id) as session:
-        return await service.case_spec(session, test_run_id, test_case_id)
+        spec = await service.case_spec(session, test_run_id, test_case_id)
+    return spec.model_dump(mode="json", exclude_unset=True)
 
 
 @internal_router.post(

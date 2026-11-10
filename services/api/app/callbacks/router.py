@@ -5,11 +5,12 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
+from callwright_contract.protocol import CallbackRequest
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.callbacks import service
-from app.callbacks.schemas import CallbackBookRequest, CallbackCreate
+from app.callbacks.schemas import CallbackCreate
 from app.calls.lookups import workspace_for_call
 from app.core.auth import CurrentPrincipal, require_service
 from app.core.errors import problem_responses
@@ -70,7 +71,7 @@ async def cancel_callback(
     status_code=201,
     responses={200: {"description": "Simulated call; nothing stored"}, **problem_responses(401, 404, 422)},
 )
-async def book_callback(call_id: CallId, body: CallbackBookRequest, request: Request) -> JSONResponse:
+async def book_callback(call_id: CallId, body: CallbackRequest, request: Request) -> JSONResponse:
     db = request.app.state.db
     workspace_id = await workspace_for_call(db, call_id)
     status, out = await service.book_from_call(db, workspace_id, call_id, body)

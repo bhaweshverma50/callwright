@@ -16,6 +16,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from callwright_contract.textsim import ANSWER_SOURCES
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -110,7 +111,7 @@ def transcript_view(items: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
                 "output": str(item.get("output") or ""),
                 "is_error": bool(item.get("is_error")),
             }
-            if item.get("answer_source") in ("mock", "recorded", "synthesized", "error"):
+            if item.get("answer_source") in ANSWER_SOURCES:
                 entry["answer_source"] = item["answer_source"]
             out.append(entry)
     return out

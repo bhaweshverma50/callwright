@@ -1,14 +1,12 @@
 """Replay caller (008 T055, research R5).
 
-The caller turns are the base call's user messages in order. The API merges interrupted
-fragments when it builds them; :func:`normalize_turns` does it again defensively (items may be
-``{"text", "interrupted"}`` objects, where an interrupted fragment joins the next one) and drops
-empty turns.
+The caller turns are the base call's user messages in order, interrupted fragments already
+merged by the API; :func:`normalize_turns` drops empty ones.
 
 The agent's opening (when the target agent speaks first) plays before caller turn 1; each next
 caller turn is sent once the agent's reply, tool calls and flow moves included, has settled.
 The run stops when the caller turns run out (``caller_turns_exhausted``), the agent ends or
-transfers the call, or after :data:`MAX_AGENT_TURNS` replies (``turn_limit_reached``).
+transfers the call, or after the contract's ``MAX_CALLER_TURNS`` replies (``turn_limit_reached``).
 
 Divergence is the first agent turn index (0 is the opening, k the reply to caller turn k) at
 which the agent ended or transferred while caller turns remained, or, for flow agents, the
@@ -17,35 +15,16 @@ visited node sequence stopped matching the base call's node path.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import Any
+from collections.abc import Sequence
 
-from callwright_contract.values import SimulationEndReason
+from callwright_contract.textsim import MAX_CALLER_TURNS, SimulationEndReason
 
 from worker.textsim.conversation import Conversation, Outcome, agent_end_reason
 
-MAX_AGENT_TURNS = 50
 
-
-def normalize_turns(raw: Sequence[Any]) -> list[str]:
-    out: list[str] = []
-    pending = ""
-    for item in raw:
-        if isinstance(item, Mapping):
-            text = str(item.get("text") or item.get("content") or "")
-            interrupted = bool(item.get("interrupted"))
-        else:
-            text, interrupted = str(item or ""), False
-        text = " ".join(text.split())
-        if text:
-            pending = f"{pending} {text}" if pending else text
-        if interrupted or not pending:
-            continue
-        out.append(pending)
-        pending = ""
-    if pending:
-        out.append(pending)
-    return out
+def normalize_turns(raw: Sequence[str]) -> list[str]:
+    """The turns with their spacing collapsed, empty ones dropped."""
+    return [text for text in (" ".join(t.split()) for t in raw) if text]
 
 
 def path_diverged(visited: Sequence[str], original: Sequence[str]) -> bool:
@@ -58,10 +37,10 @@ def path_diverged(visited: Sequence[str], original: Sequence[str]) -> bool:
 class ReplayCaller:
     def __init__(
         self,
-        caller_turns: Sequence[Any],
+        caller_turns: Sequence[str],
         original_node_path: Sequence[str] = (),
         *,
-        max_agent_turns: int = MAX_AGENT_TURNS,
+        max_agent_turns: int = MAX_CALLER_TURNS,
     ) -> None:
         self.turns = normalize_turns(caller_turns)
         self.original = list(original_node_path)

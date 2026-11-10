@@ -1,5 +1,5 @@
-"""HTTP tool core: templating, argument placement, redirects, response mapping and payloads
-(005 research R4 to R6).
+"""HTTP tool core: templating, argument placement, the guarded send loop (redirects, deadline,
+size cap), response mapping, payloads and the messages the agent is told (005 research R4 to R6).
 
 Shared by the API's editor test runs (``app.tools.http_exec``) and the worker's executor on calls
 (``worker.tools.http``), so both agree; ``tests/http_exec_vectors.json`` pins the behaviour.
@@ -13,12 +13,19 @@ JSON structure. URL placeholders are percent-encoded.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
-from collections.abc import AsyncIterable, Mapping
+import time
+from collections.abc import AsyncIterable, Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import quote, urlencode, urlsplit, urlunsplit
+from urllib.parse import quote, urlencode, urljoin, urlsplit, urlunsplit
+
+import httpx
+
+from callwright_contract import url_guard
+from callwright_contract.values import ToolErrorCode
 
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}")
 WHOLE = re.compile(r"^\s*\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}\s*$")
@@ -226,6 +233,24 @@ def apply_mappings(body_text: str, mappings: list[Mapping[str, Any]]) -> tuple[d
     return mapped, missing
 
 
+def secret_refs(config: Mapping[str, Any]) -> list[str]:
+    """The ``secret_ref`` of every secret header in a version config: its tools and (004) the
+    tools and webhook requests of every compiled flow node."""
+    lists = [(spec.get("config") or {}).get("headers") or [] for spec in config.get("tools") or []]
+    raw_flow = config.get("flow")
+    flow: Mapping[str, Any] = raw_flow if isinstance(raw_flow, Mapping) else {}
+    raw_compiled = flow.get("compiled")
+    compiled: Mapping[str, Any] = raw_compiled if isinstance(raw_compiled, Mapping) else {}
+    for node in (compiled.get("nodes") or {}).values():
+        for spec in node.get("tools") or []:
+            lists.append((spec.get("config") or {}).get("headers") or [])
+        lists.append(((node.get("webhook") or {}).get("request") or {}).get("headers") or [])
+    refs = [
+        str(h["secret_ref"]) for headers in lists for h in headers if h.get("secret") and h.get("secret_ref")
+    ]
+    return list(dict.fromkeys(refs))
+
+
 def timeout_s(spec: Mapping[str, Any]) -> float:
     return int(spec.get("timeout_ms") or DEFAULT_TIMEOUT_MS) / 1000
 
@@ -237,7 +262,7 @@ def redirected(status: int, method: str, content: bytes | None) -> tuple[str, by
     return method, content
 
 
-def blocked_error_code(reason: str) -> str:
+def blocked_error_code(reason: str) -> ToolErrorCode:
     """Tool error code for a URL the guard refused (``url_guard.UrlNotAllowed.reason``)."""
     return "blocked_address" if reason in ("private_address", "https_required") else "connection_error"
 
@@ -274,7 +299,108 @@ def error_payload(code: str, message: str, http_status: int | None = None) -> st
     return json.dumps(body, separators=(",", ":"))
 
 
-def scrub(text: str, secrets: list[str]) -> str:
+# What the agent is told when a request fails (the editor's test run shows the same text).
+NOT_SENT = "The request could not be sent."
+UNREACHABLE = "The service could not be reached."
+TOO_LARGE = f"The response is larger than {MAX_RESPONSE_BYTES // 1024} KB."
+SECRET_MISSING = "A credential for this tool is missing."
+
+
+def missing_message(names: list[str]) -> str:
+    return f"No value for {', '.join(names)}."
+
+
+def timeout_message(seconds: float) -> str:
+    return f"No response within {seconds:g} s."
+
+
+def http_status_message(status: int) -> str:
+    return f"The service answered HTTP {status}."
+
+
+@dataclass
+class Outcome:
+    """One sent request: the answer, or the error the agent is told (``message``) with the
+    editor's more precise ``detail`` (the guard's reason, the connection error type)."""
+
+    error_code: ToolErrorCode | None = None
+    message: str = ""
+    detail: str = ""
+    http_status: int | None = None
+    body_text: str | None = None
+
+    @property
+    def is_error(self) -> bool:
+        return self.error_code is not None
+
+    def llm_payload(self) -> str:
+        if self.error_code is None:
+            return success_payload(self.body_text or "")
+        return error_payload(self.error_code, self.message, self.http_status)
+
+
+async def execute(
+    client: httpx.AsyncClient,
+    prepared: PreparedRequest,
+    timeout_seconds: float,
+    *,
+    allow_http: bool = False,
+    resolver: url_guard.Resolver | None = None,
+) -> Outcome:
+    """Send ``prepared``: every hop is checked by the URL guard and pinned to the vetted address,
+    redirects follow :func:`redirected` up to ``MAX_REDIRECTS``, one deadline covers the whole
+    exchange and at most ``MAX_RESPONSE_BYTES`` are read. Never retried."""
+    deadline = time.perf_counter() + timeout_seconds
+
+    def remaining() -> float:
+        return max(0.05, deadline - time.perf_counter())
+
+    method, url, content = prepared.method, prepared.url, prepared.content()
+    try:
+        for hop in range(MAX_REDIRECTS + 1):
+            checked = await url_guard.check_url(url, allow_http=allow_http, resolver=resolver)
+            left = remaining()
+            response = await asyncio.wait_for(
+                url_guard.send_pinned(
+                    client,
+                    method,
+                    checked,
+                    content=content,
+                    headers=prepared.headers,
+                    timeout=left,
+                    stream=True,
+                ),
+                left,
+            )
+            location = response.headers.get("location")
+            if response.status_code in REDIRECT_STATUSES and location and hop < MAX_REDIRECTS:
+                await response.aclose()
+                url = urljoin(url, location)
+                method, content = redirected(response.status_code, method, content)
+                continue
+            try:
+                data, too_large = await asyncio.wait_for(read_capped(response.aiter_bytes()), remaining())
+            finally:
+                await response.aclose()
+            break
+    except url_guard.UrlNotAllowed as exc:
+        return Outcome(blocked_error_code(exc.reason), NOT_SENT, exc.detail)
+    except (TimeoutError, httpx.TimeoutException):
+        message = timeout_message(timeout_seconds)
+        return Outcome("timeout", message, message)
+    except httpx.HTTPError as exc:
+        return Outcome("connection_error", UNREACHABLE, f"Could not connect: {type(exc).__name__}.")
+    status = response.status_code
+    body_text = data.decode("utf-8", errors="replace")
+    if too_large:
+        return Outcome("response_too_large", TOO_LARGE, TOO_LARGE, status, body_text)
+    if status >= 400:
+        message = http_status_message(status)
+        return Outcome("http_status", message, message, status, body_text)
+    return Outcome(http_status=status, body_text=body_text)
+
+
+def scrub(text: str, secrets: Iterable[str]) -> str:
     for value in secrets:
         if value and len(value) >= 4:
             text = text.replace(value, "****")

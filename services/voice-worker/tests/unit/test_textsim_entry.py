@@ -6,7 +6,7 @@ import asyncio
 from typing import Any
 
 import pytest
-from callwright_contract.values import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
+from callwright_contract.textsim import RUN_SIMULATION, RUN_SINGLE_TURN, TEXTSIM_QUEUE
 
 from worker.settings import WorkerSettings
 from worker.textsim import entry

@@ -35,7 +35,7 @@ class Opening:
 def opening(compiled: Mapping[str, Any], variables: Mapping[str, Any]) -> Opening:
     nodes: Mapping[str, Mapping[str, Any]] = compiled.get("nodes") or {}
     start_id = str(compiled["entry_node_id"])
-    start = StartSection.of(nodes[start_id].get("start"))
+    start = StartSection.of(nodes[start_id]["start"])
     speaker = start.start_speaker
     parts: list[str] = []
     text = render(start.greeting, variables)[0].strip()
@@ -71,7 +71,7 @@ def opening(compiled: Mapping[str, Any], variables: Mapping[str, Any]) -> Openin
 
 async def handle(run: Any, node_id: str, node: Mapping[str, Any]) -> Outcome:
     """Start as a plain node (a move back into Start): continue to its first step."""
-    start = StartSection.of(node.get("start"))
+    start = StartSection.of(node["start"])
     if not start.next:
         return Stop("flow_dead_end")
     return Move(target=start.next, trigger="always", edge_id=start.edge_id)

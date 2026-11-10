@@ -17,7 +17,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from callwright_contract.calls import ACTIVE_STATUSES, CALL_STATUSES, CHANNELS, DISCONNECT_REASONS, ORIGINS
+from callwright_contract.calls import ACTIVE_STATUSES, CALL_STATUSES, CHANNELS, DISCONNECT_REASONS
 from sqlalchemy import Integer, and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -26,6 +26,7 @@ from app.agents.models import Agent
 from app.calls.cost_view import cost_view
 from app.calls.lookups import snapshot_for
 from app.calls.models import Call, CallEvent
+from app.calls.origins import ORIGINS
 from app.calls.ports import registry
 from app.calls.quality_port import EVAL_STATUSES, LABEL_FILTERS, QualitySummary
 from app.calls.transcript import normalize_items, stored_items

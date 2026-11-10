@@ -75,9 +75,8 @@ paths:
                 $ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'
         '422':
           description: >
-            Invalid variables, unsupported vendor (`unsupported-vendor`), unpriced
-            configuration (`pricing-unavailable`), flow agent without flow runtime
-            (`flow-runtime-unavailable`), or idempotency key reused with a different body.
+            Invalid variables, unsupported vendor (`unsupported_vendor`), unpriced
+            configuration (`pricing_unavailable`), or idempotency key reused with a different body.
           content:
             application/problem+json:
               schema:

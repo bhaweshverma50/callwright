@@ -25,8 +25,8 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from app.flows.compiled import compiled_view
+from app.flows.schemas import CONVERSATIONAL
 
-CONVERSATIONAL = ("agent", "task")
 RULES_HEADING = "## Rules"
 _BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz"
 

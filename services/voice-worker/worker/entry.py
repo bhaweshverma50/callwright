@@ -29,11 +29,20 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import Kind
-from callwright_contract.calls import INBOUND_SIP_CHANNELS, PHONE_CHANNELS
+from callwright_contract.calls import (
+    INBOUND_SIP_CHANNELS,
+    PHONE_CHANNELS,
+    ControlReason,
+    DisconnectReason,
+    SystemEvent,
+)
+from callwright_contract.data_channel import LATENCY_TOPIC
 from callwright_contract.protocol import (
     DISPATCH_CHANNEL,
     ClaimRequest,
+    FlushReason,
     RuntimeConfig,
     SipAttributes,
 )
@@ -57,7 +66,6 @@ from worker.call_behavior import (
     AsyncioClock,
     DtmfCollector,
     DurationTimer,
-    FlushReason,
     InactivityTimer,
     VoicemailHandler,
     ends_with_goodbye,
@@ -68,7 +76,6 @@ from worker.flow.runtime import CallwrightFlowRunner
 from worker.internal_api import InternalApiClient
 from worker.language import translate_greeting, translated_greeting_instruction
 from worker.metrics import (
-    LATENCY_TOPIC,
     EventPoster,
     EventRecorder,
     LatencyTracker,
@@ -83,8 +90,8 @@ from worker.pipeline import (
     build_agent,
     build_components,
     build_session,
+    failed_vendor,
     plan_session,
-    vendor_error_diagnostic,
     voicemail_tool,
 )
 from worker.settings import WorkerSettings, get_settings
@@ -112,12 +119,24 @@ CALLER_QUIET_MAX_WAIT_S = 2.0
 SESSION_CLOSE_TIMEOUT_S = 10.0
 # The flow runtime of this worker process (004); calls release their flow state when they end.
 FLOW_RUNNER: FlowRunner = CallwrightFlowRunner()
-SYSTEM_EVENT_FOR_REASON = {
+SYSTEM_EVENT_FOR_REASON: dict[DisconnectReason, SystemEvent] = {
     "inactivity": "silence_timeout",
     "max_duration_reached": "max_duration",
     "insufficient_credit": "credit_exhausted",
     "voicemail_reached": "voicemail_detected",
 }
+
+
+def record_ending(
+    recorder: EventRecorder, reason: DisconnectReason, diagnostic: str | None
+) -> None:
+    """The system lines and final status of a call; the test harness ends calls through it too."""
+    system = SYSTEM_EVENT_FOR_REASON.get(reason)
+    if system:
+        recorder.system(system, diagnostic)
+    if diagnostic and diag.parse(diagnostic).code == diag.VENDOR_ERROR:
+        recorder.system("vendor_error", diagnostic)
+    recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
 
 
 def parse_dispatch_metadata(raw: str | None) -> dict[str, Any]:
@@ -275,7 +294,7 @@ class LiveCall:
             await self.ctx.room.local_participant.publish_dtmf(code=dtmf_code(digit), digit=digit)
             await asyncio.sleep(0.1)
 
-    async def end(self, reason: str, diagnostic: str | None) -> None:
+    async def end(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         """Stop the timers at once and close the call in a task of its own.
 
         Hang-ups usually come from inside the session: end_call and transfer tools, a flow's
@@ -295,20 +314,15 @@ class LiveCall:
         if self._teardown is None:
             self._teardown = asyncio.ensure_future(self._close_call(reason, diagnostic))
 
-    async def _close_call(self, reason: str, diagnostic: str | None) -> None:
+    async def _close_call(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         """Post the final status with usage, close the session and the room (``end``)."""
         try:
-            system = SYSTEM_EVENT_FOR_REASON.get(reason)
-            if system:
-                self.recorder.system(system, diagnostic)
-            if diagnostic and diagnostic.startswith("vendor_error"):
-                self.recorder.system("vendor_error", diagnostic)
             if self.session is not None:
                 try:
                     self.session.interrupt()
                 except Exception as exc:  # the final status is posted regardless
                     log.warning("speech not interrupted for %s: %r", self.call_id, exc)
-            self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
+            record_ending(self.recorder, reason, diagnostic)
             await self.poster.stop()
             if self.background is not None:
                 try:
@@ -358,11 +372,11 @@ class LiveCall:
             synthesize=synthesize,
         )
 
-    async def _on_control_end(self, reason: str) -> None:
+    async def _on_control_end(self, reason: ControlReason) -> None:
         if self.control is not None:
             self._spawn(self.control.hang_up(reason))
 
-    def _hang_up_soon(self, reason: str, diagnostic: str | None = None) -> None:
+    def _hang_up_soon(self, reason: DisconnectReason, diagnostic: str | None = None) -> None:
         if self.control is not None and not self.control.ending:
             self._spawn(self.control.hang_up(reason, diagnostic=diagnostic))
 
@@ -551,18 +565,17 @@ class LiveCall:
 
     def _on_error(self, ev: Any, plan: SessionPlan) -> None:
         error = ev.error
-        diagnostic = vendor_error_diagnostic(ev.source, plan)
-        kind, _, provider = diagnostic.removeprefix("vendor_error:").partition("/")
+        kind, provider = failed_vendor(ev.source, plan)
         recoverable = bool(getattr(error, "recoverable", False))
         self.recorder.warning(
-            "vendor_retry" if recoverable else "vendor_error",
-            component=kind if kind in ("stt", "llm", "tts") else "runtime",
+            "vendor_retry" if recoverable else diag.VENDOR_ERROR,
+            component=kind,
             provider=provider,
             detail=str(getattr(error, "error", error))[:2000],
             level="warning" if recoverable else "error",
         )
         if not recoverable:
-            self._hang_up_soon("error", diagnostic)
+            self._hang_up_soon("error", diag.diagnostic(diag.VENDOR_ERROR, kind, provider))
 
     def _schedule_goodbye(self) -> None:
         """The agent said goodbye: hang up shortly after unless end_call already did or the
@@ -607,11 +620,8 @@ class LiveCall:
         runtime = self.runtime
         try:
             plan = plan_session(runtime, self.registry, self.flows)
-        except (UnsupportedVendor, FlowRuntimeUnavailable) as exc:
+        except (UnsupportedVendor, UnsupportedLanguage, FlowRuntimeUnavailable) as exc:
             await self._fail(exc.diagnostic)
-            return
-        except UnsupportedLanguage as exc:
-            await self._fail(f"unsupported_language:stt/{exc.provider}/{exc.language}")
             return
         self.plan = plan
         for clamp in plan.behavior.notes:
@@ -732,7 +742,7 @@ class LiveCall:
         runtime = self.runtime
         if runtime.channel == "sip_outbound":
             if runtime.outbound_dial is None:
-                await self._fail("outbound-dial-missing")
+                await self._fail(diag.OUTBOUND_DIAL_MISSING)
                 return None
             try:
                 return await dial_outbound(self.ctx, runtime.outbound_dial, self.recorder)
@@ -744,7 +754,7 @@ class LiveCall:
                 self.ctx.wait_for_participant(), timeout=runtime.caller_join_timeout_s
             )
         except TimeoutError:
-            await self._fail("caller_never_joined")
+            await self._fail(diag.CALLER_NEVER_JOINED)
             return None
         if runtime.channel in INBOUND_SIP_CHANNELS and self.plan is not None:
             # 010 R5: ring for the agent's ring duration before answering; never billed.

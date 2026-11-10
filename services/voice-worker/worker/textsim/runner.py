@@ -36,23 +36,37 @@ import contextlib
 import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
-from callwright_contract.calls import AgentType, Channel, Direction
+from callwright_contract import diagnostics as diag
+from callwright_contract.calls import (
+    AgentType,
+    Channel,
+    ControlReason,
+    Direction,
+    DisconnectReason,
+)
 from callwright_contract.protocol import RuntimeConfig, RuntimeValues
-from callwright_contract.variables import BUILTIN_VARIABLES
+from callwright_contract.textsim import (
+    MAX_ERROR_CHARS,
+    CaseResult,
+    SimResult,
+    SimulationSpec,
+    ToolCallRecord,
+    UsageRow,
+)
+from callwright_contract.variables import BUILTIN_VARIABLES, builtin_values
 
 from worker import telemetry
-from worker.adapters.llm import supports_temperature
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.agent import GENERATED_GREETING_INSTRUCTION, SessionPlan, resolve_llm
 from worker.call_behavior import ends_with_goodbye
 from worker.control import RuntimeCallControl
 from worker.flow import FlowComponents
 from worker.flow.runtime import CallwrightFlowRunner
-from worker.internal_api import InternalApiClient, SimulationSpec
+from worker.internal_api import InternalApiClient
 from worker.metrics import EventPoster, EventRecorder
 from worker.pipeline import build_agent, plan_session
 from worker.textsim.conversation import DISCONNECT_REASON, AgentTurn, Outcome
@@ -66,7 +80,6 @@ log = logging.getLogger("callwright.textsim")
 
 SETTLE_TICK_S = 0.01
 QUIET_TICKS = 3
-MAX_ERROR_CHARS = 2000
 
 
 @dataclass
@@ -111,19 +124,18 @@ def build_runtime(
         for v in config.get("dynamic_variables") or []
         if isinstance(v, Mapping) and v.get("name")
     }
-    now = datetime.now(UTC)
     direction: Direction = "outbound" if channel == "sip_outbound" else "inbound"
-    known = {
-        "call_id": call_id,
-        "channel": channel,
-        "direction": direction,
-        "timezone": "UTC",
-        "current_time": now.strftime("%H:%M"),
-        "current_date": now.strftime("%Y-%m-%d"),
-        "current_datetime": now.isoformat(timespec="minutes"),
-    }
+    known = builtin_values(
+        call_id=call_id,
+        channel=channel,
+        direction=direction,
+        from_number=None,
+        to_number=None,
+        timezone=None,
+        now=datetime.now(UTC),
+    )
     for name in BUILTIN_VARIABLES:
-        resolved.setdefault(name, known.get(name, ""))
+        resolved.setdefault(name, known[name])
     resolved.update(variables)
     return RuntimeConfig(
         **dict(values),
@@ -152,7 +164,7 @@ class _SimBackend:
         if self.session is not None:
             self.session.say(text, allow_interruptions=allow_interruptions)
 
-    async def end(self, reason: str, diagnostic: str | None) -> None:
+    async def end(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         if self.session is not None:
             with contextlib.suppress(Exception):
                 self.session.interrupt()
@@ -182,8 +194,10 @@ class TextSession:
         recorder: EventRecorder,
         meter: TokenMeter,
         on_turn: Callable[[], Awaitable[None]] | None = None,
+        start_speaker: Literal["agent", "user"] | None = None,
     ) -> None:
         self.call_id = call_id
+        self.start_speaker = start_speaker
         self.runtime = runtime
         self.deps = deps
         self.api = api
@@ -249,6 +263,9 @@ class TextSession:
 
         runtime = self.runtime
         plan = plan_session(runtime, self.deps.registry, self.flow_runner)
+        if self.start_speaker is not None and self.start_speaker != plan.start_speaker:
+            # A replay opens as its base call did.
+            plan = replace(plan, start_speaker=self.start_speaker)
         self.plan = plan
         tools = build_call_tools(runtime, self.control, api=self.api)
         self.tools = install(tools, self.answers)
@@ -367,7 +384,12 @@ class TextSession:
         self._error = f"model error: {getattr(error, 'error', error)}"[:MAX_ERROR_CHARS]
         if self.control.disconnect_reason is None:
             task = asyncio.ensure_future(
-                self.control.hang_up("error", diagnostic="vendor_error:llm")
+                self.control.hang_up(
+                    "error",
+                    diagnostic=diag.diagnostic(
+                        diag.VENDOR_ERROR, "llm", self.plan.llm.provider if self.plan else None
+                    ),
+                )
             )
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
@@ -377,15 +399,19 @@ class TextSession:
 # Results
 
 
-def tool_record(event: Mapping[str, Any]) -> dict[str, Any]:
+def tool_record(event: Mapping[str, Any]) -> ToolCallRecord:
     """A ``ToolCallRecord`` from a ``tool_call`` event. ``answer_source`` is null for tools that
     are not answered by the simulation (end_call, transfer, kb_search, ...)."""
-    return {
-        "name": event["name"],
-        "arguments": dict(event.get("arguments") or {}),
-        "output": event.get("output"),
-        "answer_source": event.get("answer_source"),
-    }
+    return ToolCallRecord(
+        name=event["name"],
+        arguments=dict(event.get("arguments") or {}),
+        output=event.get("output"),
+        answer_source=event.get("answer_source"),
+    )
+
+
+def usage_rows(meter: TokenMeter) -> dict[str, UsageRow]:
+    return {role: UsageRow.model_validate(row) for role, row in meter.usage().items()}
 
 
 def _error_text(exc: BaseException) -> str:
@@ -408,7 +434,7 @@ async def run_single_turn(
             return "gone"
         span.set_attribute("agent_type", spec.agent_type)
         started = time.perf_counter()
-        tool_calls: list[dict[str, Any]] = []
+        tool_calls: list[ToolCallRecord] = []
 
         def keep_tool_call(event: dict[str, Any]) -> None:
             if event["type"] == "tool_call":
@@ -418,11 +444,7 @@ async def run_single_turn(
         meter = TokenMeter()
         answers = SimulatedToolAnswers(policy="synthesize")
         session: TextSession | None = None
-        body: dict[str, Any] = {
-            "status": "completed",
-            "agent_response": None,
-            "error_message": None,
-        }
+        body = CaseResult(status="completed")
         try:
             runtime = build_runtime(
                 spec.runtime,
@@ -439,20 +461,20 @@ async def run_single_turn(
             await session.start()
             if session.disconnect_reason is None:
                 reply = await session.send(spec.user_prompt)
-                body["agent_response"] = " ".join(reply.texts) or None
+                body.agent_response = " ".join(reply.texts) or None
         except Exception as exc:
             log.exception("test case %s/%s failed", test_run_id, test_case_id)
-            body.update(status="error", error_message=_error_text(exc))
+            body.status, body.error_message = "error", _error_text(exc)
         finally:
             if session is not None:
                 await session.aclose()
-        body["tool_calls"] = tool_calls
-        body["nodes_visited"] = session.visited_nodes if session is not None else []
-        body["usage"] = meter.usage()
-        body["duration_ms"] = round((time.perf_counter() - started) * 1000)
-        span.set_attribute("textsim.outcome", body["status"])
+        body.tool_calls = tool_calls
+        body.nodes_visited = session.visited_nodes if session is not None else []
+        body.usage = usage_rows(meter)
+        body.duration_ms = round((time.perf_counter() - started) * 1000)
+        span.set_attribute("textsim.outcome", body.status)
         posted = await api.post_case_result(test_run_id, test_case_id, body)
-        return str(body["status"]) if posted else "gone"
+        return body.status if posted else "gone"
 
 
 # --------------------------------------------------------------------------------------------
@@ -464,7 +486,9 @@ def persona_spec(spec: SimulationSpec, runtime: RuntimeConfig, registry: Adapter
     chosen = parse_model(spec.settings.persona_model, VendorSpec("llm", default.provider, None))
     if chosen.model is None:
         chosen = VendorSpec("llm", default.provider, default.model)
-    options = {"temperature": PERSONA_TEMPERATURE} if supports_temperature(chosen.model) else {}
+    # A model that only runs at the vendor's default temperature is left at it.
+    fixed = registry.fixed_temperature(chosen)
+    options = {} if fixed else {"temperature": PERSONA_TEMPERATURE}
     return VendorSpec("llm", chosen.provider, chosen.model, options)
 
 
@@ -494,7 +518,7 @@ async def _simulate(
     meter = TokenMeter()
     session: TextSession | None = None
 
-    async def on_control_end(reason: str) -> None:
+    async def on_control_end(reason: ControlReason) -> None:
         if session is not None:
             await session.control.hang_up(reason)
 
@@ -518,7 +542,7 @@ async def _simulate(
         recorded=spec.recorded_tool_outputs,
         replay=spec.mode == "replay",
     )
-    status = "completed"
+    status: Literal["completed", "failed"] = "completed"
     error_message: str | None = None
     outcome = Outcome(end_reason="error")
     brief = spec.persona_brief.model_dump(exclude_none=True) if spec.persona_brief else None
@@ -543,6 +567,7 @@ async def _simulate(
             recorder=recorder,
             meter=meter,
             on_turn=on_turn,
+            start_speaker=spec.start_speaker,
         )
         answers.synthesize = tool_synthesizer(session.synth_model)
         if spec.mode == "replay":
@@ -593,15 +618,14 @@ async def _simulate(
         status, error_message = "failed", CALL_CLOSED
 
     span.set_attribute("simulation.end_reason", outcome.end_reason)
-    result: dict[str, Any] = {
-        "status": status,
-        "end_reason": outcome.end_reason,
-        "diverged_at_turn": outcome.diverged_at_turn,
-        "answer_source_counts": dict(answers.counts),
-        "usage": meter.usage(),
-        "error_message": error_message,
-    }
-    if spec.mode == "persona" and brief is not None:
-        result["persona_brief"] = brief
+    result = SimResult(
+        status=status,
+        end_reason=outcome.end_reason,
+        diverged_at_turn=outcome.diverged_at_turn,
+        answer_source_counts=answers.counts,
+        usage=usage_rows(meter),
+        error_message=error_message,
+        persona_brief=spec.persona_brief if spec.mode == "persona" else None,
+    )
     posted = await api.post_simulation_result(spec.simulation_run_id, result)
     return status if posted else "gone"

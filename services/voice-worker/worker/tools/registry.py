@@ -41,12 +41,12 @@ from callwright_contract.values import (
     KB_TOOL,
     PRESS_DIGITS_PATTERN,
     SCHEDULE_CALLBACK_TOOL,
-    STOCK_GOODBYE,
 )
 
 from worker import json_schema, telemetry
+from worker.call_behavior import STOCK_GOODBYE
 from worker.internal_api import InternalApiClient
-from worker.tools import CallControl, ToolActivity, kb_search, secrets
+from worker.tools import CallControl, ToolActivity, kb_search
 from worker.tools.base import ToolContext, ToolExecutor, ToolResult, ToolSpecView
 from worker.tools.dtmf import PressDigitExecutor
 from worker.tools.end_call import EndCallExecutor
@@ -164,7 +164,7 @@ def filler_texts(specs: Sequence[ToolSpecView]) -> dict[str, str]:
     for spec in specs:
         if spec.type == "kb_search":
             texts[spec.name] = DEFAULT_EXECUTION_MESSAGE
-        elif spec.type == "http" and spec.config.get("speak_during_execution", True):
+        elif spec.type == "http" and spec.config["speak_during_execution"]:
             texts[spec.name] = str(
                 spec.config.get("execution_message") or DEFAULT_EXECUTION_MESSAGE
             )
@@ -323,10 +323,10 @@ class CallTools:
         overhead_ms: int,
     ) -> None:
         values = list(ctx.secrets.values())
-        output = secrets.scrub(
+        output = http_core.scrub(
             result.output if result.output is not None else result.llm_payload, values
         )
-        clean_args = json.loads(secrets.scrub(json.dumps(args, default=str), values))
+        clean_args = json.loads(http_core.scrub(json.dumps(args, default=str), values))
         extra: dict[str, Any] = {
             "tool_id": spec.tool_id,
             "tool_type": spec.type,
@@ -394,10 +394,6 @@ def _raw_tool(tools: CallTools, schema: dict[str, Any]) -> Any:
     return function_tool(handler, raw_schema=schema)
 
 
-def is_simulation(runtime: RuntimeConfig) -> bool:
-    return runtime.simulation or bool(runtime.config.get("simulation"))
-
-
 BUILTIN_END_CALL = ToolSpecView(
     tool_id=None,
     type="end_call",
@@ -448,7 +444,7 @@ def build_call_tools(
         specs.append(set_language_spec(languages))
     kb = kb_spec(config)
     clients: list[httpx.AsyncClient] = []
-    simulation = is_simulation(runtime)
+    simulation = runtime.simulation
     if http_client is None and not simulation and any(s.type == "http" for s in specs):
         http_client = httpx.AsyncClient(follow_redirects=False)
         clients.append(http_client)
@@ -489,7 +485,7 @@ async def prepare_call_tools(
     """The live call's tools at session start, after one secret fetch; their own clients are
     closed with :meth:`CallTools.aclose` when the call ends."""
     tool_secrets: dict[str, str] = {}
-    if secrets.needs_secrets(runtime.config):
+    if http_core.secret_refs(runtime.config):
         tool_secrets = await api.tool_secrets(control.call_id)
     return build_call_tools(
         runtime, control, tool_secrets=tool_secrets, api=api, transfer_backend=transfer_backend

@@ -18,6 +18,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract.protocol import COMPILED_FLOW_SCHEMA_VERSION
 from callwright_contract.variables import BUILTIN_VARIABLES
 
 from app.flows import transitions
@@ -25,9 +26,10 @@ from app.flows.schemas import CONVERSATIONAL
 from app.flows.starter import config_with_defaults
 from app.flows.variables import TASK_RESULT
 from app.llms.service import load_catalog as load_llm_catalog
+from app.tools.schemas import HttpRequestSpec, TransferSpec, config_defaults
 from app.voices.catalog import DEFAULT_LANGUAGE
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = COMPILED_FLOW_SCHEMA_VERSION
 
 
 def canonical_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
@@ -283,7 +285,7 @@ def compile_flow(
             ok = next((e for e in outgoing[nid] if e.get("trigger") == "success"), None)
             bad = next((e for e in outgoing[nid] if e.get("trigger") == "failure"), None)
             out["webhook"] = {
-                "request": copy.deepcopy(cfg.get("request") or {}),
+                "request": {**config_defaults(HttpRequestSpec), **copy.deepcopy(cfg.get("request") or {})},
                 "mock_response": cfg.get("mock_response"),
                 "success_target": ok["target"] if ok else None,
                 "success_edge_id": ok["id"] if ok else None,
@@ -293,7 +295,7 @@ def compile_flow(
         elif ntype == "transfer":
             bad = next((e for e in outgoing[nid] if e.get("trigger") == "failure"), None)
             out["transfer"] = {
-                "transfer": copy.deepcopy(cfg.get("transfer") or {}),
+                "transfer": {**config_defaults(TransferSpec), **copy.deepcopy(cfg.get("transfer") or {})},
                 "failure_target": bad["target"] if bad else None,
                 "failure_edge_id": bad["id"] if bad else None,
             }

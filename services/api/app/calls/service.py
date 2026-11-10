@@ -22,9 +22,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
-from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS, LIVE_CHANNELS
+from callwright_contract.calls import ACTIVE_STATUSES, INBOUND_SIP_CHANNELS
 from callwright_contract.protocol import (
+    COMPILED_FLOW_SCHEMA_VERSION,
     DISPATCH_CALL_ID,
     DISPATCH_CHANNEL,
     DISPATCH_ROUTE_REF,
@@ -35,6 +37,7 @@ from callwright_contract.protocol import (
     RuntimeConfig,
     RuntimeValues,
 )
+from callwright_contract.variables import builtin_values
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,12 +58,16 @@ from app.core.livekit import LiveKitError, LiveKitGateway
 from app.core.queue import Deferred, JobQueue, dispatch
 from app.core.storage import ObjectSigner
 from app.pricing import service as pricing
+from app.voices.catalog import Control
 from app.voices.catalog import load_catalog as load_speech_catalog
 from app.workspaces.models import Workspace
 
 logger = logging.getLogger(__name__)
 
 SIGNED_URL_TTL_S = 600
+
+# Calls that reach real people outside the editor: always run the published version.
+LIVE_CHANNELS = frozenset({"sip_inbound", "sip_outbound", "whatsapp"})
 
 # Refusal codes: problem status, problem code, disconnect reason (FR-008, contract sessions.yaml).
 REFUSALS: dict[str, tuple[int, str]] = {
@@ -159,8 +166,15 @@ def recording_override(config: Mapping[str, Any]) -> Any:
     return advanced.get("recording") if isinstance(advanced, Mapping) else None
 
 
+def control_range(control: Control) -> ControlRange:
+    return ControlRange(
+        path=control.path, min=float(control.min), max=float(control.max), step=float(control.step)
+    )
+
+
 def limits(config: Mapping[str, Any]) -> Limits:
-    """Call limits from the version, clamped to the control ranges (defence in depth)."""
+    """Call limits from the version, clamped to the control ranges with the contract's rule
+    (``ControlRange.clamp``, the one the worker applies; defence in depth)."""
     behavior = config.get("call_behavior")
     cb: Mapping[str, Any] = behavior if isinstance(behavior, Mapping) else {}
     speech = load_speech_catalog()
@@ -172,7 +186,7 @@ def limits(config: Mapping[str, Any]) -> Limits:
             number = int(CALL_BEHAVIOR_DEFAULTS[key])
         control = speech.control(f"/call_behavior/{key}")
         assert control is not None, f"voices/catalog.yaml has no control for {key}"
-        return min(int(control.max), max(int(control.min), number))
+        return int(control_range(control).clamp(number))
 
     return Limits(
         end_on_silence_s=limit("end_on_silence_s"),
@@ -191,10 +205,7 @@ def runtime_values(config: Mapping[str, Any], catalog: AdapterCatalog) -> Runtim
     return RuntimeValues(
         config=resolved,
         limits=limits(resolved),
-        controls=[
-            ControlRange(path=c.path, min=float(c.min), max=float(c.max), step=float(c.step))
-            for c in speech.controls
-        ],
+        controls=[control_range(c) for c in speech.controls],
         stt_auto_rules=speech.stt_auto_rules(),
         stt_resolved_model=components.stt.model,
         language_options=claim_language_options(config, components),
@@ -235,9 +246,9 @@ async def _email_verified(session: AsyncSession, workspace_id: str) -> bool:
 
 def _replayed_refusal(call: Call) -> Refusal:
     diagnostic = call.diagnostic or "error"
-    code = diagnostic.split(":", 1)[0]
+    code = diag.parse(diagnostic).code
     if code not in REFUSALS:
-        code = "unsupported_vendor" if diagnostic.startswith("stt_language") else "pricing_unavailable"
+        code = diag.UNSUPPORTED_VENDOR if code == diag.STT_LANGUAGE_UNSUPPORTED else "pricing_unavailable"
     status, _ = REFUSALS[code]
     return Refusal(code, status, call.disconnect_reason or "error", diagnostic, _DETAILS[code])
 
@@ -245,7 +256,7 @@ def _replayed_refusal(call: Call) -> Refusal:
 def _has_compiled_flow(config: Mapping[str, Any]) -> bool:
     flow = config.get("flow")
     compiled = flow.get("compiled") if isinstance(flow, Mapping) else None
-    return isinstance(compiled, Mapping) and compiled.get("schema_version") == 1
+    return isinstance(compiled, Mapping) and compiled.get("schema_version") == COMPILED_FLOW_SCHEMA_VERSION
 
 
 async def _checks(
@@ -253,7 +264,7 @@ async def _checks(
 ) -> Refusal | None:
     if snapshot.agent_type == "flow" and not _has_compiled_flow(snapshot.config):
         # The worker would fail the call with the same code after the caller joined (004).
-        return refusal("flow_not_compiled")
+        return refusal(diag.FLOW_NOT_COMPILED)
     components = comp.resolve(snapshot.config, catalog)
     diagnostic = comp.unsupported(components, catalog)
     if diagnostic is None and policy(request.origin).has_real_audio:
@@ -330,7 +341,7 @@ async def admit_in_session(
     recording_enabled, source = resolve_recording(recording_override(config), workspace_default)
     # No egress on this deployment: the source still names where the setting came from.
     recording_enabled = recording_enabled and recordings_enabled
-    builtins = variables_mod.builtin_values(
+    builtins = builtin_values(
         call_id=call_id,
         channel=request.channel,
         direction=request.direction,

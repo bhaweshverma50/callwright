@@ -13,9 +13,10 @@ differently reads this table.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal, get_args
 
-from callwright_contract.calls import ORIGINS
+Origin = Literal["live", "test", "simulation"]
+ORIGINS: Final[tuple[Origin, ...]] = get_args(Origin)
 
 
 @dataclass(frozen=True)

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from callwright_contract.textsim import SimResult
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 from sqlalchemy import text
@@ -18,7 +19,6 @@ from app.core.auth import require_service
 from app.core.errors import not_found, problem_responses
 from app.core.ids import is_valid_id
 from app.simulator import jobs, service
-from app.simulator.schemas import SimResult
 
 router = APIRouter(tags=["internal"], dependencies=[Depends(require_service)])
 
@@ -39,7 +39,8 @@ async def run_workspace(request: Request, run_id: str) -> str:
 async def internal_spec(request: Request, simulation_run_id: str) -> dict[str, Any]:
     workspace_id = await run_workspace(request, simulation_run_id)
     async with request.app.state.db.transaction(workspace_id=workspace_id) as session:
-        return await service.spec_for(session, simulation_run_id)
+        spec = await service.spec_for(session, simulation_run_id)
+    return spec.model_dump(mode="json", exclude_unset=True)
 
 
 @router.post(

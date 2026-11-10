@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from callwright_contract.values import RUN_SIMULATION
+from callwright_contract.textsim import RUN_SIMULATION
 from sqlalchemy import text
 
 from app.billing import service as billing

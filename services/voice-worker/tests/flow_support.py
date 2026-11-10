@@ -10,6 +10,7 @@ else gets a short text reply.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -267,6 +268,14 @@ class FlowCallResult:
     runtime: RuntimeConfig
 
 
+async def settled(session: Any) -> None:
+    """Wait until the session is idle; the wait follows handoffs to the next node's agent."""
+    from livekit.agents.voice.agent_activity import ActivityClosedError
+
+    with contextlib.suppress(ActivityClosedError, RuntimeError):
+        await asyncio.wait_for(session.wait_for_idle(), 10)
+
+
 async def run_flow_call(
     config: Mapping[str, Any],
     script: FlowScript,
@@ -302,12 +311,10 @@ async def run_flow_call(
             replies += [
                 e.item.text_content for e in result.events if getattr(e, "type", "") == "message"
             ]
-            for _ in range(20):  # let handoffs and step agents settle
-                await asyncio.sleep(0.01)
+            await settled(session)  # handoffs and step agents included
             if after_each is not None:
                 after_each(control)
-        for _ in range(20):
-            await asyncio.sleep(0.01)
+        await settled(session)
     await tools.aclose()
     return FlowCallResult(control, replies, model, rt)
 
