@@ -375,3 +375,25 @@ async def test_scripted_call_lookup_with_foreign_agent_is_declined(
     body, headers = _ask("my last call")
     r = await client.post("/v1/analytics/chat", json=body, headers={**seeded_calls.a.headers, **headers})
     assert r.status_code == 200 and r.json()["outcome"] == "declined"
+
+
+async def test_usage_is_tokens_in_plus_out_and_billable(
+    client: httpx.AsyncClient, seeded_calls: SeededCalls
+) -> None:
+    ws = seeded_calls.a.workspace_id
+    body, headers = _ask("Total calls this month")
+    r = await client.post("/v1/analytics/chat", json=body, headers={**seeded_calls.a.headers, **headers})
+    assert r.status_code == 200 and r.json()["outcome"] == "answered"
+    usage = owner_sql(
+        "select unit, quantity, billable_cost_usd from usage_events "
+        "where workspace_id = %s and idempotency_key = %s",
+        (ws, f"analytics_chat:{headers['Idempotency-Key']}"),
+    )
+    request = owner_sql(
+        "select input_tokens + output_tokens from analytics_chat_requests "
+        "where workspace_id = %s and idempotency_key = %s",
+        (ws, headers["Idempotency-Key"]),
+    )
+    assert len(usage) == 1 and usage[0][0] == "tokens"
+    assert Decimal(usage[0][1]) == Decimal(request[0][0]) > 0
+    assert Decimal(usage[0][2]) > 0
