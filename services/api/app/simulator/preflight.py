@@ -85,6 +85,17 @@ async def per_run_cost(session: AsyncSession, agent_id: str, mode: str, model: s
     return fallback_cost(mode, model)
 
 
+async def run_cost(
+    session: AsyncSession, agent_id: str, mode: str, model: str, *, extraction: bool
+) -> Decimal:
+    """Estimated charge of one simulated run: its history (or the fallback) plus, for a persona
+    run built from a base call, the persona extraction."""
+    cost = await per_run_cost(session, agent_id, mode, model)
+    if mode == "persona" and extraction:
+        cost += billable_cost(token_cost(model, *EXTRACTION_TOKENS))
+    return cost
+
+
 async def preflight(
     session: AsyncSession,
     agent: Agent,
@@ -123,10 +134,7 @@ async def preflight(
             "Tools without a mock response answer with the recorded output when there is one, "
             "otherwise with a generated stand-in."
         )
-    per_run = await per_run_cost(session, agent.id, mode, simulator_model)
-    total = per_run * run_count
-    if mode == "persona" and ids:
-        total += billable_cost(token_cost(simulator_model, *EXTRACTION_TOKENS)) * run_count
+    total = await run_cost(session, agent.id, mode, simulator_model, extraction=bool(ids)) * run_count
     return {
         "run_count": run_count,
         "tools_missing_mock": missing,

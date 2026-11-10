@@ -42,7 +42,6 @@ from app.issues.lifecycle import transition
 from app.issues.models import Issue, IssueFix, IssueSample, IssueValidation
 from app.issues.revisions import not_published, problem
 from app.issues.service import current_fix, get_issue, require_live_agent, running_validation
-from app.llms.client import billable_cost, token_cost
 from app.simulator import service as sim
 from app.simulator.scorecard import VerdictRow, collapse, display_pp, display_rate, pair_verdicts
 from app.testing import calls as sim_calls
@@ -163,12 +162,9 @@ async def estimate_cost(
     session: AsyncSession, agent: Agent, settings: Settings, mode: str, run_count: int
 ) -> Decimal:
     from app.evals.service import enabled_evaluators, est_cost
-    from app.simulator.preflight import EXTRACTION_TOKENS, per_run_cost
+    from app.simulator.preflight import run_cost
 
-    model = settings.simulator_model
-    per_run = await per_run_cost(session, agent.id, mode, model)
-    if mode == "persona":
-        per_run += billable_cost(token_cost(model, *EXTRACTION_TOKENS))
+    per_run = await run_cost(session, agent.id, mode, settings.simulator_model, extraction=True)
     models = judge_models(settings)
     for r in await enabled_evaluators(session, agent, settings):
         per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
