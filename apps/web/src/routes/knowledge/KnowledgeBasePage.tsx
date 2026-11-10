@@ -139,6 +139,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
 
   const preview = async (d: KbDocument) => {
     const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null; // the served document must not reach back into this app
     try {
       const url = await documentUrl(kb.id, d.id);
       if (tab) tab.location.href = url;
