@@ -43,13 +43,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import CALL_BEHAVIOR_DEFAULTS
 from app.billing import service as billing
+from app.caller_language.options import language_options
 from app.calls import components as comp
 from app.calls import lifecycle
 from app.calls import variables as variables_mod
+from app.calls.agent_versions import AgentSnapshot
 from app.calls.lookups import concurrency_full, snapshot_for, workspace_for_call
 from app.calls.models import Call
 from app.calls.origins import policy
-from app.calls.ports import AgentSnapshot, registry
+from app.calls.ports import registry
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
@@ -511,7 +513,7 @@ def claim_language_options(
 ) -> list[dict[str, Any]]:
     """012: the languages ``set_language`` may switch to; the agent's own entry carries the models
     this call resolved (Auto speech recognition included), so switching back restores them."""
-    options = registry.caller_language.options(config)
+    options = language_options(config)
     if options:
         options[0] = {**options[0], "stt_model": components.stt.model, "tts_model": components.tts.model}
     return options

@@ -5,16 +5,11 @@ from __future__ import annotations
 import httpx
 from fastapi import FastAPI
 
-from app.calls import ports
 from app.calls.agent_versions import AgentVersionsAdapter
 from tests.agent_helpers import PROMPT, create_ok, save_prompt
 from tests.conftest import Account, signup
 
 MISSING_VERSION = "agv_01ARZ3NDEKTSV4RRFFQ69G5FAV"
-
-
-def test_create_app_registers_the_adapter(app: FastAPI) -> None:
-    assert isinstance(ports.registry.agent_versions, AgentVersionsAdapter)
 
 
 async def test_port_answers_from_the_agent_tables(
