@@ -13,13 +13,15 @@ from app.llms.embeddings.base import EmbeddingAdapter
 from app.pricing import engine
 from app.pricing import service as pricing
 
-# Rate used for an embedding model the catalog does not list (the offline fake, a new model).
+# Rate used for an embedding model the catalog does not list (a new model).
 FALLBACK_EMBEDDING_RATE = ("openai", "text-embedding-3-small")
 
 
 async def embedding_cost(session: AsyncSession, embedder: EmbeddingAdapter, tokens: int) -> Decimal:
     """Vendor list price of embedding ``tokens``: the pricing catalog's per-1,000-token rate,
-    rounded up to $0.000001."""
+    rounded up to $0.000001. The offline fake costs nothing."""
+    if embedder.provider == "fake":
+        return Decimal(0)
     catalog = await pricing.catalog_at(session)
     rate = catalog.lookup("embedding", embedder.provider, embedder.model) or catalog.lookup(
         "embedding", *FALLBACK_EMBEDDING_RATE
