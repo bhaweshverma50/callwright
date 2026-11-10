@@ -43,12 +43,14 @@ Deployables:
 
 ```
 apps/web/src/
-  app/            shell, router, auth guard, query client
+  router.tsx      route table
+  app/            shell, auth guard, tour, assistant/ and copilot/ (006 floating widgets)
   routes/<area>/  dashboard, agents, flows, calls, datasets, simulations, review,
                   calibration, issues, channels, knowledge, billing, settings, public
-  components/     design-system primitives (Radix + Tailwind tokens), WebCallPanel (shared by
-                  003 testing and 008), floating AnalyticsAssistant and VoiceCopilot (006)
-  api/            generated TS client from contracts (openapi-typescript)
+  components/     design-system primitives (Radix + Tailwind tokens)
+  webCall/        WebCallPanel, shared by 003 testing and 008
+  api/            generated TS client from contracts (openapi-typescript), query client
+                  (queryClient.ts)
 services/api/app/
   features.py     the list of features; main.py and worker.py iterate it
   main.py         app factory: routers and installs from features.py

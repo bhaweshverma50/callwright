@@ -80,9 +80,9 @@ story needs these.
 - [ ] T030 [US1] Router in `services/api/app/team/router.py` for the T018 operations (team routes `require("team.manage")` except `listTeamMembers` with `team.read`); mount in `services/api/app/main.py`
 - [ ] T031 [P] [US1] Web hooks in `apps/web/src/api/team.ts` for members, invitations, memberships, switch and create workspace
 - [ ] T032 [US1] Settings Team tab `apps/web/src/routes/settings/team/TeamTab.tsx` with Members and Invitations lists, `InviteDialog.tsx` (email, role checkboxes, used/limit counter, "Email not sent yet" state); add the tab to `apps/web/src/routes/settings/SettingsPage.tsx`, shown with `useCan("team.read")`
-- [ ] T033 [P] [US1] `/invite/:token` page `apps/web/src/routes/invite/InvitePage.tsx`: preview, sign up with the email locked, sign in, accept, error states (mismatch with masked email, expired, revoked); route in `apps/web/src/app/router.tsx` outside `AuthGuard` for the preview
+- [ ] T033 [P] [US1] `/invite/:token` page `apps/web/src/routes/invite/InvitePage.tsx`: preview, sign up with the email locked, sign in, accept, error states (mismatch with masked email, expired, revoked); route in `apps/web/src/router.tsx` outside `AuthGuard` for the preview
 - [ ] T034 [P] [US1] `/welcome` page `apps/web/src/routes/welcome/WelcomePage.tsx`: pending invitations and "Create a workspace"
-- [ ] T035 [US1] Workspace switcher in `apps/web/src/app/UserMenu.tsx` (shown with more than one membership): calls `switchWorkspace`, stores the id, clears the query cache in `apps/web/src/app/queryClient.ts`
+- [ ] T035 [US1] Workspace switcher in `apps/web/src/app/UserMenu.tsx` (shown with more than one membership): calls `switchWorkspace`, stores the id, clears the query cache in `apps/web/src/api/queryClient.ts`
 - [ ] T036 [P] [US1] MSW handlers for team endpoints in `apps/web/src/mocks/team/handlers.ts` and unit tests `apps/web/src/routes/settings/team/TeamTab.test.tsx`, `apps/web/src/routes/invite/InvitePage.test.tsx`
 
 **Checkpoint**: quickstart section 1 passes; a second person can join.
@@ -97,7 +97,7 @@ story needs these.
 - [ ] T037 [P] [US2] Access-matrix integration test in `services/api/tests/integration/test_access_matrix.py`: one member per role (plus Builder and Supervisor combined); for every FR-006 row call one representative endpoint and assert 2xx or 403 `forbidden`; includes money rows (top-up and payment method owner-only, admin reads billing)
 - [ ] T038 [P] [US2] Integration test in `services/api/tests/integration/test_role_change_effect.py`: a role change applies on the next request with the same token (FR-009)
 - [ ] T039 [US2] Hide navigation items by permission in `apps/web/src/app/nav.ts` and `apps/web/src/app/Sidebar.tsx`
-- [ ] T040 [US2] "No access" page `apps/web/src/app/NoAccess.tsx` ("You don't have access to this page. Ask an owner or admin.") used by route guards for Billing, Team, Settings, Channels in `apps/web/src/app/router.tsx`
+- [ ] T040 [US2] "No access" page `apps/web/src/app/NoAccess.tsx` ("You don't have access to this page. Ask an owner or admin.") used by route guards for Billing, Team, Settings, Channels in `apps/web/src/router.tsx`
 - [ ] T041 [US2] Read-only agent editor for people without `agents.edit`: hide Save, Publish, Test call, Delete and disable inputs in the agent editor components under `apps/web/src/routes/agents/` (use `useCan`)
 - [ ] T042 [P] [US2] Web tests for hidden navigation and read-only editor per role in `apps/web/src/app/shell.test.tsx` and `apps/web/src/routes/agents/AgentEditor.roles.test.tsx`
 
