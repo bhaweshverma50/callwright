@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { Flow, FlowGraph } from "../../../api/flows";
 import { diffGraphs } from "../canvas/diffOverlay";
 import { useFlow } from "../hooks/useFlow";
-import { defaultConfig } from "../model";
+import { mockNodeDefaults } from "../../../mocks/flows";
 import { approveProposal, type Proposal } from "./ProposalBar";
 
 const base: FlowGraph = {
   nodes: [
-    { id: "n_start000", type: "start", label: "Start", position: { x: 0, y: 0 }, config: defaultConfig("start") },
-    { id: "n_agent000", type: "agent", label: "Triage", position: { x: 300, y: 0 }, config: defaultConfig("agent") },
+    { id: "n_start000", type: "start", label: "Start", position: { x: 0, y: 0 }, config: mockNodeDefaults.start.config },
+    { id: "n_agent000", type: "agent", label: "Triage", position: { x: 300, y: 0 }, config: mockNodeDefaults.agent.config },
   ],
   edges: [{ id: "e_start000", source: "n_start000", target: "n_agent000", trigger: "always", sort_order: 0 }],
   viewport: { x: 0, y: 0, zoom: 1 },
@@ -26,7 +26,7 @@ const flow: Flow = {
 };
 const proposed: FlowGraph = {
   ...base,
-  nodes: [...base.nodes, { id: "n_end00000", type: "end", label: "End", position: { x: 600, y: 0 }, config: defaultConfig("end") }],
+  nodes: [...base.nodes, { id: "n_end00000", type: "end", label: "End", position: { x: 600, y: 0 }, config: mockNodeDefaults.end.config }],
   edges: [
     { ...base.edges[0]! },
     { id: "e_done0000", source: "n_agent000", target: "n_end00000", trigger: "llm_condition", label: "Done", condition: "Done", sort_order: 0 },

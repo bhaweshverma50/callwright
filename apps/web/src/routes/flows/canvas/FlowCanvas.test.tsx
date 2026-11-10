@@ -4,14 +4,14 @@ import { describe, expect, it } from "vitest";
 import type { Flow, FlowGraph } from "../../../api/flows";
 import { Toaster, TooltipProvider } from "../../../components";
 import { useFlow } from "../hooks/useFlow";
-import { defaultConfig } from "../model";
+import { mockNodeDefaults } from "../../../mocks/flows";
 import { FlowCanvas, reconcileNodes, type NodeInputs, type Selection } from "./FlowCanvas";
 
 const graph: FlowGraph = {
   nodes: [
-    { id: "n_start000", type: "start", label: "Start", position: { x: 0, y: 0 }, config: defaultConfig("start") },
-    { id: "n_agent000", type: "agent", label: "Triage", position: { x: 300, y: 0 }, config: defaultConfig("agent") },
-    { id: "n_say00000", type: "say", label: "Say", position: { x: 600, y: 0 }, config: defaultConfig("say") },
+    { id: "n_start000", type: "start", label: "Start", position: { x: 0, y: 0 }, config: mockNodeDefaults.start.config },
+    { id: "n_agent000", type: "agent", label: "Triage", position: { x: 300, y: 0 }, config: mockNodeDefaults.agent.config },
+    { id: "n_say00000", type: "say", label: "Say", position: { x: 600, y: 0 }, config: mockNodeDefaults.say.config },
   ],
   edges: [
     { id: "e_start000", source: "n_start000", target: "n_agent000", trigger: "always", sort_order: 0 },
@@ -50,6 +50,7 @@ function Harness({ initial }: { initial: Selection }) {
           selection={selection}
           onSelect={setSelection}
           issues={[]}
+          nodeDefaults={mockNodeDefaults}
         />
       </div>
       <Toaster />

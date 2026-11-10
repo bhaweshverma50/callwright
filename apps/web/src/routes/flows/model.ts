@@ -1,8 +1,7 @@
 /**
- * Flow graph model for the builder: node defaults (the same table as the API's starter.py),
- * fresh ids, how a connection's trigger follows from the handle it leaves, and graph edits.
+ * Flow graph model for the builder: fresh ids (node defaults come from the API), how a connection's trigger follows from the handle it leaves, and graph edits.
  */
-import type { ConfigByNode, FlowEdge, FlowGraph, FlowNode, NodeType, Trigger } from "../../api/flows";
+import type { ConfigByNode, FlowEdge, FlowGraph, FlowNode, NodeDefaults, NodeType, Trigger } from "../../api/flows";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -17,86 +16,8 @@ export function shortId(prefix: "n" | "e", taken?: Set<string>): string {
 /** The End node's old default line; the voice worker treats it like an empty message (the agent says its own goodbye). */
 export const STOCK_END_MESSAGE = "Thanks for calling. Goodbye.";
 
-export const DEFAULT_LABELS: Record<NodeType, string> = {
-  start: "Start",
-  agent: "Agent",
-  task: "Collect details",
-  condition: "Route",
-  say: "Say",
-  extract_variable: "Extract",
-  webhook: "API call",
-  transfer: "Transfer",
-  end: "End",
-};
-
-const OVERRIDES = () => ({ llm: null, tts: null, stt: null, language: null });
-
-export function defaultConfig<T extends NodeType>(type: T): ConfigByNode[T] {
-  const table: { [K in NodeType]: () => ConfigByNode[K] } = {
-    start: () => ({ start_speaker: "agent", greeting_type: "static", greeting: "Hi, thanks for calling. How can I help?" }),
-    agent: () => ({
-      instructions: "",
-      begin_message: null,
-      context_strategy: "inherit",
-      overrides: OVERRIDES(),
-      tool_ids: [],
-      kb_search_enabled: true,
-    }),
-    task: () => ({
-      instructions: "",
-      begin_message: null,
-      fields: [
-        { name: "name", type: "string", description: "The caller's full name", required: true },
-        { name: "email", type: "string", description: "The caller's email address", required: true },
-      ],
-      max_rounds: 5,
-      context_strategy: "inherit",
-      overrides: OVERRIDES(),
-      tool_ids: [],
-      kb_search_enabled: true,
-    }),
-    condition: () => ({
-      kind: "classify",
-      instructions: "",
-      categories: [
-        { name: "Sales", description: "The caller wants to buy something or asks about prices" },
-        { name: "Support", description: "The caller needs help with something they already have" },
-      ],
-    }),
-    say: () => ({ message: "", allow_interruptions: true }),
-    extract_variable: () => ({ instructions: "", fields: [] }),
-    webhook: () => ({
-      request: {
-        method: "POST",
-        url: "",
-        headers: [{ name: "Content-Type", value: "application/json", secret: false }],
-        body_template: null,
-        timeout_ms: 8000,
-        response_mappings: [],
-        speak_during_execution: true,
-        execution_message: "One moment while I check that.",
-      },
-      mock_response: null,
-    }),
-    transfer: () => ({
-      transfer: {
-        routing_type: "static",
-        number: "",
-        allowed_numbers: [],
-        transfer_type: "cold",
-        warm_transfer: null,
-        hold_message: "Please hold while I connect you.",
-        ring_timeout_s: 30,
-      },
-    }),
-    // Empty: the agent says a short goodbye in its own words that fits the call.
-    end: () => ({ message: "", reason: "call_completed" }),
-  };
-  return table[type]() as ConfigByNode[T];
-}
-
-export function makeNode(type: NodeType, position: { x: number; y: number }, taken: Set<string>): FlowNode {
-  return { id: shortId("n", taken), type, label: DEFAULT_LABELS[type], position, config: defaultConfig(type) } as FlowNode;
+export function makeNode(type: NodeType, position: { x: number; y: number }, taken: Set<string>, defaults: NodeDefaults[NodeType]): FlowNode {
+  return { id: shortId("n", taken), type, label: defaults.label, position, config: structuredClone(defaults.config) } as FlowNode;
 }
 
 /** Output handles of a node: id, label and the trigger a connection from it gets. */

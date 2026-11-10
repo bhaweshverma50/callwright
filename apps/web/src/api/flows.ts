@@ -62,9 +62,24 @@ const typedGraph = (g: S["FlowGraph"]): FlowGraph => ({ ...g, nodes: g.nodes.map
 const typedFlow = (f: S["Flow"]): Flow => ({ ...f, graph: typedGraph(f.graph) });
 
 export const flowKeys = {
+  nodeDefaults: ["flows", "node-defaults"] as const,
   byAgent: (agentId: string) => ["flows", "agent", agentId] as const,
   validate: (flowId: string) => ["flows", "validate", flowId] as const,
 };
+
+/** What a new node of each type starts with: its label and full config, as the API serves them. */
+export type NodeDefaults = { [K in NodeType]: { label: string; config: ConfigByNode[K] } };
+
+export function useNodeDefaults() {
+  return useQuery({
+    queryKey: flowKeys.nodeDefaults,
+    queryFn: async () => {
+      const { node_types } = await unwrap(api.GET("/flows/node-defaults"));
+      return Object.fromEntries(node_types.map((n) => [n.type, { label: n.label, config: n.config }])) as NodeDefaults;
+    },
+    staleTime: Infinity,
+  });
+}
 
 export function useFlowByAgent(agentId: string | undefined) {
   return useQuery({

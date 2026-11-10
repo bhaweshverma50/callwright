@@ -13,7 +13,7 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import type { FlowGraph, FlowNode, NodeType, ValidationIssue } from "../../../api/flows";
+import type { FlowGraph, FlowNode, NodeDefaults, NodeType, ValidationIssue } from "../../../api/flows";
 import { toast } from "../../../components";
 import { canConnect, duplicateNodes, makeNode, newEdge, removeItems } from "../model";
 import { CanvasToolbar } from "./CanvasToolbar";
@@ -43,6 +43,8 @@ export interface CanvasProps {
   selection: Selection;
   onSelect: (s: Selection) => void;
   issues: ValidationIssue[];
+  /** What a new node of each type starts with (from the API); steps cannot be added until it loads. */
+  nodeDefaults?: NodeDefaults;
   /** Live test call: the node the call is in and where it has been (FR-033). */
   activeNodeId?: string | null;
   visited?: Set<string>;
@@ -133,7 +135,7 @@ export function reconcileNodes(current: CanvasNode[], input: NodeInputs): Canvas
 }
 
 function Canvas(props: CanvasProps) {
-  const { graph, setGraph, onViewport, selection, onSelect, issues, locked = false, onLockedAttempt, modelLabel, undo, redo } = props;
+  const { graph, setGraph, onViewport, selection, onSelect, issues, nodeDefaults, locked = false, onLockedAttempt, modelLabel, undo, redo } = props;
   const flow = useReactFlow<CanvasNode, CanvasEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
   // Callbacks read the latest graph through a ref, so they keep one identity and React Flow
@@ -344,6 +346,7 @@ function Canvas(props: CanvasProps) {
   const addNode = useCallback(
     (type: NodeType, position?: { x: number; y: number }) => {
       if (locked) return onLockedAttempt?.();
+      if (!nodeDefaults) return;
       const box = wrapper.current?.getBoundingClientRect();
       const at =
         position ??
@@ -351,11 +354,11 @@ function Canvas(props: CanvasProps) {
           x: (box?.left ?? 0) + (box?.width ?? 800) / 2 - NODE_WIDTH / 2,
           y: (box?.top ?? 0) + (box?.height ?? 600) / 2 - NODE_HEIGHT / 2,
         });
-      const node = makeNode(type, { x: Math.round(at.x), y: Math.round(at.y) }, new Set(graphRef.current.nodes.map((n) => n.id)));
+      const node = makeNode(type, { x: Math.round(at.x), y: Math.round(at.y) }, new Set(graphRef.current.nodes.map((n) => n.id)), nodeDefaults[type]);
       setGraph((g) => ({ ...g, nodes: [...g.nodes, node] }));
       onSelect({ nodes: [node.id], edges: [] });
     },
-    [flow, locked, onLockedAttempt, onSelect, setGraph],
+    [flow, locked, nodeDefaults, onLockedAttempt, onSelect, setGraph],
   );
 
   const onDrop = useCallback(
@@ -492,7 +495,7 @@ function Canvas(props: CanvasProps) {
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.3} color="var(--dot)" />
       </ReactFlow>
-      <Palette onAdd={addNode} disabled={locked} />
+      <Palette onAdd={addNode} disabled={locked || !nodeDefaults} />
       <CanvasToolbar
         onLayout={layout}
         onViewChanged={remember}

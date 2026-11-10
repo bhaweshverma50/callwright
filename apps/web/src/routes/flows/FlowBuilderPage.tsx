@@ -10,6 +10,7 @@ import {
   fetchFlowByAgent,
   flowKeys,
   useFlowByAgent,
+  useNodeDefaults,
   type ConfigByNode,
   type Flow,
   type FlowEdge,
@@ -64,6 +65,7 @@ type SideTab = "assistant" | "test" | "problems";
 function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Flow; catalogs: Catalogs }) {
   const qc = useQueryClient();
   const draft = useFlow(initial);
+  const nodeDefaults = useNodeDefaults();
   const settings = useAgentDraft(
     { id: agent.id, name: agent.name, config: agent.draft_config, revision: agent.draft_revision, detail: agent },
     "flow",
@@ -339,6 +341,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
             selection={selection}
             onSelect={setSelection}
             issues={issues}
+            nodeDefaults={nodeDefaults.data}
             activeNodeId={events.active}
             visited={events.visited}
             diff={diff}

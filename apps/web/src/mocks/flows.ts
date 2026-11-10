@@ -4,8 +4,88 @@
  * and the assistant answer with fixed shapes. Creating a flow agent needs the real API.
  */
 import { http } from "msw";
-import type { Flow, FlowGraph } from "../api/flows";
+import type { ConfigByNode, Flow, FlowGraph, NodeDefaults, NodeType } from "../api/flows";
 import { json, problem, problemDetail, url } from "./http";
+
+const LABELS: Record<NodeType, string> = {
+  start: "Start",
+  agent: "Agent",
+  task: "Collect details",
+  condition: "Route",
+  say: "Say",
+  extract_variable: "Extract",
+  webhook: "API call",
+  transfer: "Transfer",
+  end: "End",
+};
+
+const OVERRIDES = () => ({ llm: null, tts: null, stt: null, language: null });
+
+const CONFIGS: { [K in NodeType]: () => ConfigByNode[K] } = {
+  start: () => ({ start_speaker: "agent", greeting_type: "static", greeting: "Hi, thanks for calling. How can I help?" }),
+  agent: () => ({
+    instructions: "",
+    begin_message: null,
+    context_strategy: "inherit",
+    overrides: OVERRIDES(),
+    tool_ids: [],
+    kb_search_enabled: true,
+  }),
+  task: () => ({
+    instructions: "",
+    begin_message: null,
+    fields: [
+      { name: "name", type: "string", description: "The caller's full name", required: true },
+      { name: "email", type: "string", description: "The caller's email address", required: true },
+    ],
+    max_rounds: 5,
+    context_strategy: "inherit",
+    overrides: OVERRIDES(),
+    tool_ids: [],
+    kb_search_enabled: true,
+  }),
+  condition: () => ({
+    kind: "classify",
+    instructions: "",
+    categories: [
+      { name: "Sales", description: "The caller wants to buy something or asks about prices" },
+      { name: "Support", description: "The caller needs help with something they already have" },
+    ],
+  }),
+  say: () => ({ message: "", allow_interruptions: true }),
+  extract_variable: () => ({ instructions: "", fields: [] }),
+  webhook: () => ({
+    request: {
+      method: "POST",
+      url: "",
+      headers: [{ name: "Content-Type", value: "application/json", secret: false }],
+      body_template: null,
+      timeout_ms: 8000,
+      response_mappings: [],
+      speak_during_execution: true,
+      execution_message: "One moment while I check that.",
+    },
+    mock_response: null,
+  }),
+  transfer: () => ({
+    transfer: {
+      routing_type: "static",
+      number: "",
+      allowed_numbers: [],
+      transfer_type: "cold",
+      warm_transfer: null,
+      hold_message: "Please hold while I connect you.",
+      ring_timeout_s: 30,
+    },
+  }),
+  // Empty: the agent says a short goodbye in its own words that fits the call.
+  end: () => ({ message: "", reason: "call_completed" }),
+};
+
+/** What a new node of each type starts with, as the real API serves it (GET /flows/node-defaults). */
+export const mockNodeDefaults = Object.fromEntries(
+  (Object.keys(LABELS) as NodeType[]).map((type) => [type, { label: LABELS[type], config: CONFIGS[type]() }]),
+) as NodeDefaults;
 
 const flows = new Map<string, Flow>();
 
@@ -71,6 +151,9 @@ function demo(agentId: string): Flow {
 const byFlowId = (id: string) => [...flows.values()].find((f) => f.id === id);
 
 export const flowHandlers = [
+  http.get(url("/flows/node-defaults"), () =>
+    json({ node_types: Object.entries(mockNodeDefaults).map(([type, d]) => ({ type, label: d.label, config: d.config })) }),
+  ),
   http.post(url("/flows"), () => problem(422, "validation_failed", "Not available in mock mode", "Create flow agents against the API.")),
   http.get(url("/agents/:id/flow"), ({ params }) => {
     const id = String(params.id);
