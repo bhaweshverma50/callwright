@@ -107,8 +107,6 @@ class FlowRun:
         self.call_id = call_id
         self.on_engine: Callable[[int], None] | None = None
 
-    # helpers ---------------------------------------------------------------------------
-
     def node(self, node_id: str) -> Mapping[str, Any]:
         return self.nodes[node_id]
 
@@ -121,8 +119,6 @@ class FlowRun:
             return False
         self.state.turn_moved = turn_index
         return True
-
-    # moves -----------------------------------------------------------------------------
 
     def record(self, from_id: str | None, move: Move, started: float) -> None:
         engine_ms = round((self.clock() - started) * 1000)

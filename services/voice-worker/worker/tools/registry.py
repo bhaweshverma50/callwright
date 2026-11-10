@@ -67,9 +67,6 @@ STILL_CHECKING_AFTER_S = 3.0
 EMPTY_OBJECT: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
 
-# Function shapes -------------------------------------------------------------------------------
-
-
 def function_schema(spec: ToolSpecView) -> dict[str, Any]:
     """Raw function schema (name, description, parameters) the LLM sees for ``spec``."""
     config = spec.config
@@ -138,9 +135,6 @@ def validate_arguments(schema: Mapping[str, Any], value: Any) -> str | None:
     return json_schema.problem(schema, value, combining=False)
 
 
-# Fillers --------------------------------------------------------------------------------------
-
-
 @dataclass
 class FillerPolicy:
     """Lookup tools (and end_call) and what to say at once when the model calls one before
@@ -173,9 +167,6 @@ def filler_texts(specs: Sequence[ToolSpecView]) -> dict[str, str]:
             # answers a caller's "thanks, that's all" with only end_call, which hung up in silence).
             texts[spec.name] = str(spec.config.get("message") or "").strip() or STOCK_GOODBYE
     return texts
-
-
-# Per-call tools -------------------------------------------------------------------------------
 
 
 def specs_from(config: Mapping[str, Any]) -> list[ToolSpecView]:

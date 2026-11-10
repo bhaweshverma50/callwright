@@ -59,7 +59,6 @@ _call_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 _provider: trace.TracerProvider | None = None
 
 
-# --------------------------------------------------------------------------------------------
 # Provider setup
 
 
@@ -142,7 +141,6 @@ def enabled() -> bool:
     return _provider is not None
 
 
-# --------------------------------------------------------------------------------------------
 # Call scope and helpers
 
 

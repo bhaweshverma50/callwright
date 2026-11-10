@@ -103,7 +103,6 @@ class CallClosedByApi(Exception):
     """An events post was answered with 409: the run stops and its result is ``failed``."""
 
 
-# --------------------------------------------------------------------------------------------
 # Runtime from a snapshot
 
 
@@ -149,7 +148,6 @@ def build_runtime(
     )
 
 
-# --------------------------------------------------------------------------------------------
 # Session
 
 
@@ -217,8 +215,6 @@ class TextSession:
         self._error: str | None = None
         self._tasks: set[asyncio.Future[Any]] = set()
 
-    # Conversation --------------------------------------------------------------------------
-
     @property
     def disconnect_reason(self) -> str | None:
         return self.control.disconnect_reason
@@ -239,8 +235,6 @@ class TextSession:
     def visited_nodes(self) -> list[str]:
         return self.flow_runner.visited_nodes(self.call_id)
 
-    # models --------------------------------------------------------------------------------
-
     def model(self, spec: VendorSpec, role: Role, context: Mapping[str, Any] | None = None) -> Any:
         """A model for ``role`` from the factory, metered under that role."""
         return self.meter.attach(self.deps.models(spec, role, context), role, spec)
@@ -255,8 +249,6 @@ class TextSession:
     def _component(self, spec: VendorSpec) -> Any:
         """A flow node's own components: its LLM; no speech components in text mode."""
         return self.model(spec, "agent") if spec.kind == "llm" else None
-
-    # lifecycle -----------------------------------------------------------------------------
 
     async def start(self) -> AgentTurn:
         from livekit.agents import AgentSession
@@ -312,8 +304,6 @@ class TextSession:
                 await asyncio.wait_for(self.session.aclose(), self.deps.settle_timeout_s)
         if self.tools is not None:
             await self.tools.aclose()
-
-    # internals -----------------------------------------------------------------------------
 
     def _busy(self) -> bool:
         session = self.session
@@ -395,7 +385,6 @@ class TextSession:
             task.add_done_callback(self._tasks.discard)
 
 
-# --------------------------------------------------------------------------------------------
 # Results
 
 
@@ -418,7 +407,6 @@ def _error_text(exc: BaseException) -> str:
     return f"{type(exc).__name__}: {exc}"[:MAX_ERROR_CHARS]
 
 
-# --------------------------------------------------------------------------------------------
 # Single-turn test case (T037)
 
 
@@ -477,7 +465,6 @@ async def run_single_turn(
         return body.status if posted else "gone"
 
 
-# --------------------------------------------------------------------------------------------
 # Simulation (replay and persona)
 
 

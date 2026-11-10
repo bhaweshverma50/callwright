@@ -18,7 +18,6 @@ from typing import Any, Literal
 
 log = logging.getLogger(__name__)
 
-# --------------------------------------------------------------------------------------------
 # Pronunciation
 
 

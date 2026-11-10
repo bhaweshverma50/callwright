@@ -118,8 +118,6 @@ class TransferExecutor:
             await ctx.speak(briefing)
 
 
-# Live backend --------------------------------------------------------------------------------
-
 Synthesize = Callable[[str], AsyncIterator[Any]]
 
 

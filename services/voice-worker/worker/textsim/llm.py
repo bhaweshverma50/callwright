@@ -33,7 +33,6 @@ if TYPE_CHECKING:
 Role = Literal["agent", "caller", "synth"]
 
 
-# --------------------------------------------------------------------------------------------
 # Requests and replies of a scripted model
 
 
@@ -182,7 +181,6 @@ def make_script_llm(
     return ScriptLLM()
 
 
-# --------------------------------------------------------------------------------------------
 # Offline scripts (deterministic; used only when the worker has no key for the provider)
 
 OFFLINE_GREETING = "Hello, thanks for calling. How can I help you today?"
@@ -246,7 +244,6 @@ def offline_synth(request: ScriptRequest) -> ScriptReply:
     return ScriptReply(json.dumps(OFFLINE_SYNTH, separators=(",", ":")))
 
 
-# --------------------------------------------------------------------------------------------
 # Factory
 
 
@@ -305,7 +302,6 @@ def settings_factory(settings: WorkerSettings, registry: AdapterRegistry) -> Mod
     return default_factory(registry, settings.vendor_credentials())
 
 
-# --------------------------------------------------------------------------------------------
 # Metering and one-shot completions
 
 

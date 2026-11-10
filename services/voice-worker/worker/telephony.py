@@ -113,8 +113,6 @@ def map_sip_status(code: int | None, *, timed_out: bool = False) -> tuple[FailSt
     return "failed", f"sip_{code}"
 
 
-# Inbound ------------------------------------------------------------------------------------
-
 # livekit-sip answers the SIP call as soon as the caller is in the room, so the phone network's
 # own ringback stops then; the ring phase plays one instead. ponytail: one tone, the double ring
 # used in India and the UK (400 + 450 Hz; 0.4 s on, 0.2 off, 0.4 on, 2 s off). A per-country tone
@@ -208,9 +206,6 @@ async def ring_phase(
     remote = getattr(room, "remote_participants", None)
     gone = isinstance(remote, Mapping) and caller_identity not in remote
     return not left.is_set() and not gone
-
-
-# Outbound -----------------------------------------------------------------------------------
 
 
 class LiveKitSipDialer:

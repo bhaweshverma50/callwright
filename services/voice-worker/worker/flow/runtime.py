@@ -295,8 +295,6 @@ class FlowCall:
         self._goodbye: asyncio.Future[Any] | None = None
         self._goodbye_started = 0.0
 
-    # session wiring ------------------------------------------------------------------------
-
     def attach(self, session: Any) -> None:
         if self.session is session:
             return
@@ -440,8 +438,6 @@ class FlowCall:
         for key, value in self.run.state.variables.items():
             if "." not in key:
                 store[key] = as_text(value)
-
-    # agents --------------------------------------------------------------------------------
 
     def entry_agent(self) -> Any:
         started = self.run.clock()

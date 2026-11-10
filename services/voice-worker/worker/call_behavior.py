@@ -48,7 +48,6 @@ class AsyncioClock:
         return self.loop.call_later(max(0.0, delay_s), callback)
 
 
-# --------------------------------------------------------------------------------------------
 # Turn-taking mapping (research R4). The table below is the only place to change calibration.
 #
 # How livekit-agents 1.8 ends a caller turn with the semantic turn detector: Silero VAD reports
@@ -122,7 +121,6 @@ def map_responsiveness(responsiveness: float) -> EndpointingParams:
     )
 
 
-# --------------------------------------------------------------------------------------------
 # Call behaviour from the claim: the API applies every default; values are clamped to the claim's
 # control ranges as defence in depth (003 data-model section 10).
 
@@ -212,7 +210,6 @@ def behavior_from_config(
     )
 
 
-# --------------------------------------------------------------------------------------------
 # Timers (research R9)
 
 
@@ -369,7 +366,6 @@ class DurationTimer:
             self._on_fire()
 
 
-# --------------------------------------------------------------------------------------------
 # Keypad input (research R11)
 
 
@@ -423,7 +419,6 @@ class DtmfCollector:
             self._on_flush(digits, reason)
 
 
-# --------------------------------------------------------------------------------------------
 # Voicemail detection (research R10)
 
 VOICEMAIL_WINDOW_S = 30.0

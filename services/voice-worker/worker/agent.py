@@ -140,7 +140,6 @@ def builtin_instructions(runtime: RuntimeConfig, *, flow: bool = False) -> str:
     return "\n\n".join(p for p in (callback, switching) if p)
 
 
-# --------------------------------------------------------------------------------------------
 # Plan
 
 
@@ -249,7 +248,6 @@ def tts_gain_for(tts: VendorSpec, registry: AdapterRegistry) -> float:
     return volume
 
 
-# --------------------------------------------------------------------------------------------
 # Agent
 
 
