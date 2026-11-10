@@ -4,8 +4,8 @@ No LiveKit plugin exists (research R8), so the adapter is a frame processor on t
 input track (``room_io.AudioInputOptions.noise_cancellation``) that hands each PCM frame to a
 :class:`SanasEngine` before speech recognition (FR-020).
 
-Engine contract (what the vendor SDK integration implements and registers with
-:func:`register_engine`):
+Engine contract (what the vendor SDK integration implements; :func:`make_engine` is the one
+place it plugs in):
 
 - ``process(samples, sample_rate, num_channels)`` takes interleaved int16 samples for one
   frame (10 ms at the track rate, usually 48 kHz mono) and returns the same number of int16
@@ -16,22 +16,20 @@ Engine contract (what the vendor SDK integration implements and registers with
   (``usage.nc`` audio_ms, FR-029), so a pass-through never bills the customer.
 - ``close()`` releases the stream at call end.
 
-``SANAS_API_KEY`` (``WorkerSettings``) is the account key; without it the pass-through engine
-is used. Frames over the per-frame budget are counted in ``slow_frames`` (a health signal for
-the integration). A frame whose ``process`` raises or returns the wrong length passes through
-unchanged (fail open, the caller is never muted) and is counted in ``errors``.
+``SANAS_API_KEY`` (``WorkerSettings``) is the account key, handed to the engine in
+:class:`SanasConfig`. Frames over the per-frame budget are counted in ``slow_frames`` (a health
+signal for the integration). A frame whose ``process`` raises or returns the wrong length
+passes through unchanged (fail open, the caller is never muted) and is counted in ``errors``.
 
-No vendor SDK or key is available yet, so :func:`make_engine` returns
-:class:`PassthroughEngine` unless an engine factory is registered: the call runs, the caller's
-audio reaches STT unchanged, nothing is metered and the worker records an ``nc_passthrough``
-warning event. Wiring the SDK means one module that calls ``register_engine(factory)`` at
-import (from ``worker/adapters/nc/__init__.py`` or a plugin entry point).
+No vendor SDK is available yet, so :func:`make_engine` returns :class:`PassthroughEngine`: the
+call runs, the caller's audio reaches STT unchanged, nothing is metered and the worker records
+an ``nc_passthrough`` warning event.
 """
 
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cache
 from typing import Any, Protocol
@@ -82,22 +80,8 @@ class PassthroughEngine:
         return None
 
 
-EngineFactory = Callable[[str, SanasConfig], SanasEngine]
-_factory: EngineFactory | None = None
-
-
-def register_engine(factory: EngineFactory | None) -> None:
-    """Install the vendor SDK engine factory ``(mode, config) -> SanasEngine`` (None removes)."""
-    global _factory
-    _factory = factory
-
-
 def make_engine(mode: str, config: SanasConfig) -> SanasEngine:
-    if _factory is None:
-        return PassthroughEngine("sanas_sdk_unavailable")
-    if not config.api_key:
-        return PassthroughEngine("sanas_api_key_missing")
-    return _factory(mode, config)
+    return PassthroughEngine("sanas_sdk_unavailable")
 
 
 def processor_class() -> type[Any]:

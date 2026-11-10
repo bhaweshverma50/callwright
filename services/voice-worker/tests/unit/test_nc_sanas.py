@@ -1,8 +1,7 @@
-"""Sanas NC adapter (T037): engine contract, pass-through default, fake engine, metering."""
+"""Sanas NC adapter (T037): pass-through default, and a fake engine behind the frame filter."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
@@ -10,7 +9,6 @@ import pytest
 from livekit import rtc
 
 from tests.harness.fakes import FakeSanasEngine
-from tests.unit.test_live_call import live_call
 from worker.adapters.nc import sanas
 from worker.adapters.registry import AdapterRegistry, VendorSpec
 from worker.settings import WorkerSettings
@@ -18,13 +16,6 @@ from worker.settings import WorkerSettings
 RATE = 48000
 FRAME = RATE // 100  # 10 ms
 SPEC = VendorSpec("nc", "sanas", "vi")
-
-
-@pytest.fixture(autouse=True)
-def no_engine() -> Iterator[None]:
-    sanas.register_engine(None)
-    yield
-    sanas.register_engine(None)
 
 
 def noisy_call_audio(seed: int = 7) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
@@ -66,7 +57,7 @@ def test_settings_carry_the_sanas_contract(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_passthrough_without_sdk_is_identity_and_unmetered() -> None:
-    processor = sanas.build(SPEC, creds())
+    processor = AdapterRegistry().build(SPEC, creds())
     is_frame_processor = isinstance(processor, rtc.FrameProcessor)
     assert is_frame_processor
     assert processor.mode == "voice_isolation"
@@ -76,24 +67,13 @@ def test_passthrough_without_sdk_is_identity_and_unmetered() -> None:
     assert processor.processed_ms == 0.0
 
 
-def test_registered_engine_needs_a_key() -> None:
-    sanas.register_engine(lambda mode, config: FakeSanasEngine(mode))
-    processor = sanas.build(VendorSpec("nc", "sanas", "st"), {})
-    assert processor.passthrough_reason == "sanas_api_key_missing"
-    assert processor.mode == "standard"
+def filter_with(engine: Any) -> Any:
+    return sanas.processor_class()("voice_isolation", engine, sanas.SanasConfig("sk-test"))
 
 
 def test_fake_engine_lowers_noise_floor_and_keeps_speech() -> None:
-    seen: list[tuple[str, sanas.SanasConfig]] = []
-
-    def factory(mode: str, config: sanas.SanasConfig) -> FakeSanasEngine:
-        seen.append((mode, config))
-        return FakeSanasEngine(mode)
-
-    sanas.register_engine(factory)
-    processor = AdapterRegistry().build(SPEC, creds())
+    processor = filter_with(FakeSanasEngine("voice_isolation"))
     assert processor.applied and processor.passthrough_reason is None
-    assert seen[0][0] == "voice_isolation" and seen[0][1].api_key == "sk-test"
     audio, is_speech = noisy_call_audio()
     out = run_frames(processor, audio)
     assert out.shape == audio.shape
@@ -114,8 +94,7 @@ def test_engine_failure_fails_open() -> None:
                 raise RuntimeError("engine down")
             return samples[:-1]  # wrong length
 
-    sanas.register_engine(lambda mode, config: Broken(mode))
-    processor = sanas.build(SPEC, creds())
+    processor = filter_with(Broken("voice_isolation"))
     audio, _ = noisy_call_audio()
     assert np.array_equal(run_frames(processor, audio), audio)
     assert processor.errors == 300 and processor.processed_ms == 0.0
@@ -123,31 +102,8 @@ def test_engine_failure_fails_open() -> None:
 
 def test_disabled_filter_bypasses_engine() -> None:
     engine = FakeSanasEngine("voice_isolation")
-    sanas.register_engine(lambda mode, config: engine)
-    processor = sanas.build(SPEC, creds())
+    processor = filter_with(engine)
     processor.enabled = False
     audio, _ = noisy_call_audio()
     assert np.array_equal(run_frames(processor, audio), audio)
     assert engine.calls == 0
-
-
-def test_live_call_meters_only_applied_audio_and_warns_on_passthrough() -> None:
-    call, _, _ = live_call()
-    assert call.plan is not None and call.plan.nc.provider == "sanas"
-    call.connected_at = 0.0  # an hour "connected": connected time must not be billed
-    call.components = type("C", (), {"nc": sanas.build(SPEC, creds())})()
-    call._update_time_meters()
-    assert call.meters.snapshot()["nc"] == []
-    call._warn_nc_passthrough(call.plan)
-    (warning,) = [e for e in call.recorder.drain() if e["type"] == "warning"]
-    assert warning["code"] == "nc_passthrough" and warning["component"] == "nc"
-    assert warning["provider"] == "sanas" and "sanas_sdk_unavailable" in warning["detail"]
-
-    sanas.register_engine(lambda mode, config: FakeSanasEngine(mode))
-    applied = sanas.build(SPEC, creds())
-    run_frames(applied, noisy_call_audio()[0])
-    call.components = type("C", (), {"nc": applied})()
-    call._update_time_meters()
-    assert call.meters.snapshot()["nc"] == [{"provider": "sanas", "model": "vi", "audio_ms": 3000}]
-    call._warn_nc_passthrough(call.plan)
-    assert not [e for e in call.recorder.drain() if e["type"] == "warning"]
