@@ -1,18 +1,10 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../api/queryClient";
-import { TooltipProvider } from "../../components";
 import { MAX_MINUTES, PricingCalculator } from "./PricingCalculator";
+import { renderWithProviders } from "../../test/render";
 
 function setup() {
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <PricingCalculator />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<PricingCalculator />);
 }
 
 describe("PricingCalculator (T065, US3.4)", () => {

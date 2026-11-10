@@ -1,15 +1,11 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../../api/queryClient";
-import { TooltipProvider } from "../../../components";
 import { env } from "../../../lib/env";
 import { defaultConfig } from "../../../mocks/agents/rules";
 import { server } from "../../../mocks/node";
-import { signInDemo } from "../../../test/render";
+import { renderWithProviders, signInDemo } from "../../../test/render";
 import { AssistantPanel } from "./AssistantPanel";
 import { useAgentDraft } from "./useAgentDraft";
 
@@ -26,15 +22,7 @@ function Harness({ prompt }: { prompt: string }) {
 }
 
 function renderPanel(prompt = "You answer calls for the clinic.") {
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <MemoryRouter>
-          <Harness prompt={prompt} />
-        </MemoryRouter>
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<Harness prompt={prompt} />, { router: true });
 }
 
 describe("AssistantPanel (T079, US6)", () => {

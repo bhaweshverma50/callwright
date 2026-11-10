@@ -1,16 +1,13 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../../../api/agents";
-import { createQueryClient } from "../../../api/queryClient";
-import { Toaster, TooltipProvider } from "../../../components";
 import { defaultConfig } from "../../../mocks/agents/rules";
 import { seedTool } from "../../../mocks/tools";
 import { draftErrors, nameError, urlError } from "./forms/fieldRules";
 import { ToolsTab, toolSummary } from "./ToolsTab";
+import { renderWithProviders } from "../../../test/render";
 
 function Harness({ initial }: { initial: string[] }) {
   const [config, setConfig] = useState<AgentConfig>(() => ({ ...defaultConfig("single_prompt"), tool_ids: initial }));
@@ -34,16 +31,7 @@ function Harness({ initial }: { initial: string[] }) {
 }
 
 function renderTab(initial: string[] = []) {
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <MemoryRouter>
-          <Harness initial={initial} />
-          <Toaster />
-        </MemoryRouter>
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<Harness initial={initial} />, { router: true, toaster: true });
 }
 
 const http = (name: string, mock: string | null = null) =>
