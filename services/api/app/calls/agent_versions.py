@@ -47,7 +47,7 @@ def to_runtime(snapshot: versions.AgentSnapshot, agent_type: str | None = None) 
 
 
 class AgentVersionsAdapter:
-    """``AgentVersionsPort`` backed by ``agents.service`` and ``agents.versions``."""
+    """Agent versions read through ``agents.service`` and ``agents.versions``."""
 
     async def _agent(self, session: AsyncSession, agent_id: str) -> Agent | None:
         agent = await session.get(Agent, agent_id)
