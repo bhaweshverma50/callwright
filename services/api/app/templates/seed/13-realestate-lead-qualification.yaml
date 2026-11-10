@@ -1,0 +1,269 @@
+id: realestate-lead-qualification
+sort_order: 13
+category: real_estate
+name: Lead qualification and viewing booking
+description: Calls new property leads, asks buy or rent, budget, bedrooms and timeline, then books a viewing
+  for ready leads or sets up follow-up for the rest.
+icon: buildings
+direction: outbound
+agent_type: flow
+config:
+  agent_name: Lead qualification agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: agency_name
+    default: Acme Realty
+  - name: lead_name
+    default: Taylor Brooks
+  - name: property_interest
+    default: a two-bedroom apartment downtown
+  prompt: |
+    You are a friendly property consultant at {{agency_name}}. You are calling {{lead_name}}, who asked about a property on the website.
+    Be conversational and never pushy. Never state a price or availability you were not given. Never give mortgage, tax or legal advice. Treat all callers equally; do not ask about or comment on protected characteristics such as family status, religion or country of origin.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_787489c8
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Hello, this is {{agency_name}} calling for {{lead_name}}. You asked about a property
+          on our website. Do you have a minute?
+    - id: n_94cf3614
+      type: agent
+      label: Confirm and ask permission
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Confirm you are speaking with {{lead_name}} and that they have a minute. Remind them they asked about {{property_interest}}.
+          If they are busy, ask for a better time. If they are no longer interested, thank them and close.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_a8278d49
+      type: end
+      label: 'End: call back later'
+      position:
+        x: 720
+        y: 0
+      config:
+        message: Thanks, we will try again at a better time. Goodbye.
+        reason: callback_requested
+    - id: n_70124c08
+      type: task
+      label: Qualify the lead
+      position:
+        x: 720
+        y: 220
+      config:
+        instructions: Learn what the lead needs in a friendly way. Do not push; ask one question at a
+          time.
+        fields:
+        - name: intent
+          type: enum
+          description: Whether they want to buy or rent
+          required: true
+          enum_values:
+          - buy
+          - rent
+        - name: budget
+          type: string
+          description: Their budget, monthly for rent or total for buying
+          required: true
+        - name: bedrooms
+          type: number
+          description: How many bedrooms they need
+          required: true
+        - name: timeline
+          type: enum
+          description: When they want to move
+          required: true
+          enum_values:
+          - within_1_month
+          - 1_to_3_months
+          - 3_to_6_months
+          - later
+        - name: financing
+          type: boolean
+          description: Whether they have financing or a mortgage approval in place
+          required: false
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Great. A few quick questions so I can match you with the right agent.
+    - id: n_9dcf0cff
+      type: condition
+      label: How hot is the lead
+      position:
+        x: 1080
+        y: 0
+      config:
+        kind: classify
+        instructions: Judge how ready the lead is from their answers.
+        categories:
+        - name: Ready
+          description: They want to move within three months and have a budget
+        - name: Exploring
+          description: They are still exploring or want to move later than three months out
+    - id: n_2a300f00
+      type: task
+      label: Book a viewing
+      position:
+        x: 1440
+        y: 0
+      config:
+        instructions: Offer a viewing with an agent and collect their availability. Do not confirm a slot;
+          the agent confirms.
+        fields:
+        - name: viewing_day
+          type: string
+          description: The day they prefer for a viewing
+          required: true
+        - name: viewing_time
+          type: enum
+          description: The time of day they prefer
+          required: true
+          enum_values:
+          - morning
+          - afternoon
+          - evening
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: It sounds like we can find you something. Would you like to see a few places in
+          person?
+    - id: n_74f78ed8
+      type: say
+      label: Viewing requested
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: Thank you. I have noted a viewing on {{task_result.viewing_day}}, {{task_result.viewing_time}}.
+          An agent will confirm by text today.
+        allow_interruptions: true
+    - id: n_2ab89eb8
+      type: end
+      label: 'End: viewing requested'
+      position:
+        x: 2160
+        y: 0
+      config:
+        message: Thanks for your time, {{lead_name}}. Goodbye.
+        reason: viewing_requested
+    - id: n_65eba0fa
+      type: say
+      label: Stay in touch
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: No problem. I will have an agent send you listings that match what you told me. Feel
+          free to call us when you are ready.
+        allow_interruptions: true
+    - id: n_c808c60b
+      type: end
+      label: 'End: nurture'
+      position:
+        x: 1800
+        y: 220
+      config:
+        message: Thanks for your time, {{lead_name}}. Goodbye.
+        reason: lead_nurture
+    edges:
+    - id: e_7fcdbd19
+      source: n_787489c8
+      target: n_94cf3614
+      trigger: always
+      sort_order: 0
+    - id: e_abbcff44
+      source: n_94cf3614
+      target: n_a8278d49
+      trigger: llm_condition
+      sort_order: 0
+      label: Busy or not interested
+      condition: The lead is busy, asks to be called later, or says they are no longer interested
+    - id: e_30fd9218
+      source: n_94cf3614
+      target: n_70124c08
+      trigger: llm_condition
+      sort_order: 1
+      label: Has a minute
+      condition: The lead confirms they have a minute and want to talk
+    - id: e_bcbf786d
+      source: n_70124c08
+      target: n_9dcf0cff
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_6783bfed
+      source: n_9dcf0cff
+      target: n_2a300f00
+      trigger: category
+      sort_order: 0
+      label: Ready
+      category: Ready
+    - id: e_c7b6e555
+      source: n_2a300f00
+      target: n_74f78ed8
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_3953cf65
+      source: n_74f78ed8
+      target: n_2ab89eb8
+      trigger: always
+      sort_order: 0
+    - id: e_30333274
+      source: n_9dcf0cff
+      target: n_65eba0fa
+      trigger: category
+      sort_order: 1
+      label: Exploring
+      category: Exploring
+    - id: e_fe35fc6d
+      source: n_65eba0fa
+      target: n_c808c60b
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

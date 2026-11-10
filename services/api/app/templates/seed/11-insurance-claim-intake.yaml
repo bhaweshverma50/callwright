@@ -1,0 +1,266 @@
+id: insurance-claim-intake
+sort_order: 11
+category: insurance
+name: Claim intake (first notice of loss)
+description: 'Takes a first notice of loss: checks everyone is safe, records the incident, then sends
+  serious claims to an adjuster and logs minor ones.'
+icon: shield-check
+direction: inbound
+agent_type: flow
+config:
+  agent_name: Claims intake agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Insurance
+  prompt: |
+    You are the claims intake assistant at {{company_name}}. Policyholders call you after an incident; you did not call them.
+    Be calm and kind; people calling may be stressed. Ask one question at a time. Never decide whether a claim is covered, never promise a payout or an amount, and never assign blame for the incident.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_0b96113f
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Thank you for calling {{company_name}} claims. I'm the virtual assistant and I'll help
+          you report your claim. Is everyone safe?
+    - id: n_9f899ebd
+      type: agent
+      label: Safety check
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Check that everyone is safe before anything else.
+          If anyone is hurt or in danger, tell the caller to hang up and call emergency services now. If the caller is safe, move on to the claim details.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_1592cf5f
+      type: say
+      label: Emergency advice
+      position:
+        x: 720
+        y: 0
+      config:
+        message: Please hang up and call your local emergency number right away. When everyone is safe,
+          call us back and we will take your claim.
+        allow_interruptions: true
+    - id: n_e46eb1fb
+      type: end
+      label: 'End: emergency advised'
+      position:
+        x: 1080
+        y: 0
+      config:
+        message: ''
+        reason: emergency_advised
+    - id: n_164a9dad
+      type: task
+      label: Incident details
+      position:
+        x: 720
+        y: 220
+      config:
+        instructions: Collect the facts of the incident. Stay neutral and do not assign blame.
+        fields:
+        - name: policyholder_name
+          type: string
+          description: The policyholder's full name
+          required: true
+        - name: policy_number
+          type: string
+          description: The policy number, if they have it
+          required: false
+        - name: incident_date
+          type: string
+          description: When the incident happened
+          required: true
+        - name: incident_location
+          type: string
+          description: Where the incident happened
+          required: true
+        - name: incident_type
+          type: enum
+          description: What happened
+          required: true
+          enum_values:
+          - collision
+          - theft
+          - fire_or_water
+          - weather
+          - other
+        - name: description
+          type: string
+          description: A short description in the caller's own words
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: I'm glad you're safe. I'll take down what happened, one question at a time.
+    - id: n_ab22dbb1
+      type: condition
+      label: How serious
+      position:
+        x: 1080
+        y: 220
+      config:
+        kind: classify
+        instructions: Decide how the claim should be handled from the incident details.
+        categories:
+        - name: Total loss or injury
+          description: The vehicle or property cannot be used, anyone was injured, or a third party is
+            involved
+        - name: Minor damage
+          description: Limited damage, no injuries and no third party
+    - id: n_58ad5e53
+      type: transfer
+      label: Claims adjuster
+      position:
+        x: 1440
+        y: 0
+      config:
+        transfer:
+          routing_type: static
+          number: '+14155550100'
+          routing_instructions: null
+          allowed_numbers: []
+          transfer_type: cold
+          warm_transfer: null
+          hold_message: Because this claim is serious, I'll connect you to a claims adjuster now.
+          ring_timeout_s: 30
+    - id: n_e99e4ce1
+      type: say
+      label: Transfer failed
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: I could not reach an adjuster just now. Your claim details are saved and an adjuster
+          will call you back within the hour.
+        allow_interruptions: true
+    - id: n_5f28424b
+      type: end
+      label: 'End: callback promised'
+      position:
+        x: 2160
+        y: 0
+      config:
+        message: ''
+        reason: callback_scheduled
+    - id: n_bedff3c7
+      type: say
+      label: Claim logged
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: Thank you, {{task_result.policyholder_name}}. I have logged your claim for the {{task_result.incident_type}}
+          on {{task_result.incident_date}}. You will get a claim reference by text, and an adjuster will
+          contact you within two working days. Please keep photos and any receipts.
+        allow_interruptions: true
+    - id: n_14b384ff
+      type: end
+      label: 'End: claim logged'
+      position:
+        x: 1800
+        y: 220
+      config:
+        message: Thank you for calling {{company_name}}. Take care.
+        reason: claim_logged
+    edges:
+    - id: e_4b7f10f0
+      source: n_0b96113f
+      target: n_9f899ebd
+      trigger: always
+      sort_order: 0
+    - id: e_78203310
+      source: n_9f899ebd
+      target: n_1592cf5f
+      trigger: llm_condition
+      sort_order: 0
+      label: Someone is hurt
+      condition: The caller says someone is injured or in immediate danger
+    - id: e_064e30b8
+      source: n_1592cf5f
+      target: n_e46eb1fb
+      trigger: always
+      sort_order: 0
+    - id: e_023fbe5d
+      source: n_9f899ebd
+      target: n_164a9dad
+      trigger: llm_condition
+      sort_order: 1
+      label: Everyone is safe
+      condition: The caller confirms everyone is safe
+    - id: e_c898622f
+      source: n_164a9dad
+      target: n_ab22dbb1
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_cd251351
+      source: n_ab22dbb1
+      target: n_58ad5e53
+      trigger: category
+      sort_order: 0
+      label: Total loss or injury
+      category: Total loss or injury
+    - id: e_8f442f13
+      source: n_58ad5e53
+      target: n_e99e4ce1
+      trigger: failure
+      sort_order: 0
+      label: Transfer failed
+    - id: e_6e4b259d
+      source: n_e99e4ce1
+      target: n_5f28424b
+      trigger: always
+      sort_order: 0
+    - id: e_eeffbb88
+      source: n_ab22dbb1
+      target: n_bedff3c7
+      trigger: category
+      sort_order: 1
+      label: Minor damage
+      category: Minor damage
+    - id: e_c0aa7009
+      source: n_bedff3c7
+      target: n_14b384ff
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

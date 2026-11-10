@@ -1,0 +1,263 @@
+id: telecom-nps-survey
+sort_order: 25
+category: telecom
+name: NPS survey
+description: 'Runs a short net promoter score survey: asks for the 0 to 10 score, branches on promoter,
+  passive or detractor, captures why and tags the theme.'
+icon: star
+direction: outbound
+agent_type: flow
+config:
+  agent_name: NPS survey agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Mobile
+  - name: customer_name
+    default: Riley Quinn
+  prompt: |
+    You are a survey assistant at {{company_name}}. You are calling {{customer_name}} for a two-minute customer survey.
+    Be friendly and neutral. Never try to sell anything or argue with feedback. Do not offer compensation. If the customer raises a service problem, say you will pass it on and that a support agent can help on the support line.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_ca8994eb
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Hello, this is {{company_name}} calling for {{customer_name}}. Do you have two minutes
+          for a quick survey about your service?
+    - id: n_ca520329
+      type: agent
+      label: Ask permission
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Confirm you are speaking with {{customer_name}} and that they have two minutes. Say the survey is short and their answers help improve the service.
+          If they decline or are busy, thank them and close.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_73cb5417
+      type: end
+      label: 'End: declined'
+      position:
+        x: 720
+        y: 0
+      config:
+        message: No problem. Thank you for your time. Goodbye.
+        reason: survey_declined
+    - id: n_efb832f6
+      type: task
+      label: Ask for the score
+      position:
+        x: 720
+        y: 220
+      config:
+        instructions: 'Ask: on a scale of 0 to 10, how likely are you to recommend {{company_name}} to
+          a friend or colleague? Repeat the number back.'
+        fields:
+        - name: nps_score
+          type: number
+          description: The score from 0 to 10
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Thank you. Here is the one number question.
+    - id: n_74e0507a
+      type: condition
+      label: Promoter or not
+      position:
+        x: 1080
+        y: 0
+      config:
+        kind: classify
+        instructions: Classify using the score the customer gave.
+        categories:
+        - name: Promoter
+          description: The score is 9 or 10
+        - name: Passive
+          description: The score is 7 or 8
+        - name: Detractor
+          description: The score is 6 or lower
+    - id: n_a1c57dc4
+      type: task
+      label: Ask what they like
+      position:
+        x: 1440
+        y: 0
+      config:
+        instructions: Ask what they like most about the service. Keep it to one follow-up.
+        fields:
+        - name: like_most
+          type: string
+          description: What they like most
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: That's great to hear.
+    - id: n_83604f3e
+      type: task
+      label: Ask what to improve
+      position:
+        x: 1440
+        y: 220
+      config:
+        instructions: Ask what the one thing is that we could improve. Listen and do not defend.
+        fields:
+        - name: improve
+          type: string
+          description: What we could improve
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Thanks for being honest. I'd like to understand more.
+    - id: n_74da995c
+      type: extract_variable
+      label: Tag the theme
+      position:
+        x: 1800
+        y: 0
+      config:
+        instructions: From what the customer said, pick the main theme of their feedback.
+        fields:
+        - name: feedback_theme
+          type: string
+          description: 'One of: coverage, price, billing, support, other'
+    - id: n_2377a22b
+      type: say
+      label: Thank you
+      position:
+        x: 2160
+        y: 0
+      config:
+        message: Thank you, {{customer_name}}. Your feedback has been passed to the team.
+        allow_interruptions: true
+    - id: n_d5ae0a0a
+      type: end
+      label: 'End: survey complete'
+      position:
+        x: 2520
+        y: 0
+      config:
+        message: Have a great day. Goodbye.
+        reason: survey_completed
+    edges:
+    - id: e_6997a8ed
+      source: n_ca8994eb
+      target: n_ca520329
+      trigger: always
+      sort_order: 0
+    - id: e_0579833f
+      source: n_ca520329
+      target: n_73cb5417
+      trigger: llm_condition
+      sort_order: 0
+      label: Declines
+      condition: The customer declines, is busy, or is not the right person
+    - id: e_6ebc7793
+      source: n_ca520329
+      target: n_efb832f6
+      trigger: llm_condition
+      sort_order: 1
+      label: Agrees
+      condition: The customer agrees to take the survey
+    - id: e_af3af7f8
+      source: n_efb832f6
+      target: n_74e0507a
+      trigger: success
+      sort_order: 0
+      label: Score collected
+    - id: e_cf7a292d
+      source: n_74e0507a
+      target: n_a1c57dc4
+      trigger: category
+      sort_order: 0
+      label: Promoter
+      category: Promoter
+    - id: e_a0897b79
+      source: n_74e0507a
+      target: n_83604f3e
+      trigger: category
+      sort_order: 1
+      label: Passive
+      category: Passive
+    - id: e_a8c85063
+      source: n_74e0507a
+      target: n_83604f3e
+      trigger: category
+      sort_order: 2
+      label: Detractor
+      category: Detractor
+    - id: e_258f6d32
+      source: n_a1c57dc4
+      target: n_74da995c
+      trigger: success
+      sort_order: 0
+      label: Answer collected
+    - id: e_5ee05dd0
+      source: n_83604f3e
+      target: n_74da995c
+      trigger: success
+      sort_order: 0
+      label: Answer collected
+    - id: e_b8de9d4d
+      source: n_74da995c
+      target: n_2377a22b
+      trigger: always
+      sort_order: 0
+    - id: e_29622569
+      source: n_2377a22b
+      target: n_d5ae0a0a
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
