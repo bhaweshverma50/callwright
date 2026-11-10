@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -20,25 +21,44 @@ HAIKU = VendorSpec("llm", "anthropic", "claude-haiku-5-5", {"temperature": 0.4})
 SONNET = VendorSpec("llm", "anthropic", "claude-sonnet-5-5")
 
 
-async def request_body(llm: Any) -> dict[str, Any]:
-    """The keyword arguments the plugin sends to ``messages.create`` for one user turn."""
+SSE = (
+    b"event: message_start\n"
+    b'data: {"type":"message_start","message":{"id":"m","type":"message","role":"assistant",'
+    b'"model":"x","content":[],"stop_reason":null,"usage":{"input_tokens":1,"output_tokens":1}}}'
+    b'\n\nevent: message_stop\ndata: {"type":"message_stop"}\n\n'
+)
+
+
+@pytest.fixture
+def wire(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """The JSON bodies the plugin sends over HTTP; the transport answers with an empty stream."""
+    import httpx2
+
+    bodies: list[dict[str, Any]] = []
+
+    async def handle(self: Any, request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(
+            200, headers={"content-type": "text/event-stream"}, content=SSE, request=request
+        )
+
+    monkeypatch.setattr(httpx2.AsyncHTTPTransport, "handle_async_request", handle)
+    return bodies
+
+
+async def request_body(llm: Any, wire: list[dict[str, Any]]) -> dict[str, Any]:
+    """The request body sent for one user turn after an assistant turn."""
     from livekit.agents.llm import ChatContext
 
-    sent: dict[str, Any] = {}
-
-    async def create(**kwargs: Any) -> Any:
-        sent.update(kwargs)
-        return None
-
-    llm._client.messages.create = create
     ctx = ChatContext()
     ctx.add_message(role="system", content="You are a receptionist.")
     ctx.add_message(role="user", content="Hi")
     ctx.add_message(role="assistant", content="Hello, how can I help?")
-    stream = llm.chat(chat_ctx=ctx)
-    await stream._create_anthropic_stream()
-    await stream.aclose()
-    return sent
+    async with llm.chat(chat_ctx=ctx) as stream:
+        async for _ in stream:
+            pass
+    (body,) = wire
+    return body
 
 
 def test_registry_selects_the_anthropic_adapter() -> None:
@@ -67,20 +87,20 @@ def test_settings_carry_the_key() -> None:
     assert creds["anthropic"] == {"api_key": "sk-ant"}
 
 
-async def test_haiku_request_has_thinking_off_and_no_sampling() -> None:
+async def test_haiku_request_has_thinking_off_and_no_sampling(wire: list[dict[str, Any]]) -> None:
     llm = adapter.build(HAIKU, {"api_key": "test-key"})
-    body = await request_body(llm)
+    body = await request_body(llm, wire)
     assert body["model"] == "claude-haiku-5-5"
     assert body["max_tokens"] == adapter.MAX_TOKENS
-    assert body["extra_body"] == {"thinking": {"type": "disabled"}}
-    assert "temperature" not in body and "temperature" not in body["extra_body"]
+    assert body["thinking"] == {"type": "disabled"}
+    assert "temperature" not in body
     # No prefill: the request ends on a user turn.
     assert body["messages"][-1]["role"] == "user"
 
 
-async def test_sonnet_request_turns_thinking_off_between_tools() -> None:
-    body = await request_body(adapter.build(SONNET, {"api_key": "test-key"}))
-    assert body["extra_body"] == {"thinking": {"type": "between_tools"}}
+async def test_sonnet_request_turns_thinking_off_between_tools(wire: list[dict[str, Any]]) -> None:
+    body = await request_body(adapter.build(SONNET, {"api_key": "test-key"}), wire)
+    assert body["thinking"] == {"type": "between_tools"}
     assert body["messages"][-1]["role"] == "user"
 
 
