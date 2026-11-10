@@ -38,6 +38,7 @@ test("a new user follows the tour from the welcome card to the recap", async ({ 
   await page.getByRole("button", { name: "Choose one for me" }).click();
   await expect(page).toHaveURL(/\/agents\/agt_[0-9A-Z]{26}\/edit$/);
   await expect(title(page)).toHaveText("Tell it what to do");
+  await expect(page.locator("#f-prompt")).toBeVisible(); // the editor has loaded the step's target
   await next(page);
 
   await expect(title(page)).toHaveText("Choose how it sounds");

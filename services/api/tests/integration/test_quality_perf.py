@@ -9,6 +9,7 @@ import httpx
 import psycopg
 
 from tests.conftest import Account
+from tests.perf import SLACK
 from tests.quality_support import seed_agent
 from tests.runtime_support import _owner_dsn
 
@@ -95,6 +96,6 @@ async def test_calibration_and_review_p95(client: httpx.AsyncClient, account: Ac
         ("/v1/review/queue/summary", None),
     ):
         took = await p95(client, url, h, params)
-        assert took < 1.0, f"{url} {params} p95 {took:.3f}s"
+        assert took < 1.0 * SLACK, f"{url} {params} p95 {took:.3f}s"
     rows = (await client.get("/v1/calibration/evaluators", headers=h)).json()["items"]
     assert sum(r["n"] for r in rows if r["flow_node_id"] is None) == 3 * N

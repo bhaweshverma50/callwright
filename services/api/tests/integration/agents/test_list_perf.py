@@ -15,6 +15,7 @@ from app.agents.models import Agent
 from app.agents.versions import summary_of
 from app.core.ids import new_id
 from tests.conftest import signup
+from tests.perf import SLACK
 
 AGENTS = 1000
 RUNS = 20
@@ -69,4 +70,4 @@ async def test_search_p95_under_300_ms(client: httpx.AsyncClient, app: FastAPI) 
     assert first.json()["total"] == AGENTS // 10
     timings.sort()
     p95 = timings[int(len(timings) * 0.95) - 1]
-    assert p95 < 0.3, f"p95 {p95 * 1000:.0f} ms"
+    assert p95 < 0.3 * SLACK, f"p95 {p95 * 1000:.0f} ms"

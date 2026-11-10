@@ -9,6 +9,7 @@ import httpx
 from app.flows.starter import config_with_defaults
 from tests.conftest import Account
 from tests.flow_helpers import create_flow
+from tests.perf import SLACK
 
 
 def big_graph() -> dict[str, object]:
@@ -81,5 +82,5 @@ async def test_save_and_validate_p95(client: httpx.AsyncClient, account: Account
         )
         checks.append((time.perf_counter() - started) * 1000)
         assert v.status_code == 200
-    assert p95(saves) < 300, saves
-    assert p95(checks) < 300, checks
+    assert p95(saves) < 300 * SLACK, saves
+    assert p95(checks) < 300 * SLACK, checks

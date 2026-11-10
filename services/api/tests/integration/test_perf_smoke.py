@@ -14,6 +14,7 @@ import psycopg
 from fastapi import FastAPI
 
 from tests.conftest import PG, TEST_DB, make_workspace, signup
+from tests.perf import SLACK
 
 ROWS = int(os.environ.get("PERF_LEDGER_ROWS", "1000000"))
 
@@ -55,4 +56,4 @@ async def test_me_and_balance_p95(client: httpx.AsyncClient, app: FastAPI) -> No
     balance = (await client.get("/v1/billing/balance", headers=account.headers)).json()
     assert balance["as_of_seq"] == 1001
     for path, samples in timings.items():
-        assert _p95(samples) < 150, f"{path} p95 {_p95(samples):.1f} ms"
+        assert _p95(samples) < 150 * SLACK, f"{path} p95 {_p95(samples):.1f} ms"

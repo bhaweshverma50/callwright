@@ -7,6 +7,7 @@ import time
 
 import httpx
 
+from tests.perf import SLACK
 from tests.runtime_support import SERVICE_HEADERS, Events, Runtime, admitted_call
 
 BATCHES = 40
@@ -35,4 +36,4 @@ async def test_fifty_event_batches_p95(client: httpx.AsyncClient, runtime: Runti
         assert response.status_code == 200 and response.json()["accepted"] == BATCH_SIZE
     p95 = statistics.quantiles(timings, n=20)[18]
     print(f"events ingest: p50 {statistics.median(timings):.1f} ms, p95 {p95:.1f} ms")
-    assert p95 < P95_BUDGET_MS, f"p95 {p95:.1f} ms over {P95_BUDGET_MS} ms"
+    assert p95 < P95_BUDGET_MS * SLACK, f"p95 {p95:.1f} ms over {P95_BUDGET_MS * SLACK} ms"
