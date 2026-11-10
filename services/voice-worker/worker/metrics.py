@@ -38,7 +38,6 @@ def _ms(seconds: float | None) -> int | None:
     return None if seconds is None else round(seconds * 1000)
 
 
-# --------------------------------------------------------------------------------------------
 # Usage meters (cumulative per component, provider and model)
 
 
@@ -96,7 +95,6 @@ class UsageMeters:
         }
 
 
-# --------------------------------------------------------------------------------------------
 # Turn latency
 
 
@@ -112,8 +110,6 @@ class TurnRecord:
     tool_ms: int | None = None
     e2e_ms: int | None = None
     interrupted: bool = False
-    text: str = ""
-    played_text: str = ""
     # Flow agents (004): executor time for a node move, and the model time of a node entered
     # without an entry line.
     engine_ms: int | None = None
@@ -269,7 +265,6 @@ def latency_payload(record: TurnRecord) -> dict[str, int] | None:
     return payload
 
 
-# --------------------------------------------------------------------------------------------
 # Framework metrics to turn components and meters
 
 
@@ -323,7 +318,6 @@ class MetricsBridge:
             self._meters.add_stt(provider, model or "", metrics.audio_duration * 1000.0)
 
 
-# --------------------------------------------------------------------------------------------
 # Event recorder
 
 
@@ -539,7 +533,6 @@ class EventRecorder:
         return len(self._queue)
 
 
-# --------------------------------------------------------------------------------------------
 # Posting
 
 

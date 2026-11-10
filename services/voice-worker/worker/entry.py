@@ -150,7 +150,6 @@ def parse_dispatch_metadata(raw: str | None) -> dict[str, Any]:
     return value if isinstance(value, dict) else {"raw": raw}
 
 
-# --------------------------------------------------------------------------------------------
 # Live call
 
 
@@ -221,8 +220,6 @@ class LiveCall:
         # 012: the fixed greeting translated into the caller's saved language.
         self._greeting_text: str | None = None
 
-    # helpers ---------------------------------------------------------------
-
     def _spawn(self, coro: Any) -> None:
         task = asyncio.ensure_future(coro)
         self._tasks.add(task)
@@ -282,8 +279,6 @@ class LiveCall:
             log.warning("room not closed for %s: %r", self.call_id, exc)
         self.ctx.shutdown(reason="call ended")
         self._ended.set()
-
-    # CallBackend -----------------------------------------------------------
 
     async def speak(self, text: str, allow_interruptions: bool) -> None:
         if self.session is not None:
@@ -380,8 +375,6 @@ class LiveCall:
         if self.control is not None and not self.control.ending:
             self._spawn(self.control.hang_up(reason, diagnostic=diagnostic))
 
-    # turn boundary swaps (FR-046) -------------------------------------------
-
     def request_swap(self) -> None:
         self._swap_pending = True
         if self._agent_state in ("listening", "idle"):
@@ -432,8 +425,6 @@ class LiveCall:
             chat_ctx=self.agent.chat_ctx if self.agent is not None else None,
         )
         self.session.update_agent(self.agent)
-
-    # session events --------------------------------------------------------
 
     def wire(self, session: Any, plan: SessionPlan) -> None:
         bridge = MetricsBridge(self.tracker, self.meters, self._models)
@@ -528,7 +519,6 @@ class LiveCall:
             turn: TurnRecord | None = self.tracker.current
             if turn is not None:
                 turn.interrupted = bool(getattr(item, "interrupted", False))
-                turn.text = turn.played_text = text
                 self.recorder.turn(turn)
                 self._publish_latency(turn)
             # The item arrives once playout ends: start the line at the turn's first audio.
@@ -571,7 +561,7 @@ class LiveCall:
             "vendor_retry" if recoverable else diag.VENDOR_ERROR,
             component=kind,
             provider=provider,
-            detail=str(getattr(error, "error", error))[:2000],
+            detail=str(getattr(error, "error", error)),
             level="warning" if recoverable else "error",
         )
         if not recoverable:
@@ -613,8 +603,6 @@ class LiveCall:
             self.tracker.user_speech_ended(time.time())
             self._keypad_echo = digits
             self.session.generate_reply(user_input=digits)
-
-    # run -------------------------------------------------------------------
 
     async def run(self) -> None:
         runtime = self.runtime
@@ -1002,7 +990,7 @@ class LiveCall:
             await self.background.start(room=self.ctx.room, agent_session=self.session)
         except Exception as exc:
             self.recorder.warning(
-                "background_audio_unavailable", component="runtime", detail=str(exc)[:2000]
+                "background_audio_unavailable", component="runtime", detail=str(exc)
             )
 
 
@@ -1011,7 +999,6 @@ async def _replay(frames: list[Any]) -> AsyncIterator[Any]:
         yield frame
 
 
-# --------------------------------------------------------------------------------------------
 # Job entry
 
 

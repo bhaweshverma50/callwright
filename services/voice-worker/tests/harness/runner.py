@@ -535,8 +535,6 @@ class HarnessCall:
         end_ms = self.recorder.offset_ms(at if interrupted and at is not None else speech.end)
         if speech.turn is not None:
             speech.turn.interrupted = interrupted
-            speech.turn.text = speech.text
-            speech.turn.played_text = played
             self.recorder.turn(speech.turn)
         self.recorder.message(
             "agent",
