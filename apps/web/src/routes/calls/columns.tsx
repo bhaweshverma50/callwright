@@ -240,7 +240,10 @@ const ALL: CallColumn[] = [
             className={cn("group inline-flex cursor-help items-center gap-1 rounded-full", focusRing)}
           >
             <CallStatusBadge status={r.status} />
-            <Info className="size-3.5 shrink-0 text-fg-3 transition-colors group-hover:text-danger-text group-focus-visible:text-danger-text" aria-hidden />
+            <Info
+              className="size-3.5 shrink-0 text-fg-3 transition-colors group-hover:text-danger-text group-focus-visible:text-danger-text"
+              aria-hidden
+            />
           </button>
         </Tooltip>
       );
