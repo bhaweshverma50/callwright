@@ -33,6 +33,7 @@ RETRY_SCHEDULE_S: tuple[int, ...] = (10, 60, 300, 1800, 7200)
 MAX_ATTEMPTS = len(RETRY_SCHEDULE_S) + 1
 RETRYABLE_STATUS = frozenset({408, 429})
 EXCERPT_CHARS = 1024
+MAX_RESPONSE_BYTES = 64 * 1024  # a receiver cannot make us buffer more than this
 USER_AGENT = "Callwright-Webhooks/1"
 PURGE_DAYS = 30
 FINAL = frozenset({"succeeded", "failed", "blocked"})
@@ -74,6 +75,21 @@ def headers_for(
     }
 
 
+async def read_excerpt(response: httpx.Response) -> str:
+    """The start of the response body: streamed, never reading past ``MAX_RESPONSE_BYTES``."""
+    data = bytearray()
+    try:
+        async for chunk in response.aiter_bytes():
+            data.extend(chunk)
+            if len(data) >= MAX_RESPONSE_BYTES:
+                break
+    finally:
+        await response.aclose()
+    return bytes(data[:MAX_RESPONSE_BYTES]).decode(response.encoding or "utf-8", errors="replace")[
+        :EXCERPT_CHARS
+    ]
+
+
 async def send_once(
     client: httpx.AsyncClient,
     url: str,
@@ -92,8 +108,9 @@ async def send_once(
     started = time.monotonic()
     try:
         response = await send_pinned(
-            client, "POST", checked, content=body, headers=headers, timeout=timeout_ms / 1000
+            client, "POST", checked, content=body, headers=headers, timeout=timeout_ms / 1000, stream=True
         )
+        excerpt = await read_excerpt(response)
     except httpx.TimeoutException:
         return AttemptResult(None, round((time.monotonic() - started) * 1000), "timeout", None)
     except httpx.TransportError as exc:
@@ -101,8 +118,8 @@ async def send_once(
         return AttemptResult(None, round((time.monotonic() - started) * 1000), "connection_error", None)
     duration = round((time.monotonic() - started) * 1000)
     if duration > timeout_ms:
-        return AttemptResult(response.status_code, duration, "timeout", response.text[:EXCERPT_CHARS])
-    return AttemptResult(response.status_code, duration, None, response.text[:EXCERPT_CHARS])
+        return AttemptResult(response.status_code, duration, "timeout", excerpt)
+    return AttemptResult(response.status_code, duration, None, excerpt)
 
 
 def attempt_json(n: int, at: datetime, result: AttemptResult) -> dict[str, Any]:
