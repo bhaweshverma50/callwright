@@ -382,7 +382,7 @@ class LiveCall:
 
     # turn boundary swaps (FR-046) -------------------------------------------
 
-    def _request_swap(self) -> None:
+    def request_swap(self) -> None:
         self._swap_pending = True
         if self._agent_state in ("listening", "idle"):
             self._apply_swap()
@@ -435,7 +435,7 @@ class LiveCall:
 
     # session events --------------------------------------------------------
 
-    def _wire(self, session: Any, plan: SessionPlan) -> None:
+    def wire(self, session: Any, plan: SessionPlan) -> None:
         bridge = MetricsBridge(self.tracker, self.meters, self._models)
         session.on("metrics_collected", lambda ev: bridge.on_metrics(ev.metrics))
         session.on("user_state_changed", self._on_user_state)
@@ -605,7 +605,7 @@ class LiveCall:
             with contextlib.suppress(ValueError):
                 self.dtmf.add(ev.digit)
 
-    def _on_dtmf_flush(self, digits: str, reason: FlushReason) -> None:
+    def on_dtmf_flush(self, digits: str, reason: FlushReason) -> None:
         self.recorder.dtmf(digits, "received", reason)
         offset = self.recorder.offset_ms()
         self.recorder.message("user", digits, started_ms=offset, ended_ms=offset, source="keypad")
@@ -656,7 +656,7 @@ class LiveCall:
             self,
             overrides=self.overrides,
             room=self.ctx.room,
-            on_overrides_staged=self._request_swap,
+            on_overrides_staged=self.request_swap,
         )
         behavior = plan.behavior
         extra_instructions = ""
@@ -707,7 +707,7 @@ class LiveCall:
             turn_detector=turn_detector,
             retry_window_s=self.settings.vendor_retry_window_s,
         )
-        self._wire(self.session, plan)
+        self.wire(self.session, plan)
         self.poster.start()
 
         # The session (agent track, STT socket, noise cancellation) and a fixed greeting's audio
@@ -806,7 +806,7 @@ class LiveCall:
             self.clock, behavior.max_duration_s, lambda: self._hang_up_soon("max_duration_reached")
         )
         if behavior.dtmf.enabled:
-            self.dtmf = DtmfCollector(self.clock, behavior.dtmf, self._on_dtmf_flush)
+            self.dtmf = DtmfCollector(self.clock, behavior.dtmf, self.on_dtmf_flush)
         if self.voicemail is not None:
             self.voicemail.answered()
 
