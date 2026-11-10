@@ -186,7 +186,7 @@ step_build_voice_local() {
 step_migrate() {
   gc run jobs deploy callwright-migrate --region "$REGION" --image "$IMAGE" \
     --service-account "$SA" --args migrate --tasks 1 --max-retries 0 --task-timeout 900s \
-    --cpu 1 --memory 512Mi --set-env-vars LOG_JSON=true \
+    --cpu 1 --memory 512Mi --set-env-vars LOG_JSON=true,ENV=staging \
     --set-secrets "$(secrets_flag "${MIGRATE_SECRETS[@]}")"
   gc run jobs execute callwright-migrate --region "$REGION" --wait
 }
