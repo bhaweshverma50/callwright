@@ -227,7 +227,6 @@ def test_caller_language_wins_over_a_node_voice() -> None:
 
 async def test_flow_node_books_a_callback_and_the_goodbye_confirms_it() -> None:
     config = greeting_end()
-    config["simulation"] = True  # schedule_callback answers a mocked booking
     callback = Rule(
         "call me in five minutes",
         tool="schedule_callback",
@@ -238,7 +237,7 @@ async def test_flow_node_books_a_callback_and_the_goodbye_confirms_it() -> None:
         config,
         script,
         ["I'm getting a call. Can you call me in five minutes?", "that's all"],
-        runtime={"channel": "sip_inbound"},
+        runtime={"channel": "sip_inbound", "simulation": True},
     )
     (booked,) = [t for t in result.control.tools if t.name == "schedule_callback"]
     assert not booked.is_error and '"scheduled":true' in str(booked.output)

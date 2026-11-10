@@ -28,8 +28,6 @@ async def test_flow_scenario(path: Path) -> None:
     data = load_scenario(path)
     config: dict[str, Any] = copy.deepcopy(compiled_config(str(data["flow"])))
     runtime = dict(data.get("runtime") or {})
-    if runtime.pop("simulation", False):
-        config["simulation"] = True
     result = await run_flow_call(config, script_from(data), list(data["caller"]), runtime=runtime)
     expect = data["expect"]
     control = result.control

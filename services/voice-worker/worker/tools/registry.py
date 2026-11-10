@@ -394,10 +394,6 @@ def _raw_tool(tools: CallTools, schema: dict[str, Any]) -> Any:
     return function_tool(handler, raw_schema=schema)
 
 
-def is_simulation(runtime: RuntimeConfig) -> bool:
-    return runtime.simulation or bool(runtime.config.get("simulation"))
-
-
 BUILTIN_END_CALL = ToolSpecView(
     tool_id=None,
     type="end_call",
@@ -448,7 +444,7 @@ def build_call_tools(
         specs.append(set_language_spec(languages))
     kb = kb_spec(config)
     clients: list[httpx.AsyncClient] = []
-    simulation = is_simulation(runtime)
+    simulation = runtime.simulation
     if http_client is None and not simulation and any(s.type == "http" for s in specs):
         http_client = httpx.AsyncClient(follow_redirects=False)
         clients.append(http_client)

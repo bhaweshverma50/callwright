@@ -172,7 +172,7 @@ def plan_session(
     background, warnings = resolve_background_audio(
         config, runtime.background_audio_url, registry.catalog.ambience_clips
     )
-    is_flow = runtime.agent_type == "flow" or config.get("type") == "flow"
+    is_flow = runtime.agent_type == "flow"
     agent_type: Literal["single_prompt", "flow"] = "flow" if is_flow else "single_prompt"
     if is_flow:
         # 004: the Start node (and Say nodes right after it) is the opening of a flow call.
