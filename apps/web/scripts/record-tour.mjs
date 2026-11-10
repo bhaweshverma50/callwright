@@ -9,6 +9,8 @@
 //   ffmpeg -ss 18 -i public/media/tour.mp4 -frames:v 1 -q:v 4 public/media/tour-poster.jpg
 // The mock data resets on every full page load, so the tour moves by clicking, never page.goto.
 import { chromium } from "@playwright/test";
+import { DEMO } from "./demoAccount.mjs";
+
 const out = process.argv[2];
 const b = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] });
 const ctx = await b.newContext({
@@ -21,8 +23,8 @@ const p = await ctx.newPage();
 const mark = (m) => console.log(m, ((Date.now() - t) / 1000).toFixed(1));
 await p.goto("http://localhost:5180/login?seed");
 await p.waitForTimeout(800);
-await p.getByLabel("Work email").fill("ops@halcyon-dental.com");
-await p.getByLabel("Password").fill("correct-horse-9");
+await p.getByLabel("Work email").fill(DEMO.email);
+await p.getByLabel("Password").fill(DEMO.password);
 await p.getByRole("button", { name: "Sign in" }).click();
 await p.waitForURL(/dashboard/);
 await p.waitForTimeout(2500);
