@@ -43,7 +43,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import CALL_BEHAVIOR_DEFAULTS
 from app.billing import service as billing
-from app.caller_language.options import language_options
 from app.calls import components as comp
 from app.calls import lifecycle
 from app.calls import variables as variables_mod
@@ -62,6 +61,7 @@ from app.core.storage import ObjectSigner
 from app.pricing import service as pricing
 from app.voices.catalog import Control
 from app.voices.catalog import load_catalog as load_speech_catalog
+from app.voices.language_options import language_options
 from app.workspaces.models import Workspace
 
 logger = logging.getLogger(__name__)

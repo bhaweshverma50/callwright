@@ -210,7 +210,7 @@ step_api() {
   # the key calls are admitted with recording off and uploads stay in memory.
   if printf '%s\n' "$optional" | grep -qx S3_ACCESS_KEY_ID; then
     env+="@STORAGE_MODE=s3@S3_ENDPOINT_URL=https://storage.googleapis.com@S3_REGION=auto"
-    env+="@S3_BUCKET=$STORAGE_BUCKET@RECORDINGS_BUCKET=$STORAGE_BUCKET@MEDIA_BUCKET=$STORAGE_BUCKET"
+    env+="@S3_BUCKET=$STORAGE_BUCKET@RECORDINGS_BUCKET=$STORAGE_BUCKET"
     env+="@RECORDINGS_S3_REGION=auto@AWS_REQUEST_CHECKSUM_CALCULATION=when_required"
     env+="@AWS_RESPONSE_CHECKSUM_VALIDATION=when_required"
     env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-true}"

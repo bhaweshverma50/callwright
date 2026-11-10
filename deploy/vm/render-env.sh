@@ -117,7 +117,6 @@ REDIS_URL_ENCODED_PASSWORD="$(python3 -c 'import sys, urllib.parse; print(urllib
     line S3_REGION auto
     line S3_BUCKET "$STORAGE_BUCKET"
     line RECORDINGS_BUCKET "$STORAGE_BUCKET"
-    line MEDIA_BUCKET "$STORAGE_BUCKET"
     line RECORDINGS_S3_REGION auto
     line AWS_REQUEST_CHECKSUM_CALCULATION when_required
     line AWS_RESPONSE_CHECKSUM_VALIDATION when_required

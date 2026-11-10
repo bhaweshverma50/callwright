@@ -43,10 +43,10 @@ from app.agents.schemas import (
     upcast,
 )
 from app.agents.webhook_url import check_syntax
-from app.caller_language import options as caller_options
 from app.llms.service import LlmCatalog
 from app.llms.service import load_catalog as load_llm_catalog
 from app.pricing import engine
+from app.voices import language_options as caller_options
 from app.voices.catalog import DEFAULT_LANGUAGE, VoiceCatalog
 from app.voices.catalog import load_catalog as load_voice_catalog
 from app.voices.service import ambient_prefix

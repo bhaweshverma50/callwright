@@ -7,7 +7,7 @@ from typing import Any
 from app.agents.defaults import default_config
 from app.agents.schemas import upcast
 from app.agents.validation import validate_pure
-from app.caller_language.options import language_options, supported_codes
+from app.voices.language_options import language_options, supported_codes
 
 
 def config(**top: Any) -> dict[str, Any]:
