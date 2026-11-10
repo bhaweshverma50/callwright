@@ -55,7 +55,9 @@ DEMO_CALLS_PER_HOUR="${DEMO_CALLS_PER_HOUR:-3}"
 # Secrets the API needs (Secret Manager name = env var name).
 API_SECRETS=(DATABASE_URL DATABASE_ADMIN_URL REDIS_URL AUTH_JWT_SECRET SECRETS_MASTER_KEY SERVICE_TOKEN
   STRIPE_WEBHOOK_SECRET LIVEKIT_API_KEY LIVEKIT_API_SECRET)
-MIGRATE_SECRETS=(DATABASE_OWNER_URL DATABASE_URL DATABASE_ADMIN_URL)
+# The migrate role loads the full settings, which refuse dev defaults outside dev and test.
+MIGRATE_SECRETS=(DATABASE_OWNER_URL DATABASE_URL DATABASE_ADMIN_URL AUTH_JWT_SECRET SECRETS_MASTER_KEY SERVICE_TOKEN
+  STRIPE_WEBHOOK_SECRET)
 # Read by the VM (render-env.sh): the worker's secrets plus Redis.
 VM_SECRETS=(REDIS_PASSWORD LIVEKIT_API_KEY LIVEKIT_API_SECRET DATABASE_URL DATABASE_ADMIN_URL AUTH_JWT_SECRET
   SECRETS_MASTER_KEY SERVICE_TOKEN STRIPE_WEBHOOK_SECRET)
@@ -186,7 +188,7 @@ step_build_voice_local() {
 step_migrate() {
   gc run jobs deploy callwright-migrate --region "$REGION" --image "$IMAGE" \
     --service-account "$SA" --args migrate --tasks 1 --max-retries 0 --task-timeout 900s \
-    --cpu 1 --memory 512Mi --set-env-vars LOG_JSON=true,ENV=staging \
+    --cpu 1 --memory 512Mi --set-env-vars LOG_JSON=true,ENV=staging,LIVEKIT_MODE=fake \
     --set-secrets "$(secrets_flag "${MIGRATE_SECRETS[@]}")"
   gc run jobs execute callwright-migrate --region "$REGION" --wait
 }
