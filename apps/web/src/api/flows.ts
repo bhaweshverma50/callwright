@@ -95,8 +95,9 @@ export async function fetchFlowByAgent(agentId: string): Promise<Flow> {
   return typedFlow(await unwrap(api.GET("/agents/{agent_id}/flow", { params: { path: { agent_id: agentId } } })));
 }
 
-export async function createFlowAgent(name: string, language: string) {
-  const body = await unwrap(api.POST("/flows", { body: { name, language } }));
+/** A new flow agent: the starter graph, or a flow template's graph when `templateId` is given. */
+export async function createFlowAgent(name: string, language: string, templateId?: string) {
+  const body = await unwrap(api.POST("/flows", { body: { name, language, ...(templateId && { template_id: templateId }) } }));
   return { ...body, flow: typedFlow(body.flow) };
 }
 

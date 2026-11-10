@@ -8,7 +8,7 @@ test("create a single-prompt agent: chooser, error summary, fixed temperature, v
   await expect(page.getByText("The type cannot be changed later.")).toBeVisible();
   await expect(page.getByRole("radio", { name: /^Single prompt/ })).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Continue with single prompt" }).click();
-  await expect(page).toHaveURL(/\/agents\/templates$/);
+  await expect(page).toHaveURL(/\/agents\/templates\?type=single_prompt$/);
   await page.getByRole("link", { name: /Start from scratch/ }).click();
   await expect(page).toHaveURL(/\/agents\/new\/single$/);
 
