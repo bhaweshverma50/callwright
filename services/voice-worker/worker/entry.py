@@ -127,6 +127,18 @@ SYSTEM_EVENT_FOR_REASON: dict[DisconnectReason, SystemEvent] = {
 }
 
 
+def record_ending(
+    recorder: EventRecorder, reason: DisconnectReason, diagnostic: str | None
+) -> None:
+    """The system lines and final status of a call; the test harness ends calls through it too."""
+    system = SYSTEM_EVENT_FOR_REASON.get(reason)
+    if system:
+        recorder.system(system, diagnostic)
+    if diagnostic and diag.parse(diagnostic).code == diag.VENDOR_ERROR:
+        recorder.system("vendor_error", diagnostic)
+    recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
+
+
 def parse_dispatch_metadata(raw: str | None) -> dict[str, Any]:
     """Dispatch metadata is JSON (R1); anything else is passed to the API as ``{"raw": ...}``."""
     if not raw:
@@ -305,17 +317,12 @@ class LiveCall:
     async def _close_call(self, reason: DisconnectReason, diagnostic: str | None) -> None:
         """Post the final status with usage, close the session and the room (``end``)."""
         try:
-            system = SYSTEM_EVENT_FOR_REASON.get(reason)
-            if system:
-                self.recorder.system(system, diagnostic)
-            if diagnostic and diag.parse(diagnostic).code == diag.VENDOR_ERROR:
-                self.recorder.system("vendor_error", diagnostic)
             if self.session is not None:
                 try:
                     self.session.interrupt()
                 except Exception as exc:  # the final status is posted regardless
                     log.warning("speech not interrupted for %s: %r", self.call_id, exc)
-            self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
+            record_ending(self.recorder, reason, diagnostic)
             await self.poster.stop()
             if self.background is not None:
                 try:

@@ -5,8 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from callwright_contract import diagnostics as diag
 
-from tests.harness.runner import SCRIPTS_DIR, HarnessResult, run_script
+from tests.harness.runner import (
+    DEFAULT_CONFIG,
+    SCRIPTS_DIR,
+    HarnessCall,
+    HarnessResult,
+    load_agent_config,
+    run_script,
+)
 from tests.harness.script_schema import Script, Step
 
 SCRIPTS = sorted(SCRIPTS_DIR.glob("*.yaml"))
@@ -118,3 +126,17 @@ async def test_digit_groups_hold_at_the_fastest_responsiveness() -> None:
     )
     assert result.ok, result.failures
     assert result.cutoffs == 0
+
+
+async def test_vendor_error_hang_up_records_the_vendor_error_line() -> None:
+    """The harness ends calls through the worker's own end path, so a vendor failure leaves its
+    system line in the transcript."""
+    call = HarnessCall(Script(name="vendor_error", steps=[]), load_agent_config(DEFAULT_CONFIG))
+    await call.connect()
+    diagnostic = diag.diagnostic(diag.VENDOR_ERROR, "tts", "elevenlabs")
+    await call.control.hang_up("error", diagnostic=diagnostic)
+    await call._drain()
+    lines = [e["item"] for e in call.sink.events if e["type"] == "transcript_item"]
+    assert [(i["event"], i["detail"]) for i in lines if i["type"] == "system"] == [
+        ("vendor_error", diagnostic)
+    ]

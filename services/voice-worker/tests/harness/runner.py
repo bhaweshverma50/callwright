@@ -61,7 +61,7 @@ from worker.call_behavior import (
     VoicemailHandler,
 )
 from worker.control import RuntimeCallControl
-from worker.entry import SYSTEM_EVENT_FOR_REASON
+from worker.entry import record_ending
 from worker.internal_api import InternalApiClient
 from worker.metrics import EventPoster, EventRecorder, LatencyTracker, TurnRecord, UsageMeters
 from worker.pipeline import OverrideManager, SessionComponents, build_components, plan_session
@@ -472,10 +472,7 @@ class HarnessCall:
         self.duration.stop()
         if self.dtmf is not None:
             self.dtmf.close()
-        system = SYSTEM_EVENT_FOR_REASON.get(reason)
-        if system:
-            self.recorder.system(system, diagnostic)
-        self.recorder.status("ended", disconnect_reason=reason, diagnostic=diagnostic)
+        record_ending(self.recorder, reason, diagnostic)
         self.ended = True
         self.end_reason = reason
         self.ended_at = self.clock.now()
