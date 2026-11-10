@@ -5,10 +5,9 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { problemMessage } from "../../api/problems";
 import { useReviewQueue, useReviewSummary, type QueueItem, type ReviewStrategy } from "../../api/quality";
-import { Button, EmptyState, PageHeader, Select, Skeleton, cn, focusRing } from "../../components";
+import { Button, cn, EmptyState, focusRing, PageHeader, Select, SentimentBadge, Skeleton } from "../../components";
 import { CallDetailDrawer, type DrawerTab } from "../calls/CallDetailDrawer";
 import { mss, timeAgo } from "../../lib/format";
-import { SentimentBadge } from "../../components/callVocabulary";
 import { useAllAgents } from "../../api/agents";
 
 export const EMPTY_QUEUE = "Nothing to review. Every recent call in this queue is labelled, or no checks have run yet.";

@@ -32,6 +32,7 @@ import {
   Pagination,
   Panel,
   PanelLoader,
+  ProblemAlert,
   ProgressBar,
   Segmented,
   Select,
@@ -44,7 +45,6 @@ import { RecordNotFound } from "../NotFound";
 import { ScorecardTable } from "./ScorecardTable";
 import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
 import { costUsd, plural, shortId, timeAgo, whenLong } from "../../lib/format";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { problemText } from "../../api/problems";
 import { SIMULATIONS_PATH, callPath, datasetPath, simulationRunPath } from "../../lib/paths";
 

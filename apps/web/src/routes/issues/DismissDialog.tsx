@@ -7,9 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Archive } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dismissIssue, issueKeys, useAgentIssues, type DetectedIssue, type DismissReason } from "../../api/issues";
-import { Button, ChoiceGroup, Dialog, Field, Select, Textarea, toast } from "../../components";
+import { Button, ChoiceGroup, Dialog, Field, ProblemAlert, Select, Textarea, toast } from "../../components";
 import { DISMISS_REASONS } from "./shared";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { bodyLimits } from "../../lib/contract.gen";
 
 export function DismissDialog({ open, onOpenChange, issue }: { open: boolean; onOpenChange: (open: boolean) => void; issue: DetectedIssue }) {

@@ -14,10 +14,9 @@ import {
   type TurnLatency,
 } from "../../api/calls";
 import { problemMessage } from "../../api/problems";
-import { Badge, Button, EmptyState, Input, PageHeader, Panel, Skeleton, TruncatedText, cn, focusRing } from "../../components";
+import { Badge, Button, CallStatusBadge, cn, EmptyState, focusRing, Input, PageHeader, Panel, Skeleton, TruncatedText } from "../../components";
 import { transcriptRows, TurnLatencyChip } from "./Transcript";
 import { mss, usd, when } from "../../lib/format";
-import { CallStatusBadge } from "../../components/callVocabulary";
 import { callComparePath, callPath } from "../../lib/paths";
 
 function SideCard({ call, side, kind }: { call: CallDetail; side: "left" | "right"; kind: "call" | "simulation" }) {

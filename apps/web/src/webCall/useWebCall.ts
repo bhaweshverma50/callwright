@@ -4,7 +4,6 @@
  * so the same machine runs against the API, the public demo endpoint or a scripted mock call.
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { Latency } from "../components/signal";
 import {
   CONNECTION_FAILED,
   MIC_DENIED,
@@ -23,6 +22,7 @@ import {
 import { callKeys } from "../api/calls";
 import { idempotencyKey } from "../lib/idempotency";
 import { useQueryClient } from "@tanstack/react-query";
+import { type Latency } from "../components";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 

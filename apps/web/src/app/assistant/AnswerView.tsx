@@ -18,9 +18,8 @@ import {
   YAxis,
 } from "recharts";
 import type { components } from "../../api/schema";
-import { Badge, cn, focusRing, type Tone } from "../../components";
+import { Badge, cn, focusRing, STATUS_TONES, type Tone } from "../../components";
 import { mss, usd, when } from "../../lib/format";
-import { STATUS_TONES } from "../../components/callVocabulary";
 import { callPath } from "../../lib/paths";
 
 export type ChatAnswer = components["schemas"]["ChatAnswer"];

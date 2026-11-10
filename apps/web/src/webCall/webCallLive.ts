@@ -4,9 +4,9 @@
  * panel never pay for it.
  */
 import { startDemoCall, startWebCall } from "../api/calls";
-import type { Latency } from "../components/signal";
 import { publishRoomData, ROOM_TOPICS } from "./roomData";
 import { DTMF_CODES, type AgentActivity, type MicCheck, type WebCallDriver } from "./webCall";
+import { type Latency } from "../components";
 
 const AGENT_JOIN_TIMEOUT_MS = 20_000;
 

@@ -1,7 +1,6 @@
 import type { CallDetail } from "../../api/calls";
-import { Skeleton } from "../../components";
+import { SentimentBadge, Skeleton } from "../../components";
 import { SummaryText } from "./quality/SummaryText";
-import { SentimentBadge } from "../../components/callVocabulary";
 
 function show(value: unknown): string {
   if (value === null || value === undefined || value === "") return "n/a";

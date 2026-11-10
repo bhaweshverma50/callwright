@@ -19,9 +19,8 @@ import {
   testingKeys,
   updateTestCase,
 } from "../../../api/testing";
-import { Button, Dialog, Field, Input, Select, Textarea, cn, focusRing, toast } from "../../../components";
+import { Button, cn, Dialog, Field, focusRing, Input, ProblemAlert, Select, Textarea, toast } from "../../../components";
 import { categoryOptions, initialCategory } from "./categories";
-import { ProblemAlert } from "../../../components/ProblemAlert";
 import { bodyLimits } from "../../../lib/contract.gen";
 
 const MAX = 2000;

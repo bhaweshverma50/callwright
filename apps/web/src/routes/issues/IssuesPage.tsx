@@ -25,10 +25,22 @@ import {
   type WindowDays,
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
-import { Badge, Button, EmptyState, PageHeader, Pagination, Segmented, Select, Table, TruncatedText, cn, type Column } from "../../components";
+import {
+  Badge,
+  Button,
+  cn,
+  type Column,
+  EmptyState,
+  PageHeader,
+  Pagination,
+  ProblemAlert,
+  Segmented,
+  Select,
+  Table,
+  TruncatedText,
+} from "../../components";
 import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILTER_OPTIONS, windowRange } from "./shared";
 import { plural, timeAgo } from "../../lib/format";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
 import { problemText } from "../../api/problems";
 import { issuePath } from "../../lib/paths";

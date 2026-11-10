@@ -7,7 +7,7 @@
 import type { CallOrigin, CallStatus, Channel, DisconnectReason, EvalStatus, Sentiment } from "../../api/calls";
 import { isAgentId } from "../../lib/paths";
 import { enums, queryLimits } from "../../lib/contract.gen";
-import { CHANNEL_LABELS, EVAL_LABELS, ORIGIN_LABELS, REASON_LABELS, SENTIMENT_LABELS, STATUS_LABELS } from "../../components/callVocabulary";
+import { CHANNEL_LABELS, EVAL_LABELS, ORIGIN_LABELS, REASON_LABELS, SENTIMENT_LABELS, STATUS_LABELS } from "../../components";
 
 export const LABEL_LABELS = { good: "Good", bad: "Bad", unannotated: "Unannotated" } as const;
 

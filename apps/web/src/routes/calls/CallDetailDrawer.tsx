@@ -20,7 +20,21 @@ import { callKeys, isOnAir, useCall, useFlowTransitions, useTranscript, useTurnL
 import { callbackKeys } from "../../api/callbacks";
 import { qualityKeys } from "../../api/quality";
 import { problemMessage } from "../../api/problems";
-import { Badge, Button, CopyButton, Drawer, EmptyState, Skeleton, TabPanel, Tabs, TruncatedText } from "../../components";
+import {
+  Badge,
+  Button,
+  CallStatusBadge,
+  CHANNEL_LABELS,
+  CopyButton,
+  Drawer,
+  EmptyState,
+  ORIGIN_LABELS,
+  REASON_LABELS,
+  Skeleton,
+  TabPanel,
+  Tabs,
+  TruncatedText,
+} from "../../components";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { CostHeader, CostPanel } from "./CostBreakdown";
 import { FlowPath } from "./FlowPath";
@@ -37,7 +51,6 @@ import { CallCallbacks } from "./callbacks/CallbackParts";
 import { CallLanguageCard } from "./CallLanguageCard";
 import { LiveDuration } from "./live/LiveDuration";
 import { mss, phone, usd, whenLong } from "../../lib/format";
-import { CallStatusBadge, CHANNEL_LABELS, ORIGIN_LABELS, REASON_LABELS } from "../../components/callVocabulary";
 import { callComparePath } from "../../lib/paths";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";

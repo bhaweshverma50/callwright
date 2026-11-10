@@ -27,6 +27,9 @@ import { fieldErrors, problemText } from "../../api/problems";
 import {
   Badge,
   Button,
+  CallStatusBadge,
+  cn,
+  type Column,
   ConfirmDialog,
   Dialog,
   EmptyState,
@@ -40,19 +43,17 @@ import {
   PageHeader,
   Pagination,
   PanelLoader,
+  ProblemAlert,
+  SentimentBadge,
   Switch,
   Table,
   Textarea,
-  Tooltip,
-  cn,
   toast,
-  type Column,
+  Tooltip,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { mss, plural, shortId, timeAgo, when } from "../../lib/format";
-import { CallStatusBadge, SentimentBadge } from "../../components/callVocabulary";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { bodyLimits } from "../../lib/contract.gen";
 import { CALLS_PATH, DATASETS_PATH, callPath } from "../../lib/paths";
 

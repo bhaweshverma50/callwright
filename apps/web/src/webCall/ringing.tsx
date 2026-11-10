@@ -5,8 +5,8 @@
 import { Phone } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect } from "react";
-import { cn } from "../components/cn";
 import type { WebCallState } from "./useWebCall";
+import { cn } from "../components";
 
 /** The call is placed and the agent has not answered yet (no words from either side). */
 export function isRinging(s: Pick<WebCallState, "phase" | "activity" | "turns">): boolean {

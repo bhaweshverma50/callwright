@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { TooltipProvider } from "../../components/Tooltip";
 import { RecordingPlayer } from "./RecordingPlayer";
+import { TooltipProvider } from "../../components";
 
 const ui = (props: { hasRecording: boolean; processing?: boolean }) => (
   <TooltipProvider>

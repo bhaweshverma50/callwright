@@ -4,10 +4,9 @@ import { useState } from "react";
 import type { CallDetail } from "../../../api/calls";
 import { callKeys } from "../../../api/calls";
 import { qualityKeys, rerunAnalysis, useCallAnalysis, type AnalysisValue, type CallAnalysis } from "../../../api/quality";
-import { Button, Skeleton, ThinkingIndicator, toast } from "../../../components";
+import { Button, SentimentBadge, Skeleton, ThinkingIndicator, toast } from "../../../components";
 import { AnalysisTable } from "../AnalysisTable";
 import { SummaryText } from "./SummaryText";
-import { SentimentBadge } from "../../../components/callVocabulary";
 import { problemText } from "../../../api/problems";
 
 const SKIPPED: Record<NonNullable<CallAnalysis["skip_reason"]>, string> = {

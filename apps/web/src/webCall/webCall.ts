@@ -13,13 +13,13 @@
  * below plays a scripted call on timers so the panel works in the gallery, in MSW mock mode and in
  * tests without a media server.
  */
-import type { Latency } from "../components/signal";
 import { ApiError, isApiError } from "../api/errors";
 import { isInsufficientCredit } from "../api/paid";
 import { problemMessage, problemText } from "../api/problems";
 import { BILLING_PATH } from "../lib/paths";
 import type { WebCallRequest as ApiWebCallRequest, WebCallSession } from "../api/calls";
 import type { Problem } from "../api/types";
+import { type Latency } from "../components";
 
 export type MicCheck = "granted" | "denied" | "unavailable";
 /** What the agent is doing, from the `lk.agent.state` participant attribute. */
@@ -156,7 +156,6 @@ export function problemFromError(e: unknown): CallProblem {
   return { kind: "refused", title: p.title || "The call was refused", detail: problemText(e, "call") };
 }
 
-// ---------------------------------------------------------------------------------------------
 // Mock driver: a scripted call on timers.
 
 export interface MockStep {

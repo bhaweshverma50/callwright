@@ -36,6 +36,7 @@ import {
   MenuItem,
   MenuTrigger,
   Pagination,
+  ProblemAlert,
   Select,
   Skeleton,
   toast,
@@ -46,7 +47,6 @@ import { ImportDialog } from "./ImportDialog";
 import { TestCaseEditor } from "./TestCaseEditor";
 import { TestRunPanel } from "./TestRunPanel";
 import { plural } from "../../../lib/format";
-import { ProblemAlert } from "../../../components/ProblemAlert";
 import { downloadJson } from "../../../lib/download";
 import { problemText } from "../../../api/problems";
 import { agentPath } from "../../../lib/paths";

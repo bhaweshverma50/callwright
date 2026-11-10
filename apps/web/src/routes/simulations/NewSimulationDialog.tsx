@@ -8,11 +8,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { isRetryable, useActionKey } from "../../api/paid";
 import { preflight, startSimulationRun, type PersonaBrief, type Preflight } from "../../api/simulations";
-import { Button, Dialog, Field, Input, Select, toast } from "../../components";
+import { Button, Dialog, Field, Input, ProblemAlert, Select, toast } from "../../components";
 import { PersonaBriefEditor, cleanBrief, emptyBrief } from "./PersonaBriefEditor";
 import { PreflightStep } from "./PreflightDialog";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, type TargetChoice } from "./VariantEditor";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
 import { simulationRunPath } from "../../lib/paths";
 

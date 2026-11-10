@@ -3,9 +3,8 @@ import { motion } from "motion/react";
 import { Link } from "react-router";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { Channel, DashboardStats, DisconnectReason, Sentiment } from "../../../api/calls";
-import { cn, focusRing } from "../../../components";
+import { CHANNEL_LABELS, cn, focusRing, REASON_LABELS, SENTIMENT_LABELS } from "../../../components";
 import { ChartCard, ChartTooltip } from "./ChartFrame";
-import { CHANNEL_LABELS, REASON_LABELS, SENTIMENT_LABELS } from "../../../components/callVocabulary";
 import { callsPath } from "../../../lib/paths";
 
 const pct = (n: number, total: number) => (total ? `${Math.round((n / total) * 100)}%` : "0%");

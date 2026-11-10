@@ -32,6 +32,7 @@ import {
   PageHeader,
   Panel,
   PanelLoader,
+  ProblemAlert,
   Segmented,
   Skeleton,
   Table,
@@ -43,7 +44,6 @@ import { PersonaBriefView } from "./PersonaBriefEditor";
 import { ANSWER_SOURCES, AnswerSourceBadge, CHANGE, END_REASONS, MODE_LABELS, SimStatusBadge, VerdictBadge, targetText } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
 import { costUsd, whenLong } from "../../lib/format";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { problemText } from "../../api/problems";
 import { SIMULATIONS_PATH, callPath, experimentPath } from "../../lib/paths";
 

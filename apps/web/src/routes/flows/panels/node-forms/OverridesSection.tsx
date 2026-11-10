@@ -33,8 +33,9 @@ export function OverridesSection({
   const set = (patch: Partial<Overrides>) => onChange({ ...value, ...patch });
   const modelKey = value.llm ? `${value.llm.provider}/${value.llm.model}` : DEFAULT;
   const model = value.llm ? llm.providers.find((p) => p.id === value.llm!.provider)?.models.find((m) => m.id === value.llm!.model) : undefined;
-  const rule = model?.temperature as { fixed?: number; min?: number; max?: number; step?: number } | undefined;
-  const fixed = rule?.fixed;
+  const rule = model?.temperature;
+  const fixed = rule && "fixed" in rule ? rule.fixed : undefined;
+  const min = rule && "min" in rule ? rule.min : undefined;
   const speed = voice.controls.find((c) => c.path === "tts.speed");
   const tts = value.tts;
   return (
@@ -73,7 +74,7 @@ export function OverridesSection({
               fill
               size="sm"
               aria-label="Temperature"
-              value={String(value.llm.temperature ?? rule?.min ?? 0.7)}
+              value={String(value.llm.temperature ?? min ?? 0.7)}
               onValueChange={(t) => set({ llm: { ...value.llm!, temperature: Number(t) } })}
               options={PRESETS}
             />
