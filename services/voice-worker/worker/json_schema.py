@@ -2,6 +2,10 @@
 ranges, required, properties, additionalProperties and items. It checks the compiled flow a call
 runs against ``compiled_schema.json`` (004) and, without the combining keywords (``const``,
 ``anyOf``, ``$ref``, ``additionalProperties``), the arguments the model passes to a tool (005).
+
+It stays beside the ``jsonschema`` library the API uses: it treats a null as an absent value
+(models send null for optional arguments) and words each problem for the model to read back,
+which the library's errors and its all-or-nothing keyword set do not.
 """
 
 from __future__ import annotations
