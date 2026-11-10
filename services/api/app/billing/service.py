@@ -50,6 +50,7 @@ _DEBITS = frozenset({"call_charge", "feature_charge"})
 ZERO = Decimal(0)
 MIN_TOP_UP = Decimal("5.00")
 MAX_TOP_UP = Decimal("10000.00")
+# ``requests`` stays for ledger rows written before analytics chat and voice copilot recorded tokens.
 USAGE_UNITS = frozenset({"minutes", "runs", "requests", "tokens", "k_tokens"})
 
 

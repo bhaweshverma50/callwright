@@ -209,7 +209,7 @@ One row per charge. RLS.
 | workspace_id | text, not null | |
 | feature_key | text, not null | `calls`, `eval.<name>`, `simulator.<step>`, `analytics_chat`, `prompt_generation`, `post_call_analysis` |
 | quantity | numeric(18,6), not null | e.g. minutes, judge calls, tokens |
-| unit | text, not null | `minutes`, `runs`, `requests`, `tokens` |
+| unit | text, not null | `minutes`, `runs`, `requests` (older rows; `analytics_chat` and `voice_copilot` now record `tokens`), `tokens` |
 | raw_cost_usd | numeric(18,6), not null, >= 0 | |
 | billable_cost_usd | numeric(18,6), not null, >= 0 | equals the absolute ledger amount |
 | ref_type | text null | `call`, `evaluator_run`, `simulation_run`, `agent`, ... |
