@@ -249,7 +249,7 @@ export function saveDraft(
   return { created: true, version: v };
 }
 
-// --- demo seed ---------------------------------------------------------------
+// demo seed
 
 const FRONT_DESK_V1 = `You are the front desk for {{company_name}}, a family dental practice. You answer calls, book and move appointments, and answer common questions.
 

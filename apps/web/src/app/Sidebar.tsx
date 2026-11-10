@@ -6,10 +6,6 @@ import { LiveCallsBadge } from "./LiveCallsBadge";
 import { BILLING_ITEM, NAV, SETTINGS_ITEM, type NavItem } from "./nav";
 import { CALLS_PATH, DASHBOARD_PATH } from "../lib/paths";
 
-/** Rail widths (docs/DESIGN.md section 5). Shell animates between them. */
-export const RAIL_EXPANDED = 248;
-export const RAIL_COLLAPSED = 72;
-
 /**
  * Labelled, grouped sidebar (FR-005, docs/DESIGN.md section 5): Build, Observe, Quality and
  * Feedback loop, then Billing, Settings and the collapse toggle at the foot. Collapsed, it is a

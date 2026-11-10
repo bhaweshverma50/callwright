@@ -16,7 +16,6 @@ export type Trigger = S["Trigger"];
 export type ValidationIssue = S["ValidationIssue"];
 export type FlowValidationResult = S["FlowValidationResult"];
 export type AssistantResponse = S["AssistantResponse"];
-export type FlowOperation = S["Operation"];
 export type CompileResult = S["CompileResult"];
 
 export type Overrides = S["Overrides"];

@@ -30,14 +30,12 @@ export type VersionSource = S["VersionSource"];
 export type VersionSummary = S["VersionSummary"];
 export type VersionDetail = S["VersionDetail"];
 export type VersionChange = S["Change"];
-export type VersionDiff = ResponseOf<"/agents/{agent_id}/versions/{version_id}/diff", "get">;
 export type VersionPage = ResponseOf<"/agents/{agent_id}/versions", "get">;
 
 export type TemplateCategory = S["TemplateCategory"];
 export type TemplateSummary = S["TemplateSummary"];
 export type TemplateDetail = S["TemplateDetail"];
 export type TemplateConfig = S["TemplateConfig"];
-export type TemplateCategoryCount = ResponseOf<"/templates/categories", "get">["items"][number];
 
 export type LlmCatalog = S["LlmCatalog"];
 export type LlmProvider = S["LlmProvider"];
@@ -53,7 +51,6 @@ export type TtsModel = S["TtsModel"];
 export type NoiseCancellationOption = S["NoiseCancellationOption"];
 export type ControlRange = S["ControlRange"];
 export type Voice = S["Voice"];
-export type VoicePage = ResponseOf<"/voices/{provider}/voices", "get">;
 export type AmbientAudioFile = S["AmbientAudioFile"];
 
 export type PromptAiRequest = BodyOf<"/prompt-ai/generate", "post">;

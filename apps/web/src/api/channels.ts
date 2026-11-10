@@ -8,7 +8,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { callKeys } from "./calls";
 import { api, fetchAll, postForm, unwrap } from "./client";
 import type { components } from "./schema";
-import type { ResponseOf } from "./types";
 
 type S = components["schemas"];
 
@@ -22,8 +21,6 @@ export type PhoneNumber = S["PhoneNumber"];
 export type PhoneNumberImport = S["PhoneNumberImport"];
 export type PhoneNumberUpdate = S["PhoneNumberUpdate"];
 export type Transport = S["Transport"];
-export type SipSettings = ResponseOf<"/phone-numbers/sip-settings", "get">;
-export type NumberPage = ResponseOf<"/phone-numbers", "get">;
 
 export const channelKeys = {
   all: ["channels"] as const,
@@ -103,7 +100,6 @@ export type WhatsAppChannel = S["WhatsAppChannel"];
 export type WhatsAppChannelCreate = S["WhatsAppChannelCreate"];
 export type WhatsAppChannelUpdate = S["WhatsAppChannelUpdate"];
 export type CallerRoute = S["CallerRoute"];
-export type WhatsAppSettings = ResponseOf<"/whatsapp/settings", "get">;
 
 export const waKeys = {
   all: ["channels", "whatsapp"] as const,
@@ -207,7 +203,6 @@ export type DncEntry = S["DncEntry"];
 export type DncImportResult = S["DncImportResult"];
 export type CallingHours = S["CallingHours"];
 export type WeeklyWindows = S["WeeklyWindows"];
-export type DayWindow = WeeklyWindows["mon"];
 export type PolicyDecision = S["PolicyDecision"];
 export type OutboundCallRequest = S["OutboundCallRequest"];
 export type OutboundCallAccepted = S["OutboundCallAccepted"];

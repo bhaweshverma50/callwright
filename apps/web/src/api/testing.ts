@@ -22,10 +22,7 @@ export type ToolCallRecord = S["ToolCallRecord"];
 export type TestRun = S["TestRun"];
 export type TestResult = S["TestResult"];
 export type TestRunDetail = ResponseOf<"/test-runs/{test_run_id}", "get">;
-export type LastStatus = NonNullable<TestCase["last_status"]> | "not_run";
 export type ImportOutcome = ResponseOf<"/test-cases/import", "post">;
-export type ImportRowError = ImportOutcome["errors"][number];
-export type GenerateResult = ResponseOf<"/test-cases/generate", "post">;
 
 export const TEST_POLL_MS = 3_000;
 export const CASES_PAGE_SIZE = 50;

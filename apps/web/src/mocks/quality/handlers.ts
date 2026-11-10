@@ -90,7 +90,7 @@ export function resetQualityMocks() {
 
 export const qualityStore = () => q;
 
-// Identity -------------------------------------------------------------------------------------
+// Identity
 
 const TEAMMATE = { id: "usr_01MOCKTEAMMATE000000000001", display_name: "Priya Raman" };
 
@@ -103,7 +103,7 @@ function viewer(request: Request): { id: string; display_name: string } {
   return { id: user.id, display_name: local.charAt(0).toUpperCase() + local.slice(1) };
 }
 
-// Agents ---------------------------------------------------------------------------------------
+// Agents
 
 function agentType(agentId: string): "single_prompt" | "flow" {
   const found = agentStore().agents.find((a) => a.id === agentId);
@@ -148,7 +148,7 @@ function seedStore(s: QualityStore): QualityStore {
   return s;
 }
 
-// Settings ------------------------------------------------------------------------------------
+// Settings
 
 function catalogFor(type: "single_prompt" | "flow"): Evaluator[] {
   return [...BUILTINS.filter((e) => e.agent_types.includes(type)), ...q.customs.filter((c) => !c.deleted_at)];
@@ -208,7 +208,7 @@ function settingsList(agentId: string): AgentEvalSetting[] {
     .sort(byDisplayName);
 }
 
-// Runs ----------------------------------------------------------------------------------------
+// Runs
 
 const indexOf = (callId: string) => {
   const m = /MOCKCALL(\d{4})/.exec(callId);
@@ -514,7 +514,7 @@ const strip = (r: PendingRun): EvaluatorRun => {
   return rest;
 };
 
-// Labels --------------------------------------------------------------------------------------
+// Labels
 
 function seedLabels(viewerUser: { id: string; display_name: string }) {
   if (q.labelsSeeded) return;
@@ -564,7 +564,7 @@ function resolvedLabel(list: Annotation[]): "good" | "bad" | "conflict" | null {
   return good === bad ? "conflict" : good > bad ? "good" : "bad";
 }
 
-// Analysis ------------------------------------------------------------------------------------
+// Analysis
 
 function liveVariables(agentId: string): StoredVar[] {
   return q.variables.filter((v) => v.agent_id === agentId && !v.deleted_at).sort((a, b) => a.position - b.position);
@@ -619,7 +619,7 @@ function analysisOf(call: CallListItem): CallAnalysis {
   return rest;
 }
 
-// Calibration math (spec 007 R7) --------------------------------------------------------------
+// Calibration math (spec 007 R7)
 
 function wilson(k: number, n: number, z = 1.96): { low: number; high: number } | null {
   if (n === 0) return null;
@@ -695,7 +695,7 @@ function calibrationRows(request: Request, agentId: string | null): CalibrationR
     .sort((a, b) => Number(a.under_min_sample) - Number(b.under_min_sample) || a.display_name.localeCompare(b.display_name));
 }
 
-// Review queue --------------------------------------------------------------------------------
+// Review queue
 
 function hash(s: string): number {
   let h = 2166136261;
@@ -737,7 +737,7 @@ function ordered(items: QueueItem[], strategy: string, userId: string): QueueIte
     .sort((a, b) => Math.abs(a.pass_count - a.fail_count) - Math.abs(b.pass_count - b.fail_count) || recent(a, b));
 }
 
-// Custom checks -------------------------------------------------------------------------------
+// Custom checks
 
 function phraseProblem(config: PhraseCheckConfig): string | null {
   if (!config.pattern?.trim()) return "Enter a phrase or pattern.";
@@ -810,7 +810,7 @@ function trial(type: string, config: CustomConfig): TrialResult {
   };
 }
 
-// Calls list hook -----------------------------------------------------------------------------
+// Calls list hook
 
 setQualitySummarizer((call, request) => {
   const me = viewer(request);
@@ -821,7 +821,7 @@ setQualitySummarizer((call, request) => {
   return { eval_status: evalStatus(runs), pass_count: k.pass, fail_count: k.fail, label: mine?.label ?? null };
 });
 
-// Handlers ------------------------------------------------------------------------------------
+// Handlers
 
 const variableError = (body: Partial<AnalysisVariable>, agentId: string, selfId?: string): Response | null => {
   if (body.name !== undefined && !isMachineName(body.name))

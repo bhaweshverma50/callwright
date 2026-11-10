@@ -30,7 +30,6 @@ const int = (key: string, label: string, min: number, max: number, def: number, 
 
 const ALL = ["single_prompt", "flow"] as Evaluator["agent_types"];
 const FLOW = ["flow"] as Evaluator["agent_types"];
-const at = "2026-10-16T09:00:00Z";
 
 function builtin(
   name: string,
@@ -218,5 +217,3 @@ export const BUILTINS: Evaluator[] = [
     { min: 0, max: 30_000 },
   ),
 ];
-
-export const builtinCreatedAt = at;

@@ -31,7 +31,6 @@ export type PairCounts = S["PairCounts"];
 export type ScorecardRow = S["ScorecardRow"];
 export type Scorecard = S["Scorecard"];
 export type TargetType = SimTarget["type"];
-export type ExperimentSource = Experiment["source"];
 export type PreflightRequest = BodyOf<"/simulations/preflight", "post">;
 export type Preflight = ResponseOf<"/simulations/preflight", "post">;
 

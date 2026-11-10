@@ -40,7 +40,6 @@ export type PreferencesUpdate = S["PreferencesUpdate"];
 
 export type TransactionType = S["TransactionType"];
 export type Transaction = S["Transaction"];
-export type TransactionPage = PageMeta & { items: Transaction[] };
 export type Balance = paths["/billing/balance"]["get"]["responses"]["200"]["content"]["application/json"];
 export type CheckoutSession = paths["/billing/checkout-sessions"]["post"]["responses"]["201"]["content"]["application/json"];
 

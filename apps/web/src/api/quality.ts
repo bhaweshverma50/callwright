@@ -35,8 +35,6 @@ export type ReviewStrategy = NonNullable<QueryOf<"/review/queue", "get">["strate
 export type VersionScope = NonNullable<QueryOf<"/calibration/evaluators", "get">["version_scope"]>;
 export type JudgeModel = ResponseOf<"/evaluators/judge-models", "get">["items"][number];
 export type TrialResult = ResponseOf<"/evaluators/trial", "post">;
-export type CalibrationSummary = ResponseOf<"/calibration/summary", "get">;
-export type ReviewSummary = ResponseOf<"/review/queue/summary", "get">;
 export type EvalSettingBody = BodyOf<"/agents/{agent_id}/eval-settings/{evaluator_id}", "put">;
 
 export const qualityKeys = {
@@ -57,7 +55,7 @@ export const qualityKeys = {
   calibrationSummary: (agentId: string, lookback: number) => ["quality", "calibration", "summary", agentId, lookback] as const,
 };
 
-// Analysis variables (US1) -------------------------------------------------------------------
+// Analysis variables (US1)
 
 export function useAnalysisVariables(agentId: string | null) {
   return useQuery({
@@ -101,7 +99,7 @@ export function rerunAnalysis(callId: string) {
   );
 }
 
-// Catalog and settings (US2, US5) --------------------------------------------------------------
+// Catalog and settings (US2, US5)
 
 export function useEvaluators(opts: { kind?: "builtin" | "custom"; agentType?: "single_prompt" | "flow" } = {}) {
   return useQuery({
@@ -156,7 +154,7 @@ export function trialCustomEvaluator(body: { evaluator_type: CustomType; config:
   return unwrap(api.POST("/evaluators/trial", { params: { header: { "Idempotency-Key": key } }, body }));
 }
 
-// Runs (US2) ----------------------------------------------------------------------------------
+// Runs (US2)
 
 export const EVAL_POLL_MS = 3_000;
 
@@ -180,7 +178,7 @@ export function rerunEvaluations(callId: string, key: string, evaluatorIds?: str
   );
 }
 
-// Labels (US3) --------------------------------------------------------------------------------
+// Labels (US3)
 
 export function useAnnotations(callId: string | null) {
   return useQuery({
@@ -198,7 +196,7 @@ export function deleteMyAnnotation(callId: string) {
   return unwrap(api.DELETE("/calls/{call_id}/annotations/me", { params: { path: { call_id: callId } } }));
 }
 
-// Review queue (US6) --------------------------------------------------------------------------
+// Review queue (US6)
 
 export function useReviewQueue(strategy: ReviewStrategy, agentId: string | null) {
   return useQuery({
@@ -216,7 +214,7 @@ export function useReviewSummary(agentId: string | null) {
   });
 }
 
-// Calibration (US4) ---------------------------------------------------------------------------
+// Calibration (US4)
 
 export function useCalibrationRows(agentId: string | null, lookbackDays: number, scope: VersionScope) {
   return useQuery({

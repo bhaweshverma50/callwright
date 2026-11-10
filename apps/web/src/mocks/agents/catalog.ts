@@ -13,7 +13,7 @@ function price(component: string, provider: string, model: string | null): strin
   return row ? row.rate_per_min_usd : null;
 }
 
-// --- language models (8.2) ---------------------------------------------------
+// language models (8.2)
 
 const LLM_MODELS = [
   { id: "gpt-5.1", label: "GPT-5.1", description: "Balanced quality and speed" },
@@ -68,7 +68,7 @@ export const llmCatalog: LlmCatalog = {
   ],
 };
 
-// --- languages (8.1) ---------------------------------------------------------
+// languages (8.1)
 
 const LANGS: [string, string][] = [
   ["multi", "Multilingual"],
@@ -151,7 +151,7 @@ const languages: Language[] = LANGS.map(([code, label]) => ({
   tts_default: { provider: "elevenlabs", model: "eleven_multilingual_v2", voice_id: DEFAULT_VOICE_BY_PROVIDER.elevenlabs![code]! },
 }));
 
-// --- speech recognition (8.3) ------------------------------------------------
+// speech recognition (8.3)
 
 const sttProviders: Omit<SttProvider, "auto">[] = [
   {
@@ -257,7 +257,7 @@ const stt: SttProvider[] = sttProviders.map((p) => ({
     : null,
 }));
 
-// --- voices (8.4) ------------------------------------------------------------
+// voices (8.4)
 
 // Base languages each voice model speaks (012); English-only models name the model a call uses
 // when the caller switches language.
@@ -351,7 +351,7 @@ const tts: TtsProvider[] = [
   },
 ];
 
-// --- noise cancellation (8.5) -----------------------------------------------
+// noise cancellation (8.5)
 
 const noise_cancellation: NoiseCancellationOption[] = [
   {
@@ -380,7 +380,7 @@ const noise_cancellation: NoiseCancellationOption[] = [
   },
 ];
 
-// --- control ranges (8.6) ----------------------------------------------------
+// control ranges (8.6)
 
 export const controls: ControlRange[] = [
   { path: "/tts/speed", label: "Voice speed", min: 0.5, max: 2, step: 0.1, unit: "x", display: "multiplier" },
