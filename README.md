@@ -11,7 +11,7 @@ Callwright is a platform for voice agents that take phone and web calls. You cho
 
 [![ci](https://github.com/bhaweshverma50/callwright/actions/workflows/ci.yml/badge.svg)](https://github.com/bhaweshverma50/callwright/actions/workflows/ci.yml)
 
-[Hosted demo (invite only)](https://callwright-one.vercel.app) ·
+[Hosted demo](https://callwright-one.vercel.app) ·
 [Docs](docs/OPERATIONS.md) ·
 [Architecture](research/architecture.md) ·
 [Specs](specs/)
@@ -35,7 +35,7 @@ Callwright is a platform for voice agents that take phone and web calls. You cho
 | **Agents and templates.** Write a single-prompt agent or start from a template. Pick speech recognition, model and voice, and see the cost per minute update as you change them. Every save is a version you can compare, publish and roll back. | ![Agent editor](docs/readme/agent-editor.png) |
 | **Flow agents.** Lay out a conversation as steps and transitions on a canvas, with an assistant that edits the flow from a plain-language request. Test it from the same screen. | ![Flow builder](docs/readme/flow-builder.png) |
 
-Also in this area: tools the agent can call (with safe-action controls), knowledge bases with connectors, and callers switching language mid-call (the choice is remembered for their number).
+Also in this area: tools the agent can call (HTTP requests, transfers, keypad input, callbacks), knowledge bases with document upload and search, a guided setup tour, and callers switching language mid-call (the choice is remembered for their number).
 
 ### Run
 
@@ -44,7 +44,7 @@ Also in this area: tools the agent can call (with safe-action controls), knowled
 | **Voice runtime.** Calls run on LiveKit with a worker that chains VAD, speech to text, an LLM with tools and knowledge search, and text to speech. Test from the browser or take real calls over SIP, phone numbers and WhatsApp. Providers include Deepgram, AssemblyAI, Sarvam, OpenAI, Azure OpenAI, Anthropic, ElevenLabs, Cartesia and Fish Audio, with optional noise cancellation. | ![Pricing chain](docs/readme/pricing.png) |
 | **Calls and analytics.** Every call keeps its transcript, recording, per-turn latency (speech, model, voice) and itemised cost. The dashboard rolls calls, talk time, cost and latency up per agent. | ![Call detail with per-turn latency](docs/readme/call-detail.png) |
 
-Also in this area: scheduled callbacks, call guardrails and caller data protection, provider failover and capacity limits, and live supervision.
+Also in this area: scheduled callbacks, outbound calls with calling-hours and do-not-call checks, and signed webhooks for call events.
 
 ![Dashboard](docs/readme/dashboard.png)
 
@@ -56,7 +56,7 @@ Also in this area: scheduled callbacks, call guardrails and caller data protecti
 | **Testing and simulation.** Replay real callers or simulated personas against a version of an agent, as batches or single runs, and compare every check before and after. | ![Simulations](docs/readme/simulations.png) |
 | **Issues and auto-fix.** Repeated failures are grouped into issues. Each gets a drafted fix (a prompt rule, a node edit, a tool description) that is validated in simulation before you apply it. | ![Issue with a validated fix](docs/readme/issue-autofix.png) |
 
-Also in this area: release safety checks before publishing, and outcome analytics.
+Also in this area: human review queues and post-call analysis variables.
 
 ## How it works
 
@@ -83,6 +83,10 @@ flowchart LR
 - `packages/contract` holds the schemas shared by the API and the worker.
 
 The hosted demo runs the API on Cloud Run, Redis, LiveKit and the workers on one VM, Postgres on Supabase and the web app on Vercel. See [`deploy/cloudrun/README.md`](deploy/cloudrun/README.md) and [`deploy/vm/README.md`](deploy/vm/README.md).
+
+## Roadmap
+
+Specified under [`specs/`](specs/) and not built yet: reliable operations (014), provider failover (015), safe tool actions (016), call guardrails and PII protection (017), release safety (018), the quality loop (019), live supervision (020), outcome analytics (021), knowledge connectors (022) and team roles (023).
 
 ## Tech stack
 
