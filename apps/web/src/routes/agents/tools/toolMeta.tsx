@@ -70,7 +70,7 @@ export function ToolTile({ type, size = "md", className }: { type: ToolType; siz
 
 /** The `default` of each property of a contract schema that declares one. */
 function contractDefaults(schema: keyof typeof schemaLimits): Record<string, unknown> {
-  const props: Record<string, { default?: unknown }> = schemaLimits[schema];
+  const props: Record<string, object> = schemaLimits[schema];
   return Object.fromEntries(Object.entries(props).flatMap(([name, p]) => ("default" in p ? [[name, structuredClone(p.default)]] : [])));
 }
 
@@ -78,7 +78,8 @@ function contractDefaults(schema: keyof typeof schemaLimits): Record<string, unk
  * What a new tool of each type starts with: the contract's defaults, plus the blanks the form
  * opens with (a URL to fill in, no extra headers or mappings).
  */
-export const DEFAULT_CONFIGS: ConfigByType = {
+// The contract defaults are data read at run time, so the shape is asserted; toolMeta.test.ts pins it.
+export const DEFAULT_CONFIGS = {
   end_call: { message: null },
   transfer_call: {
     ...contractDefaults("TransferSpec"),
@@ -95,4 +96,4 @@ export const DEFAULT_CONFIGS: ConfigByType = {
     body_template: null,
     response_mappings: [],
   },
-} as ConfigByType;
+} as unknown as ConfigByType;

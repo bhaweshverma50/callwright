@@ -6,9 +6,7 @@ const encoder = new TextEncoder();
 
 // Compares SHA-256 digests with no early exit, so the time does not depend on where values differ.
 async function sameSecret(given: string, expected: string): Promise<boolean> {
-  const [a, b] = await Promise.all(
-    [given, expected].map(async (v) => new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(v)))),
-  );
+  const [a, b] = await Promise.all([given, expected].map(async (v) => new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(v)))));
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;

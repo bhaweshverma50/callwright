@@ -20,11 +20,7 @@ function AllowList({ numbers, errors, onChange }: { numbers: string[]; errors: E
     setDraft("");
   };
   return (
-    <Field
-      label="Allowed numbers"
-      error={errors.allowed_numbers}
-      hint={draftError ?? "The agent can only transfer to these numbers."}
-    >
+    <Field label="Allowed numbers" error={errors.allowed_numbers} hint={draftError ?? "The agent can only transfer to these numbers."}>
       {({ id, describedBy }) => (
         <div className="flex flex-col gap-2.5">
           <div className="flex gap-2">

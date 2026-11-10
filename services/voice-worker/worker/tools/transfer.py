@@ -68,7 +68,8 @@ class TransferExecutor:
         if not E164.match(number):
             return ToolResult.error("invalid_arguments", "The destination must be a +E.164 number.")
         allowed = [str(n) for n in config.get("allowed_numbers") or []]
-        if config.get("routing_type") == "dynamic" and number not in allowed:  # an empty list allows none
+        # An empty allow-list allows no number (toll-fraud guard).
+        if config.get("routing_type") == "dynamic" and number not in allowed:
             return ToolResult.error(
                 "invalid_arguments", "That number is not allowed for transfers."
             )
