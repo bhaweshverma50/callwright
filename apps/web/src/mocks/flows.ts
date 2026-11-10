@@ -148,6 +148,13 @@ function demo(agentId: string): Flow {
   };
 }
 
+/** A flow agent made from a template: its flow starts with the template's graph. */
+export function seedMockFlow(agentId: string, name: string, graph: FlowGraph): Flow {
+  const flow: Flow = { ...demo(agentId), name, graph };
+  flows.set(agentId, flow);
+  return flow;
+}
+
 const byFlowId = (id: string) => [...flows.values()].find((f) => f.id === id);
 
 export const flowHandlers = [

@@ -5,6 +5,7 @@ name: Shopping credit and membership
 description: Offers a pay-later shopping credit line with a paid membership and guides the customer through app activation.
 icon: shopping-bag
 direction: outbound
+agent_type: single_prompt
 config:
   agent_name: Shopping credit agent
   language: en-US

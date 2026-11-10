@@ -1,0 +1,252 @@
+id: logistics-delivery-reschedule
+sort_order: 14
+category: logistics
+name: Missed delivery rescheduling
+description: 'Calls recipients after a failed delivery and rearranges it: a new date and window, a pickup
+  point, or return to sender.'
+icon: calendar-dots
+direction: outbound
+agent_type: flow
+config:
+  agent_name: Delivery rescheduling agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Express
+  - name: recipient_name
+    default: Chris Patel
+  - name: tracking_number
+    default: AX 4821 9930
+  - name: attempt_date
+    default: today
+  prompt: |
+    You are a delivery coordinator at {{company_name}}, a courier. You are calling {{recipient_name}} about a parcel that could not be delivered.
+    Be brief and polite. Never read out a full address; confirm only the street name and postcode. Do not promise exact delivery times, only the window. Do not discuss the parcel contents or the sender with anyone other than {{recipient_name}}.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_bd19d963
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Hello, this is {{company_name}} calling about your parcel {{tracking_number}}. Is this
+          {{recipient_name}}?
+    - id: n_02e8112c
+      type: agent
+      label: Explain the missed delivery
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Confirm you are speaking with {{recipient_name}}. Explain that the delivery attempt on {{attempt_date}} did not succeed and ask whether they would like to rearrange it.
+          If the person is someone else, ask them to pass on the message and end politely.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_6eceaae8
+      type: end
+      label: 'End: wrong person'
+      position:
+        x: 720
+        y: 0
+      config:
+        message: Thank you. We will try again later. Goodbye.
+        reason: wrong_person
+    - id: n_3ed0e354
+      type: condition
+      label: What do they want
+      position:
+        x: 720
+        y: 220
+      config:
+        kind: classify
+        instructions: Classify the recipient's choice for the parcel.
+        categories:
+        - name: New date
+          description: The recipient wants a new delivery date
+        - name: Pickup point
+          description: The recipient wants to collect from a pickup point
+        - name: Return
+          description: The recipient no longer wants the parcel
+    - id: n_fa12e293
+      type: task
+      label: New delivery slot
+      position:
+        x: 1080
+        y: 0
+      config:
+        instructions: Find a day and window that suit. Deliveries run Monday to Saturday. Do not promise
+          exact times.
+        fields:
+        - name: delivery_day
+          type: string
+          description: The day they want the parcel delivered
+          required: true
+        - name: time_window
+          type: enum
+          description: The delivery window
+          required: true
+          enum_values:
+          - morning
+          - afternoon
+          - evening
+        - name: safe_place
+          type: string
+          description: A safe place to leave the parcel if they are out, or none
+          required: false
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Of course. Let's pick a new slot.
+    - id: n_9cd2015a
+      type: say
+      label: Redelivery booked
+      position:
+        x: 1440
+        y: 0
+      config:
+        message: Done. We will deliver on {{task_result.delivery_day}}, {{task_result.time_window}}. You
+          will get a text with a tracking link.
+        allow_interruptions: true
+    - id: n_15ba2326
+      type: end
+      label: 'End: redelivery booked'
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: Thank you, {{recipient_name}}. Goodbye.
+        reason: rescheduled
+    - id: n_0e3dc815
+      type: say
+      label: Pickup point
+      position:
+        x: 1080
+        y: 220
+      config:
+        message: No problem. Your parcel will be held at the nearest pickup point for seven days. You
+          will get a text with the address and a collection code.
+        allow_interruptions: true
+    - id: n_374907b0
+      type: end
+      label: 'End: pickup point'
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: Thank you, {{recipient_name}}. Goodbye.
+        reason: pickup_point
+    - id: n_12edbac0
+      type: say
+      label: Return to sender
+      position:
+        x: 1080
+        y: 440
+      config:
+        message: Understood. We will return the parcel to the sender. Thank you for letting us know.
+        allow_interruptions: true
+    - id: n_d0ac27bb
+      type: end
+      label: 'End: returned'
+      position:
+        x: 1440
+        y: 440
+      config:
+        message: ''
+        reason: returned_to_sender
+    edges:
+    - id: e_16e52da5
+      source: n_bd19d963
+      target: n_02e8112c
+      trigger: always
+      sort_order: 0
+    - id: e_9e14bab6
+      source: n_02e8112c
+      target: n_6eceaae8
+      trigger: llm_condition
+      sort_order: 0
+      label: Not the recipient
+      condition: The person is not the recipient or cannot help
+    - id: e_478bb217
+      source: n_02e8112c
+      target: n_3ed0e354
+      trigger: llm_condition
+      sort_order: 1
+      label: Wants to rearrange
+      condition: The recipient is confirmed and has said what they want to do with the delivery
+    - id: e_bb2ce5f7
+      source: n_3ed0e354
+      target: n_fa12e293
+      trigger: category
+      sort_order: 0
+      label: New date
+      category: New date
+    - id: e_4779b3c5
+      source: n_fa12e293
+      target: n_9cd2015a
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_50786aa0
+      source: n_9cd2015a
+      target: n_15ba2326
+      trigger: always
+      sort_order: 0
+    - id: e_15431333
+      source: n_3ed0e354
+      target: n_0e3dc815
+      trigger: category
+      sort_order: 1
+      label: Pickup point
+      category: Pickup point
+    - id: e_3be0087a
+      source: n_0e3dc815
+      target: n_374907b0
+      trigger: always
+      sort_order: 0
+    - id: e_b359f78b
+      source: n_3ed0e354
+      target: n_12edbac0
+      trigger: category
+      sort_order: 2
+      label: Return
+      category: Return
+    - id: e_f6f52513
+      source: n_12edbac0
+      target: n_d0ac27bb
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

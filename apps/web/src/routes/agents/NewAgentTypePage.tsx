@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router";
 import { Badge, Button, ChoiceGroup, PageHeader, Textarea, cn } from "../../components";
 import { DuplicateAgentDialog } from "./DuplicateAgentDialog";
 import { AGENT_TYPES } from "./agentType";
-import { AGENTS_PATH, NEW_FLOW_AGENT_PATH, NEW_SINGLE_AGENT_PATH, TEMPLATES_PATH } from "../../lib/paths";
+import { AGENTS_PATH, NEW_FLOW_AGENT_PATH, NEW_SINGLE_AGENT_PATH, TEMPLATES_PATH, templatesPath } from "../../lib/paths";
 
 type Kind = "single" | "flow";
 
@@ -124,7 +124,6 @@ export function NewAgentTypePage() {
             value: "flow",
             title: AGENT_TYPES.flow.label,
             icon: <FlowIcon aria-hidden />,
-            meta: <Badge tone="accent">Builder in preview</Badge>,
             description:
               "A canvas of steps: greet, ask, branch, transfer. Best for scripted journeys, qualification and hand-offs you control step by step.",
             children: (
@@ -149,7 +148,7 @@ export function NewAgentTypePage() {
             <span className="font-medium text-fg">The type cannot be changed later.</span> To switch, create a new agent of the other type.
           </span>
         </p>
-        <Button variant="primary" size="lg" className="shrink-0" onClick={() => navigate(kind === "single" ? TEMPLATES_PATH : NEW_FLOW_AGENT_PATH)}>
+        <Button variant="primary" size="lg" className="shrink-0" onClick={() => navigate(kind === "single" ? templatesPath("single_prompt") : NEW_FLOW_AGENT_PATH)}>
           Continue with {kind === "single" ? "single prompt" : "flow"}
         </Button>
       </div>

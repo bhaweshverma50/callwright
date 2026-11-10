@@ -235,7 +235,12 @@ export const enums = {
     "banking",
     "ecommerce",
     "healthcare",
-    "telecom"
+    "telecom",
+    "insurance",
+    "real_estate",
+    "hospitality",
+    "logistics",
+    "utilities"
   ],
   "ToolType": [
     "end_call",
@@ -879,6 +884,9 @@ export const schemaLimits = {
     "name": {
       "minLength": 1,
       "maxLength": 120
+    },
+    "template_id": {
+      "pattern": "^[a-z0-9-]{3,64}$"
     }
   },
   "CreateFlowAgentResponse": {
@@ -2248,6 +2256,12 @@ export const schemaLimits = {
         "inbound",
         "outbound"
       ]
+    },
+    "agent_type": {
+      "enum": [
+        "single_prompt",
+        "flow"
+      ]
     }
   },
   "TestCase": {
@@ -3354,6 +3368,35 @@ export const queryLimits = {
   "GET /templates": {
     "search": {
       "maxLength": 100
+    },
+    "direction": {
+      "enum": [
+        "inbound",
+        "outbound"
+      ]
+    },
+    "agent_type": {
+      "enum": [
+        "single_prompt",
+        "flow"
+      ]
+    }
+  },
+  "GET /templates/categories": {
+    "search": {
+      "maxLength": 100
+    },
+    "direction": {
+      "enum": [
+        "inbound",
+        "outbound"
+      ]
+    },
+    "agent_type": {
+      "enum": [
+        "single_prompt",
+        "flow"
+      ]
     }
   },
   "GET /test-cases": {
@@ -3800,6 +3843,9 @@ export const bodyLimits = {
     "name": {
       "minLength": 1,
       "maxLength": 120
+    },
+    "template_id": {
+      "pattern": "^[a-z0-9-]{3,64}$"
     }
   },
   "POST /flows/{flow_id}/assistant": {

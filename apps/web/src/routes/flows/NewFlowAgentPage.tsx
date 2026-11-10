@@ -1,13 +1,13 @@
 import { FlowArrow } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, ChevronLeft, Languages, Tag } from "lucide-react";
+import { ArrowRight, ChevronLeft, LayoutTemplate, Languages, Tag } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { agentChanged, useVoiceCatalog } from "../../api/agents";
 import { createFlowAgent } from "../../api/flows";
 import { problemMessage } from "../../api/problems";
 import { Button, Field, Input, Select, Skeleton, cn, toast } from "../../components";
-import { agentFlowPath, NEW_AGENT_PATH } from "../../lib/paths";
+import { agentFlowPath, NEW_AGENT_PATH, templatesPath } from "../../lib/paths";
 import { bodyLimits } from "../../lib/contract.gen";
 
 /** What a new flow starts with (FR-003): one row each, the text column aligned when it wraps. */
@@ -64,6 +64,9 @@ export function NewFlowAgentPage() {
               <h1 className="font-display text-[22px] tracking-[-0.02em] text-fg sm:text-[24px]">New flow agent</h1>
               <p className="text-[13px] text-fg-3">Design the call as steps on a canvas.</p>
             </div>
+            <Button asChild size="sm" className="ml-auto shrink-0" icon={<LayoutTemplate aria-hidden />}>
+              <Link to={templatesPath("flow")}>Start from a template</Link>
+            </Button>
           </div>
           <form
             className="flex flex-col gap-5"

@@ -123,6 +123,7 @@ def _name(value: str) -> str:
 class CreateFlowAgentRequest(_Model):
     name: str = Field(max_length=NAME_MAX)
     language: str = Field(min_length=1, max_length=16)
+    template_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]{3,64}$")
 
     @field_validator("name")
     @classmethod

@@ -1,5 +1,30 @@
-import { Bank, Car, DeviceMobile, FirstAid, ShoppingCart, Stethoscope, TrendUp, type Icon } from "@phosphor-icons/react";
-import { CarFront, HeartPulse, Landmark, RadioTower, ShoppingBag, type LucideIcon } from "lucide-react";
+import {
+  Bank,
+  Bed,
+  Buildings,
+  CalendarCheck,
+  CalendarDots,
+  Car,
+  ChatCircle,
+  DeviceMobile,
+  FirstAid,
+  Headset,
+  House,
+  IdentificationCard,
+  Lightning,
+  Package,
+  Receipt,
+  ShieldCheck,
+  ShoppingCart,
+  Star,
+  Stethoscope,
+  SteeringWheel,
+  TrendUp,
+  Truck,
+  Wrench,
+  type Icon,
+} from "@phosphor-icons/react";
+import { BedDouble, Building2, CarFront, HeartPulse, Landmark, RadioTower, ShoppingBag, ShieldPlus, Truck as TruckIcon, Zap, type LucideIcon } from "lucide-react";
 import type { TemplateCategory } from "../../api/agents";
 
 /** Template icon tokens (templates.icon) to duotone glyphs; unknown tokens fall back to a phone. */
@@ -11,6 +36,22 @@ export const TEMPLATE_ICONS: Record<string, Icon> = {
   stethoscope: Stethoscope,
   car: Car,
   "first-aid": FirstAid,
+  wrench: Wrench,
+  "steering-wheel": SteeringWheel,
+  "identification-card": IdentificationCard,
+  package: Package,
+  "calendar-check": CalendarCheck,
+  "calendar-dots": CalendarDots,
+  headset: Headset,
+  star: Star,
+  "shield-check": ShieldCheck,
+  house: House,
+  buildings: Buildings,
+  bed: Bed,
+  "chat-circle": ChatCircle,
+  truck: Truck,
+  lightning: Lightning,
+  receipt: Receipt,
 };
 
 export const CATEGORY_ICONS: Record<TemplateCategory, LucideIcon> = {
@@ -19,6 +60,11 @@ export const CATEGORY_ICONS: Record<TemplateCategory, LucideIcon> = {
   ecommerce: ShoppingBag,
   healthcare: HeartPulse,
   telecom: RadioTower,
+  insurance: ShieldPlus,
+  real_estate: Building2,
+  hospitality: BedDouble,
+  logistics: TruckIcon,
+  utilities: Zap,
 };
 
 /** Each category gets one tint from the palette so a grid of templates scans by industry. */
@@ -28,4 +74,9 @@ export const CATEGORY_TINT: Record<TemplateCategory, string> = {
   ecommerce: "bg-danger-soft text-danger-text",
   healthcare: "bg-success-soft text-success-text",
   telecom: "bg-surface-3 text-fg",
+  insurance: "bg-success-soft text-success-text",
+  real_estate: "bg-warning-soft text-warning-text",
+  hospitality: "bg-danger-soft text-danger-text",
+  logistics: "bg-accent-soft text-accent-text",
+  utilities: "bg-surface-3 text-fg",
 };

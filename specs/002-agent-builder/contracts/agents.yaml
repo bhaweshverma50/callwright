@@ -80,7 +80,7 @@ paths:
                 template_id:
                   type: string
                   pattern: '^[a-z0-9-]{3,64}$'
-                  description: Overlay this template on the defaults (single_prompt only)
+                  description: Overlay this template on the defaults; the template's agent_type must match type (422 at /template_id otherwise)
                 config:
                   description: Optional partial config overlaid on defaults (and on the template if given)
                   type: object

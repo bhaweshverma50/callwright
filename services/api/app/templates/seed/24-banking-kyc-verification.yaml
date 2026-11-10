@@ -1,0 +1,233 @@
+id: banking-kyc-verification
+sort_order: 24
+category: banking
+name: KYC identity verification
+description: 'Calls customers to refresh their know-your-customer details: confirms who they are, asks
+  identity questions and marks the check as verified or sent for review.'
+icon: identification-card
+direction: outbound
+agent_type: flow
+config:
+  agent_name: KYC verification agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Bank
+  - name: customer_name
+    default: Morgan Ellis
+  prompt: |
+    You are a verification assistant at {{company_name}}. You are calling {{customer_name}} to refresh their identity details.
+    This is a regulated call. Be polite, calm and precise. Never ask for a PIN, password, one-time code or full card number. Never read personal details aloud for the customer to agree to; make them say it. If the customer is worried it is a scam, tell them they can hang up and call the number on the back of their card.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_02f45506
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Hello, this is {{company_name}} calling for {{customer_name}} to complete a routine
+          identity check. Is this {{customer_name}}?
+    - id: n_b1e8d0d5
+      type: agent
+      label: Confirm and explain
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Confirm you are speaking with {{customer_name}}. Explain that the bank has to refresh identity details by law and that the check takes about three minutes.
+          Make clear you will never ask for a PIN, password or full card number.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_0fdfe834
+      type: end
+      label: 'End: wrong person'
+      position:
+        x: 720
+        y: 0
+      config:
+        message: Thank you. We will try again later. Goodbye.
+        reason: wrong_person
+    - id: n_9bdc3160
+      type: end
+      label: 'End: call back later'
+      position:
+        x: 720
+        y: 220
+      config:
+        message: No problem. We will call you again at a better time. Goodbye.
+        reason: callback_requested
+    - id: n_bcfcbc89
+      type: task
+      label: Verify identity
+      position:
+        x: 720
+        y: 440
+      config:
+        instructions: Ask each question in turn and note the answer. Do not read the details back from
+          the record; the customer must say them.
+        fields:
+        - name: date_of_birth
+          type: string
+          description: The customer's date of birth
+          required: true
+        - name: postcode
+          type: string
+          description: The postcode of their registered address
+          required: true
+        - name: last_four_id
+          type: string
+          description: The last four digits of their government ID number
+          required: true
+        - name: occupation
+          type: string
+          description: Their current occupation
+          required: false
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Thank you. I'll ask a few questions to verify your identity.
+    - id: n_887f1455
+      type: condition
+      label: Did they pass
+      position:
+        x: 1080
+        y: 0
+      config:
+        kind: classify
+        instructions: Decide whether the answers are consistent with a genuine customer who knows their
+          own details.
+        categories:
+        - name: Verified
+          description: The customer answered every question confidently and consistently
+        - name: Needs review
+          description: The customer hesitated, could not answer or the answers look inconsistent
+    - id: n_97f2d749
+      type: say
+      label: Verified
+      position:
+        x: 1440
+        y: 0
+      config:
+        message: Thank you, {{customer_name}}. Your details are confirmed. You will receive a confirmation
+          message shortly.
+        allow_interruptions: true
+    - id: n_098d8811
+      type: end
+      label: 'End: verified'
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: Thank you for your time. Goodbye.
+        reason: kyc_verified
+    - id: n_af62b4ca
+      type: say
+      label: Manual review
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: Thank you. I could not complete the check on this call, so a team member will contact
+          you to finish it. Please do not share your details with anyone who calls you unexpectedly.
+        allow_interruptions: true
+    - id: n_1c33037f
+      type: end
+      label: 'End: needs review'
+      position:
+        x: 1800
+        y: 220
+      config:
+        message: ''
+        reason: kyc_needs_review
+    edges:
+    - id: e_e055d604
+      source: n_02f45506
+      target: n_b1e8d0d5
+      trigger: always
+      sort_order: 0
+    - id: e_0ed804a2
+      source: n_b1e8d0d5
+      target: n_0fdfe834
+      trigger: llm_condition
+      sort_order: 0
+      label: Not the customer
+      condition: The person is not {{customer_name}}
+    - id: e_0b36a1eb
+      source: n_b1e8d0d5
+      target: n_9bdc3160
+      trigger: llm_condition
+      sort_order: 1
+      label: Asks to call later
+      condition: The customer is busy or asks to be called back
+    - id: e_242bafda
+      source: n_b1e8d0d5
+      target: n_bcfcbc89
+      trigger: llm_condition
+      sort_order: 2
+      label: Customer agrees
+      condition: The customer is confirmed and agrees to continue
+    - id: e_62595554
+      source: n_bcfcbc89
+      target: n_887f1455
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_6297c50f
+      source: n_887f1455
+      target: n_97f2d749
+      trigger: category
+      sort_order: 0
+      label: Verified
+      category: Verified
+    - id: e_af5a7802
+      source: n_97f2d749
+      target: n_098d8811
+      trigger: always
+      sort_order: 0
+    - id: e_a45c92bf
+      source: n_887f1455
+      target: n_af62b4ca
+      trigger: category
+      sort_order: 1
+      label: Needs review
+      category: Needs review
+    - id: e_f7f12b08
+      source: n_af62b4ca
+      target: n_1c33037f
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

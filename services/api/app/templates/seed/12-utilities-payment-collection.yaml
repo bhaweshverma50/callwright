@@ -1,0 +1,289 @@
+id: utilities-payment-collection
+sort_order: 12
+category: utilities
+name: Payment collection with plans and disputes
+description: Calls customers with an overdue utility bill, takes a payment now, sets up an instalment
+  request or logs a dispute, depending on the answer.
+icon: receipt
+direction: outbound
+agent_type: flow
+config:
+  agent_name: Payment reminder agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Energy
+  - name: customer_name
+    default: Jordan Lee
+  - name: amount_due
+    default: $86.40
+  - name: due_date
+    default: the 3rd
+  prompt: |
+    You are a courteous billing assistant at {{company_name}}, a utility. You are calling {{customer_name}} about an overdue balance.
+    Be respectful and never threaten. Do not mention disconnection unless the customer asks. Never discuss the account with anyone other than {{customer_name}}. Never take card details on the call; payments go through the app or the payment link. If the customer mentions hardship, note it and say a specialist will help.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_b28ff3ca
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Hello, this is {{company_name}} calling for {{customer_name}} about your account. Is
+          this {{customer_name}}?
+    - id: n_4afcbe6c
+      type: agent
+      label: Confirm the customer
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Confirm you are speaking with {{customer_name}}. If it is someone else, ask for a good time to reach them and share no account details.
+          Once confirmed, explain you are calling about an outstanding balance of {{amount_due}} that was due on {{due_date}}.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_84f0ad2e
+      type: end
+      label: 'End: wrong person'
+      position:
+        x: 720
+        y: 0
+      config:
+        message: Thank you. We will try again later. Goodbye.
+        reason: wrong_person
+    - id: n_bc5c70bf
+      type: condition
+      label: How do they respond
+      position:
+        x: 720
+        y: 220
+      config:
+        kind: classify
+        instructions: Classify the customer's response about the overdue balance.
+        categories:
+        - name: Will pay now
+          description: The customer agrees to pay today
+        - name: Needs a plan
+          description: The customer cannot pay in full and asks for time or instalments
+        - name: Disputes
+          description: The customer says the amount is wrong or already paid
+        - name: Refuses
+          description: The customer refuses to talk about it or to pay
+    - id: n_7b0550fe
+      type: say
+      label: Pay now
+      position:
+        x: 1080
+        y: 0
+      config:
+        message: Thank you. You can pay {{amount_due}} right now in the app or at the payment link we
+          are texting you. Your service stays active once the payment clears.
+        allow_interruptions: true
+    - id: n_357a1dc5
+      type: end
+      label: 'End: payment promised'
+      position:
+        x: 1440
+        y: 0
+      config:
+        message: Thanks for your time, {{customer_name}}. Goodbye.
+        reason: payment_promised
+    - id: n_25379328
+      type: task
+      label: Payment plan
+      position:
+        x: 1080
+        y: 220
+      config:
+        instructions: Collect what the customer can afford. Do not promise approval; a specialist confirms
+          the plan.
+        fields:
+        - name: first_payment_date
+          type: string
+          description: The date they can make a first payment
+          required: true
+        - name: instalments
+          type: number
+          description: How many monthly instalments they would like
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: I understand. Let's see what would work for you.
+    - id: n_d7ecc968
+      type: say
+      label: Plan requested
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: Thank you. I have noted a first payment on {{task_result.first_payment_date}} in {{task_result.instalments}}
+          instalments. A specialist will confirm the plan by text within one working day.
+        allow_interruptions: true
+    - id: n_551b9fdd
+      type: end
+      label: 'End: plan requested'
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: ''
+        reason: plan_requested
+    - id: n_c460a3aa
+      type: agent
+      label: Billing dispute
+      position:
+        x: 1080
+        y: 440
+      config:
+        instructions: |
+          The customer disputes the balance. Listen without arguing. Ask what they believe is wrong (wrong amount, already paid, wrong meter reading) and note the details, including a payment date and method if they say they paid.
+          Do not agree or disagree that the bill is correct. Say a billing specialist will review it and call back within three working days, and that no further action is taken on the account while it is reviewed.
+        begin_message: I'm sorry about the confusion. Tell me what looks wrong.
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_5a9e9946
+      type: end
+      label: 'End: dispute noted'
+      position:
+        x: 1440
+        y: 440
+      config:
+        message: Thank you for explaining. A specialist will call you back. Goodbye.
+        reason: dispute_logged
+    - id: n_df56cccc
+      type: say
+      label: Refusal
+      position:
+        x: 1080
+        y: 660
+      config:
+        message: I understand. Please call us on the number on your bill if you would like to talk about
+          it. Goodbye.
+        allow_interruptions: true
+    - id: n_4285306e
+      type: end
+      label: 'End: refused'
+      position:
+        x: 1440
+        y: 660
+      config:
+        message: ''
+        reason: refused
+    edges:
+    - id: e_096663f1
+      source: n_b28ff3ca
+      target: n_4afcbe6c
+      trigger: always
+      sort_order: 0
+    - id: e_7bd2061f
+      source: n_4afcbe6c
+      target: n_84f0ad2e
+      trigger: llm_condition
+      sort_order: 0
+      label: Not the customer
+      condition: The person is not {{customer_name}} or does not want to talk
+    - id: e_2f4f8771
+      source: n_4afcbe6c
+      target: n_bc5c70bf
+      trigger: llm_condition
+      sort_order: 1
+      label: Confirmed and informed
+      condition: The customer is confirmed and has heard about the balance and has responded
+    - id: e_2fb2f06e
+      source: n_bc5c70bf
+      target: n_7b0550fe
+      trigger: category
+      sort_order: 0
+      label: Will pay now
+      category: Will pay now
+    - id: e_c1286756
+      source: n_7b0550fe
+      target: n_357a1dc5
+      trigger: always
+      sort_order: 0
+    - id: e_463fb253
+      source: n_bc5c70bf
+      target: n_25379328
+      trigger: category
+      sort_order: 1
+      label: Needs a plan
+      category: Needs a plan
+    - id: e_c18c201b
+      source: n_25379328
+      target: n_d7ecc968
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_f8d671fc
+      source: n_d7ecc968
+      target: n_551b9fdd
+      trigger: always
+      sort_order: 0
+    - id: e_9b9021d6
+      source: n_bc5c70bf
+      target: n_c460a3aa
+      trigger: category
+      sort_order: 2
+      label: Disputes
+      category: Disputes
+    - id: e_f530a3bb
+      source: n_c460a3aa
+      target: n_5a9e9946
+      trigger: llm_condition
+      sort_order: 0
+      label: Dispute noted
+      condition: The dispute has been noted and the caller has nothing more to add
+    - id: e_d6c1d7d1
+      source: n_bc5c70bf
+      target: n_df56cccc
+      trigger: category
+      sort_order: 3
+      label: Refuses
+      category: Refuses
+    - id: e_4b83671f
+      source: n_df56cccc
+      target: n_4285306e
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

@@ -82,7 +82,7 @@ test("a new user skips the tour, and can start it again from the account menu", 
   await expect(title(page)).toHaveCount(0);
 
   await reloadWithPreferences(page);
-  await expect(page.getByRole("heading", { name: "Start a single-prompt agent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start from a template" })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Set up your first agent" })).toHaveCount(0);
   await expect(title(page)).toHaveCount(0);
 

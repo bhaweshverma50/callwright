@@ -5,6 +5,7 @@ name: Symptom triage and booking
 description: Answers patient calls, screens for emergencies first, recommends a department and books a visit.
 icon: stethoscope
 direction: inbound
+agent_type: single_prompt
 config:
   agent_name: Clinic front desk
   language: en-US

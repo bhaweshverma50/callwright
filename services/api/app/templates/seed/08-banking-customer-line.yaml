@@ -5,6 +5,7 @@ name: Bank customer line
 description: Answers customers who call the bank, with the recorded-line and virtual assistant disclosures up front, and resolves card, payment and balance questions.
 icon: landmark
 direction: inbound
+agent_type: single_prompt
 config:
   agent_name: Customer line agent
   language: en-US

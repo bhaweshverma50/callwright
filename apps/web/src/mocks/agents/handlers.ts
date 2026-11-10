@@ -22,6 +22,8 @@ import type {
 import { scanPlaceholders } from "../../lib/agentVariables";
 import { appendTransaction, balanceOf, db, mockId, save } from "../db";
 import { chimeDataUri } from "./audio";
+import type { FlowGraph } from "../../api/flows";
+import { seedMockFlow } from "../flows";
 import { llmCatalog, voiceCatalog } from "./catalog";
 import { diffConfigs } from "./diff";
 import { defaultConfig, overlay, validateConfig } from "./rules";
@@ -50,8 +52,28 @@ function nameError(name: unknown) {
   return null;
 }
 
+function templateTypeError(templateType: "single_prompt" | "flow") {
+  const made = templateType === "flow" ? "a flow agent" : "a single-prompt agent";
+  return { pointer: "/template_id", code: "invalid_format", message: `This template creates ${made}; create that type from it.` };
+}
+
 function failValidation(errors: { pointer: string; code: string; message: string }[]) {
   return problem(422, "validation_failed", "The configuration has problems", { errors });
+}
+
+/** The templates a list or count request selects: search, direction and type, plus the category for the list. */
+function matchTemplates(q: URLSearchParams, withCategory: boolean) {
+  const category = withCategory ? q.get("category") : null;
+  const direction = q.get("direction");
+  const agentType = q.get("agent_type");
+  const search = (q.get("search") ?? "").trim().toLowerCase();
+  return TEMPLATES.filter(
+    (t) =>
+      (!category || t.category === category) &&
+      (!direction || t.direction === direction) &&
+      (!agentType || t.agent_type === agentType) &&
+      (!search || t.name.toLowerCase().includes(search) || t.description.toLowerCase().includes(search)),
+  );
 }
 
 export const agentHandlers = [
@@ -152,23 +174,18 @@ export const agentHandlers = [
   }),
 
   // templates
-  http.get(url("/templates/categories"), () => {
+  http.get(url("/templates/categories"), ({ request }) => {
+    // Counts follow the search, direction and type filters (not the category), as the API does.
     const counts = new Map<TemplateCategory, number>();
-    for (const t of TEMPLATES) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
+    for (const t of matchTemplates(new URL(request.url).searchParams, false)) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
     const items = (Object.keys(CATEGORY_LABELS) as TemplateCategory[])
       .filter((c) => counts.get(c))
       .map((id) => ({ id, label: CATEGORY_LABELS[id], count: counts.get(id)! }));
     return json({ items });
   }),
   http.get(url("/templates"), async ({ request }) => {
-    const q = new URL(request.url).searchParams;
-    const category = q.get("category");
-    const search = (q.get("search") ?? "").trim().toLowerCase();
     await delay(120);
-    const items: TemplateSummary[] = TEMPLATES.filter(
-      (t) =>
-        (!category || t.category === category) && (!search || t.name.toLowerCase().includes(search) || t.description.toLowerCase().includes(search)),
-    ).map(({ config: _c, ...rest }) => rest);
+    const items: TemplateSummary[] = matchTemplates(new URL(request.url).searchParams, true).map(({ config: _c, ...rest }) => rest);
     return json({ items });
   }),
   http.get(url("/templates/:template_id"), ({ params }) => {
@@ -249,7 +266,8 @@ export const agentHandlers = [
     if (body.template_id) {
       const t = TEMPLATES.find((x) => x.id === body.template_id);
       if (!t) return problem(404, "not_found", "Template not found");
-      const { agent_name: _n, ...tpl } = t.config;
+      if (t.agent_type !== type) return failValidation([templateTypeError(t.agent_type)]);
+      const { agent_name: _n, graph: _g, ...tpl } = t.config;
       base = overlay(defaultConfig(type, tpl.language), tpl) as AgentConfig;
       // The template names no voice: the language default for its provider applies (data-model 6).
       const provider = voiceCatalog.tts.find((p) => p.provider === base.tts.provider);
@@ -268,6 +286,28 @@ export const agentHandlers = [
     save();
     await delay(300);
     return json(toDetail(agent), 201, etagOf(agent));
+  }),
+
+  // A flow agent from a flow template. Without template_id this passes on to the flows mock.
+  http.post(url("/flows"), async ({ request }) => {
+    const ws = workspaceOf(request);
+    if (!ws) return unauthorized();
+    const body = (await request.json()) as { name?: string; language?: string; template_id?: string };
+    if (!body.template_id) return undefined;
+    const t = TEMPLATES.find((x) => x.id === body.template_id);
+    if (!t) return problem(404, "not_found", "Template not found");
+    if (t.agent_type !== "flow") return failValidation([templateTypeError(t.agent_type)]);
+    if (nameError(body.name)) return failValidation([nameError(body.name)!]);
+    const { agent_name: _n, graph, ...tpl } = t.config;
+    const config = overlay(defaultConfig("flow", body.language ?? tpl.language), tpl) as AgentConfig;
+    const agent = insertAgent(ws, body.name!.trim(), "flow", validateConfig("flow", config, { uploadKeys: workspaceUploadKeys(ws) }).normalized_config, "template", {
+      template_id: t.id,
+      note: `Created from ${t.name}`,
+    });
+    save();
+    const flow = seedMockFlow(agent.id, agent.name, graph as unknown as FlowGraph);
+    await delay(300);
+    return json({ agent_id: agent.id, flow, warnings: [] }, 201, { ETag: `"${flow.revision}"` });
   }),
 
   http.get(url("/agents/:agent_id"), async ({ request, params }) => {

@@ -5,6 +5,7 @@ name: Roadside and EV assistance
 description: Takes breakdown and EV charging calls, checks the caller is safe first, and dispatches help.
 icon: car
 direction: inbound
+agent_type: single_prompt
 config:
   agent_name: Roadside assistance agent
   language: en-US

@@ -45,7 +45,11 @@ async def create_flow_agent(
 ) -> JSONResponse:
     async with principal_tx(request, principal) as session:
         created = await service.create_flow_agent(
-            session, actor(request, principal), name=body.name, language=body.language
+            session,
+            actor(request, principal),
+            name=body.name,
+            language=body.language,
+            template_id=body.template_id,
         )
         out = {
             "agent_id": created.agent.id,

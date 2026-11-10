@@ -4137,10 +4137,11 @@ export interface components {
             providers: components["schemas"]["LlmProvider"][];
         };
         /**
-         * @description Launch categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom
+         * @description Categories (FR-046); labels Automotive, Banking, E-commerce, Healthcare, Telecom,
+         *     Insurance, Real estate, Travel and hospitality, Logistics and delivery, Utilities
          * @enum {string}
          */
-        TemplateCategory: "automotive" | "banking" | "ecommerce" | "healthcare" | "telecom";
+        TemplateCategory: "automotive" | "banking" | "ecommerce" | "healthcare" | "telecom" | "insurance" | "real_estate" | "hospitality" | "logistics" | "utilities";
         TemplateSummary: {
             /** @example healthcare-triage-booking */
             id: string;
@@ -4154,18 +4155,27 @@ export interface components {
              * @enum {string}
              */
             direction: "inbound" | "outbound";
+            /**
+             * @description The type of agent the template creates. A flow template's config also carries the
+             *     flow graph (see TemplateConfig).
+             * @enum {string}
+             */
+            agent_type: "single_prompt" | "flow";
             language?: string;
         };
         TemplateDetail: components["schemas"]["TemplateSummary"] & {
             config: components["schemas"]["TemplateConfig"];
         };
         /**
-         * @description Partial AgentConfig (FR-046). Always includes agent_name, language, llm.provider,
+         * @description Partial AgentConfig (FR-046); a flow template also carries `graph` (a flow graph, see the
+         *     flows contract) in place of the greeting-driven fields. Always includes agent_name, language, llm.provider,
          *     llm.model, prompt, begin_message, start_speaker, stt.provider, tts.provider,
          *     tts.model and dynamic_variables with defaults. Never includes llm.temperature for a
          *     fixed-temperature model, nor tts.voice_id (the language default voice applies).
          */
         TemplateConfig: {
+            /** @description Flow templates only; the graph a new flow agent starts with */
+            graph?: Record<string, never>;
             agent_name: string;
             language: string;
             llm: {
@@ -4173,9 +4183,9 @@ export interface components {
                 model: string;
             };
             prompt: string;
-            begin_message: string | null;
+            begin_message?: string | null;
             /** @enum {string} */
-            start_speaker: "agent" | "user";
+            start_speaker?: "agent" | "user";
             stt: {
                 provider: string;
                 model?: string | null;
@@ -4967,6 +4977,8 @@ export interface components {
              * @example hi
              */
             language: string;
+            /** @description A flow template to start from; its graph replaces the starter graph (422 for a single-prompt template) */
+            template_id?: string;
         };
         CreateFlowAgentResponse: {
             agent_id: string;
@@ -7697,6 +7709,8 @@ export interface components {
         AgentIdPath: components["schemas"]["AgentId"];
         CallIdPath: components["schemas"]["CallId"];
         VersionIdPath: components["schemas"]["AgentVersionId"];
+        Direction: "inbound" | "outbound";
+        AgentTypeFilter: "single_prompt" | "flow";
         DeliveryId: string;
         SignatureHeader: string;
         EventHeader: components["schemas"]["WebhookEventName"];
@@ -8623,7 +8637,7 @@ export interface operations {
                     type: components["schemas"]["AgentType"];
                     /** @description Default en-US; seeds speech and voice defaults */
                     language?: string;
-                    /** @description Overlay this template on the defaults (single_prompt only) */
+                    /** @description Overlay this template on the defaults; the template's agent_type must match type (422 at /template_id otherwise) */
                     template_id?: string;
                     /** @description Optional partial config overlaid on defaults (and on the template if given) */
                     config?: {
@@ -8993,6 +9007,8 @@ export interface operations {
             query?: {
                 category?: components["schemas"]["TemplateCategory"];
                 search?: string;
+                direction?: components["parameters"]["Direction"];
+                agent_type?: components["parameters"]["AgentTypeFilter"];
             };
             header?: never;
             path?: never;
@@ -9016,14 +9032,22 @@ export interface operations {
     };
     listTemplateCategories: {
         parameters: {
-            query?: never;
+            query?: {
+                search?: string;
+                direction?: components["parameters"]["Direction"];
+                agent_type?: components["parameters"]["AgentTypeFilter"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Categories that have at least one active template */
+            /**
+             * @description Categories that have at least one active template under the given filters. Counts
+             *     follow the same filters as the list (without the category), so a chip's count is
+             *     what selecting it would return.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;

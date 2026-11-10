@@ -1,0 +1,241 @@
+id: automotive-test-drive-booking
+sort_order: 23
+category: automotive
+name: Test drive booking
+description: 'Books test drives for a car dealership: captures contact details, the model and fuel type,
+  then a preferred slot, or hands price and finance questions to sales.'
+icon: steering-wheel
+direction: inbound
+agent_type: flow
+config:
+  agent_name: Test drive booking agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: dealership_name
+    default: Acme Motors
+  prompt: |
+    You are the sales assistant at {{dealership_name}}, a car dealership. Customers call you; you did not call them.
+    Be friendly and brief. Never quote a final price, finance rate or trade-in value. Never promise stock or exact times; an advisor confirms both.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_8181a4c6
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Thank you for calling {{dealership_name}}. I can help you book a test drive. Which model
+          are you interested in?
+    - id: n_4ea96912
+      type: task
+      label: Model and contact
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: Find out which model they want to drive and how to reach them.
+        fields:
+        - name: full_name
+          type: string
+          description: The caller's full name
+          required: true
+        - name: phone_number
+          type: string
+          description: A phone number to confirm the booking
+          required: true
+        - name: model
+          type: string
+          description: The model they want to test drive
+          required: true
+        - name: fuel_type
+          type: enum
+          description: Their fuel preference
+          required: true
+          enum_values:
+          - petrol
+          - diesel
+          - hybrid
+          - electric
+          - no_preference
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: null
+    - id: n_48e94291
+      type: condition
+      label: Test drive or something else
+      position:
+        x: 720
+        y: 0
+      config:
+        kind: classify
+        instructions: Decide what the caller wants.
+        categories:
+        - name: Test drive
+          description: The caller wants to book a test drive
+        - name: Price or finance
+          description: The caller mainly wants prices, finance or trade-in advice
+    - id: n_54b54530
+      type: task
+      label: Choose a slot
+      position:
+        x: 1080
+        y: 0
+      config:
+        instructions: Offer to book a test drive. Open days are Monday to Saturday. Do not confirm exact
+          times; a sales advisor confirms.
+        fields:
+        - name: preferred_day
+          type: string
+          description: The day they prefer
+          required: true
+        - name: time_window
+          type: enum
+          description: The time of day
+          required: true
+          enum_values:
+          - morning
+          - afternoon
+          - evening
+        - name: has_licence
+          type: boolean
+          description: Whether they hold a valid driving licence
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Great choice. Let's find a time for you to try it.
+    - id: n_98801aa0
+      type: say
+      label: Booking noted
+      position:
+        x: 1440
+        y: 0
+      config:
+        message: Thank you, {{task_result.full_name}}. I have noted a {{task_result.model}} test drive
+          on {{task_result.preferred_day}}, {{task_result.time_window}}. Please bring your driving licence.
+          An advisor will text you to confirm.
+        allow_interruptions: true
+    - id: n_20bfb8c4
+      type: end
+      label: 'End: test drive requested'
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: Thanks for calling {{dealership_name}}. See you soon.
+        reason: test_drive_requested
+    - id: n_51852518
+      type: transfer
+      label: Sales advisor
+      position:
+        x: 1080
+        y: 220
+      config:
+        transfer:
+          routing_type: static
+          number: '+14155550100'
+          routing_instructions: null
+          allowed_numbers: []
+          transfer_type: cold
+          warm_transfer: null
+          hold_message: One moment while I connect you to a colleague.
+          ring_timeout_s: 30
+    - id: n_8c020f66
+      type: say
+      label: Transfer failed
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: I could not reach a sales advisor right now. They will call you back shortly.
+        allow_interruptions: true
+    - id: n_c03743c0
+      type: end
+      label: 'End: callback promised'
+      position:
+        x: 1800
+        y: 220
+      config:
+        message: ''
+        reason: callback_scheduled
+    edges:
+    - id: e_f7335403
+      source: n_8181a4c6
+      target: n_4ea96912
+      trigger: always
+      sort_order: 0
+    - id: e_cc46c6ec
+      source: n_4ea96912
+      target: n_48e94291
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_af841a09
+      source: n_48e94291
+      target: n_54b54530
+      trigger: category
+      sort_order: 0
+      label: Test drive
+      category: Test drive
+    - id: e_6beb0bbc
+      source: n_54b54530
+      target: n_98801aa0
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_48f15571
+      source: n_98801aa0
+      target: n_20bfb8c4
+      trigger: always
+      sort_order: 0
+    - id: e_6ce90f00
+      source: n_48e94291
+      target: n_51852518
+      trigger: category
+      sort_order: 1
+      label: Price or finance
+      category: Price or finance
+    - id: e_e0dd0dc9
+      source: n_51852518
+      target: n_8c020f66
+      trigger: failure
+      sort_order: 0
+      label: Transfer failed
+    - id: e_5f57b190
+      source: n_8c020f66
+      target: n_c03743c0
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

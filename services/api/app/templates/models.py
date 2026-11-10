@@ -21,6 +21,7 @@ class Template(Base):
     description: Mapped[str] = mapped_column(String(300))
     icon: Mapped[str] = mapped_column(String)
     direction: Mapped[str] = mapped_column(String)
+    agent_type: Mapped[str] = mapped_column(String, server_default="single_prompt")
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

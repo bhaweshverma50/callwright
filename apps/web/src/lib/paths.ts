@@ -22,6 +22,8 @@ export const NEW_AGENT_PATH = `${AGENTS_PATH}/new`;
 export const NEW_SINGLE_AGENT_PATH = `${NEW_AGENT_PATH}/single`;
 export const NEW_FLOW_AGENT_PATH = `${NEW_AGENT_PATH}/flow`;
 export const TEMPLATES_PATH = `${AGENTS_PATH}/templates`;
+/** The gallery filtered to one agent type (the Agent type chooser and the new flow page link here). */
+export const templatesPath = (type: "single_prompt" | "flow") => `${TEMPLATES_PATH}?type=${type}`;
 
 /** Public sign-in pages; `?next=` never points back at one of them. */
 export const AUTH_PAGES = {

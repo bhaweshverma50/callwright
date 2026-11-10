@@ -5,6 +5,7 @@ name: Mobile plan upgrade
 description: Invites prepaid customers to move to a postpaid or family 5G plan and confirms the switch.
 icon: smartphone
 direction: outbound
+agent_type: single_prompt
 config:
   agent_name: Plan upgrade agent
   language: en-US

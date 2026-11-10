@@ -36,6 +36,16 @@ export type TemplateCategory = S["TemplateCategory"];
 export type TemplateSummary = S["TemplateSummary"];
 export type TemplateDetail = S["TemplateDetail"];
 export type TemplateConfig = S["TemplateConfig"];
+export type TemplateDirection = TemplateSummary["direction"];
+export type TemplateAgentType = TemplateSummary["agent_type"];
+
+/** What the gallery filters on; the category chips' counts follow every filter but the category. */
+export interface TemplateFilters {
+  category: TemplateCategory | null;
+  search: string;
+  direction: TemplateDirection | null;
+  agent_type: TemplateAgentType | null;
+}
 
 export type LlmCatalog = S["LlmCatalog"];
 export type LlmProvider = S["LlmProvider"];
@@ -77,8 +87,8 @@ export const agentKeys = {
   providerVoices: (provider: string, f: VoiceFilters) => ["voices", "list", provider, f] as const,
   browseVoices: (provider: string, f: VoiceFilters) => ["voices", "browse", provider, f] as const,
   ambient: ["voices", "ambient"] as const,
-  templates: (category: TemplateCategory | null, search: string) => ["templates", "list", { category, search }] as const,
-  templateCategories: ["templates", "categories"] as const,
+  templates: (f: TemplateFilters) => ["templates", "list", f] as const,
+  templateCategories: (f: Omit<TemplateFilters, "category">) => ["templates", "categories", f] as const,
   template: (id: string) => ["templates", "detail", id] as const,
 };
 
@@ -185,20 +195,27 @@ export function useAmbientAudio(enabled = true) {
   });
 }
 
-export function useTemplates(category: TemplateCategory | null, search: string) {
+const filterQuery = (f: Omit<TemplateFilters, "category">) => ({
+  ...(f.search && { search: f.search }),
+  ...(f.direction && { direction: f.direction }),
+  ...(f.agent_type && { agent_type: f.agent_type }),
+});
+
+export function useTemplates(f: TemplateFilters) {
   return useQuery({
-    queryKey: agentKeys.templates(category, search),
-    queryFn: () => unwrap(api.GET("/templates", { params: { query: { ...(category && { category }), ...(search && { search }) } } })),
+    queryKey: agentKeys.templates(f),
+    queryFn: () => unwrap(api.GET("/templates", { params: { query: { ...filterQuery(f), ...(f.category && { category: f.category }) } } })),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 }
 
-export function useTemplateCategories() {
+export function useTemplateCategories(f: Omit<TemplateFilters, "category">) {
   return useQuery({
-    queryKey: agentKeys.templateCategories,
-    queryFn: () => unwrap(api.GET("/templates/categories")),
-    staleTime: 5 * 60_000,
+    queryKey: agentKeys.templateCategories(f),
+    queryFn: () => unwrap(api.GET("/templates/categories", { params: { query: filterQuery(f) } })),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 }
 
@@ -339,9 +356,9 @@ export async function newestAgentId(): Promise<string | null> {
   return (await newest("single_prompt")).items[0]?.id ?? (await newest()).items[0]?.id ?? null;
 }
 
-/** The first template in the gallery, with its full config. */
+/** The first single-prompt template in the gallery, with its full config. */
 export async function firstTemplate(): Promise<TemplateDetail | null> {
-  const first = (await unwrap(api.GET("/templates"))).items[0];
+  const first = (await unwrap(api.GET("/templates", { params: { query: { agent_type: "single_prompt" } } }))).items[0];
   return first ? unwrap(api.GET("/templates/{template_id}", { params: { path: { template_id: first.id } } })) : null;
 }
 

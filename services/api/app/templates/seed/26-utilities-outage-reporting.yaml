@@ -1,0 +1,258 @@
+id: utilities-outage-reporting
+sort_order: 26
+category: utilities
+name: Outage reporting
+description: 'Takes power outage reports: checks for danger first, records the address and start time,
+  logs widespread outages and walks single-property cases through a breaker check.'
+icon: lightning
+direction: inbound
+agent_type: flow
+config:
+  agent_name: Outage reporting agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Energy
+  prompt: |
+    You are the outage assistant at {{company_name}}, an electricity utility. Customers call you when the power is out; you did not call them.
+    Be calm and brief; callers may be in the dark. Safety comes first. Never tell a caller to touch a power line, a meter or anything inside a fuse box other than the main breaker. Never promise a restoration time; say crews work as fast as safely possible.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_092de904
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Thank you for calling {{company_name}}. Are you calling to report a power cut?
+    - id: n_eab2c149
+      type: agent
+      label: Safety first
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: |
+          Before anything else, ask whether there is any immediate danger: downed power lines, a fire, a gas smell or sparks.
+          If there is, tell the caller to stay well away and call the emergency number now. If not, move on.
+        begin_message: null
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_0a41797b
+      type: say
+      label: Emergency advice
+      position:
+        x: 720
+        y: 0
+      config:
+        message: Please stay well away and call your local emergency number now. We will send a crew as
+          soon as the emergency services have made the area safe.
+        allow_interruptions: true
+    - id: n_7e6d13d4
+      type: end
+      label: 'End: emergency advised'
+      position:
+        x: 1080
+        y: 0
+      config:
+        message: ''
+        reason: emergency_advised
+    - id: n_cbaa1c06
+      type: task
+      label: Outage details
+      position:
+        x: 720
+        y: 220
+      config:
+        instructions: Collect where and since when the power is off. Ask one question at a time.
+        fields:
+        - name: service_address
+          type: string
+          description: The address with no power
+          required: true
+        - name: started
+          type: string
+          description: When the power went out
+          required: true
+        - name: whole_street
+          type: enum
+          description: Whether neighbours also have no power
+          required: true
+          enum_values:
+          - 'yes'
+          - 'no'
+          - unknown
+        - name: contact_number
+          type: string
+          description: A number to send updates to
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Thank you for telling me. I'll take down the details.
+    - id: n_c93dd1e2
+      type: condition
+      label: Known outage or new
+      position:
+        x: 1080
+        y: 220
+      config:
+        kind: classify
+        instructions: Decide how to handle the report from the answers.
+        categories:
+        - name: Widespread
+          description: Neighbours or the whole street are affected
+        - name: Single property
+          description: Only this property is affected or the caller is not sure
+    - id: n_0eacb279
+      type: say
+      label: Outage logged
+      position:
+        x: 1440
+        y: 0
+      config:
+        message: Thank you. I have logged your report at {{task_result.service_address}}. A crew is working
+          on outages in your area, and we will text updates to {{task_result.contact_number}}.
+        allow_interruptions: true
+    - id: n_d48c4cab
+      type: agent
+      label: Check the home
+      position:
+        x: 1440
+        y: 220
+      config:
+        instructions: |
+          The outage may only affect this property. Ask the caller to check the main breaker or fuse box, and whether a breaker has tripped. Explain how to reset it safely: switch off appliances first, then reset the breaker once.
+          If power returns, thank them and close. If it does not return, tell them a technician will visit and ask whether anyone at home relies on powered medical equipment.
+        begin_message: It may only affect your home, so let's do a quick check.
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_94632882
+      type: end
+      label: 'End: report logged'
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: Thanks for calling {{company_name}}. Stay safe.
+        reason: outage_logged
+    - id: n_6e24b86c
+      type: end
+      label: 'End: restored'
+      position:
+        x: 1800
+        y: 220
+      config:
+        message: I'm glad that worked. Thanks for calling.
+        reason: resolved_on_call
+    - id: n_d20126bd
+      type: end
+      label: 'End: technician visit'
+      position:
+        x: 1800
+        y: 440
+      config:
+        message: A technician will visit and we will text you a time window. Thanks for calling.
+        reason: technician_requested
+    edges:
+    - id: e_985031b5
+      source: n_092de904
+      target: n_eab2c149
+      trigger: always
+      sort_order: 0
+    - id: e_fd6b3900
+      source: n_eab2c149
+      target: n_0a41797b
+      trigger: llm_condition
+      sort_order: 0
+      label: Immediate danger
+      condition: The caller reports downed lines, fire, sparks, a gas smell or any immediate danger
+    - id: e_e7b23c45
+      source: n_0a41797b
+      target: n_7e6d13d4
+      trigger: always
+      sort_order: 0
+    - id: e_a8f6fbc6
+      source: n_eab2c149
+      target: n_cbaa1c06
+      trigger: llm_condition
+      sort_order: 1
+      label: No danger
+      condition: The caller says there is no immediate danger
+    - id: e_25384699
+      source: n_cbaa1c06
+      target: n_c93dd1e2
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_7681d81b
+      source: n_c93dd1e2
+      target: n_0eacb279
+      trigger: category
+      sort_order: 0
+      label: Widespread
+      category: Widespread
+    - id: e_1e6a8e09
+      source: n_c93dd1e2
+      target: n_d48c4cab
+      trigger: category
+      sort_order: 1
+      label: Single property
+      category: Single property
+    - id: e_b88b1d73
+      source: n_0eacb279
+      target: n_94632882
+      trigger: always
+      sort_order: 0
+    - id: e_f34ebdc5
+      source: n_d48c4cab
+      target: n_6e24b86c
+      trigger: llm_condition
+      sort_order: 0
+      label: Power is back
+      condition: The caller says the power has come back on
+    - id: e_04e48000
+      source: n_d48c4cab
+      target: n_d20126bd
+      trigger: llm_condition
+      sort_order: 1
+      label: Power still off
+      condition: The power is still off after the checks and the caller has answered about medical equipment
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

@@ -329,6 +329,10 @@ components:
       properties:
         name: {type: string, minLength: 1, maxLength: 120}
         language: {type: string, examples: ['en-US', 'en-GB', 'hi']}
+        template_id:
+          type: string
+          pattern: '^[a-z0-9-]{3,64}$'
+          description: A flow template to start from; its graph replaces the starter graph (422 for a single-prompt template)
     CreateFlowAgentResponse:
       type: object
       required: [agent_id, flow]

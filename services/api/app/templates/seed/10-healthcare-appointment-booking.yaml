@@ -1,0 +1,316 @@
+id: healthcare-appointment-booking
+sort_order: 10
+category: healthcare
+name: Appointment booking and changes
+description: 'Books, changes and cancels clinic appointments: collects the patient''s details, routes
+  by need and sends urgent symptoms to emergency advice.'
+icon: calendar-check
+direction: inbound
+agent_type: flow
+config:
+  agent_name: Clinic booking agent
+  language: en-US
+  llm:
+    provider: azure_openai
+    model: gpt-5.1
+  stt:
+    provider: deepgram
+    model: null
+  tts:
+    provider: elevenlabs
+    model: eleven_multilingual_v2
+  dynamic_variables:
+  - name: company_name
+    default: Acme Health Clinic
+  prompt: |
+    You are the booking assistant at {{company_name}}, a medical clinic. Patients call you; you did not call them.
+    Be warm and calm. Keep answers short and ask one question at a time. Never give medical advice or interpret symptoms. If a caller describes urgent symptoms such as chest pain or trouble breathing, tell them to call emergency services now.
+
+    ## Identity
+    - If a caller asks whether you are a person or which AI you run on, say you are a virtual
+      assistant for this business. Never name the AI model, its vendor or the company that built you.
+  graph:
+    nodes:
+    - id: n_eb7062c8
+      type: start
+      label: Start
+      position:
+        x: 0
+        y: 0
+      config:
+        start_speaker: agent
+        greeting_type: static
+        greeting: Thank you for calling {{company_name}}. I can help you book, change or cancel an appointment.
+          How can I help?
+    - id: n_46fd569e
+      type: task
+      label: Caller details
+      position:
+        x: 360
+        y: 0
+      config:
+        instructions: Greet the caller and collect who they are so the clinic can find or create their
+          record.
+        fields:
+        - name: full_name
+          type: string
+          description: The patient's full name
+          required: true
+        - name: date_of_birth
+          type: string
+          description: The patient's date of birth
+          required: true
+        - name: callback_number
+          type: string
+          description: A phone number the clinic can call back on
+          required: true
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: null
+    - id: n_a6f0e690
+      type: condition
+      label: What do they need
+      position:
+        x: 720
+        y: 0
+      config:
+        kind: classify
+        instructions: Decide what the caller wants from the conversation so far.
+        categories:
+        - name: Book
+          description: The caller wants to book a new appointment
+        - name: Change or cancel
+          description: The caller wants to change or cancel an existing appointment
+        - name: Emergency
+          description: The caller describes urgent symptoms such as chest pain, trouble breathing or heavy
+            bleeding
+        - name: Something else
+          description: Billing, test results, prescriptions or any other question
+    - id: n_176236c4
+      type: task
+      label: Booking details
+      position:
+        x: 1080
+        y: 0
+      config:
+        instructions: Find a slot that suits the patient. Do not promise a time; the clinic confirms by
+          text.
+        fields:
+        - name: visit_type
+          type: enum
+          description: The kind of visit
+          required: true
+          enum_values:
+          - new_patient
+          - follow_up
+          - check_up
+          - other
+        - name: preferred_day
+          type: string
+          description: The day or date the patient prefers
+          required: true
+        - name: time_window
+          type: enum
+          description: The time of day that suits
+          required: true
+          enum_values:
+          - morning
+          - afternoon
+          - evening
+        max_rounds: 5
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+        begin_message: Happy to help with a booking. Let me ask a few quick questions.
+    - id: n_d835748c
+      type: say
+      label: Booking requested
+      position:
+        x: 1440
+        y: 0
+      config:
+        message: Thank you, {{task_result.full_name}}. I have noted a {{task_result.visit_type}} request
+          for {{task_result.preferred_day}}, {{task_result.time_window}}. The clinic will text you to
+          confirm.
+        allow_interruptions: true
+    - id: n_630ea47d
+      type: end
+      label: 'End: booking requested'
+      position:
+        x: 1800
+        y: 0
+      config:
+        message: Thanks for calling {{company_name}}. Take care.
+        reason: booking_requested
+    - id: n_4d3e5766
+      type: agent
+      label: Change or cancel
+      position:
+        x: 1080
+        y: 220
+      config:
+        instructions: |
+          Help the patient change or cancel an existing appointment.
+          Ask which appointment (date and doctor), and whether they want to move it or cancel it. For a move, note two new preferred times. Say the clinic will confirm by text and that cancellations within 24 hours may carry a fee. Do not look up or share any medical information.
+        begin_message: Sure, let's sort out that appointment.
+        context_strategy: inherit
+        overrides:
+          llm: null
+          tts: null
+          stt: null
+          language: null
+        tool_ids: []
+        kb_search_enabled: true
+    - id: n_a8b3633e
+      type: end
+      label: 'End: change noted'
+      position:
+        x: 1440
+        y: 220
+      config:
+        message: Thanks for calling {{company_name}}. Goodbye.
+        reason: appointment_change_noted
+    - id: n_902fed98
+      type: say
+      label: Urgent symptoms
+      position:
+        x: 1080
+        y: 440
+      config:
+        message: That sounds urgent. Please hang up and call your local emergency number now, or go to
+          the nearest emergency department.
+        allow_interruptions: true
+    - id: n_130361a3
+      type: end
+      label: 'End: emergency advised'
+      position:
+        x: 1440
+        y: 440
+      config:
+        message: ''
+        reason: emergency_advised
+    - id: n_1b911fd1
+      type: transfer
+      label: Front desk
+      position:
+        x: 1080
+        y: 660
+      config:
+        transfer:
+          routing_type: static
+          number: '+14155550100'
+          routing_instructions: null
+          allowed_numbers: []
+          transfer_type: cold
+          warm_transfer: null
+          hold_message: One moment while I connect you to a colleague.
+          ring_timeout_s: 30
+    - id: n_f29f38d2
+      type: say
+      label: Transfer failed
+      position:
+        x: 1440
+        y: 660
+      config:
+        message: I could not reach the front desk. Please call back during clinic hours and we will help
+          you.
+        allow_interruptions: true
+    - id: n_8fbbcb3d
+      type: end
+      label: 'End: transfer failed'
+      position:
+        x: 1800
+        y: 220
+      config:
+        message: ''
+        reason: transfer_failed
+    edges:
+    - id: e_43b9f26b
+      source: n_eb7062c8
+      target: n_46fd569e
+      trigger: always
+      sort_order: 0
+    - id: e_2fd330e9
+      source: n_46fd569e
+      target: n_a6f0e690
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_e2cc87bd
+      source: n_a6f0e690
+      target: n_176236c4
+      trigger: category
+      sort_order: 0
+      label: Book
+      category: Book
+    - id: e_d7b7f106
+      source: n_176236c4
+      target: n_d835748c
+      trigger: success
+      sort_order: 0
+      label: Details collected
+    - id: e_496b41d5
+      source: n_d835748c
+      target: n_630ea47d
+      trigger: always
+      sort_order: 0
+    - id: e_4d1749d3
+      source: n_a6f0e690
+      target: n_4d3e5766
+      trigger: category
+      sort_order: 1
+      label: Change or cancel
+      category: Change or cancel
+    - id: e_1e6b6b10
+      source: n_4d3e5766
+      target: n_a8b3633e
+      trigger: llm_condition
+      sort_order: 0
+      label: Change noted
+      condition: The change or cancellation has been noted and the caller has nothing else to ask
+    - id: e_ee711b0f
+      source: n_a6f0e690
+      target: n_902fed98
+      trigger: category
+      sort_order: 2
+      label: Emergency
+      category: Emergency
+    - id: e_22830d3c
+      source: n_902fed98
+      target: n_130361a3
+      trigger: always
+      sort_order: 0
+    - id: e_9bcf7ead
+      source: n_a6f0e690
+      target: n_1b911fd1
+      trigger: category
+      sort_order: 3
+      label: Something else
+      category: Something else
+    - id: e_f3e169df
+      source: n_1b911fd1
+      target: n_f29f38d2
+      trigger: failure
+      sort_order: 0
+      label: Transfer failed
+    - id: e_d051d93d
+      source: n_f29f38d2
+      target: n_8fbbcb3d
+      trigger: always
+      sort_order: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
