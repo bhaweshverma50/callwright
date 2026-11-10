@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "s001_0001"
@@ -16,26 +17,35 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-APP_PASSWORD = os.environ.get("APP_DB_PASSWORD", "callwright_app")
-ADMIN_PASSWORD = os.environ.get("ADMIN_DB_PASSWORD", "callwright_admin")
+LOCAL_ENVS = ("dev", "test")
 
 
-def _role(name: str, password: str) -> str:
-    return f"""
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{name}') THEN
-        CREATE ROLE {name} LOGIN PASSWORD '{password}' NOBYPASSRLS;
-      END IF;
-    END $$;
+def _role(name: str, password_var: str, local_default: str) -> None:
+    """Create the login role unless it exists (managed databases get theirs from the bootstrap SQL).
+
+    The password comes from ``password_var``. The well-known local default is used only for ENV
+    dev or test: anywhere else a missing password stops the migration rather than create a role
+    anyone can guess.
     """
+    bind = op.get_bind()
+    if bind.execute(sa.text("SELECT 1 FROM pg_roles WHERE rolname = :name"), {"name": name}).first():
+        return
+    password = os.environ.get(password_var)
+    if not password:
+        from app.core.config import get_settings
+
+        if get_settings().env not in LOCAL_ENVS:
+            raise RuntimeError(f"Role {name} does not exist: set {password_var} to create it.")
+        password = local_default
+    quoted = password.replace("'", "''")
+    op.execute(f"CREATE ROLE {name} LOGIN PASSWORD '{quoted}' NOBYPASSRLS")
 
 
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS citext")
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    op.execute(_role("callwright_app", APP_PASSWORD))
-    op.execute(_role("callwright_admin", ADMIN_PASSWORD))
+    _role("callwright_app", "APP_DB_PASSWORD", "callwright_app")
+    _role("callwright_admin", "ADMIN_DB_PASSWORD", "callwright_admin")
     # On managed Postgres the migrating role may not own the database; PUBLIC keeps CONNECT by
     # default there and scripts/bootstrap_managed_db.sql grants it, so a refusal is not fatal.
     op.execute("""
