@@ -35,6 +35,7 @@ from app.calls.short_call import too_short
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.core.ids import new_id
+from app.core.money import SIX
 from app.evals import embeddings, sampling
 from app.evals.models import EvaluatorResultItem, EvaluatorRun, EvaluatorRunGroup
 from app.evals.scoring import ItemOutcome, run_verdict
@@ -47,7 +48,6 @@ from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.registry import instance_for
 from app.evaluators.settings import default_judge_model, judge_models, settings_hash
 from app.llms.charges import charge_tokens
-from app.llms.client import SIX
 from app.llms.runtime import ModelRuntime, runtime
 
 logger = logging.getLogger(__name__)

@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
+from app.core.money import SIX
 from app.flows.compiled import compiled_view
 from app.llms.client import billable_cost, token_cost
 from app.simulator.models import SimulationRun
@@ -138,7 +139,7 @@ async def preflight(
     return {
         "run_count": run_count,
         "tools_missing_mock": missing,
-        "estimated_cost_usd": float(total.quantize(Decimal("0.000001"))),
+        "estimated_cost_usd": float(total.quantize(SIX)),
         "invalid_calls": invalid,
         "warnings": warnings,
     }

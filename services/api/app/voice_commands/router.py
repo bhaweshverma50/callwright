@@ -18,11 +18,12 @@ from fastapi.responses import JSONResponse
 
 from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, problem_responses, too_many_requests
+from app.core.money import SIX
 from app.core.rate_limit import RateLimiter
 from app.llms.adapters.base import estimate_tokens
 from app.llms.adapters.fake import FakeAdapter
 from app.llms.charges import charge_tokens
-from app.llms.client import SIX, ModelError, ModelRef, ModelTimeout, token_cost
+from app.llms.client import ModelError, ModelRef, ModelTimeout, token_cost
 from app.llms.runtime import runtime
 from app.voice_commands.interpreter import keyword_interpret, model_interpret, validate
 from app.voice_commands.models import VoiceCommandLog

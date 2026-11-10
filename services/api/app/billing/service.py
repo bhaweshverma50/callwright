@@ -26,6 +26,7 @@ from app.billing.stripe_gateway import StripeGateway
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, validation_failed
 from app.core.ids import new_id
+from app.core.money import SIX
 from app.core.pagination import page_window
 from app.pricing import engine
 from app.pricing import service as pricing
@@ -46,7 +47,6 @@ TXN_TYPES: tuple[str, ...] = (
 )
 _CREDITS = frozenset({"top_up", "trial_grant", "refund"})
 _DEBITS = frozenset({"call_charge", "feature_charge"})
-_SIX = Decimal("0.000001")
 ZERO = Decimal(0)
 MIN_TOP_UP = Decimal("5.00")
 MAX_TOP_UP = Decimal("10000.00")
@@ -120,7 +120,7 @@ async def _existing_txn(
 def _check_amount(type: str, amount: Decimal) -> Decimal:
     if type not in TXN_TYPES:
         raise LedgerError(f"unknown transaction type {type!r}")
-    if amount != amount.quantize(_SIX):
+    if amount != amount.quantize(SIX):
         raise LedgerError("amounts carry at most six decimal places")
     if type in _CREDITS and amount <= 0:
         raise LedgerError(f"{type} must be positive")
@@ -128,7 +128,7 @@ def _check_amount(type: str, amount: Decimal) -> Decimal:
         raise LedgerError(f"{type} must be negative")
     if type == "adjustment" and amount == 0:
         raise LedgerError("adjustment must not be zero")
-    return amount.quantize(_SIX)
+    return amount.quantize(SIX)
 
 
 async def latest_seq_and_balance(session: AsyncSession, workspace_id: str) -> tuple[int, Decimal]:
@@ -607,7 +607,7 @@ async def charge_feature(
     ):
         if value < 0:
             raise ValueError(f"{name} must not be negative")
-    billable = billable_cost_usd.quantize(_SIX)
+    billable = billable_cost_usd.quantize(SIX)
     if billable != billable_cost_usd:
         raise ValueError("billable_cost_usd carries at most six decimal places")
     await lock_workspace(session, workspace_id)
@@ -633,9 +633,9 @@ async def charge_feature(
         session,
         workspace_id=workspace_id,
         feature_key=feature_key,
-        quantity=quantity.quantize(_SIX),
+        quantity=quantity.quantize(SIX),
         unit=unit,
-        raw_cost_usd=raw_cost_usd.quantize(_SIX),
+        raw_cost_usd=raw_cost_usd.quantize(SIX),
         billable_cost_usd=billable,
         ref_type=ref_type,
         ref_id=ref_id,

@@ -26,10 +26,10 @@ from app.calls import service as calls_service
 from app.calls.models import Call
 from app.calls.short_call import too_short
 from app.core.errors import ProblemError
+from app.core.money import SIX
 from app.evaluators.context import build_context
 from app.evaluators.settings import default_judge_model
 from app.llms.charges import charge_tokens
-from app.llms.client import SIX
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)

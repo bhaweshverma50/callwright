@@ -28,9 +28,10 @@ from app.analytics_chat.schemas import ChatRequest
 from app.billing import service as billing
 from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, field_error, problem_responses, too_many_requests, validation_failed
+from app.core.money import SIX
 from app.core.rate_limit import RateLimiter
 from app.llms.charges import charge_tokens
-from app.llms.client import SIX, ModelError, ModelTimeout, token_cost
+from app.llms.client import ModelError, ModelTimeout, token_cost
 from app.llms.runtime import runtime
 
 router = APIRouter(tags=["analytics"])

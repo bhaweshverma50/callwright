@@ -12,8 +12,9 @@ from collections.abc import Mapping
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from app.core.money import SIX
+
 SURCHARGE_LABELS = {"llm": "Model token surcharge", "tts": "Speech character surcharge"}
-_SIX = Decimal("0.000001")
 _TWO = Decimal("0.01")
 
 
@@ -22,7 +23,7 @@ def _dec(value: Any) -> Decimal:
 
 
 def _num(value: Decimal) -> float:
-    return float(value.quantize(_SIX, rounding=ROUND_HALF_UP))
+    return float(value.quantize(SIX, rounding=ROUND_HALF_UP))
 
 
 def cost_view(stored: Mapping[str, Any] | None) -> dict[str, Any] | None:

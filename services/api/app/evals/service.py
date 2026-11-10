@@ -10,7 +10,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -85,7 +84,7 @@ def est_cost(row: EvaluatorRow, values: Mapping[str, Any], judge_models: Sequenc
         return None
     model = str(values.get("judge_model") or judge_models[0])
     raw = token_cost(model, EST_INPUT_TOKENS, EST_OUTPUT_TOKENS)
-    return float(billable_cost(raw).quantize(Decimal("0.000001")))
+    return float(billable_cost(raw))
 
 
 def setting_view(r: Resolved, judge_models: Sequence[str]) -> dict[str, Any]:

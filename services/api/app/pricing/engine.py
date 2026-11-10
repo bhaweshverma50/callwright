@@ -17,12 +17,13 @@ from datetime import datetime
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
+from app.core.money import SIX
+
 CALL_COMPONENTS = ("stt", "llm", "tts", "nc", "platform")
 BUNDLE_UNITS = ("llm_input_tokens", "llm_output_tokens", "tts_chars")
 SURCHARGEABLE = frozenset({"llm", "tts"})
 
 MONEY_STEP = Decimal("0.001")
-SIX = Decimal("0.000001")
 FOUR = Decimal("0.0001")
 SIXTY = Decimal(60)
 THOUSAND = Decimal(1000)

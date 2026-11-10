@@ -33,6 +33,7 @@ from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
+from app.core.money import SIX
 from app.evals.current import current_runs_sql
 from app.evals.views import billed_for_calls
 from app.evaluators.models import EvaluatorRow
@@ -169,7 +170,7 @@ async def estimate_cost(
     models = judge_models(settings)
     for r in await enabled_evaluators(session, agent, settings):
         per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
-    return (per_run * run_count).quantize(Decimal("0.000001"))
+    return (per_run * run_count).quantize(SIX)
 
 
 def estimate_view(
@@ -625,7 +626,7 @@ async def finalize(
     attempt.evaluator_results = evidence
     attempt.treatment_runs_total = total
     attempt.treatment_runs_failed = failed
-    attempt.cost_usd = cost.quantize(Decimal("0.000001"))
+    attempt.cost_usd = cost.quantize(SIX)
     attempt.finished_at = now
     if fix is not None and fix.status == "validating":
         fix.status = result.decision

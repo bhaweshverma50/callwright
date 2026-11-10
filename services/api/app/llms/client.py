@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from decimal import ROUND_CEILING, Decimal
 
 from app.core.config import Settings
+from app.core.money import SIX
 from app.llms.adapters.anthropic import AnthropicAdapter
 from app.llms.adapters.azure_openai import AzureOpenAIAdapter
 from app.llms.adapters.base import ChatMessage, Completion, LlmAdapter, ModelError, ModelTimeout
@@ -24,7 +25,6 @@ from app.llms.service import load_catalog
 __all__ = ["ChatMessage", "Completion", "LlmClient", "ModelError", "ModelRef", "ModelTimeout", "token_cost"]
 
 MILLION = Decimal(1_000_000)
-SIX = Decimal("0.000001")
 FAKE_PRICE_MODEL = "gpt-5-mini"
 
 

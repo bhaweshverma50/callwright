@@ -23,6 +23,7 @@ from app.agents.models import Agent
 from app.calls.models import Call, CallEvent
 from app.calls.ports import registry
 from app.calls.quality_port import EvaluatorStat
+from app.core.money import SIX
 from app.dashboard.aggregates import daily_average, delta_pp, top_with_others, zero_fill
 from app.dashboard.periods import Window
 
@@ -43,7 +44,7 @@ def _where(window: Window, agent_ids: Sequence[str]) -> list[ColumnElement[bool]
 
 
 def _money(value: Any) -> float:
-    return float(Decimal(value or 0).quantize(Decimal("0.000001")))
+    return float(Decimal(value or 0).quantize(SIX))
 
 
 async def first_call_day(session: AsyncSession, tz: str, agent_ids: Sequence[str]) -> date | None:

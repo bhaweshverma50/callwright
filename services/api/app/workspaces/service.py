@@ -14,6 +14,7 @@ from app.core.auth import Principal, resolve_subject
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.ids import new_id
+from app.core.money import SIX
 from app.workspaces.models import User, Workspace
 
 
@@ -67,7 +68,7 @@ async def bootstrap_workspace(db: Database, settings: Settings, *, subject: str,
                     session,
                     workspace_id=workspace_id,
                     type="trial_grant",
-                    amount_usd=Decimal(settings.trial_credit_usd).quantize(Decimal("0.000001")),
+                    amount_usd=Decimal(settings.trial_credit_usd).quantize(SIX),
                     description="Trial credit",
                 )
     except IntegrityError:

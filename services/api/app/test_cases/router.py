@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Query, Request
@@ -14,6 +13,7 @@ from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, field_error, problem_responses, validation_failed
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
+from app.core.money import SIX
 from app.core.pagination import PageParam, PageSizeParam, page_meta
 from app.llms.runtime import runtime
 from app.test_cases import generate as drafting
@@ -156,7 +156,7 @@ async def generate_cases(
                 ref_type="agent",
                 ref_id=agent.id,
             )
-        return 200, {"drafts": drafts, "cost_usd": float(charge.billable_usd.quantize(Decimal("0.000001")))}
+        return 200, {"drafts": drafts, "cost_usd": float(charge.billable_usd.quantize(SIX))}
 
     return await run_idempotent(
         state.db,
