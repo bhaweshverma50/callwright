@@ -53,7 +53,7 @@ def test_adapter_catalog_lookups() -> None:
 def test_system_items_name_a_known_event() -> None:
     assert TranscriptItem(type="system", event="vendor_error").event == "vendor_error"
     with pytest.raises(ValidationError):
-        TranscriptItem(type="system", event="something_else")  # type: ignore[arg-type]
+        TranscriptItem(type="system", event="something_else")
 
 
 def test_diagnostics_format_and_parse() -> None:
