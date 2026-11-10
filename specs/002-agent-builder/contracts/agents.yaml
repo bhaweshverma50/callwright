@@ -329,8 +329,25 @@ components:
         name: {type: string}
         type: {$ref: '#/components/schemas/AgentType'}
         language: {type: string}
-        llm_model: {type: string, description: '"provider/model" of the draft'}
-        voice_label: {type: string, description: Voice name or id of the draft}
+        llm_model: {type: string, description: '"provider/model" of the published version, or of the draft when the agent is not published'}
+        llm_extra_models:
+          type: array
+          items: {type: string}
+          description: 'Flow agents: "provider/model" of the other models the nodes override to'
+        voice_label: {type: string, description: Voice name or id of the published version (draft when not published)}
+        voice_extra_labels:
+          type: array
+          items: {type: string}
+          description: 'Flow agents: the other voices the nodes override to'
+        stt_label: {type: string, description: 'Speech recognition provider and model ("Deepgram Nova 3", "Deepgram (Auto)")'}
+        stt_extra_labels:
+          type: array
+          items: {type: string}
+          description: 'Flow agents: the other speech recognition choices the nodes override to'
+        vendor_warnings:
+          type: array
+          items: {type: string}
+          description: Readable reasons the agent uses a vendor this platform cannot run (live calls are refused); each one puts the agent under Needs attention
         published_version:
           oneOf:
             - {$ref: '#/components/schemas/VersionRef'}

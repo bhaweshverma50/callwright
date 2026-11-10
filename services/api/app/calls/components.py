@@ -20,6 +20,8 @@ from callwright_contract import diagnostics as diag
 from callwright_contract.adapters import AdapterCatalog
 
 from app.agents.defaults import ADVANCED_DEFAULTS, CALL_BEHAVIOR_DEFAULTS, nc_default
+from app.core.vendors import provider_runnable, runnable_providers
+from app.llms.service import label_for as llm_label
 from app.llms.service import load_catalog as load_llm_catalog
 from app.pricing import engine
 from app.voices.catalog import DEFAULT_LANGUAGE
@@ -154,19 +156,34 @@ def unsupported(components: ResolvedComponents, catalog: AdapterCatalog) -> str 
     return None
 
 
-# LLM providers the voice worker runs only with a platform key (003 T069). The API and the voice
-# worker read the same secret, so a deployment without it refuses live calls here instead of
-# letting the worker fail them after the room exists. Simulations are not gated: the text runner
-# answers with its offline scripts when it has no key.
-KEYED_LLM_PROVIDERS: Mapping[str, str] = {"anthropic": "anthropic_api_key"}
+_NOUN = {"stt": "speech recognition", "llm": "language model", "tts": "voice", "nc": "noise cancellation"}
 
 
-def unconfigured(components: ResolvedComponents, settings: object) -> str | None:
-    """Diagnostic when the agent's language model needs a key this deployment does not hold."""
-    attr = KEYED_LLM_PROVIDERS.get(components.llm.provider)
-    if attr is None or getattr(settings, attr, None):
-        return None
-    return diag.diagnostic(diag.UNSUPPORTED_VENDOR, "llm", components.llm.provider)
+def describe(vendor: Vendor) -> str:
+    """``Sarvam speech recognition``: the vendor as a person reads it."""
+    speech = load_speech_catalog()
+    label = vendor.provider
+    if vendor.kind == "llm":
+        label = llm_label(vendor.provider)
+    elif vendor.kind == "stt":
+        found = speech.stt_provider(vendor.provider)
+        label = found.label if found is not None else label
+    elif vendor.kind == "tts":
+        found_tts = speech.tts_provider(vendor.provider)
+        label = found_tts.label if found_tts is not None else label
+    else:
+        label = next((n.label for n in speech.noise_cancellation if n.provider == vendor.provider), label)
+    return f"{label} {_NOUN[vendor.kind]}"
+
+
+def not_set_up(vendor: Vendor) -> str:
+    return f"{describe(vendor)} is not set up on this platform."
+
+
+def unavailable_vendors(components: ResolvedComponents, settings: object) -> list[Vendor]:
+    """The agent's vendors this deployment cannot run, in stt, llm, tts, nc order."""
+    listed = runnable_providers(settings)
+    return [v for v in components.vendors() if not provider_runnable(v.provider, settings, listed)]
 
 
 def usage_meters(usage: Mapping[str, Any] | None) -> dict[str, int]:

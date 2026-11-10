@@ -200,6 +200,7 @@ components:
       properties:
         provider: {type: string, examples: [deepgram, sarvam, assemblyai]}
         label: {type: string}
+        available: {type: boolean, description: False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate}
         supports_auto: {type: boolean, description: True when model null lets the platform choose per language}
         auto:
           description: The Auto choice (config `stt.model = null`) as the picker shows it; null when supports_auto is false
@@ -247,6 +248,7 @@ components:
       properties:
         provider: {type: string, examples: [elevenlabs, cartesia, fishaudio]}
         label: {type: string}
+        available: {type: boolean, description: False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate}
         default_model: {type: string}
         default_voice_by_language:
           type: object
@@ -278,6 +280,7 @@ components:
       required: [provider, model, label, default, price_per_min_usd]
       properties:
         provider: {type: string}
+        available: {type: boolean, description: False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate}
         model: {type: string}
         label: {type: string}
         description: {type: [string, 'null']}

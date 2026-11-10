@@ -72,6 +72,7 @@ components:
       properties:
         id: {type: string, examples: [azure_openai, openai]}
         label: {type: string}
+        available: {type: boolean, description: False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate}
         models:
           type: array
           items: {$ref: '#/components/schemas/LlmModel'}

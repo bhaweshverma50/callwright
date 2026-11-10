@@ -137,9 +137,9 @@ class Refusal:
         return ProblemError(self.status, self.code, title, self.detail, extra=extra)
 
 
-def refusal(code: str, diagnostic: str | None = None) -> Refusal:
+def refusal(code: str, diagnostic: str | None = None, detail: str | None = None) -> Refusal:
     status, reason = REFUSALS[code]
-    return Refusal(code, status, reason, diagnostic or code, _DETAILS[code])
+    return Refusal(code, status, reason, diagnostic or code, detail or _DETAILS[code])
 
 
 @dataclass
@@ -263,10 +263,16 @@ async def _checks(
         return refusal(diag.FLOW_NOT_COMPILED)
     components = comp.resolve(snapshot.config, catalog)
     diagnostic = comp.unsupported(components, catalog)
-    if diagnostic is None and policy(request.origin).has_real_audio:
-        diagnostic = comp.unconfigured(components, get_settings())
     if diagnostic is not None:
         return refusal("unsupported_vendor", diagnostic)
+    if policy(request.origin).has_real_audio:
+        missing = comp.unavailable_vendors(components, get_settings())
+        if missing:
+            return refusal(
+                "unsupported_vendor",
+                diag.diagnostic(diag.UNSUPPORTED_VENDOR, missing[0].kind, missing[0].provider),
+                comp.not_set_up(missing[0]),
+            )
     try:
         quote = await pricing.quote(session, components.pricing())
     except pricing.CatalogUnavailable:

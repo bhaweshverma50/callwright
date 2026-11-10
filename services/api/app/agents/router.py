@@ -93,6 +93,9 @@ async def list_agents(
             if row.published_number is not None and row.published_created_at is not None
             else None,
             row.has_publish_blockers,
+            config=row.config,
+            vendor_warnings=row.vendor_warnings,
+            flow_graph=row.flow_graph,
         )
         for row in rows
     ]

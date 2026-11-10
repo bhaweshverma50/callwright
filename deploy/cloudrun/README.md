@@ -92,6 +92,8 @@ printf %s "$VALUE" | gcloud secrets versions add NAME --data-file=- --account "$
 | optional, voice worker only: `DEEPGRAM_API_KEY`, `ASSEMBLYAI_API_KEY`, `SARVAM_API_KEY`, `FISHAUDIO_API_KEY`, `SANAS_API_KEY`, `AI_COUSTICS_API_KEY` | VM voice worker | written to `voice.env` when the secret exists (`deploy/vm/README.md`) |
 | optional: `STRIPE_SECRET_KEY`, `OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `CARTESIA_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` | API, VM worker | mounted only when the secret exists; without them the adapters run in fake mode |
 
+The API service also gets `VOICE_VENDOR_KEYS` (comma-separated provider ids), computed by `deploy.sh` from which of the vendor secrets above exist. Live calls and publishing refuse agents on any provider not listed (`unsupported_vendor`), and the pickers and the agents list mark them. It is left unset when no vendor secret is found, which turns the gating off.
+
 `ENV=staging` refuses the development defaults of `AUTH_JWT_SECRET`, `SECRETS_MASTER_KEY`,
 `SERVICE_TOKEN`, `STRIPE_WEBHOOK_SECRET` and `LIVEKIT_API_SECRET`, so a missing secret stops the
 service at startup instead of running with a known key.

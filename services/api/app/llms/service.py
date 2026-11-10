@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 
+from app.core.vendors import provider_available
 from app.pricing import engine
 
 CATALOG_PATH = Path(__file__).with_name("catalog.yaml")
@@ -172,5 +173,5 @@ def catalog_json(
                     "withdrawn": model.withdrawn,
                 }
             )
-        providers.append({"id": pid, "label": label, "models": models})
+        providers.append({"id": pid, "label": label, "available": provider_available(pid), "models": models})
     return {"default": {"provider": cat.default_provider, "model": cat.default_model}, "providers": providers}

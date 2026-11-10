@@ -27,19 +27,19 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
 from callwright_contract.protocol import MAX_KNOWLEDGE_BASES
 from opentelemetry import trace
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, literal_column, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.agent_versions.canonical import content_hash
 from app.agent_versions.models import AgentVersion
-from app.agents import defaults, hooks
+from app.agents import defaults, hooks, vendors
 from app.agents.checks import validate_config
 from app.agents.defaults import CURRENT_SCHEMA_VERSION
 from app.agents.models import Agent
@@ -177,8 +177,8 @@ async def _validated(
     )
     if result.errors:
         raise validation_failed(result.errors)
-    if publish and result.publish_blockers:
-        raise publish_blocked(result.publish_blockers)
+    if publish and (result.publish_blockers or vendors.issues(result.normalized_config)):
+        raise publish_blocked(result.publish_blockers + vendors.issues(result.normalized_config))
     return result
 
 
@@ -568,7 +568,7 @@ async def current_blockers(
         workspace_id=agent.workspace_id,
         allow_http_webhook=allow_http_webhook,
     )
-    return result.errors + result.publish_blockers
+    return result.errors + result.publish_blockers + vendors.issues(result.normalized_config)
 
 
 async def publish(
@@ -688,6 +688,10 @@ class ListedAgent:
     published_number: int | None
     published_created_at: datetime | None
     has_publish_blockers: bool
+    # What the card shows: the published version's vendors when there is one, else the draft's.
+    config: Mapping[str, Any] = field(default_factory=dict)
+    vendor_warnings: list[str] = field(default_factory=list)
+    flow_graph: Mapping[str, Any] | None = None
 
 
 AgentStatus = Literal["live", "draft", "attention"]
@@ -720,6 +724,7 @@ async def list_agents(
     pinned = aliased(AgentVersion)
     draft = aliased(AgentVersion)
     blocked = func.coalesce(func.jsonb_array_length(draft.publish_blockers), 0) > 0
+    blocked = blocked | vendors.attention_condition(Agent.draft_config, pinned.config, pinned.id.is_not(None))
     by_status = {
         "live": Agent.pinned_version_id.is_not(None),
         "draft": Agent.pinned_version_id.is_(None),
@@ -733,6 +738,7 @@ async def list_agents(
             )
             .select_from(Agent)
             .outerjoin(draft, draft.id == Agent.draft_version_id)
+            .outerjoin(pinned, pinned.id == Agent.pinned_version_id)
             .where(*where)
         )
     ).one()
@@ -751,6 +757,7 @@ async def list_agents(
             pinned.version_number,
             pinned.created_at,
             func.jsonb_array_length(draft.publish_blockers),
+            _vendor_slice(pinned.config),
         )
         .outerjoin(pinned, and_(pinned.id == Agent.pinned_version_id))
         .outerjoin(draft, and_(draft.id == Agent.draft_version_id))
@@ -758,10 +765,42 @@ async def list_agents(
         .order_by(*order)
         .slice(*page_window(page, page_size))
     )
+    fetched = rows.all()
+    graphs = await _flow_graphs(session, [a.id for a, *_ in fetched if a.type == "flow"])
     out = [
-        ListedAgent(agent, number, created, bool(blockers)) for agent, number, created, blockers in rows.all()
+        ListedAgent(
+            agent,
+            number,
+            created,
+            bool(blockers),
+            config=pinned_slice if number is not None else agent.draft_config,
+            vendor_warnings=vendors.messages(
+                agent.draft_config, pinned_slice if number is not None else None
+            ),
+            flow_graph=graphs.get(agent.id),
+        )
+        for agent, number, created, blockers, pinned_slice in fetched
     ]
     return out, total, counts
+
+
+def _vendor_slice(config: Any) -> Any:
+    """The few blocks of a version's config the agents list reads (not its tools or flow)."""
+    args: list[Any] = []
+    for key in ("language", "stt", "llm", "tts", "noise_cancellation"):
+        args += [literal_column(f"'{key}'"), config[key]]
+    return func.jsonb_build_object(*args)
+
+
+async def _flow_graphs(session: AsyncSession, agent_ids: list[str]) -> dict[str, Mapping[str, Any]]:
+    """Flow graphs of the page's flow agents in one query (the card lists the models, voices and
+    speech recognition its nodes override)."""
+    if not agent_ids:
+        return {}
+    rows = await session.execute(
+        text("select agent_id, graph from flows where agent_id = any(:ids)"), {"ids": agent_ids}
+    )
+    return {str(a): g for a, g in rows.all()}
 
 
 def voice_label(config: Mapping[str, Any]) -> str:

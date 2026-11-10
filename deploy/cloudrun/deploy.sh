@@ -68,6 +68,23 @@ VOICE_OPTIONAL_SECRETS=(DEEPGRAM_API_KEY ASSEMBLYAI_API_KEY SARVAM_API_KEY FISHA
 OPTIONAL_SECRETS=(STRIPE_SECRET_KEY OPENAI_API_KEY DEEPGRAM_API_KEY AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_KEY ANTHROPIC_API_KEY
   ELEVENLABS_API_KEY CARTESIA_API_KEY SUPABASE_URL SUPABASE_ANON_KEY
   S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY RECORDINGS_GCP_CREDENTIALS)
+# Provider id -> the secrets (joined by +) the voice worker needs to run it; the API gets the ids it
+# can run as VOICE_VENDOR_KEYS and refuses live calls for agents on any other provider. Every
+# provider of the contract's adapter catalog is listed (a test keeps the two in step); "none"
+# (noise cancellation off) is left out; "sanas" needs no secret (its adapter passes audio through).
+VENDOR_PROVIDER_SECRETS=(
+  deepgram:DEEPGRAM_API_KEY
+  assemblyai:ASSEMBLYAI_API_KEY
+  sarvam:SARVAM_API_KEY
+  openai:OPENAI_API_KEY
+  azure_openai:AZURE_OPENAI_ENDPOINT+AZURE_OPENAI_API_KEY
+  anthropic:ANTHROPIC_API_KEY
+  elevenlabs:ELEVENLABS_API_KEY
+  cartesia:CARTESIA_API_KEY
+  fishaudio:FISHAUDIO_API_KEY
+  sanas:
+  ai_coustics:AI_COUSTICS_API_KEY
+)
 # Object storage (uploads and call recordings): one Cloud Storage bucket, used once its HMAC key
 # exists as S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY (deploy/vm/README.md, "Recordings").
 STORAGE_BUCKET="${STORAGE_BUCKET:-callwright-dev-data}"
@@ -91,13 +108,37 @@ secrets_flag() {
   printf '%s' "$out"
 }
 
-present_optional_secrets() {
+present_secrets() {
   local name
-  for name in "${OPTIONAL_SECRETS[@]}"; do
+  for name in "$@"; do
     if [ "${DRY_RUN:-0}" != "1" ] && gc secrets describe "$name" >/dev/null 2>&1; then
       printf '%s\n' "$name"
     fi
   done
+}
+
+present_optional_secrets() { present_secrets "${OPTIONAL_SECRETS[@]}"; }
+
+# Comma-separated provider ids whose secrets all exist (the VM renders voice.env from the same
+# secrets). Azure OpenAI is runnable when OpenAI is: the worker falls back to it without Azure
+# (deploy/vm/README.md, "LLM provider"). Empty when nothing is known (dry run).
+vendor_voice_keys() {
+  local present entry id needs name ok ids=()
+  present="$(present_secrets "${OPTIONAL_SECRETS[@]}" "${VOICE_OPTIONAL_SECRETS[@]}")"
+  for entry in "${VENDOR_PROVIDER_SECRETS[@]}"; do
+    id="${entry%%:*}"
+    needs="${entry#*:}"
+    ok=1
+    for name in ${needs//+/ }; do
+      grep -qx "$name" <<<"$present" || ok=0
+    done
+    [ "$ok" = 1 ] && ids+=("$id")
+  done
+  case " ${ids[*]-} " in
+    *" openai "*) case " ${ids[*]} " in *" azure_openai "*) ;; *) ids+=(azure_openai) ;; esac ;;
+  esac
+  local IFS=,
+  printf '%s' "${ids[*]-}"
 }
 
 step_setup() {
@@ -194,7 +235,7 @@ step_migrate() {
 }
 
 step_api() {
-  local url secrets env
+  local url secrets env vendor_keys
   url=""
   if [ "${DRY_RUN:-0}" != "1" ]; then
     url="$(gc run services describe callwright-api --region "$REGION" --format 'value(status.url)' 2>/dev/null || true)"
@@ -220,6 +261,9 @@ step_api() {
     env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
   fi
   [ -n "$url" ] && env+="@API_BASE_URL=$url"
+  # Which vendors the voice worker can run; unset (nothing found) means the API does not gate.
+  vendor_keys="$(vendor_voice_keys)"
+  [ -n "$vendor_keys" ] && env+="@VOICE_VENDOR_KEYS=$vendor_keys"
   # 010 telephony: LIVEKIT_SIP_HOST=sip.bhawesh.dev turns SIP on, LIVEKIT_SIP_HOST= (empty) turns
   # it off, unset keeps what the running service has (--set-env-vars would otherwise drop it).
   if [ -z "${LIVEKIT_SIP_HOST+set}" ] && [ "${DRY_RUN:-0}" != "1" ]; then

@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_versions.models import AgentVersion
-from app.agents import hooks
+from app.agents import hooks, vendors
 from app.agents.models import Agent
 from app.agents.validation import ConfigValidationResult, PureContext, validate_pure
 from app.agents.webhook_url import Resolver, check_resolved
@@ -136,6 +136,8 @@ async def validate_config(
             result.errors.extend(extra.errors)
             result.publish_blockers.extend(extra.publish_blockers)
             result.warnings.extend(extra.warnings)
+        if not result.errors:
+            result.warnings.extend(vendors.issues(result.normalized_config))
         result.valid = not result.errors
         span.set_attribute("validation.errors", len(result.errors))
         return result

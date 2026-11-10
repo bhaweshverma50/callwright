@@ -177,6 +177,11 @@ class Settings(BaseSettings):
     azure_openai_api_key: SecretStr | None = None
     azure_openai_api_version: str = "2025-04-01-preview"
     anthropic_api_key: SecretStr | None = None
+    # Provider ids the voice worker holds credentials for, comma-separated (``deepgram,openai,
+    # elevenlabs``); deploy/cloudrun/deploy.sh computes it from the vendor secrets that exist.
+    # Unset: no gating (dev, test and offline runs). Set: live calls and publishing refuse agents
+    # that use any other provider (calls/components.py).
+    voice_vendor_keys: str | None = None
     # Calls and analytics (006). Model references use the gateway format above; without a key
     # for the provider the module's deterministic planner answers (tests, offline dev).
     analytics_chat_model: str = "openai/gpt-5-mini"

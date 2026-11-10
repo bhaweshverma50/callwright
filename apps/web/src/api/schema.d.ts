@@ -3919,10 +3919,20 @@ export interface components {
             name: string;
             type: components["schemas"]["AgentType"];
             language: string;
-            /** @description "provider/model" of the draft */
+            /** @description "provider/model" of the published version, or of the draft when the agent is not published */
             llm_model: string;
-            /** @description Voice name or id of the draft */
+            /** @description Flow agents: "provider/model" of the other models the nodes override to */
+            llm_extra_models?: string[];
+            /** @description Voice name or id of the published version (draft when not published) */
             voice_label: string;
+            /** @description Flow agents: the other voices the nodes override to */
+            voice_extra_labels?: string[];
+            /** @description Speech recognition provider and model ("Deepgram Nova 3", "Deepgram (Auto)") */
+            stt_label?: string;
+            /** @description Flow agents: the other speech recognition choices the nodes override to */
+            stt_extra_labels?: string[];
+            /** @description Readable reasons the agent uses a vendor this platform cannot run (live calls are refused); each one puts the agent under Needs attention */
+            vendor_warnings?: string[];
             published_version: components["schemas"]["VersionRef"] | null;
             has_publish_blockers?: boolean;
             /** Format: date-time */
@@ -4115,6 +4125,8 @@ export interface components {
              */
             id: string;
             label: string;
+            /** @description False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate */
+            available?: boolean;
             models: components["schemas"]["LlmModel"][];
         };
         LlmCatalog: {
@@ -4214,6 +4226,8 @@ export interface components {
              */
             provider: string;
             label: string;
+            /** @description False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate */
+            available?: boolean;
             /** @description True when model null lets the platform choose per language */
             supports_auto: boolean;
             /** @description The Auto choice (config `stt.model = null`) as the picker shows it; null when supports_auto is false */
@@ -4257,6 +4271,8 @@ export interface components {
              */
             provider: string;
             label: string;
+            /** @description False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate */
+            available?: boolean;
             default_model: string;
             /** @description Language code to default voice id; used for new agents and on provider switch (FR-010) */
             default_voice_by_language?: {
@@ -4283,6 +4299,8 @@ export interface components {
         };
         NoiseCancellationOption: {
             provider: string;
+            /** @description False when the voice worker holds no credentials for this provider on this deployment (agents on it cannot take live calls); true when the deployment does not gate */
+            available?: boolean;
             model: string;
             label: string;
             description?: string | null;
@@ -5704,6 +5722,8 @@ export interface components {
             channel: components["schemas"]["Channel"];
             origin: components["schemas"]["Origin"];
             disconnect_reason?: components["schemas"]["DisconnectReason"] | null;
+            /** @description Machine code of why the call failed or was refused, for example `unsupported_vendor:stt/sarvam` (code, then its parts joined by `/`); null otherwise. */
+            diagnostic?: string | null;
             duration_s: number;
             status: components["schemas"]["CallStatus"];
             /**

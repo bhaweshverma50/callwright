@@ -251,6 +251,7 @@ def list_item(
         "channel": call.channel,
         "origin": call.origin,
         "disconnect_reason": call.disconnect_reason,
+        "diagnostic": call.diagnostic,
         "duration_s": int(call.billable_seconds or 0),
         "status": call.status,
         "connected_at": call.connected_at.isoformat() if call.connected_at else None,

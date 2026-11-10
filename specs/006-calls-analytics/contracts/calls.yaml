@@ -270,6 +270,11 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/DisconnectReason" }
             - { type: "null" }
+        diagnostic:
+          type: [string, "null"]
+          description: >-
+            Machine code of why the call failed or was refused, for example
+            `unsupported_vendor:stt/sarvam` (code, then its parts joined by `/`); null otherwise.
         duration_s: { type: integer, minimum: 0 }
         status: { $ref: "#/components/schemas/CallStatus" }
         connected_at:

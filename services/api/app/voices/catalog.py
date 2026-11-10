@@ -19,6 +19,7 @@ from typing import Any
 import yaml
 from callwright_contract.protocol import SttAuto
 
+from app.core.vendors import provider_available
 from app.pricing import engine
 
 CATALOG_PATH = Path(__file__).with_name("catalog.yaml")
@@ -399,6 +400,7 @@ def catalog_json(
             {
                 "provider": p.provider,
                 "label": p.label,
+                "available": provider_available(p.provider),
                 "supports_auto": p.supports_auto,
                 "auto": (
                     {
@@ -426,6 +428,7 @@ def catalog_json(
             {
                 "provider": t.provider,
                 "label": t.label,
+                "available": provider_available(t.provider),
                 "default_model": t.default_model,
                 "default_voice_by_language": {code: t.voice_for(code) for code in codes},
                 "voice_listing": dict(t.voice_listing),
@@ -462,6 +465,7 @@ def catalog_json(
         "noise_cancellation": [
             {
                 "provider": n.provider,
+                "available": provider_available(n.provider),
                 "model": n.model,
                 "label": n.label,
                 "description": n.description,
