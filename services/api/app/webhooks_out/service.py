@@ -41,9 +41,6 @@ def new_secret() -> str:
     return "whsec_" + base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
 
 
-# Signing secrets --------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class SecretView:
     secret_last4: str
@@ -146,9 +143,6 @@ async def signing_secrets(
     if row.previous_secret_id is not None and row.previous_expires_at and row.previous_expires_at > now:
         out.append(await _secret_value(session, wrapper, workspace_id, row.previous_secret_id))
     return out
-
-
-# Envelopes --------------------------------------------------------------------------------
 
 
 def _iso(value: datetime | None) -> str | None:

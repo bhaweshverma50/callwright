@@ -17,7 +17,7 @@ from typing import Any, Literal
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 
 Strategy = Literal["random", "failed", "disagreement"]
 

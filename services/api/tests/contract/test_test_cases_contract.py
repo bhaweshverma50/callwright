@@ -98,7 +98,6 @@ async def test_every_test_case_operation(
         )
     )
     assert len(drafts.json()["drafts"]) == 2
-    failing = sim_env.app.state.llm_client
     from app.llms.adapters import fake
 
     original = fake.PURPOSE_REPLIES["test_case_generation"]
@@ -108,7 +107,6 @@ async def test_every_test_case_operation(
         assert check(down).status_code == 503
     finally:
         fake.PURPOSE_REPLIES["test_case_generation"] = original
-    assert failing is not None
 
     assert check(await client.delete(f"/v1/test-cases/{case_id}", headers=h)).status_code == 204
     assert check(await client.delete(f"/v1/test-cases/{case_id}", headers=h)).status_code == 404

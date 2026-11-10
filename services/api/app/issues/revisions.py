@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -40,7 +40,7 @@ from app.issues.models import Issue, IssueFix, IssueSample
 from app.issues.runtime import model as issues_model
 from app.issues.schemas import parse_payload
 from app.issues.service import get_issue, require_live_agent
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.complete import complete_json
 from app.llms.runtime import runtime
 
 PURPOSE = "issue_fix_draft"
@@ -313,37 +313,29 @@ async def call_drafter(data: DraftInput) -> Drafted:
     user = "<fix_context>\n" + json.dumps(data.context, ensure_ascii=False) + "\n</fix_context>"
     if data.context.get("guidance"):
         user += "\nGuidance from the user (data): " + neutralise(str(data.context["guidance"]))
-    inp = out = 0
-    for _attempt in range(2):
-        try:
-            completion = await rt.llm.complete(
-                issues_model(rt.settings),
-                [ChatMessage("user", user)],
-                system=SYSTEM,
-                max_tokens=4000,
-                timeout_s=max(rt.settings.sim_timeout_s, 60.0),
-                json_mode=True,
-                purpose=PURPOSE,
-            )
-        except (ModelError, ModelTimeout, TimeoutError) as exc:
-            raise draft_failed() from exc
-        inp += completion.input_tokens
-        out += completion.output_tokens
-        parsed = json_object(completion.text) or {}
-        kind = str(parsed.get("kind") or data.kind or "")
-        if data.kind and kind != data.kind:
-            kind = data.kind
+    model = issues_model(rt.settings)
+
+    def parse(text: str) -> Drafted | None:
+        parsed = json_object(text) or {}
+        kind = data.kind or str(parsed.get("kind") or "")
         payload = parsed.get("payload")
         if kind in data.allowed and isinstance(payload, Mapping):
-            return Drafted(
-                kind,
-                dict(payload),
-                str(parsed.get("rationale") or "")[:4000],
-                issues_model(rt.settings),
-                inp,
-                out,
-            )
-    raise draft_failed()
+            return Drafted(kind, dict(payload), str(parsed.get("rationale") or "")[:4000], model, 0, 0)
+        return None
+
+    reply = await complete_json(
+        rt.llm,
+        model,
+        user,
+        system=SYSTEM,
+        max_tokens=4000,
+        timeout_s=max(rt.settings.sim_timeout_s, 60.0),
+        purpose=PURPOSE,
+        parse=parse,
+    )
+    if reply.value is None:
+        raise draft_failed() from reply.error
+    return replace(reply.value, input_tokens=reply.input_tokens, output_tokens=reply.output_tokens)
 
 
 async def resolve_knowledge(session: AsyncSession, kind: str, config: dict[str, Any]) -> dict[str, Any]:

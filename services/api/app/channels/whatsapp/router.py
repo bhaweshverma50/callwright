@@ -139,9 +139,6 @@ async def delete_caller_route(
     return Response(status_code=204)
 
 
-# Public callback (Meta) ---------------------------------------------------------------------
-
-
 @public_router.get(
     "/whatsapp/webhook",
     response_class=PlainTextResponse,

@@ -15,7 +15,7 @@ from app.core import url_guard
 from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import new_id, path_id
-from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.core.pagination import PageParam, PageSizeParam, page_meta, page_window
 from app.core.queue import Deferred, dispatch
 from app.core.secrets import key_wrapper
 from app.webhooks_out import jobs, service
@@ -77,8 +77,7 @@ async def list_deliveries(
                 select(WebhookDelivery)
                 .where(*where)
                 .order_by(WebhookDelivery.created_at.desc(), WebhookDelivery.id.desc())
-                .offset((page - 1) * page_size)
-                .limit(page_size)
+                .slice(*page_window(page, page_size))
             )
         ).scalars()
         items = [service.delivery_json(r) for r in rows]

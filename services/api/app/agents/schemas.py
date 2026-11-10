@@ -33,7 +33,6 @@ MAX_SWITCH_LANGUAGES = 30
 TEMPERATURE_RANGE = (0, 2)
 DTMF_DIGITS_RANGE = (1, 99)
 _DTMF = ADVANCED_DEFAULTS["dtmf"]
-_BACKGROUND = ADVANCED_DEFAULTS["background_audio"]
 
 
 def _rng(pointer: str) -> Any:

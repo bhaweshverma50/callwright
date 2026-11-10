@@ -15,6 +15,7 @@ from app.core.errors import ProblemError, field_error, problem_responses, valida
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.llms.runtime import runtime
 from app.test_cases import generate as drafting
 from app.test_cases import import_format, service
 from app.test_cases.schemas import CategoryCreate, GenerateBody, ImportBody, TestCaseCreate, TestCaseUpdate
@@ -131,7 +132,7 @@ async def generate_cases(
                 raise billing.insufficient_credit("Add funds to draft test cases.")
         try:
             drafts, usage = await drafting.generate(
-                state.llm_client,
+                runtime().llm,
                 model,
                 agent,
                 target.config,

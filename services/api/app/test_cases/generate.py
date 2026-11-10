@@ -22,9 +22,10 @@ from typing import Any
 from app.agents.models import Agent
 from app.evaluators.judge import json_object
 from app.flows.compiled import compiled_view
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.adapters.base import ChatMessage
 from app.llms.adapters.fake import PURPOSE_REPLIES
 from app.llms.client import token_cost
+from app.llms.complete import complete_json
 from app.test_cases.models import TestCategory
 
 PURPOSE = "test_case_generation"
@@ -161,30 +162,22 @@ async def generate(
     slugs = [category] if category else [c.slug for c in categories]
     counts = plan_counts(slugs, clamp_count(count))
     request = build_request(agent, config, categories, counts, guidance)
-    usage = GenerationUsage(model, 0, 0)
-    for _attempt in range(2):
+    names = {c.slug: c.name for c in categories}
+
+    def parse(text: str) -> list[dict[str, Any]] | None:
         try:
-            completion = await llm.complete(
-                model,
-                [ChatMessage("user", request)],
-                system=SYSTEM,
-                max_tokens=4000,
-                timeout_s=timeout_s,
-                json_mode=True,
-                purpose=PURPOSE,
-            )
-        except (ModelTimeout, ModelError, TimeoutError) as exc:
-            raise GenerationFailed(f"The model did not answer: {exc}") from exc
-        usage = GenerationUsage(
-            model,
-            usage.input_tokens + completion.input_tokens,
-            usage.output_tokens + completion.output_tokens,
-        )
-        try:
-            return parse_drafts(completion.text, counts, {c.slug: c.name for c in categories}), usage
+            return parse_drafts(text, counts, names)
         except GenerationFailed:
-            continue
-    raise GenerationFailed("The model returned no usable test cases")
+            return None
+
+    reply = await complete_json(
+        llm, model, request, system=SYSTEM, max_tokens=4000, timeout_s=timeout_s, purpose=PURPOSE, parse=parse
+    )
+    if reply.error is not None:
+        raise GenerationFailed(f"The model did not answer: {reply.error}") from reply.error
+    if reply.value is None:
+        raise GenerationFailed("The model returned no usable test cases")
+    return reply.value, GenerationUsage(model, reply.input_tokens, reply.output_tokens)
 
 
 _FAKE_LINES: dict[str, list[tuple[str, str, str]]] = {

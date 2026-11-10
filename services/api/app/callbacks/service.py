@@ -49,7 +49,7 @@ from app.calls.origins import policy
 from app.core.db import Database
 from app.core.errors import ProblemError, field_error, not_found
 from app.core.ids import new_id
-from app.core.pagination import page_meta
+from app.core.pagination import page_meta, page_window
 from app.outbound import calling_hours
 from app.outbound import service as outbound
 from app.outbound.schemas import OutboundCallRequest
@@ -60,9 +60,6 @@ MIN_LEAD = timedelta(minutes=1)
 MAX_AHEAD = timedelta(days=30)
 MISSED_AFTER = timedelta(minutes=30)
 DUE_BATCH = 50
-
-
-# Time ------------------------------------------------------------------------------------------
 
 
 def _local(instant: datetime, zone: str) -> datetime:
@@ -79,9 +76,6 @@ def _time_problem(at: datetime, now: datetime) -> str | None:
     if at > now + MAX_AHEAD:
         return "Callbacks can be booked at most 30 days ahead. Ask the caller for an earlier time."
     return None
-
-
-# Views -----------------------------------------------------------------------------------------
 
 
 def to_out(row: ScheduledCallback, agent_name: str | None) -> dict[str, Any]:
@@ -138,9 +132,7 @@ async def list_callbacks(
         if status == "scheduled"
         else (ScheduledCallback.scheduled_at.desc(), ScheduledCallback.id.desc())
     )
-    rows = (
-        await session.execute(query.order_by(*order).offset((page - 1) * page_size).limit(page_size))
-    ).all()
+    rows = (await session.execute(query.order_by(*order).slice(*page_window(page, page_size)))).all()
     return {"items": [to_out(row, name) for row, name in rows], **page_meta(total, page, page_size)}
 
 
@@ -167,9 +159,6 @@ async def cancel(session: AsyncSession, callback_id: str, now: datetime | None =
         row.status, row.cancelled_at, row.updated_at = "cancelled", stamp, stamp
         await session.flush()
     return to_out(row, await _agent_name(session, row.agent_id))
-
-
-# Create (public API) ---------------------------------------------------------------------------
 
 
 def _carried(values: Mapping[str, Any], note: str) -> dict[str, str]:
@@ -238,9 +227,6 @@ async def create(
         session.add(row)
         await session.flush()
         return to_out(row, await _agent_name(session, row.agent_id))
-
-
-# Book from a call (voice worker) ---------------------------------------------------------------
 
 
 def refused(reason: CallbackRefusal, detail: str, **extra: Any) -> ProblemError:
@@ -447,9 +433,6 @@ async def book_from_call(
         return 201, _booked(
             row.id, at, recipient.timezone, now, mocked=False, rescheduled=existing is not None
         )
-
-
-# Placing (cron) --------------------------------------------------------------------------------
 
 
 def _fail(row: ScheduledCallback, reason: str, detail: str | None, now: datetime) -> None:

@@ -50,7 +50,7 @@ async def _balance(client: httpx.AsyncClient, account: Account) -> Decimal:
 async def test_agent_built_published_called_and_charged(
     app: FastAPI, client: httpx.AsyncClient, account: Account, runtime: Runtime
 ) -> None:
-    ports.set_agent_versions(AgentVersionsAdapter())  # the runtime fixture restores its default
+    ports.registry.agent_versions = AgentVersionsAdapter()  # the runtime fixture restores its default
     internal_api, metrics = worker_modules()
     worker, contract_hooks, worker_http = worker_client(app)
 

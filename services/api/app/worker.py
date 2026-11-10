@@ -35,6 +35,7 @@ from app.core.feature import Runtime
 from app.core.livekit import build_livekit
 from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue, redis_settings_for
+from app.core.storage import build_signer, build_store
 from app.core.worker_health import serve_health
 
 logger = logging.getLogger("app.worker")
@@ -54,7 +55,10 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["sip"] = build_sip(settings)
     ctx["adapter_catalog"] = load_catalog()
     ctx["http"] = httpx.AsyncClient(follow_redirects=False)
-    await features.install(Runtime("worker", settings, ctx["db"], ctx["jobs"], ctx["http"]))
+    ctx["store"] = build_store(settings)
+    await features.install(
+        Runtime("worker", settings, ctx["db"], ctx["jobs"], ctx["http"], ctx["store"], build_signer(settings))
+    )
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -103,7 +107,9 @@ async def replay(call_id: str) -> int:
     queue = ArqJobQueue()
     http = httpx.AsyncClient(follow_redirects=False)
     try:
-        await features.install(Runtime("worker", settings, db, queue, http))
+        await features.install(
+            Runtime("worker", settings, db, queue, http, build_store(settings), build_signer(settings))
+        )
         try:
             workspace_id = await workspace_for_call(db, call_id)
         except ProblemError:

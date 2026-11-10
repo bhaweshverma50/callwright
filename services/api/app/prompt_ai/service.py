@@ -24,12 +24,12 @@ from app.core.rate_limit import RateLimiter
 from app.llms.charges import charge_tokens
 from app.llms.client import (
     ChatMessage,
-    LlmClient,
     ModelError,
     ModelRef,
     ModelTimeout,
     token_cost,
 )
+from app.llms.runtime import CompletionClient
 from app.pricing.engine import fmt6
 from app.prompt_ai.proposal import parse_answer
 from app.prompt_ai.schemas import GenerateRequest
@@ -37,6 +37,7 @@ from app.voices.catalog import load_catalog as load_voice_catalog
 
 tracer = trace.get_tracer("app.prompt_ai")
 SYSTEM_PROMPT = Path(__file__).with_name("system_prompt.md").read_text(encoding="utf-8")
+PURPOSE = "prompt_assistant"
 REPLAY_TTL_S = 24 * 3600
 MAX_OUTPUT_TOKENS = 4000
 
@@ -70,7 +71,7 @@ async def generate(
     db: Database,
     redis: Redis,
     settings: Settings,
-    client: LlmClient,
+    client: CompletionClient,
     *,
     workspace_id: str,
     request: GenerateRequest,
@@ -101,7 +102,7 @@ async def generate(
                 max_tokens=MAX_OUTPUT_TOKENS,
                 timeout_s=settings.prompt_ai_timeout_s,
                 json_mode=True,
-                purpose="prompt_assistant",
+                purpose=PURPOSE,
             )
         except (ModelTimeout, ModelError) as exc:
             span.record_exception(exc)

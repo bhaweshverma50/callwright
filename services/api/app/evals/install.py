@@ -26,7 +26,7 @@ def install_handlers() -> None:
 
 
 async def install(runtime: Runtime) -> None:
-    fakes.register()
+    fakes.register_fakes()
     install_handlers()
     ports.set_quality_port(QualityPort())
     if runtime.role == "api":

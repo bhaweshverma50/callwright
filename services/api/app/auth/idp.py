@@ -117,8 +117,6 @@ class IdentityProvider(Protocol):
         ...
 
 
-# Local development IdP ---------------------------------------------------------------------
-
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
 
 
@@ -156,8 +154,6 @@ class LocalIdentityProvider:
         self.ttl = settings.auth_access_token_ttl_s
         self.web_base_url = settings.web_base_url.rstrip("/")
         self.outbox: deque[OutboxMessage] = deque(maxlen=200)
-
-    # helpers ---------------------------------------------------------------------------
 
     def _access_token(self, subject: str, email: str, session_id: str) -> str:
         now = int(time.time())
@@ -237,8 +233,6 @@ class LocalIdentityProvider:
         if row is None:
             raise InvalidLink(kind)
         return row
-
-    # protocol --------------------------------------------------------------------------
 
     async def sign_up(self, email: str, password: str, *, confirmed: bool = False) -> None:
         existing = await self._user_by_email(email)
@@ -358,9 +352,6 @@ class LocalIdentityProvider:
             if message.to == to.lower() and message.kind == kind:
                 return message
         return None
-
-
-# Supabase Auth -------------------------------------------------------------------------------
 
 
 class SupabaseIdentityProvider:

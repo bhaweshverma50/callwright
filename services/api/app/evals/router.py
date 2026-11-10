@@ -12,6 +12,7 @@ from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.idempotency import require_key, run_idempotent
 from app.core.ids import path_id, require_id
+from app.evals import current as current_runs
 from app.evals import service, verdict_diff, views
 from app.evals.jobs import EVALUATE_CALL
 from app.evals.runner import AlreadyRunning, already_running, start_group
@@ -58,8 +59,8 @@ async def put_setting(
 
 async def evaluations_body(session: Any, call_id: str, include_history: bool) -> dict[str, Any]:
     runs = await views.call_runs(session, call_id)
-    current, history = views.split_current(runs)
-    status, passes, fails = views.status_of(current)
+    current, history = current_runs.split_current(runs)
+    status, passes, fails = current_runs.status_of(current)
     body: dict[str, Any] = {
         "call_id": call_id,
         "eval_status": status,

@@ -61,10 +61,9 @@ def usage_cost(usage: Mapping[str, Any], roles: Iterable[str] | None = None) -> 
         if entry.get("offline"):
             continue  # the runner's offline fallback answered: no vendor tokens were used
         model = str(entry.get("model") or "")
-        model = model
         inp, out = _int(entry.get("input_tokens")), _int(entry.get("output_tokens"))
         if inp or out:
-            raw += token_cost(model or "gpt-5-mini", inp, out)
+            raw += token_cost(model, inp, out)
             tokens += inp + out
     return raw, tokens
 

@@ -37,9 +37,6 @@ async def create_outbound_call(
     )
 
 
-# Do-not-call list -------------------------------------------------------------------------------
-
-
 @router.get("/dnc-entries", responses=problem_responses(401))
 async def list_dnc_entries(
     request: Request,
@@ -90,9 +87,6 @@ async def import_dnc_entries(
         return await dnc.import_csv(session, principal.workspace_id, principal.user_id, parsed)
 
 
-# Calling hours ----------------------------------------------------------------------------------
-
-
 @router.get("/outbound-calling-hours", responses=problem_responses(401))
 async def get_calling_hours(request: Request, principal: CurrentPrincipal) -> dict[str, Any]:
     async with request.app.state.db.transaction(workspace_id=principal.workspace_id) as session:
@@ -119,9 +113,6 @@ async def put_calling_hours(
                 errors=[field_error(exc.pointer, "invalid_window", str(exc))],
             ) from None
         return calling_hours.view(row)
-
-
-# Decision log -----------------------------------------------------------------------------------
 
 
 @router.get("/outbound-policy-decisions", responses=problem_responses(401, 422))

@@ -51,7 +51,7 @@ from app.calls.service import runtime_values
 from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
-from app.evaluators.settings import judge_models
+from app.core.pagination import page_window
 from app.simulator.models import SimulationExperiment, SimulationRun
 from app.testing import calls as sim_calls
 from app.testing.charges import charge_run, merge_usage
@@ -189,7 +189,7 @@ async def agent_names(session: AsyncSession, agent_ids: Sequence[str]) -> dict[s
 
 async def eval_statuses(session: AsyncSession, runs: Sequence[SimulationRun]) -> dict[str, str]:
     """Evaluation progress of each run's simulated call (007 run states)."""
-    from app.evals.views import current_by_call, status_of
+    from app.evals.current import current_by_call, status_of
 
     call_ids = [r.output_call_id for r in runs if r.output_call_id and r.status == "completed"]
     out = {r.id: "not_started" for r in runs}
@@ -372,8 +372,7 @@ async def list_runs(
         select(SimulationRun)
         .where(*where)
         .order_by(SimulationRun.created_at.desc(), SimulationRun.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 
@@ -605,8 +604,7 @@ async def list_experiments(
         select(SimulationExperiment)
         .where(*where)
         .order_by(SimulationExperiment.created_at.desc(), SimulationExperiment.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .slice(*page_window(page, page_size))
     )
     return list(rows.scalars()), total
 
@@ -824,19 +822,15 @@ async def ensure_base_evaluation(session: AsyncSession, run: SimulationRun) -> s
     (research R7). Returns the run group id to execute after commit, or None."""
     if run.base_call_id is None or run.status != "completed":
         return None
+    from app.evals.current import missing_by_call
     from app.evals.runner import AlreadyRunning, start_group
-    from app.evals.service import resolve_all
-    from app.evals.views import current_by_call, missing_evaluators
+    from app.llms.runtime import runtime
 
     base = await session.get(Call, run.base_call_id)
     agent = await session.get(Agent, run.agent_id)
     if base is None or agent is None:
         return None
-    from app.llms.runtime import runtime
-
-    resolved = await resolve_all(session, agent, judge_models(runtime().settings))
-    enabled = {r.row.id: r.row.current_version for r in resolved if r.enabled}
-    missing = missing_evaluators((await current_by_call(session, [base.id])).get(base.id, []), enabled)
+    missing = (await missing_by_call(session, agent, runtime().settings, [base.id]))[base.id]
     if not missing:
         return None
     try:

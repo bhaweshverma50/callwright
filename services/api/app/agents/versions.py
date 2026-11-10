@@ -32,6 +32,7 @@ from app.agents.hooks import SNAPSHOT_ONLY_BLOCKS
 from app.agents.models import Agent
 from app.agents.schemas import upcast
 from app.core.errors import not_found
+from app.core.pagination import page_window
 
 
 class VersionNotFound(LookupError):
@@ -137,8 +138,7 @@ async def list_versions(
             select(AgentVersion)
             .where(*where)
             .order_by(AgentVersion.version_number.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            .slice(*page_window(page, page_size))
         )
     ).scalars()
     return list(rows), total

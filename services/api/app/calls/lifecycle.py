@@ -120,9 +120,6 @@ async def finalize(session: AsyncSession, call: Call, now: datetime) -> None:
         call.pipeline_status = "done_with_warnings" if call.pipeline_warnings else "done"
 
 
-# Customer webhooks --------------------------------------------------------------------------
-
-
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 

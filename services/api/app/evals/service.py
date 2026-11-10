@@ -17,11 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent
+from app.core.config import Settings
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.evals.models import AgentEvalSetting
 from app.evaluators import service as catalog
 from app.evaluators.models import EvaluatorRow
-from app.evaluators.settings import effective, served_schema, validate_overrides
+from app.evaluators.settings import effective, judge_models, served_schema, validate_overrides
 from app.llms.client import billable_cost, token_cost
 
 MAX_HEADLINE = 4
@@ -72,6 +73,11 @@ async def resolve_all(session: AsyncSession, agent: Agent, judge_models: Sequenc
         values, adjusted = effective(schema, setting.overrides if setting else None)
         out.append(Resolved(row, setting, schema, values, adjusted))
     return out
+
+
+async def enabled_evaluators(session: AsyncSession, agent: Agent, settings: Settings) -> list[Resolved]:
+    """The evaluators switched on for ``agent`` (the catalog default unless the agent overrides it)."""
+    return [r for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled]
 
 
 def est_cost(row: EvaluatorRow, values: Mapping[str, Any], judge_models: Sequence[str]) -> float | None:

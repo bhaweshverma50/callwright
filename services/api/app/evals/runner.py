@@ -21,7 +21,6 @@ import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 from opentelemetry import trace
@@ -48,11 +47,11 @@ from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.registry import instance_for
 from app.evaluators.settings import default_judge_model, judge_models, settings_hash
 from app.llms.charges import charge_tokens
+from app.llms.client import SIX
 from app.llms.runtime import ModelRuntime, runtime
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.evals.runner")
-SIX = Decimal("0.000001")
 STALE_GROUP = timedelta(minutes=15)
 TRIGGERS = ("pipeline", "rerun", "dataset", "simulation")
 

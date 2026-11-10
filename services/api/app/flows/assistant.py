@@ -34,12 +34,12 @@ from app.flows.starter import DEFAULT_LABELS, config_with_defaults, short_id
 from app.llms.charges import charge_tokens
 from app.llms.client import (
     ChatMessage,
-    LlmClient,
     ModelError,
     ModelRef,
     ModelTimeout,
     token_cost,
 )
+from app.llms.runtime import CompletionClient
 from app.pricing.engine import fmt6
 
 tracer = trace.get_tracer("app.flows")
@@ -53,6 +53,9 @@ EDGE_CHANGE_KEYS = ("label", "condition", "target", "category", "rule", "trigger
 
 class UnknownReference(ValueError):
     """An operation names a node or edge that is not in the graph."""
+
+
+PURPOSE = "flow_assistant"
 
 
 def assistant_timeout() -> ProblemError:
@@ -319,7 +322,7 @@ def build_system(graph: Mapping[str, Any], persona: str, name: str) -> str:
 async def ask(
     db: Database,
     settings: Settings,
-    client: LlmClient,
+    client: CompletionClient,
     *,
     workspace_id: str,
     user_id: str | None,
@@ -351,7 +354,7 @@ async def ask(
                 max_tokens=MAX_OUTPUT_TOKENS,
                 timeout_s=settings.flow_assistant_timeout_s,
                 json_mode=True,
-                purpose="flow_assistant",
+                purpose=PURPOSE,
             )
         except (ModelTimeout, ModelError) as exc:
             span.record_exception(exc)

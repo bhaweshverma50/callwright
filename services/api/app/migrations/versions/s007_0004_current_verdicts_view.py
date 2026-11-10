@@ -1,5 +1,5 @@
 """``analytics.evaluator_verdicts_v`` counts current runs only: the newest unsuperseded run per
-call and evaluator (the rule of ``app.evals.views.current_runs_sql``), as the call list badge
+call and evaluator (the rule of ``app.evals.current.current_runs_sql``), as the call list badge
 does. Before, every unsuperseded completed run counted, including the previous result while a
 rerun was in flight.
 

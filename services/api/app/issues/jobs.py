@@ -28,9 +28,11 @@ from sqlalchemy import text
 
 from app.core.db import Database
 from app.core.errors import ProblemError
+from app.core.queue import JobQueue
 from app.issues import charges, detection, validation
 from app.issues.models import IssueDetectionRun
 from app.issues.runtime import model as issues_model
+from app.llms.charges import embedding_cost
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
@@ -84,7 +86,7 @@ async def detect_issues(ctx: dict[str, Any], workspace_id: str, run_id: str) -> 
                     issues_model(runtime().settings),
                     usage.input_tokens,
                     usage.output_tokens,
-                    embed_raw=usage.embed_raw,
+                    embed_raw=await embedding_cost(session, runtime().embedder, usage.embed_tokens),
                 )
                 billed = await charges.charge(
                     session,
@@ -202,12 +204,10 @@ async def audit_applied_issues(ctx: dict[str, Any]) -> int:
     return bad
 
 
-def on_batch_finished_factory() -> Any:
+def finalize_hook(queue: JobQueue) -> Any:
     async def on_batch_finished(workspace_id: str, experiment_id: str) -> None:
-        """008 completion hook: queue the finalize job on the process's job queue."""
+        """008 completion hook: queue the finalize job."""
 
-        queue = runtime().queue
-        if queue is not None:
-            await queue.enqueue(FINALIZE_VALIDATION, workspace_id, experiment_id)
+        await queue.enqueue(FINALIZE_VALIDATION, workspace_id, experiment_id)
 
     return on_batch_finished

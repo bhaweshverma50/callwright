@@ -18,8 +18,8 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calibration import math
+from app.evals.current import current_runs_sql
 from app.evals.models import AgentEvalSetting
-from app.evals.views import current_runs_sql
 from app.evaluators.models import EvaluatorRow, EvaluatorVersion
 from app.evaluators.settings import effective
 

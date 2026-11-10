@@ -42,7 +42,7 @@ from app.channels.sip import SipError
 from app.core.auth import Principal
 from app.core.errors import ProblemError, not_found
 from app.core.ids import new_id
-from app.core.pagination import page_meta
+from app.core.pagination import page_meta, page_window
 from app.core.secrets import delete_secret, get_secret, put_secret
 
 logger = logging.getLogger(__name__)
@@ -116,9 +116,6 @@ def _invalid(pointer: str, exc: validation.InvalidValue) -> ProblemError:
     from app.core.errors import field_error, validation_failed
 
     return validation_failed([field_error(pointer, "invalid_format", str(exc))])
-
-
-# Import, read --------------------------------------------------------------------------------
 
 
 async def import_number(deps: ChannelDeps, principal: Principal, body: PhoneNumberImport) -> dict[str, Any]:
@@ -211,9 +208,9 @@ async def list_numbers(
         rows = list(
             (
                 await s.execute(
-                    query.order_by(PhoneNumber.created_at.desc(), PhoneNumber.id.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
+                    query.order_by(PhoneNumber.created_at.desc(), PhoneNumber.id.desc()).slice(
+                        *page_window(page, page_size)
+                    )
                 )
             ).scalars()
         )
@@ -238,8 +235,6 @@ async def retry_provisioning(deps: ChannelDeps, workspace_id: str, number_id: st
         number.updated_at = datetime.now(UTC)
     return await _provision_and_store(deps, workspace_id, number_id, None)
 
-
-# Edit -------------------------------------------------------------------------------------------
 
 _OUTBOUND_FIELDS = {
     "termination_address",
@@ -382,9 +377,6 @@ async def _quiet(coro: Any) -> None:
         logger.warning("SIP cleanup failed", exc_info=True)
 
 
-# Delete -----------------------------------------------------------------------------------------
-
-
 async def delete_number(
     deps: ChannelDeps, workspace_id: str, number_id: str, *, when_idle: bool
 ) -> tuple[int, dict[str, Any] | None]:
@@ -417,9 +409,6 @@ async def finish_delete(session: AsyncSession, number: PhoneNumber) -> None:
     number.updated_at = now
     number.lk_dispatch_rule_id = number.lk_inbound_trunk_id = number.lk_outbound_trunk_id = None
     await session.flush()
-
-
-# Agent deletion (002 hook) ------------------------------------------------------------------------
 
 
 async def attachments_for_agent(ctx: agent_hooks.UsageContext) -> list[agent_hooks.Attachment]:

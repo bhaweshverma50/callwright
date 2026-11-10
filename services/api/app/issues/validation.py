@@ -33,7 +33,7 @@ from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 from app.evaluators.models import EvaluatorRow
 from app.evaluators.settings import judge_models
 from app.issues import validation_rule as rule
@@ -42,7 +42,6 @@ from app.issues.lifecycle import transition
 from app.issues.models import Issue, IssueFix, IssueSample, IssueValidation
 from app.issues.revisions import not_published, problem
 from app.issues.service import current_fix, get_issue, require_live_agent, running_validation
-from app.llms.client import billable_cost, token_cost
 from app.simulator import service as sim
 from app.simulator.scorecard import VerdictRow, collapse, display_pp, display_rate, pair_verdicts
 from app.testing import calls as sim_calls
@@ -162,17 +161,13 @@ async def select_calls(
 async def estimate_cost(
     session: AsyncSession, agent: Agent, settings: Settings, mode: str, run_count: int
 ) -> Decimal:
-    from app.evals.service import est_cost, resolve_all
-    from app.simulator.preflight import EXTRACTION_TOKENS, per_run_cost
+    from app.evals.service import enabled_evaluators, est_cost
+    from app.simulator.preflight import run_cost
 
-    model = settings.simulator_model
-    per_run = await per_run_cost(session, agent.id, mode, model)
-    if mode == "persona":
-        per_run += billable_cost(token_cost(model, *EXTRACTION_TOKENS))
+    per_run = await run_cost(session, agent.id, mode, settings.simulator_model, extraction=True)
     models = judge_models(settings)
-    for r in await resolve_all(session, agent, models):
-        if r.enabled:
-            per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
+    for r in await enabled_evaluators(session, agent, settings):
+        per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
     return (per_run * run_count).quantize(Decimal("0.000001"))
 
 
@@ -533,16 +528,16 @@ def evidence_rows(
 async def _eval_cost(session: AsyncSession, call_ids: Sequence[str]) -> Decimal:
     if not call_ids:
         return Decimal(0)
-    raw = (
+    billed = (
         await session.execute(
             text(
-                "select coalesce(sum(raw_cost_usd), 0) from evaluator_runs where call_id = any(:ids) "
-                "and charge_txn_id is not null"
+                "select coalesce(-sum(t.amount_usd), 0) from evaluator_runs r "
+                "join credit_transactions t on t.id = r.charge_txn_id where r.call_id = any(:ids)"
             ),
             {"ids": list(call_ids)},
         )
     ).scalar_one()
-    return billable_cost(Decimal(raw)) if raw else Decimal(0)
+    return Decimal(billed)
 
 
 async def finalize(
@@ -550,7 +545,7 @@ async def finalize(
 ) -> str:
     """``skipped`` (nothing to do), ``waiting_batches`` (a batch is still running), ``waiting``
     (simulated calls still being evaluated), ``cancelled`` or the decision written."""
-    from app.evals.service import resolve_all
+    from app.evals.service import enabled_evaluators
     from app.simulator.comparison import verdict_rows
 
     now = now or datetime.now(UTC)
@@ -601,7 +596,7 @@ async def finalize(
 
     control_rows = await verdict_rows(session, keyed(runs_c))
     treatment_rows = await verdict_rows(session, keyed(runs_t))
-    enabled = [r.row.id for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled]
+    enabled = [r.row.id for r in await enabled_evaluators(session, agent, settings)]
     evaluator_ids = [issue.evaluator_id, *sorted(e for e in set(enabled) if e != issue.evaluator_id)]
     counts = paired_counts(
         evaluator_ids, control_rows, treatment_rows, attempt.affected_call_ids, attempt.guard_call_ids

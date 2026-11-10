@@ -13,7 +13,7 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 Voice = dict[str, Any]
 SAMPLES = Path(__file__).with_name("samples")
@@ -48,12 +48,6 @@ class VoicePage:
 
 class VoiceListingError(Exception):
     """The vendor listing failed (network, auth, unexpected shape)."""
-
-
-class VoiceAdapter(Protocol):
-    provider: str
-
-    async def list_voices(self, filters: VoiceFilters, cursor: str | None, limit: int) -> VoicePage: ...
 
 
 def _language_matches(voice_languages: Iterable[str], wanted: str) -> bool:

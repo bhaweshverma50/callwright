@@ -45,7 +45,8 @@ from app.calls.origins import ORIGINS
 from app.core.db import Database
 from app.llms.adapters.base import ChatMessage, estimate_tokens
 from app.llms.adapters.fake import FakeAdapter
-from app.llms.client import LlmClient, ModelRef
+from app.llms.client import ModelRef
+from app.llms.runtime import CompletionClient
 
 MAX_QUERIES = 3
 DECLINE_TEXT = (
@@ -80,7 +81,6 @@ class Answer:
 
 Runner = Callable[[MetricQuery], Any]
 
-# Deterministic planner -----------------------------------------------------------------------------
 
 _HOSTILE = re.compile(
     r"\b(delete|drop|truncate|update|insert|alter|grant|sql|select\s|workspace|ws_|ignore (all|previous)|system prompt|password|token)\b",
@@ -247,8 +247,6 @@ def keyword_plan(messages: Sequence[ChatMessageIn]) -> Plan:
     return Plan(queries=[query], chart=chart)
 
 
-# Model planner -----------------------------------------------------------------------------------
-
 PLAN_SYSTEM = """You turn questions about a voice-agent workspace's call data into typed queries.
 You never write SQL. Reply with one JSON object only:
 {"decline": null or a short reason, "queries": [MetricQuery or CallQuery, ...] (at most 3), "chart": "bar" | "line" | "area" | "pie" | null}
@@ -277,7 +275,7 @@ Reply with JSON: {"content": "..."}"""
 
 
 async def model_plan(
-    client: LlmClient,
+    client: CompletionClient,
     ref: ModelRef,
     messages: Sequence[ChatMessageIn],
     *,
@@ -314,8 +312,6 @@ async def model_plan(
         output_tokens=completion.output_tokens,
     )
 
-
-# Presentation ----------------------------------------------------------------------------------------
 
 UNIT_TYPES = {"count": "integer", "seconds": "seconds", "usd": "usd", "ms": "ms", "ratio": "ratio"}
 
@@ -509,9 +505,6 @@ async def _excluded_test_calls(
     return int(rows[0].get("call_count") or 0) if rows else 0
 
 
-# Loop --------------------------------------------------------------------------------------------------
-
-
 def declined(
     content: str,
     tokens: tuple[int, int] = (0, 0),
@@ -532,7 +525,7 @@ def declined(
 
 async def answer(
     db: Database,
-    client: LlmClient,
+    client: CompletionClient,
     model: str,
     *,
     workspace_id: str,

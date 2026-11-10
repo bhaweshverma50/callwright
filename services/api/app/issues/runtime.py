@@ -13,6 +13,7 @@ from typing import Any
 
 from app.core.config import Settings
 from app.llms.adapters.base import ChatMessage
+from app.llms.adapters.fake import PURPOSE_REPLIES
 
 NAMING = "issue_naming"
 DRAFTING = "issue_fix_draft"
@@ -155,7 +156,5 @@ def fake_draft(messages: list[ChatMessage], system: str | None) -> str:
 
 
 def register_fakes() -> None:
-    from app.llms.adapters.fake import PURPOSE_REPLIES
-
     PURPOSE_REPLIES.setdefault(NAMING, fake_naming)
     PURPOSE_REPLIES.setdefault(DRAFTING, fake_draft)

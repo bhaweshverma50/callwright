@@ -4,12 +4,6 @@ Later or parallel features register implementations in ``registry`` from their `
 (``app/features.py`` runs every hook in the API and the jobs worker); until they do, the defaults
 keep the API working with clear refusals.
 
-* ``AgentVersionsPort`` (002): frozen agent versions. 003 codes against this protocol; the
-  calls feature registers ``calls.agent_versions`` with ``set_agent_versions`` at merge.
-  ``get_snapshot(version_id)`` returns the frozen AgentConfig of one version;
-  ``snapshot_for_test(agent_id)`` the version for the current draft (created with
-  ``source = test`` when the draft changed, never published); ``get_published(agent_id)`` the
-  pinned version or None. Every method receives the caller's RLS-scoped session.
 * ``InboundRouter`` (010): resolves an inbound SIP or WhatsApp call to workspace and agent.
 * ``OutboundDialProvider`` (010): trunk and numbers for ``sip_outbound`` claims.
 * ``ObjectSigner`` (``core.storage``): short-lived GET URLs for uploaded ambience and recordings.
@@ -17,7 +11,7 @@ keep the API working with clear refusals.
   dashboard.
 * step handlers (007): the post-call pipeline's ``analyze`` and ``evaluate`` steps.
 * ``RunSnapshot`` (008): the configuration a simulation run used, for its simulated call.
-* ``CallerLanguagePort`` (012): the languages a call may switch to and its start language.
+* ``CallerLanguagePort`` (012): a call's start language.
 """
 
 from __future__ import annotations
@@ -28,6 +22,7 @@ from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calls.agent_versions import AgentVersionsAdapter
 from app.calls.quality_port import CallQualityPort, NullCallQualityPort
 from app.core.storage import ObjectSigner
 
@@ -38,42 +33,7 @@ EXTERNAL_STEPS = ("analyze", "evaluate")
 RunSnapshot = Callable[[AsyncSession, str], Awaitable[Mapping[str, Any] | None]]
 
 
-@dataclass(frozen=True)
-class AgentSnapshot:
-    """One immutable agent version as 003 needs it."""
-
-    version_id: str
-    agent_id: str
-    workspace_id: str
-    agent_type: str  # single_prompt | flow
-    config: Mapping[str, Any]
-    version_number: int | None = None
-
-
-class AgentVersionsPort(Protocol):
-    async def agent_exists(self, session: AsyncSession, agent_id: str) -> bool: ...
-
-    async def get_snapshot(self, session: AsyncSession, version_id: str) -> AgentSnapshot | None: ...
-
-    async def snapshot_for_test(self, session: AsyncSession, agent_id: str) -> AgentSnapshot | None: ...
-
-    async def get_published(self, session: AsyncSession, agent_id: str) -> AgentSnapshot | None: ...
-
-
-class NoAgentVersions:
-    """Default until 002 is wired: no agent exists, so every call request is a 404."""
-
-    async def agent_exists(self, session: AsyncSession, agent_id: str) -> bool:
-        return False
-
-    async def get_snapshot(self, session: AsyncSession, version_id: str) -> AgentSnapshot | None:
-        return None
-
-    async def snapshot_for_test(self, session: AsyncSession, agent_id: str) -> AgentSnapshot | None:
-        return None
-
-    async def get_published(self, session: AsyncSession, agent_id: str) -> AgentSnapshot | None:
-        return None
+DECLINED_BY_WEBHOOK = "declined_by_webhook"
 
 
 @dataclass(frozen=True)
@@ -112,8 +72,6 @@ class OutboundDialProvider(Protocol):
 
 
 class CallerLanguagePort(Protocol):
-    def options(self, config: Mapping[str, Any]) -> list[dict[str, Any]]: ...
-
     async def start(
         self, session: AsyncSession, call: Any, options: Sequence[Mapping[str, Any]]
     ) -> str | None: ...
@@ -121,9 +79,6 @@ class CallerLanguagePort(Protocol):
 
 class NoCallerLanguage:
     """Default until 012 is wired: no language switching."""
-
-    def options(self, config: Mapping[str, Any]) -> list[dict[str, Any]]:
-        return []
 
     async def start(
         self, session: AsyncSession, call: Any, options: Sequence[Mapping[str, Any]]
@@ -133,7 +88,7 @@ class NoCallerLanguage:
 
 @dataclass
 class Registry:
-    agent_versions: AgentVersionsPort = field(default_factory=NoAgentVersions)
+    agent_versions: AgentVersionsAdapter = field(default_factory=AgentVersionsAdapter)
     inbound_routers: dict[str, InboundRouter] = field(default_factory=dict)
     outbound_dial: OutboundDialProvider | None = None
     signer: ObjectSigner | None = None
@@ -144,10 +99,6 @@ class Registry:
 
 
 registry = Registry()
-
-
-def set_agent_versions(port: AgentVersionsPort) -> None:
-    registry.agent_versions = port
 
 
 def register_inbound_router(channel: str, router: InboundRouter) -> None:

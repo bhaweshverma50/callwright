@@ -43,13 +43,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import CALL_BEHAVIOR_DEFAULTS
 from app.billing import service as billing
+from app.caller_language.options import language_options
 from app.calls import components as comp
 from app.calls import lifecycle
 from app.calls import variables as variables_mod
+from app.calls.agent_versions import AgentSnapshot
 from app.calls.lookups import concurrency_full, snapshot_for, workspace_for_call
 from app.calls.models import Call
 from app.calls.origins import policy
-from app.calls.ports import AgentSnapshot, registry
+from app.calls.ports import DECLINED_BY_WEBHOOK, registry
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.errors import ProblemError, not_found
@@ -78,7 +80,7 @@ REFUSALS: dict[str, tuple[int, str]] = {
     "pricing_unavailable": (422, "error"),
     "insufficient_credit": (402, "insufficient_credit"),
     "concurrency_limit": (429, "concurrency_limit"),
-    "declined_by_webhook": (409, "error"),
+    DECLINED_BY_WEBHOOK: (409, "error"),
 }
 _DETAILS = {
     "email_unverified": "Verify your email address before placing calls.",
@@ -88,7 +90,7 @@ _DETAILS = {
     "pricing_unavailable": "The agent's configuration is not fully priced.",
     "insufficient_credit": "Your balance is too low to start a call. Add funds to continue.",
     "concurrency_limit": "Concurrent call limit reached. Try again when a call ends.",
-    "declined_by_webhook": "The inbound webhook declined this call.",
+    DECLINED_BY_WEBHOOK: "The inbound webhook declined this call.",
 }
 
 
@@ -150,9 +152,6 @@ class Admission:
     created: bool = True
 
 
-# Pure rules -------------------------------------------------------------------------------
-
-
 def resolve_recording(override: Any, workspace_default: bool) -> tuple[bool, str]:
     """FR-043: ``on``/``off`` on the agent win; ``inherit`` (or missing) uses the workspace."""
     value = override if override in ("inherit", "on", "off") else "inherit"
@@ -210,9 +209,6 @@ def runtime_values(config: Mapping[str, Any], catalog: AdapterCatalog) -> Runtim
         stt_resolved_model=components.stt.model,
         language_options=claim_language_options(config, components),
     )
-
-
-# Admission ---------------------------------------------------------------------------------
 
 
 async def _resolve_version(
@@ -324,7 +320,7 @@ async def admit_in_session(
     if refused is None and snapshot is not None:
         refused = await _checks(session, request, snapshot, catalog)
     if refused is None and request.declined:
-        refused = refusal("declined_by_webhook")
+        refused = refusal(DECLINED_BY_WEBHOOK)
     if refused is None:
         await _lock_admissions(session, request.workspace_id)
         if await concurrency_full(session, request.workspace_id):
@@ -461,9 +457,6 @@ async def start_room(
     return room
 
 
-# Claim --------------------------------------------------------------------------------------
-
-
 @dataclass
 class ClaimOutcome:
     body: dict[str, Any]
@@ -476,7 +469,7 @@ def runtime_config(
     catalog: AdapterCatalog,
     *,
     signer: ObjectSigner | None = None,
-    media_bucket: str | None = None,
+    ambience_bucket: str | None = None,
     outbound_dial: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Contract ``RuntimeConfig`` for the worker (calls.yaml)."""
@@ -487,8 +480,8 @@ def runtime_config(
     if isinstance(background, Mapping) and background.get("enabled"):
         source = background.get("source")
         if isinstance(source, Mapping) and source.get("kind") == "upload" and source.get("key"):
-            if signer is not None and media_bucket:
-                background_url = signer.presign_get(media_bucket, str(source["key"]), SIGNED_URL_TTL_S)
+            if signer is not None and ambience_bucket:
+                background_url = signer.presign_get(ambience_bucket, str(source["key"]), SIGNED_URL_TTL_S)
     agent_type = snapshot.agent_type if snapshot.agent_type in ("single_prompt", "flow") else "single_prompt"
     return RuntimeConfig(
         **dict(runtime_values(config, catalog)),
@@ -511,7 +504,7 @@ def claim_language_options(
 ) -> list[dict[str, Any]]:
     """012: the languages ``set_language`` may switch to; the agent's own entry carries the models
     this call resolved (Auto speech recognition included), so switching back restores them."""
-    options = registry.caller_language.options(config)
+    options = language_options(config)
     if options:
         options[0] = {**options[0], "stt_model": components.stt.model, "tts_model": components.tts.model}
     return options
@@ -532,7 +525,7 @@ async def _claim_existing(
     request: ClaimRequest,
     *,
     catalog: AdapterCatalog,
-    media_bucket: str | None,
+    ambience_bucket: str | None,
     now: datetime,
 ) -> ClaimOutcome:
     outcome = ClaimOutcome(body={})
@@ -582,7 +575,12 @@ async def _claim_existing(
             if call.recording_enabled and call.recording_status == "none":
                 outcome.deferred.add(lifecycle.START_RECORDING, workspace_id, call.id)
         runtime = runtime_config(
-            call, snapshot, catalog, signer=registry.signer, media_bucket=media_bucket, outbound_dial=outbound
+            call,
+            snapshot,
+            catalog,
+            signer=registry.signer,
+            ambience_bucket=ambience_bucket,
+            outbound_dial=outbound,
         )
         runtime["caller_language"] = await registry.caller_language.start(
             session, call, runtime["language_options"]
@@ -596,7 +594,7 @@ async def claim(
     request: ClaimRequest,
     *,
     catalog: AdapterCatalog,
-    media_bucket: str | None = None,
+    ambience_bucket: str | None = None,
     now: datetime | None = None,
 ) -> ClaimOutcome:
     now = now or datetime.now(UTC)
@@ -605,7 +603,7 @@ async def claim(
     if isinstance(call_id, str):
         workspace_id = await workspace_for_call(db, call_id)
         return await _claim_existing(
-            db, workspace_id, call_id, request, catalog=catalog, media_bucket=media_bucket, now=now
+            db, workspace_id, call_id, request, catalog=catalog, ambience_bucket=ambience_bucket, now=now
         )
     channel = metadata.get(DISPATCH_CHANNEL)
     if channel not in INBOUND_SIP_CHANNELS:
@@ -659,7 +657,7 @@ async def claim(
         admission.call.id,
         request,
         catalog=catalog,
-        media_bucket=media_bucket,
+        ambience_bucket=ambience_bucket,
         now=now,
     )
     outcome.deferred.extend(admission.deferred)

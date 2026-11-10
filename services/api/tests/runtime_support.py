@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import service as billing
 from app.calls import ports
-from app.calls.ports import AgentSnapshot
+from app.calls.agent_versions import AgentSnapshot
 from app.core.ids import new_id
 from app.core.queue import Job
 from app.features import job_functions
@@ -513,9 +513,9 @@ async def runtime(app: FastAPI) -> AsyncIterator[Runtime]:
     previous_jobs = getattr(app.state, "jobs", None)
     versions = FakeAgentVersions(materialize=True)
     queue = RecordingQueue()
-    ports.set_agent_versions(versions)
+    ports.registry.agent_versions = versions
     app.state.jobs = queue
     async with httpx.AsyncClient() as http:
         yield Runtime(app, versions, queue, http)
-    ports.set_agent_versions(previous_port)
+    ports.registry.agent_versions = previous_port
     app.state.jobs = previous_jobs

@@ -20,7 +20,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import ROUND_CEILING, Decimal
+from decimal import Decimal
 from typing import Any
 
 from opentelemetry import trace
@@ -36,9 +36,10 @@ from app.knowledge import storage
 from app.knowledge.chunking import TooManyChunks, chunk_blocks
 from app.knowledge.extract import ExtractError, extract
 from app.knowledge.models import Chunk, Document
-from app.llms.embeddings import build_embedder
+from app.llms.charges import embedding_cost
+from app.llms.client import billable_cost
 from app.llms.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
-from app.pricing import service as pricing
+from app.llms.runtime import runtime
 
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer("app.knowledge")
@@ -49,8 +50,6 @@ SLOT_WAIT_S = 5.0
 MAX_CONCURRENT_PER_WORKSPACE = 2
 SLOT_TTL_S = 900
 EMBED_BATCH = 64
-FALLBACK_RATE = ("openai", "text-embedding-3-small")
-SIX = Decimal("0.000001")
 
 
 @dataclass
@@ -85,16 +84,8 @@ async def release_slot(redis: Redis | None, workspace_id: str) -> None:
 
 
 async def ingestion_cost(session: Any, embedder: EmbeddingAdapter, tokens: int) -> tuple[Decimal, Decimal]:
-    """(raw, billable) USD for ``tokens`` embedded tokens: tokens / 1000 x catalog rate, with
-    the feature markup, rounded up to $0.000001."""
-    from app.llms.client import billable_cost
-
-    catalog = await pricing.catalog_at(session)
-    rate = catalog.lookup("embedding", embedder.provider, embedder.model) or catalog.lookup(
-        "embedding", *FALLBACK_RATE
-    )
-    per_k = rate.rate_per_min_usd if rate is not None else Decimal(0)
-    raw = (Decimal(tokens) / Decimal(1000) * per_k).quantize(SIX, rounding=ROUND_CEILING)
+    """(raw, billable) USD for ``tokens`` embedded tokens, with the feature markup."""
+    raw = await embedding_cost(session, embedder, tokens)
     return raw, billable_cost(raw)
 
 
@@ -278,11 +269,7 @@ async def run_inline(deps: IngestDeps, doc_id: str, sleep: Sleep = asyncio.sleep
 
 
 def deps_from_state(state: Any) -> IngestDeps:
-    embedder = getattr(state, "embedder", None)
-    if embedder is None:
-        embedder = build_embedder(state.settings)
-        state.embedder = embedder
-    return IngestDeps(db=state.db, redis=state.redis, store=state.storage, embedder=embedder)
+    return IngestDeps(db=state.db, redis=state.redis, store=state.storage, embedder=runtime().embedder)
 
 
 async def schedule(state: Any, doc_id: str) -> None:
@@ -303,15 +290,9 @@ async def drain() -> None:
 
 async def ingest_document(ctx: dict[str, Any], doc_id: str) -> str:
     """arq job: one attempt; retries and busy slots re-enqueue with a delay."""
-    from app.core.storage import build_store
-
     if "kb_deps" not in ctx:
-        settings = ctx["settings"]
         ctx["kb_deps"] = IngestDeps(
-            db=ctx["db"],
-            redis=ctx.get("redis"),
-            store=build_store(settings),
-            embedder=build_embedder(settings),
+            db=ctx["db"], redis=ctx.get("redis"), store=ctx["store"], embedder=runtime().embedder
         )
     outcome = await ingest(ctx["kb_deps"], doc_id)
     if outcome.retry_in_s is not None:

@@ -19,9 +19,8 @@ from typing import Any
 from app.agents import hooks as agent_hooks
 from app.agents.models import Agent
 from app.core.ids import new_id
-from app.flows import assistant_fake, service
+from app.flows import service
 from app.flows.models import Flow
-from app.llms.adapters.fake import PURPOSE_REPLIES
 from app.tools import service as tools
 
 
@@ -79,4 +78,3 @@ def register() -> None:
     agent_hooks.register_duplicate_hook(duplicate_flow)
     tools.register_flow_mock_hook(service.webhook_nodes_without_mock)
     tools.register_flow_usage_hook(service.tool_node_usages)
-    PURPOSE_REPLIES["flow_assistant"] = assistant_fake.reply

@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.channels import validation
 from app.core.errors import ProblemError, not_found
 from app.core.ids import new_id
-from app.core.pagination import page_meta
+from app.core.pagination import page_meta, page_window
 from app.outbound.models import DncEntry
 
 MAX_ENTRIES = 1_000_000
@@ -128,9 +128,9 @@ async def list_entries(
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(
-            query.order_by(DncEntry.created_at.desc(), DncEntry.id.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.order_by(DncEntry.created_at.desc(), DncEntry.id.desc()).slice(
+                *page_window(page, page_size)
+            )
         )
     ).scalars()
     return {"items": [to_out(e) for e in rows], **page_meta(total, page, page_size)}

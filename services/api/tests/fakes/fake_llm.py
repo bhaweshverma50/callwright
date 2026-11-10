@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.llms.adapters.base import ChatMessage, Completion, ModelError, ModelTimeout, estimate_tokens
+from app.llms.adapters.fake import FakeAdapter
 
 Responder = Callable[[str, str, str | None], str]
 
@@ -29,6 +30,9 @@ class FakeLlm:
     fixtures: dict[str, str] = field(default_factory=dict)
     replies: list[str] = field(default_factory=list)
     calls: list[dict[str, Any]] = field(default_factory=list)
+
+    def adapter_for(self, provider: str) -> FakeAdapter:
+        return FakeAdapter(provider)
 
     async def complete(
         self,

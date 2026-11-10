@@ -35,7 +35,7 @@ from opentelemetry import trace
 from sqlalchemy import text
 
 from app.agents.variables import MAX_VALUE_CHARS, MAX_VARIABLES, NAME
-from app.calls.ports import InboundRoute
+from app.calls.ports import DECLINED_BY_WEBHOOK, InboundRoute
 from app.channels import validation
 from app.channels.shared import agent_state, checked_webhook_url
 from app.channels.whatsapp.service import ROUTABLE
@@ -198,7 +198,7 @@ def route_detail(outcome: WebhookOutcome | None, base: str | None = None) -> str
         if outcome.failure:
             parts.append(f"inbound_webhook_failed:{outcome.failure}")
         elif outcome.declined:
-            parts.append("declined_by_webhook")
+            parts.append(DECLINED_BY_WEBHOOK)
         elif outcome.ignored_agent:
             parts.append("inbound_webhook_agent_ignored")
     return ";".join(parts)[:200] or None

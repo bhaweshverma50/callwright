@@ -129,8 +129,6 @@ class Settings(BaseSettings):
     # Google Cloud Storage: a service account key (JSON). When set, egress uploads with LiveKit's
     # native GCS output instead of the S3 API (GCS's S3 interop rejects newer SDK checksums).
     recordings_gcp_credentials: SecretStr | None = None
-    # Uploaded media (background ambience files, 002) served to the worker by signed URL.
-    media_bucket: str = "callwright-media"
     # Outbound customer webhooks (FR-040): plain http only when allowed (development).
     webhooks_allow_http: bool = False
     webhooks_allow_private: bool = False
@@ -159,6 +157,8 @@ class Settings(BaseSettings):
     storage_mode: Literal["fake", "s3"] = "fake"
     s3_endpoint_url: str | None = None  # e.g. http://localhost:59000 for the compose MinIO
     s3_region: str = "us-east-1"
+    # Uploads (background ambience, knowledge documents) live in this bucket; the worker gets
+    # signed URLs for ambience files from it.
     s3_bucket: str = "callwright"
     s3_access_key_id: SecretStr | None = None
     s3_secret_access_key: SecretStr | None = None

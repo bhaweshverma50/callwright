@@ -21,8 +21,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.evaluators.judge import json_object, neutralise
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.adapters.base import ChatMessage
 from app.llms.adapters.fake import PURPOSE_REPLIES
+from app.llms.complete import complete_json
 
 PURPOSE = "test_case_judge"
 SYSTEM = (
@@ -98,29 +99,16 @@ async def judge(
     timeout_s: float = 60.0,
 ) -> JudgeOutcome:
     data = render(user_prompt, expected_behaviour, agent_response, tool_calls)
-    inp = out = 0
-    for _attempt in range(2):
-        try:
-            completion = await llm.complete(
-                model,
-                [ChatMessage("user", data)],
-                system=SYSTEM,
-                max_tokens=600,
-                timeout_s=timeout_s,
-                json_mode=True,
-                purpose=PURPOSE,
-            )
-        except (ModelTimeout, ModelError, TimeoutError) as exc:
-            return JudgeOutcome("error", f"The judge did not answer: {exc}", model, inp, out)
-        inp += completion.input_tokens
-        out += completion.output_tokens
-        parsed = parse(completion.text)
-        if parsed is not None:
-            return JudgeOutcome(parsed[0], parsed[1], model, inp, out)
-    return JudgeOutcome("error", "The judge returned no usable verdict.", model, inp, out)
+    reply = await complete_json(
+        llm, model, data, system=SYSTEM, max_tokens=600, timeout_s=timeout_s, purpose=PURPOSE, parse=parse
+    )
+    inp, out = reply.input_tokens, reply.output_tokens
+    if reply.error is not None:
+        return JudgeOutcome("error", f"The judge did not answer: {reply.error}", model, inp, out)
+    if reply.value is None:
+        return JudgeOutcome("error", "The judge returned no usable verdict.", model, inp, out)
+    return JudgeOutcome(reply.value[0], reply.value[1], model, inp, out)
 
-
-# Offline judge ------------------------------------------------------------------------------------
 
 _REFUSAL_EXPECTED = re.compile(
     r"\b(refus|declin|does not|doesn't|never|without nam|not share|not reveal)", re.I

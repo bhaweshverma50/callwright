@@ -22,7 +22,6 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select, text
@@ -31,14 +30,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.ids import new_id
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 from app.evaluators.judge import json_object, neutralise
 from app.evaluators.models import EvaluatorRow
-from app.evaluators.settings import judge_models
 from app.issues import clustering as cl
 from app.issues.models import Issue, IssueDetectionRun, IssueFailureEmbedding, IssueSample
 from app.issues.runtime import model as issues_model
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout, estimate_tokens
 from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
@@ -47,7 +45,6 @@ WINDOWS = (7, 14, 30, 90)
 MAX_SAMPLES = 50
 REPRESENTATIVE = 8
 EMBED_BATCH = 96
-EMBED_USD_PER_MTOK = Decimal("0.02")
 CALIBRATION_LOOKBACK_DAYS = 90
 LOW_AGREEMENT = ("low", "over_eager")
 NAMING_SYSTEM = (
@@ -79,9 +76,9 @@ def origins(include_simulated: bool) -> list[str]:
 async def enabled_evaluators(
     session: AsyncSession, agent: Agent, settings: Settings
 ) -> dict[str, EvaluatorRow]:
-    from app.evals.service import resolve_all
+    from app.evals.service import enabled_evaluators as enabled
 
-    return {r.row.id: r.row for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled}
+    return {r.row.id: r.row for r in await enabled(session, agent, settings)}
 
 
 async def calibration_flags(session: AsyncSession, agent_id: str, settings: Settings) -> dict[str, bool]:
@@ -269,7 +266,6 @@ def embed_model_name() -> str:
 @dataclass
 class Usage:
     embed_tokens: int = 0
-    embed_raw: Decimal = Decimal(0)
     input_tokens: int = 0
     output_tokens: int = 0
 
@@ -300,10 +296,7 @@ async def embed_missing(gathered: Gathered, usage: Usage) -> dict[tuple[str, str
         vectors = await embedder.embed(texts)
         for key, vector in zip(chunk, vectors, strict=True):
             fresh[key] = [float(x) for x in vector]
-        tokens = sum(max(1, len(t) // 4) for t in texts)
-        usage.embed_tokens += tokens
-        if getattr(embedder, "provider", "") != "fake":
-            usage.embed_raw += Decimal(tokens) * EMBED_USD_PER_MTOK / Decimal(1_000_000)
+        usage.embed_tokens += sum(estimate_tokens(t) for t in texts)
     return fresh
 
 

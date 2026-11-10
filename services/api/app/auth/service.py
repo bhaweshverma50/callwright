@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
 from app.auth import idp as idp_mod
 from app.auth.idp import IdentityProvider, IdpSession
-from app.core.auth import REVOKED_KEY, TokenClaims, revoke_session
+from app.core.auth import TokenClaims, revoke_session
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError, too_many_requests, unauthorized
@@ -159,7 +160,7 @@ class AuthService:
             await self.idp.sign_out(access_token, claims)
         except idp_mod.IdpError:
             logger.warning("IdP sign-out failed; the session is still revoked locally", exc_info=True)
-        await revoke_session(self.redis, claims)
+        await revoke_session(self.redis, claims.session_id, expires_at=claims.expires_at)
 
     async def request_password_reset(self, email: str, ip: str) -> None:
         await self._email_rate_limit(ip)
@@ -182,9 +183,9 @@ class AuthService:
             ) from exc
         except idp_mod.IdpUnavailable as exc:
             raise _idp_down() from exc
-        ttl = self.settings.auth_access_token_ttl_s + 5
+        expires_at = int(time.time()) + self.settings.auth_access_token_ttl_s
         for session_id in revoked:
-            await self.redis.set(REVOKED_KEY.format(session_id=session_id), "1", ex=ttl)
+            await revoke_session(self.redis, session_id, expires_at=expires_at)
 
 
 def _minutes(seconds: int) -> str:

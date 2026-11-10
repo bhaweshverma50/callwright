@@ -11,9 +11,10 @@ from callwright_contract.calls import ACTIVE_STATUSES
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calls.agent_versions import AgentSnapshot
 from app.calls.models import Call
 from app.calls.origins import SLOT_ORIGINS
-from app.calls.ports import AgentSnapshot, registry
+from app.calls.ports import registry
 from app.core.db import Database
 from app.core.errors import not_found
 from app.core.ids import is_valid_id

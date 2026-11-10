@@ -8,7 +8,7 @@ from app.llms.router import router
 
 
 def install(runtime: Runtime) -> None:
-    model_runtime.install(runtime.settings, queue=runtime.queue)
+    model_runtime.install(runtime.settings)
 
 
 FEATURE = Feature("llms", routers=(router,), install=install)

@@ -24,8 +24,8 @@ from app.calls import transcript
 from app.calls.lookups import config_for
 from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, validation_failed
+from app.evals.current import current_runs_sql
 from app.evals.models import EvaluatorResultItem
-from app.evals.views import current_runs_sql
 from app.flows.compiled import compiled_view
 from app.simulator.models import SimulationExperiment, SimulationRun
 from app.simulator.scorecard import ExcludedRun, ItemVerdict, Scorecard, VerdictRow, compute_scorecard

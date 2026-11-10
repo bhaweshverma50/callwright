@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from app.knowledge.extract import Block
+from app.llms.adapters.base import estimate_tokens
 
 TARGET_TOKENS = 400
 OVERLAP_TOKENS = 60
@@ -57,7 +58,7 @@ def _encoder() -> Callable[[str], list[int]] | None:
 def count_tokens(text: str) -> int:
     encode = _encoder()
     if encode is None:
-        return max(1, len(text) // 4)
+        return estimate_tokens(text)
     return len(encode(text))
 
 

@@ -125,9 +125,6 @@ class Scorecard:
     by_node: list[EvaluatorScore] = field(default_factory=list)
 
 
-# Rounding -------------------------------------------------------------------------------------
-
-
 def round_half_away(value: Fraction, places: int) -> float:
     """Round an exact value half away from zero (display only)."""
     exact = Decimal(value.numerator) / Decimal(value.denominator)
@@ -140,9 +137,6 @@ def display_rate(value: Fraction | None) -> float | None:
 
 def display_pp(value: Fraction | None) -> float | None:
     return None if value is None else round_half_away(value, 1)
-
-
-# Collapse -------------------------------------------------------------------------------------
 
 
 def _fold(verdicts: Iterable[str]) -> Verdict | None:
@@ -180,9 +174,6 @@ def collapse_by_node(row: VerdictRow) -> dict[str, NodeVerdict]:
     return out
 
 
-# Pairing --------------------------------------------------------------------------------------
-
-
 def pair_verdicts(base: Mapping[str, tuple[str, int]], sim: Mapping[str, tuple[str, int]]) -> PairCounts:
     """Pairs of ``key -> (verdict, evaluator version)`` present on both sides."""
     n = improved = regressed = up = down = mismatch = 0
@@ -203,9 +194,6 @@ def pair_verdicts(base: Mapping[str, tuple[str, int]], sim: Mapping[str, tuple[s
         else:
             down += 1
     return PairCounts(n, improved, regressed, up, down, mismatch)
-
-
-# Aggregation ----------------------------------------------------------------------------------
 
 
 @dataclass

@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.calls.quality_port import VerdictDiff
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 
 
 async def diffs(
