@@ -36,80 +36,41 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  label: string;
+  /** Null for the unlabelled group at the top of the sidebar. */
+  label: string | null;
   items: NavItem[];
 }
 
 /**
- * Every product area (FR-005): 11 items in four groups that follow the life of an agent, from
- * building it to closing the feedback loop. Billing sits at the foot of the sidebar; Settings
- * sits under it in its own landmark.
+ * Every product area (FR-005), in the order most consoles use: the overview and the calls list
+ * people open daily come first without a heading, then building agents, then the quality tools
+ * with the actionable Issues inbox first. Billing sits at the foot of the sidebar; Settings sits
+ * under it in its own landmark.
  */
 export const NAV: NavGroup[] = [
+  {
+    label: null,
+    items: [
+      { to: DASHBOARD_PATH, label: "Dashboard", icon: LayoutDashboard },
+      { to: CALLS_PATH, label: "Calls", icon: PhoneCall },
+    ],
+  },
   {
     label: "Build",
     items: [
       { to: AGENTS_PATH, label: "Agents", icon: Bot },
-      {
-        to: KNOWLEDGE_PATH,
-        label: "Knowledge",
-        icon: BookOpen,
-      },
-      {
-        to: PHONE_NUMBERS_PATH,
-        label: "Channels",
-        icon: PhoneForwarded,
-      },
-    ],
-  },
-  {
-    label: "Observe",
-    items: [
-      {
-        to: DASHBOARD_PATH,
-        label: "Dashboard",
-        icon: LayoutDashboard,
-      },
-      {
-        to: CALLS_PATH,
-        label: "Calls",
-        icon: PhoneCall,
-      },
+      { to: KNOWLEDGE_PATH, label: "Knowledge", icon: BookOpen },
+      { to: PHONE_NUMBERS_PATH, label: "Channels", icon: PhoneForwarded },
     ],
   },
   {
     label: "Quality",
     items: [
-      {
-        to: DATASETS_PATH,
-        label: "Datasets",
-        icon: DatabaseIcon,
-      },
-      {
-        to: SIMULATIONS_PATH,
-        label: "Simulations",
-        icon: FlaskConical,
-      },
-    ],
-  },
-  {
-    label: "Feedback loop",
-    items: [
-      {
-        to: REVIEW_PATH,
-        label: "Review",
-        icon: ListChecksIcon,
-      },
-      {
-        to: CALIBRATION_PATH,
-        label: "Calibration",
-        icon: CrosshairIcon,
-      },
-      {
-        to: ISSUES_PATH,
-        label: "Issues",
-        icon: TriangleAlert,
-      },
+      { to: ISSUES_PATH, label: "Issues", icon: TriangleAlert },
+      { to: REVIEW_PATH, label: "Review", icon: ListChecksIcon },
+      { to: SIMULATIONS_PATH, label: "Simulations", icon: FlaskConical },
+      { to: DATASETS_PATH, label: "Datasets", icon: DatabaseIcon },
+      { to: CALIBRATION_PATH, label: "Calibration", icon: CrosshairIcon },
     ],
   },
 ];

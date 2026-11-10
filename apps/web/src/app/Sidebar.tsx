@@ -38,12 +38,10 @@ export function Sidebar({
       <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col">
         <div className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-4 pt-2", expanded ? "gap-5" : "gap-2", pad)}>
           {NAV.map((group, gi) => (
-            <div key={group.label} className="flex flex-col">
-              {expanded ? (
-                <p className="px-2.5 pb-1.5 text-[12px] font-medium text-fg-3">{group.label}</p>
-              ) : (
-                gi > 0 && <div role="separator" aria-hidden className="mx-auto mb-2 h-px w-8 bg-line-strong/70" />
-              )}
+            <div key={group.label ?? "overview"} className="flex flex-col">
+              {expanded
+                ? group.label && <p className="px-2.5 pb-1.5 text-[12px] font-medium text-fg-3">{group.label}</p>
+                : gi > 0 && <div role="separator" aria-hidden className="mx-auto mb-2 h-px w-8 bg-line-strong/70" />}
               <ul className={cn("flex flex-col", expanded ? "gap-0.5" : "gap-1.5")}>
                 {group.items.map((item) => (
                   <li key={item.to} className="relative">

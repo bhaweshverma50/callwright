@@ -55,7 +55,7 @@ describe("shell (T042, T095, T096, FR-005, FR-018)", () => {
     const user = userEvent.setup();
     const first = renderApp("/dashboard");
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    for (const g of ["Build", "Observe", "Quality", "Feedback loop"]) expect(within(nav).getByText(g)).toBeInTheDocument();
+    for (const g of ["Build", "Quality"]) expect(within(nav).getByText(g)).toBeInTheDocument();
     expect(within(screen.getByRole("navigation", { name: "Workspace" })).getByRole("link", { name: "Settings" })).toHaveAttribute(
       "href",
       "/settings",
