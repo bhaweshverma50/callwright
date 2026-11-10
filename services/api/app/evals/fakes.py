@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import re
 
+from app.analysis_vars import extractor as analysis
+from app.evaluators import judge
 from app.llms.adapters.base import ChatMessage
 from app.llms.adapters.fake import PURPOSE_REPLIES
 
@@ -137,6 +139,6 @@ def judge_reply(messages: list[ChatMessage], system: str | None) -> str:
     )
 
 
-def register() -> None:
-    PURPOSE_REPLIES.setdefault("call_analysis", analysis_reply)
-    PURPOSE_REPLIES.setdefault("eval_judge", judge_reply)
+def register_fakes() -> None:
+    PURPOSE_REPLIES.setdefault(analysis.PURPOSE, analysis_reply)
+    PURPOSE_REPLIES.setdefault(judge.PURPOSE, judge_reply)

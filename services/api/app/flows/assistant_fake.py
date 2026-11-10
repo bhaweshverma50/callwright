@@ -12,8 +12,10 @@ import json
 import re
 from typing import Any
 
+from app.flows.assistant import PURPOSE
 from app.flows.schemas import CONVERSATIONAL
 from app.llms.adapters.base import ChatMessage
+from app.llms.adapters.fake import PURPOSE_REPLIES
 
 _GRAPH = re.compile(r"<graph>\n?(.*?)\n?</graph>", re.DOTALL)
 
@@ -143,3 +145,7 @@ def reply(messages: list[ChatMessage], system: str | None) -> str:
             }
         )
     return json.dumps({"message": " ".join(parts), "flow_name": None, "operations": ops})
+
+
+def register_fakes() -> None:
+    PURPOSE_REPLIES.setdefault(PURPOSE, reply)

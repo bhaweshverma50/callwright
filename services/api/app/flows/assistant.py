@@ -55,6 +55,9 @@ class UnknownReference(ValueError):
     """An operation names a node or edge that is not in the graph."""
 
 
+PURPOSE = "flow_assistant"
+
+
 def assistant_timeout() -> ProblemError:
     return ProblemError(
         504,
@@ -351,7 +354,7 @@ async def ask(
                 max_tokens=MAX_OUTPUT_TOKENS,
                 timeout_s=settings.flow_assistant_timeout_s,
                 json_mode=True,
-                purpose="flow_assistant",
+                purpose=PURPOSE,
             )
         except (ModelTimeout, ModelError) as exc:
             span.record_exception(exc)
