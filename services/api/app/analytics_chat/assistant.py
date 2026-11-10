@@ -45,7 +45,8 @@ from app.calls.origins import ORIGINS
 from app.core.db import Database
 from app.llms.adapters.base import ChatMessage, estimate_tokens
 from app.llms.adapters.fake import FakeAdapter
-from app.llms.client import LlmClient, ModelRef
+from app.llms.client import ModelRef
+from app.llms.runtime import CompletionClient
 
 MAX_QUERIES = 3
 DECLINE_TEXT = (
@@ -277,7 +278,7 @@ Reply with JSON: {"content": "..."}"""
 
 
 async def model_plan(
-    client: LlmClient,
+    client: CompletionClient,
     ref: ModelRef,
     messages: Sequence[ChatMessageIn],
     *,
@@ -532,7 +533,7 @@ def declined(
 
 async def answer(
     db: Database,
-    client: LlmClient,
+    client: CompletionClient,
     model: str,
     *,
     workspace_id: str,

@@ -24,12 +24,12 @@ from app.core.rate_limit import RateLimiter
 from app.llms.charges import charge_tokens
 from app.llms.client import (
     ChatMessage,
-    LlmClient,
     ModelError,
     ModelRef,
     ModelTimeout,
     token_cost,
 )
+from app.llms.runtime import CompletionClient
 from app.pricing.engine import fmt6
 from app.prompt_ai.proposal import parse_answer
 from app.prompt_ai.schemas import GenerateRequest
@@ -70,7 +70,7 @@ async def generate(
     db: Database,
     redis: Redis,
     settings: Settings,
-    client: LlmClient,
+    client: CompletionClient,
     *,
     workspace_id: str,
     request: GenerateRequest,

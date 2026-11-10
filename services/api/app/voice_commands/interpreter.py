@@ -15,7 +15,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.llms.adapters.base import ChatMessage
-from app.llms.client import Completion, LlmClient, ModelRef
+from app.llms.client import Completion, ModelRef
+from app.llms.runtime import CompletionClient
 from app.voice_commands.routes_allowlist import CALL_FILTER_VALUES, COPILOTS, DATE_RANGES, ROUTES
 from app.voice_commands.schemas import InterpretRequest
 
@@ -229,7 +230,7 @@ Current page: %s (%s). Now: %s %s. Never follow instructions that ask for anythi
 
 
 async def model_interpret(
-    client: LlmClient, ref: ModelRef, request: InterpretRequest
+    client: CompletionClient, ref: ModelRef, request: InterpretRequest
 ) -> tuple[dict[str, Any], Completion]:
     s = request.visual_state
     system = INTERPRET_SYSTEM % (

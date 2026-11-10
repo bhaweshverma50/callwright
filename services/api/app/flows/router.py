@@ -26,6 +26,7 @@ from app.flows.schemas import (
     graph_json,
 )
 from app.flows.starter import DEFAULT_LABELS, node_defaults
+from app.llms.runtime import runtime
 
 router = APIRouter(tags=["flows"])
 
@@ -174,7 +175,7 @@ async def ask_assistant(
     return await assistant.ask(
         state.db,
         state.settings,
-        state.llm_client,
+        runtime().llm,
         workspace_id=principal.workspace_id,
         user_id=principal.user_id,
         flow_id=flow_id,

@@ -39,7 +39,6 @@ from app.core.logging import configure_logging
 from app.core.queue import ArqJobQueue
 from app.core.storage import build_store
 from app.core.vm_waker import REDIS_DOWN_ERRORS, ActivityMarker, VmWaker, redis_down_handler
-from app.llms.client import LlmClient
 
 logger = logging.getLogger(__name__)
 API_PREFIX = "/v1"
@@ -139,7 +138,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.jobs = jobs
         app.state.webhook_http = httpx.AsyncClient(follow_redirects=False)
         app.state.storage = build_store(settings)
-        app.state.llm_client = LlmClient(settings)
         app.state.vm_waker = VmWaker(settings.wake_vm_project, settings.wake_vm_zone, settings.wake_vm_name)
         app.state.sip = build_sip(settings)
         app.state.whatsapp_graph = build_whatsapp_graph(settings)

@@ -36,8 +36,8 @@ from app.knowledge import storage
 from app.knowledge.chunking import TooManyChunks, chunk_blocks
 from app.knowledge.extract import ExtractError, extract
 from app.knowledge.models import Chunk, Document
-from app.llms.embeddings import build_embedder
 from app.llms.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
+from app.llms.runtime import runtime
 from app.pricing import service as pricing
 
 log = logging.getLogger(__name__)
@@ -278,11 +278,7 @@ async def run_inline(deps: IngestDeps, doc_id: str, sleep: Sleep = asyncio.sleep
 
 
 def deps_from_state(state: Any) -> IngestDeps:
-    embedder = getattr(state, "embedder", None)
-    if embedder is None:
-        embedder = build_embedder(state.settings)
-        state.embedder = embedder
-    return IngestDeps(db=state.db, redis=state.redis, store=state.storage, embedder=embedder)
+    return IngestDeps(db=state.db, redis=state.redis, store=state.storage, embedder=runtime().embedder)
 
 
 async def schedule(state: Any, doc_id: str) -> None:
@@ -311,7 +307,7 @@ async def ingest_document(ctx: dict[str, Any], doc_id: str) -> str:
             db=ctx["db"],
             redis=ctx.get("redis"),
             store=build_store(settings),
-            embedder=build_embedder(settings),
+            embedder=runtime().embedder,
         )
     outcome = await ingest(ctx["kb_deps"], doc_id)
     if outcome.retry_in_s is not None:

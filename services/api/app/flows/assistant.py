@@ -34,12 +34,12 @@ from app.flows.starter import DEFAULT_LABELS, config_with_defaults, short_id
 from app.llms.charges import charge_tokens
 from app.llms.client import (
     ChatMessage,
-    LlmClient,
     ModelError,
     ModelRef,
     ModelTimeout,
     token_cost,
 )
+from app.llms.runtime import CompletionClient
 from app.pricing.engine import fmt6
 
 tracer = trace.get_tracer("app.flows")
@@ -319,7 +319,7 @@ def build_system(graph: Mapping[str, Any], persona: str, name: str) -> str:
 async def ask(
     db: Database,
     settings: Settings,
-    client: LlmClient,
+    client: CompletionClient,
     *,
     workspace_id: str,
     user_id: str | None,

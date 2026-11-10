@@ -8,7 +8,7 @@ from fastapi import APIRouter, Header, Request
 
 from app.core.auth import CurrentPrincipal
 from app.core.errors import problem_responses
-from app.llms.client import LlmClient
+from app.llms.runtime import runtime
 from app.prompt_ai import service
 from app.prompt_ai.schemas import GenerateRequest
 
@@ -26,12 +26,11 @@ async def generate_prompt(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key", max_length=255)] = None,
 ) -> dict[str, Any]:
     state = request.app.state
-    client: LlmClient = getattr(state, "llm_client", None) or LlmClient(state.settings)
     return await service.generate(
         state.db,
         state.redis,
         state.settings,
-        client,
+        runtime().llm,
         workspace_id=principal.workspace_id,
         request=body,
         idempotency_key=idempotency_key,

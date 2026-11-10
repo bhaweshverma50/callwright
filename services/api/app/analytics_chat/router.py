@@ -30,6 +30,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.errors import ProblemError, field_error, problem_responses, too_many_requests, validation_failed
 from app.core.rate_limit import RateLimiter
 from app.llms.client import ModelError, ModelTimeout, billable_cost, token_cost
+from app.llms.runtime import runtime
 
 router = APIRouter(tags=["analytics"])
 tracer = trace.get_tracer("app.analytics_chat")
@@ -123,7 +124,7 @@ async def ask(
         try:
             result = await assistant.answer(
                 state.db,
-                state.llm_client,
+                runtime().llm,
                 settings.analytics_chat_model,
                 workspace_id=principal.workspace_id,
                 messages=body.messages,

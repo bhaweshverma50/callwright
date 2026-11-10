@@ -17,7 +17,6 @@ from app.calls.models import Call
 from app.calls.pipeline import step_deferred
 from app.core.db import Database
 from app.evals.runner import AlreadyRunning, execute_group, start_group
-from app.llms.runtime import runtime
 
 logger = logging.getLogger(__name__)
 EVALUATE_CALL = "evaluate_call"
@@ -36,10 +35,9 @@ async def pipeline_handler(call_id: str, session: AsyncSession) -> None:
         return
     deferred = step_deferred()
     job = (call.workspace_id, call_id, start.group.run_group_id)
-    if deferred is not None:
-        deferred.add(EVALUATE_CALL, *job, job_id=f"evaluate:{start.group.run_group_id}")
-    elif runtime().queue is not None:
-        await runtime().queue.enqueue(EVALUATE_CALL, *job, job_id=f"evaluate:{start.group.run_group_id}")
+    if deferred is None:
+        raise RuntimeError("the evaluate step runs inside a pipeline step")
+    deferred.add(EVALUATE_CALL, *job, job_id=f"evaluate:{start.group.run_group_id}")
 
 
 async def evaluate_call(ctx: dict[str, Any], workspace_id: str, call_id: str, run_group_id: str) -> str:

@@ -12,8 +12,8 @@ from app.issues.jobs import (
     FINALIZE_VALIDATION,
     audit_applied_issues,
     detect_issues,
+    finalize_hook,
     finalize_validation,
-    on_batch_finished_factory,
     sweep_issues,
 )
 from app.issues.router import router
@@ -25,7 +25,7 @@ def install(runtime: Runtime) -> None:
     issues_runtime.register_fakes()
     # Hooks are process-wide; replace ours so repeated installs (tests, reloads) fire once.
     simulator.clear_hooks(SOURCE)
-    simulator.on_experiment_finished(SOURCE, on_batch_finished_factory())
+    simulator.on_experiment_finished(SOURCE, finalize_hook(runtime.queue))
 
 
 FEATURE = Feature(

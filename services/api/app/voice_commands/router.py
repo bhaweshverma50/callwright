@@ -24,6 +24,7 @@ from app.core.rate_limit import RateLimiter
 from app.llms.adapters.base import estimate_tokens
 from app.llms.adapters.fake import FakeAdapter
 from app.llms.client import ModelError, ModelRef, ModelTimeout, token_cost
+from app.llms.runtime import runtime
 from app.voice_commands.interpreter import keyword_interpret, model_interpret, validate
 from app.voice_commands.models import VoiceCommandLog
 from app.voice_commands.schemas import InterpretRequest
@@ -110,7 +111,7 @@ async def interpret(body: InterpretRequest, request: Request, principal: Current
     state = request.app.state
     await _limit(request, "voice_interpret", principal.user_id)
     ref = ModelRef.parse(state.settings.voice_command_model)
-    client = state.llm_client
+    client = runtime().llm
     tokens = (estimate_tokens(body.transcript) + 300, 40)
     if isinstance(client.adapter_for(ref.provider), FakeAdapter):
         raw = keyword_interpret(body)

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from app.knowledge import jobs
 from app.llms.embeddings.fake import FakeEmbeddings
+from app.llms.runtime import runtime
 from tests.agent_helpers import create_ok
 from tests.conftest import Account
 from tests.contract.conftest import check
@@ -25,11 +26,11 @@ MISSING_AGENT = "agt_01ARZ3NDEKTSV4RRFFQ69G5FAV"
 @pytest_asyncio.fixture(autouse=True)
 async def fake_embedder(app: FastAPI) -> AsyncIterator[FakeEmbeddings]:
     embedder = FakeEmbeddings()
-    previous = getattr(app.state, "embedder", None)
-    app.state.embedder = embedder
+    previous = runtime().embedder
+    runtime().embedder = embedder
     yield embedder
     await jobs.drain()
-    app.state.embedder = previous
+    runtime().embedder = previous
 
 
 async def make_kb(

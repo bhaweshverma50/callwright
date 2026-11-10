@@ -31,10 +31,10 @@ from tests.unit.evaluators.helpers import offline_llm
 @pytest_asyncio.fixture
 async def quality(app: FastAPI) -> AsyncIterator[FakeLlm]:
     llm = offline_llm()
-    model_runtime.install(app.state.settings, llm=llm, queue=getattr(app.state, "jobs", None))
+    model_runtime.install(app.state.settings, llm=llm)
     quality_install.install_handlers()
     yield llm
-    model_runtime.install(app.state.settings, queue=getattr(app.state, "jobs", None))
+    model_runtime.install(app.state.settings)
     quality_install.install_handlers()
 
 

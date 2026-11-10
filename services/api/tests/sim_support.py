@@ -415,9 +415,12 @@ class SimEnv:
 @pytest_asyncio.fixture
 async def sim_env(app: Any, client: httpx.AsyncClient) -> AsyncIterator[SimEnv]:
     from app.evals import install as quality_install
+    from app.issues.jobs import finalize_hook
+    from app.issues.validation import SOURCE
     from app.llms import runtime as model_runtime
     from app.llms.adapters.base import ChatMessage
     from app.llms.adapters.fake import PURPOSE_REPLIES
+    from app.simulator import service as simulator
     from tests.fakes.fake_llm import FakeLlm
     from tests.unit.evaluators.helpers import offline_llm
 
@@ -439,10 +442,14 @@ async def sim_env(app: Any, client: httpx.AsyncClient) -> AsyncIterator[SimEnv]:
         return quality.responder(system, user, purpose)
 
     llm = FakeLlm(responder=responder)
-    model_runtime.install(app.state.settings, llm=llm, queue=queue)
+    model_runtime.install(app.state.settings, llm=llm)
+    simulator.clear_hooks(SOURCE)
+    simulator.on_experiment_finished(SOURCE, finalize_hook(queue))
     quality_install.install_handlers()
     env = SimEnv(app, client, queue, TextsimRecorder(), FakeTextRunner(client), llm)
     yield env
-    model_runtime.install(app.state.settings, queue=previous)
+    model_runtime.install(app.state.settings)
+    simulator.clear_hooks(SOURCE)
+    simulator.on_experiment_finished(SOURCE, finalize_hook(previous))
     quality_install.install_handlers()
     app.state.jobs = previous

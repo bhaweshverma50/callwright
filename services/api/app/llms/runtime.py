@@ -1,8 +1,8 @@
 """The one model runtime for the API's post-call and testing work (007 evaluators and analysis,
-008 simulations and test runs, 009 issues): the ``llms`` client, the embedder and the job queue.
+008 simulations and test runs, 009 issues): the ``llms`` client and the embedder.
 
 ``install(settings)`` runs from the evals feature's ``install`` (API and jobs worker alike); tests
-swap parts with ``install(..., llm=FakeLlm(...), queue=...)``. Offline (no vendor key) the
+swap parts with ``install(..., llm=FakeLlm(...))``. Offline (no vendor key) the
 fake adapter answers with the replies each feature registered for its ``purpose``.
 """
 
@@ -12,11 +12,13 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.core.config import Settings, get_settings
-from app.llms.adapters.base import ChatMessage, Completion
+from app.llms.adapters.base import ChatMessage, Completion, LlmAdapter
 from app.llms.embeddings import EmbeddingAdapter, build_embedder
 
 
 class CompletionClient(Protocol):
+    def adapter_for(self, provider: str) -> LlmAdapter: ...
+
     async def complete(
         self,
         ref: Any,
@@ -35,7 +37,6 @@ class ModelRuntime:
     settings: Settings
     llm: CompletionClient
     embedder: EmbeddingAdapter
-    queue: Any = None  # app.core.queue.JobQueue for follow-up jobs (evaluate_call)
 
 
 _runtime: ModelRuntime | None = None
@@ -46,7 +47,6 @@ def install(
     *,
     llm: CompletionClient | None = None,
     embedder: EmbeddingAdapter | None = None,
-    queue: Any = None,
 ) -> ModelRuntime:
     global _runtime
     from app.llms.client import LlmClient
@@ -56,7 +56,6 @@ def install(
         settings=settings,
         llm=llm or LlmClient(settings),
         embedder=embedder if embedder is not None else build_embedder(settings),
-        queue=queue,
     )
     return _runtime
 
