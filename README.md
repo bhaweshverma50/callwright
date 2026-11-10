@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/lockup-dark.svg">
-  <img src="apps/web/public/brand/lockup-light.svg" alt="Callwright" width="320">
+  <source media="(prefers-color-scheme: light)" srcset="docs/readme/banner-light.svg">
+  <img src="docs/readme/banner-dark.svg" alt="Callwright" width="100%">
 </picture>
 
 ### Build, run and continuously improve AI voice agents.
