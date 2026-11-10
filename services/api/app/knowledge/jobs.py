@@ -20,7 +20,6 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Any
 
 from opentelemetry import trace
@@ -28,7 +27,6 @@ from redis.asyncio import Redis
 from sqlalchemy import delete, text
 from ulid import ULID
 
-from app.billing import service as billing
 from app.core.db import Database
 from app.core.errors import ProblemError
 from app.core.storage import ObjectStore
@@ -36,8 +34,7 @@ from app.knowledge import storage
 from app.knowledge.chunking import TooManyChunks, chunk_blocks
 from app.knowledge.extract import ExtractError, extract
 from app.knowledge.models import Chunk, Document
-from app.llms.charges import embedding_cost
-from app.llms.client import billable_cost
+from app.llms.charges import charge_tokens, embedding_cost
 from app.llms.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
 from app.llms.runtime import runtime
 
@@ -81,12 +78,6 @@ async def acquire_slot(redis: Redis | None, workspace_id: str) -> bool:
 async def release_slot(redis: Redis | None, workspace_id: str) -> None:
     if redis is not None:
         await redis.decr(f"kb_ingest_slots:{workspace_id}")
-
-
-async def ingestion_cost(session: Any, embedder: EmbeddingAdapter, tokens: int) -> tuple[Decimal, Decimal]:
-    """(raw, billable) USD for ``tokens`` embedded tokens, with the feature markup."""
-    raw = await embedding_cost(session, embedder, tokens)
-    return raw, billable_cost(raw)
 
 
 async def _fail(deps: IngestDeps, doc: Document, code: str, message: str) -> Outcome:
@@ -206,15 +197,12 @@ async def _ingest(deps: IngestDeps, doc: Document, span: Any) -> Outcome:
                 )
                 for d, vector in zip(drafts, vectors, strict=True)
             )
-            raw, billable = await ingestion_cost(session, deps.embedder, tokens)
-            await billing.charge_feature(
+            await charge_tokens(
                 session,
                 workspace_id=doc.workspace_id,
                 feature_key="knowledge_ingestion",
-                quantity=Decimal(tokens),
-                unit="tokens",
-                raw_cost_usd=raw,
-                billable_cost_usd=billable,
+                tokens=tokens,
+                raw_cost_usd=await embedding_cost(session, deps.embedder, tokens),
                 idempotency_key=f"kb_ingest:{doc.id}:{doc.sha256}",
                 ref_type="kb_document",
                 ref_id=doc.id,

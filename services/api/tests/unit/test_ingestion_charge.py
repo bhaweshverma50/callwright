@@ -9,8 +9,9 @@ from fastapi import FastAPI
 from sqlalchemy import select
 
 from app.knowledge import jobs
+from app.llms.charges import embedding_cost
+from app.llms.client import billable_cost
 from app.llms.embeddings.fake import FakeEmbeddings
-from app.llms.service import load_catalog
 from app.usage.models import UsageEvent
 from tests.fixtures import knowledge as fx
 from tests.knowledge_helpers import add_document, deps, document, new_kb, workspace
@@ -23,14 +24,12 @@ class PricedFake(FakeEmbeddings):
 
 async def test_cost_formula(app: FastAPI) -> None:
     async with app.state.db.transaction() as session:
-        raw, billable = await jobs.ingestion_cost(session, PricedFake(), 12_345)
+        raw = await embedding_cost(session, PricedFake(), 12_345)
     # text-embedding-3-small lists at $0.00002 per 1,000 tokens (001 catalog seed).
     expected_raw = (Decimal(12_345) / 1000 * Decimal("0.000020")).quantize(
         Decimal("0.000001"), rounding="ROUND_CEILING"
     )
     assert raw == expected_raw == Decimal("0.000247")
-    markup = load_catalog().feature_markup
-    assert billable == (expected_raw * markup).quantize(Decimal("0.000001"), rounding="ROUND_CEILING")
 
 
 async def test_charged_once_per_document_version(app: FastAPI) -> None:
@@ -50,7 +49,8 @@ async def test_charged_once_per_document_version(app: FastAPI) -> None:
                 )
             ).scalars()
         )
-        raw, billable = await jobs.ingestion_cost(session, embedder, doc.token_count)
+        raw = await embedding_cost(session, embedder, doc.token_count)
+        billable = billable_cost(raw)
     assert len(events) == 1
     event = events[0]
     assert event.quantity == Decimal(doc.token_count) and event.unit == "tokens"
