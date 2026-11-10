@@ -70,12 +70,13 @@ async def test_dynamic_with_allow_list() -> None:
     assert backend.log == [("cold", "+14155550111")]
 
 
-async def test_dynamic_without_allow_list_takes_any_e164() -> None:
+async def test_dynamic_without_allow_list_transfers_nowhere() -> None:
+    # Toll-fraud guard: a caller must not talk the agent into dialing a number nobody approved.
     config = {"routing_type": "dynamic", "routing_instructions": "Any branch", "ring_timeout_s": 30}
     backend = FakeTransfer()
     h = make([tool("transfer_call", "route", config)], transfer_backend=backend)
-    await h.tools.dispatch("route", {"destination": "+442071234567"})
-    assert backend.log == [("cold", "+442071234567")]
+    refused = json.loads(await h.tools.dispatch("route", {"destination": "+19005550199"}))
+    assert refused["error"] == "invalid_arguments" and backend.log == []
 
 
 async def test_warm_private_briefs_then_moves() -> None:

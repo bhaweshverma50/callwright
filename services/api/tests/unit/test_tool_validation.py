@@ -58,6 +58,10 @@ def test_dynamic_transfer_needs_instructions_and_valid_allow_list() -> None:
     assert codes(validate_config("transfer_call", {"routing_type": "dynamic"}, allow_http=False)) == [
         ("/config/routing_instructions", "required")
     ]
+    no_list = {**ok, "allowed_numbers": []}
+    assert codes(validate_config("transfer_call", no_list, allow_http=False)) == [
+        ("/config/allowed_numbers", "required")
+    ]
 
 
 def test_warm_transfer_needs_briefing() -> None:

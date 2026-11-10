@@ -65,6 +65,8 @@ class TransferSpec(_Strict):
             raise ValueError("number: Enter the phone number to transfer to, in +E.164 form.")
         if self.routing_type == "dynamic" and not (self.routing_instructions or "").strip():
             raise ValueError("routing_instructions: Describe how the agent picks the number.")
+        if self.routing_type == "dynamic" and not self.allowed_numbers:
+            raise ValueError("allowed_numbers: Add at least one number the agent may transfer to.")
         if self.transfer_type == "warm" and self.warm_transfer is None:
             raise ValueError("warm_transfer: A warm transfer needs a handoff type and a briefing.")
         return self

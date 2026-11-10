@@ -22,7 +22,8 @@ function AllowList({ numbers, errors, onChange }: { numbers: string[]; errors: E
   return (
     <Field
       label="Allowed numbers"
-      hint={draftError ?? "Recommended. The agent can only transfer to these; without a list it may dial any number the caller gives."}
+      error={errors.allowed_numbers}
+      hint={draftError ?? "The agent can only transfer to these numbers."}
     >
       {({ id, describedBy }) => (
         <div className="flex flex-col gap-2.5">

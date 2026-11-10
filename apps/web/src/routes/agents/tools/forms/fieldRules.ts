@@ -73,6 +73,7 @@ function transferErrors(c: TransferConfig, out: Errors) {
   } else if (!c.routing_instructions?.trim()) {
     out.routing_instructions = "Describe how the agent picks the number.";
   }
+  if (c.routing_type === "dynamic" && c.allowed_numbers.length === 0) out.allowed_numbers = "Add at least one number the agent may transfer to.";
   c.allowed_numbers.forEach((n, i) => {
     const e = e164Error(n);
     if (e) out[`allowed_numbers.${i}`] = e;
