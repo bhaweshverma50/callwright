@@ -4,7 +4,6 @@
  * so the same machine runs against the API, the public demo endpoint or a scripted mock call.
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { Latency } from "../components/signal";
 import {
   CONNECTION_FAILED,
   MIC_DENIED,
@@ -20,9 +19,10 @@ import {
   type WebCallDriver,
   type WebCallRequest,
 } from "./webCall";
-import { queryClient } from "../api/queryClient";
 import { callKeys } from "../api/calls";
-import { idempotencyKey } from "../api/agents";
+import { idempotencyKey } from "../lib/idempotency";
+import { useQueryClient } from "@tanstack/react-query";
+import { type Latency } from "../components";
 
 export type CallPhase = "idle" | "checking" | "requesting" | "connecting" | "live" | "ending" | "ended" | "error";
 
@@ -126,6 +126,7 @@ export function useWebCall(
   /** Rewords a refused session for this surface; falls back to `problemFromError`. */
   problemFor?: (e: unknown) => CallProblem | undefined,
 ) {
+  const qc = useQueryClient();
   const [s, dispatch] = useReducer(reducer, INITIAL);
   const run = useRef(0);
   const conn = useRef<CallConnection | null>(null);
@@ -147,8 +148,8 @@ export function useWebCall(
   // The shell's live-calls badge and the dashboard card pick the call up (and drop it) at once
   // instead of on their next idle poll.
   useEffect(() => {
-    if (s.phase === "live" || s.phase === "ended") void queryClient.invalidateQueries({ queryKey: callKeys.live });
-  }, [s.phase]);
+    if (s.phase === "live" || s.phase === "ended") void qc.invalidateQueries({ queryKey: callKeys.live });
+  }, [s.phase, qc]);
 
   const reported = useRef<number | null>(null);
   useEffect(() => {
@@ -161,7 +162,9 @@ export function useWebCall(
   useEffect(
     () => () => {
       run.current += 1;
-      void conn.current?.hangUp().catch(() => {});
+      void conn.current
+        ?.hangUp()
+        .catch((e: unknown) => console.warn("Hanging up on leave failed; the server ends the call when the room empties.", e));
       conn.current = null;
     },
     [],
@@ -201,12 +204,13 @@ export function useWebCall(
     let c: CallConnection;
     try {
       c = await driver.connect(session, listener);
-    } catch {
+    } catch (e) {
+      console.warn("Joining the call room failed.", e);
       if (!stale()) dispatch({ type: "fail", problem: CONNECTION_FAILED });
       return;
     }
     if (stale()) {
-      void c.hangUp().catch(() => {});
+      void c.hangUp().catch((e: unknown) => console.warn("Hanging up a superseded call failed.", e));
       return;
     }
     conn.current = c;
@@ -231,11 +235,14 @@ export function useWebCall(
   const toggleMute = useCallback(() => {
     const next = !s.muted;
     dispatch({ type: "muted", muted: next });
-    void conn.current?.setMuted(next).catch(() => dispatch({ type: "muted", muted: !next }));
+    void conn.current?.setMuted(next).catch((e: unknown) => {
+      console.warn("The microphone did not change, so the mute button goes back.", e);
+      dispatch({ type: "muted", muted: !next });
+    });
   }, [s.muted]);
 
   const sendDigit = useCallback((digit: string) => {
-    void conn.current?.sendDigit?.(digit).catch(() => {});
+    void conn.current?.sendDigit?.(digit).catch((e: unknown) => console.warn(`Key ${digit} was not sent.`, e));
   }, []);
 
   const elapsed = s.startedAt ? (s.endedAt ?? now) - s.startedAt : 0;

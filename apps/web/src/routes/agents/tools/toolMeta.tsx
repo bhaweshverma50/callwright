@@ -2,6 +2,7 @@ import { Globe, Grid3x3, PhoneForwarded, PhoneOff } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ConfigByType, ToolType } from "../../../api/tools";
 import { cn } from "../../../components";
+import { schemaLimits } from "../../../lib/contract.gen";
 
 export interface ToolTypeMeta {
   label: string;
@@ -67,28 +68,31 @@ export function ToolTile({ type, size = "md", className }: { type: ToolType; siz
   );
 }
 
+/** The `default` of each property of a contract schema that declares one. */
+function contractDefaults(schema: keyof typeof schemaLimits): Record<string, unknown> {
+  const props: Record<string, { default?: unknown }> = schemaLimits[schema];
+  return Object.fromEntries(Object.entries(props).flatMap(([name, p]) => ("default" in p ? [[name, structuredClone(p.default)]] : [])));
+}
+
+/**
+ * What a new tool of each type starts with: the contract's defaults, plus the blanks the form
+ * opens with (a URL to fill in, no extra headers or mappings).
+ */
 export const DEFAULT_CONFIGS: ConfigByType = {
   end_call: { message: null },
   transfer_call: {
-    routing_type: "static",
+    ...contractDefaults("TransferSpec"),
     number: "",
     routing_instructions: "",
-    allowed_numbers: [],
-    transfer_type: "cold",
     warm_transfer: null,
-    hold_message: "Please hold while I connect you.",
-    ring_timeout_s: 30,
   },
-  press_digit: { delay_ms: 1000, cooldown_ms: 5000 },
+  press_digit: contractDefaults("PressDigitConfig"),
   http: {
-    method: "POST",
+    ...contractDefaults("HttpRequestSpec"),
+    ...contractDefaults("HttpToolConfig"),
     url: "",
-    parameters: { type: "object", properties: {}, required: [] },
     headers: [{ name: "Content-Type", value: "application/json", secret: false }],
     body_template: null,
-    timeout_ms: 8000,
     response_mappings: [],
-    speak_during_execution: true,
-    execution_message: "One moment while I check that.",
   },
-};
+} as ConfigByType;

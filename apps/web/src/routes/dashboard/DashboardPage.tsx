@@ -16,7 +16,7 @@ import { LiveNowCard } from "../calls/live/LiveCalls";
 import { DashboardPlaceholder } from "./DashboardPlaceholder";
 import { KpiTiles } from "./KpiTiles";
 import { AgentHealthCard, QualityGrid } from "./QualitySection";
-import { isAgentId } from "../../lib/paths";
+import { CALLS_PATH, isAgentId } from "../../lib/paths";
 import { viewerTimeZone } from "../../lib/format";
 import { useAllAgents } from "../../api/agents";
 
@@ -240,7 +240,7 @@ function Dashboard() {
               Refresh
             </Button>
             <Button asChild variant="primary" icon={<PhoneCall aria-hidden />}>
-              <Link to="/calls">View calls</Link>
+              <Link to={CALLS_PATH}>View calls</Link>
             </Button>
           </>
         }

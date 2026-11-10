@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useScheduledCallbackCount } from "../../api/callbacks";
 import { TabPanel, Tabs } from "../../components";
+import { CALLBACKS_PATH, CALLS_PATH } from "../../lib/paths";
 
 export type CallsView = "history" | "callbacks";
 
@@ -18,7 +19,7 @@ export function CallsTabs({ value, children }: { value: CallsView; children: Rea
     <Tabs
       aria-label="Calls"
       value={value}
-      onValueChange={(v) => navigate(v === "callbacks" ? "/calls/callbacks" : "/calls")}
+      onValueChange={(v) => navigate(v === "callbacks" ? CALLBACKS_PATH : CALLS_PATH)}
       items={[
         { value: "history", label: "History", icon: <History aria-hidden /> },
         {

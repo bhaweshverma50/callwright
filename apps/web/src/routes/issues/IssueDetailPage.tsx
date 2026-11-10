@@ -42,10 +42,10 @@ import { ValidateDialog } from "./ValidateDialog";
 import { ValidationEvidence } from "./ValidationEvidence";
 import { DISMISS_LABELS, IssueStatusBadge, ORIGIN_LABELS } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
-import { agentPath } from "../../lib/paths";
+import { agentPath, CALIBRATION_PATH, callPath, issuePath, ISSUES_PATH } from "../../lib/paths";
 import { shortId, timeAgo } from "../../lib/format";
-import { problemText } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
 
 const SAMPLE_COLUMNS: Column<IssueSample>[] = [
   {
@@ -54,7 +54,7 @@ const SAMPLE_COLUMNS: Column<IssueSample>[] = [
     cell: (s) => (
       <span className="flex flex-col gap-0.5 py-0.5">
         <Link
-          to={`/calls?call=${s.call_id}`}
+          to={callPath(s.call_id)}
           title={s.call_id}
           className="whitespace-nowrap rounded-inline font-mono text-[13px] text-fg-2 hover:text-fg hover:underline"
         >
@@ -135,7 +135,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
           <p className="text-[14px] leading-relaxed text-fg-2">
             <span className="font-medium text-fg">This check may be wrong.</span> It often disagrees with the labels people gave in calibration, so
             some of these failures may not be real.{" "}
-            <Link to={`/calibration?agent=${issue.agent_id}`} className="font-medium text-accent-text hover:underline">
+            <Link to={`${CALIBRATION_PATH}?agent=${issue.agent_id}`} className="font-medium text-accent-text hover:underline">
               Open calibration
             </Link>
           </p>
@@ -149,7 +149,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
           <p className="text-[14px] leading-relaxed text-fg-2">
             <span className="font-medium text-fg">This pattern came back after a fix.</span> It matches an issue that was fixed earlier and showed up
             again on the new version.{" "}
-            <Link to={`/issues/${issue.recurrence_of}`} className="font-medium text-accent-text hover:underline">
+            <Link to={issuePath(issue.recurrence_of)} className="font-medium text-accent-text hover:underline">
               Open the earlier issue
             </Link>
           </p>
@@ -167,7 +167,7 @@ function Notices({ issue }: { issue: DetectedIssue }) {
             </p>
             {issue.dismiss_note && <p className="text-fg">{issue.dismiss_note}</p>}
             {issue.duplicate_of && (
-              <Link to={`/issues/${issue.duplicate_of}`} className="w-fit font-medium text-accent-text hover:underline">
+              <Link to={issuePath(issue.duplicate_of)} className="w-fit font-medium text-accent-text hover:underline">
                 Open the issue it duplicates
               </Link>
             )}
@@ -202,7 +202,7 @@ export function IssueDetailPage() {
     wasValidating.current = validating;
   }, [validating, id, qc]);
 
-  if (isApiError(issue.error) && issue.error.status === 404) return <RecordNotFound kind="issue" backTo="/issues" backLabel="Back to Issues" />;
+  if (isApiError(issue.error) && issue.error.status === 404) return <RecordNotFound kind="issue" backTo={ISSUES_PATH} backLabel="Back to Issues" />;
   if (issue.isError)
     return (
       <EmptyState
@@ -243,7 +243,7 @@ export function IssueDetailPage() {
   return (
     <div className="flex flex-col">
       <Link
-        to={`/issues?agent=${i.agent_id}`}
+        to={`${ISSUES_PATH}?agent=${i.agent_id}`}
         className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
       >
         <ChevronLeft className="size-4" aria-hidden /> Back to Issues

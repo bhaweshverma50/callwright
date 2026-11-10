@@ -85,8 +85,8 @@ describe("guided setup tour (013)", () => {
 
     renderApp("/dashboard");
     await screen.findByRole("heading", { name: "Dashboard" });
-    await new Promise((r) => setTimeout(r, 300));
-    expect(screen.queryByRole("dialog", { name: "Set up your first agent" })).not.toBeInTheDocument();
+    // The welcome card would open once the saved preference loads; fail if it does.
+    await expect(screen.findByRole("dialog", { name: "Set up your first agent" }, { timeout: 1000 })).rejects.toThrow();
   });
 
   it("skip tour ends it from any step", { timeout: 15_000 }, async () => {

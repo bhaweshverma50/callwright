@@ -2,17 +2,19 @@ import { AudioLines, Keyboard, Loader2, Mic, MicOff, Send, WifiOff, X } from "lu
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { api, postForm, unwrap } from "../../api/client";
+import { fetchStreamCredential, interpretCommand, transcribeCommand } from "../../api/assistants";
 import { isApiError } from "../../api/errors";
 import { useLazyToken } from "../../api/lazyToken";
 import type { components } from "../../api/schema";
 import { cn, focusRing, Kbd, Tooltip } from "../../components";
 import { openAsk } from "../assistant/bus";
 import { highlight, highlightableElements, registeredActions, runAction } from "./actionRegistry";
-import { openDeepgramStream, type LiveTranscriber, type StreamCredential } from "./stt/deepgram";
+import { openDeepgramStream, type LiveTranscriber } from "./stt/deepgram";
 import { viewerTimeZone } from "../../lib/format";
 import { CALLS_PATH, callsPath } from "../../lib/paths";
+import { bodyLimits } from "../../lib/contract.gen";
 
+const TRANSCRIPT_MAX = bodyLimits["POST /voice-commands/interpret"].transcript.maxLength;
 type Interpret = components["schemas"]["InterpretResult"];
 type Phase = "idle" | "starting" | "listening" | "transcribing" | "thinking" | "done";
 type Notice = { tone: "info" | "error"; text: string; hint?: string; icon?: "offline" | "mic" } | null;
@@ -118,11 +120,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
     setPhaseState(p);
   }, []);
 
-  const fetchCredential = useCallback(async () => {
-    const cred = (await unwrap(api.POST("/voice-commands/stream-token"))) as StreamCredential;
-    return { token: JSON.stringify(cred), expires_at: new Date(cred.expires_at).getTime() };
-  }, []);
-  const lazy = useLazyToken(fetchCredential);
+  const streamCredential = useLazyToken(fetchStreamCredential);
 
   const fail = useCallback(
     (text: string, hint?: string) => {
@@ -184,22 +182,18 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
       setPartial(text);
       history.current = [...history.current, { role: "user" as const, content: text }].slice(-12);
       try {
-        const result = await unwrap(
-          api.POST("/voice-commands/interpret", {
-            body: {
-              transcript: text.slice(0, 1000),
-              visual_state: {
-                current_route: location.pathname,
-                page_title: document.title,
-                current_datetime: new Date().toISOString(),
-                timezone: viewerTimeZone(),
-                available_actions: registeredActions(),
-                highlightable_elements: highlightableElements(),
-              },
-              conversation_history: history.current.slice(0, -1),
-            },
-          }),
-        );
+        const result = await interpretCommand({
+          transcript: text.slice(0, TRANSCRIPT_MAX),
+          visual_state: {
+            current_route: location.pathname,
+            page_title: document.title,
+            current_datetime: new Date().toISOString(),
+            timezone: viewerTimeZone(),
+            available_actions: registeredActions(),
+            highlightable_elements: highlightableElements(),
+          },
+          conversation_history: history.current.slice(0, -1),
+        });
         perform(result);
       } catch {
         fail(navigator.onLine ? "The copilot could not answer. Try again." : "You're offline.");
@@ -228,10 +222,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
       if (m.live) text = await m.live.finish();
       else if (m.chunks.length === 0) text = "";
       else {
-        const form = new FormData();
-        form.append("audio", new Blob(m.chunks, { type: "audio/webm" }), "command.webm");
-        const res = await postForm("/voice-commands/transcribe", form);
-        text = res.transcript;
+        text = (await transcribeCommand(new Blob(m.chunks, { type: "audio/webm" }))).transcript;
       }
     } catch (e) {
       if (isApiError(e) && e.code === "stt_not_configured") {
@@ -269,8 +260,8 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
         // The microphone and the streaming credential are requested together to keep start-up short.
         const [gotStream, credential] = await Promise.all([
           navigator.mediaDevices.getUserMedia({ audio: true }),
-          lazy.request().then(
-            (token) => ({ ok: true as const, token }),
+          streamCredential().then(
+            (value) => ({ ok: true as const, value }),
             (error: unknown) => ({ ok: false as const, error }),
           ),
         ]);
@@ -284,7 +275,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
         let live: LiveTranscriber | null = null;
         if (credential.ok) {
           try {
-            live = await openDeepgramStream(JSON.parse(credential.token) as StreamCredential, setPartial);
+            live = await openDeepgramStream(credential.value, setPartial);
           } catch {
             live = null; // record now, transcribe after release
           }
@@ -326,7 +317,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
         );
       }
     },
-    [lazy, offerTyping, setPhase, stop],
+    [streamCredential, offerTyping, setPhase, stop],
   );
 
   const cancel = useCallback(() => {
@@ -508,7 +499,7 @@ export function VoiceCopilot({ placement = "dock", spaceToTalk = true }: { place
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   placeholder="Show failed calls from yesterday"
-                  maxLength={1000}
+                  maxLength={TRANSCRIPT_MAX}
                   autoFocus
                   className={cn(
                     "h-8 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-2.5 text-[13px] text-fg placeholder:text-fg-3",

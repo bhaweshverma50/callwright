@@ -793,7 +793,7 @@ export const schemaLimits = {
   "CallbackRefusedProblem": {
     "reason": {
       "enum": [
-        "unsupported_channel",
+        "channel_unsupported",
         "number_unavailable",
         "agent_unavailable",
         "unknown_timezone",
@@ -1310,6 +1310,11 @@ export const schemaLimits = {
     },
     "edges": {
       "maxItems": 500
+    }
+  },
+  "FlowNodeEnteredMessage": {
+    "at_ms": {
+      "minimum": 0
     }
   },
   "FlowTransition": {
@@ -2463,6 +2468,23 @@ export const schemaLimits = {
   },
   "TurnEvent": {
     "turn_index": {
+      "minimum": 0
+    }
+  },
+  "TurnLatencyMessage": {
+    "turn_index": {
+      "minimum": 1
+    },
+    "stt_ms": {
+      "minimum": 0
+    },
+    "llm_ms": {
+      "minimum": 0
+    },
+    "tts_ms": {
+      "minimum": 0
+    },
+    "e2e_ms": {
       "minimum": 0
     }
   },
@@ -4294,6 +4316,12 @@ export const bodyLimits = {
       "maxItems": 1000
     }
   }
+} as const;
+
+/** The data-channel topic each worker message schema is published on (`x-data-channel.topic`). */
+export const dataChannelTopics = {
+  "FlowNodeEnteredMessage": "callwright.flow",
+  "TurnLatencyMessage": "cw.turn_latency"
 } as const;
 
 /** The `x-` extensions of each operation, by "METHOD /path". */

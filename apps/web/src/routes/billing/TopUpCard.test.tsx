@@ -1,11 +1,8 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createQueryClient } from "../../api/queryClient";
-import { TooltipProvider } from "../../components";
-import { signInDemo } from "../../test/render";
+import { renderWithProviders, signInDemo } from "../../test/render";
 import { env } from "../../lib/env";
 import { server } from "../../mocks/node";
 import { TopUpCard } from "./TopUpCard";
@@ -19,13 +16,7 @@ function setup() {
       return HttpResponse.json({ checkout_url: window.location.href, expires_at: new Date(Date.now() + 60_000).toISOString() }, { status: 201 });
     }),
   );
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <TopUpCard />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<TopUpCard />);
   return { checkouts, user: userEvent.setup(), amount: screen.getByLabelText("Amount", { selector: "input" }) };
 }
 

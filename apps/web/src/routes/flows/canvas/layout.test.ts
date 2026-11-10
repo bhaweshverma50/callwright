@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FlowGraph, FlowNode } from "../../../api/flows";
-import { defaultConfig } from "../model";
+import { mockNodeDefaults } from "../../../mocks/flows";
 import { NODE_HEIGHT, NODE_WIDTH, autoLayout } from "./layout";
 
 function bigGraph(count: number): FlowGraph {
@@ -9,7 +9,7 @@ function bigGraph(count: number): FlowGraph {
     type: i === 0 ? "start" : "say",
     label: `Step ${i}`,
     position: { x: 0, y: 0 },
-    config: defaultConfig(i === 0 ? "start" : "say"),
+    config: mockNodeDefaults[i === 0 ? "start" : "say"].config,
   })) as FlowNode[];
   const edges = nodes.slice(1).map((n, i) => ({
     id: `e_${String(i).padStart(8, "0")}`,

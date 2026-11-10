@@ -32,6 +32,7 @@ import {
   PageHeader,
   Panel,
   PanelLoader,
+  ProblemAlert,
   Segmented,
   Skeleton,
   Table,
@@ -43,7 +44,8 @@ import { PersonaBriefView } from "./PersonaBriefEditor";
 import { ANSWER_SOURCES, AnswerSourceBadge, CHANGE, END_REASONS, MODE_LABELS, SimStatusBadge, VerdictBadge, targetText } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
 import { costUsd, whenLong } from "../../lib/format";
-import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { problemText } from "../../api/problems";
+import { SIMULATIONS_PATH, callPath, experimentPath } from "../../lib/paths";
 
 /** 1-based caller turn number for each user message, so divergence can be marked. */
 function callerTurns(items: SimTranscriptItem[]): Map<number, number> {
@@ -151,7 +153,7 @@ function TranscriptPanel({
     <section aria-label={title} className="flex min-w-0 flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-1">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3">
         <h2 className="text-[14px] font-semibold text-fg">{title}</h2>
-        <Link to={`/calls?call=${side.call_id}`} className="min-w-0 truncate font-mono text-[12px] text-fg-3 hover:text-fg hover:underline">
+        <Link to={callPath(side.call_id)} className="min-w-0 truncate font-mono text-[12px] text-fg-3 hover:text-fg hover:underline">
           {side.call_id}
         </Link>
         {meta}
@@ -281,7 +283,7 @@ export function RunComparePage() {
   const [cancelling, setCancelling] = useState(false);
 
   if (isApiError(run.error) && run.error.status === 404)
-    return <RecordNotFound kind="simulation run" backTo="/simulations?tab=runs" backLabel="Back to Simulations" />;
+    return <RecordNotFound kind="simulation run" backTo={`${SIMULATIONS_PATH}?tab=runs`} backLabel="Back to Simulations" />;
   if (run.isError)
     return (
       <EmptyState
@@ -295,8 +297,8 @@ export function RunComparePage() {
   if (!run.data) return <PanelLoader label="Opening simulation" />;
   const r = run.data;
   const back = r.experiment_id
-    ? { to: `/simulations/${r.experiment_id}`, label: "Back to the batch" }
-    : { to: "/simulations?tab=runs", label: "Back to Simulations" };
+    ? { to: experimentPath(r.experiment_id), label: "Back to the batch" }
+    : { to: `${SIMULATIONS_PATH}?tab=runs`, label: "Back to Simulations" };
   const c = comparison.data;
   const divergedAt = c?.diverged_at_turn ?? r.diverged_at_turn ?? null;
 
@@ -350,7 +352,7 @@ export function RunComparePage() {
               <>
                 {" "}
                 from{" "}
-                <Link to={`/calls?call=${r.base_call_id}`} className="break-all font-mono text-[13px] hover:underline">
+                <Link to={callPath(r.base_call_id)} className="break-all font-mono text-[13px] hover:underline">
                   {r.base_call_id}
                 </Link>
               </>

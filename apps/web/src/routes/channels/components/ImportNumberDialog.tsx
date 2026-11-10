@@ -9,6 +9,7 @@ import { parseCidrs, stripScheme, terminationError } from "../validation";
 import { AgentSelect } from "./shared";
 import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
 import { useAllAgents } from "../../../api/agents";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 type Errors = Partial<Record<"e164" | "label" | "termination_address" | "inbound_allowed_cidrs" | "form", string>>;
 
@@ -168,7 +169,7 @@ export function ImportNumberDialog({
             {({ id, describedBy, invalid }) => (
               <Input
                 id={id}
-                maxLength={100}
+                maxLength={bodyLimits["POST /phone-numbers"].label.maxLength}
                 placeholder="Main office line"
                 aria-describedby={describedBy}
                 aria-invalid={invalid}
@@ -213,7 +214,7 @@ export function ImportNumberDialog({
               <Input
                 id={id}
                 autoComplete="off"
-                maxLength={128}
+                maxLength={bodyLimits["POST /phone-numbers"].auth_username.maxLength}
                 aria-describedby={describedBy}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -226,7 +227,7 @@ export function ImportNumberDialog({
                 id={id}
                 type="password"
                 autoComplete="new-password"
-                maxLength={256}
+                maxLength={bodyLimits["POST /phone-numbers"].auth_password.maxLength}
                 prefix={<KeyRound aria-hidden />}
                 aria-describedby={describedBy}
                 value={password}

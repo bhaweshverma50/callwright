@@ -55,7 +55,7 @@ function failValidation(errors: { pointer: string; code: string; message: string
 }
 
 export const agentHandlers = [
-  // --- catalogs --------------------------------------------------------------
+  // catalogs
   http.get(url("/llms/catalog"), () => json(llmCatalog, 200, { "cache-control": "private, max-age=300" })),
   http.get(url("/voices/catalog"), () => json(voiceCatalog)),
 
@@ -151,7 +151,7 @@ export const agentHandlers = [
     return json({ items, next_cursor: cursor + limit < all.length ? String(cursor + limit) : null });
   }),
 
-  // --- templates -------------------------------------------------------------
+  // templates
   http.get(url("/templates/categories"), () => {
     const counts = new Map<TemplateCategory, number>();
     for (const t of TEMPLATES) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
@@ -176,7 +176,7 @@ export const agentHandlers = [
     return t ? json(t) : problem(404, "not_found", "Template not found");
   }),
 
-  // --- agents ----------------------------------------------------------------
+  // agents
   http.get(url("/agents/defaults"), ({ request }) => {
     const q = new URL(request.url).searchParams;
     const type = (q.get("type") as AgentType | null) ?? "single_prompt";
@@ -365,7 +365,7 @@ export const agentHandlers = [
     return json(toDetail(copy), 201, etagOf(copy));
   }),
 
-  // --- versions --------------------------------------------------------------
+  // versions
   http.get(url("/agents/:agent_id/versions"), async ({ request, params }) => {
     const ws = workspaceOf(request);
     if (!ws) return unauthorized();
@@ -474,7 +474,7 @@ export const agentHandlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // --- prompt assistant (US6) ------------------------------------------------
+  // prompt assistant (US6)
   http.post(url("/prompt-ai/generate"), async ({ request }) => {
     const ws = workspaceOf(request);
     if (!ws) return unauthorized();

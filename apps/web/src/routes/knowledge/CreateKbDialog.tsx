@@ -1,12 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookPlus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api, unwrap } from "../../api/client";
 import { isApiError } from "../../api/errors";
-import type { KnowledgeBase } from "../../api/knowledge";
+import { kbKeys, type KnowledgeBase, saveKnowledgeBase } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
 import { Button, Dialog, Field, Input, Textarea } from "../../components";
-import { kbKeys } from "../../api/knowledge";
+import { schemaLimits } from "../../lib/contract.gen";
 
 /** Create (or rename) a knowledge base. The description helps the agent decide when to search it. */
 export function CreateKbDialog({
@@ -33,12 +32,7 @@ export function CreateKbDialog({
   }, [open, existing]);
 
   const save = useMutation({
-    mutationFn: async () => {
-      const body = { name: name.trim(), description: description.trim() };
-      return (await unwrap(
-        existing ? api.PATCH("/knowledge-bases/{kb_id}", { params: { path: { kb_id: existing.id } }, body }) : api.POST("/knowledge-bases", { body }),
-      )) as KnowledgeBase;
-    },
+    mutationFn: () => saveKnowledgeBase(existing?.id ?? null, { name: name.trim(), description: description.trim() }),
     onSuccess: (kb) => {
       void qc.invalidateQueries({ queryKey: kbKeys.all });
       onCreated(kb);
@@ -78,7 +72,7 @@ export function CreateKbDialog({
             <Input
               id={id}
               autoFocus
-              maxLength={120}
+              maxLength={schemaLimits.KnowledgeBaseWrite.name.maxLength}
               placeholder="Clinic policies"
               aria-describedby={describedBy}
               aria-invalid={invalid}
@@ -94,7 +88,7 @@ export function CreateKbDialog({
           {({ id, describedBy }) => (
             <Textarea
               id={id}
-              maxLength={500}
+              maxLength={schemaLimits.KnowledgeBaseWrite.description.maxLength}
               className="min-h-20"
               placeholder="Refunds, cancellations, opening hours and prices"
               aria-describedby={describedBy}

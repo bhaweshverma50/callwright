@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { BrainCircuit, Captions, CircleAlert, CircleCheck, Ear, Mic, MicOff, Phone, PhoneOff, RotateCcw, UserPlus, Volume2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { api, unwrap } from "../../../api/client";
-import { ApiError } from "../../../api/errors";
+import { usePublicDemo } from "../../../api/calls";
+import { isApiError } from "../../../api/errors";
 import { WAKE_EXPECTED_MS, inlineWake, useWakeState } from "../../../api/wakeGate";
 import { Button, FlowChain, LatencyChip, OnAir, Waveform, cn, focusRing, type FlowNode } from "../../../components";
 import { RingingPhone, isRinging, useRingback } from "../../../webCall/ringing";
@@ -12,7 +11,7 @@ import { useWebCall } from "../../../webCall/useWebCall";
 import { createMockDriver, type CallProblem, type CallTurn } from "../../../webCall/webCall";
 import { createDemoDriver } from "../../../webCall/webCallLive";
 import { env } from "../../../lib/env";
-import { formatUsd } from "../../../lib/money";
+import { formatUsd, TRIAL_CREDIT } from "../../../lib/money";
 import { LiveCall } from "../LiveCall";
 import { SCENARIOS, type Scenario } from "./scenarios";
 import { mss } from "../../../lib/format";
@@ -41,19 +40,19 @@ function median(values: number[]): number | null {
 
 /** Refusals reworded for a visitor without an account. */
 function demoProblem(e: unknown): CallProblem | undefined {
-  if (!(e instanceof ApiError)) return undefined;
+  if (!isApiError(e)) return undefined;
   if (e.status === 429)
     return {
       kind: "refused",
       title: "That's all the demo calls for this hour",
-      detail: "Create an account to keep calling. New workspaces start with $5 of calls.",
+      detail: `Create an account to keep calling. New workspaces start with ${TRIAL_CREDIT} of calls.`,
       action: { label: "Create account", href: AUTH_PAGES.register },
     };
   if (e.status === 402 || e.status === 404 || e.status === 409)
     return {
       kind: "refused",
       title: "The demo line is closed right now",
-      detail: "Create an account to call an agent of your own. New workspaces start with $5 of calls.",
+      detail: `Create an account to call an agent of your own. New workspaces start with ${TRIAL_CREDIT} of calls.`,
       action: { label: "Create account", href: AUTH_PAGES.register },
     };
   return undefined;
@@ -66,12 +65,7 @@ function demoProblem(e: unknown): CallProblem | undefined {
  * and the link that is working. When the API has no demo agents the sample call plays instead.
  */
 export function Playground({ className }: { className?: string }) {
-  const demo = useQuery({
-    queryKey: ["public", "demo"],
-    queryFn: () => unwrap(api.GET("/public/demo")),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
+  const demo = usePublicDemo();
   const scenarios = useMemo(() => SCENARIOS.filter((s) => demo.data?.agents.includes(s.key)), [demo.data]);
 
   if (demo.isPending) return <ConsoleFrame className={className} />;

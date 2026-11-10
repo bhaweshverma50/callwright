@@ -9,6 +9,8 @@ import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import {
   Button,
+  CallStatusBadge,
+  CHANNEL_LABELS,
   Checkbox,
   cn,
   EmptyState,
@@ -19,6 +21,7 @@ import {
   Pagination,
   Select,
   Skeleton,
+  STATUS_LABELS,
   toast,
 } from "../../components";
 import { useRegisterVoiceActions } from "../../app/copilot/actionRegistry";
@@ -34,8 +37,8 @@ import { AddToDatasetMenu } from "../datasets/AddToDatasetMenu";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { summaryHeadline } from "./quality/SummaryText";
 import { mss, usd, viewerTimeZone, when } from "../../lib/format";
-import { CallStatusBadge, CHANNEL_LABELS, STATUS_LABELS } from "../../components/callVocabulary";
 import { useAllAgents } from "../../api/agents";
+import { AGENTS_PATH } from "../../lib/paths";
 
 function SortHeader({ column, state, onSort }: { column: CallColumn; state: ListState; onSort: (c: CallColumn) => void }) {
   if (!column.sort) return <>{column.label}</>;
@@ -297,7 +300,7 @@ export function CallHistoryPage() {
         icon={<PhoneList weight="duotone" />}
         title="No calls yet"
         actions={
-          <Button variant="primary" onClick={() => navigate("/agents")}>
+          <Button variant="primary" onClick={() => navigate(AGENTS_PATH)}>
             Make a test call
           </Button>
         }

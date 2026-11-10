@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { isApiError } from "./errors";
 
 /**
- * One query client for the app (T026). Client errors (4xx) are not retried: they will not fix
+ * The app's query client (T026): main.tsx creates one, tests create their own. Client errors (4xx) are not retried: they will not fix
  * themselves and a not-found should show at once. Network and 5xx get two quick retries.
  */
 export function createQueryClient() {
@@ -20,5 +20,3 @@ export function createQueryClient() {
     },
   });
 }
-
-export const queryClient = createQueryClient();

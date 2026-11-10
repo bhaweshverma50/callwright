@@ -1,23 +1,15 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createQueryClient } from "../../../api/queryClient";
-import { TooltipProvider } from "../../../components";
 import { llmCatalog, voiceCatalog } from "../../../mocks/agents/catalog";
 import { defaultConfig } from "../../../mocks/agents/rules";
 import type { AgentConfig } from "../../../api/agents";
 import { CostCard } from "./CostCard";
+import { renderWithProviders } from "../../../test/render";
 
 function renderCard(mutate?: (c: AgentConfig) => void) {
   const config = defaultConfig("single_prompt");
   mutate?.(config);
-  return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <CostCard config={config} llm={llmCatalog} voice={voiceCatalog} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<CostCard config={config} llm={llmCatalog} voice={voiceCatalog} />);
 }
 
 const chain = () => screen.getByRole("list", { name: "This agent's signal chain" });

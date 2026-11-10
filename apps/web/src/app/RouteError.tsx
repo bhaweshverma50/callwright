@@ -3,6 +3,7 @@ import { LayoutDashboard, RotateCw } from "lucide-react";
 import { Link, isRouteErrorResponse, useRouteError } from "react-router";
 import { problemMessage, traceIdOf } from "../api/problems";
 import { Button, EmptyState } from "../components";
+import { DASHBOARD_PATH } from "../lib/paths";
 
 /**
  * Global error boundary (FR-019). Shows a plain message and, for server faults, the reference
@@ -25,7 +26,7 @@ export function RouteError({ inShell = false }: { inShell?: boolean }) {
             Reload page
           </Button>
           <Button asChild variant="secondary" icon={<LayoutDashboard aria-hidden />}>
-            <Link to="/dashboard">Go to dashboard</Link>
+            <Link to={DASHBOARD_PATH}>Go to dashboard</Link>
           </Button>
         </>
       }

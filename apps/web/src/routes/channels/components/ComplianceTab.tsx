@@ -9,6 +9,7 @@ import { useDecisions, useDncEntries, useDncMutations } from "../../../api/chann
 import { CallingHoursEditor } from "./CallingHoursEditor";
 import { DncImportDialog, REGIONS } from "./DncImportDialog";
 import { timeAgo } from "../../../lib/format";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 function DncPanel() {
   const [search, setSearch] = useState("");
@@ -82,7 +83,13 @@ function DncPanel() {
           onValueChange={setRegion}
           options={REGIONS.map((r) => (r.value === "none" ? { ...r, label: "Region: none" } : r))}
         />
-        <Input aria-label="Note" maxLength={200} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <Input
+          aria-label="Note"
+          maxLength={bodyLimits["POST /dnc-entries"].note.maxLength}
+          placeholder="Note (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
         <Button type="submit" variant="primary" icon={<Plus aria-hidden />} pending={add.isPending}>
           Block number
         </Button>

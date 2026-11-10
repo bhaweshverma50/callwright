@@ -88,7 +88,7 @@ export function agentName(id: string): string {
   return agentStore().agents.find((a) => a.id === id)?.name ?? MOCK_AGENTS.find((a) => a.id === id)?.name ?? "Unknown agent";
 }
 
-// --- categories and cases ------------------------------------------------------------------
+// categories and cases
 
 export const SEED_CATEGORIES: TestCategory[] = [
   { slug: "bad_behaviour", name: "Bad behaviour", color: "#e0457b", is_seed: true },
@@ -285,7 +285,7 @@ function seedTestRuns(s: SimStore, now: number) {
   }
 }
 
-// --- simulations ---------------------------------------------------------------------------
+// simulations
 
 const EVALS = {
   intent: { id: "evl_01MOCKEVALINTENT0000000001", name: "intent_fulfilled", display: "Intent fulfilled", version: 3 },
@@ -524,7 +524,7 @@ function seedExperiments(s: SimStore, now: number) {
   s.experiments.push(running, variant, flow, published, billingBatch, triageBatch);
 }
 
-// Comparison content ------------------------------------------------------------------------
+// Comparison content
 
 const msg = (role: "user" | "assistant", content: string, node_id: string | null = null): SimTranscriptItem => ({
   type: "message",
@@ -786,7 +786,7 @@ function seedRuns(s: SimStore, now: number) {
   s.comparisons[turnLimit.simulation_run_id] = personaComparison(turnLimit.simulation_run_id, turnLimit.output_call_id!);
 }
 
-// --- datasets ------------------------------------------------------------------------------
+// datasets
 
 const SENTIMENTS = ["positive", "neutral", "negative"] as const;
 
@@ -824,7 +824,7 @@ function seedDatasets(s: SimStore, now: number) {
   ds(desk, "October regression suite", "Every rescheduling call from October, for prompt changes.", 240, 200, now - 2 * DAY, [3, 41]);
 }
 
-// --- seed ----------------------------------------------------------------------------------
+// seed
 
 function seed(): SimStore {
   const agents = agentStore().agents;

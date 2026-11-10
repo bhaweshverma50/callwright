@@ -8,11 +8,11 @@ import { GitBranchPlus, Rocket, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { applyFix, issueKeys, type DetectedIssue } from "../../api/issues";
-import { Button, deltaTone, Dialog, Field, Figure, Panel, Segmented, Textarea, toast } from "../../components";
+import { Button, deltaTone, Dialog, Field, Figure, Panel, ProblemAlert, Segmented, Textarea, toast } from "../../components";
 import { BLOCKER_TEXT } from "./shared";
 import { agentPath } from "../../lib/paths";
 import { pct, pp, shortId, timeAgo } from "../../lib/format";
-import { ProblemAlert } from "../../components/ProblemAlert";
+import { bodyLimits } from "../../lib/contract.gen";
 
 function ApplyDialog({ open, onOpenChange, issue }: { open: boolean; onOpenChange: (o: boolean) => void; issue: DetectedIssue }) {
   const qc = useQueryClient();
@@ -93,7 +93,7 @@ function ApplyDialog({ open, onOpenChange, issue }: { open: boolean; onOpenChang
             <Textarea
               id={id}
               aria-describedby={describedBy}
-              maxLength={500}
+              maxLength={bodyLimits["POST /issues/{issue_id}/apply"].release_notes_extra.maxLength}
               className="min-h-[72px]"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

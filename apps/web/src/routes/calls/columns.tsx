@@ -13,7 +13,19 @@ import {
 } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
 import type { CallListItem, Channel } from "../../api/calls";
-import { Badge, IconButton, Tooltip, TruncatedText, cn, focusRing } from "../../components";
+import {
+  Badge,
+  CallStatusBadge,
+  CHANNEL_LABELS,
+  cn,
+  EVAL_LABELS,
+  focusRing,
+  IconButton,
+  REASON_LABELS,
+  SentimentBadge,
+  Tooltip,
+  TruncatedText,
+} from "../../components";
 import { CostCell } from "./CostBreakdown";
 import { type SortKey } from "./filters";
 import { latencyTone } from "./format";
@@ -22,7 +34,6 @@ import { LiveDuration } from "./live/LiveDuration";
 import { RecordingPlayer } from "./RecordingPlayer";
 import { summaryHeadline } from "./quality/SummaryText";
 import { mss, phone, when } from "../../lib/format";
-import { CallStatusBadge, CHANNEL_LABELS, EVAL_LABELS, REASON_LABELS, SentimentBadge } from "../../components/callVocabulary";
 import type { components } from "../../api/schema";
 
 export const CHANNEL_ICONS: Record<Channel, LucideIcon> = {

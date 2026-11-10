@@ -7,6 +7,9 @@ import { bodyLimits } from "./contract.gen";
 
 const MICRO = 1_000_000n;
 
+/** What a new workspace starts with (the API's signup grant); the public pages quote it. */
+export const TRIAL_CREDIT_MICROS = 5n * MICRO;
+
 /** Below this the balance chip and the talk-time gauge warn that calls may soon be refused. */
 export const LOW_BALANCE_MICROS = MICRO;
 
@@ -74,6 +77,9 @@ const TOP_UP = bodyLimits["POST /billing/checkout-sessions"].amount_usd;
 export const TOP_UP_MIN = toMicros(TOP_UP["x-minimum-usd"])!;
 export const TOP_UP_MAX = toMicros(TOP_UP["x-maximum-usd"])!;
 const whole = (micros: bigint) => formatUsd(micros, { places: 0 });
+/** "$5 to $10,000", from the contract's top-up range. */
+export const TRIAL_CREDIT = formatUsd(TRIAL_CREDIT_MICROS);
+export const TOP_UP_RANGE = `${whole(TOP_UP_MIN)} to ${whole(TOP_UP_MAX)}`;
 
 /**
  * Validates a custom top-up amount typed by the user (FR-008): within the contract's range, whole

@@ -27,6 +27,8 @@ import { PressDigitForm } from "./forms/PressDigitForm";
 import { TransferForm } from "./forms/TransferForm";
 import { TestRunPanel } from "./TestRunPanel";
 import { DEFAULT_CONFIGS, TOOL_META, TOOL_TYPES, ToolTile } from "./toolMeta";
+import { schemaLimits } from "../../../lib/contract.gen";
+import { MACHINE_NAME_MAX } from "../../../lib/machineName";
 
 function blank(type: ToolType): ToolDraft {
   return { type, name: "", description: "", config: structuredClone(DEFAULT_CONFIGS[type]), mock_response: null };
@@ -282,7 +284,7 @@ export function ToolEditorDialog({
                     id={id}
                     className="font-mono"
                     spellCheck={false}
-                    maxLength={64}
+                    maxLength={MACHINE_NAME_MAX}
                     placeholder={meta!.namePlaceholder}
                     aria-describedby={describedBy}
                     aria-invalid={bad}
@@ -295,7 +297,7 @@ export function ToolEditorDialog({
                 {({ id, describedBy }) => (
                   <Textarea
                     id={id}
-                    maxLength={1000}
+                    maxLength={schemaLimits.ToolCreate.description.maxLength}
                     className="min-h-20"
                     placeholder={meta!.descriptionPlaceholder}
                     aria-describedby={describedBy}
@@ -331,7 +333,7 @@ export function ToolEditorDialog({
                       <Textarea
                         id={id}
                         spellCheck={false}
-                        maxLength={16384}
+                        maxLength={schemaLimits.ToolCreate.mock_response.maxLength}
                         aria-describedby={describedBy}
                         className={cn("min-h-24 font-mono text-[13px]")}
                         placeholder={'{ "slots": ["09:30", "11:00"] }'}

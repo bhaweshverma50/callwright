@@ -4,11 +4,10 @@
  * from specs/007-quality-evals/contracts; hooks are TanStack Query.
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { idempotencyKey } from "./agents";
 import { api, unwrap } from "./client";
-import { isApiError } from "./errors";
 import type { components } from "./schema";
 import type { BodyOf, QueryOf, ResponseOf } from "./types";
+import { idempotencyKey } from "../lib/idempotency";
 
 type S = components["schemas"];
 
@@ -36,8 +35,6 @@ export type ReviewStrategy = NonNullable<QueryOf<"/review/queue", "get">["strate
 export type VersionScope = NonNullable<QueryOf<"/calibration/evaluators", "get">["version_scope"]>;
 export type JudgeModel = ResponseOf<"/evaluators/judge-models", "get">["items"][number];
 export type TrialResult = ResponseOf<"/evaluators/trial", "post">;
-export type CalibrationSummary = ResponseOf<"/calibration/summary", "get">;
-export type ReviewSummary = ResponseOf<"/review/queue/summary", "get">;
 export type EvalSettingBody = BodyOf<"/agents/{agent_id}/eval-settings/{evaluator_id}", "put">;
 
 export const qualityKeys = {
@@ -58,20 +55,7 @@ export const qualityKeys = {
   calibrationSummary: (agentId: string, lookback: number) => ["quality", "calibration", "summary", agentId, lookback] as const,
 };
 
-/** Field message for a settings key from a 422, whether the server names it by JSON pointer
- * ("/overrides/sample_rate_pct") or by dotted field ("overrides.sample_rate_pct"). */
-export function settingErrors(err: unknown): Record<string, string> {
-  if (!isApiError(err)) return {};
-  const out: Record<string, string> = {};
-  for (const fe of (err.problem.errors ?? []) as { pointer?: string; field?: string; message: string }[]) {
-    const raw = fe.field ?? fe.pointer ?? "";
-    const key = raw.split(/[/.]/).filter(Boolean).pop() ?? "";
-    out[key] ??= fe.message;
-  }
-  return out;
-}
-
-// Analysis variables (US1) -------------------------------------------------------------------
+// Analysis variables (US1)
 
 export function useAnalysisVariables(agentId: string | null) {
   return useQuery({
@@ -115,7 +99,7 @@ export function rerunAnalysis(callId: string) {
   );
 }
 
-// Catalog and settings (US2, US5) --------------------------------------------------------------
+// Catalog and settings (US2, US5)
 
 export function useEvaluators(opts: { kind?: "builtin" | "custom"; agentType?: "single_prompt" | "flow" } = {}) {
   return useQuery({
@@ -170,7 +154,7 @@ export function trialCustomEvaluator(body: { evaluator_type: CustomType; config:
   return unwrap(api.POST("/evaluators/trial", { params: { header: { "Idempotency-Key": key } }, body }));
 }
 
-// Runs (US2) ----------------------------------------------------------------------------------
+// Runs (US2)
 
 export const EVAL_POLL_MS = 3_000;
 
@@ -194,7 +178,7 @@ export function rerunEvaluations(callId: string, key: string, evaluatorIds?: str
   );
 }
 
-// Labels (US3) --------------------------------------------------------------------------------
+// Labels (US3)
 
 export function useAnnotations(callId: string | null) {
   return useQuery({
@@ -212,7 +196,7 @@ export function deleteMyAnnotation(callId: string) {
   return unwrap(api.DELETE("/calls/{call_id}/annotations/me", { params: { path: { call_id: callId } } }));
 }
 
-// Review queue (US6) --------------------------------------------------------------------------
+// Review queue (US6)
 
 export function useReviewQueue(strategy: ReviewStrategy, agentId: string | null) {
   return useQuery({
@@ -230,7 +214,7 @@ export function useReviewSummary(agentId: string | null) {
   });
 }
 
-// Calibration (US4) ---------------------------------------------------------------------------
+// Calibration (US4)
 
 export function useCalibrationRows(agentId: string | null, lookbackDays: number, scope: VersionScope) {
   return useQuery({

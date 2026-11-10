@@ -25,7 +25,7 @@ import { toMicros } from "../../lib/money";
 import { RecordNotFound } from "../NotFound";
 import { quoteRequestFor } from "./editor/CostCard";
 import { TestCasesTab } from "./testing/TestCasesTab";
-import { isAgentId } from "../../lib/paths";
+import { agentPath, AGENTS_PATH, isAgentId } from "../../lib/paths";
 
 export type TestTarget = "draft" | "published";
 
@@ -60,7 +60,7 @@ export function AgentTestingPage() {
   const perMinute = quote.data?.per_minute_total_usd ? toMicros(quote.data.per_minute_total_usd) : null;
 
   if (!valid || (isApiError(agent.error) && agent.error.status === 404))
-    return <RecordNotFound kind="agent" backTo="/agents" backLabel="Back to Agents" />;
+    return <RecordNotFound kind="agent" backTo={AGENTS_PATH} backLabel="Back to Agents" />;
   if (agent.error)
     return (
       <EmptyState icon={<PhoneCall weight="duotone" />} title="The agent did not load">
@@ -69,7 +69,7 @@ export function AgentTestingPage() {
     );
   if (!detail) return <PanelLoader label="Opening agent" />;
 
-  const editPath = `/agents/${id}/${detail.type === "flow" ? "flow" : "edit"}`;
+  const editPath = agentPath(detail);
   const draftLabel = `Draft, version ${detail.draft_version.version_number}`;
   const publishedLabel = published ? `Published, version ${published.version_number}` : "Published";
 

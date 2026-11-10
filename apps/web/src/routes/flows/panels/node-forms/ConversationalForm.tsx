@@ -8,6 +8,7 @@ import { OverridesSection } from "./OverridesSection";
 import { Group, issueFor, type FormProps } from "./shared";
 import { TaskFields } from "./TaskFields";
 import { ToolPicker } from "./ToolPicker";
+import { schemaLimits } from "../../../../lib/contract.gen";
 
 /**
  * Agent and Task nodes (FR-009 to FR-012): instructions, entry line, context, tools, knowledge
@@ -46,7 +47,7 @@ export function ConversationalForm({
               id={id}
               label="Instructions"
               rows={6}
-              maxLength={16000}
+              maxLength={schemaLimits.AgentConfigNode.instructions.maxLength}
               value={config.instructions}
               onChange={(instructions) => set({ instructions })}
               describedBy={describedBy}
@@ -72,7 +73,7 @@ export function ConversationalForm({
               onChange={(e) => set({ begin_message: e.target.value || null })}
               aria-describedby={describedBy}
               aria-invalid={invalid || undefined}
-              maxLength={500}
+              maxLength={schemaLimits.AgentConfigNode.begin_message.maxLength}
             />
           )}
         </Field>

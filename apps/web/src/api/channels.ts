@@ -6,9 +6,8 @@
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { callKeys } from "./calls";
-import { api, postForm, unwrap } from "./client";
+import { api, fetchAll, postForm, unwrap } from "./client";
 import type { components } from "./schema";
-import type { ResponseOf } from "./types";
 
 type S = components["schemas"];
 
@@ -22,8 +21,6 @@ export type PhoneNumber = S["PhoneNumber"];
 export type PhoneNumberImport = S["PhoneNumberImport"];
 export type PhoneNumberUpdate = S["PhoneNumberUpdate"];
 export type Transport = S["Transport"];
-export type SipSettings = ResponseOf<"/phone-numbers/sip-settings", "get">;
-export type NumberPage = ResponseOf<"/phone-numbers", "get">;
 
 export const channelKeys = {
   all: ["channels"] as const,
@@ -103,7 +100,6 @@ export type WhatsAppChannel = S["WhatsAppChannel"];
 export type WhatsAppChannelCreate = S["WhatsAppChannelCreate"];
 export type WhatsAppChannelUpdate = S["WhatsAppChannelUpdate"];
 export type CallerRoute = S["CallerRoute"];
-export type WhatsAppSettings = ResponseOf<"/whatsapp/settings", "get">;
 
 export const waKeys = {
   all: ["channels", "whatsapp"] as const,
@@ -115,7 +111,7 @@ export const waKeys = {
 export function useWhatsAppChannels() {
   return useQuery({
     queryKey: waKeys.list,
-    queryFn: () => unwrap(api.GET("/whatsapp/channels", { params: { query: { page: 1, page_size: 100 } } })),
+    queryFn: async () => ({ items: await fetchAll((query) => unwrap(api.GET("/whatsapp/channels", { params: { query } }))) }),
     refetchInterval: (q) => (q.state.data?.items.some((c) => c.status === "setup_incomplete" || c.status === "draining") ? 5000 : false),
   });
 }
@@ -207,7 +203,6 @@ export type DncEntry = S["DncEntry"];
 export type DncImportResult = S["DncImportResult"];
 export type CallingHours = S["CallingHours"];
 export type WeeklyWindows = S["WeeklyWindows"];
-export type DayWindow = WeeklyWindows["mon"];
 export type PolicyDecision = S["PolicyDecision"];
 export type OutboundCallRequest = S["OutboundCallRequest"];
 export type OutboundCallAccepted = S["OutboundCallAccepted"];

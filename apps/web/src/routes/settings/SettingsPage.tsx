@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState, type FormEvent } from "react";
-import { api, unwrap } from "../../api/client";
 import { fieldErrors, problemMessage } from "../../api/problems";
-import { qk, useMe } from "../../api/queries";
+import { qk, updateWorkspace, useMe } from "../../api/queries";
 import type { Me, Workspace } from "../../api/types";
 import { GearSix } from "@phosphor-icons/react";
 import { Building2, CircleAlert, Disc, Gauge, Mail, PenLine, RotateCcw, Save, ShieldCheck } from "lucide-react";
@@ -22,8 +21,9 @@ import {
   WorkLayout,
   toast,
 } from "../../components";
+import { bodyLimits } from "../../lib/contract.gen";
 
-const NAME_MAX = 80;
+const NAME_MAX = bodyLimits["PATCH /workspaces/current"].name.maxLength;
 
 export function nameError(name: string): string | null {
   if (name.trim().length === 0) return "Enter a workspace name.";
@@ -68,7 +68,7 @@ function SettingsForm({ me }: { me: Me }) {
   const localErr = submitted ? nameError(name) : null;
 
   const save = useMutation({
-    mutationFn: (body: { name?: string; recording_default?: boolean }) => unwrap(api.PATCH("/workspaces/current", { body })),
+    mutationFn: updateWorkspace,
     onSuccess: (ws: Workspace) => {
       setSaved({ name: ws.name, recording: ws.recording_default });
       setName(ws.name);

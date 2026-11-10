@@ -5,6 +5,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import { DEMO } from "./demoAccount.mjs";
 
 const tag = process.argv[2] ?? "after";
 const here = dirname(fileURLToPath(import.meta.url));
@@ -20,8 +21,8 @@ try {
       await ctx.addInitScript((t) => localStorage.setItem("cw.theme", t), theme);
       const page = await ctx.newPage();
       await page.goto(`${BASE}/login`);
-      await page.getByLabel("Work email").fill("ops@halcyon-dental.com");
-      await page.getByLabel("Password", { exact: true }).fill("correct-horse-9");
+      await page.getByLabel("Work email").fill(DEMO.email);
+      await page.getByLabel("Password", { exact: true }).fill(DEMO.password);
       await page.getByRole("button", { name: "Sign in" }).click();
       await page.waitForURL("**/dashboard");
 

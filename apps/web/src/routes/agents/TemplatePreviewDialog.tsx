@@ -3,12 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AudioLines, BrainCircuit, Braces, Captions, MessageSquareQuote, PhoneIncoming, PhoneOutgoing, Wand2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { createAgentFromTemplate, idempotencyKey, useLlmCatalog, useTemplate, useVoiceCatalog, type TemplateSummary } from "../../api/agents";
+import { createAgentFromTemplate, useLlmCatalog, useTemplate, useVoiceCatalog, type TemplateSummary } from "../../api/agents";
 import { problemMessage } from "../../api/problems";
 import { Badge, Button, Dialog, Skeleton, TruncatedText, cn, toast } from "../../components";
 import { languageLabel, llmLabel } from "./editor/catalogs";
 import { CATEGORY_TINT, TEMPLATE_ICONS } from "./templateIcons";
 import { agentEditPath } from "../../lib/paths";
+import { idempotencyKey } from "../../lib/idempotency";
 
 /** Highlights `{{name}}` placeholders in template text. */
 function Highlighted({ text }: { text: string }) {

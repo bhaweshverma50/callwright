@@ -5,9 +5,10 @@
  */
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { api, unwrap } from "./client";
+import { api, fetchAll, unwrap } from "./client";
 import type { components } from "./schema";
 import type { BodyOf, ResponseOf } from "./types";
+import { bodyLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
 
@@ -30,14 +31,14 @@ export type PairCounts = S["PairCounts"];
 export type ScorecardRow = S["ScorecardRow"];
 export type Scorecard = S["Scorecard"];
 export type TargetType = SimTarget["type"];
-export type ExperimentSource = Experiment["source"];
 export type PreflightRequest = BodyOf<"/simulations/preflight", "post">;
 export type Preflight = ResponseOf<"/simulations/preflight", "post">;
 
 export const SIM_POLL_MS = 3_000;
 export const SIM_PAGE_SIZE = 20;
-export const BATCH_MIN = 2;
-export const BATCH_MAX = 100;
+const BATCH = bodyLimits["POST /experiments"].base_call_ids;
+export const BATCH_MIN = BATCH.minItems;
+export const BATCH_MAX = BATCH.maxItems;
 
 export const simKeys = {
   all: ["simulations"] as const,
@@ -124,7 +125,7 @@ export function useScorecard(id: string | undefined, baselineExperimentId: strin
 export function useAgentExperiments(agentId: string | undefined) {
   return useQuery({
     queryKey: [...simKeys.experimentsAll, "baseline-options", agentId ?? ""],
-    queryFn: async () => (await unwrap(api.GET("/experiments", { params: { query: { agent_id: agentId!, page: 1, page_size: 100 } } }))).items,
+    queryFn: () => fetchAll((page) => unwrap(api.GET("/experiments", { params: { query: { agent_id: agentId!, ...page } } }))),
     enabled: Boolean(agentId),
     staleTime: 30_000,
   });

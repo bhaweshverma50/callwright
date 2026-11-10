@@ -3,7 +3,7 @@
  * assistant), typed from the generated contract (schema.d.ts).
  */
 import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
-import { api, unwrap } from "./client";
+import { api, fetchAll, postForm, unwrap } from "./client";
 import type { components } from "./schema";
 import type { BodyOf, QueryOf, ResponseOf } from "./types";
 
@@ -30,14 +30,12 @@ export type VersionSource = S["VersionSource"];
 export type VersionSummary = S["VersionSummary"];
 export type VersionDetail = S["VersionDetail"];
 export type VersionChange = S["Change"];
-export type VersionDiff = ResponseOf<"/agents/{agent_id}/versions/{version_id}/diff", "get">;
 export type VersionPage = ResponseOf<"/agents/{agent_id}/versions", "get">;
 
 export type TemplateCategory = S["TemplateCategory"];
 export type TemplateSummary = S["TemplateSummary"];
 export type TemplateDetail = S["TemplateDetail"];
 export type TemplateConfig = S["TemplateConfig"];
-export type TemplateCategoryCount = ResponseOf<"/templates/categories", "get">["items"][number];
 
 export type LlmCatalog = S["LlmCatalog"];
 export type LlmProvider = S["LlmProvider"];
@@ -53,7 +51,6 @@ export type TtsModel = S["TtsModel"];
 export type NoiseCancellationOption = S["NoiseCancellationOption"];
 export type ControlRange = S["ControlRange"];
 export type Voice = S["Voice"];
-export type VoicePage = ResponseOf<"/voices/{provider}/voices", "get">;
 export type AmbientAudioFile = S["AmbientAudioFile"];
 
 export type PromptAiRequest = BodyOf<"/prompt-ai/generate", "post">;
@@ -67,8 +64,8 @@ export const agentKeys = {
   lists: ["agents", "list"] as const,
   list: (search: string, type: AgentType | null, page: number, status: AgentStatus | null = null, sort: AgentSort = "updated") =>
     ["agents", "list", { search, type, page, status, sort }] as const,
-  /** Every agent (pickers and filters); under `lists`, so whatever refreshes the lists refreshes it. */
-  every: ["agents", "list", "every"] as const,
+  /** Every agent (pickers and filters); agentChanged and agentDeleted refresh it with the lists. */
+  every: ["agents", "every"] as const,
   validate: (type: AgentType, id: string | null, configKey: string) => ["agents", "validate", type, id, configKey] as const,
   detail: (id: string) => ["agents", "detail", id] as const,
   defaults: (language: string) => ["agents", "defaults", language] as const,
@@ -110,14 +107,7 @@ export function useAgents(
 export function useAllAgents(enabled = true) {
   return useQuery({
     queryKey: agentKeys.every,
-    queryFn: async () => {
-      const out: AgentSummary[] = [];
-      for (let page = 1; ; page++) {
-        const res = await unwrap(api.GET("/agents", { params: { query: { page, page_size: 100 } } }));
-        out.push(...res.items);
-        if (page >= res.total_pages) return out;
-      }
-    },
+    queryFn: () => fetchAll((query) => unwrap(api.GET("/agents", { params: { query } }))),
     enabled,
     staleTime: 60_000,
   });
@@ -224,7 +214,9 @@ export function useTemplate(id: string | null) {
 export function useAgentVersions(id: string | undefined, enabled = true) {
   return useQuery({
     queryKey: agentKeys.versions(id ?? ""),
-    queryFn: () => unwrap(api.GET("/agents/{agent_id}/versions", { params: { path: { agent_id: id! }, query: { page: 1, page_size: 100 } } })),
+    queryFn: async () => ({
+      items: await fetchAll((query) => unwrap(api.GET("/agents/{agent_id}/versions", { params: { path: { agent_id: id! }, query } }))),
+    }),
     enabled: enabled && !!id,
   });
 }
@@ -254,16 +246,27 @@ export function useVersionDetail(id: string, vid: string | null) {
 /** `If-Match` value for a draft revision (the ETag the server sends is the quoted revision). */
 export const etag = (revision: number) => `"${revision}"`;
 
-/** A fresh key per user action, so a double click or a retried request creates one record (FR-038). */
-export function idempotencyKey(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  }
+/** An agent was created, saved, restored or (un)published: cache what came back and refresh lists. */
+export function agentChanged(qc: QueryClient, agent: AgentDetail | string) {
+  const id = typeof agent === "string" ? agent : agent.id;
+  if (typeof agent === "string") void qc.invalidateQueries({ queryKey: agentKeys.detail(id) });
+  else qc.setQueryData(agentKeys.detail(id), agent);
+  void qc.invalidateQueries({ queryKey: agentKeys.versions(id) });
+  void qc.invalidateQueries({ queryKey: agentKeys.lists });
+  void qc.invalidateQueries({ queryKey: agentKeys.every });
 }
 
-/** Creates a single-prompt agent from a template, caches it and refreshes every agent list. */
+/** An agent was deleted: drop it from every cached list page at once, then refresh the lists. */
+export function agentDeleted(qc: QueryClient, id: string) {
+  qc.setQueriesData<AgentPage>({ queryKey: agentKeys.lists }, (old) =>
+    old ? { ...old, items: old.items.filter((x) => x.id !== id), total: Math.max(0, old.total - 1) } : old,
+  );
+  qc.removeQueries({ queryKey: agentKeys.detail(id) });
+  void qc.invalidateQueries({ queryKey: agentKeys.lists });
+  void qc.invalidateQueries({ queryKey: agentKeys.every });
+}
+
+/** Creates a single-prompt agent from a template and caches it. */
 export async function createAgentFromTemplate(qc: QueryClient, t: TemplateDetail, key: string): Promise<AgentDetail> {
   const agent = await unwrap(
     api.POST("/agents", {
@@ -271,7 +274,79 @@ export async function createAgentFromTemplate(qc: QueryClient, t: TemplateDetail
       body: { name: t.config.agent_name ?? t.name, type: "single_prompt", template_id: t.id, language: t.config.language },
     }),
   );
-  qc.setQueryData(agentKeys.detail(agent.id), agent);
-  void qc.invalidateQueries({ queryKey: agentKeys.lists });
+  agentChanged(qc, agent);
   return agent;
+}
+
+/** First save of a new agent (FR-038: one key per editor session, so a retry creates one agent). */
+export function createAgent(body: BodyOf<"/agents", "post">, key: string) {
+  return unwrap(api.POST("/agents", { params: { header: { "Idempotency-Key": key } }, body }));
+}
+
+/** Saves the draft against the revision it was loaded at (412 RevisionConflictProblem when stale). */
+export function saveAgentDraft(agentId: string, revision: number, body: BodyOf<"/agents/{agent_id}/draft", "put">) {
+  return unwrap(api.PUT("/agents/{agent_id}/draft", { params: { path: { agent_id: agentId }, header: { "If-Match": etag(revision) } }, body }));
+}
+
+/** Checks a config with the same rules as save (FR-040). */
+export function validateAgentConfig(type: AgentType, config: AgentConfig, agentId: string | null) {
+  return unwrap(api.POST("/agents/validate", { body: { type, config, ...(agentId && { agent_id: agentId }) } }));
+}
+
+/** Deletes an agent. A 409 `agent_in_use` lists the channels it is attached to. */
+export async function deleteAgent(agentId: string) {
+  await unwrap(api.DELETE("/agents/{agent_id}", { params: { path: { agent_id: agentId } } }));
+}
+
+export function duplicateAgent(agentId: string, key: string, body: BodyOf<"/agents/{agent_id}/duplicate", "post">) {
+  return unwrap(api.POST("/agents/{agent_id}/duplicate", { params: { path: { agent_id: agentId }, header: { "Idempotency-Key": key } }, body }));
+}
+
+export async function publishVersion(agentId: string, versionId: string) {
+  await unwrap(api.PUT("/agents/{agent_id}/published-version", { params: { path: { agent_id: agentId } }, body: { version_id: versionId } }));
+}
+
+export async function unpublishAgent(agentId: string) {
+  await unwrap(api.DELETE("/agents/{agent_id}/published-version", { params: { path: { agent_id: agentId } } }));
+}
+
+/** Copies an old version into a new draft version (optionally publishing it). */
+export function restoreVersion(agentId: string, versionId: string, revision: number, publish: boolean) {
+  return unwrap(
+    api.POST("/agents/{agent_id}/versions/{version_id}/restore", {
+      params: { path: { agent_id: agentId, version_id: versionId }, header: { "If-Match": etag(revision) } },
+      body: { publish },
+    }),
+  );
+}
+
+/** One prompt assistant turn (paid: a fresh key per turn). */
+export function generatePrompt(body: PromptAiRequest, key: string) {
+  return unwrap(api.POST("/prompt-ai/generate", { params: { header: { "Idempotency-Key": key } }, body }));
+}
+
+export async function deleteAmbientAudio(key: string) {
+  await unwrap(api.DELETE("/voices/ambient-audio", { params: { query: { key } } }));
+}
+
+/**
+ * The most recently updated agent for the guided tour, preferring a single-prompt agent (the tour's
+ * agent steps edit a prompt); null when the workspace has none.
+ */
+export async function newestAgentId(): Promise<string | null> {
+  const newest = (type?: AgentType) =>
+    unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: 1, sort: "updated", ...(type && { type }) } } }));
+  return (await newest("single_prompt")).items[0]?.id ?? (await newest()).items[0]?.id ?? null;
+}
+
+/** The first template in the gallery, with its full config. */
+export async function firstTemplate(): Promise<TemplateDetail | null> {
+  const first = (await unwrap(api.GET("/templates"))).items[0];
+  return first ? unwrap(api.GET("/templates/{template_id}", { params: { path: { template_id: first.id } } })) : null;
+}
+
+export function uploadAmbientAudio(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return postForm("/voices/ambient-audio", form);
 }

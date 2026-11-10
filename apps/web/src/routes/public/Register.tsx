@@ -3,15 +3,16 @@ import { MailCheck, RefreshCw, UserPlus } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { register, resendVerification } from "../../api/auth";
 import { fieldErrors, problemMessage } from "../../api/problems";
+import { TRIAL_CREDIT } from "../../lib/money";
 import { startSession } from "../../api/session";
 import { Button, Field, FormAlert, Input } from "../../components";
-import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
-import { mockVerifyToken } from "../../mocks/demoAccount";
-import { AUTH_PAGES } from "../../lib/paths";
+import { demoHints } from "../../lib/demoHints";
+import { AUTH_PAGES, DASHBOARD_PATH } from "../../lib/paths";
+import { bodyLimits } from "../../lib/contract.gen";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -25,20 +26,21 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
+  const hints = demoHints();
 
-  const register = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/register", { body: { email: email.trim(), password } })),
+  const signUp = useMutation({
+    mutationFn: () => register(email.trim(), password),
     onSuccess: (result) => {
       if (result.status !== "signed_in") return;
       startSession(result);
-      navigate("/dashboard", { replace: true });
+      navigate(DASHBOARD_PATH, { replace: true });
     },
   });
   const resend = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/verify-email/resend", { body: { email: email.trim() } })),
+    mutationFn: () => resendVerification(email.trim()),
   });
 
-  const fe = fieldErrors(register.error);
+  const fe = fieldErrors(signUp.error);
   const emailErr = fe.email ?? (touched && !EMAIL.test(email.trim()) ? "Enter a valid email address." : undefined);
   const pwErr = fe.password ?? (touched && password.length < MIN_PASSWORD ? `Use at least ${MIN_PASSWORD} characters.` : undefined);
 
@@ -46,18 +48,18 @@ export function Register() {
     e.preventDefault();
     setTouched(true);
     if (!EMAIL.test(email.trim()) || password.length < MIN_PASSWORD) return;
-    register.mutate();
+    signUp.mutate();
   };
 
-  if (register.isSuccess && register.data.status !== "signed_in") {
+  if (signUp.isSuccess && signUp.data.status !== "signed_in") {
     const addr = email.trim().toLowerCase();
     return (
       <AuthLayout
         title="Check your email"
         subtitle={
           <>
-            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with $5.00 of trial
-            credit.
+            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with {TRIAL_CREDIT} of
+            trial credit.
           </>
         }
       >
@@ -75,16 +77,16 @@ export function Register() {
             >
               {resend.isSuccess ? "Link sent again" : "Send it again"}
             </Button>
-            <Button variant="ghost" onClick={() => register.reset()}>
+            <Button variant="ghost" onClick={() => signUp.reset()}>
               Use a different email
             </Button>
           </div>
-          {env.mocks && (
+          {hints && (
             <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
               <Link
                 className="link-underline text-accent-text"
-                to={`${AUTH_PAGES.verifyEmail}?token_hash=${encodeURIComponent(mockVerifyToken(addr))}`}
+                to={`${AUTH_PAGES.verifyEmail}?token_hash=${encodeURIComponent(hints.verifyToken(addr))}`}
               >
                 Open the verification link
               </Link>
@@ -95,12 +97,12 @@ export function Register() {
     );
   }
 
-  const formError = register.error && Object.keys(fe).length === 0 ? problemMessage(register.error) : null;
+  const formError = signUp.error && Object.keys(fe).length === 0 ? problemMessage(signUp.error) : null;
 
   return (
     <AuthLayout
       title="Create your workspace"
-      subtitle="Start with $5.00 of trial credit. No card needed until you top up."
+      subtitle={`Start with ${TRIAL_CREDIT} of trial credit. No card needed until you top up.`}
       footer={
         <>
           Already have an account?{" "}
@@ -135,7 +137,7 @@ export function Register() {
               autoComplete="new-password"
               inputSize="lg"
               minLength={MIN_PASSWORD}
-              maxLength={128}
+              maxLength={bodyLimits["POST /auth/register"].password.maxLength}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               aria-describedby={describedBy}
@@ -143,7 +145,7 @@ export function Register() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={register.isPending} className="mt-1 w-full" icon={<UserPlus aria-hidden />}>
+        <Button type="submit" variant="primary" size="lg" pending={signUp.isPending} className="mt-1 w-full" icon={<UserPlus aria-hidden />}>
           Create account
         </Button>
         <p className="text-[12px] leading-relaxed text-fg-3">

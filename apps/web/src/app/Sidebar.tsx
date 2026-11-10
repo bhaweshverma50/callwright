@@ -4,11 +4,7 @@ import { NavLink, useMatch } from "react-router";
 import { Kbd, Logo, Tooltip, TruncatedText, cn, focusRing } from "../components";
 import { LiveCallsBadge } from "./LiveCallsBadge";
 import { BILLING_ITEM, NAV, SETTINGS_ITEM, type NavItem } from "./nav";
-import { CALLS_PATH } from "../lib/paths";
-
-/** Rail widths (docs/DESIGN.md section 5). Shell animates between them. */
-export const RAIL_EXPANDED = 248;
-export const RAIL_COLLAPSED = 72;
+import { CALLS_PATH, DASHBOARD_PATH } from "../lib/paths";
 
 /**
  * Labelled, grouped sidebar (FR-005, docs/DESIGN.md section 5): Build, Observe, Quality and
@@ -33,7 +29,7 @@ export function Sidebar({
     <div className="flex h-full min-h-0 flex-col">
       {!inDrawer && (
         <div className={cn("flex h-[60px] shrink-0 items-center", expanded ? "px-4" : "justify-center")}>
-          <NavLink to="/dashboard" className={cn("rounded-[9px]", focusRing)} aria-label="Callwright dashboard">
+          <NavLink to={DASHBOARD_PATH} className={cn("rounded-[9px]", focusRing)} aria-label="Callwright dashboard">
             <Logo compact={!expanded} />
           </NavLink>
         </div>

@@ -3,17 +3,15 @@ import { useState, type ReactNode } from "react";
 import type { StartConfig } from "../../../api/flows";
 import { Badge, Drawer, FieldRow, Panel, PanelRows, Segmented, cn, focusRing } from "../../../components";
 import { ExpandEditor } from "./node-forms/ExpandEditor";
-import {
-  AdvancedSection,
-  type AgentDraft,
-  CallBehaviorSection,
-  type Catalogs,
-  EDITOR_PANELS,
-  ModelPicker,
-  sectionKeys,
-  TemperatureControl,
-  VoiceSection,
-} from "../../agents/config";
+import { sectionKeys } from "../../agents/config/fields";
+import { AdvancedSection } from "../../agents/editor/AdvancedSection";
+import { CallBehaviorSection } from "../../agents/editor/CallBehaviorSection";
+import type { Catalogs } from "../../agents/editor/catalogs";
+import { ModelPicker } from "../../agents/editor/ModelPicker";
+import { EDITOR_PANELS } from "../../agents/editor/panels";
+import { TemperatureControl } from "../../agents/editor/TemperatureControl";
+import type { AgentDraft } from "../../agents/editor/useAgentDraft";
+import { VoiceSection } from "../../agents/editor/VoiceSection";
 
 export const SECTIONS = ["model", "voice", "call-behavior", "functions", "advanced", "knowledge-base", "quality-checks"] as const;
 export type SettingsSection = (typeof SECTIONS)[number];

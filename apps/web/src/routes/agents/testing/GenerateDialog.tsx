@@ -9,10 +9,9 @@ import { PenLine } from "lucide-react";
 import { useState } from "react";
 import { useActionKey, isRetryable } from "../../../api/paid";
 import { generateTestCases, importTestCases, testingKeys, type TestCaseImportRow, type TestCategory } from "../../../api/testing";
-import { Button, Dialog, Field, Input, Select, Textarea, ThinkingIndicator, cn, toast } from "../../../components";
+import { Button, cn, Dialog, Field, Input, ProblemAlert, Select, Textarea, ThinkingIndicator, toast } from "../../../components";
 import { ALL_CATEGORIES, CategoryLabel, categoryOptions } from "./categories";
 import { costUsd, plural } from "../../../lib/format";
-import { ProblemAlert } from "../../../components/ProblemAlert";
 import { bodyLimits } from "../../../lib/contract.gen";
 
 const COUNT = bodyLimits["POST /test-cases/generate"].count;
@@ -233,7 +232,7 @@ export function GenerateDialog({
                 id={id}
                 aria-describedby={describedBy}
                 rows={3}
-                maxLength={1000}
+                maxLength={bodyLimits["POST /test-cases/generate"].guidance.maxLength}
                 value={guidance}
                 onChange={(e) => {
                   setGuidance(e.target.value);

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { db } from "../../mocks/db";
 import { renderApp, signInDemo } from "../../test/render";
+import { DEMO_EMAIL } from "../../mocks/demoAccount";
 
 describe("SettingsPage (T093, FR-017)", () => {
   it("saves name and recording default together, with a confirmation", async () => {
@@ -11,7 +12,7 @@ describe("SettingsPage (T093, FR-017)", () => {
     renderApp("/settings");
     const name = await screen.findByLabelText("Workspace name");
     expect(screen.getByText((_, el) => el?.tagName === "DD" && el.textContent === "5 at once")).toBeInTheDocument();
-    expect(screen.getByText("ops@halcyon-dental.com", { selector: "dd > span" })).toBeInTheDocument();
+    expect(screen.getByText(DEMO_EMAIL, { selector: "dd > span" })).toBeInTheDocument();
 
     await user.clear(name);
     await user.type(name, "Halcyon Front Office");

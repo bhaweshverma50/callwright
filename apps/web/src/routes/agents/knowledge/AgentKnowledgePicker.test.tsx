@@ -1,23 +1,12 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { createQueryClient } from "../../../api/queryClient";
-import { TooltipProvider } from "../../../components";
 import { seedKb } from "../../../mocks/tools";
 import { AgentKnowledgePicker } from "./AgentKnowledgePicker";
+import { renderWithProviders } from "../../../test/render";
 
 function renderPicker(attachedIds: string[], onConfirm = vi.fn()) {
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <MemoryRouter>
-          <AgentKnowledgePicker open onOpenChange={() => undefined} attachedIds={attachedIds} onConfirm={onConfirm} />
-        </MemoryRouter>
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<AgentKnowledgePicker open onOpenChange={() => undefined} attachedIds={attachedIds} onConfirm={onConfirm} />, { router: true });
   return onConfirm;
 }
 

@@ -1,21 +1,12 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createQueryClient } from "../../../api/queryClient";
-import { TooltipProvider } from "../../../components";
-import { signInDemo } from "../../../test/render";
+import { renderWithProviders, signInDemo } from "../../../test/render";
 import { WhatsAppChannelDialog, whatsappErrors } from "./WhatsAppChannelDialog";
 
 function setup() {
   const onCreated = vi.fn();
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <WhatsAppChannelDialog open onOpenChange={() => {}} onCreated={onCreated} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<WhatsAppChannelDialog open onOpenChange={() => {}} onCreated={onCreated} />);
   return { user: userEvent.setup(), onCreated };
 }
 

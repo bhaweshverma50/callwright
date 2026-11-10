@@ -23,10 +23,13 @@ import {
 } from "../../api/datasets";
 import { isApiError } from "../../api/errors";
 import { isRetryable, useActionKey } from "../../api/paid";
-import { fieldErrors } from "../../api/problems";
+import { fieldErrors, problemText } from "../../api/problems";
 import {
   Badge,
   Button,
+  CallStatusBadge,
+  cn,
+  type Column,
   ConfirmDialog,
   Dialog,
   EmptyState,
@@ -40,19 +43,19 @@ import {
   PageHeader,
   Pagination,
   PanelLoader,
+  ProblemAlert,
+  SentimentBadge,
   Switch,
   Table,
   Textarea,
-  Tooltip,
-  cn,
   toast,
-  type Column,
+  Tooltip,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
 import { mss, plural, shortId, timeAgo, when } from "../../lib/format";
-import { CallStatusBadge, SentimentBadge } from "../../components/callVocabulary";
-import { ProblemAlert, problemText } from "../../components/ProblemAlert";
+import { bodyLimits } from "../../lib/contract.gen";
+import { CALLS_PATH, DATASETS_PATH, callPath } from "../../lib/paths";
 
 // The call's evaluation status from 007: its current checks passed, one failed, still running,
 // none ran, or a check errored.
@@ -73,7 +76,7 @@ function columns(onRemove: (item: DatasetItem) => void): Column<DatasetItem>[] {
       cell: (i) => (
         <span className="flex min-w-0 items-center gap-2">
           <Link
-            to={`/calls?call=${i.call_id}`}
+            to={callPath(i.call_id)}
             title={i.call_id}
             className={cn("block whitespace-nowrap rounded-inline font-mono text-[13px] hover:underline", i.available ? "text-fg" : "text-fg-3")}
           >
@@ -175,7 +178,7 @@ function EditDialog({ dataset, onClose }: { dataset: Dataset; onClose: () => voi
               id={id}
               aria-describedby={describedBy}
               aria-invalid={invalid}
-              maxLength={80}
+              maxLength={bodyLimits["PATCH /datasets/{dataset_id}"].name.maxLength}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -187,7 +190,7 @@ function EditDialog({ dataset, onClose }: { dataset: Dataset; onClose: () => voi
               id={id}
               aria-describedby={describedBy}
               rows={2}
-              maxLength={500}
+              maxLength={bodyLimits["PATCH /datasets/{dataset_id}"].description.maxLength}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -272,7 +275,7 @@ export function DatasetPage() {
   const [pending, setPending] = useState(false);
 
   if (isApiError(dataset.error) && dataset.error.status === 404)
-    return <RecordNotFound kind="dataset" backTo="/datasets" backLabel="Back to Datasets" />;
+    return <RecordNotFound kind="dataset" backTo={DATASETS_PATH} backLabel="Back to Datasets" />;
   if (dataset.isError)
     return (
       <EmptyState
@@ -311,7 +314,7 @@ export function DatasetPage() {
       await deleteDataset(d.dataset_id);
       void qc.invalidateQueries({ queryKey: datasetKeys.all });
       toast({ tone: "success", title: `Deleted ${d.name}`, description: "The calls themselves are untouched." });
-      navigate("/datasets");
+      navigate(DATASETS_PATH);
     } catch (e) {
       toast({ tone: "error", title: "Not deleted", description: problemText(e) });
     } finally {
@@ -322,7 +325,10 @@ export function DatasetPage() {
   const tooFew = d.item_count < 2;
   return (
     <div className="flex flex-col">
-      <Link to="/datasets" className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+      <Link
+        to={DATASETS_PATH}
+        className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
+      >
         <ChevronLeft className="size-4" aria-hidden /> Back to Datasets
       </Link>
       <PageHeader
@@ -381,7 +387,7 @@ export function DatasetPage() {
               title="No calls yet"
               actions={
                 <Button asChild>
-                  <Link to="/calls">Open Calls</Link>
+                  <Link to={CALLS_PATH}>Open Calls</Link>
                 </Button>
               }
             >

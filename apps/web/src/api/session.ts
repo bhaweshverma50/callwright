@@ -5,7 +5,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { authChannel } from "./authChannel";
-import { queryClient } from "./queryClient";
+import type { QueryClient } from "@tanstack/react-query";
 import type { Session } from "./types";
 
 type StoredSession = Pick<Session, "access_token" | "refresh_token">;
@@ -66,15 +66,25 @@ export function useSignedIn(): boolean {
   );
 }
 
+/** The query cache the session clears when it starts or ends; App binds the one it provides. */
+let cache: QueryClient | null = null;
+
+export function bindSessionCache(qc: QueryClient) {
+  cache = qc;
+  return () => {
+    if (cache === qc) cache = null;
+  };
+}
+
 export function startSession(s: Session) {
-  queryClient.clear();
+  cache?.clear();
   session.set(s);
   authChannel.post({ type: "signed_in" });
 }
 
 function dropSession() {
   session.clear();
-  queryClient.clear();
+  cache?.clear();
 }
 
 /**

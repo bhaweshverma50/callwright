@@ -6,12 +6,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, FileJson, Upload } from "lucide-react";
 import { useRef, useState } from "react";
-import { downloadJson } from "../../../api/paid";
 import { exportTestCases, importTestCases, testingKeys, type ImportOutcome, type TestCaseImportRow } from "../../../api/testing";
-import { Button, Dialog, Field, FormAlert, Textarea, toast } from "../../../components";
+import { Button, Dialog, Field, FormAlert, ProblemAlert, Textarea, toast } from "../../../components";
 import { plural } from "../../../lib/format";
-import { ProblemAlert, problemText } from "../../../components/ProblemAlert";
 import { bodyLimits } from "../../../lib/contract.gen";
+import { downloadJson } from "../../../lib/download";
+import { problemText } from "../../../api/problems";
 
 export const MAX_IMPORT_ROWS = bodyLimits["POST /test-cases/import"].test_cases.maxItems;
 

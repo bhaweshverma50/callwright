@@ -33,7 +33,6 @@ interface Store {
 const empty = (): Store => ({ numbers: [], channels: [], routes: [], dnc: [], hours: { windows: DEFAULT_WINDOWS, updated_at: null }, decisions: [] });
 let store: Store = empty();
 
-export const mockChannels = () => store;
 export function resetMockChannels() {
   store = empty();
 }
@@ -70,7 +69,7 @@ export function seedMockChannels() {
 }
 
 export const channelHandlers = [
-  // Phone numbers -----------------------------------------------------------------------------
+  // Phone numbers
   http.get(url("/phone-numbers/sip-settings"), ({ request }) =>
     signedIn(request)
       ? json({
@@ -145,7 +144,7 @@ export const channelHandlers = [
   }),
   http.post(url("/webhooks/test"), () => json({ n: 1, at: now(), status_code: 200, duration_ms: 84, error: null, response_excerpt: "ok" })),
 
-  // Outbound and compliance ---------------------------------------------------------------------
+  // Outbound and compliance
   http.post(url("/outbound-calls"), async ({ request }) => {
     const b = (await request.json()) as S["OutboundCallRequest"];
     const entry = store.dnc.find((d) => d.number === b.to_number);
@@ -230,7 +229,7 @@ export const channelHandlers = [
   }),
   http.get(url("/outbound-policy-decisions"), ({ request }) => json(page(store.decisions, request, 50))),
 
-  // WhatsApp ------------------------------------------------------------------------------------
+  // WhatsApp
   http.get(url("/whatsapp/settings"), () =>
     json({ callback_url: "https://api.callwright.example/v1/whatsapp/webhook", default_graph_api_version: "v23.0", telephony_enabled: true }),
   ),

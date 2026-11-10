@@ -1,9 +1,10 @@
 import { CircleAlert, CircleCheck, Eye, Rocket, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { compileFlow, FlowProblem, publishFlow, type CompileResult, type FlowValidationResult, type ValidationIssue } from "../../../api/flows";
+import { compileFlow, publishFlow, publishIssues, type CompileResult, type FlowValidationResult, type ValidationIssue } from "../../../api/flows";
 import { problemMessage } from "../../../api/problems";
 import { Button, Dialog, Field, Skeleton, Textarea, toast } from "../../../components";
 import { CompilePreview } from "./CompilePreview";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 /**
  * Publish (T045, FR-027): release notes, the warning count, and the errors that block it. The
@@ -48,7 +49,7 @@ export function PublishDialog({
       onPublished(out.version_number);
       onOpenChange(false);
     } catch (e) {
-      if (e instanceof FlowProblem && e.issues.length) onIssues(e.issues);
+      if (publishIssues(e).length) onIssues(publishIssues(e));
       toast({ tone: "error", title: "Not published", description: problemMessage(e, "flow") });
     } finally {
       setPending(false);
@@ -110,7 +111,14 @@ export function PublishDialog({
         ) : null}
         <Field label="Release notes (optional)" hint="Shown in the version history.">
           {({ id, describedBy }) => (
-            <Textarea id={id} rows={3} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} aria-describedby={describedBy} />
+            <Textarea
+              id={id}
+              rows={3}
+              maxLength={bodyLimits["POST /flows/{flow_id}/publish"].release_notes.maxLength}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              aria-describedby={describedBy}
+            />
           )}
         </Field>
         {previewing && <Skeleton className="h-40 w-full" />}

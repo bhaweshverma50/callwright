@@ -4,7 +4,7 @@
  * running validations poll every 2 s until they finish.
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, unwrap } from "./client";
+import { api, fetchAll, unwrap } from "./client";
 import type { components } from "./schema";
 import type { BodyOf, QueryOf, ResponseOf } from "./types";
 import { operationExtensions, schemaLimits } from "../lib/contract.gen";
@@ -100,12 +100,10 @@ export function useIssues(f: IssueFilters) {
 export function useAgentIssues(agentId: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: issueKeys.agentIssues(agentId ?? ""),
-    queryFn: async () =>
-      (
-        await unwrap(
-          api.GET("/issues", { params: { query: { agent_id: agentId!, status: "all", scope: "real_and_simulated", page: 1, page_size: 100 } } }),
-        )
-      ).items,
+    queryFn: () =>
+      fetchAll((page) =>
+        unwrap(api.GET("/issues", { params: { query: { agent_id: agentId!, status: "all", scope: "real_and_simulated", ...page } } })),
+      ),
     enabled: Boolean(agentId) && enabled,
     staleTime: 30_000,
   });

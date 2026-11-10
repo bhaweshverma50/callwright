@@ -6,11 +6,12 @@ import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import { queryClient } from "./api/queryClient";
+import { createQueryClient } from "./api/queryClient";
 import { wireCrossTabAuth } from "./api/session";
 import { createRouter } from "./router";
 import { initTheme } from "./app/theme";
 import { FullPageLoader } from "./components";
+import { installDemoHints } from "./lib/demoHints";
 import { env } from "./lib/env";
 
 async function boot() {
@@ -21,10 +22,12 @@ async function boot() {
   root.render(<FullPageLoader />);
   // VITE_API_MOCKS=true serves /v1 from the in-browser mock API built from the contracts.
   if (env.mocks) {
-    const { startMocks } = await import("./mocks/browser");
+    const [{ startMocks }, demo] = await Promise.all([import("./mocks/browser"), import("./mocks/demoAccount")]);
     await startMocks();
+    installDemoHints({ email: demo.DEMO_EMAIL, password: demo.DEMO_PASSWORD, verifyToken: demo.mockVerifyToken, resetToken: demo.mockResetToken });
   }
   const router = createRouter();
+  const queryClient = createQueryClient();
   root.render(
     <StrictMode>
       <App router={router} queryClient={queryClient} />

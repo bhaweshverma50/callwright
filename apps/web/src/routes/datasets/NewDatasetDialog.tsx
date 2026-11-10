@@ -9,10 +9,10 @@ import { useState } from "react";
 import { createDataset, type Dataset } from "../../api/datasets";
 import { isApiError } from "../../api/errors";
 import { fieldErrors } from "../../api/problems";
-import { Button, Dialog, Field, Input, Select, Textarea, toast } from "../../components";
-import { ProblemAlert } from "../../components/ProblemAlert";
+import { Button, Dialog, Field, Input, ProblemAlert, Select, Textarea, toast } from "../../components";
 import { useAllAgents } from "../../api/agents";
 import { describeAddResult } from "../simulations/invalidCalls";
+import { bodyLimits } from "../../lib/contract.gen";
 
 type Errors = { name?: string; agent?: string; description?: string };
 
@@ -104,7 +104,7 @@ export function NewDatasetDialog({
               id={id}
               aria-describedby={describedBy}
               aria-invalid={invalid}
-              maxLength={80}
+              maxLength={bodyLimits["POST /datasets"].name.maxLength}
               value={name}
               placeholder="Billing disputes, hard cases"
               onChange={(e) => {
@@ -138,7 +138,7 @@ export function NewDatasetDialog({
               aria-describedby={describedBy}
               aria-invalid={invalid}
               rows={2}
-              maxLength={500}
+              maxLength={bodyLimits["POST /datasets"].description.maxLength}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

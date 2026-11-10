@@ -17,7 +17,7 @@ const lazyTokenBan = {
 };
 
 /** Files under `files` may not import the given top-level folders of src. */
-function layer(files, banned) {
+function layer(files, banned, message = `${files} sits below ${banned.join(", ")}: move the shared piece down instead of importing up.`) {
   return {
     files: [files],
     ignores: ["**/*.test.{ts,tsx}"],
@@ -28,7 +28,7 @@ function layer(files, banned) {
           patterns: [
             {
               group: banned.flatMap((dir) => [`**/${dir}`, `**/${dir}/**`]),
-              message: `${files} sits below ${banned.join(", ")}: move the shared piece down instead of importing up.`,
+              message,
             },
           ],
         },
@@ -64,14 +64,18 @@ export default tseslint.config(
     files: ["src/app/Shell.tsx", "src/app/TopBar.tsx", "src/app/Sidebar.tsx", "src/router.tsx", "src/main.tsx"],
     rules: lazyTokenBan,
   },
-  // Layers: lib < components < api < webCall < routes < app shell; src/router.tsx and main.tsx compose them.
-  // Mocks serve the contract from api and lib only. Tests may reach anywhere.
-  layer("src/lib/**", ["api", "components", "webCall", "routes", "app", "mocks"]),
-  layer("src/components/**", ["webCall", "routes", "app", "mocks"]),
-  layer("src/api/**", ["components", "webCall", "routes", "app", "mocks"]),
-  layer("src/webCall/**", ["routes", "app", "mocks"]),
-  layer("src/app/**", ["routes"]),
-  layer("src/mocks/**", ["components", "webCall", "routes", "app"]),
+  // Layers, lowest first: lib < api < components < webCall < app < routes; src/router.tsx, App.tsx
+  // and main.tsx compose them. Components may call api (ProblemAlert words a failed request); the app
+  // shell (assistant bus, voice action registry, theme, tour) is a service the pages register with,
+  // so routes sit above it. Mocks serve the contract from api and lib only, and only main.tsx and
+  // tests load them: no layer imports mocks. Tests may reach anywhere.
+  layer("src/lib/**", ["api", "components", "webCall", "app", "routes", "mocks"]),
+  layer("src/api/**", ["components", "webCall", "app", "routes", "mocks"]),
+  layer("src/components/**", ["webCall", "app", "routes", "mocks"]),
+  layer("src/webCall/**", ["app", "routes", "mocks"]),
+  layer("src/app/**", ["routes", "mocks"]),
+  layer("src/routes/**", ["mocks"], "Pages never import mocks: main.tsx installs what mock mode needs (see lib/demoHints.ts)."),
+  layer("src/mocks/**", ["components", "webCall", "app", "routes"]),
   {
     files: ["scripts/**/*.mjs", "*.config.{js,ts}", "tests/**/*.ts"],
     languageOptions: { globals: globals.node },

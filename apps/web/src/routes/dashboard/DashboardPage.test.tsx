@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { seedMockCalls } from "../../mocks/calls/handlers";
 import { renderApp, signInDemo } from "../../test/render";
 import { rangeError, readSelection } from "./DashboardPage";
@@ -66,8 +66,14 @@ describe("DashboardPage (006 US3)", () => {
     renderApp("/dashboard");
     const updated = await screen.findByText(/^Updated/, undefined, { timeout: 5000 });
     const before = updated.textContent;
-    await new Promise((r) => setTimeout(r, 1100));
-    await user.click(screen.getByRole("button", { name: "Refresh" }));
-    await waitFor(() => expect(screen.getByText(/^Updated/).textContent).not.toBe(before));
+    // The stamp shows seconds: move the clock on instead of waiting for it.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 2_000);
+      await user.click(screen.getByRole("button", { name: "Refresh" }));
+      await waitFor(() => expect(screen.getByText(/^Updated/).textContent).not.toBe(before));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -13,6 +13,7 @@ import { SayForm } from "./node-forms/SayForm";
 import { StartForm } from "./node-forms/StartForm";
 import { TransferNodeForm } from "./node-forms/TransferNodeForm";
 import { WebhookForm } from "./node-forms/WebhookForm";
+import { schemaLimits } from "../../../lib/contract.gen";
 
 /**
  * The selected node's settings (T028): header with its name, then the form for its type in its
@@ -72,7 +73,7 @@ export const NodePanel = memo(function NodePanel({
             inputSize="sm"
             aria-label="Step name"
             value={node.label}
-            maxLength={80}
+            maxLength={schemaLimits.Node.label.maxLength}
             disabled={locked}
             onChange={(e) => update({ label: e.target.value })}
             onBlur={(e) => !e.target.value.trim() && update({ label: meta.title })}

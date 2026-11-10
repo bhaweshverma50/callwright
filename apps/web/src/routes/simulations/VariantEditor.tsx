@@ -11,6 +11,7 @@ import { useFlowByAgent, type FlowGraph } from "../../api/flows";
 import type { SimTarget, TargetType } from "../../api/simulations";
 import { useToolsByIds } from "../../api/tools";
 import { Badge, Field, Input, Select, Skeleton, Textarea } from "../../components";
+import { schemaLimits } from "../../lib/contract.gen";
 
 export interface Variant {
   label: string;
@@ -170,7 +171,7 @@ export function VariantEditor({
           <Input
             id={id}
             aria-describedby={describedBy}
-            maxLength={60}
+            maxLength={schemaLimits.SimTarget.label.maxLength}
             value={value.label}
             placeholder="Shorter greeting"
             onChange={(e) => onChange({ ...value, label: e.target.value })}

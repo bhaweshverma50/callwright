@@ -11,7 +11,17 @@ import {
   ScrollText,
   type LucideIcon,
 } from "lucide-react";
-import { agentEditPath, agentTestingPath, isAgentId } from "../../lib/paths";
+import {
+  agentEditPath,
+  AGENTS_PATH,
+  agentTestingPath,
+  CALLS_PATH,
+  isAgentId,
+  NEW_AGENT_PATH,
+  PHONE_NUMBERS_PATH,
+  REVIEW_PATH,
+  TEMPLATES_PATH,
+} from "../../lib/paths";
 
 /**
  * The guided setup tour (spec 013): one step per control on the way from an empty workspace to
@@ -59,9 +69,9 @@ export const STEPS: TourStep[] = [
     title: "Start with an agent",
     body: "An agent answers and places calls with your prompt, a language model and a voice. Templates come with all three, written for your industry.",
     icon: Bot,
-    path: () => "/agents",
+    path: () => AGENTS_PATH,
     target: ["a[href='/agents/templates']"],
-    doneWhen: ({ pathname }) => pathname === "/agents/templates" || pathname.startsWith("/agents/new"),
+    doneWhen: ({ pathname }) => pathname === TEMPLATES_PATH || pathname.startsWith(NEW_AGENT_PATH),
     waitingFor: "Open the templates to go on",
     doIt: { label: "Open templates", click: "a[href='/agents/templates']" },
   },
@@ -138,7 +148,7 @@ export const STEPS: TourStep[] = [
     title: "Put it on a number",
     body: "Import a number from your SIP trunk and choose this agent to answer it. No carrier yet? A test line on a lab PBX works the same way, and unanswered calls are never charged.",
     icon: PhoneForwarded,
-    path: () => "/phone-numbers",
+    path: () => PHONE_NUMBERS_PATH,
     target: ["[data-tour='channels-import']", "[role='tabpanel'][id$='-content-numbers']"],
   },
   {
@@ -146,7 +156,7 @@ export const STEPS: TourStep[] = [
     title: "Find every call",
     body: "Calls land here as they end. Open one for the transcript, the recording, a summary, the latency of every turn and the itemised cost.",
     icon: PhoneCall,
-    path: () => "/calls",
+    path: () => CALLS_PATH,
     target: ["section[aria-label='Call history']", "main h1"],
   },
   {
@@ -154,7 +164,7 @@ export const STEPS: TourStep[] = [
     title: "Check the quality",
     body: "Automatic checks score every call. Review is a queue of calls for people to label, so you can see where the checks agree with you and where they drift.",
     icon: ListChecks,
-    path: () => "/review",
+    path: () => REVIEW_PATH,
     target: ["[role='tablist'][aria-label='Queue']"],
   },
   {

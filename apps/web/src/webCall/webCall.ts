@@ -13,11 +13,13 @@
  * below plays a scripted call on timers so the panel works in the gallery, in MSW mock mode and in
  * tests without a media server.
  */
-import type { Latency } from "../components/signal";
 import { ApiError, isApiError } from "../api/errors";
 import { isInsufficientCredit } from "../api/paid";
+import { problemMessage, problemText } from "../api/problems";
 import { BILLING_PATH } from "../lib/paths";
+import type { WebCallRequest as ApiWebCallRequest, WebCallSession } from "../api/calls";
 import type { Problem } from "../api/types";
+import { type Latency } from "../components";
 
 export type MicCheck = "granted" | "denied" | "unavailable";
 /** What the agent is doing, from the `lk.agent.state` participant attribute. */
@@ -39,21 +41,11 @@ export interface CallLevels {
   agent: number;
 }
 
-export interface WebCallRequest {
-  agent_id: string;
-  version?: string;
-  dynamic_variables?: Record<string, string>;
-}
+/** What the panel asks for: the agent, its version and variable values. */
+export type WebCallRequest = Pick<ApiWebCallRequest, "agent_id" | "version" | "dynamic_variables">;
 
-/** The `WebCallSession` body from `POST /v1/sessions/web-call` (contracts/sessions.yaml). */
-export interface WebCallSessionInfo {
-  call_id: string;
-  room_name: string;
-  server_url: string;
-  participant_token: string;
-  expires_at: string;
-  missing_variables?: string[];
-}
+/** What joining needs from `POST /sessions/web-call` or `POST /public/demo-calls`. */
+export type WebCallSessionInfo = Pick<WebCallSession, "call_id" | "room_name" | "server_url" | "participant_token" | "expires_at">;
 
 export interface CallListener {
   activity(a: AgentActivity): void;
@@ -96,9 +88,6 @@ export interface WebCallDriver {
   connect(session: WebCallSessionInfo, listener: CallListener): Promise<CallConnection>;
 }
 
-/** Data topic the worker publishes per-turn latency on: JSON `{segment_id?, stt_ms, llm_ms, tts_ms}`. */
-export const LATENCY_TOPIC = "cw.turn_latency";
-
 /** Something the operator should read and can usually fix. */
 export interface CallProblem {
   kind: "mic_denied" | "mic_unavailable" | "refused" | "network" | "connection";
@@ -130,9 +119,9 @@ export const CONNECTION_FAILED: CallProblem = {
 
 /** Turns a failed session request into words the operator can act on. */
 export function problemFromError(e: unknown): CallProblem {
-  if (!isApiError(e)) return { kind: "network", title: "Could not start the call", detail: "Something went wrong. Try again." };
+  if (!isApiError(e)) return { kind: "network", title: "Could not start the call", detail: problemMessage(e) };
   const p = e.problem;
-  if (e.status === 0) return { kind: "network", title: "Could not reach Callwright", detail: "Check your connection and try again." };
+  if (e.status === 0) return { kind: "network", title: "Could not reach Callwright", detail: problemMessage(e) };
   if (isInsufficientCredit(e))
     return {
       kind: "refused",
@@ -146,7 +135,7 @@ export function problemFromError(e: unknown): CallProblem {
     return {
       kind: "refused",
       title: "Too many calls at once",
-      detail: p.detail ?? "Your workspace is at its concurrent call limit. End another call or wait a moment, then try again.",
+      detail: problemText(e, "call"),
     };
   // The wake gate (api/wakeGate.ts) already waited for the call servers; this is what is left
   // when they did not start in time.
@@ -164,10 +153,9 @@ export function problemFromError(e: unknown): CallProblem {
     };
   if (e.status === 409 && p.code === "agent_not_published")
     return { kind: "refused", title: "This agent is not published yet", detail: "Publish a version first, or test the draft instead." };
-  return { kind: "refused", title: p.title || "The call was refused", detail: p.detail ?? "Try again in a moment." };
+  return { kind: "refused", title: p.title || "The call was refused", detail: problemText(e, "call") };
 }
 
-// ---------------------------------------------------------------------------------------------
 // Mock driver: a scripted call on timers.
 
 export interface MockStep {
@@ -196,8 +184,8 @@ export const MOCK_SCRIPT: MockStep[] = [
 
 export interface MockOptions {
   microphone?: MicCheck;
-  /** Refuse the session request with this HTTP status (402, 403, 429, 422). */
-  refuseWith?: number;
+  /** Refuse the session request with this problem body, as the API would. */
+  refuse?: Problem;
   /** Fail while joining the room. */
   failConnect?: boolean;
   /** Milliseconds to answer the session request and to join the room. */
@@ -209,25 +197,6 @@ export interface MockOptions {
   gapMs?: number;
   script?: MockStep[];
 }
-
-const REFUSALS: Record<number, Problem> = {
-  402: { type: "https://callwright.dev/problems/insufficient-credit", code: "insufficient_credit", title: "Insufficient credit", status: 402 },
-  403: { type: "https://callwright.dev/problems/email-unverified", code: "email_unverified", title: "Email not verified", status: 403 },
-  429: {
-    type: "https://callwright.dev/problems/concurrency-limit",
-    code: "concurrency_limit",
-    title: "Concurrency limit reached",
-    status: 429,
-    detail: "Your workspace allows 5 calls at once and 5 are running. End one or wait, then try again.",
-  },
-  422: {
-    type: "https://callwright.dev/problems/pricing-unavailable",
-    code: "pricing_unavailable",
-    title: "This configuration has no price yet",
-    status: 422,
-    detail: "Pick a listed voice or model in the agent's settings, then try again.",
-  },
-};
 
 /** Promise-based sleep that rejects when the signal aborts, so a hung-up script stops at once. */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -248,7 +217,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 export function createMockDriver(opts: MockOptions = {}): WebCallDriver {
   const {
     microphone = "granted",
-    refuseWith,
+    refuse,
     failConnect = false,
     requestDelayMs = 500,
     connectDelayMs = 900,
@@ -261,7 +230,7 @@ export function createMockDriver(opts: MockOptions = {}): WebCallDriver {
     checkMicrophone: async () => microphone,
     async createSession(req) {
       await new Promise((r) => setTimeout(r, requestDelayMs));
-      if (refuseWith) throw new ApiError(refuseWith, REFUSALS[refuseWith] ?? { type: "about:blank", title: "Refused", status: refuseWith });
+      if (refuse) throw new ApiError(refuse.status, refuse);
       return {
         call_id: "call_01JMOCKCALL0000000000000000",
         room_name: `call-mock-${req.agent_id}`,

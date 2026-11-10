@@ -13,8 +13,9 @@ import { Button, type Column, EmptyState, PageHeader, Pagination, ProgressBar, S
 import { NewSimulationDialog } from "./NewSimulationDialog";
 import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
 import { costUsd, timeAgo } from "../../lib/format";
-import { problemText } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
+import { CALLS_PATH, experimentPath, simulationRunPath } from "../../lib/paths";
 
 const ALL = "all";
 type Tab = "batches" | "runs";
@@ -30,7 +31,7 @@ const BATCH_COLUMNS: Column<Experiment>[] = [
     header: "Batch",
     cell: (e) => (
       <Link
-        to={`/simulations/${e.experiment_id}`}
+        to={experimentPath(e.experiment_id)}
         className="flex min-w-0 max-w-[52vw] flex-col py-1 md:max-w-[42ch] gap-0.5 rounded-inline hover:underline"
       >
         <TruncatedText className="text-[14px] font-medium text-fg">{e.name}</TruncatedText>
@@ -83,7 +84,7 @@ const RUN_COLUMNS: Column<SimulationRun>[] = [
     header: "Run",
     cell: (r) => (
       <Link
-        to={`/simulations/runs/${r.simulation_run_id}`}
+        to={simulationRunPath(r.simulation_run_id)}
         className="flex min-w-0 max-w-[52vw] flex-col py-1 md:max-w-[46ch] gap-0.5 rounded-inline hover:underline"
       >
         <TruncatedText className="text-[14px] font-medium text-fg">{runTitle(r)}</TruncatedText>
@@ -147,7 +148,7 @@ export function SimulationsPage() {
         title={agentId ? "No batches for this agent" : "No batches yet"}
         actions={
           <Button asChild variant="secondary">
-            <Link to="/calls">Select calls</Link>
+            <Link to={CALLS_PATH}>Select calls</Link>
           </Button>
         }
       >

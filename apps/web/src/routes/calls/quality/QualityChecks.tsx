@@ -11,7 +11,7 @@ import { Badge, Button, Skeleton, cn, toast } from "../../../components";
 import { SCOPE_LABELS, VERDICT_LABELS, evaluatorIcon, runStateLabel, runTone } from "../../agents/quality/evaluatorMeta";
 import { withoutLineRefs } from "../../../lib/text";
 import { usd, when } from "../../../lib/format";
-import { idempotencyKey } from "../../../api/agents";
+import { idempotencyKey } from "../../../lib/idempotency";
 
 export const RUNNING_TEXT = "Running checks, results appear as each one finishes";
 const TURN_PAGE = 20;

@@ -81,7 +81,7 @@ function notRunnable(agentId: string) {
   return null;
 }
 
-// --- test cases ------------------------------------------------------------------------------
+// test cases
 
 const categoryName = (slug: string) => sim().categories.find((c) => c.slug === slug)?.name ?? slug;
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -150,7 +150,7 @@ function drafts(category: string | null, count: number): TestCaseImportRow[] {
   });
 }
 
-// --- test runs -------------------------------------------------------------------------------
+// test runs
 
 const STEP_MS = 600;
 
@@ -200,7 +200,7 @@ function recount(run: StoredRun) {
 
 const publicRun = ({ results: _r, _startAt, _key, ...run }: StoredRun): TestRun => run;
 
-// --- simulations -----------------------------------------------------------------------------
+// simulations
 
 const RUN_STEP_MS = 800;
 
@@ -422,7 +422,7 @@ function scorecardFor(e: StoredExperiment, baselineId: string | null): Scorecard
   };
 }
 
-// --- datasets --------------------------------------------------------------------------------
+// datasets
 
 function addItems(d: Dataset, callIds: string[]): AddItemsResult {
   const s = sim();
@@ -473,7 +473,7 @@ function nameTaken(name: string, except?: string) {
   return sim().datasets.some((d) => d.dataset_id !== except && d.name.trim().toLowerCase() === name.trim().toLowerCase());
 }
 
-// --- handlers --------------------------------------------------------------------------------
+// handlers
 
 export const simHandlers = [
   // Test categories and cases

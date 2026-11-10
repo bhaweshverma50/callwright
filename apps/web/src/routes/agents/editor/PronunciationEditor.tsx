@@ -5,6 +5,7 @@ import { Button, IconButton, Input } from "../../../components";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
 import { fieldId } from "../config/fields";
+import { schemaLimits } from "../../../lib/contract.gen";
 
 /**
  * Pronunciation dictionary (FR-005): words are replaced before the voice speaks them. Rows with an
@@ -65,7 +66,7 @@ export function PronunciationEditor({ draft }: { draft: AgentDraft }) {
                         aria-label={`Word ${i + 1}`}
                         placeholder="SQL"
                         value={r.word}
-                        maxLength={100}
+                        maxLength={schemaLimits.PronunciationEntry.word.maxLength}
                         aria-invalid={Boolean(err)}
                         onChange={(e) => draft.update((c) => void (c.advanced.pronunciation[i]!.word = e.target.value))}
                         onBlur={() => r.word.trim() && draft.touch(`${key(r.word)}/word`)}
@@ -75,7 +76,7 @@ export function PronunciationEditor({ draft }: { draft: AgentDraft }) {
                         aria-label={`Say word ${i + 1} as`}
                         placeholder="sequel"
                         value={r.replacement}
-                        maxLength={200}
+                        maxLength={schemaLimits.PronunciationEntry.replacement.maxLength}
                         onChange={(e) => draft.update((c) => void (c.advanced.pronunciation[i]!.replacement = e.target.value))}
                       />
                       <IconButton

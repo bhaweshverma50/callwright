@@ -3,7 +3,6 @@ import { ChoiceGroup, FieldRow, Select } from "../../../components";
 import { languageLabel, perMin, type Catalogs } from "./catalogs";
 import { FieldError, StackRow } from "./fields";
 import type { AgentDraft } from "./useAgentDraft";
-import { useCatalog } from "../../../api/queries";
 import { fieldId, fieldLabel } from "../config/fields";
 
 const AUTO = "__auto__";
@@ -15,15 +14,13 @@ const AUTO = "__auto__";
  */
 export function SttPicker({ draft, catalogs }: { draft: AgentDraft; catalogs: Catalogs }) {
   const { stt, language } = draft.config;
-  const pricing = useCatalog();
-  // Auto has its own pricing row with no model (001 catalog); the speech catalog prices models only.
-  const autoPrice = (p: string) =>
-    pricing.data?.entries.find((e) => e.component === "stt" && e.provider === p && e.model === null)?.rate_per_min_usd ?? null;
   const provider = catalogs.voice.stt.find((p) => p.provider === stt.provider);
   const lang = languageLabel(catalogs.voice, language);
   const models = provider?.models.filter((m) => !m.withdrawn || m.id === stt.model) ?? [];
   const single = provider && !provider.supports_auto && models.length === 1;
-  const autoRule = provider?.auto_rule as { default?: string; by_language?: Record<string, string> } | null | undefined;
+  // The catalog serves Auto's rule but not the model it resolves to for a language, so the picker
+  // reads the rule the way the API applies it (packages/contract SttAuto.pick): exact, base, default.
+  const autoRule = provider?.auto_rule;
   const autoPick = autoRule ? (autoRule.by_language?.[language] ?? autoRule.by_language?.[language.split("-")[0]!] ?? autoRule.default) : undefined;
   const autoPickLabel = models.find((m) => m.id === autoPick)?.label;
 
@@ -32,9 +29,9 @@ export function SttPicker({ draft, catalogs }: { draft: AgentDraft; catalogs: Ca
       ? [
           {
             value: AUTO,
-            title: "Auto",
+            title: provider.auto?.label ?? "Auto",
             icon: <Wand2 aria-hidden />,
-            meta: pricing.data ? perMin(autoPrice(provider.provider)) : undefined,
+            meta: perMin(provider.auto?.price_per_min_usd),
             description: autoPickLabel ? `Uses ${autoPickLabel} for ${lang}, and newer models as they arrive.` : `Picks the best model for ${lang}.`,
           },
         ]

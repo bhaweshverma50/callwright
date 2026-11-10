@@ -7,7 +7,12 @@ import { toMicros } from "../lib/money";
 import { useCatalog, useQuote } from "./queries";
 import type { CostBreakdown, QuoteRequest } from "./types";
 
-/** Every workspace starts on this stack: Deepgram Nova-3, GPT-5 Mini on Azure OpenAI, ElevenLabs Multilingual v2. */
+/**
+ * Every workspace starts on this stack: Deepgram Nova-3, GPT-5 Mini on Azure OpenAI, ElevenLabs
+ * Multilingual v2. GET /agents/defaults serves the default config, but only to a signed-in
+ * workspace; the public pages and the sign-in layout price talk time before that, so the stack is
+ * named here.
+ */
 export const DEFAULT_STACK: QuoteRequest["components"] = {
   stt: { provider: "deepgram", model: "nova-3" },
   llm: { provider: "azure_openai", model: "gpt-5-mini" },

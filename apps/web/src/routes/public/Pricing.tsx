@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { Button, COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard, Skeleton, TalkMinutes } from "../../components";
 import { PricingCalculator } from "./PricingCalculator";
 import { REFERENCE_CALL, useReferenceBreakdown } from "../../api/pricing";
-import { formatUsd } from "../../lib/money";
+import { formatUsd, TRIAL_CREDIT, TRIAL_CREDIT_MICROS } from "../../lib/money";
 
 const PARTS: { c: keyof typeof COMPONENT_LABELS; text: string }[] = [
   { c: "stt", text: "Turns the caller's speech into text, per minute of call." },
@@ -26,9 +26,9 @@ export function Pricing() {
         calls.
       </p>
       <p className="mt-3 text-[14px] text-fg-3">
-        $5.00 of trial credit is about{" "}
+        {TRIAL_CREDIT} of trial credit is about{" "}
         <span className="font-mono text-fg-2 tnum">
-          <TalkMinutes micros={5_000_000n} />
+          <TalkMinutes micros={TRIAL_CREDIT_MICROS} />
         </span>{" "}
         minutes on the default chain.
       </p>

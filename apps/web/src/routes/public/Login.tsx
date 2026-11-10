@@ -1,16 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { resendVerification, signIn } from "../../api/auth";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage } from "../../api/problems";
 import { startSession, useSignedIn } from "../../api/session";
 import { safeNext } from "../../lib/paths";
 import { LogIn } from "lucide-react";
 import { Button, Field, FormAlert, Input } from "../../components";
-import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { DEMO_EMAIL, DEMO_PASSWORD } from "../../mocks/demoAccount";
+import { demoHints } from "../../lib/demoHints";
 
 function retryText(seconds?: number) {
   if (!seconds) return "in a few minutes";
@@ -28,29 +27,30 @@ export function Login() {
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [resent, setResent] = useState(false);
+  const hints = demoHints();
 
-  const signIn = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/sign-in", { body: { email: email.trim(), password } })),
+  const login = useMutation({
+    mutationFn: () => signIn(email.trim(), password),
     onSuccess: (s) => {
       startSession(s);
       navigate(next, { replace: true });
     },
   });
   const resend = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/verify-email/resend", { body: { email: email.trim() } })),
+    mutationFn: () => resendVerification(email.trim()),
     onSuccess: () => setResent(true),
   });
 
-  if (signedIn && !signIn.isPending && !signIn.isSuccess) return <Navigate to={next} replace />;
+  if (signedIn && !login.isPending && !login.isSuccess) return <Navigate to={next} replace />;
 
-  const err = signIn.error;
+  const err = login.error;
   const code = isApiError(err) ? err.code : undefined;
   const fe = fieldErrors(err);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setResent(false);
-    signIn.mutate();
+    login.mutate();
   };
 
   return (
@@ -138,7 +138,7 @@ export function Login() {
           type="submit"
           variant="primary"
           size="lg"
-          pending={signIn.isPending}
+          pending={login.isPending}
           disabled={!email || !password}
           className="mt-1 w-full"
           icon={<LogIn aria-hidden />}
@@ -147,16 +147,16 @@ export function Login() {
         </Button>
       </form>
 
-      {env.mocks && (
+      {hints && (
         <p className="mt-5 rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
-          Demo data is on. Use <span className="font-medium text-fg-2">{DEMO_EMAIL}</span> with{" "}
-          <span className="font-medium text-fg-2">{DEMO_PASSWORD}</span>.{" "}
+          Demo data is on. Use <span className="font-medium text-fg-2">{hints.email}</span> with{" "}
+          <span className="font-medium text-fg-2">{hints.password}</span>.{" "}
           <button
             type="button"
             className="link-underline text-accent-text"
             onClick={() => {
-              setEmail(DEMO_EMAIL);
-              setPassword(DEMO_PASSWORD);
+              setEmail(hints.email);
+              setPassword(hints.password);
             }}
           >
             Fill it in

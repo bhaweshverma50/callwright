@@ -242,6 +242,11 @@ function contractValues() {
     }
     if (Object.keys(props).length) schemas[name] = props;
   }
+  const dataChannelTopics = {};
+  for (const [name, schema] of Object.entries(merged.components.schemas ?? {})) {
+    const topic = schema["x-data-channel"]?.topic;
+    if (topic) dataChannelTopics[name] = topic;
+  }
   const queries = {};
   const bodies = {};
   const extensions = {};
@@ -287,6 +292,7 @@ function contractValues() {
     block("schemaLimits", "Constraints on the properties of named schemas.", schemas),
     block("queryLimits", 'Constraints on query parameters, by "METHOD /path".', queries),
     block("bodyLimits", 'Constraints on JSON request body properties, by "METHOD /path".', bodies),
+    block("dataChannelTopics", "The data-channel topic each worker message schema is published on (`x-data-channel.topic`).", dataChannelTopics),
     block("operationExtensions", 'The `x-` extensions of each operation, by "METHOD /path".', extensions),
   ].join("\n");
 }

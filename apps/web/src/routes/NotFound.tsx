@@ -2,6 +2,7 @@ import { Compass } from "@phosphor-icons/react";
 import { LayoutDashboard, Undo2 } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { Button, EmptyState, Waveform } from "../components";
+import { DASHBOARD_PATH } from "../lib/paths";
 
 /** Catch-all inside the shell (T095, FR-018): no silent redirect, a way back to the dashboard. */
 export function NotFound() {
@@ -14,7 +15,7 @@ export function NotFound() {
         title="Page not found"
         actions={
           <Button asChild variant="primary" icon={<LayoutDashboard aria-hidden />}>
-            <Link to="/dashboard">Go to dashboard</Link>
+            <Link to={DASHBOARD_PATH}>Go to dashboard</Link>
           </Button>
         }
       >

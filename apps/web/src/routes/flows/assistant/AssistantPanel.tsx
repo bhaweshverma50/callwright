@@ -1,10 +1,11 @@
 import { MessageSquareText, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { askAssistant, FlowProblem, type ChatTurn, type FlowGraph } from "../../../api/flows";
+import { askAssistant, type ChatTurn, type FlowGraph } from "../../../api/flows";
 import { problemMessage } from "../../../api/problems";
 import { Button, Composer, ThinkingIndicator, cn } from "../../../components";
 import type { Proposal } from "./ProposalBar";
+import { isApiError } from "../../../api/errors";
 
 const SUGGESTIONS = [
   "Add a step that collects the caller's date of birth before booking",
@@ -75,9 +76,9 @@ export function AssistantPanel({
         });
     } catch (e) {
       const message =
-        e instanceof FlowProblem && e.status === 409
+        isApiError(e) && e.status === 409
           ? "The flow was saved somewhere else. Reload, then ask again."
-          : e instanceof FlowProblem && e.status === 504
+          : isApiError(e) && e.status === 504
             ? "The assistant did not answer in time. Nothing changed and nothing was charged."
             : problemMessage(e, "flow");
       setChat(turns);

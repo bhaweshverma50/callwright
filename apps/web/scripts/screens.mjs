@@ -11,6 +11,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import { DEMO } from "./demoAccount.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = process.env.SCREENS_OUT ? resolve(process.env.SCREENS_OUT) : resolve(here, "../docs/screens");
@@ -18,8 +19,6 @@ mkdirSync(out, { recursive: true });
 const BASE = process.env.SCREENS_BASE ?? "http://localhost:5180";
 const ONLY = process.env.SCREENS_ONLY?.split(",").filter(Boolean);
 const VIEWPORTS = (process.env.SCREENS_VIEWPORTS ?? "desktop,mobile").split(",");
-
-const DEMO = { email: "ops@halcyon-dental.com", password: "correct-horse-9" };
 
 async function openAgent(p, name = "Front desk agent", tab) {
   await p.getByRole("link", { name }).first().click();

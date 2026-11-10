@@ -1,42 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CircleAlert, CircleCheck, CreditCard, FlaskConical, Lock } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { ApiError, toProblem } from "../../api/errors";
+import { cancelTestCheckout, type CheckoutSessionInfo, payTestCheckout, type TestCard, useTestCheckout } from "../../api/devCheckout";
+import { isApiError } from "../../api/errors";
 import { Button, cn, Field, focusRing, Input, Logo, PanelLoader, TalkMinutes } from "../../components";
-import { env } from "../../lib/env";
 import { formatUsd, toMicros } from "../../lib/money";
 import { BILLING_PATH } from "../../lib/paths";
-
-/** The fake gateway's checkout session (services/api/app/dev/router.py). */
-interface TestCard {
-  number: string;
-  brand: string;
-  label: string;
-  outcome: string;
-}
-interface CheckoutSessionInfo {
-  id: string;
-  amount_usd: string;
-  status: "pending" | "completed" | "expired";
-  workspace_name: string | null;
-  cancel_url: string;
-  test_cards: TestCard[];
-}
-
-/** Dev endpoints are outside the contract, so they go through plain fetch. */
-async function devCall<T>(path: string, init?: RequestInit): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${env.apiBaseUrl}/dev/fake-checkout/${path}`, { headers: { "content-type": "application/json" }, ...init });
-  } catch {
-    throw new ApiError(0, toProblem(0, null));
-  }
-  const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, toProblem(res.status, body));
-  return body as T;
-}
 
 const groupCard = (digits: string) => digits.replace(/(\d{4})(?=\d)/g, "$1 ");
 const brandOf = (digits: string) =>
@@ -51,11 +21,7 @@ const OK_OUTCOME = "succeeded";
  */
 export function TestCheckout() {
   const { sessionId = "" } = useParams();
-  const session = useQuery({
-    queryKey: ["dev", "checkout", sessionId],
-    queryFn: () => devCall<CheckoutSessionInfo>(encodeURIComponent(sessionId)),
-    retry: false,
-  });
+  const session = useTestCheckout(sessionId);
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -152,15 +118,18 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
     }
     setPhase("paying");
     try {
-      const done = await devCall<{ redirect_url: string }>(`${encodeURIComponent(info.id)}/pay`, {
-        method: "POST",
-        body: JSON.stringify({ card_number: digits, exp_month: Number(mm), exp_year: Number(yy), cvc: form.cvc, name: form.name }),
+      const done = await payTestCheckout(info.id, {
+        card_number: digits,
+        exp_month: Number(mm),
+        exp_year: Number(yy),
+        cvc: form.cvc,
+        name: form.name,
       });
       setPhase("paid");
       setTimeout(() => window.location.assign(done.redirect_url), 1600);
     } catch (err) {
       setPhase("idle");
-      const p = err instanceof ApiError ? err.problem : null;
+      const p = isApiError(err) ? err.problem : null;
       if (p?.errors?.length) {
         const next: FieldErrors = {};
         for (const fe of p.errors) {
@@ -177,9 +146,10 @@ function Checkout({ info }: { info: CheckoutSessionInfo }) {
 
   const cancel = async () => {
     setPhase("leaving");
-    const done = await devCall<{ redirect_url: string }>(`${encodeURIComponent(info.id)}/cancel`, { method: "POST" }).catch(() => ({
-      redirect_url: info.cancel_url,
-    }));
+    const done = await cancelTestCheckout(info.id).catch((e: unknown) => {
+      console.warn("The test checkout did not record the cancel; going back anyway.", e);
+      return { redirect_url: info.cancel_url };
+    });
     window.location.assign(done.redirect_url);
   };
 

@@ -19,9 +19,9 @@ import {
   testingKeys,
   updateTestCase,
 } from "../../../api/testing";
-import { Button, Dialog, Field, Input, Select, Textarea, cn, focusRing, toast } from "../../../components";
+import { Button, cn, Dialog, Field, focusRing, Input, ProblemAlert, Select, Textarea, toast } from "../../../components";
 import { categoryOptions, initialCategory } from "./categories";
-import { ProblemAlert } from "../../../components/ProblemAlert";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 const MAX = 2000;
 
@@ -68,7 +68,7 @@ function NewCategory({ categories, onCreated }: { categories: TestCategory[]; on
             id={id}
             aria-describedby={describedBy}
             aria-invalid={invalid}
-            maxLength={60}
+            maxLength={bodyLimits["POST /test-categories"].name.maxLength}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -207,7 +207,7 @@ export function TestCaseEditor({
                 id={id}
                 aria-describedby={describedBy}
                 aria-invalid={invalid}
-                maxLength={120}
+                maxLength={bodyLimits["POST /test-cases"].name.maxLength}
                 value={name}
                 placeholder={`${categoryName} test`}
                 onChange={(e) => setName(e.target.value)}

@@ -107,8 +107,24 @@ const CALL_SCENARIOS: Record<string, { label: string; options: MockOptions }> = 
   ok: { label: "Call connects", options: {} },
   "mic-denied": { label: "Microphone blocked", options: { microphone: "denied" } },
   "mic-missing": { label: "No microphone", options: { microphone: "unavailable" } },
-  credit: { label: "Not enough credit", options: { refuseWith: 402 } },
-  limit: { label: "Concurrency limit", options: { refuseWith: 429 } },
+  credit: {
+    label: "Not enough credit",
+    options: {
+      refuse: { type: "https://callwright.dev/problems/insufficient-credit", code: "insufficient_credit", title: "Insufficient credit", status: 402 },
+    },
+  },
+  limit: {
+    label: "Concurrency limit",
+    options: {
+      refuse: {
+        type: "https://callwright.dev/problems/concurrency-limit",
+        code: "concurrency_limit",
+        title: "Concurrency limit reached",
+        status: 429,
+        detail: "Your workspace allows 5 calls at once and 5 are running. End one or wait, then try again.",
+      },
+    },
+  },
   connect: { label: "Room does not answer", options: { failConnect: true } },
 };
 

@@ -20,6 +20,7 @@ import { Section } from "./NumberDetailPanel";
 import { ActiveCalls, AgentSelect, ChannelStatusBadge } from "./shared";
 import { timeAgo } from "../../../lib/format";
 import { useAllAgents } from "../../../api/agents";
+import { bodyLimits } from "../../../lib/contract.gen";
 
 function Step({ done, title, detail, index }: { done: boolean; title: string; detail: string; index: number }) {
   return (
@@ -285,7 +286,7 @@ function ChannelDetail({ channel, onClosed }: { channel: WhatsAppChannel; onClos
               {({ id, describedBy, invalid }) => (
                 <Input
                   id={id}
-                  maxLength={100}
+                  maxLength={bodyLimits["PATCH /whatsapp/channels/{channel_id}"].label.maxLength}
                   disabled={draining}
                   aria-describedby={describedBy}
                   aria-invalid={invalid}

@@ -10,6 +10,7 @@ import { useDebounced } from "../../lib/useDebounced";
 import { CreateKbDialog } from "./CreateKbDialog";
 import { KbStatusBadge } from "./kbStatus";
 import { formatBytes, timeAgo } from "../../lib/format";
+import { knowledgeBasePath } from "../../lib/paths";
 
 const STEPS = [
   { key: "upload", label: "Upload", icon: <Upload aria-hidden /> },
@@ -46,7 +47,7 @@ function ReadyBar({ kb }: { kb: KnowledgeBase }) {
 
 function KbCard({ kb }: { kb: KnowledgeBase }) {
   const navigate = useNavigate();
-  const to = `/knowledge-base/${kb.id}`;
+  const to = knowledgeBasePath(kb.id);
   return (
     <motion.div
       layout
@@ -222,7 +223,7 @@ export function KnowledgeListPage() {
           )}
         </>
       )}
-      <CreateKbDialog open={creating} onOpenChange={setCreating} onCreated={(kb) => navigate(`/knowledge-base/${kb.id}?upload=1`)} />
+      <CreateKbDialog open={creating} onOpenChange={setCreating} onCreated={(kb) => navigate(`${knowledgeBasePath(kb.id)}?upload=1`)} />
     </>
   );
 }

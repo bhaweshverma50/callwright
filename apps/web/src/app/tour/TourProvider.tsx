@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { createAgentFromTemplate, idempotencyKey, useAgents } from "../../api/agents";
-import { api, unwrap } from "../../api/client";
+import { createAgentFromTemplate, firstTemplate, newestAgentId, useAgents } from "../../api/agents";
 import { useSaveOnboarding, usePreferences } from "../../api/preferences";
 import { problemMessage } from "../../api/problems";
 import { toast } from "../../components";
@@ -12,6 +11,8 @@ import { ResumeChip } from "./ResumeChip";
 import { COUNTED, STEPS, agentInPath, onStepPage, stepPath } from "./steps";
 import { TourOverlay, type StepProgress } from "./TourOverlay";
 import { WelcomeCard } from "./WelcomeCard";
+import { idempotencyKey } from "../../lib/idempotency";
+import { agentEditPath } from "../../lib/paths";
 
 const AGENT_KEY = "cw.tour.agent";
 /** Pause after the real action before moving on, so the user sees what they did land. */
@@ -97,14 +98,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       try {
-        const page = await unwrap(api.GET("/agents", { params: { query: { page: 1, page_size: 1 } } }));
+        const id = await newestAgentId();
         if (cancelled) return;
-        const first = page.items.find((a) => a.type === "single_prompt") ?? page.items[0];
-        if (first) {
-          setAgentId(first.id);
-          writeAgent(first.id);
+        if (id) {
+          setAgentId(id);
+          writeAgent(id);
         } else dispatch({ type: "goto", step: "template" });
-      } catch {
+      } catch (e) {
+        console.warn("The tour could not find an agent; going back to the agents step.", e);
         if (!cancelled) dispatch({ type: "goto", step: "agents" });
       }
     })();
@@ -177,13 +178,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const [doing, setDoing] = useState(false);
   const createAgent = useCallback(async () => {
-    const list = await unwrap(api.GET("/templates"));
-    const first = list.items[0];
-    if (!first) throw new Error("No templates are available.");
-    const t = await unwrap(api.GET("/templates/{template_id}", { params: { path: { template_id: first.id } } }));
+    const t = await firstTemplate();
+    if (!t) throw new Error("No templates are available.");
     const agent = await createAgentFromTemplate(qc, t, idempotencyKey());
     toast({ tone: "success", title: "Agent created from template", description: `${agent.name} is saved as version 1.` });
-    navigate(`/agents/${agent.id}/edit`);
+    navigate(agentEditPath(agent.id));
   }, [qc, navigate]);
 
   const doIt = useCallback(async () => {

@@ -3,21 +3,17 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAgent, useAllAgents } from "../../../api/agents";
-import { isApiError } from "../../../api/errors";
+import { isApiError, problemAs, type ProblemOf } from "../../../api/errors";
+import { idempotencyKey } from "../../../lib/idempotency";
 import { fieldErrors, problemMessage } from "../../../api/problems";
 import { Button, CopyButton, Dialog, Field, Input, cn } from "../../../components";
 import { usePlaceCall, type OutboundCallAccepted } from "../../../api/channels";
 import { type PhoneNumber } from "../../../api/channels";
 import { AgentSelect } from "./shared";
 import { E164_EXAMPLE, e164Error } from "../../../lib/e164";
+import { CALLS_PATH } from "../../../lib/paths";
 
-interface Block {
-  reason: "dnc_listed" | "outside_calling_hours";
-  zones: string[];
-  local: string | null;
-  next: string | null;
-  source: string | null;
-}
+type Block = ProblemOf<"PolicyBlockedProblem">;
 
 const ZONES = [
   "America/New_York",
@@ -31,9 +27,7 @@ const ZONES = [
   "Australia/Sydney",
 ];
 
-function newKey() {
-  return `ui-${crypto.randomUUID()}`;
-}
+const zones = (b: Block) => b.recipient_timezones ?? [];
 
 function formatLocal(iso: string | null): string {
   if (!iso) return "";
@@ -58,7 +52,7 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
   const [agentId, setAgentId] = useState<string | null>(number.outbound_agent_id ?? null);
   const [vars, setVars] = useState<Record<string, string>>({});
   const [timezone, setTimezone] = useState("");
-  const [key, setKey] = useState(newKey);
+  const [key, setKey] = useState(idempotencyKey);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [result, setResult] = useState<OutboundCallAccepted | null>(null);
   const [block, setBlock] = useState<Block | null>(null);
@@ -73,7 +67,7 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
     setErrors({});
     setResult(null);
     setBlock(null);
-    setKey(newKey());
+    setKey(idempotencyKey());
     place.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when opened
   }, [open, number.id]);
@@ -108,16 +102,10 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
         onSuccess: setResult,
         onError: (err) => {
           // A block is not stored against the key, but a new attempt deserves a new key anyway.
-          setKey(newKey());
-          if (isApiError(err) && err.problem.code === "outbound_policy") {
-            const p = err.problem as unknown as Record<string, unknown>;
-            setBlock({
-              reason: p.reason as Block["reason"],
-              zones: (p.recipient_timezones as string[] | undefined) ?? [],
-              local: (p.recipient_local_time as string | null | undefined) ?? null,
-              next: (p.next_allowed_at as string | null | undefined) ?? null,
-              source: (p.timezone_source as string | null | undefined) ?? null,
-            });
+          setKey(idempotencyKey());
+          const blocked = isApiError(err) && err.problem.code === "outbound_policy" ? problemAs(err, "PolicyBlockedProblem") : undefined;
+          if (blocked) {
+            setBlock(blocked);
             return;
           }
           const fe = fieldErrors(err);
@@ -151,7 +139,7 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
         result ? (
           <>
             <Button asChild>
-              <Link to="/calls">Open calls</Link>
+              <Link to={CALLS_PATH}>Open calls</Link>
             </Button>
             <Button variant="primary" onClick={() => onOpenChange(false)}>
               Done
@@ -305,17 +293,19 @@ export function OutboundCallDialog({ open, onOpenChange, number }: { open: boole
                     <span className="font-medium text-fg">This number is on your do-not-call list.</span> Nothing was dialled or charged. Remove it in
                     the Compliance tab to call it.
                   </p>
-                ) : block.source === "unknown" ? (
+                ) : block.timezone_source === "unknown" ? (
                   <p className="text-fg-2">
                     <span className="font-medium text-fg">No timezone is known for this number.</span> Enter the recipient's timezone to check it
                     against your calling hours.
                   </p>
                 ) : (
                   <p className="text-fg-2">
-                    <span className="font-medium text-fg">Outside your calling hours for the recipient.</span> It is {formatLocal(block.local)} in{" "}
-                    {block.zones.slice(0, 2).join(", ")}
-                    {block.zones.length > 2 ? ` and ${block.zones.length - 2} more zones` : ""}.
-                    {block.next ? ` The next allowed time is ${formatNext(block.next)} (your time).` : " No day has calling hours set."}
+                    <span className="font-medium text-fg">Outside your calling hours for the recipient.</span> It is{" "}
+                    {formatLocal(block.recipient_local_time ?? null)} in {zones(block).slice(0, 2).join(", ")}
+                    {zones(block).length > 2 ? ` and ${zones(block).length - 2} more zones` : ""}.
+                    {block.next_allowed_at
+                      ? ` The next allowed time is ${formatNext(block.next_allowed_at)} (your time).`
+                      : " No day has calling hours set."}
                   </p>
                 )}
               </motion.div>

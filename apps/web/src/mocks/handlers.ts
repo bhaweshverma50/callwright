@@ -167,7 +167,7 @@ const checkouts = {
 export const handlers = [
   http.get(url("/health"), () => json({ status: "ok", version: "mock" })),
 
-  // --- auth ----------------------------------------------------------------
+  // auth
   http.post(url("/auth/register"), async ({ request }) => {
     const body = (await request.json()) as { email?: string; password?: string };
     const errors: FieldError[] = [];
@@ -265,7 +265,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // --- workspaces ----------------------------------------------------------
+  // workspaces
   http.get(url("/me"), ({ request }) => {
     const user = currentUser(request);
     const ws = user && workspaceOf(user);
@@ -302,7 +302,7 @@ export const handlers = [
     return json<Workspace>(ws);
   }),
 
-  // --- preferences (013) ----------------------------------------------------
+  // preferences (013)
   http.get(url("/me/preferences"), ({ request }) => {
     const user = currentUser(request);
     if (!user?.workspace_id) return unauthorized();
@@ -337,7 +337,7 @@ export const handlers = [
     return json<Preferences>(next);
   }),
 
-  // --- billing -------------------------------------------------------------
+  // billing
   http.get(url("/billing/balance"), ({ request }) => {
     const user = currentUser(request);
     if (!user?.workspace_id) return unauthorized();
@@ -433,7 +433,7 @@ export const handlers = [
   // --- home page playground (the call itself uses the scripted mock driver) ---
   http.get(url("/public/demo"), () => json({ agents: ["clinic", "roadside", "loan"] })),
 
-  // --- pricing -------------------------------------------------------------
+  // pricing
   http.get(url("/pricing/catalog"), () => json(catalogCurrent satisfies Catalog, 200, { "cache-control": "public, max-age=300" })),
 
   http.post(url("/pricing/quote"), async ({ request }) => {
@@ -445,7 +445,7 @@ export const handlers = [
     return json<Quote>(q as Quote);
   }),
 
-  // --- usage ---------------------------------------------------------------
+  // usage
   http.get(url("/usage"), async ({ request }) => {
     const user = currentUser(request);
     if (!user?.workspace_id) return unauthorized();

@@ -17,12 +17,12 @@ import {
   type FixRevision,
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
-import { Badge, Button, Field, Panel, Select, Textarea, cn, toast } from "../../components";
+import { Badge, Button, cn, Field, Panel, ProblemAlert, Select, Textarea, toast } from "../../components";
 import { EDITABLE, FixDiff } from "./FixDiff";
 import { FixStatusBadge, KIND_HINTS, KIND_LABELS } from "./shared";
 import { withoutLineRefs } from "../../lib/text";
 import { timeAgo } from "../../lib/format";
-import { ProblemAlert } from "../../components/ProblemAlert";
+import { bodyLimits } from "../../lib/contract.gen";
 
 type Mode = "idle" | "draft" | "edit";
 
@@ -195,7 +195,7 @@ export function FixPanel({
                     id={id}
                     aria-describedby={describedBy}
                     className="min-h-[72px]"
-                    maxLength={1000}
+                    maxLength={bodyLimits["POST /issues/{issue_id}/fixes"].guidance.maxLength}
                     value={guidance}
                     onChange={(e) => setGuidance(e.target.value)}
                   />

@@ -7,6 +7,7 @@ import { BookOpen, ShieldCheck, Wrench } from "lucide-react";
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import type { AgentConfig, AgentType } from "../../../api/agents";
 import { Skeleton } from "../../../components";
+import type { AgentEditorTab } from "../../../lib/paths";
 
 export interface EditorPanelProps {
   agentId: string | null;
@@ -17,7 +18,7 @@ export interface EditorPanelProps {
 }
 
 export interface EditorPanel {
-  id: "tools" | "knowledge" | "quality";
+  id: Extract<AgentEditorTab, "tools" | "knowledge" | "quality">;
   label: string;
   icon: ReactNode;
   component: ComponentType<EditorPanelProps>;

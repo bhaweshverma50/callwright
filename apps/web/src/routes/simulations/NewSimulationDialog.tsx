@@ -8,12 +8,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { isRetryable, useActionKey } from "../../api/paid";
 import { preflight, startSimulationRun, type PersonaBrief, type Preflight } from "../../api/simulations";
-import { Button, Dialog, Field, Input, Select, toast } from "../../components";
+import { Button, Dialog, Field, Input, ProblemAlert, Select, toast } from "../../components";
 import { PersonaBriefEditor, cleanBrief, emptyBrief } from "./PersonaBriefEditor";
 import { PreflightStep } from "./PreflightDialog";
 import { TargetPicker, VariantEditor, defaultTarget, toSimTarget, useTargetSources, type TargetChoice } from "./VariantEditor";
-import { ProblemAlert } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { simulationRunPath } from "../../lib/paths";
 
 function Target({ agentId, value, onChange }: { agentId: string; value: TargetChoice; onChange: (t: TargetChoice) => void }) {
   const sources = useTargetSources(agentId);
@@ -94,7 +94,7 @@ export function NewSimulationDialog({
       key.reset();
       toast({ tone: "success", title: "Simulation started", description: "The transcript opens when the run finishes." });
       onOpenChange(false);
-      navigate(`/simulations/runs/${run.simulation_run_id}`);
+      navigate(simulationRunPath(run.simulation_run_id));
     } catch (e) {
       if (!isRetryable(e)) key.reset();
       setError(e);

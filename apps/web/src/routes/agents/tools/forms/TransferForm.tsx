@@ -6,6 +6,7 @@ import { Button, ChoiceGroup, Field, IconButton, Input, Segmented, Textarea } fr
 import type { Errors } from "./fieldRules";
 import { FormSection } from "./FormSection";
 import { e164Error } from "../../../../lib/e164";
+import { schemaLimits } from "../../../../lib/contract.gen";
 
 const DEFAULT_WARM: WarmTransfer = { handoff_type: "private", briefing_message_type: "static", briefing_message: "" };
 
@@ -119,7 +120,7 @@ export function TransferForm({ config, errors, onChange }: { config: TransferCon
               {({ id, describedBy, invalid }) => (
                 <Textarea
                   id={id}
-                  maxLength={2000}
+                  maxLength={schemaLimits.TransferSpec.routing_instructions.maxLength}
                   aria-describedby={describedBy}
                   aria-invalid={invalid}
                   placeholder="Billing questions go to +14155550100, appointment changes to +14155550111."
@@ -211,7 +212,7 @@ export function TransferForm({ config, errors, onChange }: { config: TransferCon
             {({ id, describedBy }) => (
               <Input
                 id={id}
-                maxLength={500}
+                maxLength={schemaLimits.TransferSpec.hold_message.maxLength}
                 aria-describedby={describedBy}
                 value={config.hold_message}
                 onChange={(e) => set({ hold_message: e.target.value })}

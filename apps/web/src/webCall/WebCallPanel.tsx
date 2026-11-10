@@ -16,14 +16,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import { Link } from "react-router";
 import { env } from "../lib/env";
 import { formatUsd } from "../lib/money";
-import { Badge } from "../components/Badge";
-import { Button, IconButton } from "../components/Button";
-import { cn } from "../components/cn";
-import { EASE_OUT } from "../components/motion";
-import { LatencyChip, OnAir, Waveform } from "../components/signal";
-import { Keypad } from "../components/Keypad";
 import { RingingPhone, isRinging, useRingback } from "./ringing";
-import { InfoTip } from "../components/TruncatedText";
 import {
   createMockDriver,
   type AgentActivity,
@@ -37,6 +30,7 @@ import { createLiveDriver } from "./webCallLive";
 import { useWebCall, type CallPhase, type CallSummary, type WebCallState } from "./useWebCall";
 import { mss } from "../lib/format";
 import { useStackRate } from "../api/pricing";
+import { Badge, Button, cn, EASE_OUT, IconButton, InfoTip, Keypad, LatencyChip, OnAir, Waveform } from "../components";
 
 export type { CallPhase, CallSummary } from "./useWebCall";
 

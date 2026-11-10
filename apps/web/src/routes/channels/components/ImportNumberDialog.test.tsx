@@ -1,26 +1,17 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createQueryClient } from "../../../api/queryClient";
-import { TooltipProvider } from "../../../components";
 import { env } from "../../../lib/env";
 import { server } from "../../../mocks/node";
-import { signInDemo } from "../../../test/render";
+import { renderWithProviders, signInDemo } from "../../../test/render";
 import { stripScheme, terminationError } from "../validation";
 import { ImportNumberDialog } from "./ImportNumberDialog";
 
 function setup() {
   const onImported = vi.fn();
   const onOpenChange = vi.fn();
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <TooltipProvider>
-        <ImportNumberDialog open onOpenChange={onOpenChange} onImported={onImported} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<ImportNumberDialog open onOpenChange={onOpenChange} onImported={onImported} />);
   return { user: userEvent.setup(), onImported, onOpenChange };
 }
 

@@ -3,19 +3,23 @@ import type { CompileResult } from "../../../api/flows";
 import { Badge } from "../../../components";
 import { NODE_META } from "../canvas/nodeMeta";
 
-type CompiledNode = {
-  type: keyof typeof NODE_META;
-  label: string;
-  instructions?: string;
-  llm?: { provider: string; model: string };
-  tools?: { name: string }[];
-  transitions?: { function_name: string; description: string }[];
+type CompiledNode = NonNullable<CompileResult["compiled"]>["nodes"][string];
+
+// The contract types a compiled step's type, label and transitions; the rest of a step is open
+// (data-model.md section 4), so the preview reads the parts it shows with checks.
+const record = (v: unknown): Record<string, unknown> | null => (v && typeof v === "object" ? (v as Record<string, unknown>) : null);
+const instructionsOf = (n: CompiledNode) => (typeof n.instructions === "string" ? n.instructions : "");
+const modelOf = (n: CompiledNode) => {
+  const model = record(n.llm)?.model;
+  return typeof model === "string" ? model : null;
 };
+const toolNamesOf = (n: CompiledNode) =>
+  (Array.isArray(n.tools) ? n.tools : []).map((t) => record(t)?.name).filter((name): name is string => typeof name === "string");
 
 /** What each conversational step's model receives (FR-030, T045). */
 export function CompilePreview({ result }: { result: CompileResult }) {
   if (!result.compiled) return <p className="text-[13px] text-danger-text">The flow has errors, so there is nothing to preview yet.</p>;
-  const nodes = Object.entries(result.compiled.nodes as Record<string, CompiledNode>).filter(([, n]) => n.type === "agent" || n.type === "task");
+  const nodes = Object.entries(result.compiled.nodes).filter(([, n]) => n.type === "agent" || n.type === "task");
   return (
     <div className="flex flex-col gap-3">
       {nodes.map(([id, n]) => (
@@ -25,9 +29,9 @@ export function CompilePreview({ result }: { result: CompileResult }) {
               {NODE_META[n.type].icon}
             </span>
             <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{n.label}</span>
-            {n.llm && (
+            {modelOf(n) && (
               <Badge icon={<Cpu />} className="font-mono">
-                {n.llm.model}
+                {modelOf(n)}
               </Badge>
             )}
           </header>
@@ -36,9 +40,9 @@ export function CompilePreview({ result }: { result: CompileResult }) {
               <MessageSquareText className="size-3.5" aria-hidden /> Instructions
             </p>
             <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-console px-3 py-2.5 font-mono text-[12px] leading-relaxed text-console-fg">
-              {n.instructions || "(empty)"}
+              {instructionsOf(n) || "(empty)"}
             </pre>
-            {(n.transitions?.length ?? 0) + (n.tools?.length ?? 0) > 0 && (
+            {(n.transitions?.length ?? 0) + toolNamesOf(n).length > 0 && (
               <>
                 <p className="flex items-center gap-1.5 text-[12px] font-medium text-fg-3">
                   <Wrench className="size-3.5" aria-hidden /> Choices and tools
@@ -49,9 +53,9 @@ export function CompilePreview({ result }: { result: CompileResult }) {
                       <span className="font-mono text-accent-text">{t.function_name}</span> <span className="text-fg-3">{t.description}</span>
                     </li>
                   ))}
-                  {n.tools?.map((t) => (
-                    <li key={t.name} className="font-mono text-[12px] text-fg-2">
-                      {t.name}
+                  {toolNamesOf(n).map((name) => (
+                    <li key={name} className="font-mono text-[12px] text-fg-2">
+                      {name}
                     </li>
                   ))}
                 </ul>

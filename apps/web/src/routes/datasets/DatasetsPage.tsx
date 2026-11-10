@@ -10,8 +10,9 @@ import { DATASETS_PAGE_SIZE, useDatasets, type Dataset } from "../../api/dataset
 import { Button, EmptyState, PageHeader, Pagination, Select, Table, TruncatedText, type Column } from "../../components";
 import { NewDatasetDialog } from "./NewDatasetDialog";
 import { timeAgo } from "../../lib/format";
-import { problemText } from "../../components/ProblemAlert";
 import { useAllAgents } from "../../api/agents";
+import { problemText } from "../../api/problems";
+import { CALLS_PATH, datasetPath } from "../../lib/paths";
 
 const ALL = "all";
 
@@ -20,10 +21,7 @@ const COLUMNS: Column<Dataset>[] = [
     key: "name",
     header: "Dataset",
     cell: (d) => (
-      <Link
-        to={`/datasets/${d.dataset_id}`}
-        className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 md:max-w-[52ch] hover:underline"
-      >
+      <Link to={datasetPath(d.dataset_id)} className="flex min-w-0 max-w-[60vw] flex-col gap-0.5 rounded-inline py-1 md:max-w-[52ch] hover:underline">
         <TruncatedText className="text-[14px] font-medium text-fg">{d.name}</TruncatedText>
         {d.description && <span className="truncate text-[12px] text-fg-3">{d.description}</span>}
       </Link>
@@ -123,7 +121,7 @@ export function DatasetsPage() {
                       New dataset
                     </Button>
                     <Button asChild>
-                      <Link to="/calls">Open Calls</Link>
+                      <Link to={CALLS_PATH}>Open Calls</Link>
                     </Button>
                   </>
                 }
@@ -148,7 +146,7 @@ export function DatasetsPage() {
         )}
       </section>
       {creating && (
-        <NewDatasetDialog open onOpenChange={setCreating} defaultAgentId={agentId} onCreated={(d) => navigate(`/datasets/${d.dataset_id}`)} />
+        <NewDatasetDialog open onOpenChange={setCreating} defaultAgentId={agentId} onCreated={(d) => navigate(datasetPath(d.dataset_id))} />
       )}
     </>
   );

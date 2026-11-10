@@ -7,7 +7,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { FlaskConical, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
-import { idempotencyKey } from "../../api/agents";
 import {
   THRESHOLDS,
   draftAndValidate,
@@ -20,9 +19,9 @@ import {
   type ValidationMode,
 } from "../../api/issues";
 import { useActionKey } from "../../api/paid";
-import { Button, Dialog, Field, Figure, Input, Segmented, Skeleton } from "../../components";
+import { Button, Dialog, Field, Figure, Input, ProblemAlert, Segmented, Skeleton } from "../../components";
 import { costUsd, plural } from "../../lib/format";
-import { ProblemAlert } from "../../components/ProblemAlert";
+import { idempotencyKey } from "../../lib/idempotency";
 
 type Key = keyof typeof THRESHOLDS;
 const FIELDS: { key: Key; label: string; unit: string; hint: string }[] = [

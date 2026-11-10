@@ -17,9 +17,21 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { api, unwrap } from "../../api/client";
-import { ApiError, isApiError, toProblem } from "../../api/errors";
-import { documentUrl, type KbDocument, kbKeys, type KnowledgeBase, MAX_FILE_MB, useDocuments, useKnowledgeBase } from "../../api/knowledge";
+import {
+  deleteDocument,
+  deleteKnowledgeBase,
+  documentUrl,
+  type KbDocument,
+  kbKeys,
+  type KbUser,
+  kbUsersOf,
+  type KnowledgeBase,
+  MAX_FILE_MB,
+  reprocessDocument,
+  useDocuments,
+  useKnowledgeBase,
+} from "../../api/knowledge";
+import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
 import {
   Badge,
@@ -46,7 +58,7 @@ import { CreateKbDialog } from "./CreateKbDialog";
 import { DocStatusBadge, ERROR_HELP, KbStatusBadge } from "./kbStatus";
 import { SearchPreviewPanel } from "./SearchPreviewPanel";
 import { UploadDialog } from "./UploadDialog";
-import { agentPath } from "../../lib/paths";
+import { agentPath, KNOWLEDGE_PATH } from "../../lib/paths";
 import { formatBytes, timeAgo } from "../../lib/format";
 
 const ID = /^kb_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -69,7 +81,7 @@ export function KnowledgeBasePage() {
   const valid = Boolean(id && ID.test(id));
   const kb = useKnowledgeBase(valid ? id : undefined);
   if (!valid || (kb.error && isApiError(kb.error) && kb.error.status === 404)) {
-    return <RecordNotFound kind="knowledge base" backTo="/knowledge-base" backLabel="Back to Knowledge" />;
+    return <RecordNotFound kind="knowledge base" backTo={KNOWLEDGE_PATH} backLabel="Back to Knowledge" />;
   }
   if (kb.error) {
     return (
@@ -89,14 +101,13 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
   const [uploadOpen, setUploadOpen] = useState(params.get("upload") === "1");
   const [renaming, setRenaming] = useState(false);
   const [deletingKb, setDeletingKb] = useState(false);
-  const [inUse, setInUse] = useState<{ agent_id: string; agent_name: string }[] | null>(null);
+  const [inUse, setInUse] = useState<KbUser[] | null>(null);
   const [deletingDoc, setDeletingDoc] = useState<KbDocument | null>(null);
   const docs = useDocuments(kb.id);
 
   const refresh = () => void qc.invalidateQueries({ queryKey: kbKeys.all });
   const removeDoc = useMutation({
-    mutationFn: (d: KbDocument) =>
-      unwrap(api.DELETE("/knowledge-bases/{kb_id}/documents/{doc_id}", { params: { path: { kb_id: kb.id, doc_id: d.id } } })),
+    mutationFn: (d: KbDocument) => deleteDocument(kb.id, d.id),
     onSuccess: (_r, d) => {
       setDeletingDoc(null);
       refresh();
@@ -105,29 +116,23 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
     onError: (e) => toast({ tone: "error", title: "Not deleted", description: problemMessage(e, "document") }),
   });
   const retry = useMutation({
-    mutationFn: (d: KbDocument) =>
-      unwrap(api.POST("/knowledge-bases/{kb_id}/documents/{doc_id}/reprocess", { params: { path: { kb_id: kb.id, doc_id: d.id } } })),
+    mutationFn: (d: KbDocument) => reprocessDocument(kb.id, d.id),
     onSuccess: () => refresh(),
     onError: (e) => toast({ tone: "error", title: "Not retried", description: problemMessage(e, "document") }),
   });
   const removeKb = useMutation({
-    mutationFn: async (confirm: boolean) => {
-      const { error, response } = await api.DELETE("/knowledge-bases/{kb_id}", { params: { path: { kb_id: kb.id }, query: { confirm } } });
-      if (!response.ok) {
-        const agents = (error as { agents?: { agent_id: string; agent_name: string }[] } | undefined)?.agents ?? [];
-        throw Object.assign(new ApiError(response.status, toProblem(response.status, error)), { agents });
-      }
-    },
+    mutationFn: (confirm: boolean) => deleteKnowledgeBase(kb.id, confirm),
     onSuccess: () => {
       setDeletingKb(false);
       setInUse(null);
       refresh();
       toast({ tone: "success", title: "Knowledge base deleted", description: `${kb.name} and its documents are gone.` });
-      navigate("/knowledge-base");
+      navigate(KNOWLEDGE_PATH);
     },
     onError: (e) => {
       setDeletingKb(false);
-      if (isApiError(e) && e.status === 409) setInUse((e as ApiError & { agents?: { agent_id: string; agent_name: string }[] }).agents ?? []);
+      const users = kbUsersOf(e);
+      if (users) setInUse(users);
       else toast({ tone: "error", title: "Not deleted", description: problemMessage(e, "knowledge base") });
     },
   });
@@ -242,7 +247,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
   return (
     <div className="flex flex-col">
       <Link
-        to="/knowledge-base"
+        to={KNOWLEDGE_PATH}
         className="link-underline mb-4 inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg"
       >
         <ChevronLeft className="size-4" aria-hidden /> Knowledge

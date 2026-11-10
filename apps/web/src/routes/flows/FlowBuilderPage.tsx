@@ -5,11 +5,12 @@ import { ChevronLeft, CircleAlert, History, ListChecks, MessageSquareText, Play,
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { type AgentDetail, agentKeys, useAgent } from "../../api/agents";
+import { type AgentDetail, agentChanged, useAgent } from "../../api/agents";
 import {
   fetchFlowByAgent,
   flowKeys,
   useFlowByAgent,
+  useNodeDefaults,
   type ConfigByNode,
   type Flow,
   type FlowEdge,
@@ -35,7 +36,12 @@ import { PublishDialog } from "./panels/PublishDialog";
 import { ValidationPanel } from "./panels/ValidationPanel";
 import { FlowTestPanel } from "./test/FlowTestPanel";
 import { AGENTS_PATH, isAgentId } from "../../lib/paths";
-import { type Catalogs, LoadFailure, stable, useAgentDraft, useCatalogs, useSaveShortcut, VersionDrawer } from "../agents/config";
+import type { Catalogs } from "../agents/editor/catalogs";
+import { LoadFailure, useCatalogs, useSaveShortcut } from "../agents/editor/editorShell";
+import { useAgentDraft } from "../agents/editor/useAgentDraft";
+import { VersionDrawer } from "../agents/versions/VersionDrawer";
+import { stable } from "../../lib/stable";
+import { bodyLimits } from "../../lib/contract.gen";
 
 /**
  * Flow builder (T030, T108) at /agents/:id/flow: canvas, side panel and header. Loads the agent,
@@ -59,6 +65,7 @@ type SideTab = "assistant" | "test" | "problems";
 function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Flow; catalogs: Catalogs }) {
   const qc = useQueryClient();
   const draft = useFlow(initial);
+  const nodeDefaults = useNodeDefaults();
   const settings = useAgentDraft(
     { id: agent.id, name: agent.name, config: agent.draft_config, revision: agent.draft_revision, detail: agent },
     "flow",
@@ -103,7 +110,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       qc.setQueryData(flowKeys.byAgent(agent.id), out.flow);
       const fresh = await live.refetch();
       if (fresh.data) settings.resetTo(fresh.data);
-      void qc.invalidateQueries({ queryKey: agentKeys.lists });
+      agentChanged(qc, fresh.data ?? agent.id);
       toast({
         tone: "success",
         title: "Saved",
@@ -253,14 +260,14 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
       <LeaveGuard when={dirty && !draft.saving} />
       <header className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:flex-1">
-          <Link to="/agents" className="link-underline inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
+          <Link to={AGENTS_PATH} className="link-underline inline-flex w-fit items-center gap-1 rounded-inline text-[13px] text-fg-2 hover:text-fg">
             <ChevronLeft className="size-4" aria-hidden /> Agents
           </Link>
           <div className="flex min-w-0 flex-col gap-1">
             <Input
               aria-label="Flow name"
               value={draft.name}
-              maxLength={80}
+              maxLength={bodyLimits["PUT /agents/{agent_id}/draft"].name.maxLength}
               onChange={(e) => draft.setName(e.target.value)}
               aria-invalid={Boolean(nameError) || undefined}
               className="-ml-2 h-10 w-full max-w-[520px] border-transparent bg-transparent px-2 font-display text-[20px] tracking-[-0.02em] shadow-none hover:border-line focus:border-line-strong sm:text-[22px]"
@@ -334,6 +341,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
             selection={selection}
             onSelect={setSelection}
             issues={issues}
+            nodeDefaults={nodeDefaults.data}
             activeNodeId={events.active}
             visited={events.visited}
             diff={diff}
@@ -396,8 +404,7 @@ function Builder({ agent, initial, catalogs }: { agent: AgentDetail; initial: Fl
           setTab("problems");
         }}
         onPublished={() => {
-          void live.refetch();
-          void qc.invalidateQueries({ queryKey: agentKeys.versions(agent.id) });
+          agentChanged(qc, agent.id);
         }}
       />
       <GlobalSettingsDrawer

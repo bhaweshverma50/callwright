@@ -3,9 +3,9 @@
  * schema.d.ts. A tool's config is the one its type names (`ConfigByType`).
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, unwrap } from "./client";
+import { api, fetchAll, unwrap } from "./client";
 import type { components } from "./schema";
-import type { BodyOf, ResponseOf } from "./types";
+import type { BodyOf } from "./types";
 import { schemaLimits } from "../lib/contract.gen";
 
 type S = components["schemas"];
@@ -33,8 +33,6 @@ export interface ConfigByType {
 export type Tool = S["Tool"];
 export type ToolDraft = S["ToolCreate"];
 export type ToolPreset = S["ToolPreset"];
-export type ToolPage = ResponseOf<"/tools", "get">;
-export type ToolUsage = ResponseOf<"/tools/{tool_id}/usages", "get">["items"][number];
 export type TestRunRequest = BodyOf<"/tools/test-run", "post">;
 
 export const MAX_TOOLS_PER_AGENT = schemaLimits.AgentConfig.tool_ids.maxItems;
@@ -45,7 +43,6 @@ export const toolKeys = {
   detail: (id: string) => ["tools", "detail", id] as const,
   byIds: (ids: string[]) => ["tools", "by-ids", ...ids] as const,
   presets: ["tools", "presets"] as const,
-  usages: (id: string) => ["tools", "usages", id] as const,
 };
 
 export function useTools(search: string, type: ToolType | null = null, page = 1, pageSize = 50) {
@@ -66,13 +63,7 @@ export function useToolsByIds(ids: string[]) {
   return useQuery({
     queryKey: toolKeys.byIds(ids),
     queryFn: async () => {
-      const found = new Map<string, Tool>();
-      // The library is small (agents use at most 25 tools); page through it once.
-      for (let page = 1; page < 50; page++) {
-        const res = await unwrap(api.GET("/tools", { params: { query: { page, page_size: 100 } } }));
-        for (const t of res.items) found.set(t.id, t);
-        if (page >= res.total_pages) break;
-      }
+      const found = new Map((await fetchAll((query) => unwrap(api.GET("/tools", { params: { query } })))).map((t) => [t.id, t]));
       return ids.map((id) => found.get(id)).filter((t): t is Tool => Boolean(t));
     },
     placeholderData: keepPreviousData,
@@ -87,14 +78,6 @@ export function useToolPresets() {
   });
 }
 
-export function useToolUsages(id: string | null) {
-  return useQuery({
-    queryKey: toolKeys.usages(id ?? ""),
-    queryFn: async () => (await unwrap(api.GET("/tools/{tool_id}/usages", { params: { path: { tool_id: id! } } }))).items,
-    enabled: Boolean(id),
-  });
-}
-
 export function createTool(body: ToolDraft): Promise<Tool> {
   return unwrap(api.POST("/tools", { body }));
 }
@@ -102,14 +85,6 @@ export function createTool(body: ToolDraft): Promise<Tool> {
 export function updateTool(id: string, body: Partial<ToolDraft>): Promise<Tool> {
   const { type: _type, ...rest } = body;
   return unwrap(api.PATCH("/tools/{tool_id}", { params: { path: { tool_id: id } }, body: rest }));
-}
-
-export function duplicateTool(id: string): Promise<Tool> {
-  return unwrap(api.POST("/tools/{tool_id}/duplicate", { params: { path: { tool_id: id } } }));
-}
-
-export async function deleteTool(id: string, force: boolean) {
-  return unwrap(api.DELETE("/tools/{tool_id}", { params: { path: { tool_id: id }, query: { force } } }));
 }
 
 export function testRunTool(body: TestRunRequest): Promise<TestRunResult> {

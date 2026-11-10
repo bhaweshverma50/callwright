@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Button, COMPONENT_LABELS, Reveal, RevealItem, Skeleton, TalkMinutes } from "../../components";
-import { formatUsd, toMicros } from "../../lib/money";
+import { formatUsd, toMicros, TRIAL_CREDIT, TRIAL_CREDIT_MICROS } from "../../lib/money";
 import { ChainDemo } from "./home/ChainDemo";
 import { ProductVideo } from "./home/ProductVideo";
 import { ProviderStrip } from "./home/ProviderStrip";
@@ -25,7 +25,6 @@ function fromRate(entries: CatalogEntry[], component: Part): string | null {
 }
 
 /** Trial credit a new workspace starts with (the API grants it on sign-up; not served before then). */
-const TRIAL_CREDIT_MICROS = 5_000_000n;
 
 const H2 = "font-display text-[26px] leading-[1.15] tracking-[-0.025em] text-fg sm:text-[32px]";
 
@@ -90,7 +89,7 @@ export function Home() {
             </RevealItem>
             <RevealItem>
               <p className="mt-6 text-[14px] text-fg-3">
-                New workspaces start with $5.00, about{" "}
+                New workspaces start with {TRIAL_CREDIT}, about{" "}
                 <span className="font-mono text-fg-2 tnum">
                   <TalkMinutes micros={TRIAL_CREDIT_MICROS} />
                 </span>{" "}
@@ -165,7 +164,7 @@ export function Home() {
       <section aria-labelledby="start">
         <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:py-28">
           <h2 id="start" className="max-w-[20ch] text-balance font-display text-[30px] leading-[1.1] tracking-[-0.03em] text-fg sm:text-[40px]">
-            Your first $5 is about <TalkMinutes micros={TRIAL_CREDIT_MICROS} /> minutes of calls.
+            Your first {formatUsd(TRIAL_CREDIT_MICROS, { places: 0 })} is about <TalkMinutes micros={TRIAL_CREDIT_MICROS} /> minutes of calls.
           </h2>
           <p className="mt-4 max-w-[52ch] text-[16px] leading-relaxed text-fg-2">
             No card needed until you add funds. Calls are billed per second from your balance.

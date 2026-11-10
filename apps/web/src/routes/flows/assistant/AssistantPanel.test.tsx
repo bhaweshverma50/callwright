@@ -4,9 +4,9 @@ import { http, HttpResponse, delay } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { env } from "../../../lib/env";
 import { server } from "../../../mocks/node";
-import { TooltipProvider } from "../../../components/Tooltip";
 import type { FlowGraph } from "../../../api/flows";
 import { AssistantPanel } from "./AssistantPanel";
+import { TooltipProvider } from "../../../components";
 
 const EMPTY: FlowGraph = { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } };
 

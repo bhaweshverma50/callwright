@@ -3,7 +3,7 @@
  * suites. Items load page by page with a total (FR-036).
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api, unwrap } from "./client";
+import { api, fetchAll, unwrap } from "./client";
 import type { components } from "./schema";
 
 type S = components["schemas"];
@@ -33,11 +33,11 @@ export function useDatasets(agentId: string | null, page: number) {
   });
 }
 
-/** Up to 100 datasets of one agent, for the "Add to dataset" menu. */
+/** Every dataset of one agent, for the "Add to dataset" menu. */
 export function useAgentDatasets(agentId: string | null, enabled = true) {
   return useQuery({
     queryKey: datasetKeys.forAgent(agentId ?? ""),
-    queryFn: async () => (await unwrap(api.GET("/datasets", { params: { query: { agent_id: agentId!, page: 1, page_size: 100 } } }))).items,
+    queryFn: () => fetchAll((page) => unwrap(api.GET("/datasets", { params: { query: { agent_id: agentId!, ...page } } }))),
     enabled: enabled && Boolean(agentId),
     staleTime: 15_000,
   });

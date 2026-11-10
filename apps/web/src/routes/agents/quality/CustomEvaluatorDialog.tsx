@@ -24,7 +24,8 @@ import { VERDICT_LABELS, VERDICT_TONES } from "./evaluatorMeta";
 import { withoutLineRefs } from "../../../lib/text";
 import { NAME_RULE, toMachineName } from "../../../lib/machineName";
 import { usd, when } from "../../../lib/format";
-import { idempotencyKey } from "../../../api/agents";
+import { idempotencyKey } from "../../../lib/idempotency";
+import { schemaLimits } from "../../../lib/contract.gen";
 
 type Phrase = Required<Pick<PhraseCheckConfig, "pattern" | "mode" | "target" | "is_regex" | "case_sensitive">>;
 type Judge = { question: string; pass_when: "yes" | "no"; judge_model: string };
@@ -299,7 +300,7 @@ function CheckForm({
               aria-describedby={ids.describedBy}
               aria-invalid={ids.invalid}
               autoFocus
-              maxLength={80}
+              maxLength={schemaLimits.CustomEvaluatorInput.display_name.maxLength}
               value={displayName}
               placeholder={type === "phrase_check" ? "No guarantees" : "Confirms date of birth"}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -311,7 +312,7 @@ function CheckForm({
             <Input
               id={ids.id}
               aria-describedby={ids.describedBy}
-              maxLength={500}
+              maxLength={schemaLimits.CustomEvaluatorInput.description.maxLength}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -331,7 +332,7 @@ function CheckForm({
                 id={ids.id}
                 aria-describedby={ids.describedBy}
                 aria-invalid={ids.invalid}
-                maxLength={500}
+                maxLength={schemaLimits.PhraseCheckConfig.pattern.maxLength}
                 className="font-mono"
                 value={phrase.pattern}
                 placeholder={phrase.is_regex ? "guarantee(d)?" : "guaranteed approval"}
@@ -401,7 +402,11 @@ function CheckForm({
           <Field
             label="Yes or no question"
             error={errors.question ?? null}
-            aside={<span className="font-mono text-[12px] text-fg-3 tnum">{judge.question.length}/1000</span>}
+            aside={
+              <span className="font-mono text-[12px] text-fg-3 tnum">
+                {judge.question.length}/{schemaLimits.JudgeQuestionConfig.question.maxLength}
+              </span>
+            }
             hint="The judge reads the transcript as data; instructions spoken in the call cannot change the answer."
           >
             {(ids) => (
@@ -409,7 +414,7 @@ function CheckForm({
                 id={ids.id}
                 aria-describedby={ids.describedBy}
                 aria-invalid={ids.invalid}
-                maxLength={1000}
+                maxLength={schemaLimits.JudgeQuestionConfig.question.maxLength}
                 className="min-h-20"
                 value={judge.question}
                 placeholder="Did the agent confirm the caller's date of birth?"

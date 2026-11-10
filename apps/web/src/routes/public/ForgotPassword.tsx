@@ -1,21 +1,21 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
-import { api, unwrap } from "../../api/client";
+import { requestPasswordReset } from "../../api/auth";
 import { problemMessage } from "../../api/problems";
 import { Send } from "lucide-react";
 import { Button, Field, FormAlert, Input } from "../../components";
-import { env } from "../../lib/env";
 import { AuthLayout } from "./AuthLayout";
-import { mockResetToken } from "../../mocks/demoAccount";
+import { demoHints } from "../../lib/demoHints";
 import { AUTH_PAGES } from "../../lib/paths";
 
 /** Request a reset link (T041, US1.4). The answer never reveals whether the account exists. */
 export function ForgotPassword() {
   const [params] = useSearchParams();
   const [email, setEmail] = useState(params.get("email") ?? "");
+  const hints = demoHints();
   const request = useMutation({
-    mutationFn: () => unwrap(api.POST("/auth/password-reset", { body: { email: email.trim() } })),
+    mutationFn: () => requestPasswordReset(email.trim()),
   });
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -40,12 +40,12 @@ export function ForgotPassword() {
         }
         footer={back}
       >
-        {env.mocks && (
+        {hints && (
           <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
             Demo data is on, so no email is sent.{" "}
             <Link
               className="link-underline text-accent-text"
-              to={`${AUTH_PAGES.resetPassword}?token_hash=${encodeURIComponent(mockResetToken(addr))}`}
+              to={`${AUTH_PAGES.resetPassword}?token_hash=${encodeURIComponent(hints.resetToken(addr))}`}
             >
               Open the reset link
             </Link>

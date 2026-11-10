@@ -12,6 +12,7 @@ import { CreateKbDialog } from "../../knowledge/CreateKbDialog";
 import { KbStatusBadge } from "../../knowledge/kbStatus";
 import { UploadDialog } from "../../knowledge/UploadDialog";
 import { PickTile } from "../PickTile";
+import { knowledgeBasePath } from "../../../lib/paths";
 
 function sameSet(a: string[], b: string[]) {
   return a.length === b.length && a.every((x) => b.includes(x));
@@ -286,7 +287,7 @@ export function KnowledgeTab({ config, update }: EditorPanelProps) {
                     <BookOpen aria-hidden />
                   </span>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <Link to={`/knowledge-base/${kb.id}`} className="link-underline w-fit max-w-full truncate text-[14px] font-semibold text-fg">
+                    <Link to={knowledgeBasePath(kb.id)} className="link-underline w-fit max-w-full truncate text-[14px] font-semibold text-fg">
                       {kb.name}
                     </Link>
                     <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-fg-3">
@@ -299,7 +300,7 @@ export function KnowledgeTab({ config, update }: EditorPanelProps) {
                   </div>
                   <div className="-mr-2 flex shrink-0 items-center opacity-100 transition-opacity sm:opacity-60 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
                     <IconButton label={`Open ${kb.name}`} className="size-8" asChild>
-                      <Link to={`/knowledge-base/${kb.id}`}>
+                      <Link to={knowledgeBasePath(kb.id)}>
                         <ExternalLink className="size-4" aria-hidden />
                       </Link>
                     </IconButton>

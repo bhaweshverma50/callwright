@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import type { FlowGraph, ValidationIssue } from "../../../api/flows";
 import { Button } from "../../../components";
 import type { GraphDiff } from "../canvas/diffOverlay";
+import { plural } from "../../../lib/format";
 
 export interface Proposal {
   message: string;
@@ -16,10 +17,6 @@ export interface Proposal {
 export function approveProposal(proposal: Proposal, setGraph: (g: FlowGraph, record?: boolean) => void, setName: (n: string) => void) {
   setGraph(proposal.graph, true);
   if (proposal.name) setName(proposal.name);
-}
-
-function plural(n: number, word: string) {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 /**

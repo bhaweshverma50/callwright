@@ -180,7 +180,7 @@ export function appendTransaction(
   return txn;
 }
 
-// --- persistence -----------------------------------------------------------
+// persistence
 
 const STORAGE_KEY = "cw.mockdb.v2";
 let persist = false;
