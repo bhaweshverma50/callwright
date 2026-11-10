@@ -1,5 +1,5 @@
-import { screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { fireEvent, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { AgentSummary } from "../../api/agents";
 import { renderWithProviders } from "../../test/render";
@@ -39,7 +39,33 @@ function renderCard(a: AgentSummary) {
   );
 }
 
+function renderRouted(a: AgentSummary) {
+  return renderWithProviders(
+    <MemoryRouter initialEntries={["/agents"]}>
+      <Routes>
+        <Route
+          path="/agents"
+          element={<AgentCard agent={a} modelLabel="GPT-5.1" languageLabel="English (US)" onDuplicate={() => {}} onDelete={() => {}} />}
+        />
+        <Route path="/agents/:id/flow" element={<p>Flow builder</p>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 describe("AgentCard", () => {
+  it("opens the agent from anywhere on the card, including its truncated labels", () => {
+    renderRouted(agent);
+    fireEvent.click(screen.getByText(agent.id));
+    expect(screen.getByText("Flow builder")).toBeInTheDocument();
+  });
+
+  it("does not open the agent from its actions menu", () => {
+    renderRouted(agent);
+    fireEvent.click(screen.getByRole("button", { name: `Actions for ${agent.name}` }));
+    expect(screen.queryByText("Flow builder")).not.toBeInTheDocument();
+  });
+
   it("shows speech recognition and the other models a flow's nodes use", () => {
     renderCard(agent);
     expect(screen.getByText("Speech")).toBeInTheDocument();

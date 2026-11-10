@@ -161,7 +161,7 @@ export function AgentsListPage() {
       header: "Agent",
       cell: (a) => (
         <div className="flex min-w-0 flex-col">
-          <Link to={agentPath(a)} className="link-underline min-w-0 rounded-inline font-medium text-fg">
+          <Link to={agentPath(a)} className="link-underline min-w-0 max-w-full self-start rounded-inline font-medium text-fg">
             <TruncatedText focusable={false}>{a.name}</TruncatedText>
           </Link>
           <TruncatedText className="font-mono text-[12px] text-fg-3">{a.id}</TruncatedText>

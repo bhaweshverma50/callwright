@@ -57,8 +57,11 @@ export function AgentCard({
     >
       <article
         onClick={(e) => {
-          // The whole card opens the agent; its buttons, links and tips keep their own behaviour.
-          if (!(e.target as HTMLElement).closest("a,button,[tabindex],[role=menu]")) navigate(to);
+          // The whole card opens the agent. Real controls keep their own behaviour; focusable text
+          // (truncated labels with tips) does not count as one, and selecting text never navigates.
+          if ((e.target as HTMLElement).closest("a,button,input,select,textarea,[role=menu],[role=menuitem]")) return;
+          if (window.getSelection()?.toString()) return;
+          navigate(to);
         }}
         className={cn(
           "group relative flex min-w-0 flex-1 cursor-pointer flex-col rounded-panel border bg-surface shadow-1 transition-[transform,box-shadow,border-color] duration-200",
