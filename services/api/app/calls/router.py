@@ -25,7 +25,7 @@ async def claim_call(body: ClaimRequest, request: Request) -> dict[str, Any]:
         state.db,
         body,
         catalog=state.adapter_catalog,
-        media_bucket=state.settings.media_bucket,
+        ambience_bucket=state.settings.s3_bucket,
     )
     await dispatch(getattr(state, "jobs", None), outcome.deferred)
     return outcome.body

@@ -290,15 +290,9 @@ async def drain() -> None:
 
 async def ingest_document(ctx: dict[str, Any], doc_id: str) -> str:
     """arq job: one attempt; retries and busy slots re-enqueue with a delay."""
-    from app.core.storage import build_store
-
     if "kb_deps" not in ctx:
-        settings = ctx["settings"]
         ctx["kb_deps"] = IngestDeps(
-            db=ctx["db"],
-            redis=ctx.get("redis"),
-            store=build_store(settings),
-            embedder=runtime().embedder,
+            db=ctx["db"], redis=ctx.get("redis"), store=ctx["store"], embedder=runtime().embedder
         )
     outcome = await ingest(ctx["kb_deps"], doc_id)
     if outcome.retry_in_s is not None:

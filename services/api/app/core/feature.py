@@ -18,6 +18,7 @@ from fastapi import APIRouter
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.queue import JobQueue
+from app.core.storage import ObjectSigner, ObjectStore
 
 JobFunction = Callable[..., Awaitable[Any]]
 
@@ -31,6 +32,8 @@ class Runtime:
     db: Database
     queue: JobQueue
     http: httpx.AsyncClient
+    store: ObjectStore
+    signer: ObjectSigner
 
 
 @dataclass(frozen=True)

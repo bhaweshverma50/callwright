@@ -16,11 +16,10 @@ from app.calls.lifecycle import RUN_PIPELINE
 from app.calls.read_router import router as read_router
 from app.calls.router import router
 from app.core.feature import Feature, Runtime
-from app.core.storage import build_signer
 
 
 def install(runtime: Runtime) -> None:
-    ports.set_object_signer(build_signer(runtime.settings))
+    ports.set_object_signer(runtime.signer)
     ports.set_agent_versions(AgentVersionsAdapter())
 
 

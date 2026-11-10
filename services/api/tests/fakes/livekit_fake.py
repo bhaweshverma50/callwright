@@ -16,6 +16,7 @@ import httpx
 import pytest_asyncio
 from fastapi import FastAPI
 
+from app.calls.ports import registry
 from app.channels.install import FEATURE as channels_feature
 from app.channels.sip import FakeSip
 from app.channels.whatsapp.graph_client import FakeWhatsAppGraph
@@ -138,7 +139,11 @@ async def channels(app: FastAPI, runtime: Runtime) -> AsyncIterator[Channels]:
     app.state.sip, app.state.whatsapp_graph = sip, graph
     state = app.state
     assert channels_feature.install is not None
-    channels_feature.install(FeatureRuntime("api", state.settings, state.db, state.jobs, state.webhook_http))
+    channels_feature.install(
+        FeatureRuntime(
+            "api", state.settings, state.db, state.jobs, state.webhook_http, state.storage, registry.signer
+        )
+    )
     await app.state.redis.delete(*[k async for k in app.state.redis.scan_iter("tb:outbound:*")] or ["-"])
     try:
         yield Channels(app, sip, graph, runtime)

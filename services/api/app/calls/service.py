@@ -476,7 +476,7 @@ def runtime_config(
     catalog: AdapterCatalog,
     *,
     signer: ObjectSigner | None = None,
-    media_bucket: str | None = None,
+    ambience_bucket: str | None = None,
     outbound_dial: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Contract ``RuntimeConfig`` for the worker (calls.yaml)."""
@@ -487,8 +487,8 @@ def runtime_config(
     if isinstance(background, Mapping) and background.get("enabled"):
         source = background.get("source")
         if isinstance(source, Mapping) and source.get("kind") == "upload" and source.get("key"):
-            if signer is not None and media_bucket:
-                background_url = signer.presign_get(media_bucket, str(source["key"]), SIGNED_URL_TTL_S)
+            if signer is not None and ambience_bucket:
+                background_url = signer.presign_get(ambience_bucket, str(source["key"]), SIGNED_URL_TTL_S)
     agent_type = snapshot.agent_type if snapshot.agent_type in ("single_prompt", "flow") else "single_prompt"
     return RuntimeConfig(
         **dict(runtime_values(config, catalog)),
@@ -532,7 +532,7 @@ async def _claim_existing(
     request: ClaimRequest,
     *,
     catalog: AdapterCatalog,
-    media_bucket: str | None,
+    ambience_bucket: str | None,
     now: datetime,
 ) -> ClaimOutcome:
     outcome = ClaimOutcome(body={})
@@ -582,7 +582,12 @@ async def _claim_existing(
             if call.recording_enabled and call.recording_status == "none":
                 outcome.deferred.add(lifecycle.START_RECORDING, workspace_id, call.id)
         runtime = runtime_config(
-            call, snapshot, catalog, signer=registry.signer, media_bucket=media_bucket, outbound_dial=outbound
+            call,
+            snapshot,
+            catalog,
+            signer=registry.signer,
+            ambience_bucket=ambience_bucket,
+            outbound_dial=outbound,
         )
         runtime["caller_language"] = await registry.caller_language.start(
             session, call, runtime["language_options"]
@@ -596,7 +601,7 @@ async def claim(
     request: ClaimRequest,
     *,
     catalog: AdapterCatalog,
-    media_bucket: str | None = None,
+    ambience_bucket: str | None = None,
     now: datetime | None = None,
 ) -> ClaimOutcome:
     now = now or datetime.now(UTC)
@@ -605,7 +610,7 @@ async def claim(
     if isinstance(call_id, str):
         workspace_id = await workspace_for_call(db, call_id)
         return await _claim_existing(
-            db, workspace_id, call_id, request, catalog=catalog, media_bucket=media_bucket, now=now
+            db, workspace_id, call_id, request, catalog=catalog, ambience_bucket=ambience_bucket, now=now
         )
     channel = metadata.get(DISPATCH_CHANNEL)
     if channel not in INBOUND_SIP_CHANNELS:
@@ -659,7 +664,7 @@ async def claim(
         admission.call.id,
         request,
         catalog=catalog,
-        media_bucket=media_bucket,
+        ambience_bucket=ambience_bucket,
         now=now,
     )
     outcome.deferred.extend(admission.deferred)
