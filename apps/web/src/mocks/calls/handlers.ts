@@ -201,6 +201,7 @@ export function seedMockCalls(count = 45) {
       channel: channels[i % 3]!,
       origin: "live",
       disconnect_reason: status === "failed" ? "error" : "user_hangup",
+      diagnostic: status === "failed" ? "unsupported_vendor:stt/sarvam" : null,
       duration_s: status === "failed" ? 0 : 60 + i,
       status,
       connected_at: status === "failed" ? null : new Date(now - i * 3_600_000 + 3_000).toISOString(),

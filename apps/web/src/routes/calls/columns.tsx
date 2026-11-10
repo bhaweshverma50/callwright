@@ -28,7 +28,7 @@ import {
 } from "../../components";
 import { CostCell } from "./CostBreakdown";
 import { type SortKey } from "./filters";
-import { latencyTone } from "./format";
+import { diagnosticText, latencyTone } from "./format";
 import type { DrawerTab } from "./CallDetailDrawer";
 import { LiveDuration } from "./live/LiveDuration";
 import { RecordingPlayer } from "./RecordingPlayer";
@@ -222,7 +222,20 @@ const ALL: CallColumn[] = [
         mss(r.duration_s)
       ),
   },
-  { key: "status", label: "Status", required: true, cell: (r) => <CallStatusBadge status={r.status} /> },
+  {
+    key: "status",
+    label: "Status",
+    required: true,
+    cell: (r) => {
+      const why = r.status === "failed" ? diagnosticText(r.diagnostic) : null;
+      return (
+        <span className="flex flex-col items-start gap-0.5">
+          <CallStatusBadge status={r.status} />
+          {why && <span className="max-w-[22rem] whitespace-normal text-[12px] leading-snug text-danger-text">{why}</span>}
+        </span>
+      );
+    },
+  },
   { key: "cost_usd", label: "Cost", sort: "cost_usd", numeric: true, cell: (r) => <CostCell callId={r.call_id} value={r.cost_usd} /> },
   {
     key: "latency_avg_ms",

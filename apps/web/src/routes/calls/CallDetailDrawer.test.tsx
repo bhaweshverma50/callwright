@@ -139,3 +139,13 @@ describe("CallDetailDrawer (006 US2)", () => {
     ).toBe('Caller: Hi\n[Tool call: lookup({"id": "A1", "n": 2})]\n[Tool error: lookup -> late]');
   });
 });
+
+describe("failed call reason", () => {
+  it("says which vendor is not set up on the platform", async () => {
+    seedMockCalls(10);
+    await signInDemo();
+    renderApp(`/calls?call=${mockCallId(2)}`);
+    const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
+    expect(await within(drawer).findByText("Sarvam AI speech recognition is not set up on this platform.", undefined, { timeout: 5000 })).toBeInTheDocument();
+  });
+});

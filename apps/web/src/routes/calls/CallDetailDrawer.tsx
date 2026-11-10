@@ -51,6 +51,7 @@ import { CallCallbacks } from "./callbacks/CallbackParts";
 import { CallLanguageCard } from "./CallLanguageCard";
 import { LiveDuration } from "./live/LiveDuration";
 import { mss, phone, usd, whenLong } from "../../lib/format";
+import { diagnosticText } from "./format";
 import { callComparePath } from "../../lib/paths";
 
 export type DrawerTab = "transcript" | "latency" | "cost" | "analysis" | "quality" | "flow";
@@ -80,6 +81,11 @@ function Header({ call }: { call: CallDetail }) {
           {!isOnAir(call.status) && <span className="font-mono text-[15px] font-semibold text-fg tnum">{usd(call.cost_usd ?? null)}</span>}
         </span>
       </div>
+      {call.status === "failed" && diagnosticText(call.diagnostic) && (
+        <p role="status" className="rounded-panel border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger-text">
+          {diagnosticText(call.diagnostic)}
+        </p>
+      )}
       <dl className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-3 rounded-panel border border-line bg-surface-2/50 p-4 sm:grid-cols-2">
         <Fact icon={Bot} label="Agent">
           <span className="flex min-w-0 items-center gap-1.5">

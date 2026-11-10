@@ -42,3 +42,43 @@ export function costViewToBreakdown(view: CostView): CostBreakdown {
     }),
   };
 }
+
+const PROVIDER_NAMES: Record<string, string> = {
+  deepgram: "Deepgram",
+  assemblyai: "AssemblyAI",
+  sarvam: "Sarvam AI",
+  openai: "OpenAI",
+  azure_openai: "Azure OpenAI",
+  anthropic: "Anthropic",
+  elevenlabs: "ElevenLabs",
+  cartesia: "Cartesia",
+  fishaudio: "Fish Audio",
+  sanas: "Sanas",
+  ai_coustics: "ai-coustics",
+};
+const KIND_NOUNS: Record<string, string> = { stt: "speech recognition", llm: "language model", tts: "voice", nc: "noise cancellation" };
+
+/**
+ * Why a call failed, from its machine diagnostic (`code:part/part`): "Sarvam AI speech recognition
+ * is not set up on this platform." Null for codes without a reader-friendly text.
+ */
+export function diagnosticText(diagnostic: string | null | undefined): string | null {
+  if (!diagnostic) return null;
+  const [code = "", rest = ""] = diagnostic.split(":");
+  const [kind = "", provider = "", model] = rest.split("/");
+  const vendor = `${PROVIDER_NAMES[provider] ?? provider} ${KIND_NOUNS[kind] ?? kind}`.trim();
+  switch (code) {
+    case "unsupported_vendor":
+      return model ? `${vendor} does not support the model ${model}.` : `${vendor} is not set up on this platform.`;
+    case "stt_language_unsupported":
+      return `${PROVIDER_NAMES[kind] ?? kind} speech recognition has no model for ${provider}.`;
+    case "vendor_error":
+      return `${vendor} failed during the call.`;
+    case "worker_exception":
+      return "The call failed unexpectedly on the platform.";
+    case "heartbeat_lost":
+      return "The call was lost.";
+    default:
+      return null;
+  }
+}
