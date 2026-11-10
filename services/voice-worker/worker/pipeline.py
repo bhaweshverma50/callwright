@@ -31,6 +31,7 @@ from worker.adapters.registry import (
     AdapterRegistry,
     UnsupportedLanguage,
     UnsupportedVendor,
+    VendorNotConfigured,
     VendorSpec,
 )
 from worker.adapters.stt import language_base
@@ -232,7 +233,16 @@ def build_components(
 ) -> SessionComponents:
     def one(kind: Kind) -> Any:
         spec = plan.spec(kind)
-        return registry.build(spec, creds.get(spec.provider, {}))
+        provider_creds = creds.get(spec.provider, {})
+        try:
+            return registry.build(spec, provider_creds)
+        except ValueError as exc:
+            # Vendor plugins raise ValueError when their API key is empty ("Sarvam API key is
+            # required"). That is a vendor this deployment holds no key for: end the call with
+            # unsupported_vendor, not a crash.
+            if spec.provider != "none" and not provider_creds.get("api_key"):
+                raise VendorNotConfigured(kind, spec.provider) from exc
+            raise
 
     return SessionComponents(stt=one("stt"), llm=one("llm"), tts=one("tts"), nc=one("nc"))
 
