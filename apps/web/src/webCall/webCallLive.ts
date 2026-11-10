@@ -137,7 +137,8 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
       await room.connect(session.server_url, session.participant_token);
       // The call is live once the room is joined. Publishing the microphone negotiates with the
       // server and can take seconds, so it runs alongside; a failure ends the call.
-      room.localParticipant.setMicrophoneEnabled(true).catch(() => {
+      room.localParticipant.setMicrophoneEnabled(true).catch((e: unknown) => {
+        console.warn("The microphone could not be published.", e);
         finish("connection_lost");
         void room.disconnect();
       });

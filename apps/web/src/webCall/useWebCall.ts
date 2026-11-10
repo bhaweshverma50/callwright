@@ -204,7 +204,8 @@ export function useWebCall(
     let c: CallConnection;
     try {
       c = await driver.connect(session, listener);
-    } catch {
+    } catch (e) {
+      console.warn("Joining the call room failed.", e);
       if (!stale()) dispatch({ type: "fail", problem: CONNECTION_FAILED });
       return;
     }
@@ -234,7 +235,10 @@ export function useWebCall(
   const toggleMute = useCallback(() => {
     const next = !s.muted;
     dispatch({ type: "muted", muted: next });
-    void conn.current?.setMuted(next).catch(() => dispatch({ type: "muted", muted: !next }));
+    void conn.current?.setMuted(next).catch((e: unknown) => {
+      console.warn("The microphone did not change, so the mute button goes back.", e);
+      dispatch({ type: "muted", muted: !next });
+    });
   }, [s.muted]);
 
   const sendDigit = useCallback((digit: string) => {
