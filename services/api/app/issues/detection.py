@@ -30,10 +30,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.ids import new_id
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 from app.evaluators.judge import json_object, neutralise
 from app.evaluators.models import EvaluatorRow
-from app.evaluators.settings import judge_models
 from app.issues import clustering as cl
 from app.issues.models import Issue, IssueDetectionRun, IssueFailureEmbedding, IssueSample
 from app.issues.runtime import model as issues_model
@@ -77,9 +76,9 @@ def origins(include_simulated: bool) -> list[str]:
 async def enabled_evaluators(
     session: AsyncSession, agent: Agent, settings: Settings
 ) -> dict[str, EvaluatorRow]:
-    from app.evals.service import resolve_all
+    from app.evals.service import enabled_evaluators as enabled
 
-    return {r.row.id: r.row for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled}
+    return {r.row.id: r.row for r in await enabled(session, agent, settings)}
 
 
 async def calibration_flags(session: AsyncSession, agent_id: str, settings: Settings) -> dict[str, bool]:

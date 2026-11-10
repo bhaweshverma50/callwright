@@ -33,7 +33,7 @@ from app.agents.models import Agent
 from app.core.config import Settings
 from app.core.db import Database
 from app.core.errors import ProblemError
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 from app.evaluators.models import EvaluatorRow
 from app.evaluators.settings import judge_models
 from app.issues import validation_rule as rule
@@ -162,7 +162,7 @@ async def select_calls(
 async def estimate_cost(
     session: AsyncSession, agent: Agent, settings: Settings, mode: str, run_count: int
 ) -> Decimal:
-    from app.evals.service import est_cost, resolve_all
+    from app.evals.service import enabled_evaluators, est_cost
     from app.simulator.preflight import EXTRACTION_TOKENS, per_run_cost
 
     model = settings.simulator_model
@@ -170,9 +170,8 @@ async def estimate_cost(
     if mode == "persona":
         per_run += billable_cost(token_cost(model, *EXTRACTION_TOKENS))
     models = judge_models(settings)
-    for r in await resolve_all(session, agent, models):
-        if r.enabled:
-            per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
+    for r in await enabled_evaluators(session, agent, settings):
+        per_run += Decimal(str(est_cost(r.row, r.values, models) or 0))
     return (per_run * run_count).quantize(Decimal("0.000001"))
 
 
@@ -550,7 +549,7 @@ async def finalize(
 ) -> str:
     """``skipped`` (nothing to do), ``waiting_batches`` (a batch is still running), ``waiting``
     (simulated calls still being evaluated), ``cancelled`` or the decision written."""
-    from app.evals.service import resolve_all
+    from app.evals.service import enabled_evaluators
     from app.simulator.comparison import verdict_rows
 
     now = now or datetime.now(UTC)
@@ -601,7 +600,7 @@ async def finalize(
 
     control_rows = await verdict_rows(session, keyed(runs_c))
     treatment_rows = await verdict_rows(session, keyed(runs_t))
-    enabled = [r.row.id for r in await resolve_all(session, agent, judge_models(settings)) if r.enabled]
+    enabled = [r.row.id for r in await enabled_evaluators(session, agent, settings)]
     evaluator_ids = [issue.evaluator_id, *sorted(e for e in set(enabled) if e != issue.evaluator_id)]
     counts = paired_counts(
         evaluator_ids, control_rows, treatment_rows, attempt.affected_call_ids, attempt.guard_call_ids

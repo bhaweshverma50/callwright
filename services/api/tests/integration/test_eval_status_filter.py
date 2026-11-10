@@ -1,5 +1,5 @@
 """The calls list filter by evaluation status agrees with each row's badge (006 FR-032): both
-read a call's current runs, the newest unsuperseded run per evaluator."""
+read a call's current runs, the newest unsuperseded run per evaluator, for all five statuses."""
 
 from __future__ import annotations
 
@@ -26,6 +26,10 @@ async def test_filter_matches_badge(client: httpx.AsyncClient, account: Account)
     skipped = seed_call(ws, agent)
     seed_run(ws, skipped, agent[0], "intent_fulfillment", "pass", status="skipped")
     unevaluated = seed_call(ws, agent)
+    running = seed_call(ws, agent)
+    seed_run(ws, running, agent[0], "intent_fulfillment", "pass", status="running")
+    errored = seed_call(ws, agent)
+    seed_run(ws, errored, agent[0], "intent_fulfillment", "pass", status="error")
 
     passed = await listed(client, account, "passed")
     assert passed == {rerun: "passed"}
@@ -34,3 +38,5 @@ async def test_filter_matches_badge(client: httpx.AsyncClient, account: Account)
     not_evaluated = await listed(client, account, "not_evaluated")
     assert set(not_evaluated) == {skipped, unevaluated}
     assert set(not_evaluated.values()) == {"not_evaluated"}
+    assert await listed(client, account, "running") == {running: "running"}
+    assert await listed(client, account, "error") == {errored: "error"}

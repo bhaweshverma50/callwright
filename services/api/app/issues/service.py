@@ -22,7 +22,7 @@ from app.agents.schemas import upcast
 from app.agents.versions import draft_part
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id
-from app.evals.views import current_runs_sql
+from app.evals.current import current_runs_sql
 from app.issues import kinds
 from app.issues.charges import charge, detect_key, draft_key  # noqa: F401  (re-exported)
 from app.issues.lifecycle import FINAL, transition

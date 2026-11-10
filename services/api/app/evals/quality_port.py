@@ -20,9 +20,9 @@ from app.analysis_vars.models import CallAnalysis
 from app.annotations.models import Annotation
 from app.calls.quality_port import EvaluatorStat, QualitySummary, VerdictDiff
 from app.evals import verdict_diff
+from app.evals.current import call_eval_status, current_runs_sql, eval_status_sql
 from app.evals.models import AgentEvalSetting
-from app.evals.scoring import EVAL_STATUSES, RunState, call_eval_status, run_counts
-from app.evals.views import current_runs_sql, eval_status_sql
+from app.evals.scoring import EVAL_STATUSES, RunState, run_counts
 
 
 class QualityPort:

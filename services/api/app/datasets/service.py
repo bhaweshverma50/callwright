@@ -24,7 +24,6 @@ from app.calls.models import Call
 from app.core.errors import ProblemError, field_error, not_found, validation_failed
 from app.core.ids import is_valid_id, new_id
 from app.datasets.models import Dataset, DatasetItem
-from app.evaluators.settings import judge_models
 from app.testing import calls as sim_calls
 from app.testing.targets import require_agent
 
@@ -262,7 +261,7 @@ async def list_items(
 
 
 async def eval_statuses(session: AsyncSession, call_ids: Sequence[str]) -> dict[str, str]:
-    from app.evals.views import call_statuses
+    from app.evals.current import call_statuses
 
     return dict(await call_statuses(session, call_ids))
 
@@ -272,9 +271,8 @@ async def evaluate(
 ) -> tuple[dict[str, int], list[tuple[str, str]]]:
     """Start a ``dataset`` run group on every available call. Returns the counts and the
     (call id, run group id) pairs to execute after commit."""
+    from app.evals.current import missing_by_call
     from app.evals.runner import AlreadyRunning, start_group
-    from app.evals.service import resolve_all
-    from app.evals.views import current_by_call, missing_evaluators
     from app.llms.runtime import runtime
 
     dataset = await get_dataset(session, dataset_id)
@@ -285,14 +283,11 @@ async def evaluate(
         ).scalars()
     )
     calls = await sim_calls.load_calls(session, ids)
-    enabled: dict[str, int] = {}
-    if agent is not None:
-        enabled = {
-            r.row.id: r.row.current_version
-            for r in await resolve_all(session, agent, judge_models(runtime().settings))
-            if r.enabled
-        }
-    current = await current_by_call(session, ids) if only_missing else {}
+    missing = (
+        await missing_by_call(session, agent, runtime().settings, ids)
+        if only_missing and agent is not None
+        else {}
+    )
     counts = {"enqueued": 0, "skipped_up_to_date": 0, "skipped_unavailable": 0}
     jobs: list[tuple[str, str]] = []
     for call_id in ids:
@@ -300,7 +295,7 @@ async def evaluate(
         if call is None or not transcript.has_conversation(call.transcript):
             counts["skipped_unavailable"] += 1
             continue
-        if only_missing and not missing_evaluators(current.get(call_id, []), enabled):
+        if only_missing and not missing.get(call_id):
             counts["skipped_up_to_date"] += 1
             continue
         try:
