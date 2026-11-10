@@ -27,7 +27,14 @@ const agent: AgentSummary = {
 function renderCard(a: AgentSummary) {
   return renderWithProviders(
     <MemoryRouter>
-      <AgentCard agent={a} modelLabel="GPT-5.1" modelExtras={["GPT-5 mini"]} languageLabel="English (US)" onDuplicate={() => {}} onDelete={() => {}} />
+      <AgentCard
+        agent={a}
+        modelLabel="GPT-5.1"
+        modelExtras={["GPT-5 mini"]}
+        languageLabel="English (US)"
+        onDuplicate={() => {}}
+        onDelete={() => {}}
+      />
     </MemoryRouter>,
   );
 }

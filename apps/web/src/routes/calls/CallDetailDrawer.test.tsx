@@ -146,6 +146,8 @@ describe("failed call reason", () => {
     await signInDemo();
     renderApp(`/calls?call=${mockCallId(2)}`);
     const drawer = await screen.findByRole("dialog", undefined, { timeout: 5000 });
-    expect(await within(drawer).findByText("Sarvam AI speech recognition is not set up on this platform.", undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(
+      await within(drawer).findByText("Sarvam AI speech recognition is not set up on this platform.", undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 });
