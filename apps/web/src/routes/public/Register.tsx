@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { register, resendVerification } from "../../api/auth";
 import { fieldErrors, problemMessage } from "../../api/problems";
+import { TRIAL_CREDIT } from "../../lib/money";
 import { startSession } from "../../api/session";
 import { Button, Field, FormAlert, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
@@ -57,8 +58,8 @@ export function Register() {
         title="Check your email"
         subtitle={
           <>
-            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with $5.00 of trial
-            credit.
+            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with {TRIAL_CREDIT} of
+            trial credit.
           </>
         }
       >
@@ -101,7 +102,7 @@ export function Register() {
   return (
     <AuthLayout
       title="Create your workspace"
-      subtitle="Start with $5.00 of trial credit. No card needed until you top up."
+      subtitle={`Start with ${TRIAL_CREDIT} of trial credit. No card needed until you top up.`}
       footer={
         <>
           Already have an account?{" "}

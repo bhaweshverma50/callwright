@@ -11,7 +11,7 @@ import { useWebCall } from "../../../webCall/useWebCall";
 import { createMockDriver, type CallProblem, type CallTurn } from "../../../webCall/webCall";
 import { createDemoDriver } from "../../../webCall/webCallLive";
 import { env } from "../../../lib/env";
-import { formatUsd } from "../../../lib/money";
+import { formatUsd, TRIAL_CREDIT } from "../../../lib/money";
 import { LiveCall } from "../LiveCall";
 import { SCENARIOS, type Scenario } from "./scenarios";
 import { mss } from "../../../lib/format";
@@ -45,14 +45,14 @@ function demoProblem(e: unknown): CallProblem | undefined {
     return {
       kind: "refused",
       title: "That's all the demo calls for this hour",
-      detail: "Create an account to keep calling. New workspaces start with $5 of calls.",
+      detail: `Create an account to keep calling. New workspaces start with ${TRIAL_CREDIT} of calls.`,
       action: { label: "Create account", href: AUTH_PAGES.register },
     };
   if (e.status === 402 || e.status === 404 || e.status === 409)
     return {
       kind: "refused",
       title: "The demo line is closed right now",
-      detail: "Create an account to call an agent of your own. New workspaces start with $5 of calls.",
+      detail: `Create an account to call an agent of your own. New workspaces start with ${TRIAL_CREDIT} of calls.`,
       action: { label: "Create account", href: AUTH_PAGES.register },
     };
   return undefined;
