@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
+
+from callwright_contract.protocol import LanguageOption
 
 GREETING_TRANSLATION_TIMEOUT_S = 4.0
 REPLY_LANGUAGE_PREFIX = "Language rule:"
@@ -55,10 +57,10 @@ def with_reply_language(instructions: str, label: str | None) -> str:
     )
 
 
-def set_language_instruction(options: Sequence[Any]) -> str:
+def set_language_instruction(options: Sequence[LanguageOption]) -> str:
     """When to call set_language (single-prompt agents and every flow node, when the claim offers
     something to switch to)."""
-    names = ", ".join(f"{_get(o, 'label')} ({_get(o, 'code')})" for o in options)
+    names = ", ".join(f"{o.label} ({o.code})" for o in options)
     return (
         "Callers may prefer another language. If the caller asks to speak in another language, or "
         "clearly speaks one for a full sentence, call set_language with its code before replying, "
@@ -74,10 +76,6 @@ def translated_greeting_instruction(greeting: str, label: str) -> str:
         f"Open the call in {label} with a greeting that means the same as this one, keeping any "
         f"names and disclosures, and nothing else: {greeting}"
     )
-
-
-def _get(option: Any, key: str) -> Any:
-    return option.get(key) if isinstance(option, Mapping) else getattr(option, key, None)
 
 
 TokenUsage = Callable[[int, int], None]

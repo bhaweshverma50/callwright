@@ -29,7 +29,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from callwright_contract.protocol import LanguageReport
+from callwright_contract.protocol import LanguageOption, LanguageReport
 from callwright_contract.values import SET_LANGUAGE_TOOL
 
 from worker.internal_api import InternalApiClient
@@ -45,13 +45,9 @@ DESCRIPTION = (
 )
 
 
-def _get(option: Any, key: str) -> Any:
-    return option.get(key) if isinstance(option, Mapping) else getattr(option, key, None)
-
-
-def parameters(options: Sequence[Any]) -> dict[str, Any]:
-    codes = [str(_get(o, "code")) for o in options]
-    names = "; ".join(f"{_get(o, 'code')} = {_get(o, 'label')}" for o in options)
+def parameters(options: Sequence[LanguageOption]) -> dict[str, Any]:
+    codes = [str(o.code) for o in options]
+    names = "; ".join(f"{o.code} = {o.label}" for o in options)
     return {
         "type": "object",
         "properties": {
@@ -65,7 +61,7 @@ def parameters(options: Sequence[Any]) -> dict[str, Any]:
     }
 
 
-def spec_for(options: Sequence[Any]) -> ToolSpecView:
+def spec_for(options: Sequence[LanguageOption]) -> ToolSpecView:
     return ToolSpecView(
         tool_id=None,
         type=TOOL_TYPE,
@@ -82,14 +78,14 @@ def _payload(body: dict[str, Any]) -> str:
 class SetLanguageExecutor:
     def __init__(
         self,
-        options: Sequence[Any],
+        options: Sequence[LanguageOption],
         current: str | None,
         api: InternalApiClient | None,
         *,
         timeout_s: float = TIMEOUT_S,
     ) -> None:
-        self.options = {str(_get(o, "code")): o for o in options}
-        first = str(_get(options[0], "code")) if options else ""
+        self.options = {str(o.code): o for o in options}
+        first = str(options[0].code) if options else ""
         self.current = current if current in self.options else first
         self.api = api
         self.timeout_s = timeout_s
@@ -106,7 +102,7 @@ class SetLanguageExecutor:
                 "That language is not available on this call. Tell the caller, in the language "
                 "you are speaking now, that you cannot switch to it.",
             )
-        label = str(_get(option, "label") or code)
+        label = str(option.label or code)
         if code == self.current:
             return ToolResult(
                 llm_payload=_payload(
@@ -120,14 +116,14 @@ class SetLanguageExecutor:
         previous = self.current
         self.current = code
         stt: dict[str, Any] = {"language": code}
-        if _get(option, "stt_model"):
-            stt["model"] = _get(option, "stt_model")
+        if option.stt_model:
+            stt["model"] = option.stt_model
         await ctx.control.apply_overrides(
             {
                 "switch_language": {
                     "code": code,
                     "label": label,
-                    "tts_model": _get(option, "tts_model"),
+                    "tts_model": option.tts_model,
                 },
                 "stt": stt,  # type: ignore[typeddict-item]
             }
