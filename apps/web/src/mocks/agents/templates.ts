@@ -25,14 +25,24 @@ function flowGraph(greeting: string, steps: Step[], links: Link[]): Graph {
   const id = (key: string) => `n_${key.padEnd(8, "0").slice(0, 8)}`;
   const kind = new Map(steps.map((x) => [x[0], x[1]]));
   const nodes = [
-    { id: id("start"), type: "start", label: "Start", position: { x: 0, y: 0 }, config: { start_speaker: "agent", greeting_type: "static", greeting } },
+    {
+      id: id("start"),
+      type: "start",
+      label: "Start",
+      position: { x: 0, y: 0 },
+      config: { start_speaker: "agent", greeting_type: "static", greeting },
+    },
     ...steps.map((x, i) => {
       const [key, type, label, arg] = x as [string, string, string, string | string[] | undefined];
       const config =
         type === "agent"
           ? { instructions: arg, begin_message: null }
           : type === "task"
-            ? { instructions: "", fields: (arg as string[]).map((name) => ({ name, type: "string", description: name.replace(/_/g, " "), required: true })), max_rounds: 5 }
+            ? {
+                instructions: "",
+                fields: (arg as string[]).map((name) => ({ name, type: "string", description: name.replace(/_/g, " "), required: true })),
+                max_rounds: 5,
+              }
             : type === "condition"
               ? { kind: "classify", instructions: "", categories: (arg as string[]).map((name) => ({ name, description: name })) }
               : type === "transfer"
@@ -43,7 +53,8 @@ function flowGraph(greeting: string, steps: Step[], links: Link[]): Graph {
   ];
   const edges = [["start", steps[0]![0]] as Link, ...links].map(([from, to, label], i) => {
     const t = kind.get(from);
-    const trigger = t === "condition" ? "category" : t === "agent" ? "llm_condition" : t === "task" ? "success" : t === "transfer" ? "failure" : "always";
+    const trigger =
+      t === "condition" ? "category" : t === "agent" ? "llm_condition" : t === "task" ? "success" : t === "transfer" ? "failure" : "always";
     return {
       id: `e_${String(i).padStart(8, "0")}`,
       source: id(from),
@@ -280,7 +291,8 @@ Guidelines:
     agent_type: "flow",
     begin_message: "",
     variables: [["company_name", "Acme Health Clinic"]],
-    prompt: "You are the booking assistant at {{company_name}}, a medical clinic. Be warm and calm, ask one question at a time and never give medical advice.",
+    prompt:
+      "You are the booking assistant at {{company_name}}, a medical clinic. Be warm and calm, ask one question at a time and never give medical advice.",
     graph: flowGraph(
       "Thank you for calling {{company_name}}. I can help you book, change or cancel an appointment. How can I help?",
       [
@@ -291,7 +303,15 @@ Guidelines:
         ["urgent", "say", "Urgent symptoms", "Please call your local emergency number now."],
         ["done", "end", "End", "Thanks for calling {{company_name}}."],
       ],
-      [["who", "route"], ["route", "book", "Book"], ["route", "change", "Change or cancel"], ["route", "urgent", "Emergency"], ["book", "done"], ["change", "done", "Change noted"], ["urgent", "done"]],
+      [
+        ["who", "route"],
+        ["route", "book", "Book"],
+        ["route", "change", "Change or cancel"],
+        ["route", "urgent", "Emergency"],
+        ["book", "done"],
+        ["change", "done", "Change noted"],
+        ["urgent", "done"],
+      ],
     ),
   },
   {
@@ -315,7 +335,14 @@ Guidelines:
         ["logged", "say", "Claim logged", "Your claim is logged. An adjuster will contact you within two working days."],
         ["done", "end", "End", "Take care."],
       ],
-      [["safety", "incident", "Everyone is safe"], ["incident", "severity"], ["severity", "adjuster", "Total loss or injury"], ["severity", "logged", "Minor damage"], ["adjuster", "done"], ["logged", "done"]],
+      [
+        ["safety", "incident", "Everyone is safe"],
+        ["incident", "severity"],
+        ["severity", "adjuster", "Total loss or injury"],
+        ["severity", "logged", "Minor damage"],
+        ["adjuster", "done"],
+        ["logged", "done"],
+      ],
     ),
   },
   {
@@ -327,8 +354,13 @@ Guidelines:
     direction: "outbound",
     agent_type: "flow",
     begin_message: "",
-    variables: [["company_name", "Acme Energy"], ["customer_name", "Jordan Lee"], ["amount_due", "$86.40"]],
-    prompt: "You are a courteous billing assistant at {{company_name}} calling {{customer_name}} about an overdue balance. Never threaten and never take card details.",
+    variables: [
+      ["company_name", "Acme Energy"],
+      ["customer_name", "Jordan Lee"],
+      ["amount_due", "$86.40"],
+    ],
+    prompt:
+      "You are a courteous billing assistant at {{company_name}} calling {{customer_name}} about an overdue balance. Never threaten and never take card details.",
     graph: flowGraph(
       "Hello, this is {{company_name}} calling for {{customer_name}} about your account.",
       [
@@ -339,7 +371,15 @@ Guidelines:
         ["paid", "say", "Pay now", "You can pay in the app or at the link we are texting you."],
         ["done", "end", "End", "Thanks for your time."],
       ],
-      [["verify", "outcome", "Confirmed"], ["outcome", "paid", "Will pay now"], ["outcome", "plan", "Needs a plan"], ["outcome", "dispute", "Disputes"], ["paid", "done"], ["plan", "done"], ["dispute", "done", "Dispute noted"]],
+      [
+        ["verify", "outcome", "Confirmed"],
+        ["outcome", "paid", "Will pay now"],
+        ["outcome", "plan", "Needs a plan"],
+        ["outcome", "dispute", "Disputes"],
+        ["paid", "done"],
+        ["plan", "done"],
+        ["dispute", "done", "Dispute noted"],
+      ],
     ),
   },
   {
@@ -351,7 +391,10 @@ Guidelines:
     direction: "outbound",
     agent_type: "flow",
     begin_message: "",
-    variables: [["agency_name", "Acme Realty"], ["lead_name", "Taylor Brooks"]],
+    variables: [
+      ["agency_name", "Acme Realty"],
+      ["lead_name", "Taylor Brooks"],
+    ],
     prompt: "You are a friendly property consultant at {{agency_name}} calling {{lead_name}}. Be conversational and never pushy.",
     graph: flowGraph(
       "Hello, this is {{agency_name}} calling for {{lead_name}}. Do you have a minute?",
@@ -362,7 +405,13 @@ Guidelines:
         ["nurture", "say", "Stay in touch", "I will send you listings that match."],
         ["done", "end", "End", "Thanks for your time."],
       ],
-      [["qualify", "fit"], ["fit", "view", "Ready"], ["fit", "nurture", "Exploring"], ["view", "done"], ["nurture", "done"]],
+      [
+        ["qualify", "fit"],
+        ["fit", "view", "Ready"],
+        ["fit", "nurture", "Exploring"],
+        ["view", "done"],
+        ["nurture", "done"],
+      ],
     ),
   },
   {
@@ -374,8 +423,12 @@ Guidelines:
     direction: "outbound",
     agent_type: "flow",
     begin_message: "",
-    variables: [["company_name", "Acme Express"], ["recipient_name", "Chris Patel"]],
-    prompt: "You are a delivery coordinator at {{company_name}} calling {{recipient_name}} about a parcel that could not be delivered. Be brief and polite.",
+    variables: [
+      ["company_name", "Acme Express"],
+      ["recipient_name", "Chris Patel"],
+    ],
+    prompt:
+      "You are a delivery coordinator at {{company_name}} calling {{recipient_name}} about a parcel that could not be delivered. Be brief and polite.",
     graph: flowGraph(
       "Hello, this is {{company_name}} calling about your parcel. Is this {{recipient_name}}?",
       [
@@ -385,7 +438,14 @@ Guidelines:
         ["pickup", "say", "Pickup point", "Your parcel will be held at the nearest pickup point."],
         ["done", "end", "End", "Goodbye."],
       ],
-      [["intro", "choice", "Wants to rearrange"], ["choice", "slot", "New date"], ["choice", "pickup", "Pickup point"], ["choice", "done", "Return"], ["slot", "done"], ["pickup", "done"]],
+      [
+        ["intro", "choice", "Wants to rearrange"],
+        ["choice", "slot", "New date"],
+        ["choice", "pickup", "Pickup point"],
+        ["choice", "done", "Return"],
+        ["slot", "done"],
+        ["pickup", "done"],
+      ],
     ),
   },
   {
@@ -396,8 +456,12 @@ Guidelines:
     icon: "package",
     direction: "inbound",
     begin_message: "Thanks for calling {{company_name}} customer care. This is the virtual assistant. Do you have an order number handy?",
-    variables: [["company_name", "Acme Store"], ["return_window_days", "30"]],
-    prompt: "You are the order support assistant at {{company_name}}. Find the order, answer status questions and explain the {{return_window_days}}-day return window. Never promise a refund amount.",
+    variables: [
+      ["company_name", "Acme Store"],
+      ["return_window_days", "30"],
+    ],
+    prompt:
+      "You are the order support assistant at {{company_name}}. Find the order, answer status questions and explain the {{return_window_days}}-day return window. Never promise a refund amount.",
   },
   {
     id: "telecom-support-line",
@@ -408,7 +472,8 @@ Guidelines:
     direction: "inbound",
     begin_message: "Hello, you've reached {{company_name}} support. What can I help you with today?",
     variables: [["company_name", "Acme Mobile"]],
-    prompt: "You are the support assistant for {{company_name}}, a mobile operator. Work out the issue, walk through simple fixes one at a time and offer a ticket if it stays unresolved.",
+    prompt:
+      "You are the support assistant for {{company_name}}, a mobile operator. Work out the issue, walk through simple fixes one at a time and offer a ticket if it stays unresolved.",
   },
   {
     id: "insurance-renewal-reminder",
@@ -418,8 +483,12 @@ Guidelines:
     icon: "shield-check",
     direction: "outbound",
     begin_message: "Hello, this is {{company_name}} calling about an upcoming policy renewal. Am I speaking with {{customer_name}}?",
-    variables: [["company_name", "Acme Insurance"], ["customer_name", "Priya Shah"]],
-    prompt: "You are a renewals coordinator at {{company_name}} calling {{customer_name}}. Confirm details, note changes and explain how to pay. Never take card details.",
+    variables: [
+      ["company_name", "Acme Insurance"],
+      ["customer_name", "Priya Shah"],
+    ],
+    prompt:
+      "You are a renewals coordinator at {{company_name}} calling {{customer_name}}. Confirm details, note changes and explain how to pay. Never take card details.",
   },
   {
     id: "hospitality-reservations",
@@ -430,7 +499,8 @@ Guidelines:
     direction: "inbound",
     begin_message: "Thank you for calling {{hotel_name}}. Are you looking to book, or do you have a question about a stay?",
     variables: [["hotel_name", "Acme Grand Hotel"]],
-    prompt: "You are the reservations assistant at {{hotel_name}}. Collect dates, guests and room type, and confirm them back. Never quote exact prices.",
+    prompt:
+      "You are the reservations assistant at {{hotel_name}}. Collect dates, guests and room type, and confirm them back. Never quote exact prices.",
   },
   {
     id: "hospitality-post-stay-feedback",
@@ -440,8 +510,12 @@ Guidelines:
     icon: "chat-circle",
     direction: "outbound",
     begin_message: "Hello, this is {{hotel_name}} calling to hear how your stay went. Is this {{guest_name}}?",
-    variables: [["hotel_name", "Acme Grand Hotel"], ["guest_name", "Sam Carter"]],
-    prompt: "You are a guest relations assistant at {{hotel_name}} calling {{guest_name}}. Ask for a 1 to 10 rating and what to improve. Never offer compensation.",
+    variables: [
+      ["hotel_name", "Acme Grand Hotel"],
+      ["guest_name", "Sam Carter"],
+    ],
+    prompt:
+      "You are a guest relations assistant at {{hotel_name}} calling {{guest_name}}. Ask for a 1 to 10 rating and what to improve. Never offer compensation.",
   },
   {
     id: "logistics-delivery-support",
@@ -452,7 +526,8 @@ Guidelines:
     direction: "inbound",
     begin_message: "Thanks for calling {{company_name}} delivery support. Do you have a tracking number?",
     variables: [["company_name", "Acme Express"]],
-    prompt: "You are the delivery support assistant at {{company_name}}. Give the latest status in plain words and offer redelivery or a pickup point.",
+    prompt:
+      "You are the delivery support assistant at {{company_name}}. Give the latest status in plain words and offer redelivery or a pickup point.",
   },
   {
     id: "realestate-listing-inquiry",
@@ -473,8 +548,12 @@ Guidelines:
     icon: "wrench",
     direction: "outbound",
     begin_message: "Hello, this is {{dealership_name}} calling for {{customer_name}} about a service reminder. Is now a good time?",
-    variables: [["dealership_name", "Acme Motors"], ["customer_name", "Alex Morgan"]],
-    prompt: "You are a service advisor assistant at {{dealership_name}} calling {{customer_name}}. Offer to book the service and never quote a final price.",
+    variables: [
+      ["dealership_name", "Acme Motors"],
+      ["customer_name", "Alex Morgan"],
+    ],
+    prompt:
+      "You are a service advisor assistant at {{dealership_name}} calling {{customer_name}}. Offer to book the service and never quote a final price.",
   },
   {
     id: "automotive-test-drive-booking",
@@ -496,7 +575,13 @@ Guidelines:
         ["sales", "transfer", "Sales advisor"],
         ["done", "end", "End", "See you soon."],
       ],
-      [["interest", "route"], ["route", "slot", "Test drive"], ["route", "sales", "Price or finance"], ["slot", "done"], ["sales", "done"]],
+      [
+        ["interest", "route"],
+        ["route", "slot", "Test drive"],
+        ["route", "sales", "Price or finance"],
+        ["slot", "done"],
+        ["sales", "done"],
+      ],
     ),
   },
   {
@@ -508,7 +593,10 @@ Guidelines:
     direction: "outbound",
     agent_type: "flow",
     begin_message: "",
-    variables: [["company_name", "Acme Bank"], ["customer_name", "Morgan Ellis"]],
+    variables: [
+      ["company_name", "Acme Bank"],
+      ["customer_name", "Morgan Ellis"],
+    ],
     prompt: "You are a verification assistant at {{company_name}} calling {{customer_name}}. Never ask for a PIN, password or full card number.",
     graph: flowGraph(
       "Hello, this is {{company_name}} calling for {{customer_name}} to complete a routine identity check.",
@@ -520,7 +608,14 @@ Guidelines:
         ["review", "say", "Manual review", "A team member will contact you to finish the check."],
         ["done", "end", "End", "Goodbye."],
       ],
-      [["confirm", "details", "Customer agrees"], ["details", "result"], ["result", "ok", "Verified"], ["result", "review", "Needs review"], ["ok", "done"], ["review", "done"]],
+      [
+        ["confirm", "details", "Customer agrees"],
+        ["details", "result"],
+        ["result", "ok", "Verified"],
+        ["result", "review", "Needs review"],
+        ["ok", "done"],
+        ["review", "done"],
+      ],
     ),
   },
   {
@@ -532,7 +627,10 @@ Guidelines:
     direction: "outbound",
     agent_type: "flow",
     begin_message: "",
-    variables: [["company_name", "Acme Mobile"], ["customer_name", "Riley Quinn"]],
+    variables: [
+      ["company_name", "Acme Mobile"],
+      ["customer_name", "Riley Quinn"],
+    ],
     prompt: "You are a survey assistant at {{company_name}} calling {{customer_name}}. Be friendly and neutral and never sell anything.",
     graph: flowGraph(
       "Hello, this is {{company_name}} calling for {{customer_name}}. Do you have two minutes for a quick survey?",
@@ -543,7 +641,13 @@ Guidelines:
         ["bad", "task", "Ask what to improve", ["improve"]],
         ["done", "end", "End", "Thank you for your feedback."],
       ],
-      [["score", "band"], ["band", "good", "Promoter"], ["band", "bad", "Detractor"], ["good", "done"], ["bad", "done"]],
+      [
+        ["score", "band"],
+        ["band", "good", "Promoter"],
+        ["band", "bad", "Detractor"],
+        ["good", "done"],
+        ["bad", "done"],
+      ],
     ),
   },
   {
@@ -566,7 +670,13 @@ Guidelines:
         ["logged", "say", "Outage logged", "Your report is logged. We will text updates."],
         ["done", "end", "End", "Stay safe."],
       ],
-      [["safety", "report", "No danger"], ["safety", "danger", "Immediate danger"], ["report", "logged"], ["logged", "done"], ["danger", "done"]],
+      [
+        ["safety", "report", "No danger"],
+        ["safety", "danger", "Immediate danger"],
+        ["report", "logged"],
+        ["logged", "done"],
+        ["danger", "done"],
+      ],
     ),
   },
 ];

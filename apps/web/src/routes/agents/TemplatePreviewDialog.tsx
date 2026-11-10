@@ -1,6 +1,17 @@
 import { Phone } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AudioLines, BrainCircuit, Braces, Captions, GitBranch, ListOrdered, MessageSquareQuote, PhoneIncoming, PhoneOutgoing, Wand2 } from "lucide-react";
+import {
+  AudioLines,
+  BrainCircuit,
+  Braces,
+  Captions,
+  GitBranch,
+  ListOrdered,
+  MessageSquareQuote,
+  PhoneIncoming,
+  PhoneOutgoing,
+  Wand2,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { agentChanged, createAgentFromTemplate, useLlmCatalog, useTemplate, useVoiceCatalog, type TemplateSummary } from "../../api/agents";
@@ -126,7 +137,10 @@ export function TemplatePreviewDialog({
       if (d.agent_type === "flow") {
         const out = await createFlowAgent(d.config.agent_name ?? d.name, d.config.language, d.id);
         agentChanged(qc, out.agent_id);
-        return { path: agentFlowPath(out.agent_id), description: out.warnings?.[0] ?? `${d.name} is saved with its steps. Adjust them on the canvas.` };
+        return {
+          path: agentFlowPath(out.agent_id),
+          description: out.warnings?.[0] ?? `${d.name} is saved with its steps. Adjust them on the canvas.`,
+        };
       }
       const agent = await createAgentFromTemplate(qc, d, key.current);
       const replaced = agent.warnings.find((w) => w.code === "component_replaced");

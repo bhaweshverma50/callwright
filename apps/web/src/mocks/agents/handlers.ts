@@ -300,10 +300,17 @@ export const agentHandlers = [
     if (nameError(body.name)) return failValidation([nameError(body.name)!]);
     const { agent_name: _n, graph, ...tpl } = t.config;
     const config = overlay(defaultConfig("flow", body.language ?? tpl.language), tpl) as AgentConfig;
-    const agent = insertAgent(ws, body.name!.trim(), "flow", validateConfig("flow", config, { uploadKeys: workspaceUploadKeys(ws) }).normalized_config, "template", {
-      template_id: t.id,
-      note: `Created from ${t.name}`,
-    });
+    const agent = insertAgent(
+      ws,
+      body.name!.trim(),
+      "flow",
+      validateConfig("flow", config, { uploadKeys: workspaceUploadKeys(ws) }).normalized_config,
+      "template",
+      {
+        template_id: t.id,
+        note: `Created from ${t.name}`,
+      },
+    );
     save();
     const flow = seedMockFlow(agent.id, agent.name, graph as unknown as FlowGraph);
     await delay(300);

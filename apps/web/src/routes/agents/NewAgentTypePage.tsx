@@ -148,7 +148,12 @@ export function NewAgentTypePage() {
             <span className="font-medium text-fg">The type cannot be changed later.</span> To switch, create a new agent of the other type.
           </span>
         </p>
-        <Button variant="primary" size="lg" className="shrink-0" onClick={() => navigate(kind === "single" ? templatesPath("single_prompt") : NEW_FLOW_AGENT_PATH)}>
+        <Button
+          variant="primary"
+          size="lg"
+          className="shrink-0"
+          onClick={() => navigate(kind === "single" ? templatesPath("single_prompt") : NEW_FLOW_AGENT_PATH)}
+        >
           Continue with {kind === "single" ? "single prompt" : "flow"}
         </Button>
       </div>

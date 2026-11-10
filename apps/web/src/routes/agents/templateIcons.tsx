@@ -24,7 +24,19 @@ import {
   Wrench,
   type Icon,
 } from "@phosphor-icons/react";
-import { BedDouble, Building2, CarFront, HeartPulse, Landmark, RadioTower, ShoppingBag, ShieldPlus, Truck as TruckIcon, Zap, type LucideIcon } from "lucide-react";
+import {
+  BedDouble,
+  Building2,
+  CarFront,
+  HeartPulse,
+  Landmark,
+  RadioTower,
+  ShoppingBag,
+  ShieldPlus,
+  Truck as TruckIcon,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import type { TemplateCategory } from "../../api/agents";
 
 /** Template icon tokens (templates.icon) to duotone glyphs; unknown tokens fall back to a phone. */
