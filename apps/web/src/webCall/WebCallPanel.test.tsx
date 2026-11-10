@@ -298,16 +298,14 @@ describe("live driver", () => {
   });
 
   it("reads the worker's cw.turn_latency messages and ignores malformed ones", () => {
-    const enc = (v: unknown) => new TextEncoder().encode(typeof v === "string" ? v : JSON.stringify(v));
     // The worker's payload (worker/metrics.py latency_payload): extra fields are fine.
-    expect(parseLatencyMessage(enc({ turn_index: 1, stt_ms: 200, llm_ms: 300.4, tts_ms: 150, e2e_ms: 650 }))).toEqual({
+    expect(parseLatencyMessage({ turn_index: 1, stt_ms: 200, llm_ms: 300.4, tts_ms: 150, e2e_ms: 650 })).toEqual({
       stt: 200,
       llm: 300,
       tts: 150,
     });
-    expect(parseLatencyMessage(enc("not json"))).toBeNull();
-    expect(parseLatencyMessage(enc({ stt_ms: "1", llm_ms: 2, tts_ms: 3 }))).toBeNull();
-    expect(parseLatencyMessage(enc({ stt_ms: 0, llm_ms: 0, tts_ms: 0 }))).toBeNull();
+    expect(parseLatencyMessage({ stt_ms: "1", llm_ms: 2, tts_ms: 3 })).toBeNull();
+    expect(parseLatencyMessage({ stt_ms: 0, llm_ms: 0, tts_ms: 0 })).toBeNull();
   });
 });
 

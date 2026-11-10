@@ -1,32 +1,46 @@
 /**
  * Messages the voice worker publishes on the call room's data channel, and the one way for the
- * web app to listen to them. The topic strings are the worker's (worker/metrics.py LATENCY_TOPIC,
- * worker/flow/events.py TOPIC); this is their only home on the web side.
+ * web app to listen to them. Topics and message shapes come from the contract
+ * (specs/003-voice-runtime/contracts/data_channel.yaml); this is the only place that reads the
+ * bytes.
  */
+import type { components } from "../api/schema";
+import { dataChannelTopics } from "../lib/contract.gen";
 
-/** Data channel topics the worker publishes on. */
+/** Data channel topic of each message kind. */
 export const ROOM_TOPICS = {
-  /** Per-turn latency split: JSON `{turn_index, stt_ms, llm_ms, tts_ms, e2e_ms?}`. */
-  latency: "cw.turn_latency",
-  /** Flow node announcements during a builder test call: JSON `{type: "node_entered", node_id}`. */
-  flow: "callwright.flow",
+  latency: dataChannelTopics.TurnLatencyMessage,
+  flow: dataChannelTopics.FlowNodeEnteredMessage,
 } as const;
 
-export type RoomTopic = (typeof ROOM_TOPICS)[keyof typeof ROOM_TOPICS];
+/** The message each kind carries. */
+export interface RoomMessages {
+  latency: components["schemas"]["TurnLatencyMessage"];
+  flow: components["schemas"]["FlowNodeEnteredMessage"];
+}
 
-type Listener = (payload: Uint8Array) => void;
-const listeners = new Map<string, Set<Listener>>();
+type Kind = keyof RoomMessages;
+type Listener = (message: never) => void;
+const listeners = new Map<Kind, Set<Listener>>();
 
-/** Calls `cb` with every payload the live call receives on `topic`; returns the unsubscribe. */
-export function onRoomData(topic: RoomTopic, cb: Listener): () => void {
-  let set = listeners.get(topic);
-  if (!set) listeners.set(topic, (set = new Set()));
-  set.add(cb);
-  return () => void set.delete(cb);
+/** Calls `cb` with every message of `kind` the live call receives; returns the unsubscribe. */
+export function onRoomData<K extends Kind>(kind: K, cb: (message: RoomMessages[K]) => void): () => void {
+  let set = listeners.get(kind);
+  if (!set) listeners.set(kind, (set = new Set()));
+  set.add(cb as Listener);
+  return () => void set.delete(cb as Listener);
 }
 
 /** Hands one received message to the listeners of its topic (the live driver calls this). */
 export function publishRoomData(topic: string | undefined, payload: Uint8Array) {
-  if (!topic) return;
-  for (const cb of listeners.get(topic) ?? []) cb(payload);
+  const kind = (Object.keys(ROOM_TOPICS) as Kind[]).find((k) => ROOM_TOPICS[k] === topic);
+  if (!kind) return;
+  let message: unknown;
+  try {
+    message = JSON.parse(new TextDecoder().decode(payload));
+  } catch (e) {
+    console.warn(`Ignored a ${topic} message that is not JSON.`, e);
+    return;
+  }
+  for (const cb of listeners.get(kind) ?? []) (cb as (m: unknown) => void)(message);
 }

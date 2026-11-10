@@ -4,7 +4,7 @@
  * panel never pay for it.
  */
 import { startDemoCall, startWebCall } from "../api/calls";
-import { publishRoomData, ROOM_TOPICS } from "./roomData";
+import { onRoomData, publishRoomData, type RoomMessages } from "./roomData";
 import { DTMF_CODES, type AgentActivity, type MicCheck, type WebCallDriver } from "./webCall";
 import { type Latency } from "../components";
 
@@ -32,22 +32,16 @@ export async function checkMicrophone(): Promise<MicCheck> {
 }
 
 /**
- * One latency message from the voice worker (worker/metrics.py `latency_payload`):
- * `{turn_index, stt_ms, llm_ms, tts_ms, e2e_ms?}`. It names no transcript segment, so the chip goes
- * on the latest agent turn. Null for anything malformed.
+ * The chip for one latency message from the voice worker. It names no transcript segment, so the
+ * chip goes on the latest agent turn. Null for a message with no usable numbers.
  */
-export function parseLatencyMessage(payload: Uint8Array): Latency | null {
-  try {
-    const m = JSON.parse(new TextDecoder().decode(payload)) as Record<string, unknown>;
-    const ms = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
-    const stt = ms(m.stt_ms);
-    const llm = ms(m.llm_ms);
-    const tts = ms(m.tts_ms);
-    if (stt === null || llm === null || tts === null || stt + llm + tts === 0) return null;
-    return { stt, llm, tts };
-  } catch {
-    return null;
-  }
+export function parseLatencyMessage(m: Partial<Record<keyof RoomMessages["latency"], unknown>>): Latency | null {
+  const ms = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+  const stt = ms(m.stt_ms);
+  const llm = ms(m.llm_ms);
+  const tts = ms(m.tts_ms);
+  if (stt === null || llm === null || tts === null || stt + llm + tts === 0) return null;
+  return { stt, llm, tts };
 }
 
 const ACTIVITY: Record<string, AgentActivity> = {
@@ -80,6 +74,11 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
       let hungUp = false;
       const timer: { level?: ReturnType<typeof setInterval>; agentJoin?: ReturnType<typeof setTimeout> } = {};
 
+      const offLatency = onRoomData("latency", (m) => {
+        const latency = parseLatencyMessage(m);
+        if (latency) listener.latency(null, latency);
+      });
+
       const finish = (reason: "user_hangup" | "agent_hangup" | "connection_lost") => {
         if (hungUp) return;
         hungUp = true;
@@ -87,6 +86,7 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
         if (timer.agentJoin) clearTimeout(timer.agentJoin);
         audioEls.forEach((el) => el.remove());
         room.unregisterTextStreamHandler("lk.transcription");
+        offLatency();
         listener.ended(reason);
       };
 
@@ -123,11 +123,6 @@ function liveDriver(createSession: WebCallDriver["createSession"]): WebCallDrive
         if (p.isAgent && state) listener.activity(ACTIVITY[state] ?? "listening");
       });
       room.on(lk.RoomEvent.DataReceived, (payload, _p, _kind, topic) => {
-        if (topic === ROOM_TOPICS.latency) {
-          const latency = parseLatencyMessage(payload);
-          if (latency) listener.latency(null, latency);
-        }
-        // Every topic also reaches onRoomData listeners (the flow builder's node highlight).
         publishRoomData(topic, payload);
       });
       room.on(lk.RoomEvent.ParticipantDisconnected, (p) => {

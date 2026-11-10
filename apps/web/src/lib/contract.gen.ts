@@ -4318,6 +4318,12 @@ export const bodyLimits = {
   }
 } as const;
 
+/** The data-channel topic each worker message schema is published on (`x-data-channel.topic`). */
+export const dataChannelTopics = {
+  "FlowNodeEnteredMessage": "callwright.flow",
+  "TurnLatencyMessage": "cw.turn_latency"
+} as const;
+
 /** The `x-` extensions of each operation, by "METHOD /path". */
 export const operationExtensions = {
   "GET /usage": {
