@@ -262,6 +262,19 @@ def redirected(status: int, method: str, content: bytes | None) -> tuple[str, by
     return method, content
 
 
+# Headers that may follow a redirect to another origin; everything else (credentials, secret
+# headers, custom headers) stays with the origin the author configured.
+CROSS_ORIGIN_HEADERS = frozenset({"accept", "accept-language", "content-type", "user-agent"})
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def origin(url: str) -> tuple[str, str, int | None]:
+    """Scheme, host and port (default port filled in) of ``url``."""
+    parts = urlsplit(url)
+    scheme = parts.scheme.lower()
+    return scheme, (parts.hostname or "").lower(), parts.port or _DEFAULT_PORTS.get(scheme)
+
+
 def blocked_error_code(reason: str) -> ToolErrorCode:
     """Tool error code for a URL the guard refused (``url_guard.UrlNotAllowed.reason``)."""
     return "blocked_address" if reason in ("private_address", "https_required") else "connection_error"
@@ -356,6 +369,7 @@ async def execute(
         return max(0.05, deadline - time.perf_counter())
 
     method, url, content = prepared.method, prepared.url, prepared.content()
+    headers = prepared.headers
     try:
         for hop in range(MAX_REDIRECTS + 1):
             checked = await url_guard.check_url(url, allow_http=allow_http, resolver=resolver)
@@ -366,7 +380,7 @@ async def execute(
                     method,
                     checked,
                     content=content,
-                    headers=prepared.headers,
+                    headers=headers,
                     timeout=left,
                     stream=True,
                 ),
@@ -374,10 +388,16 @@ async def execute(
             )
             location = response.headers.get("location")
             if response.status_code in REDIRECT_STATUSES and location and hop < MAX_REDIRECTS:
-                await response.aclose()
-                url = urljoin(url, location)
-                method, content = redirected(response.status_code, method, content)
-                continue
+                target = urljoin(url, location)
+                cross_origin = origin(target) != origin(url)
+                # A 307/308 would replay the body to another origin: hand back the redirect instead.
+                if not (cross_origin and response.status_code in (307, 308) and content):
+                    await response.aclose()
+                    if cross_origin:
+                        headers = {k: v for k, v in headers.items() if k.lower() in CROSS_ORIGIN_HEADERS}
+                    url = target
+                    method, content = redirected(response.status_code, method, content)
+                    continue
             try:
                 data, too_large = await asyncio.wait_for(read_capped(response.aiter_bytes()), remaining())
             finally:

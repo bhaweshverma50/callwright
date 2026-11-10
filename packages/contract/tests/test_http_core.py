@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 
 from callwright_contract import http_core
@@ -91,3 +92,57 @@ async def test_read_capped() -> None:
     assert await http_core.read_capped(chunks(2)) == (b"x" * 2048, False)
     body, cut = await http_core.read_capped(chunks(70))
     assert cut and len(body) == http_core.MAX_RESPONSE_BYTES
+
+
+# Redirects: credentials and bodies stay with the origin the author configured ----------------
+
+
+async def _follow(
+    method: str, status: int, location: str, *, body: Any = None
+) -> tuple[http_core.Outcome, list[httpx.Request]]:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if len(seen) == 1:
+            return httpx.Response(status, headers={"Location": location})
+        return httpx.Response(200, text="done")
+
+    async def resolver(host: str, port: int) -> list[str]:
+        return ["93.184.216.34"]
+
+    prepared = http_core.PreparedRequest(
+        method,
+        "https://api.example.com/start",
+        {"Authorization": "Bearer s3cret", "X-Api-Key": "k", "Accept": "application/json"},
+        body=body,
+        has_body=body is not None,
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        outcome = await http_core.execute(client, prepared, 5.0, resolver=resolver)
+    return outcome, seen
+
+
+async def test_same_origin_redirect_keeps_headers() -> None:
+    _, seen = await _follow("GET", 302, "/next")
+    assert [r.url.path for r in seen] == ["/start", "/next"]
+    assert seen[1].headers["authorization"] == "Bearer s3cret" and seen[1].headers["x-api-key"] == "k"
+
+
+@pytest.mark.parametrize("location", ["https://other.example.org/x", "https://api.example.com:8443/x"])
+async def test_cross_origin_redirect_drops_credentials(location: str) -> None:
+    outcome, seen = await _follow("GET", 302, location)
+    assert outcome.error_code is None and len(seen) == 2
+    assert "authorization" not in seen[1].headers and "x-api-key" not in seen[1].headers
+    assert seen[1].headers["accept"] == "application/json"
+
+
+async def test_cross_origin_307_with_a_body_is_not_replayed() -> None:
+    outcome, seen = await _follow("POST", 307, "https://other.example.org/x", body={"ssn": "1"})
+    assert len(seen) == 1
+    assert outcome.http_status == 307
+
+
+async def test_same_origin_307_replays_the_body() -> None:
+    _, seen = await _follow("POST", 307, "/again", body={"a": 1})
+    assert len(seen) == 2 and seen[1].method == "POST" and seen[1].content == b'{"a":1}'
