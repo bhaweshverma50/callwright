@@ -18,7 +18,7 @@ from typing import Any
 
 from app.calls.transcript import Message, ToolEvent
 from app.evaluators.judge import PREAMBLE, Usage, json_object, render_call
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.complete import complete_json
 from app.llms.runtime import CompletionClient
 
 PURPOSE = "call_analysis"
@@ -163,25 +163,29 @@ async def extract(
     usage = Usage(model=model)
     system = system_prompt(variables)
     data = render_call(messages, tools)
-    for _attempt in range(2):
-        try:
-            completion = await client.complete(
-                model,
-                [ChatMessage("user", data)],
-                system=system,
-                max_tokens=2000,
-                timeout_s=timeout_s,
-                json_mode=True,
-                purpose=PURPOSE,
-            )
-        except (ModelTimeout, ModelError, TimeoutError) as exc:
-            raise ExtractionFailed(f"The analysis model did not answer: {exc}") from exc
+
+    def usable(text: str) -> dict[str, Any] | None:
+        parsed = json_object(text)
+        return parsed if parsed is not None and (parsed.get("summary") or not messages) else None
+
+    reply = await complete_json(
+        client,
+        model,
+        data,
+        system=system,
+        max_tokens=2000,
+        timeout_s=timeout_s,
+        purpose=PURPOSE,
+        parse=usable,
+    )
+    for completion in reply.completions:
         usage.add(completion, model)
-        parsed = json_object(completion.text)
-        if parsed is not None and (parsed.get("summary") or not messages):
-            summary, sentiment, values = resolve(parsed, variables, caller_spoke)
-            return Extraction(summary or "No conversation was recorded.", sentiment, values, usage)
-    raise ExtractionFailed("The analysis model returned no usable answer")
+    if reply.error is not None:
+        raise ExtractionFailed(f"The analysis model did not answer: {reply.error}") from reply.error
+    if reply.value is None:
+        raise ExtractionFailed("The analysis model returned no usable answer")
+    summary, sentiment, values = resolve(reply.value, variables, caller_spoke)
+    return Extraction(summary or "No conversation was recorded.", sentiment, values, usage)
 
 
 def model_for(config: Mapping[str, Any], fallback: str) -> str:

@@ -17,8 +17,9 @@ from typing import Any
 
 from app.calls.transcript import Message
 from app.evaluators.judge import json_object, neutralise
-from app.llms.adapters.base import ChatMessage, ModelError, ModelTimeout
+from app.llms.adapters.base import ChatMessage
 from app.llms.adapters.fake import PURPOSE_REPLIES
+from app.llms.complete import complete_json
 
 PURPOSE = "persona_extraction"
 SYSTEM = (
@@ -84,27 +85,19 @@ async def extract_brief(
     llm: Any, model: str, messages: Sequence[Message], *, timeout_s: float
 ) -> tuple[dict[str, Any], ExtractionUsage]:
     data = render(messages)
-    inp = out = 0
-    for _attempt in range(2):
-        try:
-            completion = await llm.complete(
-                model,
-                [ChatMessage("user", data)],
-                system=SYSTEM,
-                max_tokens=1200,
-                timeout_s=timeout_s,
-                json_mode=True,
-                purpose=PURPOSE,
-            )
-        except (ModelTimeout, ModelError, TimeoutError) as exc:
-            raise ExtractionFailed(f"The model did not answer: {exc}") from exc
-        inp += completion.input_tokens
-        out += completion.output_tokens
-        parsed = json_object(completion.text)
-        brief = clean_brief(parsed) if parsed else None
-        if brief is not None:
-            return brief, ExtractionUsage(model, inp, out)
-    raise ExtractionFailed("The model could not describe the caller")
+
+    def parse(text: str) -> dict[str, Any] | None:
+        parsed = json_object(text)
+        return clean_brief(parsed) if parsed else None
+
+    reply = await complete_json(
+        llm, model, data, system=SYSTEM, max_tokens=1200, timeout_s=timeout_s, purpose=PURPOSE, parse=parse
+    )
+    if reply.error is not None:
+        raise ExtractionFailed(f"The model did not answer: {reply.error}") from reply.error
+    if reply.value is None:
+        raise ExtractionFailed("The model could not describe the caller")
+    return reply.value, ExtractionUsage(model, reply.input_tokens, reply.output_tokens)
 
 
 def fake_reply(messages: list[ChatMessage], system: str | None) -> str:

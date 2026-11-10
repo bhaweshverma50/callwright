@@ -14,16 +14,18 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
+from functools import partial
 from typing import Any
 
 from app.calls.transcript import Message, ToolEvent
 from app.core.config import Settings
 from app.evaluators.base import Unavailable, Verdict, judge_item_verdict, quote
-from app.llms.adapters.base import ChatMessage, Completion, ModelError, ModelTimeout
+from app.llms.adapters.base import Completion
 from app.llms.client import token_cost
+from app.llms.complete import complete_json
 from app.llms.runtime import CompletionClient
 
 PURPOSE = "eval_judge"
@@ -202,21 +204,25 @@ class Judge:
     def from_settings(cls, client: CompletionClient, settings: Settings) -> Judge:
         return cls(client, timeout_s=settings.eval_timeout_s, cutoff=settings.eval_judge_pass_cutoff)
 
-    async def _complete(self, model: str, system: str, data: str, usage: Usage) -> str:
-        try:
-            completion = await self.client.complete(
-                model,
-                [ChatMessage("user", data)],
-                system=system,
-                max_tokens=1500,
-                timeout_s=self.timeout_s,
-                json_mode=True,
-                purpose=PURPOSE,
-            )
-        except (ModelTimeout, ModelError, TimeoutError) as exc:
-            raise Unavailable(f"The judge model did not answer: {exc}") from exc
-        usage.add(completion, model)
-        return completion.text
+    async def _ask[T](
+        self, model: str, system: str, data: str, usage: Usage, parse: Callable[[str], T | None]
+    ) -> T | None:
+        """The parsed reply, or None when both attempts were unusable; a provider failure raises."""
+        reply = await complete_json(
+            self.client,
+            model,
+            data,
+            system=system,
+            max_tokens=1500,
+            timeout_s=self.timeout_s,
+            purpose=PURPOSE,
+            parse=parse,
+        )
+        for completion in reply.completions:
+            usage.add(completion, model)
+        if reply.error is not None:
+            raise Unavailable(f"The judge model did not answer: {reply.error}") from reply.error
+        return reply.value
 
     async def score_call(
         self,
@@ -231,12 +237,12 @@ class Judge:
         data = render_call(messages, tools, extra)
         valid = {m.index for m in messages}
         usage = Usage(model=model)
-        for _attempt in range(2):
-            text = await self._complete(model, system, data, usage)
-            judgement = parse_call_reply(text, valid, self.cutoff, messages)
-            if judgement is not None:
-                return JudgeResult(judgement, usage)
-        raise Unavailable("The judge returned no usable verdict or rationale")
+        judgement = await self._ask(
+            model, system, data, usage, lambda text: parse_call_reply(text, valid, self.cutoff, messages)
+        )
+        if judgement is None:
+            raise Unavailable("The judge returned no usable verdict or rationale")
+        return JudgeResult(judgement, usage)
 
     async def score_turns(
         self, model: str, *, task: str, messages: Sequence[Message], turns: Sequence[int]
@@ -251,11 +257,8 @@ class Judge:
                 f"{PREAMBLE}\n\nTASK:\n{task}\n\nSCORE: agent lines {', '.join(str(t) for t in batch)}"
                 f"\n\n{TURN_FORMAT}"
             )
-            for _attempt in range(2):
-                parsed = parse_turn_reply(await self._complete(model, system, data, usage), batch)
-                if parsed is not None:
-                    out.extend(parsed)
-                    break
-            else:
+            parsed = await self._ask(model, system, data, usage, partial(parse_turn_reply, wanted=batch))
+            if parsed is None:
                 raise Unavailable("The judge returned no usable per-turn scores")
+            out.extend(parsed)
         return out, usage
