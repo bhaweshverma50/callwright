@@ -177,7 +177,7 @@ export type DriveFolder = S["DriveFolder"];
 
 export const sourceKeys = {
   list: (kbId: string) => ["knowledge", "sources", kbId] as const,
-  detail: (kbId: string, id: string) => ["knowledge", "sources", kbId, id] as const,
+  detail: (kbId: string, id: string, runId = "") => ["knowledge", "sources", kbId, id, runId] as const,
   runs: (kbId: string, id: string, page: number) => ["knowledge", "sources", kbId, id, "runs", page] as const,
   run: (kbId: string, id: string, runId: string) => ["knowledge", "sources", kbId, id, "run", runId] as const,
   folders: (connId: string, parent: string, driveId: string | null) => ["connections", "folders", connId, parent, driveId] as const,
@@ -195,9 +195,10 @@ export function useSources(kbId: string | undefined) {
   });
 }
 
-export function useSource(kbId: string, id: string | undefined) {
+/** One source with its not-imported files. `runId` (the source's latest run) refetches it when a sync finishes. */
+export function useSource(kbId: string, id: string | undefined, runId?: string | null) {
   return useQuery({
-    queryKey: sourceKeys.detail(kbId, id ?? ""),
+    queryKey: sourceKeys.detail(kbId, id ?? "", runId ?? ""),
     queryFn: () => unwrap(api.GET("/knowledge-bases/{kb_id}/sources/{source_id}", { params: { path: { kb_id: kbId, source_id: id! } } })),
     enabled: Boolean(id),
   });

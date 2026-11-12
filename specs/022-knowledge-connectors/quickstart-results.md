@@ -30,7 +30,20 @@ Measured in tests: a no-change sync of a 200-file source makes 3 Drive requests 
 listing), processes nothing, charges nothing and finishes in well under 2 minutes (SC-002). After a
 sync the next one is due within 15 minutes at the default interval (SC-001).
 
+## Part B: real Google account (local stack, 2026-11-12)
+
+Google Cloud project in Testing mode, Web OAuth client, the four scopes, a personal Gmail as test
+user; API, web app and Postgres running locally with `CONNECTORS_DRIVE_MODE=live`.
+
+| Step | Result |
+|---|---|
+| Connect Google (consent with Drive and Sheets ticked) | Connected: token exchange 200, connection created, health Healthy, Drive (read-only) and Sheets shown |
+| Folder browser | Real My Drive folders listed |
+| Add a folder as a source, first sync | Folder listed through Drive v3; 7 files (Colab notebooks, CSV) recorded as not imported, unsupported type; run succeeded |
+| Found and fixed | The source card kept its not-imported list from before the first sync finished; a first sign-in attempt failed with a 400 whose reason was not logged (now logged) |
+
 ## Not yet done
 
-- Quickstart part A by hand against a running local stack (`make api`, `make worker`, `pnpm dev`).
-- Part B with a real Google account (needs the Google Cloud OAuth client, T094).
+- Exporting a real Google Doc and downloading a real PDF, then Sync now after editing the Doc
+  (covered by automated tests against the fake Drive and the HTTP client tests).
+- Scheduled syncs on a running jobs worker (`make worker`); covered by the scheduling tests.
