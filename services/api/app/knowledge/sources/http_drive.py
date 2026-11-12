@@ -132,7 +132,8 @@ class HttpDriveClient:
             },
         )
         if response.status_code != 200:
-            raise OAuthExchangeFailed("Google refused the authorization code")
+            reason = _reason(response) or str(response.status_code)
+            raise OAuthExchangeFailed(f"Google refused the sign-in ({reason}).")
         body = response.json()
         if not body.get("refresh_token"):
             raise OAuthExchangeFailed(

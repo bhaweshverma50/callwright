@@ -9,6 +9,7 @@ emptied because access went away).
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -32,6 +33,8 @@ from app.knowledge.sources.drive import (
     TokenRevoked,
 )
 from app.workspaces.models import Workspace
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,8 @@ def revoked_problem() -> ProblemError:
 
 
 def _oauth_problem(code: str, detail: str) -> ProblemError:
+    # The reason only: never the code, state, tokens or verifier (FR-004).
+    log.warning("google sign-in refused: %s: %s", code, detail)
     return ProblemError(400, code, "Google sign-in failed", detail)
 
 
@@ -121,6 +126,7 @@ async def complete(
             "oauth_exchange_failed", exc.message or "Google refused the sign-in. Try again."
         ) from exc
     if SCOPE_DRIVE not in grant.scopes:
+        log.warning("google sign-in granted scopes: %s", " ".join(grant.scopes))
         await deps.drive.revoke(grant.refresh_token)
         raise _oauth_problem(
             "oauth_scope_missing",

@@ -12,16 +12,32 @@ import { SKIP_REASON, SourceStateBadge, SYNC_INTERVALS } from "../kbStatus";
 import { RemoveSourceDialog } from "./RemoveSourceDialog";
 import { SourceHistoryDrawer } from "./SourceHistoryDrawer";
 
+function lastRunSummary(run: NonNullable<KnowledgeSource["last_run"]>): string {
+  if (run.status === "running") return "Running";
+  const c = run.counts;
+  const parts = [
+    c.added && `${c.added} added`,
+    c.updated && `${c.updated} updated`,
+    c.renamed && `${c.renamed} renamed`,
+    c.archived && `${c.archived} archived`,
+    c.held_back && `${c.held_back} held back`,
+    c.skipped && `${c.skipped} not imported`,
+    c.failed && `${c.failed} failed`,
+  ].filter(Boolean);
+  if (run.status === "failed") return "Failed";
+  return parts.length ? parts.join(", ") : "No changes";
+}
+
 /** One Google Drive source on a knowledge base (022 US2 to US5). */
 export function SourceCard({ kbId, source: s }: { kbId: string; source: KnowledgeSource }) {
   const qc = useQueryClient();
-  const detail = useSource(kbId, s.id);
+  const detail = useSource(kbId, s.id, s.last_run ? `${s.last_run.id}:${s.last_run.status}` : null);
   const [removing, setRemoving] = useState(false);
   const [history, setHistory] = useState(false);
   const [confirmHeld, setConfirmHeld] = useState(false);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: sourceKeys.list(kbId) });
-    qc.invalidateQueries({ queryKey: sourceKeys.detail(kbId, s.id) });
+    qc.invalidateQueries({ queryKey: ["knowledge", "sources", kbId, s.id] });
     qc.invalidateQueries({ queryKey: kbKeys.all });
   };
 
@@ -119,9 +135,7 @@ export function SourceCard({ kbId, source: s }: { kbId: string; source: Knowledg
         {s.last_run && (
           <>
             <dt className="text-fg-3">Last run</dt>
-            <dd className="text-right text-fg">
-              {s.last_run.counts.added} added, {s.last_run.counts.updated} updated, {s.last_run.counts.archived} archived
-            </dd>
+            <dd className="text-right text-fg">{lastRunSummary(s.last_run)}</dd>
           </>
         )}
       </dl>
