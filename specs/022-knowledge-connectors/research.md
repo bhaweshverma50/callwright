@@ -178,9 +178,13 @@ bases, scheduled and manual sync, archive and restore, the mass-archive guard an
 
 - **Decision**:
   - Cron `sync_due` every minute (`second={10}`) calls the `SECURITY DEFINER` function
-    `kb_sources_due(p_now, p_limit 100)` (sources with `next_sync_at <= now`, not running, not
-    paused) and enqueues `sync_source(source_id)` with `job_id = f"kb_sync:{source_id}"`. arq refuses
-    a second job with the same id while one is queued or running.
+    `kb_sources_due(p_now, p_limit 100)` (sources with `next_sync_at <= now` and no live run),
+    moves each one's `next_sync_at` forward by its interval at once (so a source still waiting in
+    the queue is not enqueued again a minute later) and enqueues `sync_source(source_id)`. Each
+    enqueue has its own job id: arq keeps finished job ids for an hour, so a fixed id would block
+    the next sync. The row lock below is what guarantees one sync at a time.
+  - "Sync now" and the first sync claim the source in the request (a `running` run row), and the
+    job continues that run, so the response can return the run.
   - `sync_source` takes the source row `FOR UPDATE SKIP LOCKED`, sets `running_run_id`, and clears
     it at the end. A `running_run_id` older than 30 minutes is treated as stale and replaced.
   - "Sync now" enqueues the same job id; if a run is active it returns 409 `sync_running` with that

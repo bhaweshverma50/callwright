@@ -33,7 +33,7 @@ KbId = Annotated[str, Depends(path_id("kb", "knowledge base", "kb_id"))]
 DocId = Annotated[str, Depends(path_id("doc", "document", "doc_id"))]
 PREVIEW_SEARCHES_PER_MINUTE = 60
 READ_CHUNK = 1024 * 1024
-DocumentStatus = Annotated[str | None, Query(pattern="^(uploaded|processing|ready|failed)$")]
+DocumentStatus = Annotated[str | None, Query(pattern="^(uploaded|processing|ready|failed|archived)$")]
 
 
 async def _kb_body(session: Any, kb: Any) -> dict[str, Any]:
@@ -111,7 +111,8 @@ async def list_documents(
         rows, total = await service.list_documents(
             session, kb_id, status=status, page=page, page_size=page_size
         )
-    return {"items": [service.document_view(d) for d in rows], **page_meta(total, page, page_size)}
+        items = await service.document_views(session, rows)
+    return {"items": items, **page_meta(total, page, page_size)}
 
 
 async def _read_capped(upload: UploadFile) -> bytes:
@@ -169,11 +170,12 @@ async def get_document(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
     async with principal_tx(request, principal) as session:
-        return service.document_view(await service.get_document(session, kb_id, doc_id))
+        [view] = await service.document_views(session, [await service.get_document(session, kb_id, doc_id)])
+        return view
 
 
 @router.delete(
-    "/knowledge-bases/{kb_id}/documents/{doc_id}", status_code=204, responses=problem_responses(404)
+    "/knowledge-bases/{kb_id}/documents/{doc_id}", status_code=204, responses=problem_responses(404, 409)
 )
 async def delete_document(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal

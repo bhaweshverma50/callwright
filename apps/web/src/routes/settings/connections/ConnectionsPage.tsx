@@ -86,8 +86,8 @@ export function ConnectionsPage() {
             </Button>
           }
         >
-          Connect a Google account to keep knowledge bases in step with folders in Google Drive. Callwright asks for read-only Drive access,
-          and for Google Sheets access that stays unused until the Google Sheets tool is turned on.
+          Connect a Google account to keep knowledge bases in step with folders in Google Drive. Callwright asks for read-only Drive access, and for
+          Google Sheets access that stays unused until the Google Sheets tool is turned on.
         </EmptyState>
       ) : (
         <div className="flex max-w-[760px] flex-col gap-4">

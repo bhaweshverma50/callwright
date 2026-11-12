@@ -1,8 +1,11 @@
 import { BookOpenText, FileArrowUp } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Archive,
   Bot,
   ChevronLeft,
+  Cloud,
+  ExternalLink,
   CircleCheck,
   CloudUpload,
   Eye,
@@ -18,6 +21,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
+  archiveDocument,
   deleteDocument,
   deleteKnowledgeBase,
   documentUrl,
@@ -27,9 +31,13 @@ import {
   kbUsersOf,
   type KnowledgeBase,
   MAX_FILE_MB,
+  daysLeft,
   reprocessDocument,
+  restoreDocument,
+  useArchivedDocuments,
   useDocuments,
   useKnowledgeBase,
+  useSources,
 } from "../../api/knowledge";
 import { isApiError } from "../../api/errors";
 import { problemMessage } from "../../api/problems";
@@ -47,6 +55,7 @@ import {
   Panel,
   Skeleton,
   Table,
+  Tabs,
   Tooltip,
   TruncatedText,
   WorkLayout,
@@ -58,6 +67,8 @@ import { CreateKbDialog } from "./CreateKbDialog";
 import { DocStatusBadge, ERROR_HELP, KbStatusBadge } from "./kbStatus";
 import { SearchPreviewPanel } from "./SearchPreviewPanel";
 import { UploadDialog } from "./UploadDialog";
+import { AddDriveSourceDialog } from "./sources/AddDriveSourceDialog";
+import { SourceCard } from "./sources/SourceCard";
 import { agentPath, KNOWLEDGE_PATH } from "../../lib/paths";
 import { formatBytes, timeAgo } from "../../lib/format";
 
@@ -104,6 +115,10 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
   const [inUse, setInUse] = useState<KbUser[] | null>(null);
   const [deletingDoc, setDeletingDoc] = useState<KbDocument | null>(null);
   const docs = useDocuments(kb.id);
+  const sources = useSources(kb.id);
+  const [addingSource, setAddingSource] = useState(false);
+  const [tab, setTab] = useState<"documents" | "archived">("documents");
+  const archived = useArchivedDocuments(kb.id, tab === "archived");
 
   const refresh = () => void qc.invalidateQueries({ queryKey: kbKeys.all });
   const removeDoc = useMutation({
@@ -114,6 +129,22 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
       toast({ tone: "success", title: "Document deleted", description: `${d.display_name ?? d.file_name} no longer appears in searches.` });
     },
     onError: (e) => toast({ tone: "error", title: "Not deleted", description: problemMessage(e, "document") }),
+  });
+  const restore = useMutation({
+    mutationFn: (d: KbDocument) => restoreDocument(kb.id, d.id),
+    onSuccess: (_r, d) => {
+      refresh();
+      toast({ tone: "success", title: "Document restored", description: `${d.display_name ?? d.file_name} is back in search.` });
+    },
+    onError: (e) => toast({ tone: "error", title: "Not restored", description: problemMessage(e, "document") }),
+  });
+  const archiveKept = useMutation({
+    mutationFn: (d: KbDocument) => archiveDocument(kb.id, d.id),
+    onSuccess: (_r, d) => {
+      refresh();
+      toast({ tone: "success", title: "Document archived", description: `${d.display_name ?? d.file_name} left search for 30 days.` });
+    },
+    onError: (e) => toast({ tone: "error", title: "Not archived", description: problemMessage(e, "document") }),
   });
   const retry = useMutation({
     mutationFn: (d: KbDocument) => reprocessDocument(kb.id, d.id),
@@ -182,6 +213,23 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
                 <DocStatusBadge status={d.status} />
               </span>
             </span>
+            {d.source && (
+              <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-fg-3">
+                <Badge icon={<Cloud />}>Google Drive</Badge>
+                {d.source.file_missing && <Badge tone="warning">File missing in Drive</Badge>}
+                <span className="truncate">{d.source.path ? `${d.source.root_name}/${d.source.path}` : d.source.root_name}</span>
+                {d.source.web_view_link && (
+                  <a
+                    href={d.source.web_view_link}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="link-underline inline-flex items-center gap-0.5 whitespace-nowrap text-accent-text"
+                  >
+                    Open in Drive <ExternalLink className="size-3" aria-hidden />
+                  </a>
+                )}
+              </span>
+            )}
             {d.status === "failed" && (
               <span className="flex max-w-[420px] items-start gap-1.5 whitespace-normal text-[12px] leading-snug text-danger-text">
                 <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
@@ -209,9 +257,14 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
     },
     {
       key: "added",
-      header: "Added",
+      header: tab === "archived" ? "Deleted in" : "Added",
       hideOnNarrow: true,
-      cell: (d) => <span className="whitespace-nowrap text-fg-2">{timeAgo(d.created_at)}</span>,
+      cell: (d) =>
+        d.status === "archived" ? (
+          <span className="whitespace-nowrap text-fg-2">{daysLeft(d.archived_at)} days</span>
+        ) : (
+          <span className="whitespace-nowrap text-fg-2">{timeAgo(d.created_at)}</span>
+        ),
     },
     {
       key: "actions",
@@ -233,13 +286,37 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
           <IconButton label={`Open ${d.display_name ?? d.file_name}`} className="size-8" onClick={() => void preview(d)}>
             <Eye className="size-4" aria-hidden />
           </IconButton>
-          <IconButton
-            label={`Delete ${d.display_name ?? d.file_name}`}
-            className="size-8 hover:bg-danger-soft hover:text-danger-text"
-            onClick={() => setDeletingDoc(d)}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </IconButton>
+          {d.status === "archived" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<RotateCw aria-hidden />}
+              pending={restore.isPending && restore.variables?.id === d.id}
+              onClick={() => restore.mutate(d)}
+            >
+              Restore
+            </Button>
+          ) : d.source?.file_missing ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Archive aria-hidden />}
+              pending={archiveKept.isPending && archiveKept.variables?.id === d.id}
+              onClick={() => archiveKept.mutate(d)}
+            >
+              Archive
+            </Button>
+          ) : (
+            !d.managed && (
+              <IconButton
+                label={`Delete ${d.display_name ?? d.file_name}`}
+                className="size-8 hover:bg-danger-soft hover:text-danger-text"
+                onClick={() => setDeletingDoc(d)}
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </IconButton>
+            )
+          )}
         </div>
       ),
     },
@@ -284,6 +361,9 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
               </MenuItem>
             </MenuContent>
           </Menu>
+          <Button icon={<Cloud aria-hidden />} onClick={() => setAddingSource(true)}>
+            Add Google Drive source
+          </Button>
           <Button variant="primary" icon={<CloudUpload aria-hidden />} onClick={() => setUploadOpen(true)}>
             Upload
           </Button>
@@ -299,8 +379,42 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
 
       <WorkLayout
         main={
-          <Panel title="Documents" description="Newest first. Status updates on its own while documents are processed." bodyClassName="p-0">
-            {docs.isError ? (
+          <Panel
+            title="Documents"
+            description={
+              tab === "archived"
+                ? "Archived documents are out of search and are deleted 30 days after archiving."
+                : "Newest first. Status updates on its own while documents are processed."
+            }
+            bodyClassName="p-0"
+            actions={
+              kb.archived_count > 0 || tab === "archived" ? (
+                <Tabs
+                  value={tab}
+                  onValueChange={(v) => setTab(v as "documents" | "archived")}
+                  density="compact"
+                  aria-label="Document view"
+                  items={[
+                    { value: "documents", label: "Documents", count: kb.document_count },
+                    { value: "archived", label: "Archived", icon: <Archive />, count: kb.archived_count },
+                  ]}
+                >
+                  {null}
+                </Tabs>
+              ) : undefined
+            }
+          >
+            {tab === "archived" ? (
+              <Table
+                columns={columns}
+                rows={archived.data?.items}
+                rowKey={(d) => d.id}
+                loading={archived.isPending}
+                skeletonRows={2}
+                caption="Archived documents"
+                empty={<EmptyState compact icon={<Archive />} title="Nothing archived" />}
+              />
+            ) : docs.isError ? (
               <EmptyState compact icon={<BookOpenText weight="duotone" />} title="Documents did not load">
                 {problemMessage(docs.error, "document")}
               </EmptyState>
@@ -340,6 +454,26 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
         }
         inspector={
           <>
+            <Panel
+              title="Google Drive sources"
+              description="Folders this knowledge base keeps in step with. Calls only search the synced copy."
+              icon={<Cloud />}
+            >
+              {sources.data?.items.length ? (
+                <div className="flex flex-col gap-3">
+                  {sources.data.items.map((src) => (
+                    <SourceCard key={src.id} kbId={kb.id} source={src} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-start gap-2 text-[13px] text-fg-3">
+                  <p>Sync a Drive folder instead of uploading files by hand. Edits in Drive show up here on their own.</p>
+                  <Button size="sm" icon={<Cloud />} onClick={() => setAddingSource(true)}>
+                    Add Google Drive source
+                  </Button>
+                </div>
+              )}
+            </Panel>
             <SearchPreviewPanel kbId={kb.id} disabled={!kb.attachable} />
             {kb.processing_count > 0 && (
               <Tooltip content="Large documents can take up to two minutes.">
@@ -362,6 +496,7 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
         kbId={kb.id}
         kbName={kb.name}
       />
+      <AddDriveSourceDialog open={addingSource} onOpenChange={setAddingSource} kbId={kb.id} kbName={kb.name} />
       <CreateKbDialog open={renaming} onOpenChange={setRenaming} existing={kb} onCreated={() => refresh()} />
       <Dialog
         open={deletingDoc !== null}

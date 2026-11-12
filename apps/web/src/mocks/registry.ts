@@ -8,7 +8,7 @@ import { callbackHandlers, resetMockCallbacks } from "./callbacks/handlers";
 import { callerLanguageHandlers, resetMockCallerLanguages } from "./callerLanguage/handlers";
 import { callHandlers, resetMockCalls } from "./calls/handlers";
 import { channelHandlers, resetMockChannels } from "./channels/handlers";
-import { connectorHandlers } from "./connectors/handlers";
+import { connectorHandlers, sourceHandlers } from "./connectors/handlers";
 import { resetConnectorStore } from "./connectors/store";
 import { resetMockDb } from "./db";
 import { flowHandlers, resetMockFlows } from "./flows";
@@ -26,6 +26,7 @@ export const allHandlers = [
   ...callHandlers,
   ...toolHandlers,
   ...connectorHandlers,
+  ...sourceHandlers,
   ...channelHandlers,
   ...flowHandlers,
   ...qualityHandlers,

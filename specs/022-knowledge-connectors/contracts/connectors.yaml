@@ -710,3 +710,6 @@ components:
         root_name: {type: string}
         path: {type: string}
         web_view_link: {type: [string, 'null']}
+        file_missing:
+          type: boolean
+          description: Restored by the operator while its Drive file is still missing; it can be archived again

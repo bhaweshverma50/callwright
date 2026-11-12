@@ -153,3 +153,11 @@ def extract(data: bytes, file_type: str) -> Extracted:
             "Too little text could be read. Scanned documents are not supported; upload a text PDF or DOCX.",
         )
     return result
+
+
+def extract_text(data: bytes, file_type: str) -> str:
+    """All readable text, whitespace-normalised, with no minimum (022: the sync compares a
+    re-exported Google Doc's words with the last version's). Raises ``ExtractError`` for files
+    that cannot be opened."""
+    result = _pdf(data) if file_type == "pdf" else _docx(data)
+    return " ".join(" ".join(b.text.split()) for b in result.blocks if b.text.strip())

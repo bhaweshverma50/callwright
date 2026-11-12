@@ -184,32 +184,32 @@ function SettingsForm({ me }: { me: Me }) {
       }
       inspector={
         <div className="flex flex-col gap-4">
-        <Panel
-          title="Connections"
-          description="Google Drive and Sheets accounts your knowledge bases sync from."
-          icon={<Cloud />}
-          actions={
-            <Button asChild size="sm">
-              <Link to={CONNECTIONS_PATH}>Manage</Link>
-            </Button>
-          }
-        >
-          <p className="text-[13px] text-fg-3">Connect Google once, then add Drive folders as sources on any knowledge base.</p>
-        </Panel>
-        <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
-          <PanelRows as="dl">
-            <InfoRow
-              icon={<Gauge />}
-              label="Concurrent calls"
-              hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
-            >
-              <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
-            </InfoRow>
-            <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>
-              {me.user.email}
-            </InfoRow>
-          </PanelRows>
-        </Panel>
+          <Panel
+            title="Connections"
+            description="Google Drive and Sheets accounts your knowledge bases sync from."
+            icon={<Cloud />}
+            actions={
+              <Button asChild size="sm">
+                <Link to={CONNECTIONS_PATH}>Manage</Link>
+              </Button>
+            }
+          >
+            <p className="text-[13px] text-fg-3">Connect Google once, then add Drive folders as sources on any knowledge base.</p>
+          </Panel>
+          <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
+            <PanelRows as="dl">
+              <InfoRow
+                icon={<Gauge />}
+                label="Concurrent calls"
+                hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
+              >
+                <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
+              </InfoRow>
+              <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>
+                {me.user.email}
+              </InfoRow>
+            </PanelRows>
+          </Panel>
         </div>
       }
     />

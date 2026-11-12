@@ -15,7 +15,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from opentelemetry import trace
 from redis.asyncio import Redis
@@ -143,7 +143,7 @@ async def kb_views(session: AsyncSession, kbs: Sequence[KnowledgeBase]) -> list[
     return [kb_view(k, counts.get(k.id, Counts())) for k in kbs]
 
 
-def document_view(doc: Document) -> dict[str, Any]:
+def document_view(doc: Document, source: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "id": doc.id,
         "kb_id": doc.kb_id,
@@ -162,8 +162,38 @@ def document_view(doc: Document) -> dict[str, Any]:
         "processed_at": doc.processed_at.isoformat() if doc.processed_at else None,
         "archived_at": doc.archived_at.isoformat() if doc.archived_at else None,
         "managed": doc.source_id is not None,
-        "source": None,
+        "source": source,
     }
+
+
+async def document_sources(session: AsyncSession, docs: Sequence[Document]) -> dict[str, dict[str, Any]]:
+    """``Document.source`` (022) for the synced documents among ``docs``."""
+    ids = [d.id for d in docs if d.source_id is not None]
+    if not ids:
+        return {}
+    rows = await session.execute(
+        text("""
+        SELECT f.doc_id, s.id, s.root_name, f.path, f.web_view_link, f.state = 'kept'
+          FROM kb_source_files f JOIN kb_sources s ON s.id = f.source_id
+         WHERE f.doc_id = ANY(CAST(:ids AS text[]))
+        """),
+        {"ids": ids},
+    )
+    return {
+        str(doc_id): {
+            "source_id": source_id,
+            "root_name": root_name,
+            "path": path or "",
+            "web_view_link": link,
+            "file_missing": bool(missing),
+        }
+        for doc_id, source_id, root_name, path, link, missing in rows.all()
+    }
+
+
+async def document_views(session: AsyncSession, docs: Sequence[Document]) -> list[dict[str, Any]]:
+    sources = await document_sources(session, docs)
+    return [document_view(d, sources.get(d.id)) for d in docs]
 
 
 def _name_taken(name: str) -> ProblemError:
@@ -291,8 +321,8 @@ async def list_documents(
 ) -> tuple[list[Document], int]:
     await get_kb(session, kb_id)
     query = select(Document).where(Document.kb_id == kb_id)
-    if status:
-        query = query.where(Document.status == status)
+    # 022: archived documents are listed only when asked for (the Archived tab).
+    query = query.where(Document.status == status) if status else query.where(Document.status != "archived")
     total = int((await session.execute(select(func.count()).select_from(query.subquery()))).scalar_one())
     rows = (
         await session.execute(
@@ -389,33 +419,85 @@ async def create_document(
             extra={"matches": [m.__dict__ for m in matches if m.reason == "same_content"]},
         )
     if upload.replace_doc_id is not None:
-        await get_document(session, kb_id, upload.replace_doc_id)
-    count = int(
-        (
-            await session.execute(select(func.count()).select_from(Document).where(Document.kb_id == kb_id))
-        ).scalar_one()
-    )
-    if count >= MAX_DOCS_PER_KB:
-        raise quota_exceeded(f"A knowledge base can hold at most {MAX_DOCS_PER_KB} documents.")
-    used = int((await session.execute(select(func.coalesce(func.sum(Document.file_size), 0)))).scalar_one())
-    if used + len(data) > MAX_WORKSPACE_BYTES:
-        raise quota_exceeded("This workspace has reached its 1 GB document storage limit.")
-    doc_id = new_id("doc")
-    file_name = upload.file_name.strip()[:255] or f"document.{file_type}"
-    key = storage.document_key(actor.workspace_id, kb_id, doc_id, sha256, file_type)
-    doc = Document(
-        id=doc_id,
+        target = await get_document(session, kb_id, upload.replace_doc_id)
+        if target.source_id is not None:
+            raise managed_by_source()
+    problem = await _quota_problem(session, kb_id, len(data), replacing=False)
+    if problem:
+        raise quota_exceeded(QUOTA_DETAIL[problem])
+    doc = await _store_document(
+        session,
+        store,
         workspace_id=actor.workspace_id,
         kb_id=kb_id,
-        file_name=file_name,
-        display_name=(upload.display_name or "").strip()[:255] or file_name,
+        data=data,
+        file_type=file_type,
+        sha256=sha256,
+        file_name=upload.file_name,
+        display_name=upload.display_name,
+        replace_doc_id=upload.replace_doc_id,
+        uploaded_by=actor.user_id,
+    )
+    return doc
+
+
+QUOTA_DETAIL = {
+    "kb_full": f"A knowledge base can hold at most {MAX_DOCS_PER_KB} documents.",
+    "workspace_storage_full": "This workspace has reached its 1 GB document storage limit.",
+}
+
+
+async def _quota_problem(session: AsyncSession, kb_id: str, size: int, *, replacing: bool) -> str | None:
+    """``kb_full`` or ``workspace_storage_full`` when one more document does not fit. A new
+    version replacing a document does not count against the per-knowledge-base limit."""
+    if not replacing:
+        count = int(
+            (
+                await session.execute(
+                    select(func.count()).select_from(Document).where(Document.kb_id == kb_id)
+                )
+            ).scalar_one()
+        )
+        if count >= MAX_DOCS_PER_KB:
+            return "kb_full"
+    used = int((await session.execute(select(func.coalesce(func.sum(Document.file_size), 0)))).scalar_one())
+    if used + size > MAX_WORKSPACE_BYTES:
+        return "workspace_storage_full"
+    return None
+
+
+async def _store_document(
+    session: AsyncSession,
+    store: ObjectStore,
+    *,
+    workspace_id: str,
+    kb_id: str,
+    data: bytes,
+    file_type: str,
+    sha256: str,
+    file_name: str,
+    display_name: str | None,
+    replace_doc_id: str | None,
+    uploaded_by: str | None,
+    source_id: str | None = None,
+) -> Document:
+    doc_id = new_id("doc")
+    name = file_name.strip()[:255] or f"document.{file_type}"
+    key = storage.document_key(workspace_id, kb_id, doc_id, sha256, file_type)
+    doc = Document(
+        id=doc_id,
+        workspace_id=workspace_id,
+        kb_id=kb_id,
+        file_name=name,
+        display_name=(display_name or "").strip()[:255] or name,
         file_type=file_type,
         file_size=len(data),
         sha256=sha256,
         storage_key=key,
         status="uploaded",
-        replaces_doc_id=upload.replace_doc_id,
-        uploaded_by=actor.user_id,
+        replaces_doc_id=replace_doc_id,
+        uploaded_by=uploaded_by,
+        source_id=source_id,
     )
     session.add(doc)
     await session.flush()
@@ -427,8 +509,101 @@ async def create_document(
     return doc
 
 
+def managed_by_source() -> ProblemError:
+    return ProblemError(
+        409,
+        "managed_by_source",
+        "Managed by Google Drive",
+        "This document comes from Google Drive. Change it in Drive, or remove the source.",
+    )
+
+
+IntakeOutcome = Literal[
+    "created", "duplicate", "kb_full", "workspace_storage_full", "unsupported_type", "too_large", "empty"
+]
+
+
+@dataclass(frozen=True)
+class IntakeResult:
+    outcome: IntakeOutcome
+    doc: Document | None = None
+    duplicate_of: Document | None = None
+
+
+async def intake(
+    session: AsyncSession,
+    store: ObjectStore,
+    *,
+    workspace_id: str,
+    kb_id: str,
+    data: bytes,
+    file_name: str,
+    source_id: str,
+    display_name: str | None = None,
+    replace_doc_id: str | None = None,
+) -> IntakeResult:
+    """A synced file into 005's pipeline (022 research R7). Same checks as an upload, but the
+    upload-only warnings are skipped and every refusal is an outcome the sync records, never an
+    error. The caller enqueues ingestion of ``result.doc`` after commit."""
+    if not data:
+        return IntakeResult("empty")
+    if len(data) > MAX_FILE_BYTES:
+        return IntakeResult("too_large")
+    file_type = sniff(data)
+    if file_type is None:
+        return IntakeResult("unsupported_type")
+    sha256 = hashlib.sha256(data).hexdigest()
+    same = (
+        await session.execute(select(Document).where(Document.kb_id == kb_id, Document.sha256 == sha256))
+    ).scalar_one_or_none()
+    if same is not None:
+        return IntakeResult("duplicate", duplicate_of=same)
+    problem = await _quota_problem(session, kb_id, len(data), replacing=replace_doc_id is not None)
+    if problem == "kb_full":
+        return IntakeResult("kb_full")
+    if problem == "workspace_storage_full":
+        return IntakeResult("workspace_storage_full")
+    doc = await _store_document(
+        session,
+        store,
+        workspace_id=workspace_id,
+        kb_id=kb_id,
+        data=data,
+        file_type=file_type,
+        sha256=sha256,
+        file_name=file_name,
+        display_name=display_name,
+        replace_doc_id=replace_doc_id,
+        uploaded_by=None,
+        source_id=source_id,
+    )
+    return IntakeResult("created", doc=doc)
+
+
+async def archive_documents(session: AsyncSession, doc_ids: Sequence[str]) -> int:
+    """Take documents out of search for 30 days (022 FR-013). Chunks and the stored file stay, so
+    a restore needs no processing. Returns how many were archived."""
+    if not doc_ids:
+        return 0
+    stamp = datetime.now(UTC)
+    rows = list(
+        (
+            await session.execute(
+                select(Document).where(Document.id.in_(list(doc_ids)), Document.status != "archived")
+            )
+        ).scalars()
+    )
+    for doc in rows:
+        doc.status = "archived"
+        doc.archived_at = stamp
+    await session.flush()
+    return len(rows)
+
+
 async def delete_document(session: AsyncSession, store: ObjectStore, kb_id: str, doc_id: str) -> None:
     doc = await get_document(session, kb_id, doc_id)
+    if doc.source_id is not None:
+        raise managed_by_source()
     key = doc.storage_key
     await session.delete(doc)
     await session.flush()

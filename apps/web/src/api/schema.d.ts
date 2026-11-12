@@ -7955,6 +7955,8 @@ export interface components {
             root_name: string;
             path: string;
             web_view_link?: string | null;
+            /** @description Restored by the operator while its Drive file is still missing; it can be archived again */
+            file_missing?: boolean;
         };
         /**
          * @description Assignable roles; owner is not assignable (see transferOwnership)
@@ -10635,6 +10637,7 @@ export interface operations {
     listDocuments: {
         parameters: {
             query?: {
+                /** @description Without it, archived documents are left out (022); `archived` lists only them */
                 status?: components["schemas"]["DocumentStatus"];
                 page?: components["parameters"]["Page"];
                 page_size?: components["parameters"]["PageSize"];
