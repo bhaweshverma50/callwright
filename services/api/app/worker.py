@@ -73,7 +73,11 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 def job_functions() -> list[Function]:
     """Each job under the name callers enqueue it by."""
-    return [func(cast(WorkerCoroutine, fn), name=name) for name, fn in features.job_functions().items()]
+    timeouts = features.job_timeouts()
+    return [
+        func(cast(WorkerCoroutine, fn), name=name, timeout=timeouts.get(name))
+        for name, fn in features.job_functions().items()
+    ]
 
 
 class WorkerSettings:

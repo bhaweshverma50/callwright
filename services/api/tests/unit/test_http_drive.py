@@ -181,3 +181,38 @@ async def test_network_errors_become_temporary_after_retries() -> None:
     with pytest.raises(GoogleTemporary):
         await client.list_tree(TOKEN, DriveRoot("folder", "x", "X"), True)
     assert len(seen) == 4
+
+
+async def test_ids_that_could_change_a_drive_query_never_reach_google() -> None:
+    seen: list[httpx.Request] = []
+    client = _client(lambda _: httpx.Response(200, json={"files": []}), seen)
+    for bad in ("x' in parents or 'root", "a b", "fld'1"):
+        with pytest.raises(RootUnavailable):
+            await client.list_folders(TOKEN, bad, None, None)
+        with pytest.raises(RootUnavailable):
+            await client.list_folders(TOKEN, "root", bad, None)
+        with pytest.raises(RootUnavailable):
+            await client.get_root(TOKEN, "folder", bad, None)
+    assert seen == []
+
+
+@pytest.mark.parametrize("status", [400, 403, 404])
+async def test_unusable_folders_are_unavailable_not_errors(status: int) -> None:
+    client = _client(lambda _: _error(status), [])
+    with pytest.raises(RootUnavailable):
+        await client.list_folders(TOKEN, "fld1", None, None)
+    with pytest.raises(GoogleTemporary):
+        await client.list_shared_drives(TOKEN, None)
+
+
+async def test_unmapped_statuses_are_temporary_not_http_errors() -> None:
+    client = _client(lambda _: httpx.Response(409, json={}), [])
+    with pytest.raises(GoogleTemporary):
+        await client.list_folders(TOKEN, "fld1", None, None)
+    with pytest.raises(GoogleTemporary):
+        await client.download(TOKEN, "file1")
+    with pytest.raises(GoogleTemporary):
+        await client.list_shared_drives(TOKEN, None)
+    unreadable = _client(lambda _: httpx.Response(400, json={}), [])
+    with pytest.raises(FileUnavailable):
+        await unreadable.download(TOKEN, "file1")

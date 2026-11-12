@@ -120,9 +120,16 @@ async def unshare(body: Unshare) -> dict[str, Any]:
     return _tree()
 
 
+Scope = Literal["drive", "sheets"]
+
+
+def _all_scopes() -> list[Scope]:
+    return ["drive", "sheets"]
+
+
 class Consent(BaseModel):
     decline: bool = False
-    scopes: list[Literal["drive", "sheets"]] = Field(default_factory=lambda: ["drive", "sheets"])
+    scopes: list[Scope] = Field(default_factory=_all_scopes)
 
 
 @router.post("/consent")

@@ -3,7 +3,8 @@
 One instance per process (``shared_fake()``) so the dev routes, the API and an inline sync all see
 the same tree. Switches simulate the failures in research R6: ``revoked`` (token refresh refused),
 ``outage`` (every call rate limited), ``unshared`` (a root folder or drive no longer readable),
-``corrupt`` (a file downloads as garbage), ``unavailable`` (one file 403s) and ``fail_after_items``
+``corrupt`` (a file downloads as garbage), ``unavailable`` (one file 403s), ``flaky`` (one
+file's downloads keep failing with a temporary error) and ``fail_after_items``
 (the listing breaks part way, like a failure on page 3 of 5). ``calls`` counts every request, so a
 test can prove that calls never reach Drive (SC-004).
 """
@@ -78,6 +79,7 @@ class FakeDriveClient:
         self.unshared: set[str] = set()
         self.corrupt: set[str] = set()
         self.unavailable: set[str] = set()
+        self.flaky: set[str] = set()
         self.fail_after_items: int | None = None
         self.item_cap: int | None = None
         self.revoked_tokens: list[str] = []
@@ -317,6 +319,8 @@ class FakeDriveClient:
         node = self.nodes.get(file_id)
         if node is None or node.trashed or file_id in self.unavailable:
             raise FileUnavailable("The file could not be read")
+        if file_id in self.flaky:
+            raise GoogleTemporary("Google kept failing this download")
         return node
 
     async def download(self, token: AccessToken, file_id: str) -> bytes:

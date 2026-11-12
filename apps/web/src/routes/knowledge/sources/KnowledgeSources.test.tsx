@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { KbDocument } from "../../../api/knowledge";
 import { connectorStore, seedConnection, seedSource } from "../../../mocks/connectors/store";
-import { json, url } from "../../../mocks/http";
+import { json, problemDetail, url } from "../../../mocks/http";
 import { server } from "../../../mocks/node";
 import { seedKb, toolStore } from "../../../mocks/tools";
 import { renderApp, signInDemo } from "../../../test/render";
@@ -173,6 +173,90 @@ describe("Google Drive sources on a knowledge base (022 US2 to US5)", () => {
     await user.click(screen.getByRole("button", { name: "Restore" }));
     expect(await screen.findByText("Document restored")).toBeInTheDocument();
     expect(toolStore.docs[0]!.status).toBe("ready");
+  });
+});
+
+describe("PR #1 review fixes", () => {
+  it("lists every archived document and says when the list did not load", async () => {
+    await signInDemo();
+    const kb = seedKb("Clinic policies");
+    const src = seedSource(kb.id);
+    for (let n = 0; n < 130; n++) {
+      syncedDoc(kb.id, src.id, { display_name: `Note ${n}`, status: "archived", archived_at: new Date().toISOString() });
+    }
+    const user = userEvent.setup();
+    renderApp(`/knowledge-base/${kb.id}`);
+    await user.click(await screen.findByRole("tab", { name: /Archived/ }));
+    const table = await screen.findByRole("table", { name: "Archived documents" });
+    await waitFor(() => expect(within(table).getAllByRole("button", { name: "Restore" })).toHaveLength(130));
+  });
+
+  it("says when the archived list did not load", async () => {
+    await signInDemo();
+    const kb = seedKb("Clinic policies");
+    const src = seedSource(kb.id);
+    syncedDoc(kb.id, src.id, { status: "archived", archived_at: new Date().toISOString() });
+    server.use(
+      http.get(url("/knowledge-bases/:id/documents"), ({ request }) =>
+        new URL(request.url).searchParams.get("status") === "archived"
+          ? problemDetail(500, "internal_error", "boom")
+          : json({ items: [], total: 0, page: 1, page_size: 50, total_pages: 1 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp(`/knowledge-base/${kb.id}`);
+    await user.click(await screen.findByRole("tab", { name: /Archived/ }));
+    expect(await screen.findByText("Archived documents did not load", {}, { timeout: 8000 })).toBeInTheDocument();
+  }, 12_000);
+
+  it("refreshes the documents when a sync finishes", async () => {
+    await signInDemo();
+    const kb = seedKb("Clinic policies");
+    const src = seedSource(kb.id, { state: "syncing" });
+    renderApp(`/knowledge-base/${kb.id}`);
+    expect(await screen.findByText(src.root_name)).toBeInTheDocument();
+    syncedDoc(kb.id, src.id, { display_name: "Telehealth" });
+    Object.assign(src, { state: "healthy" });
+    expect((await screen.findAllByText("Telehealth", {}, { timeout: 6000 })).length).toBeGreaterThan(0);
+  }, 10_000);
+
+  it("never offers to replace a document synced from Drive", async () => {
+    await signInDemo();
+    const kb = seedKb("Clinic policies");
+    const src = seedSource(kb.id);
+    const doc = syncedDoc(kb.id, src.id, { file_name: "policy.pdf", display_name: "policy.pdf" });
+    let uploaded = false;
+    const append = vi.spyOn(FormData.prototype, "append");
+    server.use(
+      http.post(url("/knowledge-bases/:id/documents/check-duplicate"), () =>
+        json({
+          verdict: "warn_same_name",
+          matches: [{ kb_id: kb.id, kb_name: kb.name, doc_id: doc.id, file_name: "policy.pdf", reason: "same_name", managed: true }],
+        }),
+      ),
+      http.post(url("/knowledge-bases/:id/documents"), ({ request }) => {
+        uploaded = request.method === "POST";
+        return json({ ...doc, id: "doc_01J00000000000000000000NEW", managed: false, source: null }, 202);
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/knowledge-base/${kb.id}`);
+    await user.click(await screen.findByRole("button", { name: "Upload" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = dialog.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["%PDF-1.4 new"], "policy.pdf", { type: "application/pdf" });
+    // jsdom's File has no arrayBuffer(); the dialog hashes the file before checking duplicates.
+    Object.defineProperty(file, "arrayBuffer", { value: async () => new TextEncoder().encode("%PDF-1.4 new").buffer });
+    await user.upload(input, file);
+    expect(await within(dialog).findByText(/synced from Google Drive/)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("radiogroup", { name: "What to do with the existing document" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Upload and replace" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(uploaded).toBe(true));
+    const fields = append.mock.calls.map(([name]) => name);
+    append.mockRestore();
+    expect(fields).toContain("file");
+    expect(fields).not.toContain("replace_doc_id");
   });
 });
 

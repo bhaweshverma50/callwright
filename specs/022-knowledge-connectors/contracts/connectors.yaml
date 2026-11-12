@@ -202,11 +202,11 @@ paths:
         - name: parent
           in: query
           description: Folder id; `root` for My Drive
-          schema: {type: string, default: root, maxLength: 200}
+          schema: {type: string, default: root, maxLength: 200, pattern: '^[A-Za-z0-9_-]+$'}
         - name: drive_id
           in: query
           description: Shared drive id when browsing inside a shared drive
-          schema: {type: string, maxLength: 200}
+          schema: {type: string, maxLength: 200, pattern: '^[A-Za-z0-9_-]+$'}
         - {$ref: '#/components/parameters/DrivePageToken'}
       responses:
         '200':
@@ -598,8 +598,8 @@ components:
       properties:
         connection_id: {type: string, pattern: '^conn_'}
         root_kind: {type: string, enum: [folder, shared_drive]}
-        root_id: {type: string, minLength: 1, maxLength: 200}
-        drive_id: {type: [string, 'null'], maxLength: 200}
+        root_id: {type: string, minLength: 1, maxLength: 200, pattern: '^[A-Za-z0-9_-]+$'}
+        drive_id: {type: [string, 'null'], maxLength: 200, pattern: '^[A-Za-z0-9_-]+$'}
         include_subfolders: {type: boolean, default: true}
         interval_minutes: {type: integer, minimum: 5, maximum: 1440, default: 15}
 

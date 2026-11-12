@@ -12,6 +12,7 @@ import asyncio
 import base64
 import json
 import random
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -22,6 +23,7 @@ from app.knowledge.sources.drive import (
     FOLDER,
     MAX_ITEMS,
     AccessToken,
+    DriveError,
     DriveFolder,
     DriveItem,
     DriveRoot,
@@ -65,6 +67,28 @@ def _is_temporary(response: httpx.Response) -> bool:
     if response.status_code == 429 or response.status_code >= 500:
         return True
     return response.status_code == 403 and _reason(response) in TEMPORARY_REASONS
+
+
+GONE = "The folder was deleted or is no longer shared with this account"
+DRIVE_ID = re.compile(r"^[A-Za-z0-9_-]{1,200}$")
+
+
+def _drive_id(value: str, missing: type[DriveError]) -> str:
+    """Drive ids are letters, digits, ``-`` and ``_``. Anything else is refused before it can
+    reach a ``q`` expression (no quoting tricks, no widened queries)."""
+    if value != "root" and not DRIVE_ID.match(value):
+        raise missing("Not a Google Drive id")
+    return value
+
+
+def _ok(response: httpx.Response, missing: type[DriveError], message: str) -> None:
+    """Map a non-success answer: 400, 403 and 404 mean the item is not available to this account,
+    anything else is temporary. Never lets ``httpx.HTTPStatusError`` escape."""
+    if response.is_success:
+        return
+    if response.status_code in (400, 403, 404):
+        raise missing(message)
+    raise GoogleTemporary(f"Google answered {response.status_code}")
 
 
 def _id_token_claims(id_token: str, client_id: str) -> dict[str, Any]:
@@ -177,20 +201,17 @@ class HttpDriveClient:
     async def get_root(
         self, token: AccessToken, root_kind: RootKind, root_id: str, drive_id: str | None
     ) -> DriveRoot:
+        _drive_id(root_id, RootUnavailable)
         if root_kind == "shared_drive":
             response = await self._drive(token, f"drives/{root_id}", {"fields": "id,name"})
-            if response.status_code in (403, 404):
-                raise RootUnavailable("The shared drive is not available to this account")
-            response.raise_for_status()
+            _ok(response, RootUnavailable, "The shared drive is not available to this account")
             return DriveRoot("shared_drive", root_id, str(response.json()["name"]), root_id)
         response = await self._drive(
             token,
             f"files/{root_id}",
             {"fields": "id,name,mimeType,trashed,driveId", "supportsAllDrives": "true"},
         )
-        if response.status_code in (403, 404):
-            raise RootUnavailable("The folder was deleted or is no longer shared with this account")
-        response.raise_for_status()
+        _ok(response, RootUnavailable, GONE)
         body = response.json()
         if body.get("trashed") or body.get("mimeType") != FOLDER:
             raise RootUnavailable("The folder was deleted or is no longer shared with this account")
@@ -229,9 +250,7 @@ class HttpDriveClient:
                         f"'{folder}' in parents and trashed = false", root.drive_id, page_token, FILE_FIELDS
                     ),
                 )
-                if response.status_code in (403, 404):
-                    raise RootUnavailable("The folder was deleted or is no longer shared with this account")
-                response.raise_for_status()
+                _ok(response, RootUnavailable, GONE)
                 body = response.json()
                 for f in body.get("files", []):
                     seen += 1
@@ -261,6 +280,9 @@ class HttpDriveClient:
     async def list_folders(
         self, token: AccessToken, parent: str, drive_id: str | None, page_token: str | None
     ) -> FolderPage:
+        _drive_id(parent, RootUnavailable)
+        if drive_id:
+            _drive_id(drive_id, RootUnavailable)
         start = drive_id if (drive_id and parent == "root") else parent
         params = self._list_params(
             f"'{start}' in parents and mimeType = '{FOLDER}' and trashed = false",
@@ -270,9 +292,7 @@ class HttpDriveClient:
         )
         params.update(pageSize=100, orderBy="name")
         response = await self._drive(token, "files", params)
-        if response.status_code in (403, 404):
-            raise RootUnavailable("The folder is not available to this account")
-        response.raise_for_status()
+        _ok(response, RootUnavailable, "The folder is not available to this account")
         body = response.json()
         folders = [
             DriveFolder(str(f["id"]), str(f["name"]), "folder", drive_id) for f in body.get("files", [])
@@ -284,7 +304,7 @@ class HttpDriveClient:
         if page_token:
             params["pageToken"] = page_token
         response = await self._drive(token, "drives", params)
-        response.raise_for_status()
+        _ok(response, GoogleTemporary, "Google refused to list shared drives")
         body = response.json()
         drives = [
             DriveFolder(str(d["id"]), str(d["name"]), "shared_drive", str(d["id"]))
@@ -294,16 +314,12 @@ class HttpDriveClient:
 
     async def download(self, token: AccessToken, file_id: str) -> bytes:
         response = await self._drive(token, f"files/{file_id}", {"alt": "media", "supportsAllDrives": "true"})
-        if response.status_code in (403, 404):
-            raise FileUnavailable("The file could not be read")
-        response.raise_for_status()
+        _ok(response, FileUnavailable, "The file could not be read")
         return response.content
 
     async def export_docx(self, token: AccessToken, file_id: str) -> bytes:
         response = await self._drive(token, f"files/{file_id}/export", {"mimeType": DOCX})
         if response.status_code == 403 and _reason(response) == "exportSizeLimitExceeded":
             raise ExportTooLarge("The Google Doc is larger than Drive's 10 MB export limit")
-        if response.status_code in (403, 404):
-            raise FileUnavailable("The file could not be read")
-        response.raise_for_status()
+        _ok(response, FileUnavailable, "The file could not be read")
         return response.content

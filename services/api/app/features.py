@@ -130,6 +130,10 @@ def job_functions() -> dict[str, JobFunction]:
     return jobs
 
 
+def job_timeouts() -> dict[str, int]:
+    return {name: seconds for feature in FEATURES for name, seconds in feature.job_timeouts.items()}
+
+
 def crons() -> list[CronJob]:
     return [cron for feature in FEATURES for cron in feature.crons]
 

@@ -30,6 +30,9 @@ from app.knowledge.sources.sync import SyncDeps, run_sync
 log = logging.getLogger(__name__)
 
 JOB_NAME = "sync_source"
+# A long first sync gets 25 minutes per job (arq's default is 5). A run cut off here is finished
+# as failed with everything applied so far kept; the next sync carries on from there.
+JOB_TIMEOUT_S = 25 * 60
 DUE_LIMIT = 100
 ARCHIVE_DAYS = 30
 RUN_DAYS = 90

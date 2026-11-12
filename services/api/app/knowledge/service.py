@@ -341,6 +341,8 @@ class DuplicateMatch:
     doc_id: str
     file_name: str
     reason: str
+    # 022: synced from a Drive source, so it cannot be replaced by an upload.
+    managed: bool = False
 
 
 async def duplicate_matches(
@@ -364,6 +366,7 @@ async def duplicate_matches(
             doc_id=doc.id,
             file_name=doc.file_name,
             reason="same_content" if doc.sha256 == sha256 else "same_name",
+            managed=doc.source_id is not None,
         )
         for doc, kb_name in rows
     ]
@@ -598,6 +601,23 @@ async def archive_documents(session: AsyncSession, doc_ids: Sequence[str]) -> in
         doc.archived_at = stamp
     await session.flush()
     return len(rows)
+
+
+def unarchive(doc: Document) -> bool:
+    """Bring an archived document back to the status it really has: ``ready`` only when it was
+    processed into chunks, ``failed`` when processing failed, otherwise ``uploaded`` (it was
+    archived before or while it was processed). Returns True when the caller must start
+    ingestion after commit."""
+    doc.archived_at = None
+    if doc.error_code:
+        doc.status = "failed"
+        return False
+    if doc.processed_at is not None and doc.chunk_count:
+        doc.status = "ready"
+        return False
+    doc.status = "uploaded"
+    doc.attempts = 0
+    return True
 
 
 async def delete_document(session: AsyncSession, store: ObjectStore, kb_id: str, doc_id: str) -> None:

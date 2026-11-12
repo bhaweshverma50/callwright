@@ -292,8 +292,12 @@ export function useSharedDrives(connectionId: string | undefined) {
 export function useArchivedDocuments(id: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: ["knowledge", "documents", id ?? "", "archived"] as const,
-    queryFn: () =>
-      unwrap(api.GET("/knowledge-bases/{kb_id}/documents", { params: { path: { kb_id: id! }, query: { status: "archived", page_size: 100 } } })),
+    // Every page: a confirmed mass archive can leave more than one page of archived documents.
+    queryFn: async () => ({
+      items: await fetchAll((query) =>
+        unwrap(api.GET("/knowledge-bases/{kb_id}/documents", { params: { path: { kb_id: id! }, query: { ...query, status: "archived" } } })),
+      ),
+    }),
     enabled: Boolean(id) && enabled,
   });
 }

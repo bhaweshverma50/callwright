@@ -105,8 +105,10 @@ bases, scheduled and manual sync, archive and restore, the mass-archive guard an
 - **Decision**: The refresh token is stored with `put_secret` under the name
   `conn:{connection_id}:refresh` (AAD binds it to the workspace and name). Access tokens are never
   stored: each sync, test or folder browse exchanges the refresh token for an access token (valid
-  about an hour) and keeps it in memory for that operation. Removing a connection revokes the
-  refresh token at Google (best effort) and deletes the secret.
+  about an hour) and keeps it in memory for that operation. Removing a connection deletes the
+  secret and revokes the refresh token at Google (best effort), unless another connection, in
+  any workspace, still uses the same Google account: Google ends the app's whole grant for an
+  account when one of its tokens is revoked (PR #1 review).
 - **Rationale**: Principle V and FR-004. One token request per sync is negligible.
 - **Alternatives**: Caching access tokens in Redis: a second encrypted store for no measurable
   gain at a 15-minute cadence.
@@ -186,7 +188,11 @@ bases, scheduled and manual sync, archive and restore, the mass-archive guard an
   - "Sync now" and the first sync claim the source in the request (a `running` run row), and the
     job continues that run, so the response can return the run.
   - `sync_source` takes the source row `FOR UPDATE SKIP LOCKED`, sets `running_run_id`, and clears
-    it at the end. A `running_run_id` older than 30 minutes is treated as stale and replaced.
+    it at the end. A running sync refreshes `running_since` every minute; a claim silent for 10
+    minutes is stale and replaced. Only the run that holds the claim may clear it or set the
+    source's state, and a run that lost its claim stops at its next heartbeat. The job has a
+    25-minute timeout; a timed-out or cancelled run is recorded as failed and releases the claim
+    (what it applied is kept, and the next sync carries on).
   - "Sync now" enqueues the same job id; if a run is active it returns 409 `sync_running` with that
     run (FR-010, acceptance 3.7).
   - `next_sync_at = finished_at + interval_minutes`, interval 5 to 1,440, default 15.

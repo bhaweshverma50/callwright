@@ -13,8 +13,8 @@ class SourceCreate(BaseModel):
 
     connection_id: str = Field(pattern=r"^conn_")
     root_kind: Literal["folder", "shared_drive"]
-    root_id: str = Field(min_length=1, max_length=200)
-    drive_id: str | None = Field(default=None, max_length=200)
+    root_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_-]+$")
+    drive_id: str | None = Field(default=None, max_length=200, pattern=r"^[A-Za-z0-9_-]+$")
     include_subfolders: bool = True
     interval_minutes: int = Field(default=15, ge=5, le=1440)
 

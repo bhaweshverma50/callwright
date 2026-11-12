@@ -10961,6 +10961,8 @@ export interface operations {
                             file_name: string;
                             /** @enum {string} */
                             reason: "same_content" | "same_name";
+                            /** @description Synced from a Drive source (022), so an upload cannot replace it. */
+                            managed: boolean;
                         }[];
                     };
                 };

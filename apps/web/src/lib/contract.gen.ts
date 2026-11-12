@@ -1650,10 +1650,12 @@ export const schemaLimits = {
     },
     "root_id": {
       "minLength": 1,
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
     },
     "drive_id": {
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
     },
     "include_subfolders": {
       "default": true
@@ -3257,10 +3259,12 @@ export const queryLimits = {
   "GET /connections/{connection_id}/drive/folders": {
     "parent": {
       "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$",
       "default": "root"
     },
     "drive_id": {
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
     },
     "page_token": {
       "maxLength": 1024
@@ -4338,10 +4342,12 @@ export const bodyLimits = {
     },
     "root_id": {
       "minLength": 1,
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
     },
     "drive_id": {
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
     },
     "include_subfolders": {
       "default": true

@@ -226,13 +226,16 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [kb_id, kb_name, doc_id, file_name, reason]
+                      required: [kb_id, kb_name, doc_id, file_name, reason, managed]
                       properties:
                         kb_id: {type: string}
                         kb_name: {type: string}
                         doc_id: {type: string}
                         file_name: {type: string}
                         reason: {type: string, enum: [same_content, same_name]}
+                        managed:
+                          type: boolean
+                          description: Synced from a Drive source (022), so an upload cannot replace it.
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
 
   /knowledge-bases/{kb_id}/documents/{doc_id}:

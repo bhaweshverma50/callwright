@@ -4,6 +4,7 @@ revoke, remove, activity, and tokens never leaving the secrets store."""
 from __future__ import annotations
 
 import logging
+import uuid
 
 import httpx
 import pytest
@@ -123,7 +124,8 @@ async def test_test_marks_a_revoked_connection(
 async def test_remove_refused_while_in_use_then_revokes(
     client: httpx.AsyncClient, app: FastAPI, account: Account, fake_drive: FakeDriveClient
 ) -> None:
-    conn = await connect(client, account)
+    subject = f"subject-{uuid.uuid4().hex}"
+    conn = await connect(client, account, code=f"account:{subject}:solo@example.com")
     kb_id, source_id = "kb_01JX00000000000000000000AA", "ksrc_01JX00000000000000000000AA"
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
         await session.execute(
@@ -146,13 +148,36 @@ async def test_remove_refused_while_in_use_then_revokes(
         await session.execute(text("delete from kb_sources"))
     removed = await client.delete(f"/v1/connections/{conn['id']}", headers=account.headers)
     assert removed.status_code == 204
-    assert fake_drive.revoked_tokens == ["fake-refresh-fake-google-subject-1"]
+    assert fake_drive.revoked_tokens == [f"fake-refresh-{subject}"]
     async with app.state.db.transaction(workspace_id=account.workspace_id) as session:
         left = (
             await session.execute(text("select count(*) from secrets where name like 'conn:%'"))
         ).scalar_one()
     assert left == 0
     assert (await _activity(app, account))[-1] == "connection_removed"
+
+
+async def test_a_google_account_shared_with_another_workspace_is_not_revoked(
+    client: httpx.AsyncClient, app: FastAPI, account: Account, fake_drive: FakeDriveClient
+) -> None:
+    """Google revokes the whole grant for an account when one of its refresh tokens is revoked, so
+    removing one workspace's connection must not end another workspace's (PR #1 review)."""
+    subject = f"subject-{uuid.uuid4().hex}"
+    code = f"account:{subject}:shared@example.com"
+    other = await signup(client, app)
+    mine = await connect(client, account, code=code)
+    theirs = await connect(client, other, code=code)
+    removed = await client.delete(f"/v1/connections/{mine['id']}", headers=account.headers)
+    assert removed.status_code == 204
+    assert fake_drive.revoked_tokens == []
+    # A sign-in that is refused (wrong account on Reconnect) does not revoke a shared account either.
+    mine = await connect(client, account, code="account:another-subject:someone@example.com")
+    refused = await complete(client, account, await start(client, account, mine["id"]), code=code)
+    assert refused.json()["code"] == "oauth_account_mismatch"
+    assert fake_drive.revoked_tokens == []
+    gone = await client.delete(f"/v1/connections/{theirs['id']}", headers=other.headers)
+    assert gone.status_code == 204
+    assert fake_drive.revoked_tokens == [f"fake-refresh-{subject}"]
 
 
 async def test_tokens_never_reach_logs(
