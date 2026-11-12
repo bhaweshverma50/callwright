@@ -10,13 +10,13 @@ from __future__ import annotations
 import contextlib
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.connectors import oauth, service
 from app.connectors.schemas import CompleteBody, StartBody
 from app.core.auth import CurrentPrincipal, Principal, principal_tx
-from app.core.errors import problem_responses
+from app.core.errors import ProblemError, not_found, problem_responses
 from app.core.ids import path_id
 from app.core.secrets import key_wrapper
 from app.knowledge.sources import drive_client
@@ -125,3 +125,79 @@ async def test_connection(
         conn = await service.test(session, d, await service.get_connection(session, connection_id))
         users = (await service.users_of(session, [conn.id])).get(conn.id, [])
         return service.view(conn, len(users))
+
+
+async def _browse_token(request: Request, principal: Principal, connection_id: str) -> Any:
+    from app.knowledge.sources.drive import GoogleTemporary, TokenRevoked
+
+    d = deps(request)
+    service.ensure_configured(d.settings)
+    async with principal_tx(request, principal) as session:
+        conn = await service.get_connection(session, connection_id)
+        if conn.health == "revoked":
+            raise service.revoked_problem()
+        try:
+            return d.drive, await service.access_token(session, d, conn)
+        except TokenRevoked:
+            revoked = True
+        except GoogleTemporary as exc:
+            raise google_unavailable() from exc
+    if revoked:
+        raise service.revoked_problem()
+
+
+def google_unavailable() -> ProblemError:
+    return ProblemError(
+        502, "google_unavailable", "Google unavailable", "Google did not answer or rate limited the request."
+    )
+
+
+def _page(folders: Any) -> dict[str, Any]:
+    return {
+        "items": [
+            {"id": f.id, "name": f.name, "kind": f.kind, "drive_id": f.drive_id} for f in folders.items
+        ],
+        "next_page_token": folders.next_page_token,
+    }
+
+
+@router.get(
+    "/connections/{connection_id}/drive/shared-drives", responses=problem_responses(401, 404, 409, 502)
+)
+async def list_shared_drives(
+    connection_id: ConnectionId,
+    request: Request,
+    principal: CurrentPrincipal,
+    page_token: Annotated[str | None, Query(max_length=1024)] = None,
+) -> dict[str, Any]:
+    from app.knowledge.sources.drive import GoogleTemporary, TokenRevoked
+
+    drive, token = await _browse_token(request, principal, connection_id)
+    try:
+        return _page(await drive.list_shared_drives(token, page_token))
+    except TokenRevoked as exc:
+        raise service.revoked_problem() from exc
+    except GoogleTemporary as exc:
+        raise google_unavailable() from exc
+
+
+@router.get("/connections/{connection_id}/drive/folders", responses=problem_responses(401, 404, 409, 502))
+async def list_drive_folders(
+    connection_id: ConnectionId,
+    request: Request,
+    principal: CurrentPrincipal,
+    parent: Annotated[str, Query(max_length=200)] = "root",
+    drive_id: Annotated[str | None, Query(max_length=200)] = None,
+    page_token: Annotated[str | None, Query(max_length=1024)] = None,
+) -> dict[str, Any]:
+    from app.knowledge.sources.drive import GoogleTemporary, RootUnavailable, TokenRevoked
+
+    drive, token = await _browse_token(request, principal, connection_id)
+    try:
+        return _page(await drive.list_folders(token, parent, drive_id, page_token))
+    except TokenRevoked as exc:
+        raise service.revoked_problem() from exc
+    except RootUnavailable as exc:
+        raise not_found("folder") from exc
+    except GoogleTemporary as exc:
+        raise google_unavailable() from exc

@@ -5437,6 +5437,7 @@ paths:
       parameters:
       - name: status
         in: query
+        description: Without it, archived documents are left out (022); `archived` lists only them
         schema:
           $ref: '#/components/schemas/DocumentStatus'
       - $ref: '#/components/parameters/Page'
@@ -13343,6 +13344,10 @@ components:
           type:
           - string
           - 'null'
+        file_missing:
+          type: boolean
+          description: Restored by the operator while its Drive file is still missing; it can be archived
+            again
     DocumentStatus:
       type: string
       description: '`archived` (022) documents are out of search and restorable for 30 days'

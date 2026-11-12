@@ -79,6 +79,7 @@ class FakeDriveClient:
         self.corrupt: set[str] = set()
         self.unavailable: set[str] = set()
         self.fail_after_items: int | None = None
+        self.item_cap: int | None = None
         self.revoked_tokens: list[str] = []
         self.calls = 0
         self._ids = itertools.count(1)
@@ -276,6 +277,7 @@ class FakeDriveClient:
         self._call()
         if root.id in self.unshared:
             raise RootUnavailable("The folder was deleted or is no longer shared with this account")
+        max_items = min(max_items, self.item_cap or max_items)
         items: list[DriveItem] = []
         seen = 0
         queue: list[tuple[str, str]] = [(root.id, "")]

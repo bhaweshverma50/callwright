@@ -165,3 +165,140 @@ export function saveKnowledgeBase(existingId: string | null, body: { name: strin
 export function searchKnowledgeBase(kbId: string, query: string) {
   return unwrap(api.POST("/knowledge-bases/{kb_id}/search", { params: { path: { kb_id: kbId } }, body: { query, top_k: 4 } }));
 }
+
+// ---- Google Drive sources (spec 022, contracts/connectors.yaml) ------------------------------
+
+export type KnowledgeSource = S["KnowledgeSource"];
+export type KnowledgeSourceDetail = S["KnowledgeSourceDetail"];
+export type SourceFileIssue = S["SourceFileIssue"];
+export type SyncRun = S["SyncRun"];
+export type SyncRunDetail = S["SyncRunDetail"];
+export type DriveFolder = S["DriveFolder"];
+
+export const sourceKeys = {
+  list: (kbId: string) => ["knowledge", "sources", kbId] as const,
+  detail: (kbId: string, id: string) => ["knowledge", "sources", kbId, id] as const,
+  runs: (kbId: string, id: string, page: number) => ["knowledge", "sources", kbId, id, "runs", page] as const,
+  run: (kbId: string, id: string, runId: string) => ["knowledge", "sources", kbId, id, "run", runId] as const,
+  folders: (connId: string, parent: string, driveId: string | null) => ["connections", "folders", connId, parent, driveId] as const,
+  sharedDrives: (connId: string) => ["connections", "shared-drives", connId] as const,
+};
+
+const busy = (s: KnowledgeSource) => s.state === "pending" || s.state === "syncing";
+
+export function useSources(kbId: string | undefined) {
+  return useQuery({
+    queryKey: sourceKeys.list(kbId ?? ""),
+    queryFn: () => unwrap(api.GET("/knowledge-bases/{kb_id}/sources", { params: { path: { kb_id: kbId! } } })),
+    enabled: Boolean(kbId),
+    refetchInterval: (q) => (q.state.data?.items.some(busy) ? 3000 : false),
+  });
+}
+
+export function useSource(kbId: string, id: string | undefined) {
+  return useQuery({
+    queryKey: sourceKeys.detail(kbId, id ?? ""),
+    queryFn: () => unwrap(api.GET("/knowledge-bases/{kb_id}/sources/{source_id}", { params: { path: { kb_id: kbId, source_id: id! } } })),
+    enabled: Boolean(id),
+  });
+}
+
+export function createSource(
+  kbId: string,
+  body: { connection_id: string; root_kind: "folder" | "shared_drive"; root_id: string; drive_id?: string | null; include_subfolders?: boolean },
+) {
+  return unwrap(api.POST("/knowledge-bases/{kb_id}/sources", { params: { path: { kb_id: kbId } }, body }));
+}
+
+export function updateSource(kbId: string, id: string, body: { include_subfolders?: boolean; interval_minutes?: number }) {
+  return unwrap(api.PATCH("/knowledge-bases/{kb_id}/sources/{source_id}", { params: { path: { kb_id: kbId, source_id: id } }, body }));
+}
+
+export async function deleteSource(kbId: string, id: string, documents: "keep" | "archive"): Promise<void> {
+  await unwrap(
+    api.DELETE("/knowledge-bases/{kb_id}/sources/{source_id}", { params: { path: { kb_id: kbId, source_id: id }, query: { documents } } }),
+  );
+}
+
+export function syncSource(kbId: string, id: string) {
+  return unwrap(api.POST("/knowledge-bases/{kb_id}/sources/{source_id}/sync", { params: { path: { kb_id: kbId, source_id: id } } }));
+}
+
+export function decideHeldArchive(kbId: string, id: string, decision: "confirm" | "cancel") {
+  return unwrap(
+    api.POST("/knowledge-bases/{kb_id}/sources/{source_id}/held-archive/{decision}", {
+      params: { path: { kb_id: kbId, source_id: id, decision } },
+    }),
+  );
+}
+
+export function useSyncRuns(kbId: string, id: string | undefined, page = 1) {
+  return useQuery({
+    queryKey: sourceKeys.runs(kbId, id ?? "", page),
+    queryFn: () =>
+      unwrap(
+        api.GET("/knowledge-bases/{kb_id}/sources/{source_id}/runs", {
+          params: { path: { kb_id: kbId, source_id: id! }, query: { page, page_size: 20 } },
+        }),
+      ),
+    enabled: Boolean(id),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useSyncRun(kbId: string, id: string, runId: string | null) {
+  return useQuery({
+    queryKey: sourceKeys.run(kbId, id, runId ?? ""),
+    queryFn: () =>
+      unwrap(
+        api.GET("/knowledge-bases/{kb_id}/sources/{source_id}/runs/{run_id}", {
+          params: { path: { kb_id: kbId, source_id: id, run_id: runId! } },
+        }),
+      ),
+    enabled: Boolean(runId),
+  });
+}
+
+export function restoreDocument(kbId: string, docId: string) {
+  return unwrap(api.POST("/knowledge-bases/{kb_id}/documents/{doc_id}/restore", { params: { path: { kb_id: kbId, doc_id: docId } } }));
+}
+
+export function archiveDocument(kbId: string, docId: string) {
+  return unwrap(api.POST("/knowledge-bases/{kb_id}/documents/{doc_id}/archive", { params: { path: { kb_id: kbId, doc_id: docId } } }));
+}
+
+export function useDriveFolders(connectionId: string | undefined, parent: string, driveId: string | null) {
+  return useQuery({
+    queryKey: sourceKeys.folders(connectionId ?? "", parent, driveId),
+    queryFn: () =>
+      unwrap(
+        api.GET("/connections/{connection_id}/drive/folders", {
+          params: { path: { connection_id: connectionId! }, query: { parent, ...(driveId ? { drive_id: driveId } : {}) } },
+        }),
+      ),
+    enabled: Boolean(connectionId),
+  });
+}
+
+export function useSharedDrives(connectionId: string | undefined) {
+  return useQuery({
+    queryKey: sourceKeys.sharedDrives(connectionId ?? ""),
+    queryFn: () => unwrap(api.GET("/connections/{connection_id}/drive/shared-drives", { params: { path: { connection_id: connectionId! } } })),
+    enabled: Boolean(connectionId),
+  });
+}
+
+export function useArchivedDocuments(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["knowledge", "documents", id ?? "", "archived"] as const,
+    queryFn: () =>
+      unwrap(api.GET("/knowledge-bases/{kb_id}/documents", { params: { path: { kb_id: id! }, query: { status: "archived", page_size: 100 } } })),
+    enabled: Boolean(id) && enabled,
+  });
+}
+
+/** Days left before an archived document is deleted for good (30 days after archiving). */
+export function daysLeft(archivedAt: string | null | undefined, now = Date.now()): number {
+  if (!archivedAt) return 30;
+  return Math.max(0, 30 - Math.floor((now - new Date(archivedAt).getTime()) / 86_400_000));
+}

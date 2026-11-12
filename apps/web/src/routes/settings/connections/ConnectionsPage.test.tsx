@@ -38,7 +38,11 @@ describe("ConnectionsPage (022 US1)", () => {
   it("offers Reconnect for a revoked connection and when Sheets was not granted", async () => {
     await signInDemo();
     seedConnection({ health: "revoked", health_reason: "invalid_grant" });
-    seedConnection({ account_email: "second@example.com", sheets_access: false, scopes: ["openid", "email", "https://www.googleapis.com/auth/drive.readonly"] });
+    seedConnection({
+      account_email: "second@example.com",
+      sheets_access: false,
+      scopes: ["openid", "email", "https://www.googleapis.com/auth/drive.readonly"],
+    });
     renderApp("/settings/connections");
     expect(await screen.findByText("Revoked")).toBeInTheDocument();
     expect(screen.getByText("Sheets access not granted")).toBeInTheDocument();

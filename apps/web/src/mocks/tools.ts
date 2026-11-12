@@ -69,7 +69,8 @@ export function seedKb(name: string, docs: { name: string; status: KbDocument["s
 }
 
 function derive(kb: KnowledgeBase): KnowledgeBase {
-  const docs = toolStore.docs.filter((d) => d.kb_id === kb.id);
+  const all = toolStore.docs.filter((d) => d.kb_id === kb.id);
+  const docs = all.filter((d) => d.status !== "archived");
   const ready = docs.filter((d) => d.status === "ready").length;
   const processing = docs.filter((d) => d.status === "uploaded" || d.status === "processing").length;
   const failed = docs.filter((d) => d.status === "failed").length;
@@ -79,7 +80,8 @@ function derive(kb: KnowledgeBase): KnowledgeBase {
     ready_count: ready,
     processing_count: processing,
     failed_count: failed,
-    total_bytes: docs.reduce((n, d) => n + d.file_size, 0),
+    archived_count: all.length - docs.length,
+    total_bytes: all.reduce((n, d) => n + d.file_size, 0),
     status,
     attachable: ready > 0,
   });
@@ -132,12 +134,20 @@ export const toolHandlers = [
     const kb = toolStore.kbs.find((k) => k.id === params.id);
     return kb ? json(derive(kb)) : problem(404, "not_found", "Not found");
   }),
-  http.get(url("/knowledge-bases/:id/documents"), ({ params, request }) =>
-    json(
+  http.get(url("/knowledge-bases/:id/documents"), ({ params, request }) => {
+    const status = new URL(request.url).searchParams.get("status");
+    return json(
       page(
-        toolStore.docs.filter((d) => d.kb_id === params.id),
+        toolStore.docs.filter((d) => d.kb_id === params.id && (status ? d.status === status : d.status !== "archived")),
         request,
       ),
-    ),
-  ),
+    );
+  }),
+  http.post(url("/knowledge-bases/:id/documents/:docId/restore"), ({ params }) => {
+    const doc = toolStore.docs.find((d) => d.id === params.docId);
+    if (!doc) return problem(404, "not_found", "Not found");
+    if (doc.status !== "archived") return problem(409, "not_archived", "Not archived");
+    Object.assign(doc, { status: "ready", archived_at: null });
+    return json(doc);
+  }),
 ];
