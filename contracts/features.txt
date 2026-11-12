@@ -12,3 +12,4 @@
 011-callbacks
 012-caller-language
 013-guided-setup
+022-knowledge-connectors

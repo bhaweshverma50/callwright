@@ -1,7 +1,8 @@
-# Specification Quality Checklist: Knowledge connectors and integrations
+# Specification Quality Checklist: Google Drive knowledge sync (022)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-05
+**Updated**: 2026-11-12 (scope narrowed to Google Drive sync and a minimal Connections page)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,14 +32,14 @@
 
 ## Notes
 
-- Validated 2026-11-05. No clarification markers: Drive as the only v1 source, Google Docs read
-  as text, Sheets and Slides skipped, remote MCP servers only, and fixed breaker timings are
-  documented assumptions.
-- "OAuth", "service account", "MCP" and "Google Drive" name the outside systems and credential
-  kinds the operator works with, not implementation choices. Change-feed polling and hashing are
-  described as observable behaviour (unchanged files are not re-processed), not as a design.
-- FR-034 to FR-036 (billing, tenant data, audit) reuse 005, 001 and 018 behaviour and are checked
-  there.
-- Defaults are Callwright's own targets: sync every 15 minutes, at most 20% archived per sync (at
-  least 2 always allowed), 30-day restore window, 90-day run history, breaker 3 failures in 30 s
-  for 15 s, 20 s on overload, 15 minutes on authentication failure, and daily MCP re-list.
+- Scope narrowed from the 2026-11-05 draft: MCP tools, summary cards, non-Google connection kinds,
+  circuit breakers and moving HTTP tool secrets onto connections are deferred and listed under
+  "Scope of this version" and "Out of scope".
+- Google names its read-only Drive access a restricted scope; the spec records the verification
+  needed before general release as an assumption, not an open question.
+- Needs attention and audit history (018) are not built yet, so the spec shows attention states on
+  the source, knowledge base and Connections page, and joins 018 when it lands.
+- Validation passed on the first iteration.
+- 2026-11-12: Sheets access added to the connection scope (requested now, unused until the Google
+  Sheets tool spec). Spec, research (R4, R16, R17a), data model, contract and quickstart updated;
+  validation re-run and still passing.

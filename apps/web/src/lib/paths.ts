@@ -7,6 +7,8 @@ import { scalarLimits } from "./contract.gen";
 export const DASHBOARD_PATH = "/dashboard";
 export const BILLING_PATH = "/billing";
 export const SETTINGS_PATH = "/settings";
+export const CONNECTIONS_PATH = `${SETTINGS_PATH}/connections`;
+export const CONNECTIONS_CALLBACK_PATH = `${CONNECTIONS_PATH}/callback`;
 export const AGENTS_PATH = "/agents";
 export const CALLS_PATH = "/calls";
 export const CALLBACKS_PATH = `${CALLS_PATH}/callbacks`;

@@ -1,4 +1,4 @@
-import { CircleCheck, CircleDashed, CircleX, LoaderCircle, TriangleAlert } from "lucide-react";
+import { Archive, CircleCheck, CircleDashed, CircleX, LoaderCircle, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import type { DocumentStatus, KnowledgeBase } from "../../api/knowledge";
 import { Badge, type Tone } from "../../components";
@@ -25,6 +25,7 @@ const DOC_STATUS: Record<DocumentStatus, { label: string; tone: Tone; icon: Reac
   processing: { label: "Processing", tone: "accent", icon: <LoaderCircle className="animate-spin" /> },
   ready: { label: "Ready", tone: "success", icon: <CircleCheck /> },
   failed: { label: "Failed", tone: "danger", icon: <CircleX /> },
+  archived: { label: "Archived", tone: "neutral", icon: <Archive /> },
 };
 
 export function DocStatusBadge({ status }: { status: DocumentStatus }) {

@@ -21,6 +21,7 @@ from app.callbacks.install import FEATURE as callbacks
 from app.caller_language.install import FEATURE as caller_language
 from app.calls.install import FEATURE as calls
 from app.channels.install import FEATURE as channels
+from app.connectors.install import FEATURE as connectors
 from app.core.config import Settings
 from app.core.feature import Feature, JobFunction, Runtime
 from app.dashboard.install import FEATURE as dashboard
@@ -74,6 +75,7 @@ FEATURES: tuple[Feature, ...] = (
     voices,
     prompt_ai,
     tools,
+    connectors,
     knowledge,
     channels,
     outbound,

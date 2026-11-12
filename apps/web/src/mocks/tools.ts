@@ -44,6 +44,8 @@ export function seedKb(name: string, docs: { name: string; status: KbDocument["s
     ready_count: 0,
     processing_count: 0,
     failed_count: 0,
+    archived_count: 0,
+    source_count: 0,
     total_bytes: 0,
     agent_count: 0,
     created_at: now(),
