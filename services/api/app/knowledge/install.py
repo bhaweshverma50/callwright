@@ -18,5 +18,5 @@ FEATURE = Feature(
     routers=(router, internal_router),
     install=install,
     jobs={JOB_NAME: ingest_document},
-    id_prefixes=frozenset({"kb", "doc"}),
+    id_prefixes=frozenset({"kb", "doc", "ksrc", "ksr"}),
 )

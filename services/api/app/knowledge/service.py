@@ -75,6 +75,8 @@ class Counts:
     failed_count: int = 0
     total_bytes: int = 0
     agent_count: int = 0
+    archived_count: int = 0
+    source_count: int = 0
 
     @property
     def status(self) -> str:
@@ -96,13 +98,15 @@ async def counts_for(session: AsyncSession, kb_ids: Sequence[str]) -> dict[str, 
         await session.execute(
             text("""
             SELECT k.id,
-                   count(d.id),
+                   count(d.id) FILTER (WHERE d.status <> 'archived'),
                    count(d.id) FILTER (WHERE d.status = 'ready'),
                    count(d.id) FILTER (WHERE d.status IN ('uploaded', 'processing')),
                    count(d.id) FILTER (WHERE d.status = 'failed'),
                    coalesce(sum(d.file_size), 0),
                    (SELECT count(*) FROM agents a WHERE a.deleted_at IS NULL
-                      AND a.draft_config @> jsonb_build_object('kb_ids', jsonb_build_array(k.id)))
+                      AND a.draft_config @> jsonb_build_object('kb_ids', jsonb_build_array(k.id))),
+                   count(d.id) FILTER (WHERE d.status = 'archived'),
+                   (SELECT count(*) FROM kb_sources s WHERE s.kb_id = k.id)
               FROM knowledge_bases k
               LEFT JOIN kb_documents d ON d.kb_id = k.id
              WHERE k.id = ANY(CAST(:ids AS text[]))
@@ -125,6 +129,8 @@ def kb_view(kb: KnowledgeBase, counts: Counts) -> dict[str, Any]:
         "ready_count": counts.ready_count,
         "processing_count": counts.processing_count,
         "failed_count": counts.failed_count,
+        "archived_count": counts.archived_count,
+        "source_count": counts.source_count,
         "total_bytes": counts.total_bytes,
         "agent_count": counts.agent_count,
         "created_at": kb.created_at.isoformat(),
@@ -154,6 +160,9 @@ def document_view(doc: Document) -> dict[str, Any]:
         "replaces_doc_id": doc.replaces_doc_id,
         "created_at": doc.created_at.isoformat(),
         "processed_at": doc.processed_at.isoformat() if doc.processed_at else None,
+        "archived_at": doc.archived_at.isoformat() if doc.archived_at else None,
+        "managed": doc.source_id is not None,
+        "source": None,
     }
 
 

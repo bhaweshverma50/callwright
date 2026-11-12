@@ -172,7 +172,7 @@ paths:
               schema: {$ref: '#/components/schemas/Document'}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
         '409':
-          description: Same content already in this KB (`duplicate_document`) or unacknowledged cross-KB duplicate (`duplicate_elsewhere`)
+          description: Same content already in this KB (`duplicate_document`), unacknowledged cross-KB duplicate (`duplicate_elsewhere`), or `replace_doc_id` names a document synced from Google Drive (`managed_by_source`, 022)
           content:
             application/problem+json:
               schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
@@ -256,6 +256,11 @@ paths:
       responses:
         '204': {description: Deleted}
         '404': {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/responses/Problem'}
+        '409':
+          description: The document is synced from Google Drive (`managed_by_source`, 022); change it in Drive or remove the source
+          content:
+            application/problem+json:
+              schema: {$ref: '../../001-platform-foundation/contracts/core.yaml#/components/schemas/Problem'}
 
   /knowledge-bases/{kb_id}/documents/{doc_id}/reprocess:
     parameters:
@@ -438,7 +443,7 @@ components:
 
     KnowledgeBase:
       type: object
-      required: [id, name, description, status, attachable, document_count, ready_count, processing_count, failed_count, total_bytes, agent_count, created_at, updated_at]
+      required: [id, name, description, status, attachable, document_count, ready_count, processing_count, failed_count, archived_count, source_count, total_bytes, agent_count, created_at, updated_at]
       properties:
         id: {type: string, pattern: '^kb_'}
         name: {type: string}
@@ -449,6 +454,8 @@ components:
         ready_count: {type: integer}
         processing_count: {type: integer}
         failed_count: {type: integer}
+        archived_count: {type: integer, description: Archived documents (022); not counted in status or attachable}
+        source_count: {type: integer, description: Google Drive sources (022)}
         total_bytes: {type: integer}
         agent_count: {type: integer, description: Agent drafts this KB is attached to}
         created_at: {type: string, format: date-time}
@@ -456,7 +463,8 @@ components:
 
     DocumentStatus:
       type: string
-      enum: [uploaded, processing, ready, failed]
+      description: '`archived` (022) documents are out of search and restorable for 30 days'
+      enum: [uploaded, processing, ready, failed, archived]
 
     Document:
       type: object
@@ -479,6 +487,13 @@ components:
         replaces_doc_id: {type: [string, 'null']}
         created_at: {type: string, format: date-time}
         processed_at: {type: [string, 'null'], format: date-time}
+        archived_at: {type: [string, 'null'], format: date-time, description: Set while archived (022)}
+        managed: {type: boolean, description: Synced from a Google Drive source; Replace and Delete are refused (022)}
+        source:
+          description: Where a synced document comes from (022); null for uploads
+          oneOf:
+            - {$ref: '../../022-knowledge-connectors/contracts/connectors.yaml#/components/schemas/DocumentSource'}
+            - {type: 'null'}
 
     SearchResult:
       type: object
