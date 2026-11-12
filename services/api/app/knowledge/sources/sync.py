@@ -1,7 +1,9 @@
 """One sync of a Drive source (022 plan "Sync flow"; research R1, R2, R6, R7, R9).
 
-1. Claim the source (row lock, one sync at a time; a run older than 30 minutes is stale) and
-   record a ``running`` run.
+1. Claim the source (row lock, one sync at a time) and record a ``running`` run. A running sync
+   refreshes ``running_since`` every minute; one silent for 10 minutes is stale and can be
+   taken over. A run that lost its claim stops at its next heartbeat and never touches the
+   source's state.
 2. Get an access token through the connection. A refused refresh marks the connection revoked
    and its sources ``access_lost``.
 3. Check the root, then list the whole tree. Any failure here ends the run with nothing applied:
@@ -15,13 +17,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import hashlib
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import httpx
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from ulid import ULID
@@ -34,6 +40,7 @@ from app.core.ids import new_id
 from app.core.secrets import key_wrapper
 from app.core.storage import ObjectStore
 from app.knowledge import service as knowledge
+from app.knowledge import storage
 from app.knowledge.extract import extract_text
 from app.knowledge.models import Document, KnowledgeSource, SourceFile, SyncRun
 from app.knowledge.sources import diff, guard
@@ -53,8 +60,15 @@ from app.knowledge.sources.drive import (
 log = logging.getLogger(__name__)
 
 MAX_ERRORS = 500
-STALE_AFTER = timedelta(minutes=30)
+STALE_AFTER = timedelta(minutes=10)
+HEARTBEAT_S = 60.0
 NO_CREDIT_RETRY = timedelta(minutes=60)
+# Per-file temporary Google failures in a row before the run gives up (Google is likely down).
+MAX_TEMPORARY_STREAK = 3
+
+
+class Superseded(Exception):
+    """Another sync took the source over after this one missed its heartbeats."""
 
 
 def now() -> datetime:
@@ -105,6 +119,8 @@ class Tally:
     attention: str | None = None
     held: dict[str, Any] | None = None
     to_ingest: list[str] = field(default_factory=list)
+    beat_at: float = field(default_factory=time.monotonic)
+    temporary_streak: int = 0
 
     def issue(
         self,
@@ -252,7 +268,9 @@ async def finish(
                 setattr(run, name, getattr(tally, name))
             run.errors = tally.errors
             run.errors_truncated = tally.errors_truncated
-        if src is not None:
+        # Only the run that holds the claim updates the source: a run that was taken over as
+        # stale must not clear the new run's claim or overwrite its state.
+        if src is not None and src.running_run_id == c.run_id:
             src.running_run_id = None
             src.running_since = None
             src.updated_at = now()
@@ -297,10 +315,33 @@ async def run_sync(deps: SyncDeps, source_id: str, trigger: str, run_id: str | N
     tally = Tally()
     try:
         await _sync(deps, c, tally)
+    except Superseded:
+        log.warning("sync %s of source %s was taken over as stale", c.run_id, c.source_id)
+        await finish(deps, c, tally, status="failed", failure_reason="internal")
+    except asyncio.CancelledError:
+        # The job timed out or the worker is stopping: record the run as failed (what it applied
+        # is kept) and release the claim, then let the cancellation through.
+        log.warning("sync %s of source %s was cancelled", c.run_id, c.source_id)
+        await asyncio.shield(finish(deps, c, tally, status="failed", failure_reason="internal"))
+        raise
     except Exception:
         log.exception("sync %s of source %s crashed", c.run_id, c.source_id)
         await finish(deps, c, tally, status="failed", failure_reason="internal")
     return c.run_id
+
+
+async def heartbeat(deps: SyncDeps, c: Claimed, tally: Tally, *, force: bool = False) -> None:
+    """Keep the claim fresh during a long sync. Raises :class:`Superseded` when the source is no
+    longer claimed by this run."""
+    moment = time.monotonic()
+    if not force and moment - tally.beat_at < HEARTBEAT_S:
+        return
+    tally.beat_at = moment
+    async with deps.db.transaction(workspace_id=c.workspace_id) as session:
+        src = await session.get(KnowledgeSource, c.source_id, with_for_update=True)
+        if src is None or src.running_run_id != c.run_id:
+            raise Superseded
+        src.running_since = now()
 
 
 async def _token(deps: SyncDeps, c: Claimed) -> AccessToken | str:
@@ -422,15 +463,16 @@ async def _file_row(session: AsyncSession, c: Claimed, item: DriveItem) -> Sourc
     return row
 
 
-async def _revive(session: AsyncSession, row: SourceFile) -> None:
+async def _revive(session: AsyncSession, row: SourceFile, tally: Tally) -> None:
     """A listed file is synced again: kept after a restore, or back after being removed (its
-    archived document returns to search without processing)."""
+    archived document returns to search without processing, or is processed when it was archived
+    before it ever was)."""
     if row.state in ("kept", "removed"):
         row.state = "synced"
-    if row.doc_id:
-        doc = await session.get(Document, row.doc_id)
-        if doc is not None and doc.status == "archived":
-            doc.status, doc.archived_at = "ready", None
+    for doc_id in (row.doc_id, row.pending_doc_id):
+        doc = await session.get(Document, doc_id) if doc_id else None
+        if doc is not None and doc.status == "archived" and knowledge.unarchive(doc):
+            tally.to_ingest.append(doc.id)
 
 
 async def _record_skip(
@@ -439,9 +481,11 @@ async def _record_skip(
     state = "failed" if reason in ("download_failed", "processing_failed") else "skipped"
     async with deps.db.transaction(workspace_id=c.workspace_id) as session:
         row = await _file_row(session, c, item)
-        _markers(row, item)
         if row.doc_id is None:
+            _markers(row, item)
             row.state = state
+        # else: an imported file whose new version could not be taken keeps the markers of the
+        # version it serves, so the next sync tries the new version again.
         row.reason = reason
         row.message = kw.get("message")
         row.duplicate_of_doc_id = kw.get("dup")
@@ -462,14 +506,14 @@ async def _apply(
             row = await session.get(SourceFile, known.id)
             if row is not None:
                 row.last_seen_run_id = c.run_id
-                await _revive(session, row)
+                await _revive(session, row, tally)
         for item, known in plan.renames:
             row = await session.get(SourceFile, known.id)
             if row is None:
                 continue
             _markers(row, item)
             row.last_seen_run_id = c.run_id
-            await _revive(session, row)
+            await _revive(session, row, tally)
             if row.doc_id:
                 doc = await session.get(Document, row.doc_id)
                 if doc is not None:
@@ -477,21 +521,35 @@ async def _apply(
     tally.unchanged += len(plan.unchanged)
     tally.renamed += len(plan.renames)
     for item in plan.adds:
+        await heartbeat(deps, c, tally)
         await _add(deps, c, tally, token, item)
     for item, known in plan.updates:
+        await heartbeat(deps, c, tally)
         await _update(deps, c, tally, token, item, known)
+    await heartbeat(deps, c, tally, force=True)
     await _remove(deps, c, tally, plan.removals)
 
 
 async def _download(
     deps: SyncDeps, c: Claimed, tally: Tally, token: AccessToken, item: DriveItem
 ) -> bytes | None:
+    """The file's bytes, or None after recording why this one file was not taken. Only revoked
+    access, or several temporary Google failures in a row, end the whole run."""
     try:
-        return await _fetch(deps, token, item)
+        data = await _fetch(deps, token, item)
     except ExportTooLarge as exc:
         await _record_skip(deps, c, tally, item, "export_too_large", message=exc.message)
     except FileUnavailable as exc:
         await _record_skip(deps, c, tally, item, "download_failed", message=exc.message)
+    except (GoogleTemporary, httpx.HTTPError) as exc:
+        tally.temporary_streak += 1
+        if tally.temporary_streak >= MAX_TEMPORARY_STREAK:
+            raise GoogleTemporary("Google failed several downloads in a row") from exc
+        message = getattr(exc, "message", "") or "Google did not answer. It is tried again next sync."
+        await _record_skip(deps, c, tally, item, "download_failed", message=message)
+    else:
+        tally.temporary_streak = 0
+        return data
     return None
 
 
@@ -512,7 +570,7 @@ async def _add(deps: SyncDeps, c: Claimed, tally: Tally, token: AccessToken, ite
             source_id=c.source_id,
         )
         if result.outcome == "duplicate" and result.duplicate_of is not None:
-            moved = await _relink(session, c, item, result.duplicate_of)
+            moved = await _relink(session, c, tally, item, result.duplicate_of)
             if moved is not None:
                 _markers(moved, item)
                 moved.sha256, moved.text_sha256 = result.duplicate_of.sha256, texts
@@ -535,7 +593,9 @@ async def _add(deps: SyncDeps, c: Claimed, tally: Tally, token: AccessToken, ite
     tally.to_ingest.append(result.doc.id)
 
 
-async def _relink(session: AsyncSession, c: Claimed, item: DriveItem, doc: Document) -> SourceFile | None:
+async def _relink(
+    session: AsyncSession, c: Claimed, tally: Tally, item: DriveItem, doc: Document
+) -> SourceFile | None:
     """A file whose content matches a document that already left its old place in this knowledge
     base (archived, or its file removed from a source) is a move, not a duplicate (analyze F1).
     The document is linked to this file and restored when archived; it is never processed again."""
@@ -551,8 +611,8 @@ async def _relink(session: AsyncSession, c: Claimed, item: DriveItem, doc: Docum
     row.doc_id = doc.id
     doc.source_id = c.source_id
     doc.display_name = item.name[:255]
-    if doc.status == "archived":
-        doc.status, doc.archived_at = "ready", None
+    if doc.status == "archived" and knowledge.unarchive(doc):
+        tally.to_ingest.append(doc.id)
     await session.flush()
     return row
 
@@ -587,30 +647,52 @@ async def _hand_over(session: AsyncSession, c: Claimed, doc_id: str) -> bool:
 async def _update(
     deps: SyncDeps, c: Claimed, tally: Tally, token: AccessToken, item: DriveItem, known: SourceFile
 ) -> None:
+    """A file whose markers moved. ``row.sha256`` and ``row.text_sha256`` describe the newest
+    version taken in: the pending one (``pending_doc_id``) while it is processed, otherwise the
+    served one (``doc_id``). Ingestion moves ``doc_id`` to the pending version when it is ready."""
     data = await _download(deps, c, tally, token, item)
     if data is None:
         return
     sha = hashlib.sha256(data).hexdigest()
     texts = text_hash(data) if item.is_google_doc else None
     same = sha == known.sha256 or (texts is not None and texts == known.text_sha256)
+    dropped: list[str] = []
     async with deps.db.transaction(workspace_id=c.workspace_id) as session:
         row = await session.get(SourceFile, known.id)
         if row is None:
             return
         renamed = item.name != row.name or item.path != row.path
+        pending = await session.get(Document, row.pending_doc_id) if row.pending_doc_id else None
+        newest = pending or (await session.get(Document, row.doc_id) if row.doc_id else None)
+        if same and newest is not None and newest.status == "failed":
+            # Same content as the version that failed processing: process it again.
+            await knowledge.reprocess(session, newest.kb_id, newest.id)
+            _markers(row, item)
+            row.last_seen_run_id = c.run_id
+            row.reason = row.message = None
+            if row.state == "failed":
+                row.state = "synced"
+            tally.updated += 1
+            tally.to_ingest.append(newest.id)
+            return
         if same:
             _markers(row, item)
             row.last_seen_run_id = c.run_id
-            await _revive(session, row)
-            if renamed and row.doc_id:
-                doc = await session.get(Document, row.doc_id)
-                if doc is not None:
-                    doc.display_name = item.name[:255]
+            await _revive(session, row, tally)
             if renamed:
+                for doc in (newest, pending):
+                    if doc is not None:
+                        doc.display_name = item.name[:255]
                 tally.renamed += 1
             else:
                 tally.unchanged += 1
             return
+        if pending is not None:
+            # A newer edit replaces a version that is still processing or failed: drop it.
+            dropped.append(pending.storage_key)
+            await session.delete(pending)
+            row.pending_doc_id = None
+            await session.flush()
         result = await knowledge.intake(
             session,
             deps.store,
@@ -622,8 +704,8 @@ async def _update(
             replace_doc_id=row.doc_id,
         )
         if result.outcome != "created" or result.doc is None:
+            # Not taken: the markers stay on the served version so the next sync tries again.
             dup = result.duplicate_of.id if result.duplicate_of is not None else None
-            _markers(row, item)
             row.last_seen_run_id = c.run_id
             row.reason, row.duplicate_of_doc_id = result.outcome, dup
             tally.issue(item, "skipped", result.outcome, None, dup)
@@ -636,6 +718,9 @@ async def _update(
         row.pending_doc_id = result.doc.id
         row.sha256, row.text_sha256 = result.doc.sha256, texts
         row.reason = row.message = None
+    for key in dropped:
+        with contextlib.suppress(Exception):
+            await storage.delete(deps.store, key)
     tally.updated += 1
     tally.to_ingest.append(result.doc.id)
 
@@ -668,5 +753,8 @@ async def _remove(deps: SyncDeps, c: Claimed, tally: Tally, removals: list[Sourc
             }
             return
         tally.archived += await knowledge.archive_documents(session, decision.doc_ids)
+        # A new version still processing leaves search with the file (it stays archived when
+        # its processing finishes).
+        await knowledge.archive_documents(session, [r.pending_doc_id for r in to_archive if r.pending_doc_id])
         for row in to_archive:
             row.state = "removed"

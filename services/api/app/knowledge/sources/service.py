@@ -141,9 +141,9 @@ async def detail(session: AsyncSession, src: KnowledgeSource) -> dict[str, Any]:
     files = (
         await session.execute(
             select(SourceFile)
-            .where(
-                SourceFile.source_id == src.id, SourceFile.reason.is_not(None), SourceFile.doc_id.is_(None)
-            )
+            # Files never imported, and imported files whose newest version was not taken or
+            # failed processing (their previous version keeps serving).
+            .where(SourceFile.source_id == src.id, SourceFile.reason.is_not(None))
             .order_by(SourceFile.path, SourceFile.name)
             .limit(500)
         )
@@ -322,7 +322,10 @@ async def decide_held(
             ).scalars()
         )
         still_missing = [r for r in rows if not (r.last_seen_run_id and r.last_seen_run_id >= held_run)]
-        await knowledge.archive_documents(session, [r.doc_id for r in still_missing if r.doc_id])
+        await knowledge.archive_documents(
+            session,
+            [d for r in still_missing for d in (r.doc_id, r.pending_doc_id) if d],
+        )
         for row in still_missing:
             row.state = "removed"
     src.held_archive = None

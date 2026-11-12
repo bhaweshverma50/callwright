@@ -80,7 +80,7 @@ the row (R4). The refresh token never appears in this table.
 | last_success_at | timestamptz null | |
 | next_sync_at | timestamptz null | null while paused for confirmation |
 | running_run_id | text null | the active run |
-| running_since | timestamptz null | when the active run started; a run older than 30 minutes is stale (R10) |
+| running_since | timestamptz null | the active run's last heartbeat (every minute); silent for 10 minutes is stale (R10) |
 | created_by | text | |
 | created_at, updated_at | timestamptz | |
 
@@ -107,7 +107,7 @@ One row per Drive item the source has seen (imported, skipped or failed).
 | sha256 | text null | bytes of the last processed version |
 | text_sha256 | text null | normalised extracted text (Google Docs, R2) |
 | doc_id | text null FK kb_documents ON DELETE SET NULL | the document serving search |
-| pending_doc_id | text null | a new version being processed (R7) |
+| pending_doc_id | text null | a new version being processed (R7); ingestion moves `doc_id` to it when it is ready, before the old version is deleted. `sha256`, `text_sha256` and the change markers describe the newest version taken in; a version that was not taken leaves them on the served one so the next sync tries again |
 | state | text | CHECK `synced, skipped, failed, removed, kept` |
 | reason | text null | CHECK `unsupported_type, too_large, export_too_large, shortcut, duplicate, kb_full, workspace_storage_full, download_failed, processing_failed` |
 | duplicate_of_doc_id | text null | when `reason = duplicate` |

@@ -38,14 +38,16 @@ class Runtime:
 
 @dataclass(frozen=True)
 class Feature:
-    """``jobs`` maps the name callers enqueue to the arq job function. ``conditional_routers``
-    pairs a ``Settings`` flag with a router mounted only when the flag is true."""
+    """``jobs`` maps the name callers enqueue to the arq job function; ``job_timeouts`` gives a
+    job a timeout in seconds other than arq's default (300). ``conditional_routers`` pairs a
+    ``Settings`` flag with a router mounted only when the flag is true."""
 
     name: str
     routers: tuple[APIRouter, ...] = ()
     conditional_routers: tuple[tuple[str, APIRouter], ...] = ()
     install: Callable[[Runtime], Awaitable[None] | None] | None = None
     jobs: Mapping[str, JobFunction] = field(default_factory=dict)
+    job_timeouts: Mapping[str, int] = field(default_factory=dict)
     crons: tuple[CronJob, ...] = ()
     id_prefixes: frozenset[str] = frozenset()
     secret_fields: tuple[str, ...] = ()

@@ -27,6 +27,7 @@ FEATURE = Feature(
         "sync_due": sync_jobs.sync_due,
         "purge_knowledge_sources": sync_jobs.purge,
     },
+    job_timeouts={sync_jobs.JOB_NAME: sync_jobs.JOB_TIMEOUT_S},
     crons=(
         cron(sync_jobs.sync_due, second={10}, run_at_startup=False, unique=True),
         cron(sync_jobs.purge, hour={4}, minute={45}, run_at_startup=False),

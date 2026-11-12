@@ -178,7 +178,7 @@ def upgrade() -> None:
     LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
       SELECT s.id, s.workspace_id FROM kb_sources s
       WHERE s.next_sync_at IS NOT NULL AND s.next_sync_at <= p_now
-        AND (s.running_run_id IS NULL OR s.running_since < p_now - interval '30 minutes')
+        AND (s.running_run_id IS NULL OR s.running_since < p_now - interval '10 minutes')
       ORDER BY s.next_sync_at
       LIMIT p_limit
     $$;
@@ -198,6 +198,15 @@ def upgrade() -> None:
       LIMIT p_limit
     $$;
 
+    -- How many connections, in any workspace, hold a grant for this Google account. Google
+    -- revokes the whole grant (account and OAuth client) when one refresh token is revoked, so
+    -- a token is revoked only when no other connection still uses the account.
+    CREATE FUNCTION google_account_connections(p_subject text)
+    RETURNS int
+    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+      SELECT count(*)::int FROM connections WHERE provider = 'google' AND account_subject = p_subject
+    $$;
+
     CREATE FUNCTION kb_sync_runs_before(p_before timestamptz, p_limit int)
     RETURNS TABLE(id text, workspace_id text)
     LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -212,6 +221,7 @@ def upgrade() -> None:
         "kb_sources_workspace_for(text)",
         "kb_documents_archived_before(timestamptz, int)",
         "kb_sync_runs_before(timestamptz, int)",
+        "google_account_connections(text)",
     ):
         op.execute(f"""
         REVOKE ALL ON FUNCTION {signature} FROM PUBLIC;

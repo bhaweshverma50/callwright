@@ -18,7 +18,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   archiveDocument,
@@ -121,6 +121,15 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
   const archived = useArchivedDocuments(kb.id, tab === "archived");
 
   const refresh = () => void qc.invalidateQueries({ queryKey: kbKeys.all });
+  // When a source finishes syncing, its documents, the archived list and the counts changed:
+  // refetch them (only the sources list polls while a sync runs).
+  const wasBusy = useRef(new Set<string>());
+  useEffect(() => {
+    const busyNow = new Set((sources.data?.items ?? []).filter((s) => s.state === "pending" || s.state === "syncing").map((s) => s.id));
+    const finished = [...wasBusy.current].some((id) => !busyNow.has(id));
+    wasBusy.current = busyNow;
+    if (finished) void qc.invalidateQueries({ queryKey: kbKeys.all });
+  }, [sources.data, qc]);
   const removeDoc = useMutation({
     mutationFn: (d: KbDocument) => deleteDocument(kb.id, d.id),
     onSuccess: (_r, d) => {
@@ -404,7 +413,11 @@ function KbView({ kb }: { kb: KnowledgeBase }) {
               ) : undefined
             }
           >
-            {tab === "archived" ? (
+            {tab === "archived" && archived.isError ? (
+              <EmptyState compact icon={<Archive />} title="Archived documents did not load">
+                {problemMessage(archived.error, "document")}
+              </EmptyState>
+            ) : tab === "archived" ? (
               <Table
                 columns={columns}
                 rows={archived.data?.items}

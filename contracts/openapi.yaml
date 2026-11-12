@@ -2740,12 +2740,14 @@ paths:
           type: string
           default: root
           maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
       - name: drive_id
         in: query
         description: Shared drive id when browsing inside a shared drive
         schema:
           type: string
           maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
       - $ref: '#/components/parameters/DrivePageToken'
       responses:
         '200':
@@ -5452,6 +5454,7 @@ paths:
                       - doc_id
                       - file_name
                       - reason
+                      - managed
                       properties:
                         kb_id:
                           type: string
@@ -5466,6 +5469,9 @@ paths:
                           enum:
                           - same_content
                           - same_name
+                        managed:
+                          type: boolean
+                          description: Synced from a Drive source (022), so an upload cannot replace it.
         '404':
           $ref: '#/components/responses/Problem'
       x-spec: 005-tools-knowledge
@@ -15014,11 +15020,13 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
         drive_id:
           type:
           - string
           - 'null'
           maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
         include_subfolders:
           type: boolean
           default: true

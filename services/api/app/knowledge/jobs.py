@@ -24,7 +24,7 @@ from typing import Any
 
 from opentelemetry import trace
 from redis.asyncio import Redis
-from sqlalchemy import delete, text
+from sqlalchemy import delete, or_, select, text, update
 from ulid import ULID
 
 from app.core.db import Database
@@ -33,7 +33,7 @@ from app.core.storage import ObjectStore
 from app.knowledge import storage
 from app.knowledge.chunking import TooManyChunks, chunk_blocks
 from app.knowledge.extract import ExtractError, extract
-from app.knowledge.models import Chunk, Document
+from app.knowledge.models import Chunk, Document, SourceFile
 from app.llms.charges import charge_tokens, embedding_cost
 from app.llms.embeddings.base import EmbeddingAdapter, EmbeddingUnavailable
 from app.llms.runtime import runtime
@@ -80,14 +80,42 @@ async def release_slot(redis: Redis | None, workspace_id: str) -> None:
         await redis.decr(f"kb_ingest_slots:{workspace_id}")
 
 
+# Failures worth trying again on the next Drive sync of the same file (022): the file itself is
+# fine. Other codes (unreadable, too long, no text) wait until the file is edited.
+TRANSIENT_FAILURES = frozenset({"embedding_unavailable", "internal"})
+
+
+async def _source_file_failed(session: Any, doc: Document, code: str, message: str) -> None:
+    """A synced document failed processing: its Drive file shows ``processing_failed``. After a
+    transient failure the file's change markers are cleared, so the next sync takes it again."""
+    if doc.source_id is None:
+        return
+    rows = (
+        await session.execute(
+            select(SourceFile).where(or_(SourceFile.doc_id == doc.id, SourceFile.pending_doc_id == doc.id))
+        )
+    ).scalars()
+    for f in rows:
+        if f.doc_id == doc.id and f.state == "synced":
+            f.state = "failed"
+        f.reason, f.message = "processing_failed", message
+        if code in TRANSIENT_FAILURES:
+            f.drive_version = f.md5 = None
+            f.size_bytes = None
+        f.updated_at = datetime.now(UTC)
+
+
 async def _fail(deps: IngestDeps, doc: Document, code: str, message: str) -> Outcome:
     async with deps.db.transaction(workspace_id=doc.workspace_id) as session:
         row = await session.get(Document, doc.id)
         if row is not None:
-            row.status = "failed"
+            # An archived document stays archived; restoring it shows the failure.
+            if row.status != "archived":
+                row.status = "failed"
             row.error_code = code
             row.error_message = message
             row.processed_at = datetime.now(UTC)
+            await _source_file_failed(session, row, code, message)
     return Outcome("failed")
 
 
@@ -160,7 +188,7 @@ async def _ingest(deps: IngestDeps, doc: Document, span: Any) -> Outcome:
         if attempt <= len(BACKOFF_S):
             async with deps.db.transaction(workspace_id=doc.workspace_id) as session:
                 row = await session.get(Document, doc.id)
-                if row is not None:
+                if row is not None and row.status != "archived":
                     row.status = "uploaded"
             log.warning("embedding unavailable for %s (attempt %s): %s", doc.id, attempt, exc)
             return Outcome("retry", BACKOFF_S[attempt - 1])
@@ -207,7 +235,10 @@ async def _ingest(deps: IngestDeps, doc: Document, span: Any) -> Outcome:
                 ref_type="kb_document",
                 ref_id=doc.id,
             )
-            row.status = "ready"
+            # Archived while it was processed (its Drive file was removed): it keeps its chunks
+            # and stays out of search until restored.
+            if row.status != "archived":
+                row.status = "ready"
             row.error_code = None
             row.error_message = None
             row.page_count = extracted.page_count
@@ -215,6 +246,19 @@ async def _ingest(deps: IngestDeps, doc: Document, span: Any) -> Outcome:
             row.token_count = tokens
             row.embedding_model = deps.embedder.model
             row.processed_at = datetime.now(UTC)
+            if row.source_id is not None:
+                # 022: a new version of a synced file takes over its file row before the version
+                # it replaces is deleted (the row's doc_id would otherwise be nulled with it).
+                await session.execute(
+                    update(SourceFile)
+                    .where(SourceFile.pending_doc_id == row.id)
+                    .values(doc_id=row.id, pending_doc_id=None, state="synced", reason=None, message=None)
+                )
+                await session.execute(
+                    update(SourceFile)
+                    .where(SourceFile.doc_id == row.id, SourceFile.reason == "processing_failed")
+                    .values(state="synced", reason=None, message=None)
+                )
             if row.replaces_doc_id:
                 old = await session.get(Document, row.replaces_doc_id)
                 if old is not None and old.kb_id == row.kb_id:
@@ -247,9 +291,10 @@ async def run_inline(deps: IngestDeps, doc_id: str, sleep: Sleep = asyncio.sleep
             if ws is not None:
                 async with deps.db.transaction(workspace_id=str(ws)) as session:
                     row = await session.get(Document, doc_id)
-                    if row is not None and row.status != "ready":
+                    if row is not None and row.status not in ("ready", "archived"):
                         row.status, row.error_code = "failed", "internal"
                         row.error_message = "Processing failed. Retry the document."
+                        await _source_file_failed(session, row, "internal", row.error_message)
             return Outcome("failed")
         if outcome.retry_in_s is None:
             return outcome

@@ -9,8 +9,9 @@ Pure: no I/O. ``plan`` sorts every listed item and every known file into exactly
 * ``renames``: imported files with the same markers but a new name or folder path.
 * ``unchanged``: imported files with nothing new.
 * ``skips``: listed files that are not imported, with the reason.
-* ``removals``: imported files missing from the listing (deleted, trashed or moved out). Files
-  the operator kept after a restore are never removals.
+* ``removals``: imported files missing from the listing (deleted, trashed or moved out),
+  including ones whose document failed processing. Files the operator kept after a restore are
+  never removals.
 * ``forgotten``: skipped or failed files without a document that are no longer listed.
 """
 
@@ -75,7 +76,7 @@ def plan(listing: Iterable[DriveItem], known_files: Iterable[SourceFile]) -> Syn
     for file_id, current in known.items():
         if file_id in seen:
             continue
-        if current.doc_id is not None and current.state == "synced":
+        if current.doc_id is not None and current.state in ("synced", "failed"):
             out.removals.append(current)
         elif current.doc_id is None:
             out.forgotten.append(current)

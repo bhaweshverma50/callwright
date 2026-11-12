@@ -127,7 +127,7 @@ async def complete(
         ) from exc
     if SCOPE_DRIVE not in grant.scopes:
         log.warning("google sign-in granted scopes: %s", " ".join(grant.scopes))
-        await deps.drive.revoke(grant.refresh_token)
+        await revoke_unless_shared(session, deps, grant.subject, grant.refresh_token)
         raise _oauth_problem(
             "oauth_scope_missing",
             "Read-only Google Drive access is required for knowledge sync. Connect again and allow it.",
@@ -136,7 +136,7 @@ async def complete(
     if pending.connection_id:
         conn = await get_connection(session, pending.connection_id)
         if conn.account_subject != grant.subject:
-            await deps.drive.revoke(grant.refresh_token)
+            await revoke_unless_shared(session, deps, grant.subject, grant.refresh_token)
             raise _oauth_problem(
                 "oauth_account_mismatch",
                 f"This connection belongs to {mask_email(conn.account_email)}. "
@@ -272,9 +272,25 @@ async def users_of(session: AsyncSession, connection_ids: list[str]) -> dict[str
     return out
 
 
+async def account_in_use(session: AsyncSession, subject: str) -> bool:
+    """True when a connection in any workspace still uses this Google account. Revoking one
+    refresh token at Google ends the app's whole grant for the account, which would break those
+    connections too."""
+    found = await session.execute(text("SELECT google_account_connections(:s)"), {"s": subject})
+    return int(found.scalar_one() or 0) > 0
+
+
+async def revoke_unless_shared(session: AsyncSession, deps: ConnectorDeps, subject: str, token: str) -> None:
+    """Revoke a refresh token at Google only when no remaining connection uses the account;
+    otherwise just let it go (it is never stored)."""
+    if not await account_in_use(session, subject):
+        await deps.drive.revoke(token)
+
+
 async def remove(session: AsyncSession, deps: ConnectorDeps, conn: Connection, user_id: str) -> str | None:
     """Delete the connection and its secret. Returns the refresh token so the caller can revoke
-    it at Google after the transaction commits (best effort)."""
+    it at Google after the transaction commits (best effort), or None when another connection,
+    in this or another workspace, still uses the same Google account."""
     users = (await users_of(session, [conn.id])).get(conn.id, [])
     if users:
         raise ProblemError(
@@ -297,6 +313,8 @@ async def remove(session: AsyncSession, deps: ConnectorDeps, conn: Connection, u
     )
     await session.delete(conn)
     await session.flush()
+    if await account_in_use(session, conn.account_subject):
+        return None
     return refresh
 
 

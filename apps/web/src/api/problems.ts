@@ -21,6 +21,21 @@ const BY_CODE: Record<string, (p: Problem, kind: string) => string> = {
   token_invalid: () => "This link has expired or was already used.",
   pricing_unavailable: () => "A selected component has no price yet, so this cannot run on live traffic.",
   network: () => "Cannot reach Callwright right now. Check your connection and try again.",
+  // 022 Google connections and Drive sources.
+  oauth_state_invalid: () => "This sign-in link expired or was started by someone else. Start again from Connections.",
+  oauth_declined: () => "Google access was not granted, so no connection was made.",
+  oauth_exchange_failed: () => "Google refused the sign-in. Try connecting again.",
+  oauth_scope_missing: () => "Read-only Google Drive access is required. Connect again and leave the Google Drive box ticked.",
+  // The server names the account the connection belongs to (masked), so say that.
+  oauth_account_mismatch: (p) => p.detail ?? "Sign in with the Google account this connection belongs to, or add a new connection.",
+  connection_revoked: () => "Google access was revoked or expired. Reconnect the Google account in Connections.",
+  connection_in_use: () => "Remove the knowledge sources that use this connection first.",
+  connector_unavailable: () => "Google Drive is not set up on this Callwright server yet. Ask your administrator to add the Google settings.",
+  google_unavailable: () => "Google did not answer or rate limited the request. Try again in a minute.",
+  source_exists: () => "This folder already syncs into this knowledge base.",
+  sync_running: () => "A sync of this source is already running.",
+  nothing_held: () => "No archiving is waiting for a decision any more.",
+  managed_by_source: () => "This document syncs from Google Drive. Change it in Drive and it updates here.",
 };
 
 /**

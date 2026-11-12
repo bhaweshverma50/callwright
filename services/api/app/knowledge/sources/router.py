@@ -14,6 +14,7 @@ from app.core.auth import CurrentPrincipal, principal_tx
 from app.core.errors import ProblemError, problem_responses
 from app.core.ids import path_id
 from app.core.pagination import PageParam, PageSizeParam, page_meta
+from app.knowledge import jobs as ingest_jobs
 from app.knowledge import service as knowledge
 from app.knowledge.models import Document, SourceFile, SyncRun
 from app.knowledge.router import DocId, KbId
@@ -176,22 +177,27 @@ async def _doc_response(session: Any, doc: Document) -> dict[str, Any]:
 async def restore_document(
     kb_id: KbId, doc_id: DocId, request: Request, principal: CurrentPrincipal
 ) -> dict[str, Any]:
-    """Back into search at once, with no processing (FR-013). A synced document whose file is
-    still missing is kept: later syncs leave it alone until its file returns."""
+    """Back into search at once, with no processing (FR-013), when the document had been
+    processed; one archived before it was processed is processed now, and one that had failed
+    comes back as failed. A synced document whose file is still missing is kept: later syncs
+    leave it alone until its file returns."""
     async with principal_tx(request, principal) as session:
         doc = await knowledge.get_document(session, kb_id, doc_id)
         if doc.status != "archived":
             raise ProblemError(
                 409, "not_archived", "Not archived", "Only archived documents can be restored."
             )
-        doc.status, doc.archived_at = "ready", None
+        needs_ingest = knowledge.unarchive(doc)
         row = (
             await session.execute(select(SourceFile).where(SourceFile.doc_id == doc.id))
         ).scalar_one_or_none()
         if row is not None and row.state == "removed":
             row.state = "kept"
         await session.flush()
-        return await _doc_response(session, doc)
+        response = await _doc_response(session, doc)
+    if needs_ingest:
+        await ingest_jobs.schedule(request.app.state, doc_id)
+    return response
 
 
 @router.post(

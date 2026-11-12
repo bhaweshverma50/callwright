@@ -146,6 +146,10 @@ async def _browse_token(request: Request, principal: Principal, connection_id: s
         raise service.revoked_problem()
 
 
+# Drive ids are letters, digits, "-" and "_" (they are put into Drive query expressions).
+DRIVE_ID_PATTERN = r"^[A-Za-z0-9_-]+$"
+
+
 def google_unavailable() -> ProblemError:
     return ProblemError(
         502, "google_unavailable", "Google unavailable", "Google did not answer or rate limited the request."
@@ -186,8 +190,8 @@ async def list_drive_folders(
     connection_id: ConnectionId,
     request: Request,
     principal: CurrentPrincipal,
-    parent: Annotated[str, Query(max_length=200)] = "root",
-    drive_id: Annotated[str | None, Query(max_length=200)] = None,
+    parent: Annotated[str, Query(max_length=200, pattern=DRIVE_ID_PATTERN)] = "root",
+    drive_id: Annotated[str | None, Query(max_length=200, pattern=DRIVE_ID_PATTERN)] = None,
     page_token: Annotated[str | None, Query(max_length=1024)] = None,
 ) -> dict[str, Any]:
     from app.knowledge.sources.drive import GoogleTemporary, RootUnavailable, TokenRevoked
