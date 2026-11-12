@@ -1,0 +1,54 @@
+name: pr-rules
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-rules:
+    name: pr-rules
+    runs-on: ubuntu-latest
+    steps:
+      # Title and body arrive through env, never interpolated into the script.
+      - name: Title, description and size
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          ADDED: ${{ github.event.pull_request.additions }}
+          DELETED: ${{ github.event.pull_request.deletions }}
+        run: |
+          fail=0
+
+          types='feat|fix|perf|refactor|docs|test|build|ci|chore|revert'
+          if ! printf '%s' "$TITLE" | grep -Eq "^($types)(\([a-z0-9-]+\))?!?: .+"; then
+            echo "::error::Title must follow Conventional Commits: 'type(scope): summary' (types: ${types//|/, })."
+            fail=1
+          fi
+          if [ "${#TITLE}" -gt 72 ]; then
+            echo "::error::Title is ${#TITLE} characters; keep it at 72 or fewer."
+            fail=1
+          fi
+
+          # Each required section needs text that is not just the template's HTML comment.
+          body=$(printf '%s' "$BODY" | tr -d '\r' | perl -0pe 's/<!--.*?-->//gs')
+          for section in "Summary" "Changes" "Testing" "Risk and rollout"; do
+            content=$(printf '%s\n' "$body" | awk -v h="## $section" '
+              $0 == h { on = 1; next }
+              on && /^## / { exit }
+              on { print }' | tr -d '[:space:]')
+            if [ -z "$content" ]; then
+              echo "::error::Description needs a filled '## $section' section (see .github/pull_request_template.md)."
+              fail=1
+            fi
+          done
+
+          # ponytail: counts generated files and lockfiles too; reviewers judge the real size.
+          changed=$((ADDED + DELETED))
+          if [ "$changed" -gt 800 ]; then
+            echo "::warning::$changed changed lines. Over 800 (excluding generated files)? Split it or explain why in the Summary."
+          fi
+
+          exit $fail
