@@ -89,9 +89,10 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
+        {/* Under the gauge on a phone, everything centres on the gauge's axis; beside it, it reads left-aligned. */}
+        <div className="flex min-w-0 flex-col gap-4 text-center md:text-left">
           <div>
-            <p className="flex items-center gap-1.5 text-[13px] text-fg-3">
+            <p className="flex items-center justify-center gap-1.5 text-[13px] text-fg-3 md:justify-start">
               Balance
               <InfoTip label="About the balance">
                 Prepaid credit, shown to a tenth of a cent because calls are billed per second. New calls stop at $0.000; a call already in progress
@@ -99,7 +100,7 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
               </InfoTip>
             </p>
             {loading || balance === null ? (
-              <Skeleton className="mt-1.5 h-9 w-40" />
+              <Skeleton className="mx-auto mt-1.5 h-9 w-40 md:mx-0" />
             ) : (
               <MoneyText
                 value={balanceUsd!}
@@ -109,9 +110,9 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
               />
             )}
           </div>
-          <ul className="flex flex-col gap-2.5 text-[14px] text-fg-2">
-            <li className="flex items-start gap-2.5">
-              <Layers className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
+          <ul className="mx-auto flex max-w-[34ch] flex-col gap-2.5 text-balance text-[14px] text-fg-2 md:mx-0 md:max-w-none md:text-pretty">
+            <li className="flex items-start justify-center gap-2.5 md:justify-start">
+              <Layers className="mt-0.5 hidden size-4 shrink-0 text-fg-3 md:block" aria-hidden />
               <span>
                 On your current stack: {name("stt")}, {name("llm")} and {name("tts")}
                 {perMinute !== null && (
@@ -123,8 +124,8 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
                 .
               </span>
             </li>
-            <li className="flex items-start gap-2.5">
-              <CalendarClock className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden />
+            <li className="flex items-start justify-center gap-2.5 md:justify-start">
+              <CalendarClock className="mt-0.5 hidden size-4 shrink-0 text-fg-3 md:block" aria-hidden />
               {!facts ? (
                 <Skeleton className="mt-1 h-3.5 w-64" />
               ) : facts.runOut ? (
