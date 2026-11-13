@@ -9,6 +9,7 @@ import { TRIAL_CREDIT } from "../../lib/money";
 import { startSession } from "../../api/session";
 import { Button, Field, FormAlert, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
+import { GoogleButton } from "./GoogleButton";
 import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 import { demoHints } from "../../lib/demoHints";
 import { AUTH_PAGES, DASHBOARD_PATH } from "../../lib/paths";
@@ -181,6 +182,7 @@ export function Register() {
           .
         </p>
       </form>
+      <GoogleButton />
     </AuthLayout>
   );
 }

@@ -35,6 +35,9 @@ import { mockResetToken, mockVerifyToken } from "./demoAccount";
 const UNVERIFIED_MARKER = "unverified";
 /** A verify-email or password-reset token with this value is expired (400 link_invalid). */
 const EXPIRED_TOKEN = "expired";
+/** Mock "Continue with Google": the state prefix the mock accepts and the account it signs in. */
+const MOCK_GOOGLE_STATE = "mock-google-";
+const MOCK_GOOGLE_EMAIL = "google.user@example.com";
 /** The API's per-account sign-in throttle (auth/service.py): 5 failures in 15 minutes, then 429. */
 const MAX_FAILED_SIGN_INS = 5;
 const FAILED_SIGN_IN_WINDOW_MS = 15 * 60_000;
@@ -222,6 +225,33 @@ export const handlers = [
     }
     if (!user.email_verified) return problem(403, "email_unverified", "Email not verified");
     delete db().failures[key];
+    return json<Session>(issueSession(user));
+  }),
+
+  // "Continue with Google": the mock skips Google and sends the browser straight to the callback.
+  // The state is stateless (a page load between start and complete would lose module memory).
+  http.get(url("/auth/config"), () => json({ google_signin: true })),
+
+  http.post(url("/auth/google/start"), () => {
+    const callback = new URL("/auth/google/callback", globalThis.location?.origin ?? "http://localhost");
+    callback.search = new URLSearchParams({ code: "mock-google-code", state: `${MOCK_GOOGLE_STATE}${mockId("st")}` }).toString();
+    return json({ authorization_url: callback.toString() });
+  }),
+
+  http.post(url("/auth/google/complete"), async ({ request }) => {
+    const { code = "", state = "" } = (await request.json()) as { code?: string; state?: string };
+    await delay(300);
+    if (!state.startsWith(MOCK_GOOGLE_STATE) || code !== "mock-google-code") {
+      return problem(400, "oauth_state_invalid", "Google sign-in expired");
+    }
+    let user = db().users.find((u) => u.email === MOCK_GOOGLE_EMAIL);
+    if (!user) {
+      user = { id: mockId("usr"), email: MOCK_GOOGLE_EMAIL, password: mockId("pw"), email_verified: true, is_admin: false, workspace_id: null };
+      db().users.push(user);
+    }
+    user.email_verified = true;
+    bootstrapWorkspace(user);
+    save();
     return json<Session>(issueSession(user));
   }),
 

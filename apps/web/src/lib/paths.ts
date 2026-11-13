@@ -32,6 +32,7 @@ export const AUTH_PAGES = {
   verifyEmail: "/verify-email",
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
+  googleCallback: "/auth/google/callback",
 } as const;
 
 const AUTH_PAGE_SET = new Set<string>(Object.values(AUTH_PAGES));

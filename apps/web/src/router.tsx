@@ -34,6 +34,7 @@ import {
 } from "./lib/paths";
 import { AgentRedirect } from "./routes/agents/agentRedirect";
 import { NotFound } from "./routes/NotFound";
+import { GoogleCallback } from "./routes/public/GoogleCallback";
 import { Enterprise } from "./routes/public/Enterprise";
 import { ForgotPassword } from "./routes/public/ForgotPassword";
 import { Home } from "./routes/public/Home";
@@ -123,6 +124,7 @@ export const routes: RouteObject[] = [
       { path: AUTH_PAGES.login, element: <Login /> },
       { path: AUTH_PAGES.register, element: <Register /> },
       { path: AUTH_PAGES.verifyEmail, element: <VerifyEmail /> },
+      { path: AUTH_PAGES.googleCallback, element: <GoogleCallback /> },
       { path: AUTH_PAGES.forgotPassword, element: <ForgotPassword /> },
       { path: AUTH_PAGES.resetPassword, element: <ResetPassword /> },
       // Where "Add funds" lands in STRIPE_MODE=fake (test cards decide the outcome).

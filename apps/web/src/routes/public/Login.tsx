@@ -9,6 +9,7 @@ import { safeNext } from "../../lib/paths";
 import { LogIn } from "lucide-react";
 import { Button, Field, FormAlert, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
+import { GoogleButton } from "./GoogleButton";
 import { demoHints } from "../../lib/demoHints";
 
 function retryText(seconds?: number) {
@@ -146,6 +147,8 @@ export function Login() {
           Sign in
         </Button>
       </form>
+
+      <GoogleButton next={params.get("next") ? next : undefined} />
 
       {hints && (
         <p className="mt-5 rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">

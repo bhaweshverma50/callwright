@@ -10,6 +10,20 @@ export function register(email: string, password: string, captchaToken?: string)
   return unwrap(api.POST("/auth/register", { body: { email, password, ...(captchaToken ? { captcha_token: captchaToken } : {}) } }));
 }
 
+/** Public sign-in options; `google_signin` says whether "Continue with Google" is on. */
+export function getAuthConfig() {
+  return unwrap(api.GET("/auth/config"));
+}
+
+/** The Google URL to send the browser to; the caller keeps `state` to check on the way back. */
+export function startGoogleSignIn() {
+  return unwrap(api.POST("/auth/google/start"));
+}
+
+export function completeGoogleSignIn(code: string, state: string) {
+  return unwrap(api.POST("/auth/google/complete", { body: { code, state } }));
+}
+
 export function resendVerification(email: string) {
   return unwrap(api.POST("/auth/verify-email/resend", { body: { email } }));
 }

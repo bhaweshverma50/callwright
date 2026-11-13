@@ -1,0 +1,60 @@
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getAuthConfig, startGoogleSignIn } from "../../api/auth";
+import { rememberGoogleFlow } from "../../api/googleFlow";
+import { problemMessage } from "../../api/problems";
+import { Button, FormAlert } from "../../components";
+
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z" />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"
+      />
+      <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z" />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.6 10.6 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z"
+      />
+    </svg>
+  );
+}
+
+/**
+ * "Continue with Google" for the sign-in and register pages (also how new accounts are made with
+ * Google). Shown only when the API says it is on. Starts the flow and sends the browser to Google;
+ * `next` is the page to open once signed in.
+ */
+export function GoogleButton({ next }: { next?: string }) {
+  const config = useQuery({ queryKey: ["auth", "config"], queryFn: getAuthConfig, staleTime: 5 * 60_000, retry: false });
+  const start = useMutation({
+    mutationFn: startGoogleSignIn,
+    onSuccess: ({ authorization_url }) => {
+      rememberGoogleFlow(authorization_url, next ?? null);
+      window.location.assign(authorization_url);
+    },
+  });
+  if (!config.data?.google_signin) return null;
+  return (
+    <div className="mt-6 flex flex-col gap-4">
+      <div className="flex items-center gap-3 text-[12px] text-fg-3" role="separator">
+        <span className="h-px flex-1 bg-line" />
+        or
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      {start.error && <FormAlert>{problemMessage(start.error)}</FormAlert>}
+      <Button
+        type="button"
+        variant="secondary"
+        size="lg"
+        className="w-full"
+        pending={start.isPending || start.isSuccess}
+        icon={<GoogleMark />}
+        onClick={() => start.mutate()}
+      >
+        Continue with Google
+      </Button>
+    </div>
+  );
+}
