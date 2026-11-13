@@ -72,3 +72,28 @@ async def test_valid_token_for_unknown_user_is_401_not_403(client: httpx.AsyncCl
     response = await client.get("/v1/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
     assert response.json()["code"] == "session_invalid"
+
+
+async def test_refresh_stops_after_the_session_max_age(client: httpx.AsyncClient, app: FastAPI) -> None:
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from tests.conftest import OWNER_URL
+
+    account = await signup(client, app)
+    ok = await client.post("/v1/auth/refresh", json={"refresh_token": account.refresh_token})
+    assert ok.status_code == 200
+    engine = create_async_engine(OWNER_URL)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "update local_idp.sessions set created_at = now() - interval '8 days' "
+                    "where user_id = (select id from local_idp.users where email = :e)"
+                ),
+                {"e": account.email},
+            )
+    finally:
+        await engine.dispose()
+    expired = await client.post("/v1/auth/refresh", json={"refresh_token": ok.json()["refresh_token"]})
+    assert expired.status_code == 401

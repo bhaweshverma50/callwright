@@ -5,6 +5,7 @@ import { useMe } from "../api/queries";
 import { FullPageLoader } from "../components";
 import { endSession, useSignedIn } from "../api/session";
 import { AUTH_PAGES, loginPathFor } from "../lib/paths";
+import { useIdleSignOut } from "./useIdleSignOut";
 
 /**
  * Protects every app route (T040). Signed-out visitors go to `/login?next=<where they were>`;
@@ -18,6 +19,7 @@ import { AUTH_PAGES, loginPathFor } from "../lib/paths";
  */
 export function AuthGuard() {
   const signedIn = useSignedIn();
+  useIdleSignOut(signedIn);
   const location = useLocation();
   const me = useMe();
   const rejected = me.isError && isApiError(me.error) && (me.error.status === 401 || me.error.status === 403);

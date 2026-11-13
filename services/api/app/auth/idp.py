@@ -394,9 +394,14 @@ class LocalIdentityProvider:
                         "update local_idp.sessions s set refresh_token_hash = :new "
                         "from local_idp.users u "
                         "where s.refresh_token_hash = :old and s.revoked_at is null and u.id = s.user_id "
+                        "and s.created_at > now() - make_interval(secs => :max_age) "
                         "returning s.id, u.id as user_id, u.email::text as email"
                     ),
-                    {"old": _sha256(refresh_token), "new": _sha256(new_refresh)},
+                    {
+                        "old": _sha256(refresh_token),
+                        "new": _sha256(new_refresh),
+                        "max_age": self.settings.auth_session_max_age_s,
+                    },
                 )
             ).first()
         if row is None:

@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     auth_jwt_audience: str = "authenticated"
     auth_jwt_issuer: str | None = None
     auth_access_token_ttl_s: int = 3600
+    # Local IdP: a session (its refresh token) ends this long after sign-in, however active it was.
+    # The web signs out after 8 idle hours on its own (useIdleSignOut); this bounds a stolen token.
+    auth_session_max_age_s: int = Field(7 * 24 * 3600, gt=0)
     # Hosted demo without email delivery: registration confirms the account at once and returns
     # session tokens. Refused when ENV=prod unless ALLOW_AUTO_VERIFY_IN_PRODUCTION=true.
     auth_auto_verify_email: bool = False

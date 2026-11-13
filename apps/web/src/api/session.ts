@@ -76,8 +76,38 @@ export function bindSessionCache(qc: QueryClient) {
   };
 }
 
+/**
+ * Idle sign-out: the last time a person used the app in any tab (input, not background polling).
+ * Shared through localStorage, so a laptop left closed overnight is signed out when it reopens.
+ */
+const ACTIVE_KEY = "cw.lastActive";
+export const IDLE_LIMIT_MS = 8 * 60 * 60 * 1000;
+let lastWrite = 0;
+
+export function touchActivity(force = false) {
+  const now = Date.now();
+  if (!force && now - lastWrite < 30_000) return; // ponytail: one write per 30 s is precise enough
+  lastWrite = now;
+  try {
+    localStorage.setItem(ACTIVE_KEY, String(now));
+  } catch {
+    /* storage unavailable: idle sign-out is skipped, the server's session lifetime still applies */
+  }
+}
+
+/** Milliseconds since the last activity, or 0 when none is recorded (a session from before this). */
+export function idleFor(): number {
+  try {
+    const last = Number(localStorage.getItem(ACTIVE_KEY));
+    return last > 0 ? Date.now() - last : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function startSession(s: Session) {
   cache?.clear();
+  touchActivity(true);
   session.set(s);
   authChannel.post({ type: "signed_in" });
 }
