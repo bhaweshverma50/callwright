@@ -20,7 +20,8 @@ export interface Step {
  * the same 16px padding and a 40px circle at its top left, so all circles share one centre axis
  * at 36px from the row edge. Each row draws two segments: top edge to its circle centre, and
  * circle centre to bottom edge; rows touch, so the line is continuous. The active row is a raised
- * card: neither it nor its neighbours draw a segment towards it, so the line never crosses it. Segments
+ * card stacked above its neighbours and draws no segments, so the line meets its edges and runs
+ * under its shadow instead of through it. Segments
  * after a done step fill with the accent, the rest are muted.
  */
 export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: string }) {
@@ -40,11 +41,9 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
               active && "z-[1] bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
             )}
           >
-            {/* The active row is a raised card: it and the segments touching it are not drawn, so the line never crosses its edge or shadow. */}
-            {i > 0 && !active && steps[i - 1]?.status !== "active" && (
-              <Connector className="top-0 h-[36px]" filled={steps[i - 1]?.status === "done"} delay={0.1 * i + 0.1} />
-            )}
-            {!last && !active && steps[i + 1]?.status !== "active" && <Connector className="top-[36px] bottom-0" filled={filled} delay={0.1 * i} />}
+            {/* The active row is a raised card: it draws no connector, so the line stops at its edges and runs under its shadow. */}
+            {i > 0 && !active && <Connector className="top-0 h-[36px]" filled={steps[i - 1]?.status === "done"} delay={0.1 * i + 0.1} />}
+            {!last && !active && <Connector className="top-[36px] bottom-0" filled={filled} delay={0.1 * i} />}
             <span
               className={cn(
                 "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full border font-mono text-[14px] font-medium tnum",
