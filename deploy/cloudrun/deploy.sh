@@ -275,6 +275,9 @@ print(next((e.get("value", "") for e in env if e["name"] == "LIVEKIT_SIP_HOST"),
   [ -n "${LIVEKIT_SIP_HOST:-}" ] && env+="|LIVEKIT_SIP_HOST=$LIVEKIT_SIP_HOST"
   # Signup protections (docs/OPERATIONS.md, "Signup abuse protections"): plain settings are passed
   # through from the shell when set; their secrets (SMTP_PASSWORD, TURNSTILE_SECRET_KEY) are optional above.
+  # Hosted demo defaults (Brevo SMTP, $5 of trial credit a day); export one as empty to drop it.
+  : "${SMTP_HOST=smtp-relay.brevo.com}" "${SMTP_PORT=587}" "${SMTP_USERNAME=b53f68001@smtp-brevo.com}"
+  : "${SMTP_FROM=Callwright <mail@bhawesh.dev>}" "${TRIAL_CREDIT_DAILY_BUDGET_USD=5.00}"
   for name in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_FROM TRIAL_CREDIT_DAILY_BUDGET_USD EXTRA_BLOCKED_EMAIL_DOMAINS; do
     [ -n "${!name:-}" ] && env+="|$name=${!name}"
   done
