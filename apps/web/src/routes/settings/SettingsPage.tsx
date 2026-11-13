@@ -4,7 +4,7 @@ import { fieldErrors, problemMessage } from "../../api/problems";
 import { qk, updateWorkspace, useMe } from "../../api/queries";
 import type { Me, Workspace } from "../../api/types";
 import { GearSix } from "@phosphor-icons/react";
-import { Building2, CircleAlert, Disc, Gauge, Mail, PenLine, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { Building2, CircleAlert, Cloud, Disc, Gauge, Mail, PenLine, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Button,
@@ -21,7 +21,9 @@ import {
   WorkLayout,
   toast,
 } from "../../components";
+import { Link } from "react-router";
 import { bodyLimits } from "../../lib/contract.gen";
+import { CONNECTIONS_PATH } from "../../lib/paths";
 
 const NAME_MAX = bodyLimits["PATCH /workspaces/current"].name.maxLength;
 
@@ -181,20 +183,34 @@ function SettingsForm({ me }: { me: Me }) {
         </form>
       }
       inspector={
-        <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
-          <PanelRows as="dl">
-            <InfoRow
-              icon={<Gauge />}
-              label="Concurrent calls"
-              hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
-            >
-              <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
-            </InfoRow>
-            <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>
-              {me.user.email}
-            </InfoRow>
-          </PanelRows>
-        </Panel>
+        <div className="flex flex-col gap-4">
+          <Panel
+            title="Connections"
+            description="Google Drive and Sheets accounts your knowledge bases sync from."
+            icon={<Cloud />}
+            actions={
+              <Button asChild size="sm">
+                <Link to={CONNECTIONS_PATH}>Manage</Link>
+              </Button>
+            }
+          >
+            <p className="text-[13px] text-fg-3">Connect Google once, then add Drive folders as sources on any knowledge base.</p>
+          </Panel>
+          <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
+            <PanelRows as="dl">
+              <InfoRow
+                icon={<Gauge />}
+                label="Concurrent calls"
+                hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
+              >
+                <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
+              </InfoRow>
+              <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>
+                {me.user.email}
+              </InfoRow>
+            </PanelRows>
+          </Panel>
+        </div>
       }
     />
   );

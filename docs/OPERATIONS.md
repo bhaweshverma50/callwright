@@ -441,3 +441,64 @@ Keep `AUTH_AUTO_VERIFY_EMAIL=true` until SMTP is confirmed working (register, th
 inbox). Only then set `AUTH_AUTO_VERIFY_EMAIL=false`; with it off, an account cannot sign in or
 get its trial credit until the emailed link is opened. The deploy script still sets it to true,
 so change the line in `step_api` at that point.
+
+## 16. Google connections and Drive knowledge sync (spec 022)
+
+Knowledge bases can sync from a Google Drive folder or shared drive. A workspace connects a Google
+account once on Settings > Connections (read-only Drive, plus Google Sheets access requested now and
+held for the Sheets tool). Calls only ever search the synced copy.
+
+Settings (all three OAuth values empty turns the feature off; the routes return 503
+`connector_unavailable`):
+
+| Variable | Where | Value |
+|---|---|---|
+| `GOOGLE_OAUTH_CLIENT_ID` | Secret Manager (optional) | OAuth client id |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Secret Manager (optional, may be `enc:v1:`) | OAuth client secret |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Secret Manager (optional) | `https://<web app>/settings/connections/callback` |
+| `CONNECTORS_DRIVE_MODE` | env | `live` (default) or `fake` (in-memory Drive for tests and demos; refused in prod) |
+| `CONNECTORS_WORKSPACES` | env | Beta allowlist: comma-separated workspace ids that may connect Google and add sources; empty (default) is everyone |
+| `CONNECTORS_SYNC_PAUSED` | env | Kill switch: `true` stops scheduled syncs (Sync now and searches keep working) |
+
+Google Cloud setup (one time, per project):
+
+1. Create a project; enable the Google Drive API and the Google Sheets API.
+2. Google Auth Platform (OAuth consent screen): app name, support email, audience External,
+   publishing status Testing, add test users.
+3. Data access: scopes `openid`, `.../auth/userinfo.email`, `.../auth/drive.readonly`
+   (restricted) and `.../auth/spreadsheets` (sensitive).
+4. Clients: Web application; authorized JavaScript origin of the web app; redirect URI
+   `<web app>/settings/connections/callback` (local: `http://localhost:5180/settings/connections/callback`).
+5. Copy the client id and secret into the settings above.
+
+Known behaviour:
+
+- While the project is in Testing, only listed test users can connect, and Google expires their
+  refresh tokens after 7 days. The connection then shows "Revoked"; Reconnect fixes it. Both
+  scopes need Google's verification before general release.
+- Syncs run on the jobs worker (cron `sync_due` every minute, job `sync_source`); the worker needs
+  the same three Google settings as the API.
+- A sync job has a 25-minute timeout and refreshes its claim every minute; a claim silent for 10
+  minutes is stale and the next sync takes over.
+
+Metrics: each finished run logs `drive sync finished` with `metric=kb_sync_run` and `status`,
+`failure_reason`, `attention`, `duration_s` and counts. Suggested log-based alerts: `status=failed`
+by `failure_reason` above its usual rate; `failure_reason=google_unavailable` spikes (Google 429s
+or an outage); p95 `duration_s` above 15 minutes; any `attention=mass_archive` (an owner must
+decide); a jump in `attention=access_lost`.
+
+Runbook:
+
+- **Pause all scheduled syncs now** (Google incident, quota exhausted, bad deploy):
+  `redis-cli -u "$REDIS_URL" SET connectors:sync_paused 1`; resume with `DEL connectors:sync_paused`.
+  For a lasting pause set `CONNECTORS_SYNC_PAUSED=true` on the worker. Due sources run once resumed.
+- **A source is stuck on "Syncing"**: its claim expires 10 minutes after the last heartbeat and the
+  next scheduled sync or Sync now takes over; the stale run is recorded as failed. Check the worker
+  logs for its `run_id` (`drive sync finished`, or a crash or cancellation) before forcing anything.
+  To release it at once: `UPDATE kb_sources SET running_run_id = NULL, running_since = NULL WHERE id = '<ksrc_...>';`
+- **Every connection shows "Revoked"**: usually the Testing-mode 7-day expiry, or the OAuth client
+  secret was rotated or the client deleted. Check the client in the Cloud console and the API logs
+  for `invalid_grant`; owners then press Reconnect. Sources resume by themselves after a reconnect,
+  and nothing was archived while access was lost.
+- **A sync is held for a mass archive**: only the knowledge base owner should decide (Archive them
+  or Keep them on the source). Do not confirm on their behalf.

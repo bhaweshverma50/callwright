@@ -93,7 +93,8 @@ export const enums = {
     "uploaded",
     "processing",
     "ready",
-    "failed"
+    "failed",
+    "archived"
   ],
   "EvalStatus": [
     "not_evaluated",
@@ -869,6 +870,54 @@ export const schemaLimits = {
       "maxItems": 20
     }
   },
+  "Connection": {
+    "id": {
+      "pattern": "^conn_"
+    },
+    "provider": {
+      "enum": [
+        "google"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "oauth"
+      ]
+    },
+    "health": {
+      "enum": [
+        "healthy",
+        "failing",
+        "revoked"
+      ]
+    }
+  },
+  "ConnectionDetail": {
+    "activity": {
+      "maxItems": 50
+    }
+  },
+  "ConnectionUser": {
+    "source_id": {
+      "pattern": "^ksrc_"
+    },
+    "kb_id": {
+      "pattern": "^kb_"
+    }
+  },
+  "ConnectorActivity": {
+    "action": {
+      "enum": [
+        "connection_added",
+        "connection_reconnected",
+        "connection_removed",
+        "source_added",
+        "source_removed",
+        "held_archive_confirmed",
+        "held_archive_cancelled"
+      ]
+    }
+  },
   "ControlRange": {
     "display": {
       "enum": [
@@ -1039,6 +1088,19 @@ export const schemaLimits = {
         "too_many_chunks",
         "internal",
         null
+      ]
+    }
+  },
+  "DocumentSource": {
+    "source_id": {
+      "pattern": "^ksrc_"
+    }
+  },
+  "DriveFolder": {
+    "kind": {
+      "enum": [
+        "folder",
+        "shared_drive"
       ]
     }
   },
@@ -1530,6 +1592,83 @@ export const schemaLimits = {
     },
     "description": {
       "maxLength": 500
+    }
+  },
+  "KnowledgeSource": {
+    "id": {
+      "pattern": "^ksrc_"
+    },
+    "kb_id": {
+      "pattern": "^kb_"
+    },
+    "connection_id": {
+      "pattern": "^conn_"
+    },
+    "kind": {
+      "enum": [
+        "google_drive"
+      ]
+    },
+    "root_kind": {
+      "enum": [
+        "folder",
+        "shared_drive"
+      ]
+    },
+    "interval_minutes": {
+      "minimum": 5,
+      "maximum": 1440
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "syncing",
+        "healthy",
+        "needs_attention"
+      ]
+    },
+    "attention_reason": {
+      "enum": [
+        "access_lost",
+        "mass_archive",
+        "kb_full",
+        "no_credit",
+        "source_too_large",
+        null
+      ]
+    }
+  },
+  "KnowledgeSourceCreate": {
+    "connection_id": {
+      "pattern": "^conn_"
+    },
+    "root_kind": {
+      "enum": [
+        "folder",
+        "shared_drive"
+      ]
+    },
+    "root_id": {
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "drive_id": {
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "include_subfolders": {
+      "default": true
+    },
+    "interval_minutes": {
+      "minimum": 5,
+      "maximum": 1440,
+      "default": 15
+    }
+  },
+  "KnowledgeSourceDetail": {
+    "not_imported": {
+      "maxItems": 500
     }
   },
   "LanguageReport": {
@@ -2124,6 +2263,27 @@ export const schemaLimits = {
       ]
     }
   },
+  "SourceFileIssue": {
+    "state": {
+      "enum": [
+        "skipped",
+        "failed"
+      ]
+    },
+    "reason": {
+      "enum": [
+        "unsupported_type",
+        "too_large",
+        "export_too_large",
+        "shortcut",
+        "duplicate",
+        "kb_full",
+        "workspace_storage_full",
+        "download_failed",
+        "processing_failed"
+      ]
+    }
+  },
   "StartConfig": {
     "start_speaker": {
       "enum": [
@@ -2191,6 +2351,45 @@ export const schemaLimits = {
         "llm",
         "tts"
       ]
+    }
+  },
+  "SyncRun": {
+    "id": {
+      "pattern": "^ksr_"
+    },
+    "source_id": {
+      "pattern": "^ksrc_"
+    },
+    "trigger": {
+      "enum": [
+        "first",
+        "scheduled",
+        "manual",
+        "reconnect"
+      ]
+    },
+    "status": {
+      "enum": [
+        "running",
+        "succeeded",
+        "held",
+        "failed"
+      ]
+    },
+    "failure_reason": {
+      "enum": [
+        "access_lost",
+        "connection_revoked",
+        "google_unavailable",
+        "source_too_large",
+        "internal",
+        null
+      ]
+    }
+  },
+  "SyncRunDetail": {
+    "errors": {
+      "maxItems": 500
     }
   },
   "TaskConfig": {
@@ -2821,6 +3020,14 @@ export const queryLimits = {
       "default": false
     }
   },
+  "DELETE /knowledge-bases/{kb_id}/sources/{source_id}": {
+    "documents": {
+      "enum": [
+        "keep",
+        "archive"
+      ]
+    }
+  },
   "DELETE /phone-numbers/{number_id}": {
     "when_idle": {
       "default": false
@@ -3049,6 +3256,25 @@ export const queryLimits = {
       "default": "inline"
     }
   },
+  "GET /connections/{connection_id}/drive/folders": {
+    "parent": {
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "default": "root"
+    },
+    "drive_id": {
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "page_token": {
+      "maxLength": 1024
+    }
+  },
+  "GET /connections/{connection_id}/drive/shared-drives": {
+    "page_token": {
+      "maxLength": 1024
+    }
+  },
   "GET /dashboard/agent-health": {
     "tz": {
       "default": "UTC"
@@ -3264,6 +3490,17 @@ export const queryLimits = {
     }
   },
   "GET /knowledge-bases/{kb_id}/documents": {
+    "page": {
+      "minimum": 1,
+      "default": 1
+    },
+    "page_size": {
+      "minimum": 1,
+      "maximum": 100,
+      "default": 20
+    }
+  },
+  "GET /knowledge-bases/{kb_id}/sources/{source_id}/runs": {
     "page": {
       "minimum": 1,
       "default": 1
@@ -3566,6 +3803,12 @@ export const bodyLimits = {
       "maxLength": 500
     }
   },
+  "PATCH /knowledge-bases/{kb_id}/sources/{source_id}": {
+    "interval_minutes": {
+      "minimum": 5,
+      "maximum": 1440
+    }
+  },
   "PATCH /phone-numbers/{number_id}": {
     "label": {
       "minLength": 1,
@@ -3760,6 +4003,24 @@ export const bodyLimits = {
       "items": {
         "pattern": "^evl_"
       }
+    }
+  },
+  "POST /connections/google/complete": {
+    "state": {
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "code": {
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "error": {
+      "maxLength": 200
+    }
+  },
+  "POST /connections/google/start": {
+    "connection_id": {
+      "pattern": "^conn_"
     }
   },
   "POST /datasets": {
@@ -4067,6 +4328,34 @@ export const bodyLimits = {
       "minimum": 1,
       "maximum": 8,
       "default": 4
+    }
+  },
+  "POST /knowledge-bases/{kb_id}/sources": {
+    "connection_id": {
+      "pattern": "^conn_"
+    },
+    "root_kind": {
+      "enum": [
+        "folder",
+        "shared_drive"
+      ]
+    },
+    "root_id": {
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "drive_id": {
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "include_subfolders": {
+      "default": true
+    },
+    "interval_minutes": {
+      "minimum": 5,
+      "maximum": 1440,
+      "default": 15
     }
   },
   "POST /outbound-calls": {

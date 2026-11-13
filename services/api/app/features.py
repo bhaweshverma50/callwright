@@ -21,6 +21,7 @@ from app.callbacks.install import FEATURE as callbacks
 from app.caller_language.install import FEATURE as caller_language
 from app.calls.install import FEATURE as calls
 from app.channels.install import FEATURE as channels
+from app.connectors.install import FEATURE as connectors
 from app.core.config import Settings
 from app.core.feature import Feature, JobFunction, Runtime
 from app.dashboard.install import FEATURE as dashboard
@@ -74,6 +75,7 @@ FEATURES: tuple[Feature, ...] = (
     voices,
     prompt_ai,
     tools,
+    connectors,
     knowledge,
     channels,
     outbound,
@@ -126,6 +128,10 @@ def job_functions() -> dict[str, JobFunction]:
                 raise ValueError(f"job {name!r} is declared by two features")
             jobs[name] = fn
     return jobs
+
+
+def job_timeouts() -> dict[str, int]:
+    return {name: seconds for feature in FEATURES for name, seconds in feature.job_timeouts.items()}
 
 
 def crons() -> list[CronJob]:

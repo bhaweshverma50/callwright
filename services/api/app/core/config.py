@@ -155,6 +155,20 @@ class Settings(BaseSettings):
     # Outbound customer webhooks (FR-040): plain http only when allowed (development).
     webhooks_allow_http: bool = False
     webhooks_allow_private: bool = False
+    # Google connections and Drive knowledge sync (022). All three OAuth values empty turns the
+    # feature off: the Connections page says so and its routes return 503 connector_unavailable.
+    # The redirect URI is the web app's /settings/connections/callback, registered on the client.
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: SecretStr = SecretStr("")
+    google_oauth_redirect_uri: str = ""
+    # "fake" serves an in-memory Drive (tests, mock mode, local demos); refused in production.
+    connectors_drive_mode: Literal["live", "fake"] = "live"
+    # Beta: comma-separated workspace ids that may connect Google and add Drive sources. Empty
+    # means every workspace. Workspaces already syncing keep syncing when removed from the list.
+    connectors_workspaces: str = ""
+    # Kill switch: true stops the scheduler from starting syncs (Sync now and searches keep
+    # working). The Redis key ``connectors:sync_paused`` does the same without a redeploy.
+    connectors_sync_paused: bool = False
 
     # Throttling (R6) and rate limits (R15)
     login_fail_limit: int = 5
@@ -346,6 +360,8 @@ class Settings(BaseSettings):
         if self.env == "prod":
             if self.auth_provider == "local" or self.stripe_mode == "fake":
                 raise ValueError("production requires AUTH_PROVIDER=supabase and STRIPE_MODE=live")
+            if self.connectors_drive_mode == "fake":
+                raise ValueError("production refuses CONNECTORS_DRIVE_MODE=fake")
             if self.livekit_mode == "fake" or self.webhooks_allow_http or self.webhooks_allow_private:
                 raise ValueError(
                     "production requires LIVEKIT_MODE=live and refuses WEBHOOKS_ALLOW_HTTP/PRIVATE"
@@ -359,6 +375,25 @@ class Settings(BaseSettings):
         if self.stripe_mode == "live" and not self.stripe_secret_key:
             raise ValueError("STRIPE_MODE=live requires STRIPE_SECRET_KEY")
         return self
+
+    def connectors_enabled_for(self, workspace_id: str) -> bool:
+        """Beta allowlist (022 rollout): may this workspace connect Google and add sources?"""
+        allowed = {w.strip() for w in self.connectors_workspaces.split(",") if w.strip()}
+        return not allowed or workspace_id in allowed
+
+    @property
+    def google_configured(self) -> bool:
+        """Google connections are available (022): client id, secret and redirect URI all set."""
+        return bool(
+            self.google_oauth_client_id
+            and self.google_oauth_client_secret.get_secret_value()
+            and self.google_oauth_redirect_uri
+        )
+
+    @property
+    def fake_drive_routes_enabled(self) -> bool:
+        """/v1/dev/fake-drive (022): the dev routes are on and the Drive is the in-memory fake."""
+        return self.dev_routes_enabled and self.connectors_drive_mode == "fake"
 
     @property
     def dev_routes_enabled(self) -> bool:

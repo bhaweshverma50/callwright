@@ -59,6 +59,10 @@ def make_settings(**overrides: Any) -> Settings:
         "db_pool_size": 5,
         "livekit_mode": "fake",
         "livekit_api_secret": "test-livekit-secret-0123456789abcdef",
+        "google_oauth_client_id": "test-client.apps.googleusercontent.com",
+        "google_oauth_client_secret": "test-google-secret",
+        "google_oauth_redirect_uri": "http://localhost:5180/settings/connections/callback",
+        "connectors_drive_mode": "fake",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]

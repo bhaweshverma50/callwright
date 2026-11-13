@@ -28,6 +28,8 @@ import {
   PHONE_NUMBERS_PATH,
   REVIEW_PATH,
   SETTINGS_PATH,
+  CONNECTIONS_PATH,
+  CONNECTIONS_CALLBACK_PATH,
   SIMULATIONS_PATH,
   simulationRunPath,
   TEMPLATES_PATH,
@@ -64,6 +66,8 @@ const CallHistoryPage = lazy(() => import("./routes/calls/CallHistoryPage").then
 const CallbacksPage = lazy(() => import("./routes/calls/callbacks/CallbacksPage").then((m) => ({ default: m.CallbacksPage })));
 const ComparePage = lazy(() => import("./routes/calls/ComparePage").then((m) => ({ default: m.ComparePage })));
 const DashboardPage = lazy(() => import("./routes/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const ConnectionsPage = lazy(() => import("./routes/settings/connections/ConnectionsPage").then((m) => ({ default: m.ConnectionsPage })));
+const ConnectionCallback = lazy(() => import("./routes/settings/connections/ConnectionCallback").then((m) => ({ default: m.ConnectionCallback })));
 const PhoneNumbersPage = lazy(() => import("./routes/channels/PhoneNumbersPage").then((m) => ({ default: m.PhoneNumbersPage })));
 const NewFlowAgentPage = lazy(() => import("./routes/flows/NewFlowAgentPage").then((m) => ({ default: m.NewFlowAgentPage })));
 const FlowBuilderPage = lazy(() => import("./routes/flows/FlowBuilderPage").then((m) => ({ default: m.FlowBuilderPage })));
@@ -153,6 +157,8 @@ export const routes: RouteObject[] = [
                   { path: callComparePath(":callId"), element: <ComparePage /> },
                   { path: BILLING_PATH, element: <BillingPage /> },
                   { path: SETTINGS_PATH, element: <SettingsPage /> },
+                  { path: CONNECTIONS_PATH, element: <ConnectionsPage /> },
+                  { path: CONNECTIONS_CALLBACK_PATH, element: <ConnectionCallback /> },
                   { path: PHONE_NUMBERS_PATH, element: <PhoneNumbersPage /> },
                   { path: REVIEW_PATH, element: <ReviewPage /> },
                   { path: CALIBRATION_PATH, element: <CalibrationPage /> },

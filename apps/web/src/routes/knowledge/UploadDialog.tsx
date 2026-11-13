@@ -93,6 +93,9 @@ export function UploadDialog({
   const blocked = verdict === "blocked_same_kb";
   const nameMatch = check.state === "done" ? check.matches.find((m) => m.reason === "same_name" && m.kb_id === kbId) : undefined;
   const elsewhere = check.state === "done" ? check.matches.filter((m) => m.reason === "same_content" && m.kb_id !== kbId) : [];
+  // A document synced from Google Drive changes in Drive, never by an upload (022).
+  const synced = Boolean(nameMatch?.managed);
+  const replacing = verdict === "warn_same_name" && sameName === "replace" && !synced;
   const uploading = progress !== null;
   const canUpload = Boolean(file) && !problem && !blocked && check.state !== "checking" && !uploading;
 
@@ -104,7 +107,7 @@ export function UploadDialog({
     try {
       await uploadDocument(kbId, file, {
         displayName,
-        replaceDocId: verdict === "warn_same_name" && sameName === "replace" ? nameMatch?.doc_id : undefined,
+        replaceDocId: replacing ? nameMatch?.doc_id : undefined,
         acknowledgeDuplicate: elsewhere.length > 0,
         onProgress: setProgress,
         signal: abort.current.signal,
@@ -123,6 +126,8 @@ export function UploadDialog({
       else if (isApiError(e) && e.status === 415) setFailure("This is not a PDF or Word document, whatever its name says.");
       else if (isApiError(e) && e.code === "quota_exceeded") setFailure(e.problem.detail ?? "A storage limit was reached.");
       else if (isApiError(e) && e.code === "duplicate_document") setFailure("This knowledge base already has a document with the same content.");
+      else if (isApiError(e) && e.code === "managed_by_source")
+        setFailure("That document syncs from Google Drive, so it cannot be replaced by an upload. Change it in Drive, or keep both.");
       else setFailure(problemMessage(e, "knowledge base"));
     }
   };
@@ -146,7 +151,7 @@ export function UploadDialog({
             Cancel
           </Button>
           <Button variant="primary" icon={<Upload aria-hidden />} disabled={!canUpload} pending={uploading} onClick={() => void upload()}>
-            {verdict === "warn_same_name" && sameName === "replace" ? "Upload and replace" : "Upload"}
+            {replacing ? "Upload and replace" : "Upload"}
           </Button>
         </>
       }
@@ -252,20 +257,24 @@ export function UploadDialog({
             >
               <p className="flex items-start gap-2 text-[13px] text-fg">
                 <Info className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden />
-                {nameMatch.file_name} is already here with different content.
+                {synced
+                  ? `${nameMatch.file_name} is already here, synced from Google Drive. Uploading keeps both; to change the synced one, edit it in Drive.`
+                  : `${nameMatch.file_name} is already here with different content.`}
               </p>
-              <Segmented
-                className="w-fit self-start"
-                aria-label="What to do with the existing document"
-                size="sm"
-                value={sameName}
-                onValueChange={setSameName}
-                options={[
-                  { value: "replace", label: "Replace it", icon: <RefreshCw aria-hidden /> },
-                  { value: "keep", label: "Keep both", icon: <Copy aria-hidden /> },
-                ]}
-              />
-              {sameName === "replace" && <p className="text-[13px] text-fg-3">The old version stays searchable until the new one is ready.</p>}
+              {!synced && (
+                <Segmented
+                  className="w-fit self-start"
+                  aria-label="What to do with the existing document"
+                  size="sm"
+                  value={sameName}
+                  onValueChange={setSameName}
+                  options={[
+                    { value: "replace", label: "Replace it", icon: <RefreshCw aria-hidden /> },
+                    { value: "keep", label: "Keep both", icon: <Copy aria-hidden /> },
+                  ]}
+                />
+              )}
+              {replacing && <p className="text-[13px] text-fg-3">The old version stays searchable until the new one is ready.</p>}
             </motion.div>
           )}
         </AnimatePresence>
