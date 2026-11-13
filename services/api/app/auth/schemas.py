@@ -50,3 +50,16 @@ class Session(BaseModel):
     refresh_token: str
     token_type: Literal["bearer"] = "bearer"  # noqa: S105
     expires_in: int
+
+
+class AuthConfig(BaseModel):
+    google_signin: bool
+
+
+class GoogleStartResponse(BaseModel):
+    authorization_url: str
+
+
+class GoogleCompleteRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=2048)
+    state: str = Field(min_length=1, max_length=256)

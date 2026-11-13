@@ -6,7 +6,10 @@ from fastapi import APIRouter, Request, Response
 
 from app.auth.idp import IdpSession
 from app.auth.schemas import (
+    AuthConfig,
     EmailRequest,
+    GoogleCompleteRequest,
+    GoogleStartResponse,
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
@@ -25,7 +28,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _service(request: Request) -> AuthService:
     state = request.app.state
-    return AuthService(state.settings, state.db, state.redis, state.idp)
+    return AuthService(state.settings, state.db, state.redis, state.idp, getattr(state, "google_http", None))
 
 
 def _session(session: IdpSession) -> Session:
@@ -103,3 +106,22 @@ async def request_password_reset(body: EmailRequest, request: Request) -> Respon
 async def confirm_password_reset(body: ResetConfirmRequest, request: Request) -> Response:
     await _service(request).confirm_password_reset(body.token_hash, body.new_password)
     return Response(status_code=204)
+
+
+@router.get("/config", response_model=AuthConfig)
+async def auth_config(request: Request) -> AuthConfig:
+    return AuthConfig(google_signin=request.app.state.settings.google_signin_enabled)
+
+
+@router.post("/google/start", response_model=GoogleStartResponse, responses=problem_responses(404, 429))
+async def google_start(request: Request) -> GoogleStartResponse:
+    return GoogleStartResponse(authorization_url=await _service(request).google_start(client_ip(request)))
+
+
+@router.post(
+    "/google/complete",
+    response_model=Session,
+    responses=problem_responses(400, 404, 422, 429, 502),
+)
+async def google_complete(body: GoogleCompleteRequest, request: Request) -> Session:
+    return _session(await _service(request).google_complete(body.code, body.state, client_ip(request)))

@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     # require a Cloudflare Turnstile token. SMTP_HOST makes the local IdP email its verification
     # and reset links (the in-memory outbox stays).
     turnstile_secret_key: SecretStr | None = None
+    # "Sign in with Google" (also sign-up) on AUTH_PROVIDER=local: on only when both are set. The
+    # redirect URI is {WEB_BASE_URL}/auth/google/callback. Not the Drive connector's GOOGLE_OAUTH_*.
+    google_signin_client_id: str | None = None
+    google_signin_client_secret: SecretStr | None = None
+    google_signin_rate_limit_per_hour: int = 60
     # Registration refuses throwaway email domains (app/auth/disposable_domains.txt) plus these.
     block_disposable_email: bool = True
     extra_blocked_email_domains: Annotated[list[str], NoDecode] = []
@@ -267,6 +272,19 @@ class Settings(BaseSettings):
     # Issues and auto-fix (009). ISSUES_MODEL names issues and drafts fixes (default: the
     # simulator model). Without a key for its provider the offline fake answers.
     issues_model: str | None = None
+
+    @property
+    def google_signin_enabled(self) -> bool:
+        return bool(
+            self.google_signin_client_id
+            and self.google_signin_client_secret
+            and self.google_signin_client_secret.get_secret_value()
+            and self.auth_provider == "local"
+        )
+
+    @property
+    def google_signin_redirect_uri(self) -> str:
+        return f"{self.web_base_url.rstrip('/')}/auth/google/callback"
 
     @field_validator("env", mode="before")
     @classmethod

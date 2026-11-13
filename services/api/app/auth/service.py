@@ -13,8 +13,10 @@ import logging
 import time
 from dataclasses import dataclass
 
+import httpx
 from redis.asyncio import Redis
 
+from app.auth import google as google_mod
 from app.auth import idp as idp_mod
 from app.auth.captcha import verify_captcha
 from app.auth.disposable import check_email_allowed
@@ -52,6 +54,7 @@ class AuthService:
     db: Database
     redis: Redis
     idp: IdentityProvider
+    google_http: httpx.AsyncClient | None = None
 
     @property
     def failures(self) -> FailureCounter:
@@ -155,6 +158,35 @@ class AuthService:
                 email=session.user.email,
                 redis=self.redis,
             )
+        return session
+
+    async def _google_gate(self, ip: str) -> idp_mod.LocalIdentityProvider:
+        """Per-IP rate limit; 404 unless Google sign-in is on (it needs the local IdP)."""
+        if not self.settings.google_signin_enabled or not isinstance(self.idp, idp_mod.LocalIdentityProvider):
+            raise ProblemError(404, "not_found", "Not found", "Google sign-in is not enabled.")
+        result = await RateLimiter(self.redis).hit(
+            "auth_google", ip, limit=self.settings.google_signin_rate_limit_per_hour, window_s=3600
+        )
+        if not result.allowed:
+            raise too_many_requests(result.retry_after_s, "Too many sign-in attempts. Try again later.")
+        return self.idp
+
+    async def google_start(self, ip: str) -> str:
+        await self._google_gate(ip)
+        return await google_mod.start(self.settings, self.redis)
+
+    async def google_complete(self, code: str, state: str, ip: str) -> IdpSession:
+        """Google has verified the email, so no captcha or disposable-domain check; the per-IP
+        rate limit stays. Signs in through the same bootstrap as a password sign-in."""
+        local = await self._google_gate(ip)
+        email = await google_mod.complete(self.settings, self.redis, code, state, self.google_http)
+        try:
+            session = await local.sign_in_external(email)
+        except idp_mod.IdpUnavailable as exc:
+            raise _idp_down() from exc
+        await bootstrap_workspace(
+            self.db, self.settings, subject=session.user.subject, email=session.user.email, redis=self.redis
+        )
         return session
 
     async def refresh(self, refresh_token: str) -> IdpSession:

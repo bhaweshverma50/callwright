@@ -37,6 +37,7 @@ _TITLES = {
     422: "Request is not valid",
     429: "Too many requests",
     500: "Something went wrong",
+    502: "Bad gateway",
     503: "Service unavailable",
 }
 
@@ -282,6 +283,7 @@ _DESCRIPTIONS = {
     409: "Conflict",
     422: "Validation failed",
     429: "Rate limited",
+    502: "Upstream provider unavailable",
     503: "Service unavailable",
 }
 

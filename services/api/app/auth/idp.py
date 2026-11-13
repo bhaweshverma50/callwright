@@ -326,6 +326,65 @@ class LocalIdentityProvider:
             raise EmailNotConfirmed()
         return await self._new_session(user.id, user.email)
 
+    async def sign_in_external(self, email: str) -> IdpSession:
+        """Sign in an email an external provider (Google) has verified; no password involved.
+
+        * No such user: create one, confirmed, with an unusable password (a random hash nobody
+          knows); a real password can be set later through password reset.
+        * Confirmed user: sign in.
+        * Unconfirmed user: someone may have registered this email with their own password and
+          never verified it. Confirm the user, replace the password hash with an unusable one so
+          that password stops working, and revoke their sessions and outstanding one-time tokens
+          (a pending verification link must not open the account either).
+        """
+        email = email.strip().lower()
+        user_id = str(uuid.uuid4())
+        unusable = hash_password(secrets.token_urlsafe(32))
+        async with self.db.transaction() as s:
+            created = (
+                await s.execute(
+                    text(
+                        "insert into local_idp.users (id, email, password_hash, email_confirmed_at) "
+                        "values (:id, :e, :p, now()) on conflict (email) do nothing returning id"
+                    ),
+                    {"id": user_id, "e": email, "p": unusable},
+                )
+            ).first()
+            if created is None:
+                row = (
+                    await s.execute(
+                        text(
+                            "select id::text as id, email::text as email, email_confirmed_at "
+                            "from local_idp.users where email = :e for update"
+                        ),
+                        {"e": email},
+                    )
+                ).one()
+                user_id, email = row.id, row.email
+                if row.email_confirmed_at is None:
+                    await s.execute(
+                        text(
+                            "update local_idp.users set password_hash = :p, email_confirmed_at = now() "
+                            "where id = :id"
+                        ),
+                        {"p": unusable, "id": user_id},
+                    )
+                    await s.execute(
+                        text(
+                            "update local_idp.sessions set revoked_at = now() "
+                            "where user_id = :id and revoked_at is null"
+                        ),
+                        {"id": user_id},
+                    )
+                    await s.execute(
+                        text(
+                            "update local_idp.one_time_tokens set used_at = now() "
+                            "where user_id = :id and used_at is null"
+                        ),
+                        {"id": user_id},
+                    )
+        return await self._new_session(user_id, email)
+
     async def refresh(self, refresh_token: str) -> IdpSession:
         new_refresh = secrets.token_urlsafe(32)
         async with self.db.transaction() as s:

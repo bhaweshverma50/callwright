@@ -1267,6 +1267,120 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       x-spec: 006-calls-analytics
+  /auth/config:
+    get:
+      operationId: getAuthConfig
+      tags:
+      - auth
+      security: []
+      summary: Public sign-in options the web app reads before it shows the sign-in and register pages
+      responses:
+        '200':
+          description: Options
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - google_signin
+                properties:
+                  google_signin:
+                    type: boolean
+                    description: True when "Continue with Google" is available (GOOGLE_SIGNIN_* set and
+                      AUTH_PROVIDER=local)
+      x-spec: 001-platform-foundation
+  /auth/google/complete:
+    post:
+      operationId: completeGoogleSignIn
+      tags:
+      - auth
+      security: []
+      summary: Finish "Sign in with Google"; creates the account and workspace on first sign-in
+      description: Exchanges the code with Google and checks the id_token (audience, issuer, expiry, nonce).
+        An unknown email gets a confirmed account with no usable password. An existing unverified account
+        is confirmed and its password is replaced, so a password set by whoever registered it first stops
+        working.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - code
+              - state
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                state:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: State missing, expired or already used, or the id_token did not check out (code
+            oauth_state_invalid); Google has not verified the email (code google_email_unverified)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Google sign-in is not enabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          description: Google returned an error or timed out (code google_unavailable)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      x-spec: 001-platform-foundation
+  /auth/google/start:
+    post:
+      operationId: startGoogleSignIn
+      tags:
+      - auth
+      security: []
+      summary: Begin "Sign in with Google" (also sign-up); returns the Google URL to send the browser
+        to
+      description: Stores a single-use state, PKCE verifier (S256) and nonce for 10 minutes. The browser
+        comes back to `{WEB_BASE_URL}/auth/google/callback` with `code` and `state`.
+      responses:
+        '200':
+          description: Where to send the browser
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - authorization_url
+                properties:
+                  authorization_url:
+                    type: string
+                    format: uri
+        '404':
+          description: Google sign-in is not enabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      x-spec: 001-platform-foundation
   /auth/password-reset:
     post:
       operationId: requestPasswordReset

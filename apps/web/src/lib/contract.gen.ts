@@ -3704,6 +3704,16 @@ export const bodyLimits = {
       "maxItems": 20
     }
   },
+  "POST /auth/google/complete": {
+    "code": {
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "state": {
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
   "POST /auth/password-reset/confirm": {
     "new_password": {
       "minLength": 10,
