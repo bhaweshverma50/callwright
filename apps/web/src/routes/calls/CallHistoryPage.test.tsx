@@ -51,15 +51,15 @@ describe("call list URL state (FR-005, FR-036 to FR-038)", () => {
 });
 
 describe("CallHistoryPage (006 US1)", () => {
-  it("lists 20 of 45 newest first and pages through", async () => {
+  it("lists 10 of 45 newest first and pages through", async () => {
     seedMockCalls(45);
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/calls");
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(20), { timeout: 5000 });
-    expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("1 to 20 of 45 calls");
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(10), { timeout: 5000 });
+    expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("1 to 10 of 45 calls");
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("21 to 40 of 45 calls"), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("11 to 20 of 45 calls"), { timeout: 5000 });
   });
 
   it("keeps the selection across pages and blocks a mixed-agent simulation", async () => {
@@ -67,10 +67,10 @@ describe("CallHistoryPage (006 US1)", () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/calls");
-    await waitFor(() => expect(rowsOnPage()).toHaveLength(20), { timeout: 5000 });
+    await waitFor(() => expect(rowsOnPage()).toHaveLength(10), { timeout: 5000 });
     for (const i of [0, 1, 2]) await user.click(rowsOnPage()[i]!);
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("21 to 40"), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("11 to 20"), { timeout: 5000 });
     for (const i of [0, 1]) await user.click(rowsOnPage()[i]!);
     await user.click(screen.getByRole("button", { name: "Previous" }));
     await waitFor(() =>

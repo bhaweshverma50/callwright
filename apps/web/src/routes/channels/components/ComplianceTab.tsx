@@ -3,7 +3,19 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
-import { Badge, Button, IconButton, Input, Pagination, Panel, Select, Skeleton } from "../../../components";
+import {
+  Badge,
+  Button,
+  DEFAULT_LIST_PAGE_SIZE,
+  IconButton,
+  Input,
+  PagerCompact,
+  Pagination,
+  Panel,
+  Select,
+  Skeleton,
+  usePageSize,
+} from "../../../components";
 import { useDebounced } from "../../../lib/useDebounced";
 import { useDecisions, useDncEntries, useDncMutations } from "../../../api/channels";
 import { CallingHoursEditor } from "./CallingHoursEditor";
@@ -14,8 +26,9 @@ import { bodyLimits } from "../../../lib/contract.gen";
 function DncPanel() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("dnc");
   const q = useDebounced(search.trim(), 250);
-  const list = useDncEntries(q, page);
+  const list = useDncEntries(q, page, pageSize);
   const { add, remove } = useDncMutations();
   const [number, setNumber] = useState("");
   const [region, setRegion] = useState("none");
@@ -99,8 +112,9 @@ function DncPanel() {
           </p>
         )}
       </form>
-      <div className="px-5 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
         <Input
+          className="min-w-0 flex-1"
           inputSize="sm"
           prefix={<Search aria-hidden />}
           placeholder="Search numbers"
@@ -118,6 +132,9 @@ function DncPanel() {
             ) : undefined
           }
         />
+        {list.data && (
+          <PagerCompact page={page} totalPages={list.data.total_pages} total={list.data.total} pageSize={pageSize} onPageChange={setPage} />
+        )}
       </div>
       <div className="px-5 pb-4 pt-3">
         {list.isPending ? (
@@ -161,15 +178,19 @@ function DncPanel() {
             </AnimatePresence>
           </ul>
         )}
-        {list.data && list.data.total_pages > 1 && (
+        {list.data && list.data.total > DEFAULT_LIST_PAGE_SIZE && (
           <Pagination
             className="mt-2 px-0"
             page={page}
             totalPages={list.data.total_pages}
             total={list.data.total}
-            pageSize={20}
+            pageSize={pageSize}
             noun="numbers"
             onPageChange={setPage}
+            onPageSizeChange={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
           />
         )}
       </div>

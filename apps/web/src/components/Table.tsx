@@ -1,7 +1,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { cn } from "./cn";
+import { Select } from "./Select";
 import { Skeleton } from "./Skeleton";
 
 export interface Column<T> {
@@ -122,40 +123,128 @@ export function Table<T>({
   );
 }
 
+/** Page sizes every paged list offers; lists open on the smallest so the pager stays in reach. */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export const DEFAULT_LIST_PAGE_SIZE = LIST_PAGE_SIZES[0];
+
+/**
+ * The page size a viewer picked for one list, remembered in this browser. Falls back to the default
+ * when storage is blocked or holds something that is not an offered size.
+ */
+export function usePageSize(list: string, sizes: readonly number[] = LIST_PAGE_SIZES): [number, (size: number) => void] {
+  const key = `cw.pageSize.${list}`;
+  const [size, setSize] = useState(() => {
+    try {
+      const n = Number(localStorage.getItem(key));
+      return sizes.includes(n) ? n : sizes[0]!;
+    } catch {
+      return sizes[0]!;
+    }
+  });
+  const set = (n: number) => {
+    setSize(n);
+    try {
+      localStorage.setItem(key, String(n));
+    } catch {
+      /* storage blocked: keep it for this visit only */
+    }
+  };
+  return [size, set];
+}
+
 export interface PaginationProps {
   page: number;
   totalPages: number;
   total: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  /** Offer a rows-per-page picker; changing it should also return to page 1. */
+  onPageSizeChange?: (size: number) => void;
+  pageSizes?: readonly number[];
   /** What is being counted, plural ("transactions"). */
   noun?: string;
   className?: string;
 }
 
-/** "41 to 60 of 312 transactions" with previous and next buttons. */
-export function Pagination({ page, totalPages, total, pageSize, onPageChange, noun = "rows", className }: PaginationProps) {
+/**
+ * "41 to 60 of 312 transactions", an optional rows-per-page picker, and previous and next buttons.
+ * Goes at the foot of a list; put {@link PagerCompact} in the list's header so long pages can be
+ * turned without scrolling.
+ */
+export function Pagination({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  pageSizes = LIST_PAGE_SIZES,
+  noun = "rows",
+  className,
+}: PaginationProps) {
   if (total === 0) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   return (
-    <nav aria-label="Pagination" className={cn("flex flex-wrap items-center justify-between gap-3 px-5 py-3", className)}>
+    <nav aria-label="Pagination" className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-3", className)}>
       <p className="text-[13px] text-fg-3">
         <span className="font-mono tnum">{from.toLocaleString()}</span> to <span className="font-mono tnum">{to.toLocaleString()}</span> of{" "}
         <span className="font-mono tnum">{total.toLocaleString()}</span> {noun}
       </p>
-      <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)} icon={<ChevronLeft aria-hidden />}>
-          Previous
-        </Button>
-        <span className="font-mono text-[12px] text-fg-2 tnum" aria-current="page">
-          {page} / {Math.max(1, totalPages)}
-        </span>
-        <Button size="sm" variant="ghost" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-          Next
-          <ChevronRight aria-hidden />
-        </Button>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {onPageSizeChange && (
+          <label className="flex items-center gap-2 text-[13px] text-fg-3">
+            Rows per page
+            <Select
+              size="sm"
+              aria-label="Rows per page"
+              className="w-[76px]"
+              value={String(pageSize)}
+              onValueChange={(v) => onPageSizeChange(Number(v))}
+              options={pageSizes.map((n) => ({ value: String(n), label: String(n) }))}
+            />
+          </label>
+        )}
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)} icon={<ChevronLeft aria-hidden />}>
+            Previous
+          </Button>
+          <span className="font-mono text-[12px] text-fg-2 tnum" aria-current="page">
+            {page} / {Math.max(1, totalPages)}
+          </span>
+          <Button size="sm" variant="ghost" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+            Next
+            <ChevronRight aria-hidden />
+          </Button>
+        </div>
       </div>
+    </nav>
+  );
+}
+
+/** The header pager: "1-10 of 34" with icon-only previous and next. Hidden when everything fits on one page. */
+export function PagerCompact({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPageChange,
+  className,
+}: Pick<PaginationProps, "page" | "totalPages" | "total" | "pageSize" | "onPageChange" | "className">) {
+  if (totalPages <= 1) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(total, page * pageSize);
+  return (
+    <nav aria-label="Pagination, top" className={cn("flex items-center gap-1", className)}>
+      <span className="mr-1 whitespace-nowrap font-mono text-[12px] text-fg-3 tnum">
+        {from}-{to} of {total.toLocaleString()}
+      </span>
+      <Button size="sm" variant="ghost" aria-label="Previous page" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+        <ChevronLeft aria-hidden />
+      </Button>
+      <Button size="sm" variant="ghost" aria-label="Next page" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+        <ChevronRight aria-hidden />
+      </Button>
     </nav>
   );
 }

@@ -7,21 +7,34 @@ import { talkTimeFacts } from "./TalkTimeGauge";
 import { defaultWindow, windowError } from "./UsagePanel";
 
 describe("transactions (T058, FR-009)", () => {
-  it("lists 20 rows per page, newest first, grouped by day, with pagination", async () => {
+  it("lists 10 rows per page, newest first, grouped by day, with pagination at the top and foot", async () => {
     await signInDemo();
     const user = userEvent.setup();
     renderApp("/billing");
     const timeline = await screen.findByRole("region", { name: "Credit transactions, newest first" });
-    await waitFor(() => expect(within(timeline).getAllByRole("listitem")).toHaveLength(20));
+    await waitFor(() => expect(within(timeline).getAllByRole("listitem")).toHaveLength(10));
     const times = within(timeline)
       .getAllByRole("listitem")
       .map((r) => r.querySelector("time")!.getAttribute("datetime")!);
     expect([...times].sort().reverse()).toEqual(times);
     expect(within(timeline).getAllByRole("heading", { level: 3 }).length).toBeGreaterThan(1);
     const pager = screen.getByRole("navigation", { name: "Pagination" });
-    expect(pager).toHaveTextContent(/1 to 20 of \d+ transactions/);
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(pager).toHaveTextContent(/21 to \d+ of \d+ transactions/));
+    expect(pager).toHaveTextContent(/1 to 10 of \d+ transactions/);
+    // The header pager turns the page without scrolling to the foot.
+    await user.click(within(screen.getByRole("navigation", { name: "Pagination, top" })).getByRole("button", { name: "Next page" }));
+    await waitFor(() => expect(pager).toHaveTextContent(/11 to \d+ of \d+ transactions/));
+  });
+
+  it("shows more rows per page when asked, from the first page", async () => {
+    await signInDemo();
+    const user = userEvent.setup();
+    renderApp("/billing");
+    const timeline = await screen.findByRole("region", { name: "Credit transactions, newest first" });
+    await waitFor(() => expect(within(timeline).getAllByRole("listitem")).toHaveLength(10));
+    await user.click(screen.getByRole("combobox", { name: "Rows per page" }));
+    await user.click(await screen.findByRole("option", { name: "20" }));
+    await waitFor(() => expect(within(timeline).getAllByRole("listitem")).toHaveLength(20));
+    expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent(/1 to 20 of \d+ transactions/);
   });
 
   it("opens a call charge's cost breakdown", async () => {

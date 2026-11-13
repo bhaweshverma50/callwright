@@ -6,8 +6,20 @@ import { Database as DatabaseDuo } from "@phosphor-icons/react";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { DATASETS_PAGE_SIZE, useDatasets, type Dataset } from "../../api/datasets";
-import { Button, EmptyState, PageHeader, Pagination, Select, Table, TruncatedText, type Column } from "../../components";
+import { useDatasets, type Dataset } from "../../api/datasets";
+import {
+  Button,
+  EmptyState,
+  DEFAULT_LIST_PAGE_SIZE,
+  PageHeader,
+  PagerCompact,
+  Pagination,
+  Select,
+  Table,
+  TruncatedText,
+  usePageSize,
+  type Column,
+} from "../../components";
 import { NewDatasetDialog } from "./NewDatasetDialog";
 import { timeAgo } from "../../lib/format";
 import { useAllAgents } from "../../api/agents";
@@ -48,7 +60,8 @@ export function DatasetsPage() {
   const agentParam = params.get("agent") ?? ALL;
   const agentId = agentParam === ALL ? null : agentParam;
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
-  const datasets = useDatasets(agentId, page);
+  const [pageSize, setPageSize] = usePageSize("datasets");
+  const datasets = useDatasets(agentId, page, pageSize);
   const agents = useAllAgents();
   const [creating, setCreating] = useState(false);
   const agentOptions = useMemo(
@@ -89,6 +102,16 @@ export function DatasetsPage() {
           <span className="text-[13px] text-fg-3" aria-live="polite">
             <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {total === 1 ? "dataset" : "datasets"}
           </span>
+        )}
+        {datasets.data && (
+          <PagerCompact
+            className="ml-auto"
+            page={page}
+            totalPages={datasets.data.total_pages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={(p) => set({ page: p === 1 ? null : String(p) })}
+          />
         )}
       </div>
       <section aria-label="Datasets" className="overflow-hidden rounded-panel border border-line bg-surface shadow-1">
@@ -132,15 +155,19 @@ export function DatasetsPage() {
             }
           />
         )}
-        {datasets.data && total > DATASETS_PAGE_SIZE && (
+        {datasets.data && total > DEFAULT_LIST_PAGE_SIZE && (
           <div className="border-t border-line">
             <Pagination
               page={page}
               totalPages={datasets.data.total_pages}
               total={total}
-              pageSize={DATASETS_PAGE_SIZE}
+              pageSize={pageSize}
               noun="datasets"
               onPageChange={(p) => set({ page: p === 1 ? null : String(p) })}
+              onPageSizeChange={(n) => {
+                setPageSize(n);
+                set({ page: null });
+              }}
             />
           </div>
         )}

@@ -12,7 +12,6 @@ import { Link, useSearchParams } from "react-router";
 import { isApiError } from "../../api/errors";
 import {
   DEFAULT_WINDOW,
-  ISSUE_PAGE_SIZE,
   WINDOWS,
   detectIssues,
   issueKeys,
@@ -32,12 +31,15 @@ import {
   type Column,
   EmptyState,
   PageHeader,
+  DEFAULT_LIST_PAGE_SIZE,
+  PagerCompact,
   Pagination,
   ProblemAlert,
   Segmented,
   Select,
   Table,
   TruncatedText,
+  usePageSize,
 } from "../../components";
 import { IssueStatusBadge, KIND_LABELS, ORIGIN_LABELS, SCOPE_LABELS, STATUS_FILTER_OPTIONS, windowRange } from "./shared";
 import { plural, timeAgo } from "../../lib/format";
@@ -168,7 +170,8 @@ export function IssuesPage() {
   const scope: IssueScope = params.get("source") === "real_and_simulated" ? "real_and_simulated" : "real";
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
 
-  const filters = useMemo(() => ({ agentId, status, scope, windowDays, page }), [agentId, status, scope, windowDays, page]);
+  const [pageSize, setPageSize] = usePageSize("issues");
+  const filters = useMemo(() => ({ agentId, status, scope, windowDays, page, pageSize }), [agentId, status, scope, windowDays, page, pageSize]);
   const issues = useIssues(filters);
   const agents = useAllAgents();
   const detection = useLatestDetection(agentId);
@@ -176,6 +179,12 @@ export function IssuesPage() {
   const [detectError, setDetectError] = useState<unknown>(null);
   const [starting, setStarting] = useState(false);
 
+  const setPageNumber = (p: number) => {
+    const next = new URLSearchParams(params);
+    if (p === 1) next.delete("page");
+    else next.set("page", String(p));
+    setParams(next, { replace: true });
+  };
   const set = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams(params);
     for (const [k, v] of Object.entries(patch)) {
@@ -282,6 +291,16 @@ export function IssuesPage() {
           onValueChange={(v) => set({ source: v })}
           options={(["real", "real_and_simulated"] as const).map((s) => ({ value: s, label: SCOPE_LABELS[s] }))}
         />
+        {issues.data && (
+          <PagerCompact
+            className="sm:ml-auto"
+            page={page}
+            totalPages={issues.data.total_pages}
+            total={issues.data.total}
+            pageSize={pageSize}
+            onPageChange={setPageNumber}
+          />
+        )}
       </div>
 
       {(detection.data || detectError) && (
@@ -326,19 +345,18 @@ export function IssuesPage() {
             }
           />
         )}
-        {issues.data && issues.data.total > ISSUE_PAGE_SIZE && (
+        {issues.data && issues.data.total > DEFAULT_LIST_PAGE_SIZE && (
           <div className="border-t border-line">
             <Pagination
               page={page}
               totalPages={issues.data.total_pages}
               total={issues.data.total}
-              pageSize={ISSUE_PAGE_SIZE}
+              pageSize={pageSize}
               noun="issues"
-              onPageChange={(p) => {
-                const next = new URLSearchParams(params);
-                if (p === 1) next.delete("page");
-                else next.set("page", String(p));
-                setParams(next, { replace: true });
+              onPageChange={setPageNumber}
+              onPageSizeChange={(n) => {
+                setPageSize(n);
+                setPageNumber(1);
               }}
             />
           </div>

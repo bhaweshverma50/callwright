@@ -13,22 +13,18 @@ export type DatasetItem = S["DatasetItem"];
 export type AddItemsResult = S["AddItemsResult"];
 export type InvalidReason = AddItemsResult["invalid"][number]["reason"];
 
-export const DATASETS_PAGE_SIZE = 20;
-export const ITEMS_PAGE_SIZE = 50;
-
 export const datasetKeys = {
   all: ["datasets"] as const,
-  list: (agentId: string, page: number) => ["datasets", "list", { agentId, page }] as const,
+  list: (agentId: string, page: number, pageSize: number) => ["datasets", "list", { agentId, page, pageSize }] as const,
   forAgent: (agentId: string) => ["datasets", "for-agent", agentId] as const,
   detail: (id: string) => ["datasets", "detail", id] as const,
-  items: (id: string, page: number) => ["datasets", "items", id, page] as const,
+  items: (id: string, page: number, pageSize: number) => ["datasets", "items", id, page, pageSize] as const,
 };
 
-export function useDatasets(agentId: string | null, page: number) {
+export function useDatasets(agentId: string | null, page: number, pageSize: number) {
   return useQuery({
-    queryKey: datasetKeys.list(agentId ?? "", page),
-    queryFn: () =>
-      unwrap(api.GET("/datasets", { params: { query: { page, page_size: DATASETS_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } } })),
+    queryKey: datasetKeys.list(agentId ?? "", page, pageSize),
+    queryFn: () => unwrap(api.GET("/datasets", { params: { query: { page, page_size: pageSize, ...(agentId && { agent_id: agentId }) } } })),
     placeholderData: keepPreviousData,
   });
 }
@@ -52,11 +48,10 @@ export function useDataset(id: string | undefined) {
   });
 }
 
-export function useDatasetItems(id: string | undefined, page: number) {
+export function useDatasetItems(id: string | undefined, page: number, pageSize: number) {
   return useQuery({
-    queryKey: datasetKeys.items(id ?? "", page),
-    queryFn: () =>
-      unwrap(api.GET("/datasets/{dataset_id}/items", { params: { path: { dataset_id: id! }, query: { page, page_size: ITEMS_PAGE_SIZE } } })),
+    queryKey: datasetKeys.items(id ?? "", page, pageSize),
+    queryFn: () => unwrap(api.GET("/datasets/{dataset_id}/items", { params: { path: { dataset_id: id! }, query: { page, page_size: pageSize } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
   });

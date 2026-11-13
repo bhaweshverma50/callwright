@@ -209,15 +209,15 @@ export type OutboundCallAccepted = S["OutboundCallAccepted"];
 
 export const complianceKeys = {
   all: ["channels", "compliance"] as const,
-  dnc: (q: string, page: number) => ["channels", "compliance", "dnc", q, page] as const,
+  dnc: (q: string, page: number, pageSize: number) => ["channels", "compliance", "dnc", q, page, pageSize] as const,
   hours: ["channels", "compliance", "hours"] as const,
   decisions: ["channels", "compliance", "decisions"] as const,
 };
 
-export function useDncEntries(number: string, page: number) {
+export function useDncEntries(number: string, page: number, pageSize: number) {
   return useQuery({
-    queryKey: complianceKeys.dnc(number, page),
-    queryFn: () => unwrap(api.GET("/dnc-entries", { params: { query: { page, page_size: 20, ...(number && { number }) } } })),
+    queryKey: complianceKeys.dnc(number, page, pageSize),
+    queryFn: () => unwrap(api.GET("/dnc-entries", { params: { query: { page, page_size: pageSize, ...(number && { number }) } } })),
     placeholderData: keepPreviousData,
   });
 }

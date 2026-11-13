@@ -10,7 +10,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { isApiError } from "../../api/errors";
 import {
-  ISSUE_PAGE_SIZE,
   cancelValidation,
   issueKeys,
   useIssue,
@@ -27,12 +26,15 @@ import {
   EmptyState,
   Figure,
   PageHeader,
+  DEFAULT_LIST_PAGE_SIZE,
+  PagerCompact,
   Pagination,
   Panel,
   PanelLoader,
   Table,
   toast,
   TruncatedText,
+  usePageSize,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
 import { ApplyPanel } from "./ApplyPanel";
@@ -185,7 +187,8 @@ export function IssueDetailPage() {
   const validating = issue.data?.status === "validating";
   const validations = useIssueValidations(id, validating);
   const [samplePage, setSamplePage] = useState(1);
-  const samples = useIssueSamples(id, samplePage);
+  const [samplePageSize, setSamplePageSize] = usePageSize("issue-samples");
+  const samples = useIssueSamples(id, samplePage, samplePageSize);
   const agents = useAllAgents();
   const [validate, setValidate] = useState<{ draft: { kind: FixKind; guidance: string | null } | null } | null>(null);
   const [dismissing, setDismissing] = useState(false);
@@ -281,6 +284,17 @@ export function IssueDetailPage() {
           title="Sample calls"
           description={`Up to 50 recent failing calls with the check's reasoning, newest first.${samples.data ? ` ${samples.data.total} kept.` : ""}`}
           icon={<ListChecks aria-hidden />}
+          actions={
+            samples.data && (
+              <PagerCompact
+                page={samplePage}
+                totalPages={samples.data.total_pages}
+                total={samples.data.total}
+                pageSize={samplePageSize}
+                onPageChange={setSamplePage}
+              />
+            )
+          }
           bodyClassName="p-0"
         >
           <Table
@@ -293,15 +307,19 @@ export function IssueDetailPage() {
             skeletonRows={4}
             empty={<p className="px-5 py-6 text-[13px] text-fg-3">The sample calls are no longer available. Retention removed them.</p>}
           />
-          {samples.data && samples.data.total > ISSUE_PAGE_SIZE && (
+          {samples.data && samples.data.total > DEFAULT_LIST_PAGE_SIZE && (
             <div className="border-t border-line">
               <Pagination
                 page={samplePage}
                 totalPages={samples.data.total_pages}
                 total={samples.data.total}
-                pageSize={ISSUE_PAGE_SIZE}
+                pageSize={samplePageSize}
                 noun="calls"
                 onPageChange={setSamplePage}
+                onPageSizeChange={(n) => {
+                  setSamplePageSize(n);
+                  setSamplePage(1);
+                }}
               />
             </div>
           )}

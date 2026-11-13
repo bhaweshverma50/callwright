@@ -25,17 +25,20 @@ export const MAX_FILE_MB = MAX_FILE_BYTES / (1024 * 1024);
 export const MAX_KBS_PER_AGENT = schemaLimits.AgentConfig.kb_ids.maxItems;
 export const ACCEPT = ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
+/** Cards sit three to a row on wide screens, so every size fills its rows. */
+export const KB_PAGE_SIZES = [12, 24, 48] as const;
+
 export const kbKeys = {
   all: ["knowledge"] as const,
-  list: (search: string, page: number) => ["knowledge", "list", search, page] as const,
+  list: (search: string, page: number, pageSize: number) => ["knowledge", "list", search, page, pageSize] as const,
   attachable: ["knowledge", "all-for-picker"] as const,
   detail: (id: string) => ["knowledge", "detail", id] as const,
   documents: (id: string, page: number) => ["knowledge", "documents", id, page] as const,
 };
 
-export function useKnowledgeBases(search: string, page = 1, pageSize = 24) {
+export function useKnowledgeBases(search: string, page = 1, pageSize: number = KB_PAGE_SIZES[1]) {
   return useQuery({
-    queryKey: kbKeys.list(search, page),
+    queryKey: kbKeys.list(search, page, pageSize),
     queryFn: () => unwrap(api.GET("/knowledge-bases", { params: { query: { search: search || undefined, page, page_size: pageSize } } })),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (q.state.data?.items.some((k) => k.status === "processing") ? 3000 : false),

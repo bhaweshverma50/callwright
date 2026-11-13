@@ -11,7 +11,6 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { isApiError } from "../../api/errors";
 import {
-  SIM_PAGE_SIZE,
   cancelExperiment,
   isSimActive,
   simKeys,
@@ -29,6 +28,8 @@ import {
   EmptyState,
   Figure,
   PageHeader,
+  DEFAULT_LIST_PAGE_SIZE,
+  PagerCompact,
   Pagination,
   Panel,
   PanelLoader,
@@ -40,6 +41,7 @@ import {
   Table,
   toast,
   TruncatedText,
+  usePageSize,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
 import { ScorecardTable } from "./ScorecardTable";
@@ -238,7 +240,14 @@ export function ExperimentPage() {
   const qc = useQueryClient();
   const exp = useExperiment(experimentId);
   const active = isSimActive(exp.data?.status);
-  const runs = useExperimentRuns(experimentId, page, active);
+  const [pageSize, setPageSize] = usePageSize("experiment-runs");
+  const runs = useExperimentRuns(experimentId, page, pageSize, active);
+  const setPageNumber = (p: number) => {
+    const next = new URLSearchParams(params);
+    if (p === 1) next.delete("page");
+    else next.set("page", String(p));
+    setParams(next, { replace: true });
+  };
   const [confirm, setConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
@@ -337,6 +346,11 @@ export function ExperimentPage() {
           title="Runs"
           description="Each base call simulated once. Open a run to compare it side by side."
           icon={<ListChecks aria-hidden />}
+          actions={
+            runs.data && (
+              <PagerCompact page={page} totalPages={runs.data.total_pages} total={runs.data.total} pageSize={pageSize} onPageChange={setPageNumber} />
+            )
+          }
           bodyClassName="p-0"
         >
           <Table
@@ -348,19 +362,18 @@ export function ExperimentPage() {
             stale={runs.isPlaceholderData}
             skeletonRows={6}
           />
-          {runs.data && runs.data.total > SIM_PAGE_SIZE && (
+          {runs.data && runs.data.total > DEFAULT_LIST_PAGE_SIZE && (
             <div className="border-t border-line">
               <Pagination
                 page={page}
                 totalPages={runs.data.total_pages}
                 total={runs.data.total}
-                pageSize={SIM_PAGE_SIZE}
+                pageSize={pageSize}
                 noun="runs"
-                onPageChange={(p) => {
-                  const next = new URLSearchParams(params);
-                  if (p === 1) next.delete("page");
-                  else next.set("page", String(p));
-                  setParams(next, { replace: true });
+                onPageChange={setPageNumber}
+                onPageSizeChange={(n) => {
+                  setPageSize(n);
+                  setPageNumber(1);
                 }}
               />
             </div>

@@ -13,7 +13,6 @@ import type { AgentDetail } from "../../../api/agents";
 import { useFlowByAgent } from "../../../api/flows";
 import { isRetryable, useActionKey } from "../../../api/paid";
 import {
-  CASES_PAGE_SIZE,
   deleteTestCase,
   exportTestCases,
   startTestRun,
@@ -35,11 +34,14 @@ import {
   MenuContent,
   MenuItem,
   MenuTrigger,
+  DEFAULT_LIST_PAGE_SIZE,
+  PagerCompact,
   Pagination,
   ProblemAlert,
   Select,
   Skeleton,
   toast,
+  usePageSize,
 } from "../../../components";
 import { ALL_CATEGORIES, CategoryLabel, TestStatusBadge, categoryOptions } from "./categories";
 import { GenerateDialog } from "./GenerateDialog";
@@ -72,7 +74,8 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
   const [category, setCategory] = useState<string>(ALL_CATEGORIES);
   const filtered = category === ALL_CATEGORIES ? null : category;
   const [page, setPage] = useState(1);
-  const cases = useTestCases(agentId, filtered, page);
+  const [pageSize, setPageSize] = usePageSize("test-cases");
+  const cases = useTestCases(agentId, filtered, page, pageSize);
   const runs = useTestRuns(agentId);
   const [runId, setRunId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -222,6 +225,16 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+            {cases.data && (
+              <PagerCompact
+                page={page}
+                totalPages={cases.data.total_pages}
+                total={total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                className="mr-1"
+              />
+            )}
             <Button size="sm" variant="ghost" icon={<Plus aria-hidden />} onClick={() => setEditing({ mode: "new" })}>
               New case
             </Button>
@@ -400,15 +413,19 @@ export function TestCasesTab({ agent }: { agent: AgentDetail }) {
             </table>
           </div>
         )}
-        {cases.data && total > CASES_PAGE_SIZE && (
+        {cases.data && total > DEFAULT_LIST_PAGE_SIZE && (
           <div className="border-t border-line">
             <Pagination
               page={page}
               totalPages={cases.data.total_pages}
               total={total}
-              pageSize={CASES_PAGE_SIZE}
+              pageSize={pageSize}
               noun="cases"
               onPageChange={setPage}
+              onPageSizeChange={(n) => {
+                setPageSize(n);
+                setPage(1);
+              }}
             />
           </div>
         )}

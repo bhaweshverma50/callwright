@@ -25,7 +25,6 @@ export type TestRunDetail = ResponseOf<"/test-runs/{test_run_id}", "get">;
 export type ImportOutcome = ResponseOf<"/test-cases/import", "post">;
 
 export const TEST_POLL_MS = 3_000;
-export const CASES_PAGE_SIZE = 50;
 
 /** Palette for custom categories (FR-032): a new category picks one of these; seeds have fixed entries. */
 export const CATEGORY_PALETTE = bodyLimits["POST /test-categories"].color.enum;
@@ -34,7 +33,8 @@ export const testingKeys = {
   all: ["testing"] as const,
   categories: ["testing", "categories"] as const,
   cases: (agentId: string) => ["testing", "cases", agentId] as const,
-  casesPage: (agentId: string, category: string, page: number) => ["testing", "cases", agentId, { category, page }] as const,
+  casesPage: (agentId: string, category: string, page: number, pageSize: number) =>
+    ["testing", "cases", agentId, { category, page, pageSize }] as const,
   runs: (agentId: string) => ["testing", "runs", agentId] as const,
   run: (runId: string) => ["testing", "run", runId] as const,
 };
@@ -56,13 +56,13 @@ export function createTestCategory(body: { name: string; color?: CategoryColor }
   return unwrap(api.POST("/test-categories", { body }));
 }
 
-export function useTestCases(agentId: string, category: string | null, page: number) {
+export function useTestCases(agentId: string, category: string | null, page: number, pageSize: number) {
   return useQuery({
-    queryKey: testingKeys.casesPage(agentId, category ?? "", page),
+    queryKey: testingKeys.casesPage(agentId, category ?? "", page, pageSize),
     queryFn: () =>
       unwrap(
         api.GET("/test-cases", {
-          params: { query: { agent_id: agentId, page, page_size: CASES_PAGE_SIZE, ...(category && { category }) } },
+          params: { query: { agent_id: agentId, page, page_size: pageSize, ...(category && { category }) } },
         }),
       ),
     enabled: Boolean(agentId),

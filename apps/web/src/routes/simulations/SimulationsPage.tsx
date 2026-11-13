@@ -8,8 +8,23 @@ import { Flask } from "@phosphor-icons/react";
 import { Layers, UserRoundPlus, Workflow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { SIM_PAGE_SIZE, useExperiments, useStandaloneRuns, type Experiment, type SimulationRun } from "../../api/simulations";
-import { Button, type Column, EmptyState, PageHeader, Pagination, ProgressBar, Select, Table, TabPanel, Tabs, TruncatedText } from "../../components";
+import { useExperiments, useStandaloneRuns, type Experiment, type SimulationRun } from "../../api/simulations";
+import {
+  Button,
+  type Column,
+  EmptyState,
+  DEFAULT_LIST_PAGE_SIZE,
+  PageHeader,
+  PagerCompact,
+  Pagination,
+  ProgressBar,
+  Select,
+  Table,
+  TabPanel,
+  Tabs,
+  TruncatedText,
+  usePageSize,
+} from "../../components";
 import { NewSimulationDialog } from "./NewSimulationDialog";
 import { END_REASONS, MODE_LABELS, SimStatusBadge, targetPhrase } from "./shared";
 import { costUsd, timeAgo } from "../../lib/format";
@@ -120,8 +135,9 @@ export function SimulationsPage() {
   const agentId = agentParam === ALL ? null : agentParam;
   const tab: Tab = params.get("tab") === "runs" ? "runs" : "batches";
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
-  const batches = useExperiments(agentId, tab === "batches" ? page : 1);
-  const runs = useStandaloneRuns(agentId, tab === "runs" ? page : 1);
+  const [pageSize, setPageSize] = usePageSize("simulations");
+  const batches = useExperiments(agentId, tab === "batches" ? page : 1, pageSize);
+  const runs = useStandaloneRuns(agentId, tab === "runs" ? page : 1, pageSize);
   const agents = useAllAgents();
   const [creating, setCreating] = useState(false);
 
@@ -190,6 +206,16 @@ export function SimulationsPage() {
           onValueChange={(v) => set({ agent: v === ALL ? null : v, page: null })}
           options={agentOptions}
         />
+        {active.data && (
+          <PagerCompact
+            className="ml-auto"
+            page={page}
+            totalPages={active.data.total_pages}
+            total={active.data.total}
+            pageSize={pageSize}
+            onPageChange={(p) => set({ page: p === 1 ? null : String(p) })}
+          />
+        )}
       </div>
       <Tabs
         aria-label="Simulations"
@@ -238,15 +264,19 @@ export function SimulationsPage() {
                   empty={empty}
                 />
               )}
-              {active.data && active.data.total > SIM_PAGE_SIZE && (
+              {active.data && active.data.total > DEFAULT_LIST_PAGE_SIZE && (
                 <div className="border-t border-line">
                   <Pagination
                     page={page}
                     totalPages={active.data.total_pages}
                     total={active.data.total}
-                    pageSize={SIM_PAGE_SIZE}
+                    pageSize={pageSize}
                     noun={t === "batches" ? "batches" : "runs"}
                     onPageChange={(p) => set({ page: p === 1 ? null : String(p) })}
+                    onPageSizeChange={(n) => {
+                      setPageSize(n);
+                      set({ page: null });
+                    }}
                   />
                 </div>
               )}

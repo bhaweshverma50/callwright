@@ -8,11 +8,9 @@ type S = components["schemas"];
 export type Callback = S["Callback"];
 export type CallbackStatus = S["CallbackStatus"];
 
-export const CALLBACK_PAGE_SIZE = 20;
-
 export const callbackKeys = {
   all: ["callbacks"] as const,
-  list: (status: CallbackStatus | null, page: number) => ["callbacks", "list", status ?? "all", page] as const,
+  list: (status: CallbackStatus | null, page: number, pageSize: number) => ["callbacks", "list", status ?? "all", page, pageSize] as const,
   forCall: (callId: string) => ["callbacks", "call", callId] as const,
   scheduledCount: ["callbacks", "scheduled-count"] as const,
 };
@@ -23,10 +21,10 @@ const POLL_OPEN_MS = 10_000;
 const openIn = (items: { status: string }[] | undefined) => !!items?.some((c) => OPEN.has(c.status));
 
 /** One page of callbacks. With `status=scheduled` the soonest comes first, otherwise the latest. */
-export function useCallbacks(status: CallbackStatus | null, page: number) {
+export function useCallbacks(status: CallbackStatus | null, page: number, pageSize: number) {
   return useQuery({
-    queryKey: callbackKeys.list(status, page),
-    queryFn: () => unwrap(api.GET("/callbacks", { params: { query: { page, page_size: CALLBACK_PAGE_SIZE, ...(status && { status }) } } })),
+    queryKey: callbackKeys.list(status, page, pageSize),
+    queryFn: () => unwrap(api.GET("/callbacks", { params: { query: { page, page_size: pageSize, ...(status && { status }) } } })),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (openIn(q.state.data?.items) ? POLL_OPEN_MS : false),
   });

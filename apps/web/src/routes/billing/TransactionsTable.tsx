@@ -5,11 +5,21 @@ import { useState } from "react";
 import { problemMessage } from "../../api/problems";
 import { useTransactions } from "../../api/queries";
 import type { Transaction, TransactionType } from "../../api/types";
-import { EmptyState, MoneyText, Pagination, Select, Skeleton, TruncatedText, cn, focusRing, type Tone } from "../../components";
+import {
+  EmptyState,
+  MoneyText,
+  PagerCompact,
+  Pagination,
+  Select,
+  Skeleton,
+  TruncatedText,
+  cn,
+  focusRing,
+  usePageSize,
+  type Tone,
+} from "../../components";
 import { FAMILY_LABELS } from "./UsagePanel";
 import { formatUsd, toMicros } from "../../lib/money";
-
-export const PAGE_SIZE = 20;
 
 export const TYPE_LABELS: Record<TransactionType, string> = {
   top_up: "Top-up",
@@ -93,8 +103,9 @@ export function TransactionsTable({
   onSelect?: (t: Transaction) => void;
 }) {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("transactions");
   const [type, setType] = useState<TransactionType | "all">("all");
-  const q = useTransactions(page, PAGE_SIZE, type === "all" ? undefined : type, pollMs);
+  const q = useTransactions(page, pageSize, type === "all" ? undefined : type, pollMs);
   const groups = q.data ? groupByDay(q.data.items) : [];
 
   return (
@@ -110,17 +121,28 @@ export function TransactionsTable({
             "Loading transactions"
           )}
         </p>
-        <Select
-          aria-label="Filter by type"
-          size="sm"
-          className="w-[170px]"
-          value={type}
-          onValueChange={(v) => {
-            setType(v as TransactionType | "all");
-            setPage(1);
-          }}
-          options={[{ value: "all", label: "All types" }, ...Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))]}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          {q.data && (
+            <PagerCompact
+              page={q.data.page}
+              totalPages={q.data.total_pages}
+              total={q.data.total}
+              pageSize={q.data.page_size}
+              onPageChange={setPage}
+            />
+          )}
+          <Select
+            aria-label="Filter by type"
+            size="sm"
+            className="w-[170px]"
+            value={type}
+            onValueChange={(v) => {
+              setType(v as TransactionType | "all");
+              setPage(1);
+            }}
+            options={[{ value: "all", label: "All types" }, ...Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))]}
+          />
+        </div>
       </div>
 
       {q.isError && !q.data ? (
@@ -156,7 +178,7 @@ export function TransactionsTable({
           <div className="flex items-center justify-end px-2 pt-3 text-[12px] font-medium text-fg-3">
             <span className={FIGURES}>
               <span>Amount</span>
-              <span>Balance after</span>
+              <span className="hidden sm:block">Balance after</span>
               <span aria-hidden />
             </span>
           </div>
@@ -169,7 +191,7 @@ export function TransactionsTable({
                     <span className="sr-only">Net for the day </span>
                     <MoneyText value={g.net} places={3} signed toned className="font-medium" />
                   </span>
-                  <span>
+                  <span className="hidden sm:block">
                     <span className="sr-only">Balance at the end of the day </span>
                     <MoneyText value={g.items[0]?.balance_after_usd ?? "0"} places={3} />
                   </span>
@@ -205,6 +227,10 @@ export function TransactionsTable({
             total={q.data.total}
             pageSize={q.data.page_size}
             onPageChange={setPage}
+            onPageSizeChange={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
             noun="transactions"
           />
         </div>
@@ -214,7 +240,9 @@ export function TransactionsTable({
 }
 
 /** Amount, balance after and the open-detail slot: the same widths on every row so figures align. */
-const FIGURES = "grid shrink-0 grid-cols-[minmax(76px,auto)_minmax(76px,auto)_16px] items-center gap-x-5 text-right";
+// On a phone the balance columns drop out so the description keeps its width; the top bar shows the balance.
+const FIGURES =
+  "grid shrink-0 grid-cols-[minmax(64px,auto)_16px] items-center gap-x-3 text-right sm:grid-cols-[minmax(76px,auto)_minmax(76px,auto)_16px] sm:gap-x-5";
 
 function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: boolean; onSelect?: (t: Transaction) => void }) {
   const Icon = TYPE_ICONS[t.type];
@@ -232,7 +260,7 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
           {rowTitle(t)}
         </TruncatedText>
         <span className="flex min-w-0 items-center gap-2.5 text-[12px] text-fg-3">
-          <time dateTime={t.created_at} className="font-mono tnum">
+          <time dateTime={t.created_at} className="whitespace-nowrap font-mono tnum">
             {timeFmt.format(new Date(t.created_at))}
           </time>
           <span>{TYPE_LABELS[t.type]}</span>
@@ -251,7 +279,7 @@ function TimelineRow({ t, selected, onSelect }: { t: Transaction; selected: bool
           toned
           className={cn("text-[14px]", isZero(t.amount_usd) ? "text-fg-3" : "font-medium")}
         />
-        <span className="text-[13px] text-fg-2">
+        <span className="hidden text-[13px] text-fg-2 sm:block">
           <span className="sr-only">Balance after </span>
           <MoneyText value={t.balance_after_usd} places={3} />
         </span>

@@ -70,11 +70,11 @@ describe("Dataset items (T095)", () => {
     renderApp("/datasets");
     await user.click(await screen.findByRole("link", { name: /October regression suite/ }, { timeout: 5000 }));
     const nav = await screen.findByRole("navigation", { name: "Pagination" }, { timeout: 5000 });
-    expect(nav).toHaveTextContent("1 to 50 of 240 calls");
-    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(51);
-    expect(within(screen.getByRole("table")).getAllByText("Unavailable")).toHaveLength(2);
+    expect(nav).toHaveTextContent("1 to 10 of 240 calls");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(11);
+    expect(within(screen.getByRole("table")).getAllByText("Unavailable")).toHaveLength(1);
     await user.click(within(nav).getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("51 to 100 of 240 calls"));
-    expect(sim().requests.some((r) => /GET \/datasets\/ds_\w+\/items\?page=2&page_size=50/.test(r))).toBe(true);
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Pagination" })).toHaveTextContent("11 to 20 of 240 calls"));
+    expect(sim().requests.some((r) => /GET \/datasets\/ds_\w+\/items\?page=2&page_size=10/.test(r))).toBe(true);
   });
 });

@@ -72,8 +72,14 @@ export type VoiceFilters = Pick<QueryOf<"/voices/{provider}/voices", "get">, "se
 export const agentKeys = {
   all: ["agents"] as const,
   lists: ["agents", "list"] as const,
-  list: (search: string, type: AgentType | null, page: number, status: AgentStatus | null = null, sort: AgentSort = "updated") =>
-    ["agents", "list", { search, type, page, status, sort }] as const,
+  list: (
+    search: string,
+    type: AgentType | null,
+    page: number,
+    status: AgentStatus | null = null,
+    sort: AgentSort = "updated",
+    pageSize = PAGE_SIZE,
+  ) => ["agents", "list", { search, type, page, status, sort, pageSize }] as const,
   /** Every agent (pickers and filters); agentChanged and agentDeleted refresh it with the lists. */
   every: ["agents", "every"] as const,
   validate: (type: AgentType, id: string | null, configKey: string) => ["agents", "validate", type, id, configKey] as const,
@@ -92,20 +98,27 @@ export const agentKeys = {
   template: (id: string) => ["templates", "detail", id] as const,
 };
 
-export const PAGE_SIZE = 24;
+/** Cards sit three to a row on wide screens, so every size fills its rows. */
+export const AGENT_PAGE_SIZES = [12, 24, 48] as const;
+const PAGE_SIZE: number = AGENT_PAGE_SIZES[1];
 
 export function useAgents(
   search: string,
   type: AgentType | null,
   page: number,
-  { status = null, sort = "updated", enabled = true }: { status?: AgentStatus | null; sort?: AgentSort; enabled?: boolean } = {},
+  {
+    status = null,
+    sort = "updated",
+    enabled = true,
+    pageSize = PAGE_SIZE,
+  }: { status?: AgentStatus | null; sort?: AgentSort; enabled?: boolean; pageSize?: number } = {},
 ) {
   return useQuery({
-    queryKey: agentKeys.list(search, type, page, status, sort),
+    queryKey: agentKeys.list(search, type, page, status, sort, pageSize),
     queryFn: () =>
       unwrap(
         api.GET("/agents", {
-          params: { query: { page, page_size: PAGE_SIZE, sort, ...(search && { search }), ...(type && { type }), ...(status && { status }) } },
+          params: { query: { page, page_size: pageSize, sort, ...(search && { search }), ...(type && { type }), ...(status && { status }) } },
         }),
       ),
     placeholderData: keepPreviousData,

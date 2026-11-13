@@ -7,7 +7,7 @@ export { Switch, SwitchControl } from "./Switch";
 export { Tabs, TabPanel } from "./Tabs";
 export { Dialog, ConfirmDialog } from "./Dialog";
 export { Drawer } from "./Drawer";
-export { Table, Pagination, type Column } from "./Table";
+export { Table, Pagination, PagerCompact, usePageSize, LIST_PAGE_SIZES, DEFAULT_LIST_PAGE_SIZE, type Column } from "./Table";
 export { Toaster, toast } from "./Toast";
 export { EmptyState } from "./EmptyState";
 export { Skeleton, LoadingRegion } from "./Skeleton";

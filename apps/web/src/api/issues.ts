@@ -43,9 +43,9 @@ export interface IssueFilters {
   scope: IssueScope;
   windowDays: WindowDays;
   page: number;
+  pageSize: number;
 }
 
-export const ISSUE_PAGE_SIZE = 20;
 export const ISSUE_POLL_MS = 2_000;
 export const WINDOWS: WindowDays[] = [7, 14, 30, 90];
 export const DEFAULT_WINDOW: WindowDays = 14;
@@ -67,7 +67,7 @@ export const issueKeys = {
   lists: ["issues", "list"] as const,
   detection: (agentId: string) => ["issues", "detection", agentId] as const,
   issue: (id: string) => ["issues", "issue", id] as const,
-  samples: (id: string, page: number) => ["issues", "issue", id, "samples", page] as const,
+  samples: (id: string, page: number, pageSize: number) => ["issues", "issue", id, "samples", page, pageSize] as const,
   fixes: (id: string) => ["issues", "issue", id, "fixes"] as const,
   validations: (id: string) => ["issues", "issue", id, "validations"] as const,
   agentIssues: (agentId: string) => ["issues", "agent", agentId] as const,
@@ -86,7 +86,7 @@ export function useIssues(f: IssueFilters) {
               scope: f.scope,
               window_days: f.windowDays,
               page: f.page,
-              page_size: ISSUE_PAGE_SIZE,
+              page_size: f.pageSize,
               ...(f.agentId && { agent_id: f.agentId }),
             },
           },
@@ -128,11 +128,10 @@ export function useIssue(id: string | undefined) {
   });
 }
 
-export function useIssueSamples(id: string | undefined, page: number) {
+export function useIssueSamples(id: string | undefined, page: number, pageSize: number) {
   return useQuery({
-    queryKey: issueKeys.samples(id ?? "", page),
-    queryFn: () =>
-      unwrap(api.GET("/issues/{issue_id}/samples", { params: { path: { issue_id: id! }, query: { page, page_size: ISSUE_PAGE_SIZE } } })),
+    queryKey: issueKeys.samples(id ?? "", page, pageSize),
+    queryFn: () => unwrap(api.GET("/issues/{issue_id}/samples", { params: { path: { issue_id: id! }, query: { page, page_size: pageSize } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
   });

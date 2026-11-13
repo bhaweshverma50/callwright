@@ -26,7 +26,7 @@ import {
   type AgentSummary,
   type AgentType,
   deleteAgent,
-  PAGE_SIZE,
+  AGENT_PAGE_SIZES,
   useAgents,
   useLlmCatalog,
   useVoiceCatalog,
@@ -48,12 +48,14 @@ import {
   MenuRadioItem,
   MenuTrigger,
   PageHeader,
+  PagerCompact,
   Pagination,
   Segmented,
   Skeleton,
   TabPanel,
   Table,
   Tabs,
+  usePageSize,
   TruncatedText,
   toast,
   type Column,
@@ -114,8 +116,9 @@ export function AgentsListPage() {
   const [sort, setSort] = useState<AgentSort>("updated");
   const [view, setViewState] = useState<View>(readView);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("agents", AGENT_PAGE_SIZES);
   const q = useDebounced(search.trim(), 250);
-  const agents = useAgents(q, filter === "all" ? null : filter, page, { status: status === "all" ? null : status, sort });
+  const agents = useAgents(q, filter === "all" ? null : filter, page, { status: status === "all" ? null : status, sort, pageSize });
   const llm = useLlmCatalog();
   const voice = useVoiceCatalog();
   const [deleting, setDeleting] = useState<AgentSummary | null>(null);
@@ -307,7 +310,17 @@ export function AgentsListPage() {
                 }),
               ]}
             />
-            <div className="flex items-center gap-2 md:ml-auto">
+            <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+              {agents.data && (
+                <PagerCompact
+                  page={page}
+                  totalPages={agents.data.total_pages}
+                  total={total}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  className="mr-1"
+                />
+              )}
               <Menu>
                 <MenuTrigger asChild>
                   <Button size="sm" variant="ghost" icon={<ArrowUpDown aria-hidden />}>
@@ -405,15 +418,20 @@ export function AgentsListPage() {
                       </AnimatePresence>
                     </div>
                   )}
-                  {agents.data && agents.data.total_pages > 1 && (
+                  {agents.data && total > AGENT_PAGE_SIZES[0] && (
                     <Pagination
                       className="mt-4 px-0"
                       page={page}
                       totalPages={agents.data.total_pages}
                       total={total}
-                      pageSize={PAGE_SIZE}
+                      pageSize={pageSize}
+                      pageSizes={AGENT_PAGE_SIZES}
                       noun="agents"
                       onPageChange={setPage}
+                      onPageSizeChange={(n) => {
+                        setPageSize(n);
+                        setPage(1);
+                      }}
                     />
                   )}
                 </div>

@@ -17,8 +17,8 @@ const LIST_QUERY = queryLimits["GET /calls"];
 export type SortKey = (typeof LIST_QUERY.sort.enum)[number];
 export const SORTS: readonly SortKey[] = LIST_QUERY.sort.enum;
 const DEFAULT_SORT = LIST_QUERY.sort.default;
-const DEFAULT_PAGE_SIZE = LIST_QUERY.page_size.default;
-export const PAGE_SIZES = [10, DEFAULT_PAGE_SIZE, 50, LIST_QUERY.page_size.maximum] as const;
+const DEFAULT_PAGE_SIZE = 10;
+export const PAGE_SIZES = [DEFAULT_PAGE_SIZE, 20, 50, LIST_QUERY.page_size.maximum] as const;
 export const DEFAULT_ORIGINS: CallOrigin[] = enums.Origin.filter((o) => LIST_QUERY.origin.default.split(",").includes(o));
 const MIN_CALL_ID_PREFIX = LIST_QUERY.call_id.minLength;
 

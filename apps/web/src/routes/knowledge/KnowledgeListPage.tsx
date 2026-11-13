@@ -3,9 +3,22 @@ import { BookOpen, Bot, FileText, HardDrive, Plus, Search, Upload, X } from "luc
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { type KnowledgeBase, MAX_FILE_MB, useKnowledgeBases } from "../../api/knowledge";
+import { KB_PAGE_SIZES, type KnowledgeBase, MAX_FILE_MB, useKnowledgeBases } from "../../api/knowledge";
 import { problemMessage } from "../../api/problems";
-import { Button, EmptyState, FlowChain, IconButton, Input, PageHeader, Pagination, Skeleton, TruncatedText, cn } from "../../components";
+import {
+  Button,
+  EmptyState,
+  FlowChain,
+  IconButton,
+  Input,
+  PageHeader,
+  PagerCompact,
+  Pagination,
+  Skeleton,
+  TruncatedText,
+  cn,
+  usePageSize,
+} from "../../components";
 import { useDebounced } from "../../lib/useDebounced";
 import { CreateKbDialog } from "./CreateKbDialog";
 import { KbStatusBadge } from "./kbStatus";
@@ -108,8 +121,9 @@ export function KnowledgeListPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("knowledge", KB_PAGE_SIZES);
   const q = useDebounced(search.trim(), 250);
-  const kbs = useKnowledgeBases(q, page);
+  const kbs = useKnowledgeBases(q, page, pageSize);
   const [creating, setCreating] = useState(false);
   const items = kbs.data?.items ?? [];
   const total = kbs.data?.total ?? 0;
@@ -177,9 +191,12 @@ export function KnowledgeListPage() {
                 ) : undefined
               }
             />
-            <p className="text-[13px] text-fg-3 md:ml-auto" aria-live="polite">
-              {firstLoad ? "" : `${total.toLocaleString()} ${total === 1 ? "knowledge base" : "knowledge bases"}${q ? " found" : ""}`}
-            </p>
+            <div className="flex flex-wrap items-center gap-3 md:ml-auto">
+              <p className="text-[13px] text-fg-3" aria-live="polite">
+                {firstLoad ? "" : `${total.toLocaleString()} ${total === 1 ? "knowledge base" : "knowledge bases"}${q ? " found" : ""}`}
+              </p>
+              {kbs.data && <PagerCompact page={page} totalPages={kbs.data.total_pages} total={total} pageSize={pageSize} onPageChange={setPage} />}
+            </div>
           </div>
           {firstLoad ? (
             <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading knowledge bases">
@@ -208,15 +225,20 @@ export function KnowledgeListPage() {
                   ))}
                 </AnimatePresence>
               </div>
-              {kbs.data && kbs.data.total_pages > 1 && (
+              {kbs.data && total > KB_PAGE_SIZES[0] && (
                 <Pagination
                   className="mt-4 px-0"
                   page={page}
                   totalPages={kbs.data.total_pages}
                   total={total}
-                  pageSize={24}
+                  pageSize={pageSize}
+                  pageSizes={KB_PAGE_SIZES}
                   noun="knowledge bases"
                   onPageChange={setPage}
+                  onPageSizeChange={(n) => {
+                    setPageSize(n);
+                    setPage(1);
+                  }}
                 />
               )}
             </div>

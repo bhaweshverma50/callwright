@@ -18,8 +18,8 @@ import {
   FormAlert,
   MenuContent,
   PageHeader,
+  PagerCompact,
   Pagination,
-  Select,
   Skeleton,
   STATUS_LABELS,
   toast,
@@ -345,16 +345,27 @@ export function CallHistoryPage() {
                 onCommit={(v) => setFilters({ ...state.filters, call_id: v })}
               />
               <FilterButton filters={state.filters} count={chips.length} agents={agents.data ?? []} onChange={setFilters} />
-              <p className="ml-auto text-[13px] text-fg-3" aria-live="polite">
-                {calls.data ? (
-                  <>
-                    <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {total === 1 ? "call" : "calls"}
-                    {filtered ? " match" : ""}
-                  </>
-                ) : (
-                  <Skeleton className="h-3 w-16" />
+              <div className="ml-auto flex flex-wrap items-center gap-3">
+                <p className="text-[13px] text-fg-3" aria-live="polite">
+                  {calls.data ? (
+                    <>
+                      <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {total === 1 ? "call" : "calls"}
+                      {filtered ? " match" : ""}
+                    </>
+                  ) : (
+                    <Skeleton className="h-3 w-16" />
+                  )}
+                </p>
+                {calls.data && (
+                  <PagerCompact
+                    page={state.page}
+                    totalPages={calls.data.total_pages}
+                    total={total}
+                    pageSize={state.pageSize}
+                    onPageChange={(page) => update({ page }, true)}
+                  />
                 )}
-              </p>
+              </div>
             </div>
             {state.filters.call_id && state.filters.call_id.length < 8 && (
               <p className="text-[12px] text-warning-text">Type at least 8 characters of the call ID to search.</p>
@@ -503,27 +514,17 @@ export function CallHistoryPage() {
           )}
 
           {calls.data && total > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line">
+            <div className="border-t border-line">
               <Pagination
                 page={state.page}
                 totalPages={calls.data.total_pages}
                 total={total}
                 pageSize={state.pageSize}
+                pageSizes={PAGE_SIZES}
                 noun={total === 1 ? "call" : "calls"}
                 onPageChange={(page) => update({ page }, true)}
-                className="flex-1"
+                onPageSizeChange={(pageSize) => update({ pageSize, page: 1 })}
               />
-              <label className="flex items-center gap-2 px-5 pb-3 text-[13px] text-fg-3 sm:pb-0">
-                Rows per page
-                <Select
-                  size="sm"
-                  aria-label="Rows per page"
-                  className="w-[76px]"
-                  value={String(state.pageSize)}
-                  onValueChange={(v) => update({ pageSize: Number(v), page: 1 })}
-                  options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
-                />
-              </label>
             </div>
           )}
         </section>

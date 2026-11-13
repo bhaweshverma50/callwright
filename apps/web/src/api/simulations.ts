@@ -35,19 +35,18 @@ export type PreflightRequest = BodyOf<"/simulations/preflight", "post">;
 export type Preflight = ResponseOf<"/simulations/preflight", "post">;
 
 export const SIM_POLL_MS = 3_000;
-export const SIM_PAGE_SIZE = 20;
 const BATCH = bodyLimits["POST /experiments"].base_call_ids;
 export const BATCH_MIN = BATCH.minItems;
 export const BATCH_MAX = BATCH.maxItems;
 
 export const simKeys = {
   all: ["simulations"] as const,
-  experiments: (agentId: string, page: number) => ["simulations", "experiments", { agentId, page }] as const,
+  experiments: (agentId: string, page: number, pageSize: number) => ["simulations", "experiments", { agentId, page, pageSize }] as const,
   experimentsAll: ["simulations", "experiments"] as const,
   experiment: (id: string) => ["simulations", "experiment", id] as const,
-  experimentRuns: (id: string, page: number) => ["simulations", "experiment", id, "runs", page] as const,
+  experimentRuns: (id: string, page: number, pageSize: number) => ["simulations", "experiment", id, "runs", page, pageSize] as const,
   scorecard: (id: string, baseline: string) => ["simulations", "experiment", id, "scorecard", baseline] as const,
-  runs: (agentId: string, page: number) => ["simulations", "runs", { agentId, page }] as const,
+  runs: (agentId: string, page: number, pageSize: number) => ["simulations", "runs", { agentId, page, pageSize }] as const,
   runsAll: ["simulations", "runs"] as const,
   run: (id: string) => ["simulations", "run", id] as const,
   comparison: (id: string) => ["simulations", "run", id, "comparison"] as const,
@@ -55,10 +54,10 @@ export const simKeys = {
 
 export const isSimActive = (s: SimStatus | undefined) => s === "pending" || s === "running";
 
-export function useExperiments(agentId: string | null, page: number) {
+export function useExperiments(agentId: string | null, page: number, pageSize: number) {
   return useQuery({
-    queryKey: simKeys.experiments(agentId ?? "", page),
-    queryFn: () => unwrap(api.GET("/experiments", { params: { query: { page, page_size: SIM_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } } })),
+    queryKey: simKeys.experiments(agentId ?? "", page, pageSize),
+    queryFn: () => unwrap(api.GET("/experiments", { params: { query: { page, page_size: pageSize, ...(agentId && { agent_id: agentId }) } } })),
     placeholderData: keepPreviousData,
     refetchOnMount: "always",
     refetchInterval: (q) => (q.state.data?.items.some((e) => isSimActive(e.status)) ? SIM_POLL_MS : false),
@@ -66,13 +65,13 @@ export function useExperiments(agentId: string | null, page: number) {
 }
 
 /** Individual runs outside a batch (the Simulations page "Individual" tab). */
-export function useStandaloneRuns(agentId: string | null, page: number) {
+export function useStandaloneRuns(agentId: string | null, page: number, pageSize: number) {
   return useQuery({
-    queryKey: simKeys.runs(agentId ?? "", page),
+    queryKey: simKeys.runs(agentId ?? "", page, pageSize),
     queryFn: () =>
       unwrap(
         api.GET("/simulation-runs", {
-          params: { query: { standalone: true, page, page_size: SIM_PAGE_SIZE, ...(agentId && { agent_id: agentId }) } },
+          params: { query: { standalone: true, page, page_size: pageSize, ...(agentId && { agent_id: agentId }) } },
         }),
       ),
     placeholderData: keepPreviousData,
@@ -91,11 +90,11 @@ export function useExperiment(id: string | undefined) {
   });
 }
 
-export function useExperimentRuns(id: string | undefined, page: number, poll: boolean) {
+export function useExperimentRuns(id: string | undefined, page: number, pageSize: number, poll: boolean) {
   return useQuery({
-    queryKey: simKeys.experimentRuns(id ?? "", page),
+    queryKey: simKeys.experimentRuns(id ?? "", page, pageSize),
     queryFn: () =>
-      unwrap(api.GET("/experiments/{experiment_id}/runs", { params: { path: { experiment_id: id! }, query: { page, page_size: SIM_PAGE_SIZE } } })),
+      unwrap(api.GET("/experiments/{experiment_id}/runs", { params: { path: { experiment_id: id! }, query: { page, page_size: pageSize } } })),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (poll || q.state.data?.items.some((r) => isSimActive(r.status)) ? SIM_POLL_MS : false),

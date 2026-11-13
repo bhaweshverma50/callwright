@@ -2,9 +2,23 @@ import { MagnifyingGlass, PhoneOutgoing } from "@phosphor-icons/react";
 import { CalendarX, PhoneCall, PhoneForwarded } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { CALLBACK_PAGE_SIZE, useCallbacks, type Callback, type CallbackStatus } from "../../../api/callbacks";
+import { useCallbacks, type Callback, type CallbackStatus } from "../../../api/callbacks";
 import { problemMessage } from "../../../api/problems";
-import { Button, EmptyState, PageHeader, Pagination, Segmented, Select, Skeleton, Table, TruncatedText, type Column } from "../../../components";
+import {
+  Button,
+  DEFAULT_LIST_PAGE_SIZE,
+  EmptyState,
+  PageHeader,
+  PagerCompact,
+  Pagination,
+  Segmented,
+  Select,
+  Skeleton,
+  Table,
+  TruncatedText,
+  usePageSize,
+  type Column,
+} from "../../../components";
 import { CallDetailDrawer, type DrawerTab } from "../CallDetailDrawer";
 import { CallsTabs } from "../CallsTabs";
 import { CallbackStatusBadge, CallbackTime, CancelCallbackDialog } from "./CallbackParts";
@@ -132,7 +146,8 @@ export function CallbacksPage() {
   const raw = params.get("status");
   const filter: Filter = FILTERS.includes(raw as Filter) ? (raw as Filter) : "all";
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
-  const callbacks = useCallbacks(filter === "all" ? null : filter, page);
+  const [pageSize, setPageSize] = usePageSize("callbacks");
+  const callbacks = useCallbacks(filter === "all" ? null : filter, page, pageSize);
   const [cancelling, setCancelling] = useState<Callback | null>(null);
 
   const set = (patch: Record<string, string | null>, replace = true) => {
@@ -210,16 +225,27 @@ export function CallbacksPage() {
               onValueChange={(v) => set({ status: v === "all" ? null : v, page: null })}
               options={filterOptions}
             />
-            <p className="ml-auto text-[13px] text-fg-3" aria-live="polite">
-              {callbacks.data ? (
-                <>
-                  <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {filterLabel ? `${filterLabel} ` : ""}
-                  {total === 1 ? "callback" : "callbacks"}
-                </>
-              ) : (
-                <Skeleton className="h-3 w-16" />
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              <p className="text-[13px] text-fg-3" aria-live="polite">
+                {callbacks.data ? (
+                  <>
+                    <span className="font-mono text-fg-2 tnum">{total.toLocaleString()}</span> {filterLabel ? `${filterLabel} ` : ""}
+                    {total === 1 ? "callback" : "callbacks"}
+                  </>
+                ) : (
+                  <Skeleton className="h-3 w-16" />
+                )}
+              </p>
+              {callbacks.data && (
+                <PagerCompact
+                  page={page}
+                  totalPages={callbacks.data.total_pages}
+                  total={total}
+                  pageSize={pageSize}
+                  onPageChange={(p) => set({ page: p === 1 ? null : String(p) }, false)}
+                />
               )}
-            </p>
+            </div>
           </div>
 
           {body ?? (
@@ -248,15 +274,19 @@ export function CallbacksPage() {
             </>
           )}
 
-          {callbacks.data && total > CALLBACK_PAGE_SIZE && (
+          {callbacks.data && total > DEFAULT_LIST_PAGE_SIZE && (
             <div className="border-t border-line">
               <Pagination
                 page={page}
                 totalPages={callbacks.data.total_pages}
                 total={total}
-                pageSize={CALLBACK_PAGE_SIZE}
+                pageSize={pageSize}
                 noun="callbacks"
                 onPageChange={(p) => set({ page: p === 1 ? null : String(p) }, false)}
+                onPageSizeChange={(n) => {
+                  setPageSize(n);
+                  set({ page: null }, false);
+                }}
               />
             </div>
           )}

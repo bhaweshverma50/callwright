@@ -10,7 +10,6 @@ import { ChevronLeft, FlaskConical, MoreHorizontal, Pencil, ShieldCheck, Trash2,
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
-  ITEMS_PAGE_SIZE,
   datasetKeys,
   deleteDataset,
   evaluateDataset,
@@ -41,6 +40,7 @@ import {
   MenuItem,
   MenuTrigger,
   PageHeader,
+  PagerCompact,
   Pagination,
   PanelLoader,
   ProblemAlert,
@@ -50,6 +50,7 @@ import {
   Textarea,
   toast,
   Tooltip,
+  usePageSize,
 } from "../../components";
 import { RecordNotFound } from "../NotFound";
 import { StartSimulationDialog } from "../simulations/StartSimulationDialog";
@@ -269,7 +270,8 @@ export function DatasetPage() {
   const qc = useQueryClient();
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
   const dataset = useDataset(datasetId);
-  const items = useDatasetItems(datasetId, page);
+  const [pageSize, setPageSize] = usePageSize("dataset-items");
+  const items = useDatasetItems(datasetId, page, pageSize);
   const [dialog, setDialog] = useState<"simulate" | "evaluate" | "edit" | "delete" | null>(null);
   const [removing, setRemoving] = useState<DatasetItem | null>(null);
   const [pending, setPending] = useState(false);
@@ -296,7 +298,7 @@ export function DatasetPage() {
     try {
       await removeDatasetItem(d.dataset_id, removing.call_id);
       await Promise.all([
-        qc.invalidateQueries({ queryKey: datasetKeys.items(d.dataset_id, page) }),
+        qc.invalidateQueries({ queryKey: datasetKeys.items(d.dataset_id, page, pageSize) }),
         qc.invalidateQueries({ queryKey: datasetKeys.detail(d.dataset_id) }),
       ]);
       toast({ tone: "success", title: "Call removed", description: "The call itself is untouched." });
@@ -372,6 +374,22 @@ export function DatasetPage() {
         }
       />
       <section aria-label="Calls in this dataset" className="relative overflow-hidden rounded-panel border border-line bg-surface shadow-1">
+        {items.data && items.data.total_pages > 1 && (
+          <div className="flex justify-end border-b border-line px-5 py-2">
+            <PagerCompact
+              page={page}
+              totalPages={items.data.total_pages}
+              total={total}
+              pageSize={pageSize}
+              onPageChange={(p) => {
+                const next = new URLSearchParams(params);
+                if (p === 1) next.delete("page");
+                else next.set("page", String(p));
+                setParams(next, { replace: true });
+              }}
+            />
+          </div>
+        )}
         <Table
           caption="Calls in this dataset, most recently added first"
           columns={columns(setRemoving)}
@@ -401,12 +419,18 @@ export function DatasetPage() {
               page={page}
               totalPages={items.data.total_pages}
               total={total}
-              pageSize={ITEMS_PAGE_SIZE}
+              pageSize={pageSize}
               noun={total === 1 ? "call" : "calls"}
               onPageChange={(p) => {
                 const next = new URLSearchParams(params);
                 if (p === 1) next.delete("page");
                 else next.set("page", String(p));
+                setParams(next, { replace: true });
+              }}
+              onPageSizeChange={(n) => {
+                setPageSize(n);
+                const next = new URLSearchParams(params);
+                next.delete("page");
                 setParams(next, { replace: true });
               }}
             />
