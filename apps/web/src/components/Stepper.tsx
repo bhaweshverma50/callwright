@@ -18,9 +18,10 @@ export interface Step {
 /**
  * Vertical stepper for a real sequence (numbered because order matters). Geometry: every row has
  * the same 16px padding and a 40px circle at its top left, so all circles share one centre axis
- * at 36px from the row edge. Each row except the last draws the connector from its circle centre
- * down by its own height, which lands exactly on the next circle centre; rows touch, so the line
- * is continuous. Segments after a done step fill with the action gradient, the rest are muted.
+ * at 36px from the row edge. Each row draws two segments: top edge to its circle centre, and
+ * circle centre to bottom edge; rows touch, so the line is continuous. The active row is a raised
+ * card: neither it nor its neighbours draw a segment towards it, so the line never crosses it. Segments
+ * after a done step fill with the accent, the rest are muted.
  */
 export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: string }) {
   return (
@@ -28,28 +29,22 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         const filled = s.status === "done";
+        const active = s.status === "active";
         return (
           <li
             key={s.title}
-            aria-current={s.status === "active" ? "step" : undefined}
+            aria-current={active ? "step" : undefined}
             className={cn(
               "relative flex gap-4 rounded-panel p-4 transition-[background-color,box-shadow] duration-200",
-              // Active row: a subtle full-row lift. No borders or side stripes.
-              s.status === "active" && "bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
+              // Active row: a subtle full-row lift, stacked above its neighbours. No borders or side stripes.
+              active && "z-[1] bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
             )}
           >
-            {!last && (
-              <span aria-hidden className="absolute left-[35px] top-[36px] h-full w-0.5 bg-line-strong">
-                {filled && (
-                  <motion.span
-                    className="bg-accent absolute inset-0 origin-top"
-                    initial={{ scaleY: 0 }}
-                    animate={{ scaleY: 1 }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 * i }}
-                  />
-                )}
-              </span>
+            {/* The active row is a raised card: it and the segments touching it are not drawn, so the line never crosses its edge or shadow. */}
+            {i > 0 && !active && steps[i - 1]?.status !== "active" && (
+              <Connector className="top-0 h-[36px]" filled={steps[i - 1]?.status === "done"} delay={0.1 * i + 0.1} />
             )}
+            {!last && !active && steps[i + 1]?.status !== "active" && <Connector className="top-[36px] bottom-0" filled={filled} delay={0.1 * i} />}
             <span
               className={cn(
                 "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full border font-mono text-[14px] font-medium tnum",
@@ -84,5 +79,21 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
         );
       })}
     </ol>
+  );
+}
+
+/** One connector segment on the disc axis; fills with the accent once the step above it is done. */
+function Connector({ className, filled, delay }: { className: string; filled: boolean; delay: number }) {
+  return (
+    <span aria-hidden className={cn("absolute left-[35px] w-0.5 bg-line-strong", className)}>
+      {filled && (
+        <motion.span
+          className="bg-accent absolute inset-0 origin-top"
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
+        />
+      )}
+    </span>
   );
 }
