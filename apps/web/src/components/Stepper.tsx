@@ -18,15 +18,15 @@ export interface Step {
 /**
  * Vertical stepper for a real sequence (numbered because order matters). Geometry: every row has
  * the same 16px padding and a 40px circle at its top left, so all circles share one centre axis
- * at 36px from the row edge. Each row draws two segments: top edge to its circle centre, and
- * circle centre to bottom edge; rows touch, so the line is continuous. The active row is a raised
- * card stacked above its neighbours and draws no segments, so the line meets its edges and runs
- * under its shadow instead of through it. Segments
- * after a done step fill with the accent, the rest are muted.
+ * at 36px from the row edge. Rows sit 12px apart. Each row draws two segments: its top edge to
+ * its circle centre, and its circle centre down across the gap to the next row, so the line is
+ * continuous. The active row is a raised card stacked above its neighbours and draws no segments,
+ * so the line meets its edges and runs under its shadow instead of through it. Segments after a
+ * done step fill with the accent, the rest are muted.
  */
 export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: string }) {
   return (
-    <ol aria-label={label} className="@container flex flex-col">
+    <ol aria-label={label} className="@container flex flex-col gap-3">
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         const filled = s.status === "done";
@@ -42,8 +42,14 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
             )}
           >
             {/* The active row is a raised card: it draws no connector, so the line stops at its edges and runs under its shadow. */}
-            {i > 0 && !active && <Connector className="top-0 h-[36px]" filled={steps[i - 1]?.status === "done"} delay={0.1 * i + 0.1} />}
-            {!last && !active && <Connector className="top-[36px] bottom-0" filled={filled} delay={0.1 * i} />}
+            {i > 0 && !active && (
+              <Connector
+                className={steps[i - 1]?.status === "active" ? "-top-3 h-[48px]" : "top-0 h-[36px]"}
+                filled={steps[i - 1]?.status === "done"}
+                delay={0.1 * i + 0.1}
+              />
+            )}
+            {!last && !active && <Connector className="top-[36px] -bottom-3" filled={filled} delay={0.1 * i} />}
             <span
               className={cn(
                 "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full border font-mono text-[14px] font-medium tnum",
