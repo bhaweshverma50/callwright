@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from typing import Any, Protocol
+from urllib.parse import quote
 
 import httpx
 import jwt
@@ -231,11 +232,31 @@ class LocalIdentityProvider:
         else:
             logger.warning("[dev mail] to=%s subject=%r link=%s", email, subject, link)
 
+    async def _account_exists(self, email: str) -> None:
+        """Sign-up with an email that already has a verified account: the screen still says "check
+        your email" (saying more would reveal which emails have accounts), so tell the owner here."""
+        link = f"{self.web_base_url}/login?email={quote(email)}"
+        self.outbox.append(OutboxMessage(email, "account_exists", link, "", datetime.now(UTC)))
+        subject = "You already have a Callwright account"
+        if self.settings.smtp_host:
+            await self._email(email, subject, "account_exists", link)
+        else:
+            logger.warning("[dev mail] to=%s subject=%r link=%s", email, subject, link)
+
     async def _email(self, to: str, subject: str, kind: str, link: str) -> None:
         """Send the outbox message by SMTP. Never raises: the caller already answered
         ``verification_sent`` and the user can ask for the link again."""
-        action = "verify your email address" if kind == "verify_email" else "reset your password"
-        body = f"Open this link to {action}:\n\n{link}\n\nIf you did not ask for this, ignore this email.\n"
+        if kind == "account_exists":
+            body = (
+                "Someone, hopefully you, tried to create a Callwright account with this email, but it "
+                f"already has one.\n\nSign in here:\n\n{link}\n\nIf you signed up with Google, choose "
+                "Continue with Google. If you forgot your password, choose Forgot password on that page."
+                "\n\nIf this was not you, ignore this email: nothing has changed.\n"
+            )
+        else:
+            action = "verify your email address" if kind == "verify_email" else "reset your password"
+            body = f"Open this link to {action}:\n\n{link}\n\n"
+            body += "If you did not ask for this, ignore this email.\n"
         try:
             await asyncio.to_thread(_send_smtp, self.settings, to, subject, body)
         except Exception as exc:
@@ -281,6 +302,8 @@ class LocalIdentityProvider:
                     await self._confirm(existing.id)
                 else:
                     await self._issue_token(existing.id, existing.email, "verify_email")
+            elif not confirmed:
+                await self._account_exists(existing.email)
             return
         user_id = str(uuid.uuid4())
         async with self.db.transaction() as s:

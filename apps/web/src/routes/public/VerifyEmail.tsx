@@ -10,6 +10,7 @@ import { Send } from "lucide-react";
 import { Button, Field, FormAlert, Input, Skeleton } from "../../components";
 import { AuthLayout } from "./AuthLayout";
 import { DASHBOARD_PATH } from "../../lib/paths";
+import { rememberSignIn } from "../../lib/lastSignIn";
 
 // A verification link works once. React StrictMode mounts effects twice in development, so
 // in-flight requests are shared per token instead of being sent again.
@@ -39,6 +40,7 @@ export function VerifyEmail() {
       (s) => {
         if (!live) return;
         startSession(s);
+        rememberSignIn("email");
         navigate(DASHBOARD_PATH, { replace: true });
       },
       (error) => live && setState({ status: "failed", error }),

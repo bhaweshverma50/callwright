@@ -6,6 +6,7 @@ import { startSession } from "../../api/session";
 import { Skeleton } from "../../components";
 import { AUTH_PAGES, safeNext } from "../../lib/paths";
 import { AuthLayout } from "./AuthLayout";
+import { rememberSignIn } from "../../lib/lastSignIn";
 
 const EXPIRED = "This Google sign-in expired or was already used. Start again.";
 
@@ -35,6 +36,7 @@ export function GoogleCallback() {
         const next = safeNext(googleFlowNext());
         forgetGoogleFlow();
         startSession(s);
+        rememberSignIn("google");
         navigate(next, { replace: true });
       },
       (e) => live && setFailure(problemMessage(e)),

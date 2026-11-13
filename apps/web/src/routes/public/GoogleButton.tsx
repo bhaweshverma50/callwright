@@ -3,6 +3,7 @@ import { getAuthConfig, startGoogleSignIn } from "../../api/auth";
 import { rememberGoogleFlow } from "../../api/googleFlow";
 import { problemMessage } from "../../api/problems";
 import { Button, FormAlert } from "../../components";
+import { LastUsed } from "./LastUsed";
 
 function GoogleMark() {
   return (
@@ -44,17 +45,19 @@ export function GoogleButton({ next }: { next?: string }) {
         <span className="h-px flex-1 bg-line" />
       </div>
       {start.error && <FormAlert>{problemMessage(start.error)}</FormAlert>}
-      <Button
-        type="button"
-        variant="secondary"
-        size="lg"
-        className="w-full"
-        pending={start.isPending || start.isSuccess}
-        icon={<GoogleMark />}
-        onClick={() => start.mutate()}
-      >
-        Continue with Google
-      </Button>
+      <LastUsed method="google">
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="w-full"
+          pending={start.isPending || start.isSuccess}
+          icon={<GoogleMark />}
+          onClick={() => start.mutate()}
+        >
+          Continue with Google
+        </Button>
+      </LastUsed>
     </div>
   );
 }

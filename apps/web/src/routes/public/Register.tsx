@@ -4,8 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { register, resendVerification } from "../../api/auth";
-import { fieldErrors, problemMessage } from "../../api/problems";
-import { TRIAL_CREDIT } from "../../lib/money";
+import { fieldErrors, problemMessage, problemText } from "../../api/problems";
+import { mmss, useCooldown } from "../../lib/useCooldown";
 import { startSession } from "../../api/session";
 import { Button, Field, FormAlert, Input } from "../../components";
 import { AuthLayout } from "./AuthLayout";
@@ -16,7 +16,9 @@ import { AUTH_PAGES, DASHBOARD_PATH } from "../../lib/paths";
 import { bodyLimits } from "../../lib/contract.gen";
 import { env } from "../../lib/env";
 import { Turnstile } from "./Turnstile";
+import { rememberSignIn } from "../../lib/lastSignIn";
 
+const RESEND_COOLDOWN_S = 60;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /**
@@ -33,6 +35,8 @@ export function Register() {
   const siteKey = env.turnstileSiteKey;
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+  // Every send (sign-up or resend) starts a 60 s wait before the next resend.
+  const cooldown = useCooldown(RESEND_COOLDOWN_S);
 
   const signUp = useMutation({
     mutationFn: () => register(email.trim(), password, captcha ?? undefined),
@@ -43,13 +47,18 @@ export function Register() {
       setCaptchaReset((n) => n + 1);
     },
     onSuccess: (result) => {
-      if (result.status !== "signed_in") return;
+      if (result.status !== "signed_in") {
+        cooldown.restart();
+        return;
+      }
       startSession(result);
+      rememberSignIn("email");
       navigate(DASHBOARD_PATH, { replace: true });
     },
   });
   const resend = useMutation({
     mutationFn: () => resendVerification(email.trim()),
+    onSuccess: () => cooldown.restart(),
   });
 
   const fe = fieldErrors(signUp.error);
@@ -71,8 +80,8 @@ export function Register() {
         title="Check your email"
         subtitle={
           <>
-            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace with {TRIAL_CREDIT} of
-            trial credit.
+            We sent a verification link to <span className="font-medium text-fg">{addr}</span>. It opens your new workspace. If this email already has
+            an account, we sent a sign-in reminder instead.
           </>
         }
       >
@@ -84,16 +93,17 @@ export function Register() {
           <div className="flex items-center gap-3">
             <Button
               pending={resend.isPending}
-              disabled={resend.isSuccess}
+              disabled={cooldown.left > 0}
               onClick={() => resend.mutate()}
-              icon={resend.isSuccess ? <MailCheck aria-hidden /> : <RefreshCw aria-hidden />}
+              icon={resend.isSuccess && cooldown.left > 0 ? <MailCheck aria-hidden /> : <RefreshCw aria-hidden />}
             >
-              {resend.isSuccess ? "Link sent again" : "Send it again"}
+              {cooldown.left > 0 ? `${resend.isSuccess ? "Sent. Send again" : "Send again"} in ${mmss(cooldown.left)}` : "Send it again"}
             </Button>
             <Button variant="ghost" onClick={() => signUp.reset()}>
               Use a different email
             </Button>
           </div>
+          {resend.error && <FormAlert>{problemText(resend.error)}</FormAlert>}
           {hints && (
             <p className="rounded-control border border-dashed border-line-strong px-3.5 py-2.5 text-[13px] text-fg-3">
               Demo data is on, so no email is sent.{" "}
@@ -115,7 +125,7 @@ export function Register() {
   return (
     <AuthLayout
       title="Create your workspace"
-      subtitle={`Start with ${TRIAL_CREDIT} of trial credit. No card needed until you top up.`}
+      subtitle="Start with free trial credit. No card needed until you top up."
       footer={
         <>
           Already have an account?{" "}

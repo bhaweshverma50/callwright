@@ -3,14 +3,17 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { resendVerification, signIn } from "../../api/auth";
 import { isApiError } from "../../api/errors";
-import { fieldErrors, problemMessage } from "../../api/problems";
+import { fieldErrors, problemMessage, problemText } from "../../api/problems";
 import { startSession, useSignedIn } from "../../api/session";
 import { safeNext } from "../../lib/paths";
 import { LogIn } from "lucide-react";
 import { Button, Field, FormAlert, Input } from "../../components";
+import { mmss, useCooldown } from "../../lib/useCooldown";
 import { AuthLayout } from "./AuthLayout";
 import { GoogleButton } from "./GoogleButton";
 import { demoHints } from "../../lib/demoHints";
+import { rememberSignIn } from "../../lib/lastSignIn";
+import { LastUsed } from "./LastUsed";
 
 function retryText(seconds?: number) {
   if (!seconds) return "in a few minutes";
@@ -27,19 +30,20 @@ export function Login() {
   const next = safeNext(params.get("next"));
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
-  const [resent, setResent] = useState(false);
+  const cooldown = useCooldown(60);
   const hints = demoHints();
 
   const login = useMutation({
     mutationFn: () => signIn(email.trim(), password),
     onSuccess: (s) => {
       startSession(s);
+      rememberSignIn("email");
       navigate(next, { replace: true });
     },
   });
   const resend = useMutation({
     mutationFn: () => resendVerification(email.trim()),
-    onSuccess: () => setResent(true),
+    onSuccess: () => cooldown.restart(),
   });
 
   if (signedIn && !login.isPending && !login.isSuccess) return <Navigate to={next} replace />;
@@ -50,7 +54,6 @@ export function Login() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setResent(false);
     login.mutate();
   };
 
@@ -73,16 +76,20 @@ export function Login() {
           <FormAlert
             tone="warning"
             action={
-              resent ? (
-                <span className="text-[13px]">Sent. Check your inbox for the new link.</span>
-              ) : (
-                <Button size="sm" variant="secondary" pending={resend.isPending} onClick={() => resend.mutate()} className="self-start">
-                  Send the link again
-                </Button>
-              )
+              <Button
+                size="sm"
+                variant="secondary"
+                pending={resend.isPending}
+                disabled={cooldown.left > 0}
+                onClick={() => resend.mutate()}
+                className="self-start"
+              >
+                {cooldown.left > 0 ? `Sent. Send again in ${mmss(cooldown.left)}` : "Send the link again"}
+              </Button>
             }
           >
             Verify your email first. We sent a link to {email || "your address"} when you registered.
+            {resend.error && <span className="mt-1 block text-[13px]">{problemText(resend.error)}</span>}
           </FormAlert>
         ) : isApiError(err) && err.status === 429 ? (
           <FormAlert tone="warning">
@@ -135,17 +142,19 @@ export function Login() {
             />
           )}
         </Field>
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          pending={login.isPending}
-          disabled={!email || !password}
-          className="mt-1 w-full"
-          icon={<LogIn aria-hidden />}
-        >
-          Sign in
-        </Button>
+        <LastUsed method="email">
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            pending={login.isPending}
+            disabled={!email || !password}
+            className="mt-1 w-full"
+            icon={<LogIn aria-hidden />}
+          >
+            Sign in
+          </Button>
+        </LastUsed>
       </form>
 
       <GoogleButton next={params.get("next") ? next : undefined} />
