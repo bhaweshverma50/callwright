@@ -65,7 +65,9 @@ async def test_short_password_rejected(client: httpx.AsyncClient) -> None:
 
 async def test_sign_up_with_a_verified_email_mails_the_owner(client: httpx.AsyncClient, app: FastAPI) -> None:
     account = await signup(client, app)
-    again = await client.post("/v1/auth/register", json={"email": account.email, "password": "Other-pass-123!"})
+    again = await client.post(
+        "/v1/auth/register", json={"email": account.email, "password": "Other-pass-123!"}
+    )
     assert again.status_code == 202  # the same answer as a new email: nothing reveals the account
     notices = [m for m in app.state.idp.outbox if m.to == account.email and m.kind == "account_exists"]
     assert len(notices) == 1
