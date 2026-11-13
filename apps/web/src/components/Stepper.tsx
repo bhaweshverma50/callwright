@@ -2,7 +2,6 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
-import { ActiveDisc } from "./FlowChain";
 
 export type StepStatus = "done" | "active" | "pending";
 
@@ -10,66 +9,52 @@ export interface Step {
   title: string;
   description: ReactNode;
   status: StepStatus;
-  icon?: ReactNode;
   /** Shown inside the active row (the step's primary action). */
   action?: ReactNode;
 }
 
 /**
- * Vertical stepper for a real sequence (numbered because order matters). Geometry: every row has
- * 8px vertical and 16px side padding and a 40px circle at its top left, so all circles share one
- * centre axis at 36px from the row's left edge and 28px from its top. Each row except the last
- * draws the connector from its circle centre down by its own height, which lands exactly on the
- * next circle centre; rows touch, so the line is continuous. The active step lifts its text and
- * action into a raised card to the right of the circles, so the line never meets the card.
- * Segments after a done step fill with the accent, the rest are muted.
+ * Vertical stepper for a real sequence (numbered because order matters). No cards: the step you are
+ * on stands out by its solid disc, full-ink title and its action; done steps fold to their title so
+ * the eye lands on what is next. Geometry: every row starts with a 32px disc, so all discs share
+ * one axis 16px from the left. Each row except the last draws the connector from its disc centre
+ * down by its own height, which lands on the next disc centre; rows touch, so the line is
+ * continuous, and a ring in the surface colour cuts it short of each disc. Segments below a done
+ * step fill with the accent.
  */
 export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: string }) {
   return (
     <ol aria-label={label} className="flex flex-col">
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
-        const active = s.status === "active";
         return (
-          <li key={s.title} aria-current={active ? "step" : undefined} className="relative flex gap-3 px-4 py-2">
+          <li key={s.title} aria-current={s.status === "active" ? "step" : undefined} className="relative flex gap-4 pb-7 last:pb-0">
             {!last && <Connector filled={s.status === "done"} delay={0.1 * i} />}
             <span
               className={cn(
-                "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full border font-mono text-[14px] font-medium tnum",
-                // A ring in the surface colour cuts the connector short of each disc; the active disc has its halo instead.
-                s.status !== "active" && "ring-4 ring-surface",
-                "transition-[background-color,border-color,color] duration-[var(--state-duration)] ease-[var(--ease-out-soft)]",
+                "relative z-[1] grid size-8 shrink-0 place-items-center rounded-full border font-mono text-[13px] font-medium tnum ring-4 ring-surface",
+                "transition-[background-color,border-color,color,box-shadow] duration-[var(--state-duration)] ease-[var(--ease-out-soft)]",
                 s.status === "done" && "border-transparent bg-success-soft text-success-text",
-                s.status === "active" && "border-transparent bg-surface text-white",
-                s.status === "pending" && "border-line-strong bg-surface text-fg-2",
+                // The current step: solid accent with a soft outer ring beyond the surface gap.
+                s.status === "active" && "border-transparent bg-accent text-accent-fg shadow-[0_0_0_7px_var(--accent-soft)]",
+                s.status === "pending" && "border-line-strong bg-surface text-fg-3",
               )}
             >
-              <ActiveDisc on={s.status === "active"} />
-              <span className="relative grid place-items-center">
-                {s.status === "done" ? <Check className="size-4" strokeWidth={2.5} aria-label="Done" /> : i + 1}
-              </span>
+              {s.status === "done" ? <Check className="size-4" strokeWidth={2.5} aria-hidden /> : i + 1}
             </span>
-            <div
-              className={cn(
-                "flex min-w-0 flex-1 flex-col items-start gap-3 rounded-panel px-3 pb-3 pt-[9px]",
-                "transition-[background-color,box-shadow] duration-200",
-                // Every row carries the card's padding so text lines up; only the active one shows the card.
-                active && "bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
-              )}
-            >
-              <div className="flex min-w-0 flex-col gap-1">
-                <h3
-                  className={cn("flex items-center gap-2 text-[15px] font-semibold leading-snug", s.status === "pending" ? "text-fg-2" : "text-fg")}
-                >
-                  {s.icon && (
-                    <span className={cn("shrink-0 [&_svg]:size-5", s.status === "active" ? "text-accent-text" : "text-fg-3")}>{s.icon}</span>
-                  )}
-                  <span className="min-w-0 break-words">{s.title}</span>
+            <div className="flex min-w-0 flex-1 flex-col items-start pt-[5px]">
+              <div className="flex flex-wrap items-baseline gap-x-2.5">
+                <h3 className={cn("min-w-0 break-words text-[15px] font-semibold leading-[22px]", s.status === "active" ? "text-fg" : "text-fg-2")}>
+                  {s.title}
                 </h3>
-                <p className={cn("max-w-[56ch] text-[14px] leading-relaxed", s.status === "pending" ? "text-fg-3" : "text-fg-2")}>{s.description}</p>
+                {s.status === "done" && <span className="text-[13px] font-medium text-success-text">Done</span>}
               </div>
-              {/* The action sits under the text so the description keeps the full width. */}
-              {active && s.action && <div className="mb-1">{s.action}</div>}
+              {s.status !== "done" && (
+                <p className={cn("mt-1 max-w-[56ch] text-[14px] leading-relaxed", s.status === "active" ? "text-fg-2" : "text-fg-3")}>
+                  {s.description}
+                </p>
+              )}
+              {s.status === "active" && s.action && <div className="mt-3.5">{s.action}</div>}
             </div>
           </li>
         );
@@ -78,10 +63,10 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
   );
 }
 
-/** The connector from one circle centre to the next; fills with the accent once the step above it is done. */
+/** The connector from one disc centre to the next; fills with the accent once the step above it is done. */
 function Connector({ filled, delay }: { filled: boolean; delay: number }) {
   return (
-    <span aria-hidden className="absolute left-[35px] top-[28px] h-full w-0.5 bg-line-strong">
+    <span aria-hidden className="absolute left-[15px] top-4 h-full w-0.5 bg-line-strong">
       {filled && (
         <motion.span
           className="bg-accent absolute inset-0 origin-top"

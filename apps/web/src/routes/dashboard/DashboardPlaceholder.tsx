@@ -1,4 +1,3 @@
-import { PhoneCall as PhoneCallDuo, PhoneList, Robot, type Icon as DuoIcon } from "@phosphor-icons/react";
 import { Bot, Disc, Gauge, Mail, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
@@ -28,7 +27,6 @@ interface SetupStep {
   detail: string;
   action: string;
   to: string;
-  icon: DuoIcon;
   done: boolean;
 }
 
@@ -47,7 +45,6 @@ export function setupSteps({
       detail: "Write what it should do, then pick its speech recognition, model and voice.",
       action: "Create an agent",
       to: NEW_AGENT_PATH,
-      icon: Robot,
       done: hasAgent,
     },
     {
@@ -55,7 +52,6 @@ export function setupSteps({
       detail: "Talk to it from the browser. Every turn shows its latency and every second its cost.",
       action: "Make a test call",
       to: AGENTS_PATH,
-      icon: PhoneCallDuo,
       done: hasTestCall,
     },
     {
@@ -63,7 +59,6 @@ export function setupSteps({
       detail: "Put the agent on a phone number or SIP trunk so real callers can reach it.",
       action: "Connect a number",
       to: PHONE_NUMBERS_PATH,
-      icon: PhoneList,
       done: hasNumber,
     },
   ];
@@ -75,7 +70,6 @@ export function toStepperSteps(steps: SetupStep[]): Step[] {
   return steps.map((s, i) => ({
     title: s.title,
     description: s.detail,
-    icon: <s.icon weight="duotone" aria-hidden />,
     status: s.done ? "done" : i === current ? "active" : "pending",
     action: (
       <Button asChild variant="primary" size="sm">
