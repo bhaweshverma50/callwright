@@ -48,8 +48,13 @@ export interface TooltipProps {
  */
 export function Tooltip({ content, children, side = "top", align = "center", enabled = true }: TooltipProps) {
   const [open, setOpen] = useState(false);
+  // While disabled Radix sees the tip as closed, so it never reports the pointer leaving. Recording
+  // a hover then would leave `open` stuck, and every tip hovered while disabled would pop up together
+  // once enabled (all the nav labels when the sidebar collapses). So: no opens while disabled, and
+  // drop any open state the moment it becomes disabled.
+  if (!enabled && open) setOpen(false);
   return (
-    <RTT.Root open={enabled && open} onOpenChange={setOpen}>
+    <RTT.Root open={enabled && open} onOpenChange={(o) => setOpen(enabled && o)}>
       <RTT.Trigger asChild onFocus={keyboardFocusOnly}>
         {children}
       </RTT.Trigger>
