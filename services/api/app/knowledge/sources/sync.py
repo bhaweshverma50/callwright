@@ -268,6 +268,28 @@ async def finish(
                 setattr(run, name, getattr(tally, name))
             run.errors = tally.errors
             run.errors_truncated = tally.errors_truncated
+            # One line per run for log-based metrics and alerts (docs/OPERATIONS.md section 15):
+            # duration, outcome, failure reason and counts per source.
+            log.info(
+                "drive sync finished",
+                extra={
+                    "metric": "kb_sync_run",
+                    "workspace_id": c.workspace_id,
+                    "source_id": c.source_id,
+                    "run_id": c.run_id,
+                    "trigger": run.trigger,
+                    "status": status,
+                    "failure_reason": failure_reason,
+                    "attention": attention or tally.attention or ("mass_archive" if tally.held else None),
+                    "duration_s": round((now() - run.started_at).total_seconds(), 1),
+                    "added": tally.added,
+                    "updated": tally.updated,
+                    "archived": tally.archived,
+                    "held_back": tally.held_back,
+                    "skipped": tally.skipped,
+                    "failed": tally.failed,
+                },
+            )
         # Only the run that holds the claim updates the source: a run that was taken over as
         # stale must not clear the new run's claim or overwrite its state.
         if src is not None and src.running_run_id == c.run_id:

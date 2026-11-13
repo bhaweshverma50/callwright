@@ -36,6 +36,99 @@ Deferred to later specs (were in the earlier draft of 022):
 - API-key, bearer-token and service-account connections, connection circuit breakers, and moving
   HTTP tool secrets onto connections.
 
+## How it works
+
+Drafted from the PR #1 review and checked against the code. The invariants these diagrams must keep
+are in [data-model.md](data-model.md#invariants), each with its test.
+
+### Source lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: source added (first sync claimed in the request)
+  pending --> syncing: first sync starts
+  healthy --> syncing: schedule (every 15 min by default) or Sync now
+  syncing --> healthy: run succeeded
+  syncing --> healthy: run failed for a temporary reason (had synced before); retried next schedule
+  syncing --> pending: run failed for a temporary reason (never synced); retried next schedule
+  syncing --> needs_attention: access_lost, source_too_large, kb_full, or mass_archive (held)
+  healthy --> needs_attention: no_credit (scheduled syncs pause, rechecked hourly)
+  needs_attention --> syncing: Reconnect, credit added, room made, or next schedule
+  needs_attention --> healthy: owner confirms or cancels the held archive
+  healthy --> [*]: source removed (keep documents as uploads, or archive them)
+  needs_attention --> [*]: source removed
+```
+
+A source is never removed while a sync holds it (409 `sync_running`). A sync holds a source through
+`running_run_id`; it refreshes `running_since` every minute, a claim silent for 10 minutes is stale,
+and only the run that holds the claim may release it or change the source's state.
+
+### Synced document lifecycle
+
+A new version of a file is a separate document that replaces the old one (005 Replace), not a
+status of the old one.
+
+```mermaid
+stateDiagram-v2
+  [*] --> uploaded: intake (new file, or new version with replaces_doc_id)
+  uploaded --> processing: ingest job
+  processing --> ready: ingest ok (charged once per version)
+  processing --> uploaded: embedding outage, retried after 10 s, 60 s, 300 s
+  processing --> failed: ingest failed
+  failed --> uploaded: next sync after a transient failure (same content), or Retry
+  ready --> ready: rename or move inside the source (no processing)
+  ready --> [*]: its new version became ready (the file row moves to the new version first)
+  uploaded --> archived: file gone from Drive (through the guard)
+  processing --> archived: file gone from Drive (ingest finishes, it stays archived)
+  ready --> archived: file gone from Drive (through the guard), or source removed with archive
+  failed --> archived: file gone from Drive
+  archived --> ready: restore or file returns, when it was processed
+  archived --> failed: restore, when it had failed
+  archived --> uploaded: restore or file returns, when it was archived before it was processed
+  archived --> [*]: purged 30 days after archiving
+```
+
+The two questions the review asked:
+
+- Any document can be archived. Restore returns it to what it really is: `ready` only when it was
+  processed into passages, `failed` when processing failed, otherwise `uploaded`, and processing
+  starts.
+- When a new version fails, its Drive file shows `processing_failed`, the old version keeps
+  answering, and after a transient failure (embedding outage, internal error) the next sync
+  processes it again. Content failures (unreadable, no text) wait until the file is edited.
+
+### One sync run
+
+```mermaid
+sequenceDiagram
+  participant T as Cron (every minute) or Sync now
+  participant S as Sync job (arq, 25 min timeout)
+  participant G as Google Drive
+  participant DB as Postgres
+  participant I as Ingest job
+  T->>DB: claim (running_run_id, running run row)
+  T->>S: enqueue(source, run)
+  S->>G: refresh token, check root
+  alt revoked, unshared, outage, too large, listing breaks part way
+    S->>DB: finish(failed), nothing applied
+  else listing complete
+    S->>G: list every page
+    S->>S: diff(listing, known files)
+    loop each add or update (heartbeat every minute)
+      S->>G: download or export (one file failing is recorded and skipped)
+      S->>DB: intake (005), file row: pending_doc_id for a new version
+    end
+    S->>DB: removals through the 20 percent guard (archive, or hold for the owner)
+    S->>DB: finish(succeeded or held), release the claim
+    S-->>I: enqueue ingest per new document
+    I->>DB: embed, charge, mark ready, move the file row to the new version, delete the old one
+  end
+```
+
+A timed-out or cancelled run is finished as failed and releases the claim; what it applied stays
+and the next sync carries on. Three temporary Google failures in a row, or revoked access, end a
+run part way; removals run last, so they never happen in a run that ended early.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Connect a Google account (Priority: P1)
@@ -403,3 +496,77 @@ shows trigger "first" with the skipped files and their reasons.
   breakers, and moving HTTP tool secrets onto connections (earlier draft of 022, deferred).
 - Per-document access rules (different documents for different callers).
 - Access rules per agent beyond knowledge base attachment (005).
+
+## Operations
+
+- **Long runs**: the sync job has a 25-minute timeout and a heartbeat on its claim (above).
+  Expected times, from the code paths (Drive lists 1,000 items per page; files are fetched one at a
+  time; unchanged files cost no download):
+  - A sync with no changes: 3 Drive requests plus one per 1,000 items, a few seconds at any size.
+  - A first sync of 200 files (the per-knowledge-base limit): about 3 to 8 minutes, most of it
+    downloads and exports; ingestion runs after it, two documents at a time per workspace.
+  - 1,000 or 5,000 items: listing takes seconds, but no more than 200 documents can be imported
+    into one knowledge base, so a first sync never fetches more than about 200 files. A run cut
+    off by the timeout keeps what it applied and the next sync continues.
+  To be measured against real Google on the hosted stack before general release.
+- **Capacity**: syncs per hour = sources × 60 / interval (4 per source at 15 minutes). At 500
+  workspaces with 2 sources each that is 4,000 syncs an hour (about 67 a minute). An unchanged
+  sync is about 3 Drive requests and a second or two of worker time, so about 200 Drive requests
+  a minute, well inside Drive's default per-project quota (check the Cloud console for the
+  project's current limit), and a small share of one worker's 10 concurrent jobs. Edits are what
+  cost: each changed file is one download and one ingestion.
+- **Metrics and alerts**: every finished run logs one structured line, `metric=kb_sync_run`,
+  with status, failure reason, attention reason, duration and counts. Log-based metrics and
+  alerts: sync duration (p95), failures by reason, `google_unavailable` rate (Google 429s and
+  5xx), runs held for a mass archive, sources in `access_lost`. Freshness lag per source is
+  `now - last_success_at` in the API. Runbook entries are in `docs/OPERATIONS.md` section 15.
+- **Kill switch**: `CONNECTORS_SYNC_PAUSED=true`, or the Redis key `connectors:sync_paused` (no
+  redeploy), stops the scheduler from starting syncs. Due sources stay due and run once resumed;
+  Sync now and searches keep working.
+- **Per-file isolation**: one file that cannot be downloaded or processed is recorded on its run
+  and its file, and skipped. Only revoked access, a lost root, a listing that breaks, or several
+  temporary Google failures in a row fail a run.
+
+## Rollout and compliance
+
+- **Beta flag**: `CONNECTORS_WORKSPACES` (comma-separated workspace ids) limits who may connect
+  Google and add Drive sources; empty means everyone. Workspaces taken off the list keep their
+  existing sources syncing.
+- **Google verification**: `drive.readonly` is a restricted scope and `spreadsheets` a sensitive
+  one. Restricted scopes need Google's app verification including an annual third-party security
+  assessment (CASA) before the app can leave Testing mode (100 test users, 7-day sign-ins). Plan
+  it before general release, or narrow to `drive.file` with Google's file picker, which needs no
+  assessment but only reaches files the user picks.
+- **User data after access ends** (open, to decide before general release): Google's policies
+  require deleting stored tokens when access is revoked, honouring user requests to delete their
+  data (checked by the security assessment), and disclosing what is stored and for how long. They
+  do not, in what we found, require deleting derived content the moment access is revoked. Today a
+  source in `access_lost` keeps serving its documents until the owner removes it. Proposal: after
+  30 days in `access_lost` its documents are archived (out of search), and purged 30 days later,
+  and the privacy notice states this. Removing the source (archive) or the knowledge base already
+  deletes them on request.
+- **Shared Google accounts**: removing a connection revokes the Google grant only when no other
+  connection, in any workspace, uses the same Google account (Google revokes the whole grant).
+
+## Later
+
+In order of leverage (from the PR #1 review):
+
+1. **Push ingestion API**: `PUT /v1/knowledge-bases/{kb}/documents/by-external-id/{id}` (file
+   or text, version, metadata), `DELETE` and a bulk variant, and outbound webhooks
+   (`document.ready`, `document.failed`, `sync.failed`). It reuses this spec's intake, managed
+   documents, archive and guard, so any CMS, database job, Zapier or n8n flow can feed a
+   knowledge base without a connector.
+2. **A `SourceConnector` interface** generalising the Drive port (R11): list, change cursor,
+   fetch, metadata, optionally permissions. Next: SharePoint and OneDrive (Graph delta),
+   Confluence, Notion, Zendesk, Intercom and Freshdesk help centres, website and sitemap crawl,
+   S3 and GCS buckets.
+3. **Live data stays in tools**: prices, stock and bookings need exact live answers, so they go
+   through read-only lookup tools (as R17a argues for Sheets), never into a knowledge base.
+4. **Company-owned connections**: Google Workspace service accounts with domain-wide delegation,
+   Microsoft admin consent, so sources survive the person who connected them leaving.
+5. **Freshness**: Drive `changes.watch` push notifications with polling as the fallback, and a
+   stale banner when a source misses its freshness target.
+6. **Limits and formats**: tiered limits above 200 documents per knowledge base and 5,000 items
+   per source; Sheets as tables, Slides, HTML, Markdown, TXT, CSV, OCR for scanned PDFs.
+7. **Metadata**: tags, language and effective dates on documents, so agents can filter retrieval.

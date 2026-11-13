@@ -130,3 +130,12 @@ def _request(hops: int, peer: str, forwarded: str | None) -> Request:
 )
 def test_client_ip_reads_trusted_hops_from_the_right(hops: int, forwarded: str | None, expected: str) -> None:
     assert client_ip(_request(hops, "169.254.1.1", forwarded)) == expected
+
+
+def test_production_refuses_the_fake_drive_and_reads_the_drive_switches() -> None:
+    with pytest.raises(ValueError, match="CONNECTORS_DRIVE_MODE=fake"):
+        _settings(**PROD, connectors_drive_mode="fake")
+    s = _settings(**PROD, connectors_workspaces=" ws_a, ws_b ", connectors_sync_paused=True)
+    assert s.connectors_enabled_for("ws_a") and not s.connectors_enabled_for("ws_c")
+    assert s.connectors_sync_paused
+    assert _settings(**PROD).connectors_enabled_for("ws_anything")

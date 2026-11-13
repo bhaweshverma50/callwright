@@ -457,6 +457,8 @@ Settings (all three OAuth values empty turns the feature off; the routes return 
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Secret Manager (optional, may be `enc:v1:`) | OAuth client secret |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Secret Manager (optional) | `https://<web app>/settings/connections/callback` |
 | `CONNECTORS_DRIVE_MODE` | env | `live` (default) or `fake` (in-memory Drive for tests and demos; refused in prod) |
+| `CONNECTORS_WORKSPACES` | env | Beta allowlist: comma-separated workspace ids that may connect Google and add sources; empty (default) is everyone |
+| `CONNECTORS_SYNC_PAUSED` | env | Kill switch: `true` stops scheduled syncs (Sync now and searches keep working) |
 
 Google Cloud setup (one time, per project):
 
@@ -476,3 +478,27 @@ Known behaviour:
   scopes need Google's verification before general release.
 - Syncs run on the jobs worker (cron `sync_due` every minute, job `sync_source`); the worker needs
   the same three Google settings as the API.
+- A sync job has a 25-minute timeout and refreshes its claim every minute; a claim silent for 10
+  minutes is stale and the next sync takes over.
+
+Metrics: each finished run logs `drive sync finished` with `metric=kb_sync_run` and `status`,
+`failure_reason`, `attention`, `duration_s` and counts. Suggested log-based alerts: `status=failed`
+by `failure_reason` above its usual rate; `failure_reason=google_unavailable` spikes (Google 429s
+or an outage); p95 `duration_s` above 15 minutes; any `attention=mass_archive` (an owner must
+decide); a jump in `attention=access_lost`.
+
+Runbook:
+
+- **Pause all scheduled syncs now** (Google incident, quota exhausted, bad deploy):
+  `redis-cli -u "$REDIS_URL" SET connectors:sync_paused 1`; resume with `DEL connectors:sync_paused`.
+  For a lasting pause set `CONNECTORS_SYNC_PAUSED=true` on the worker. Due sources run once resumed.
+- **A source is stuck on "Syncing"**: its claim expires 10 minutes after the last heartbeat and the
+  next scheduled sync or Sync now takes over; the stale run is recorded as failed. Check the worker
+  logs for its `run_id` (`drive sync finished`, or a crash or cancellation) before forcing anything.
+  To release it at once: `UPDATE kb_sources SET running_run_id = NULL, running_since = NULL WHERE id = '<ksrc_...>';`
+- **Every connection shows "Revoked"**: usually the Testing-mode 7-day expiry, or the OAuth client
+  secret was rotated or the client deleted. Check the client in the Cloud console and the API logs
+  for `invalid_grant`; owners then press Reconnect. Sources resume by themselves after a reconnect,
+  and nothing was archived while access was lost.
+- **A sync is held for a mass archive**: only the knowledge base owner should decide (Archive them
+  or Keep them on the source). Do not confirm on their behalf.

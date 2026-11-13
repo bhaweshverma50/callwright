@@ -42,9 +42,9 @@ async def create_source(
     kb_id: KbId, body: SourceCreate, request: Request, principal: CurrentPrincipal
 ) -> JSONResponse:
     d = connector_deps(request)
-    from app.connectors.service import ensure_configured
+    from app.connectors.service import ensure_enabled
 
-    ensure_configured(d.settings)
+    ensure_enabled(d.settings, principal.workspace_id)
     await _require_credit(request, principal.workspace_id)
     async with principal_tx(request, principal) as session:
         src = await service.create(

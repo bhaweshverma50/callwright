@@ -35,7 +35,8 @@ const BY_CODE: Record<string, (p: Problem, kind: string) => string> = {
   oauth_account_mismatch: (p) => p.detail ?? "Sign in with the Google account this connection belongs to, or add a new connection.",
   connection_revoked: () => "Google access was revoked or expired. Reconnect the Google account in Connections.",
   connection_in_use: () => "Remove the knowledge sources that use this connection first.",
-  connector_unavailable: () => "Google Drive is not set up on this Callwright server yet. Ask your administrator to add the Google settings.",
+  // "Not configured on this server" or "in beta and not enabled for this workspace yet".
+  connector_unavailable: (p) => p.detail ?? "Google Drive is not set up on this Callwright server yet.",
   google_unavailable: () => "Google did not answer or rate limited the request. Try again in a minute.",
   source_exists: () => "This folder already syncs into this knowledge base.",
   sync_running: () => "A sync of this source is already running.",

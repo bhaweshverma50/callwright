@@ -163,6 +163,12 @@ class Settings(BaseSettings):
     google_oauth_redirect_uri: str = ""
     # "fake" serves an in-memory Drive (tests, mock mode, local demos); refused in production.
     connectors_drive_mode: Literal["live", "fake"] = "live"
+    # Beta: comma-separated workspace ids that may connect Google and add Drive sources. Empty
+    # means every workspace. Workspaces already syncing keep syncing when removed from the list.
+    connectors_workspaces: str = ""
+    # Kill switch: true stops the scheduler from starting syncs (Sync now and searches keep
+    # working). The Redis key ``connectors:sync_paused`` does the same without a redeploy.
+    connectors_sync_paused: bool = False
 
     # Throttling (R6) and rate limits (R15)
     login_fail_limit: int = 5
@@ -369,6 +375,11 @@ class Settings(BaseSettings):
         if self.stripe_mode == "live" and not self.stripe_secret_key:
             raise ValueError("STRIPE_MODE=live requires STRIPE_SECRET_KEY")
         return self
+
+    def connectors_enabled_for(self, workspace_id: str) -> bool:
+        """Beta allowlist (022 rollout): may this workspace connect Google and add sources?"""
+        allowed = {w.strip() for w in self.connectors_workspaces.split(",") if w.strip()}
+        return not allowed or workspace_id in allowed
 
     @property
     def google_configured(self) -> bool:

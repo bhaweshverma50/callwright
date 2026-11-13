@@ -68,6 +68,19 @@ def ensure_configured(settings: Settings) -> None:
         raise unavailable()
 
 
+def ensure_enabled(settings: Settings, workspace_id: str) -> None:
+    """Configured, and this workspace is in the beta (``CONNECTORS_WORKSPACES``). Checked where
+    new usage starts: connecting Google and adding a source."""
+    ensure_configured(settings)
+    if not settings.connectors_enabled_for(workspace_id):
+        raise ProblemError(
+            503,
+            "connector_unavailable",
+            "Google Drive sync is in beta",
+            "Google Drive sync is in beta and not enabled for this workspace yet.",
+        )
+
+
 def revoked_problem() -> ProblemError:
     return ProblemError(
         409,

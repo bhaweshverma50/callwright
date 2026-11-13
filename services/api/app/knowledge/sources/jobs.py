@@ -120,8 +120,27 @@ async def due_sources(db: Database, limit: int = DUE_LIMIT) -> list[tuple[str, s
     return claimed
 
 
+PAUSE_KEY = "connectors:sync_paused"
+
+
+async def scheduling_paused(settings: Any, redis: Any) -> bool:
+    """The kill switch: ``CONNECTORS_SYNC_PAUSED`` or the Redis key ``connectors:sync_paused``
+    (set and cleared with redis-cli, no redeploy). Due sources stay due and run once resumed."""
+    if getattr(settings, "connectors_sync_paused", False):
+        return True
+    if redis is None:
+        return False
+    try:
+        return bool(await redis.get(PAUSE_KEY))
+    except Exception:  # Redis down: the scheduler cannot enqueue anyway
+        return False
+
+
 async def sync_due(ctx: dict[str, Any]) -> int:
-    """Cron: enqueue every due source (research R10)."""
+    """Cron: enqueue every due source (research R10), unless scheduling is paused."""
+    if await scheduling_paused(ctx.get("settings"), ctx.get("redis")):
+        log.warning("scheduled Drive syncs are paused (kill switch)")
+        return 0
     claimed = await due_sources(ctx["db"])
     for source_id, _ in claimed:
         await ctx["jobs"].enqueue(JOB_NAME, source_id, "scheduled", job_id=f"kb_sync:{source_id}:{ULID()}")

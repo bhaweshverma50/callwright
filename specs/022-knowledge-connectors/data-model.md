@@ -152,10 +152,25 @@ Append-only (grants SELECT and INSERT only to `callwright_app`).
 
 Index `(workspace_id, subject_id, created_at DESC)`.
 
+## Invariants
+
+Checked after every sync of random sequences of edits, renames, moves, deletions, additions,
+restores and revoked-access syncs by `tests/integration/test_sync_invariants.py` (12 seeds, 8
+syncs each), and each by a focused test.
+
+| # | Invariant | Focused tests |
+|---|---|---|
+| I1 | Every live managed document has exactly one source file pointing at it (`doc_id`, or `pending_doc_id` while a new version is processed). | `test_repeated_edits_keep_one_document_and_a_delete_archives_it`, `test_move_between_two_sources_keeps_one_document` |
+| I2 | At most one live version per Drive file; once ingestion settles, no file has a pending version and every live document is `ready` with passages. | `test_repeated_edits_keep_one_document_and_a_delete_archives_it`, `test_a_failed_new_version_is_retried_while_the_old_one_serves` |
+| I3 | A served file's change markers and hash are those of the version actually served; a version that was not taken leaves them, so the next sync tries again. Every listed supported file is served. | `test_a_new_version_that_could_not_be_downloaded_is_tried_again`, `test_a_transient_processing_failure_shows_on_the_file_and_is_retried`, `test_unchanged_and_metadata_only_syncs_process_nothing` |
+| I4 | One running sync per source; only the run holding the claim releases it or changes the source; a cancelled or timed-out run releases it. | `test_a_run_taken_over_as_stale_never_touches_the_source`, `test_a_cancelled_sync_is_recorded_and_releases_the_source`, `test_sync_now_while_running_and_stale_runs`, `test_due_sources_are_claimed_once` |
+| I5 | An archived document returns to search only through restore or its file returning, and comes back with its real status. | `test_archived_documents_keep_their_real_status`, `test_a_file_that_comes_back_is_restored_without_processing`, `test_restore_keeps_and_archive_action` |
+| I6 | A failed run changes no document and no file row. | `test_revoked_access_changes_nothing`, `test_unshared_folder_changes_nothing`, `test_outage_and_partial_listing_apply_nothing`, `test_too_large_folder_fails_before_applying` |
+
 ## Security-definer functions
 
 All `LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public`, `REVOKE ALL FROM PUBLIC`,
-`GRANT EXECUTE TO callwright_app`. They return ids and workspace ids only.
+`GRANT EXECUTE TO callwright_app`. They return ids and workspace ids only (`google_account_connections` returns a count).
 
 | Function | Returns | Used by |
 |---|---|---|
@@ -163,6 +178,7 @@ All `LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public`, `REVOKE ALL
 | `kb_sources_workspace_for(p_source_id text)` | `workspace_id` | job `sync_source` |
 | `kb_documents_archived_before(p_before timestamptz, p_limit int)` | `(id, workspace_id)` | daily purge |
 | `kb_sync_runs_before(p_before timestamptz, p_limit int)` | `(id, workspace_id)` | daily purge |
+| `google_account_connections(p_subject text)` | count of connections, in any workspace, for a Google account | connection remove and refused sign-ins: revoke at Google only when 0 (R5) |
 
 ## Derived values (API, not stored)
 

@@ -226,7 +226,47 @@ source activity visible.
 - [X] T092 [P] `ruff`, `mypy` (strict on the new money-adjacent sync code) and `pnpm lint`, `pnpm typecheck` clean
 - [ ] T093 Run the full API suite (`make test`), `make contracts-check`, `pnpm gen:api:check`, `pnpm test`, `pnpm e2e`; run quickstart part A in fake mode and record results in `specs/022-knowledge-connectors/quickstart-results.md`, including the time from Sync now to the edited text being searchable (SC-001: under 5 minutes)
 - [ ] T094 Real Google check: complete the Google Cloud setup from `docs/OPERATIONS.md`, run quickstart part B with a real folder, add the results to `quickstart-results.md`
-- [ ] T095 Raise the MR: summary, scope note (Drive sync plus Connections; MCP, summary cards and other connection kinds deferred; Sheets access requested and unused until the Sheets tool), screenshots of the Connections page, Sources panel and sync history, and the test list
+- [X] T095 Raise the MR: summary, scope note (Drive sync plus Connections; MCP, summary cards and other connection kinds deferred; Sheets access requested and unused until the Sheets tool), screenshots of the Connections page, Sources panel and sync history, and the test list
+
+
+## Phase 9: PR #1 review follow-ups
+
+- [X] T096 New versions take over their file row before the old version is deleted; versions not taken keep the served markers; processing failures show on the file and are retried (`knowledge/jobs.py`, `sources/sync.py`); tests in `tests/integration/test_sync_versions.py`
+- [X] T097 Claim heartbeat, owner-only release, 25-minute job timeout and cancelled runs finished (`sources/sync.py`, `core/feature.py`, `worker.py`)
+- [X] T098 Per-file isolation of temporary Google errors; Drive ids validated; Drive responses mapped without `raise_for_status()` (`sources/sync.py`, `sources/http_drive.py`)
+- [X] T099 Archived documents keep their real status (`knowledge.unarchive`, ingest never overwrites `archived`)
+- [X] T100 Revoke at Google only when no other connection uses the account (`google_account_connections`)
+- [X] T101 Web: specific messages for connector codes, refresh after a sync, no Replace for synced documents, every archived page, archived error state
+- [X] T102 Invariants I1 to I6 in `data-model.md`, checked over random multi-sync sequences in `tests/integration/test_sync_invariants.py`
+- [X] T103 Beta allowlist `CONNECTORS_WORKSPACES`, kill switch `CONNECTORS_SYNC_PAUSED` / Redis `connectors:sync_paused`, `metric=kb_sync_run` log line, spec sections How it works, Operations, Rollout and compliance, Later, and the runbook in `docs/OPERATIONS.md`
+- [ ] T104 Measure first-sync time for 200 files and the SC-001 edit-to-searchable time against real Google on the hosted stack; record in `quickstart-results.md`
+- [ ] T105 Decide data retention after access is lost (spec "Rollout and compliance") and implement it
+
+## Traceability
+
+Each research decision and the tests that prove it.
+
+| Decision | Tests |
+|---|---|
+| R1 Full listing and diff, gated by Drive metadata | `test_sync_diff.py` (all), `test_edit_rename_delete_add`, `test_outage_and_partial_listing_apply_nothing`, `test_sync_invariants.py` |
+| R2 Content check: markers, then bytes, then text | `test_content_gates.py` (all), `test_unchanged_and_metadata_only_syncs_process_nothing`, `test_unchanged_200_file_source_charges_nothing_and_is_quick` |
+| R3 Google Docs exported as DOCX | `test_files_download_and_export`, `test_errors_are_classified` (export limit), `test_clinic_folder_imports_supported_files_and_lists_the_rest` |
+| R4 OAuth with PKCE, completed by the web app | `test_oauth_state.py` (all), `test_connections_flow.py` (connect, decline, scopes, mismatch, other workspace), `ConnectionCallback.test.tsx` |
+| R5 Refresh token in `secrets`, access token per run; revoke only when unshared | `test_tokens_never_reach_logs`, `test_remove_refused_while_in_use_then_revokes`, `test_a_google_account_shared_with_another_workspace_is_not_revoked`, `test_full_flow_touches_only_drive_and_oauth_hosts` |
+| R6 Errors decide what a sync may do | `test_errors_are_classified`, `test_network_errors_become_temporary_after_retries`, `test_unmapped_statuses_are_temporary_not_http_errors`, `test_sync_faults.py` (all), `test_one_failing_file_does_not_fail_the_run`, `test_several_temporary_failures_in_a_row_end_the_run` |
+| R7 Synced files reuse the upload pipeline | `test_first_sync_charges_once_per_document`, `test_identical_content_is_imported_once`, `test_failed_new_version_keeps_the_old_one`, `test_repeated_edits_keep_one_document_and_a_delete_archives_it`, `test_a_failed_new_version_is_retried_while_the_old_one_serves` |
+| R8 Archive is a document status | `test_documents_accept_archived_status_and_source`, `test_restore_keeps_and_archive_action`, `test_purge_deletes_documents_archived_over_30_days_ago`, `test_archived_documents_keep_their_real_status` |
+| R9 Mass-archive guard | `test_mass_archive_guard.py` (all), `test_emptied_folder_and_half_removed_are_held`, `test_held_archive.py` (all) |
+| R10 Scheduling and one sync at a time | `test_due_sources_are_claimed_once`, `test_sync_now_while_running_and_stale_runs`, `test_a_run_taken_over_as_stale_never_touches_the_source`, `test_a_cancelled_sync_is_recorded_and_releases_the_source`, `test_the_sync_job_gets_its_own_timeout`, `test_the_kill_switch_pauses_scheduled_syncs` |
+| R11 Drive client behind a port | `test_fake_drive.py` (all), `test_http_drive.py` (all) |
+| R12 Folder picker in Callwright | `test_ids_that_could_change_a_drive_query_never_reach_google`, `test_folder_ids_are_validated_and_synced_files_are_flagged_on_upload`, `KnowledgeSources.test.tsx` "adds a Drive folder through the folder browser", `knowledge-drive.spec.ts` |
+| R13 Limits | `test_full_knowledge_base_imports_up_to_the_limit`, `test_too_large_folder_fails_before_applying`, `test_interval_changes_and_limits`, `test_errors_are_capped` |
+| R14 Activity record | `test_activity_is_append_only`, `test_connect_creates_a_healthy_connection`, `test_remove_refused_while_in_use_then_revokes` |
+| R15 Managed documents | `test_synced_documents_cannot_be_replaced_or_deleted_by_upload`, `test_folder_ids_are_validated_and_synced_files_are_flagged_on_upload`, `KnowledgeSources.test.tsx` "never offers to replace a document synced from Drive" |
+| R16 Google verification and Testing mode | Process, not code: `docs/OPERATIONS.md` section 15 and spec "Rollout and compliance"; live check in `quickstart-results.md` |
+| R17a Sheets access requested, unused | `test_drive_access_is_required_sheets_is_optional`, `test_full_flow_touches_only_drive_and_oauth_hosts` (no Sheets host) |
+| R17 Settings | `test_not_configured_returns_503`, `test_unconfigured_server_matches_the_contract`, `test_production_refuses_the_fake_drive_and_reads_the_drive_switches`, `test_the_beta_allowlist_gates_new_connections_and_sources` |
+| R18 Latency and simulations | `test_each_agent_searches_only_its_own_synced_knowledge` (calls make zero Drive requests), `test_simulations_search_the_synced_copy_like_calls` |
 
 ---
 

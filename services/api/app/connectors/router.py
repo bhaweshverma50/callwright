@@ -45,7 +45,7 @@ async def start_google_connection(
     request: Request, principal: CurrentPrincipal, body: StartBody | None = None
 ) -> dict[str, Any]:
     d = deps(request)
-    service.ensure_configured(d.settings)
+    service.ensure_enabled(d.settings, principal.workspace_id)
     connection_id = body.connection_id if body else None
     async with principal_tx(request, principal) as session:
         await service.require_owner(session, principal.workspace_id, principal.user_id)

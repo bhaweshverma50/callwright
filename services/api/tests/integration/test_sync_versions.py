@@ -340,3 +340,52 @@ def test_the_sync_job_gets_its_own_timeout() -> None:
 
     [job] = [f for f in job_functions() if f.name == sync_jobs.JOB_NAME]
     assert job.timeout_s == sync_jobs.JOB_TIMEOUT_S
+
+
+async def test_the_kill_switch_pauses_scheduled_syncs(
+    client: httpx.AsyncClient, app: FastAPI, account: Account, fake_drive: FakeDriveClient
+) -> None:
+    _kb_id, source = await _clinic(client, account, fake_drive)
+    await _rows(
+        app,
+        account,
+        "update kb_sources set next_sync_at = now() - interval '1 minute' where id = :id returning id",
+        id=source["id"],
+    )
+    enqueued: list[Any] = []
+
+    class Jobs:
+        async def enqueue(self, *args: Any, **kwargs: Any) -> None:
+            enqueued.append(args)
+
+    class PausedRedis:
+        async def get(self, key: str) -> bytes | None:
+            return b"1" if key == sync_jobs.PAUSE_KEY else None
+
+    ctx = {"db": app.state.db, "jobs": Jobs(), "settings": app.state.settings, "redis": PausedRedis()}
+    assert await sync_jobs.sync_due(ctx) == 0 and enqueued == []
+    ctx["redis"] = None
+    assert await sync_jobs.sync_due(ctx) >= 1
+    assert any(args[1] == source["id"] for args in enqueued)
+
+
+async def test_the_beta_allowlist_gates_new_connections_and_sources(
+    client: httpx.AsyncClient, app: FastAPI, account: Account, fake_drive: FakeDriveClient
+) -> None:
+    kb_id, source = await _clinic(client, account, fake_drive)
+    settings = app.state.settings
+    original = settings.connectors_workspaces
+    object.__setattr__(settings, "connectors_workspaces", "ws_someone_else")
+    try:
+        start = await client.post("/v1/connections/google/start", json={}, headers=account.headers)
+        assert start.status_code == 503 and "beta" in start.json()["detail"]
+        add = await client.post(
+            f"/v1/knowledge-bases/{kb_id}/sources",
+            json={"connection_id": source["connection_id"], "root_kind": "folder", "root_id": "fld1"},
+            headers=account.headers,
+        )
+        assert add.status_code == 503
+        # Existing sources keep syncing.
+        assert await sync_now(app, source["id"])
+    finally:
+        object.__setattr__(settings, "connectors_workspaces", original)
