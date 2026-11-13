@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { InfoTip } from "./TruncatedText";
 
 /** A labelled figure in a header strip (not a card): label above, mono value below. */
 export function Figure({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
@@ -49,4 +50,27 @@ export function ProgressBar({
 export function deltaTone(delta: number | null | undefined): string {
   if (delta === null || delta === undefined || Math.abs(delta) < 0.05) return "text-fg-2";
   return delta > 0 ? "text-success-text" : "text-danger-text";
+}
+
+/**
+ * A row of equal fact cells (label over value) with 1px rules between them, drawn by the grid gap
+ * on the line colour so the rules stay right however the cells wrap. Pass the column count for
+ * each breakpoint in `className`.
+ */
+export function FactGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <dl className={cn("grid grid-cols-1 gap-px bg-line", className)}>{children}</dl>;
+}
+
+/** One cell of a {@link FactGrid}: icon and label on top, the value under it. */
+export function Fact({ icon, label, hint, children }: { icon?: ReactNode; label: string; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 bg-surface px-5 py-4">
+      <dt className="flex items-center gap-2 text-[13px] text-fg-3 [&_svg]:size-4">
+        {icon}
+        {label}
+        {hint && <InfoTip label={`About ${label.toLowerCase()}`}>{hint}</InfoTip>}
+      </dt>
+      <dd className="min-w-0 text-[15px]">{children}</dd>
+    </div>
+  );
 }

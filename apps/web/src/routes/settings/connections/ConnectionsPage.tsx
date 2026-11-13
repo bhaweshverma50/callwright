@@ -16,7 +16,7 @@ import {
 } from "../../../api/connections";
 import { isApiError } from "../../../api/errors";
 import { problemMessage } from "../../../api/problems";
-import { Badge, Button, ConfirmDialog, EmptyState, InfoRow, PageHeader, Panel, PanelRows, Skeleton, toast, type Tone } from "../../../components";
+import { Badge, Button, ConfirmDialog, EmptyState, Fact, FactGrid, PageHeader, Panel, Skeleton, toast, type Tone } from "../../../components";
 import { timeAgo } from "../../../lib/format";
 import { CONNECTIONS_PATH, knowledgeBasePath } from "../../../lib/paths";
 
@@ -67,7 +67,7 @@ export function ConnectionsPage() {
         }
       />
       {list.isPending ? (
-        <Skeleton className="h-48 w-full max-w-[760px] rounded-panel" />
+        <Skeleton className="h-48 w-full rounded-panel" />
       ) : list.isError ? (
         <EmptyState icon={<Cloud />} title="Connections did not load">
           {problemMessage(list.error, "connection")}
@@ -90,7 +90,7 @@ export function ConnectionsPage() {
           Google Sheets access that stays unused until the Google Sheets tool is turned on.
         </EmptyState>
       ) : (
-        <div className="flex max-w-[760px] flex-col gap-4">
+        <div className="flex flex-col gap-4">
           {items.map((c) => (
             <ConnectionCard key={c.id} connection={c} />
           ))}
@@ -141,14 +141,19 @@ export function ConnectionCard({ connection: c }: { connection: Connection }) {
   return (
     <Panel
       title={c.account_email}
-      description="Google account"
+      // Health describes the account, so it sits with it; the actions on the right are all one kind of button.
+      description={
+        <span className="flex flex-wrap items-center gap-2">
+          Google account
+          <Badge tone={health.tone} icon={health.icon}>
+            {health.label}
+          </Badge>
+        </span>
+      }
       icon={<Cloud />}
       bodyClassName="p-0"
       actions={
         <>
-          <Badge tone={health.tone} icon={health.icon}>
-            {health.label}
-          </Badge>
           <Button size="sm" icon={<Activity />} onClick={() => test.mutate()} pending={test.isPending}>
             Test
           </Button>
@@ -157,15 +162,17 @@ export function ConnectionCard({ connection: c }: { connection: Connection }) {
               Reconnect
             </Button>
           )}
-          <Button size="sm" variant="ghost" icon={<Trash2 />} aria-label={`Remove ${c.account_email}`} onClick={() => setConfirm(true)}>
+          <Button size="sm" icon={<Trash2 />} aria-label={`Remove ${c.account_email}`} onClick={() => setConfirm(true)}>
             Remove
           </Button>
         </>
       }
     >
-      <PanelRows as="dl">
-        <InfoRow icon={<ShieldCheck />} label="Access">
-          <span className="flex flex-wrap items-center justify-end gap-1.5">
+      {/* Three facts side by side, each value under its label, rather than label-left/value-right rows
+          that leave a gap across the whole card. */}
+      <FactGrid className="md:grid-cols-3">
+        <Fact icon={<ShieldCheck />} label="Access">
+          <span className="flex flex-wrap items-center gap-1.5">
             {driveGranted && <Badge icon={<Database />}>{SCOPE_LABELS[DRIVE_SCOPE]}</Badge>}
             {c.sheets_access ? (
               <Badge icon={<Table2 />}>Sheets</Badge>
@@ -175,17 +182,19 @@ export function ConnectionCard({ connection: c }: { connection: Connection }) {
               </Badge>
             )}
           </span>
-          <span className="mt-1 block text-[12px] text-fg-3">
+          <span className="mt-2 block text-[13px] leading-relaxed text-fg-3">
             {c.sheets_access
               ? "Sheets access is not used until the Google Sheets tool is turned on."
               : "Reconnect and allow Sheets access to use the Google Sheets tool later. Knowledge sync works without it."}
           </span>
-        </InfoRow>
-        <InfoRow icon={<CircleCheck />} label="Last worked">
-          {c.last_success_at ? timeAgo(c.last_success_at) : "Not yet"}
-          {c.health_reason && c.health !== "healthy" && <span className="ml-2 text-[12px] text-fg-3">({c.health_reason.replace(/_/g, " ")})</span>}
-        </InfoRow>
-        <InfoRow icon={<Link2 />} label="Used by">
+        </Fact>
+        <Fact icon={<CircleCheck />} label="Last worked">
+          <span className="text-fg">{c.last_success_at ? timeAgo(c.last_success_at) : "Not yet"}</span>
+          {c.health_reason && c.health !== "healthy" && (
+            <span className="mt-1 block text-[13px] text-fg-3">{c.health_reason.replace(/_/g, " ")}</span>
+          )}
+        </Fact>
+        <Fact icon={<Link2 />} label="Used by">
           {users.length === 0 ? (
             <span className="text-fg-3">No knowledge bases yet</span>
           ) : (
@@ -200,8 +209,8 @@ export function ConnectionCard({ connection: c }: { connection: Connection }) {
               ))}
             </ul>
           )}
-        </InfoRow>
-      </PanelRows>
+        </Fact>
+      </FactGrid>
       {inUse && (
         <div role="alert" className="border-t border-line px-5 py-3 text-[13px] text-danger-text">
           This connection is used by {inUse.map((u) => u.kb_name).join(", ")}. Remove those Google Drive sources first.

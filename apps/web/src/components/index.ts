@@ -31,7 +31,7 @@ export { cn, focusRing } from "./cn";
 export { Stepper, type Step, type StepStatus } from "./Stepper";
 export { Composer, ThinkingIndicator, type ComposerProps } from "./ai";
 export { Checkbox } from "./Checkbox";
-export { Figure, ProgressBar, deltaTone } from "./Figure";
+export { Fact, FactGrid, Figure, ProgressBar, deltaTone } from "./Figure";
 export { FormAlert } from "./FormAlert";
 export { chartVars, axisTick } from "./chartTokens";
 export { ProblemAlert } from "./ProblemAlert";

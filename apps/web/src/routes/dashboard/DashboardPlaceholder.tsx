@@ -1,12 +1,11 @@
 import { Bot, Disc, Gauge, Mail, Wallet } from "lucide-react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useAgents } from "../../api/agents";
 import { useHasCalls } from "../../api/calls";
 import { useMe } from "../../api/queries";
 import { usePhoneNumbers, useWhatsAppChannels } from "../../api/channels";
-import { Button, InfoTip, MoneyText, PageHeader, Skeleton, Stepper, cn, focusRing, type Step } from "../../components";
+import { Button, Fact, FactGrid, MoneyText, PageHeader, Skeleton, Stepper, cn, focusRing, type Step } from "../../components";
 import { AGENTS_PATH, BILLING_PATH, NEW_AGENT_PATH, PHONE_NUMBERS_PATH, SETTINGS_PATH } from "../../lib/paths";
 
 interface SetupStep {
@@ -132,7 +131,7 @@ export function DashboardPlaceholder() {
 
         {/* Workspace facts as one strip of equal cells; the 1px gaps on the line colour draw the rules. */}
         <section aria-label="Workspace" className="overflow-hidden rounded-panel border border-line bg-line shadow-1">
-          <dl className="grid grid-cols-1 gap-px sm:grid-cols-2 xl:grid-cols-4">
+          <FactGrid className="sm:grid-cols-2 xl:grid-cols-4">
             <Fact icon={<Wallet />} label="Balance" hint="Prepaid credit for calls and features. New calls stop at $0.000.">
               {isPending || !me ? (
                 <Skeleton className="h-5 w-20" />
@@ -167,23 +166,9 @@ export function DashboardPlaceholder() {
                 <Skeleton className="h-5 w-32" />
               )}
             </Fact>
-          </dl>
+          </FactGrid>
         </section>
       </div>
     </>
-  );
-}
-
-/** One cell of the workspace strip: icon and label on top, the value under it. */
-function Fact({ icon, label, hint, children }: { icon: ReactNode; label: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-2 bg-surface px-5 py-4">
-      <dt className="flex items-center gap-2 text-[13px] text-fg-3 [&_svg]:size-4">
-        {icon}
-        {label}
-        {hint && <InfoTip label={`About ${label.toLowerCase()}`}>{hint}</InfoTip>}
-      </dt>
-      <dd className="min-w-0 text-[15px]">{children}</dd>
-    </div>
   );
 }
