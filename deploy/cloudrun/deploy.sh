@@ -243,27 +243,27 @@ step_api() {
   optional="$(present_optional_secrets)"
   # shellcheck disable=SC2086 (one secret name per line, no spaces)
   secrets="$(secrets_flag "${API_SECRETS[@]}" $optional)"
-  # "@" separates the variables because CORS_ORIGINS may hold commas.
-  env="^@^ENV=staging@LOG_JSON=true@WEB_BASE_URL=$WEB_ORIGIN@CORS_ORIGINS=$WEB_ORIGIN"
-  env+="@TRUSTED_PROXY_HOPS=1@AUTH_PROVIDER=local@AUTH_AUTO_VERIFY_EMAIL=true@TRIAL_CREDIT_USD=1.00@AUTH_EMAIL_RATE_LIMIT_PER_HOUR=3"
-  env+="@STRIPE_MODE=fake@ENABLE_FAKE_CHECKOUT=false@ENABLE_DEV_ROUTES=false"
-  env+="@LIVEKIT_MODE=live@LIVEKIT_URL=$LIVEKIT_URL@LIVEKIT_PUBLIC_URL=$LIVEKIT_URL"
-  env+="@WAKE_VM_PROJECT=$PROJECT@WAKE_VM_ZONE=$VM_ZONE@WAKE_VM_NAME=$VM_NAME@DB_POOL_SIZE=5"
+  # "|" separates the variables: CORS_ORIGINS may hold commas and SMTP values hold "@".
+  env="^|^ENV=staging|LOG_JSON=true|WEB_BASE_URL=$WEB_ORIGIN|CORS_ORIGINS=$WEB_ORIGIN"
+  env+="|TRUSTED_PROXY_HOPS=1|AUTH_PROVIDER=local|AUTH_AUTO_VERIFY_EMAIL=true|TRIAL_CREDIT_USD=1.00|AUTH_EMAIL_RATE_LIMIT_PER_HOUR=3"
+  env+="|STRIPE_MODE=fake|ENABLE_FAKE_CHECKOUT=false|ENABLE_DEV_ROUTES=false"
+  env+="|LIVEKIT_MODE=live|LIVEKIT_URL=$LIVEKIT_URL|LIVEKIT_PUBLIC_URL=$LIVEKIT_URL"
+  env+="|WAKE_VM_PROJECT=$PROJECT|WAKE_VM_ZONE=$VM_ZONE|WAKE_VM_NAME=$VM_NAME|DB_POOL_SIZE=5"
   # Recordings need the bucket (its key in Secret Manager) and the VM's egress service; without
   # the key calls are admitted with recording off and uploads stay in memory.
   if printf '%s\n' "$optional" | grep -qx S3_ACCESS_KEY_ID; then
-    env+="@STORAGE_MODE=s3@S3_ENDPOINT_URL=https://storage.googleapis.com@S3_REGION=auto"
-    env+="@S3_BUCKET=$STORAGE_BUCKET@RECORDINGS_BUCKET=$STORAGE_BUCKET"
-    env+="@RECORDINGS_S3_REGION=auto@AWS_REQUEST_CHECKSUM_CALCULATION=when_required"
-    env+="@AWS_RESPONSE_CHECKSUM_VALIDATION=when_required"
-    env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-true}"
+    env+="|STORAGE_MODE=s3|S3_ENDPOINT_URL=https://storage.googleapis.com|S3_REGION=auto"
+    env+="|S3_BUCKET=$STORAGE_BUCKET|RECORDINGS_BUCKET=$STORAGE_BUCKET"
+    env+="|RECORDINGS_S3_REGION=auto|AWS_REQUEST_CHECKSUM_CALCULATION=when_required"
+    env+="|AWS_RESPONSE_CHECKSUM_VALIDATION=when_required"
+    env+="|RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-true}"
   else
-    env+="@RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
+    env+="|RECORDINGS_ENABLED=${RECORDINGS_ENABLED:-false}"
   fi
-  [ -n "$url" ] && env+="@API_BASE_URL=$url"
+  [ -n "$url" ] && env+="|API_BASE_URL=$url"
   # Which vendors the voice worker can run; unset (nothing found) means the API does not gate.
   vendor_keys="$(vendor_voice_keys)"
-  [ -n "$vendor_keys" ] && env+="@VOICE_VENDOR_KEYS=$vendor_keys"
+  [ -n "$vendor_keys" ] && env+="|VOICE_VENDOR_KEYS=$vendor_keys"
   # 010 telephony: LIVEKIT_SIP_HOST=sip.bhawesh.dev turns SIP on, LIVEKIT_SIP_HOST= (empty) turns
   # it off, unset keeps what the running service has (--set-env-vars would otherwise drop it).
   if [ -z "${LIVEKIT_SIP_HOST+set}" ] && [ "${DRY_RUN:-0}" != "1" ]; then
@@ -272,14 +272,14 @@ step_api() {
 env = json.load(sys.stdin)["spec"]["template"]["spec"]["containers"][0].get("env", [])
 print(next((e.get("value", "") for e in env if e["name"] == "LIVEKIT_SIP_HOST"), ""))' 2>/dev/null || true)"
   fi
-  [ -n "${LIVEKIT_SIP_HOST:-}" ] && env+="@LIVEKIT_SIP_HOST=$LIVEKIT_SIP_HOST"
+  [ -n "${LIVEKIT_SIP_HOST:-}" ] && env+="|LIVEKIT_SIP_HOST=$LIVEKIT_SIP_HOST"
   # Signup protections (docs/OPERATIONS.md, "Signup abuse protections"): plain settings are passed
   # through from the shell when set; their secrets (SMTP_PASSWORD, TURNSTILE_SECRET_KEY) are optional above.
   for name in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_FROM TRIAL_CREDIT_DAILY_BUDGET_USD EXTRA_BLOCKED_EMAIL_DOMAINS; do
-    [ -n "${!name:-}" ] && env+="@$name=${!name}"
+    [ -n "${!name:-}" ] && env+="|$name=${!name}"
   done
   if [ -n "$DEMO_WORKSPACE_ID" ]; then
-    env+="@DEMO_WORKSPACE_ID=$DEMO_WORKSPACE_ID@DEMO_AGENTS=$DEMO_AGENTS@DEMO_CALLS_PER_HOUR=$DEMO_CALLS_PER_HOUR"
+    env+="|DEMO_WORKSPACE_ID=$DEMO_WORKSPACE_ID|DEMO_AGENTS=$DEMO_AGENTS|DEMO_CALLS_PER_HOUR=$DEMO_CALLS_PER_HOUR"
   fi
   gc run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-account "$SA" \
     --allow-unauthenticated --port 8080 --cpu 1 --memory 512Mi --concurrency 40 \
