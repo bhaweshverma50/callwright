@@ -1,25 +1,12 @@
 import { Bot, Disc, Gauge, Mail, Wallet } from "lucide-react";
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useAgents } from "../../api/agents";
 import { useHasCalls } from "../../api/calls";
 import { useMe } from "../../api/queries";
 import { usePhoneNumbers, useWhatsAppChannels } from "../../api/channels";
-import {
-  Badge,
-  Button,
-  InfoRow,
-  MoneyText,
-  PageHeader,
-  Panel,
-  PanelRows,
-  Skeleton,
-  Stepper,
-  WorkLayout,
-  cn,
-  focusRing,
-  type Step,
-} from "../../components";
+import { Button, InfoTip, MoneyText, PageHeader, Skeleton, Stepper, cn, focusRing, type Step } from "../../components";
 import { AGENTS_PATH, BILLING_PATH, NEW_AGENT_PATH, PHONE_NUMBERS_PATH, SETTINGS_PATH } from "../../lib/paths";
 
 interface SetupStep {
@@ -107,88 +94,96 @@ export function DashboardPlaceholder() {
           </Button>
         }
       />
-      <WorkLayout
-        main={
-          <section aria-labelledby="setup" className="relative overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-            <div className="relative px-5 pb-5 pt-6 sm:px-6">
-              <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-                <div className="min-w-0">
-                  <h2 id="setup" className="font-display text-[19px] tracking-[-0.015em] text-fg">
-                    Get your first call on the line
-                  </h2>
-                  <p className="mt-1.5 text-[14px] text-fg-2">Three steps, about ten minutes. Your trial credit covers the test calls.</p>
-                </div>
+      <div className="flex flex-col gap-6">
+        <section aria-labelledby="setup" className="rounded-feature border border-line bg-surface shadow-2">
+          {/* Two columns: what this is and how far along, then the steps themselves. */}
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-7 px-5 py-6 sm:px-7 sm:py-7 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+            <div className="flex min-w-0 flex-col">
+              <h2 id="setup" className="font-display text-[19px] tracking-[-0.015em] text-fg">
+                Get your first call on the line
+              </h2>
+              <p className="mt-2 max-w-[44ch] text-[14px] leading-relaxed text-fg-2">
+                Three steps, about ten minutes. Your trial credit covers the test calls.
+              </p>
+              <div className="mt-6">
                 <p className="text-[13px] text-fg-2" aria-live="polite">
                   <span className="font-mono text-fg tnum">{done}</span> of <span className="font-mono tnum">{steps.length}</span> done
                 </p>
-              </div>
-              <div
-                role="progressbar"
-                aria-label="Setup progress"
-                aria-valuemin={0}
-                aria-valuemax={steps.length}
-                aria-valuenow={done}
-                className="mt-5 h-1.5 overflow-hidden rounded-full bg-surface-3"
-              >
-                <motion.div
-                  className="bg-accent h-full origin-left rounded-full"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: done / steps.length }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                />
-              </div>
-              <div className="-mx-1 mt-5 sm:-mx-2">
-                <Stepper label="Setup steps" steps={toStepperSteps(steps)} />
+                <div
+                  role="progressbar"
+                  aria-label="Setup progress"
+                  aria-valuemin={0}
+                  aria-valuemax={steps.length}
+                  aria-valuenow={done}
+                  className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-3"
+                >
+                  <motion.div
+                    className="bg-accent h-full origin-left rounded-full"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: done / steps.length }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </div>
               </div>
             </div>
-          </section>
-        }
-        inspector={
-          <Panel title="Workspace" description="What this workspace runs with today." icon={<Gauge />} bodyClassName="p-0">
-            <PanelRows as="dl">
-              <InfoRow icon={<Wallet />} label="Balance" hint="Prepaid credit for calls and features. New calls stop at $0.000.">
-                {isPending || !me ? (
-                  <Skeleton className="ml-auto h-4 w-20" />
-                ) : (
-                  <Link to={BILLING_PATH} className={cn("link-underline rounded-inline text-fg", focusRing)}>
-                    <MoneyText value={me.balance_usd} places={3} animate fromZero className="font-medium" />
-                  </Link>
-                )}
-              </InfoRow>
-              <InfoRow
-                icon={<Gauge />}
-                label="Calls at once"
-                hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
-              >
-                {isPending ? (
-                  <Skeleton className="ml-auto h-4 w-8" />
-                ) : (
-                  <span className="font-mono text-fg tnum">{me?.workspace.concurrency_limit}</span>
-                )}
-              </InfoRow>
-              <InfoRow icon={<Disc />} label="Call recording" hint="The default for agents set to follow the workspace. Each agent can override it.">
-                {me ? (
-                  <Badge tone={me.workspace.recording_default ? "accent" : "neutral"}>
-                    {me.workspace.recording_default ? "On by default" : "Off by default"}
-                  </Badge>
-                ) : (
-                  <Skeleton className="ml-auto h-4 w-24" />
-                )}
-              </InfoRow>
-              <InfoRow icon={<Mail />} label="Signed in as" title={me?.user.email}>
-                {me?.user.email ?? <Skeleton className="ml-auto h-4 w-32" />}
-              </InfoRow>
-            </PanelRows>
-            <p className="border-t border-line px-5 py-3.5 text-[13px] leading-relaxed text-fg-3">
-              Change the name and recording default in{" "}
-              <Link to={SETTINGS_PATH} className={cn("link-underline text-accent-text", focusRing)}>
-                Settings
-              </Link>
-              .
-            </p>
-          </Panel>
-        }
-      />
+            <Stepper label="Setup steps" steps={toStepperSteps(steps)} />
+          </div>
+        </section>
+
+        {/* Workspace facts as one strip of equal cells; the 1px gaps on the line colour draw the rules. */}
+        <section aria-label="Workspace" className="overflow-hidden rounded-panel border border-line bg-line shadow-1">
+          <dl className="grid grid-cols-1 gap-px sm:grid-cols-2 xl:grid-cols-4">
+            <Fact icon={<Wallet />} label="Balance" hint="Prepaid credit for calls and features. New calls stop at $0.000.">
+              {isPending || !me ? (
+                <Skeleton className="h-5 w-20" />
+              ) : (
+                <Link to={BILLING_PATH} className={cn("link-underline rounded-inline font-mono text-fg tnum", focusRing)}>
+                  <MoneyText value={me.balance_usd} places={3} animate fromZero className="font-medium" />
+                </Link>
+              )}
+            </Fact>
+            <Fact
+              icon={<Gauge />}
+              label="Calls at once"
+              hint="The most calls this workspace can have in progress at the same moment. A new call past the limit is refused, and its record says why."
+            >
+              {isPending ? <Skeleton className="h-5 w-8" /> : <span className="font-mono text-fg tnum">{me?.workspace.concurrency_limit}</span>}
+            </Fact>
+            <Fact icon={<Disc />} label="Call recording" hint="The default for agents set to follow the workspace. Each agent can override it.">
+              {me ? (
+                <Link to={SETTINGS_PATH} className={cn("link-underline rounded-inline text-fg", focusRing)}>
+                  {me.workspace.recording_default ? "On by default" : "Off by default"}
+                </Link>
+              ) : (
+                <Skeleton className="h-5 w-24" />
+              )}
+            </Fact>
+            <Fact icon={<Mail />} label="Signed in as">
+              {me ? (
+                <span className="block truncate text-fg" title={me.user.email}>
+                  {me.user.email}
+                </span>
+              ) : (
+                <Skeleton className="h-5 w-32" />
+              )}
+            </Fact>
+          </dl>
+        </section>
+      </div>
     </>
+  );
+}
+
+/** One cell of the workspace strip: icon and label on top, the value under it. */
+function Fact({ icon, label, hint, children }: { icon: ReactNode; label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 bg-surface px-5 py-4">
+      <dt className="flex items-center gap-2 text-[13px] text-fg-3 [&_svg]:size-4">
+        {icon}
+        {label}
+        {hint && <InfoTip label={`About ${label.toLowerCase()}`}>{hint}</InfoTip>}
+      </dt>
+      <dd className="min-w-0 text-[15px]">{children}</dd>
+    </div>
   );
 }

@@ -367,7 +367,7 @@ export function PhoneNumbersPage() {
                 flowLabel="How a call reaches your agent"
                 caption="Ringing, busy and unanswered calls are never charged. You pay for connected seconds only."
               />
-              <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-2">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
                 <NeedsPanel />
                 <SipSettingsCard />
               </div>

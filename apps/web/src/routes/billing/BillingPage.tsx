@@ -90,7 +90,7 @@ export function BillingPage() {
     }, 0);
   };
 
-  const topUp = <TopUpCard inputRef={amountRef} perMinuteMicros={perMinute} />;
+  const topUp = <TopUpCard inputRef={amountRef} perMinuteMicros={perMinute} className="h-full" />;
   const inspectorBreakdown = wide && selected ? <BreakdownInspector txn={selected} onClose={() => setSelected(null)} asDrawer={false} /> : null;
 
   return (
@@ -113,11 +113,15 @@ export function BillingPage() {
       )}
       {watch === "cancelled" && <FormAlert tone="info">Checkout was cancelled. Nothing was charged.</FormAlert>}
 
+      {/* Two rows on one column grid: balance and top-up side by side at equal height, then the
+          history at full width, with a selected transaction's breakdown in the same 360px column. */}
+      <div className="mb-8 grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <TalkTimeGauge balanceUsd={balance.data?.balance_usd} loading={balance.isPending} />
+        {topUp}
+      </div>
       <WorkLayout
         main={
           <div className="flex flex-col gap-8">
-            <TalkTimeGauge balanceUsd={balance.data?.balance_usd} loading={balance.isPending} />
-            {!wide && topUp}
             <Tabs
               aria-label="Billing history"
               value={tab}
@@ -149,7 +153,7 @@ export function BillingPage() {
             </Tabs>
           </div>
         }
-        inspector={wide ? (inspectorBreakdown ?? topUp) : null}
+        inspector={inspectorBreakdown}
       />
       {!wide && <BreakdownInspector txn={selected} onClose={() => setSelected(null)} asDrawer />}
     </>

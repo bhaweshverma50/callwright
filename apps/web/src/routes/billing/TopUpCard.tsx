@@ -20,7 +20,15 @@ export const CHECKOUT_BEFORE_KEY = "cw.checkout.before";
  * disabled button says why. One idempotency key per amount, so a double click opens one session.
  * With a stack price, the amount is also shown as talk time.
  */
-export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLInputElement>; perMinuteMicros?: bigint | null }) {
+export function TopUpCard({
+  inputRef,
+  perMinuteMicros,
+  className,
+}: {
+  inputRef?: Ref<HTMLInputElement>;
+  perMinuteMicros?: bigint | null;
+  className?: string;
+}) {
   const [amount, setAmount] = useState("");
   const [touched, setTouched] = useState(false);
   const keyRef = useRef<{ amount: string; key: string } | null>(null);
@@ -60,7 +68,7 @@ export function TopUpCard({ inputRef, perMinuteMicros }: { inputRef?: Ref<HTMLIn
   const minutes = check.ok && perMinuteMicros ? talkMinutes(check.micros, perMinuteMicros) : null;
 
   return (
-    <Panel title="Add funds" description="Paid by card through secure hosted checkout." icon={<CreditCard />}>
+    <Panel title="Add funds" description="Paid by card through secure hosted checkout." icon={<CreditCard />} className={className}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <div role="group" aria-label="Preset amounts" className="grid grid-cols-4 gap-2">
           {PRESETS.map((p) => {
