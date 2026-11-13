@@ -414,6 +414,29 @@ shell that runs `deploy.sh ... api`.
   refreshed monthly by the `disposable-domains` workflow). `EXTRA_BLOCKED_EMAIL_DOMAINS=a.com,b.com`
   adds more without a code change.
 
+### Sign in with Google
+
+"Continue with Google" on the sign-in and register pages (also how a new account is created with
+Google). Only with `AUTH_PROVIDER=local`. It is on when both `GOOGLE_SIGNIN_CLIENT_ID` and
+`GOOGLE_SIGNIN_CLIENT_SECRET` are set; these are separate from the Drive connector's
+`GOOGLE_OAUTH_*`. Google verifies the email, so this path skips the captcha and the disposable
+domain check but keeps the per-IP rate limit (`GOOGLE_SIGNIN_RATE_LIMIT_PER_HOUR`, 60). No migration.
+
+1. Google Cloud Console, project `callwright-dev`: APIs and Services, OAuth consent screen. User
+   type External. Scopes: `openid`, `email` and `profile` only (they need no Google verification).
+   While the app is in Testing, only listed test users can sign in; publish it to let anyone in.
+2. Credentials, Create credentials, OAuth client ID, type Web application. Authorized redirect URIs:
+   `https://callwright-one.vercel.app/auth/google/callback` and
+   `http://localhost:5180/auth/google/callback` (the API builds it from `WEB_BASE_URL`).
+3. Put the client secret in Secret Manager as `GOOGLE_SIGNIN_CLIENT_SECRET` (`deploy.sh ... setup`
+   binds it; `deploy.sh ... api` mounts it once it exists). Export the client id in the shell that
+   runs the API deploy: `GOOGLE_SIGNIN_CLIENT_ID=... deploy/cloudrun/deploy.sh $PROJECT $ACCOUNT build api`.
+   It is dropped from the service env when not exported, like the SMTP values.
+
+An email that someone registered with a password but never verified is taken over by the Google
+sign-in: the account is confirmed, its password replaced and its sessions and pending links revoked.
+`/v1/auth/config` tells the web app whether to show the button; no web redeploy is needed.
+
 Keep `AUTH_AUTO_VERIFY_EMAIL=true` until SMTP is confirmed working (register, then check the
 inbox). Only then set `AUTH_AUTO_VERIFY_EMAIL=false`; with it off, an account cannot sign in or
 get its trial credit until the emailed link is opened. The deploy script still sets it to true,

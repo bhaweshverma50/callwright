@@ -67,7 +67,8 @@ VOICE_OPTIONAL_SECRETS=(DEEPGRAM_API_KEY ASSEMBLYAI_API_KEY SARVAM_API_KEY FISHA
 # Mounted when they exist.
 OPTIONAL_SECRETS=(STRIPE_SECRET_KEY OPENAI_API_KEY DEEPGRAM_API_KEY AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_KEY ANTHROPIC_API_KEY
   ELEVENLABS_API_KEY CARTESIA_API_KEY SUPABASE_URL SUPABASE_ANON_KEY
-  S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY RECORDINGS_GCP_CREDENTIALS SMTP_PASSWORD TURNSTILE_SECRET_KEY)
+  S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY RECORDINGS_GCP_CREDENTIALS SMTP_PASSWORD TURNSTILE_SECRET_KEY
+  GOOGLE_SIGNIN_CLIENT_SECRET)
 # Provider id -> the secrets (joined by +) the voice worker needs to run it; the API gets the ids it
 # can run as VOICE_VENDOR_KEYS and refuses live calls for agents on any other provider. Every
 # provider of the contract's adapter catalog is listed (a test keeps the two in step); "none"
@@ -274,11 +275,13 @@ print(next((e.get("value", "") for e in env if e["name"] == "LIVEKIT_SIP_HOST"),
   fi
   [ -n "${LIVEKIT_SIP_HOST:-}" ] && env+="|LIVEKIT_SIP_HOST=$LIVEKIT_SIP_HOST"
   # Signup protections (docs/OPERATIONS.md, "Signup abuse protections"): plain settings are passed
-  # through from the shell when set; their secrets (SMTP_PASSWORD, TURNSTILE_SECRET_KEY) are optional above.
+  # through from the shell when set; their secrets (SMTP_PASSWORD, TURNSTILE_SECRET_KEY,
+  # GOOGLE_SIGNIN_CLIENT_SECRET) are optional above. Google sign-in is on once the id and the secret are both set.
   # Hosted demo defaults (Brevo SMTP, $5 of trial credit a day); export one as empty to drop it.
   : "${SMTP_HOST=smtp-relay.brevo.com}" "${SMTP_PORT=587}" "${SMTP_USERNAME=b53f68001@smtp-brevo.com}"
   : "${SMTP_FROM=Callwright <mail@bhawesh.dev>}" "${TRIAL_CREDIT_DAILY_BUDGET_USD=5.00}"
-  for name in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_FROM TRIAL_CREDIT_DAILY_BUDGET_USD EXTRA_BLOCKED_EMAIL_DOMAINS; do
+  for name in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_FROM TRIAL_CREDIT_DAILY_BUDGET_USD EXTRA_BLOCKED_EMAIL_DOMAINS \
+    GOOGLE_SIGNIN_CLIENT_ID; do
     [ -n "${!name:-}" ] && env+="|$name=${!name}"
   done
   if [ -n "$DEMO_WORKSPACE_ID" ]; then
