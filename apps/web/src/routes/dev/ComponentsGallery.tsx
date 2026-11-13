@@ -1,4 +1,4 @@
-import { FolderOpen, PhoneCall as PhoneCallDuo, PhoneList, Robot } from "@phosphor-icons/react";
+import { FolderOpen } from "@phosphor-icons/react";
 import { BrainCircuit, Captions, Disc, Ear, Gauge, Mail, Mic, Moon, Play, Plus, Shuffle, Sun, Trash2, Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
@@ -51,6 +51,7 @@ import {
 } from "../../components";
 import { WebCallPanel } from "../../webCall/WebCallPanel";
 import { SummaryText } from "../calls/quality/SummaryText";
+import { setupSteps, toStepperSteps } from "../dashboard/DashboardPlaceholder";
 
 const SAMPLE_SUMMARY =
   "Acme Bank called Bhavesh Verma about a missed home loan instalment, and he paid it in full during the call. Details: name confirmed as Bhavesh Verma [3]; instalment of 650 due on the 15th [4]; aware of the missed payment [5]. Actions: explained the missed instalment; sent a secure SMS payment link [6-8]; stayed on the line while he paid. Outcome: payment of 650 received and the loan is up to date for this month. Next step: none; the agent closed the call after confirming.";
@@ -580,49 +581,13 @@ export function ComponentsGallery() {
         >
           <div className="grid gap-4 lg:grid-cols-2">
             <Demo name="First step active">
-              <Stepper
-                label="Setup, nothing done"
-                steps={[
-                  {
-                    title: "Create an agent",
-                    description: "Write what it should do.",
-                    icon: <Robot weight="duotone" />,
-                    status: "active",
-                    action: (
-                      <Button size="sm" variant="primary">
-                        Create an agent
-                      </Button>
-                    ),
-                  },
-                  {
-                    title: "Make a test call",
-                    description: "Talk to it from the browser.",
-                    icon: <PhoneCallDuo weight="duotone" />,
-                    status: "pending",
-                  },
-                  { title: "Connect a number", description: "Put it on a phone line.", icon: <PhoneList weight="duotone" />, status: "pending" },
-                ]}
-              />
+              <Stepper label="Setup, nothing done" steps={toStepperSteps(setupSteps())} />
             </Demo>
-            <Demo name="Done, active and pending">
-              <Stepper
-                label="Setup, one done"
-                steps={[
-                  { title: "Create an agent", description: "Front desk agent is ready.", icon: <Robot weight="duotone" />, status: "done" },
-                  {
-                    title: "Make a test call",
-                    description: "Talk to it from the browser.",
-                    icon: <PhoneCallDuo weight="duotone" />,
-                    status: "active",
-                    action: (
-                      <Button size="sm" variant="primary">
-                        Make a test call
-                      </Button>
-                    ),
-                  },
-                  { title: "Connect a number", description: "Put it on a phone line.", icon: <PhoneList weight="duotone" />, status: "pending" },
-                ]}
-              />
+            <Demo name="Second step active">
+              <Stepper label="Setup, one done" steps={toStepperSteps(setupSteps({ hasAgent: true }))} />
+            </Demo>
+            <Demo name="Last step active">
+              <Stepper label="Setup, two done" steps={toStepperSteps(setupSteps({ hasAgent: true, hasTestCall: true }))} />
             </Demo>
           </div>
         </Section>

@@ -17,39 +17,22 @@ export interface Step {
 
 /**
  * Vertical stepper for a real sequence (numbered because order matters). Geometry: every row has
- * the same 16px padding and a 40px circle at its top left, so all circles share one centre axis
- * at 36px from the row edge. Rows sit 12px apart. Each row draws two segments: its top edge to
- * its circle centre, and its circle centre down across the gap to the next row, so the line is
- * continuous. The active row is a raised card stacked above its neighbours and draws no segments,
- * so the line meets its edges and runs under its shadow instead of through it. Segments after a
- * done step fill with the accent, the rest are muted.
+ * 8px vertical and 16px side padding and a 40px circle at its top left, so all circles share one
+ * centre axis at 36px from the row's left edge and 28px from its top. Each row except the last
+ * draws the connector from its circle centre down by its own height, which lands exactly on the
+ * next circle centre; rows touch, so the line is continuous. The active step lifts its text and
+ * action into a raised card to the right of the circles, so the line never meets the card.
+ * Segments after a done step fill with the accent, the rest are muted.
  */
 export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: string }) {
   return (
-    <ol aria-label={label} className="@container flex flex-col gap-3">
+    <ol aria-label={label} className="flex flex-col">
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
-        const filled = s.status === "done";
         const active = s.status === "active";
         return (
-          <li
-            key={s.title}
-            aria-current={active ? "step" : undefined}
-            className={cn(
-              "relative flex gap-4 rounded-panel p-4 transition-[background-color,box-shadow] duration-200",
-              // Active row: a subtle full-row lift, stacked above its neighbours. No borders or side stripes.
-              active && "z-[1] bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
-            )}
-          >
-            {/* The active row is a raised card: it draws no connector, so the line stops at its edges and runs under its shadow. */}
-            {i > 0 && !active && (
-              <Connector
-                className={steps[i - 1]?.status === "active" ? "-top-3 h-[48px]" : "top-0 h-[36px]"}
-                filled={steps[i - 1]?.status === "done"}
-                delay={0.1 * i + 0.1}
-              />
-            )}
-            {!last && !active && <Connector className="top-[36px] -bottom-3" filled={filled} delay={0.1 * i} />}
+          <li key={s.title} aria-current={active ? "step" : undefined} className="relative flex gap-3 px-4 py-2">
+            {!last && <Connector filled={s.status === "done"} delay={0.1 * i} />}
             <span
               className={cn(
                 "relative z-[1] grid size-[40px] shrink-0 place-items-center rounded-full border font-mono text-[14px] font-medium tnum",
@@ -66,7 +49,14 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
                 {s.status === "done" ? <Check className="size-4" strokeWidth={2.5} aria-label="Done" /> : i + 1}
               </span>
             </span>
-            <div className="flex min-w-0 flex-1 flex-col gap-3 pt-[9px] @[30rem]:flex-row @[30rem]:items-start @[30rem]:justify-between @[30rem]:gap-6">
+            <div
+              className={cn(
+                "flex min-w-0 flex-1 flex-col items-start gap-3 rounded-panel px-3 pb-3 pt-[9px]",
+                "transition-[background-color,box-shadow] duration-200",
+                // Every row carries the card's padding so text lines up; only the active one shows the card.
+                active && "bg-surface shadow-[0_10px_28px_-16px_hsl(var(--shadow-color)/0.45)] dark:bg-surface-3/45",
+              )}
+            >
               <div className="flex min-w-0 flex-col gap-1">
                 <h3
                   className={cn("flex items-center gap-2 text-[15px] font-semibold leading-snug", s.status === "pending" ? "text-fg-2" : "text-fg")}
@@ -78,7 +68,8 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
                 </h3>
                 <p className={cn("max-w-[56ch] text-[14px] leading-relaxed", s.status === "pending" ? "text-fg-3" : "text-fg-2")}>{s.description}</p>
               </div>
-              {s.status === "active" && s.action && <div className="shrink-0 @[30rem]:-mt-[3px]">{s.action}</div>}
+              {/* The action sits under the text so the description keeps the full width. */}
+              {active && s.action && <div className="mb-1">{s.action}</div>}
             </div>
           </li>
         );
@@ -87,16 +78,16 @@ export function Stepper({ steps, label = "Steps" }: { steps: Step[]; label?: str
   );
 }
 
-/** One connector segment on the disc axis; fills with the accent once the step above it is done. */
-function Connector({ className, filled, delay }: { className: string; filled: boolean; delay: number }) {
+/** The connector from one circle centre to the next; fills with the accent once the step above it is done. */
+function Connector({ filled, delay }: { filled: boolean; delay: number }) {
   return (
-    <span aria-hidden className={cn("absolute left-[35px] w-0.5 bg-line-strong", className)}>
+    <span aria-hidden className="absolute left-[35px] top-[28px] h-full w-0.5 bg-line-strong">
       {filled && (
         <motion.span
           className="bg-accent absolute inset-0 origin-top"
           initial={{ scaleY: 0 }}
           animate={{ scaleY: 1 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay }}
         />
       )}
     </span>
