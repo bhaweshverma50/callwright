@@ -246,7 +246,7 @@ step_api() {
   # "@" separates the variables because CORS_ORIGINS may hold commas.
   env="^@^ENV=staging@LOG_JSON=true@WEB_BASE_URL=$WEB_ORIGIN@CORS_ORIGINS=$WEB_ORIGIN"
   env+="@TRUSTED_PROXY_HOPS=1@AUTH_PROVIDER=local@AUTH_AUTO_VERIFY_EMAIL=true"
-  env+="@STRIPE_MODE=fake@ENABLE_FAKE_CHECKOUT=true@ENABLE_DEV_ROUTES=false"
+  env+="@STRIPE_MODE=fake@ENABLE_FAKE_CHECKOUT=false@ENABLE_DEV_ROUTES=false"
   env+="@LIVEKIT_MODE=live@LIVEKIT_URL=$LIVEKIT_URL@LIVEKIT_PUBLIC_URL=$LIVEKIT_URL"
   env+="@WAKE_VM_PROJECT=$PROJECT@WAKE_VM_ZONE=$VM_ZONE@WAKE_VM_NAME=$VM_NAME@DB_POOL_SIZE=5"
   # Recordings need the bucket (its key in Secret Manager) and the VM's egress service; without
