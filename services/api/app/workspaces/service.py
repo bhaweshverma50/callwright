@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -16,6 +18,10 @@ from app.core.db import Database
 from app.core.ids import new_id
 from app.core.money import SIX
 from app.workspaces.models import User, Workspace
+
+logger = logging.getLogger(__name__)
+
+TRIAL_BUDGET_TTL_S = 2 * 24 * 3600
 
 
 @dataclass(frozen=True)
@@ -30,16 +36,64 @@ def default_workspace_name(email: str) -> str:
     return f"{local}'s workspace"[:80]
 
 
-async def bootstrap_workspace(db: Database, settings: Settings, *, subject: str, email: str) -> Bootstrapped:
+def _trial_budget_key() -> str:
+    return f"trial_budget:{datetime.now(UTC).date().isoformat()}"
+
+
+async def _reserve_trial_credit(redis: Redis | None, settings: Settings, amount: Decimal) -> Decimal:
+    """Trial credit this signup may receive under TRIAL_CREDIT_DAILY_BUDGET_USD (the amount, or 0).
+
+    The day's total is reserved atomically in Redis (one key per UTC date). A reservation that
+    pushes the total over the budget is given back. Without Redis the grant is refused: failing
+    safe means the workspace starts at zero rather than spending past the cap.
+    """
+    budget = settings.trial_credit_daily_budget_usd
+    if amount <= 0 or not budget or budget <= 0:
+        return amount
+    if redis is None:
+        logger.warning("trial credit not granted: daily budget is set but Redis is unavailable")
+        return Decimal(0)
+    key = _trial_budget_key()
+    try:
+        async with redis.pipeline(transaction=True) as pipe:
+            pipe.incrbyfloat(key, float(amount))
+            pipe.expire(key, TRIAL_BUDGET_TTL_S)
+            total, _ = await pipe.execute()
+        if Decimal(str(total)) > budget:
+            await redis.incrbyfloat(key, -float(amount))
+            logger.warning("trial credit not granted: daily budget %s reached (reserved %s)", budget, total)
+            return Decimal(0)
+    except Exception:
+        logger.warning("trial credit not granted: daily budget check failed", exc_info=True)
+        return Decimal(0)
+    return amount
+
+
+async def _release_trial_credit(redis: Redis | None, settings: Settings, amount: Decimal) -> None:
+    budget = settings.trial_credit_daily_budget_usd
+    if redis is None or amount <= 0 or not budget or budget <= 0:
+        return
+    try:
+        await redis.incrbyfloat(_trial_budget_key(), -float(amount))
+    except Exception:
+        logger.warning("could not give back reserved trial credit", exc_info=True)
+
+
+async def bootstrap_workspace(
+    db: Database, settings: Settings, *, subject: str, email: str, redis: Redis | None = None
+) -> Bootstrapped:
     """Create the user, workspace and trial grant in one transaction, once per IdP subject.
 
     Called on email verification (and on sign-in when a verified IdP user has no workspace yet).
+    ``redis`` backs the daily trial-credit budget; when that budget is set and Redis is missing
+    or down, the workspace is created with no trial credit.
     """
     row = await resolve_subject(db, subject)
     if row is not None and row.workspace_id is not None:
         return Bootstrapped(row.user_id, row.workspace_id, created=False)
     user_id = row.user_id if row is not None else new_id("usr")
     workspace_id = new_id("ws")
+    grant = await _reserve_trial_credit(redis, settings, Decimal(settings.trial_credit_usd))
     try:
         async with db.transaction(workspace_id=workspace_id, user_id=user_id) as session:
             if row is None:
@@ -63,19 +117,22 @@ async def bootstrap_workspace(db: Database, settings: Settings, *, subject: str,
                 )
             )
             await session.flush()
-            if settings.trial_credit_usd > 0:
+            if grant > 0:
                 await billing.post_transaction(
                     session,
                     workspace_id=workspace_id,
                     type="trial_grant",
-                    amount_usd=Decimal(settings.trial_credit_usd).quantize(SIX),
+                    amount_usd=grant.quantize(SIX),
                     description="Trial credit",
                 )
-    except IntegrityError:
+    except Exception as exc:
+        await _release_trial_credit(redis, settings, grant)
+        if not isinstance(exc, IntegrityError):
+            raise
         # A concurrent verification won the race; return what it created.
         again = await resolve_subject(db, subject)
         if again is None or again.workspace_id is None:
-            raise
+            raise exc
         return Bootstrapped(again.user_id, again.workspace_id, created=False)
     return Bootstrapped(user_id, workspace_id, created=True)
 

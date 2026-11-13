@@ -87,6 +87,18 @@ class Settings(BaseSettings):
     allow_auto_verify_in_production: bool = False
     supabase_url: str | None = None
     supabase_anon_key: SecretStr | None = None
+    # Signup abuse limits, all off when unset. TURNSTILE_SECRET_KEY makes POST /auth/register
+    # require a Cloudflare Turnstile token. SMTP_HOST makes the local IdP email its verification
+    # and reset links (the in-memory outbox stays).
+    turnstile_secret_key: SecretStr | None = None
+    # Registration refuses throwaway email domains (app/auth/disposable_domains.txt) plus these.
+    block_disposable_email: bool = True
+    extra_blocked_email_domains: Annotated[list[str], NoDecode] = []
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str | None = None
 
     # Payments: "fake" serves a local checkout page and signs webhooks with the configured secret.
     stripe_mode: Literal["fake", "live"] = "fake"
@@ -96,6 +108,8 @@ class Settings(BaseSettings):
 
     # Business defaults (FR-002, R13)
     trial_credit_usd: Decimal = Decimal("5.00")
+    # Cap on trial credit granted per UTC day across all new workspaces; None or 0 is unlimited.
+    trial_credit_daily_budget_usd: Decimal | None = None
     default_concurrency: int = 5
     credit_grace_usd: Decimal = Decimal("0.50")
 
@@ -272,9 +286,9 @@ class Settings(BaseSettings):
             return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
         return value
 
-    @field_validator("eval_judge_models", mode="before")
+    @field_validator("eval_judge_models", "extra_blocked_email_domains", mode="before")
     @classmethod
-    def _split_judge_models(cls, value: Any) -> Any:
+    def _split_list(cls, value: Any) -> Any:
         if isinstance(value, str):
             raw = value.strip()
             if raw.startswith("["):
