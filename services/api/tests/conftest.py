@@ -132,7 +132,7 @@ async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
 
 
 def unique_email(tag: str = "user") -> str:
-    return f"{tag}+{uuid.uuid4().hex[:12]}@example.com"
+    return f"{tag}-{uuid.uuid4().hex[:12]}@example.com"
 
 
 @dataclass

@@ -40,6 +40,39 @@ def _trial_budget_key() -> str:
     return f"trial_budget:{datetime.now(UTC).date().isoformat()}"
 
 
+GMAIL_DOMAINS = frozenset({"gmail.com", "googlemail.com"})
+
+
+def normalized_email(email: str) -> str:
+    """The mailbox an address really reaches: ``+tags`` dropped everywhere, and for Gmail the dots
+    too (``N.ame+1@googlemail.com`` and ``name@gmail.com`` are one inbox)."""
+    local, _, domain = email.strip().lower().rpartition("@")
+    local = local.split("+", 1)[0]
+    if domain in GMAIL_DOMAINS:
+        local, domain = local.replace(".", ""), "gmail.com"
+    return f"{local}@{domain}"
+
+
+def _trial_claim_key(email: str) -> str:
+    return f"trial_claimed:{normalized_email(email)}"
+
+
+async def _claim_trial(redis: Redis | None, email: str) -> bool:
+    """One trial per real mailbox, so aliases of one Gmail account cannot each collect it.
+
+    ponytail: the claim lives in Redis (persisted on the VM, no TTL) to avoid a migration; if
+    Redis is ever wiped, mailboxes can claim once more. A users-table column is the upgrade.
+    Without Redis (local dev) every signup may claim; a Redis error grants nothing.
+    """
+    if redis is None:
+        return True
+    try:
+        return bool(await redis.set(_trial_claim_key(email), "1", nx=True))
+    except Exception:
+        logger.warning("trial credit not granted: trial claim check failed", exc_info=True)
+        return False
+
+
 async def _reserve_trial_credit(redis: Redis | None, settings: Settings, amount: Decimal) -> Decimal:
     """Trial credit this signup may receive under TRIAL_CREDIT_DAILY_BUDGET_USD (the amount, or 0).
 
@@ -93,7 +126,11 @@ async def bootstrap_workspace(
         return Bootstrapped(row.user_id, row.workspace_id, created=False)
     user_id = row.user_id if row is not None else new_id("usr")
     workspace_id = new_id("ws")
-    grant = await _reserve_trial_credit(redis, settings, Decimal(settings.trial_credit_usd))
+    trial = Decimal(settings.trial_credit_usd)
+    if trial > 0 and not await _claim_trial(redis, email):
+        logger.info("trial credit not granted: this mailbox already had one")
+        trial = Decimal(0)
+    grant = await _reserve_trial_credit(redis, settings, trial)
     try:
         async with db.transaction(workspace_id=workspace_id, user_id=user_id) as session:
             if row is None:
