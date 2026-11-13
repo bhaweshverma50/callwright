@@ -11,6 +11,9 @@ function minutesFrom(seconds?: number): string {
   return `${m} minutes`;
 }
 
+/** Record kinds the Drive connection and source screens pass to problemMessage. */
+const DRIVE_KINDS = new Set(["connection", "source", "folder"]);
+
 const BY_CODE: Record<string, (p: Problem, kind: string) => string> = {
   not_found: (_p, kind) => `This ${kind} was not found. It may have been deleted, or the link is wrong.`,
   invalid_credentials: () => "That email and password do not match an account.",
@@ -21,13 +24,16 @@ const BY_CODE: Record<string, (p: Problem, kind: string) => string> = {
   email_not_allowed: () => "Temporary email addresses can't be used. Sign up with a work or personal email address.",
   oauth_state_invalid: () => "This Google sign-in expired or was already used. Start again.",
   google_email_unverified: () => "Google has not verified that email address, so we cannot sign you in with it.",
-  google_unavailable: () => "Google sign-in is not available right now. Try again shortly or use your password.",
+  // Same code from Google sign-in (auth) and from Drive connections and sources (022).
+  google_unavailable: (_p, kind) =>
+    DRIVE_KINDS.has(kind)
+      ? "Google did not answer or rate limited the request. Try again in a minute."
+      : "Google sign-in is not available right now. Try again shortly or use your password.",
   link_invalid: () => "This link has expired or was already used.",
   token_invalid: () => "This link has expired or was already used.",
   pricing_unavailable: () => "A selected component has no price yet, so this cannot run on live traffic.",
   network: () => "Cannot reach Callwright right now. Check your connection and try again.",
   // 022 Google connections and Drive sources.
-  oauth_state_invalid: () => "This sign-in link expired or was started by someone else. Start again from Connections.",
   oauth_declined: () => "Google access was not granted, so no connection was made.",
   oauth_exchange_failed: () => "Google refused the sign-in. Try connecting again.",
   oauth_scope_missing: () => "Read-only Google Drive access is required. Connect again and leave the Google Drive box ticked.",
@@ -37,7 +43,6 @@ const BY_CODE: Record<string, (p: Problem, kind: string) => string> = {
   connection_in_use: () => "Remove the knowledge sources that use this connection first.",
   // "Not configured on this server" or "in beta and not enabled for this workspace yet".
   connector_unavailable: (p) => p.detail ?? "Google Drive is not set up on this Callwright server yet.",
-  google_unavailable: () => "Google did not answer or rate limited the request. Try again in a minute.",
   source_exists: () => "This folder already syncs into this knowledge base.",
   sync_running: () => "A sync of this source is already running.",
   nothing_held: () => "No archiving is waiting for a decision any more.",

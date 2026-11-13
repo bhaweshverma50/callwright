@@ -268,7 +268,7 @@ async def finish(
                 setattr(run, name, getattr(tally, name))
             run.errors = tally.errors
             run.errors_truncated = tally.errors_truncated
-            # One line per run for log-based metrics and alerts (docs/OPERATIONS.md section 15):
+            # One line per run for log-based metrics and alerts (docs/OPERATIONS.md section 16):
             # duration, outcome, failure reason and counts per source.
             log.info(
                 "drive sync finished",

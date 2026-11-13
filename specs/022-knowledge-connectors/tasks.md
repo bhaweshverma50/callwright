@@ -263,7 +263,7 @@ Each research decision and the tests that prove it.
 | R13 Limits | `test_full_knowledge_base_imports_up_to_the_limit`, `test_too_large_folder_fails_before_applying`, `test_interval_changes_and_limits`, `test_errors_are_capped` |
 | R14 Activity record | `test_activity_is_append_only`, `test_connect_creates_a_healthy_connection`, `test_remove_refused_while_in_use_then_revokes` |
 | R15 Managed documents | `test_synced_documents_cannot_be_replaced_or_deleted_by_upload`, `test_folder_ids_are_validated_and_synced_files_are_flagged_on_upload`, `KnowledgeSources.test.tsx` "never offers to replace a document synced from Drive" |
-| R16 Google verification and Testing mode | Process, not code: `docs/OPERATIONS.md` section 15 and spec "Rollout and compliance"; live check in `quickstart-results.md` |
+| R16 Google verification and Testing mode | Process, not code: `docs/OPERATIONS.md` section 16 and spec "Rollout and compliance"; live check in `quickstart-results.md` |
 | R17a Sheets access requested, unused | `test_drive_access_is_required_sheets_is_optional`, `test_full_flow_touches_only_drive_and_oauth_hosts` (no Sheets host) |
 | R17 Settings | `test_not_configured_returns_503`, `test_unconfigured_server_matches_the_contract`, `test_production_refuses_the_fake_drive_and_reads_the_drive_switches`, `test_the_beta_allowlist_gates_new_connections_and_sources` |
 | R18 Latency and simulations | `test_each_agent_searches_only_its_own_synced_knowledge` (calls make zero Drive requests), `test_simulations_search_the_synced_copy_like_calls` |

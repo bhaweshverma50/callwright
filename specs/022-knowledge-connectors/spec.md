@@ -519,7 +519,7 @@ shows trigger "first" with the skipped files and their reasons.
   with status, failure reason, attention reason, duration and counts. Log-based metrics and
   alerts: sync duration (p95), failures by reason, `google_unavailable` rate (Google 429s and
   5xx), runs held for a mass archive, sources in `access_lost`. Freshness lag per source is
-  `now - last_success_at` in the API. Runbook entries are in `docs/OPERATIONS.md` section 15.
+  `now - last_success_at` in the API. Runbook entries are in `docs/OPERATIONS.md` section 16.
 - **Kill switch**: `CONNECTORS_SYNC_PAUSED=true`, or the Redis key `connectors:sync_paused` (no
   redeploy), stops the scheduler from starting syncs. Due sources stay due and run once resumed;
   Sync now and searches keep working.

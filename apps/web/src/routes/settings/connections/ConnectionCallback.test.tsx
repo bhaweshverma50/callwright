@@ -34,7 +34,7 @@ describe("ConnectionCallback (022 research R4)", () => {
   it.each([
     ["oauth_account_mismatch", "This connection belongs to d***@example.com. Sign in with that account, or add a new connection."],
     ["oauth_scope_missing", "Read-only Google Drive access is required. Connect again and leave the Google Drive box ticked."],
-    ["oauth_state_invalid", "This sign-in link expired or was started by someone else. Start again from Connections."],
+    ["oauth_state_invalid", "This Google sign-in expired or was already used. Start again."],
   ])("explains %s instead of a generic failure", async (code, message) => {
     await signInDemo();
     server.use(
