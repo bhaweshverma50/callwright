@@ -82,7 +82,7 @@ describe("CallHistoryPage (006 US1)", () => {
     expect(screen.getByText("selected").parentElement).toHaveTextContent("5 selected");
     await user.click(screen.getByRole("button", { name: "Run simulation" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Select calls from a single agent to run a simulation");
-  });
+  }, 15_000); // ponytail: walks two pages of 45 rows; CI runners have taken 5.2 s
 
   it("shows applied filters as chips and clears them", async () => {
     seedMockCalls(45);
