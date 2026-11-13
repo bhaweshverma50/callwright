@@ -17,6 +17,8 @@ const BY_CODE: Record<string, (p: Problem, kind: string) => string> = {
   email_unverified: () => "Verify your email first. We can send the link again.",
   insufficient_credit: () => "Your balance is too low for this. Add funds to continue.",
   concurrency_limit: () => "Your workspace is at its concurrent-call limit. Try again when a call ends.",
+  captcha_failed: () => "We could not confirm you are human. Reload the check and try again.",
+  email_not_allowed: () => "Temporary email addresses can't be used. Sign up with a work or personal email address.",
   link_invalid: () => "This link has expired or was already used.",
   token_invalid: () => "This link has expired or was already used.",
   pricing_unavailable: () => "A selected component has no price yet, so this cannot run on live traffic.",

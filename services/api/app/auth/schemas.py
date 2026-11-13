@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 class RegisterRequest(BaseModel):
     email: EmailStr = Field(max_length=254)
     password: str = Field(min_length=10, max_length=128)
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
 
 class RegisterResponse(BaseModel):

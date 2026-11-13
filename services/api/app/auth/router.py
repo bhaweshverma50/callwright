@@ -41,10 +41,15 @@ def _session(session: IdpSession) -> Session:
     status_code=202,
     response_model=RegisterResponse,
     response_model_exclude_none=True,
-    responses={200: {"description": "Signed in (AUTH_AUTO_VERIFY_EMAIL)"}, **problem_responses(422, 429)},
+    responses={
+        200: {"description": "Signed in (AUTH_AUTO_VERIFY_EMAIL)"},
+        **problem_responses(400, 422, 429, 503),
+    },
 )
 async def register(body: RegisterRequest, request: Request, response: Response) -> RegisterResponse:
-    session = await _service(request).register(body.email, body.password, client_ip(request))
+    session = await _service(request).register(
+        body.email, body.password, client_ip(request), body.captcha_token
+    )
     if session is None:
         return RegisterResponse()
     response.status_code = 200

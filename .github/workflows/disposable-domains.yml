@@ -1,0 +1,49 @@
+name: disposable-domains
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    name: refresh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the upstream list
+        run: bash scripts/update_disposable_domains.sh
+      - name: Open a PR when it changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- services/api/app/auth/disposable_domains.txt; then
+            echo "list unchanged"
+            exit 0
+          fi
+          branch=chore/disposable-domains
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add services/api/app/auth/disposable_domains.txt
+          git commit -m "chore(auth): refresh disposable email domains"
+          git push --force origin "$branch"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --head "$branch" --base main \
+              --title "chore(auth): refresh disposable email domains" \
+              --body "## Summary
+          Monthly refresh of the vendored disposable email domain list.
+
+          ## Changes
+          Updates services/api/app/auth/disposable_domains.txt from the upstream CC0 list.
+
+          ## Testing
+          Unit tests cover the matching; the list itself is data.
+
+          ## Risk and rollout
+          None."
+          fi

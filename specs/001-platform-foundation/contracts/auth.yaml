@@ -30,6 +30,12 @@ paths:
               properties:
                 email: {type: string, format: email, maxLength: 254}
                 password: {type: string, minLength: 10, maxLength: 128}
+                captcha_token:
+                  type: string
+                  maxLength: 4096
+                  description: >-
+                    Cloudflare Turnstile token. Required when the API has TURNSTILE_SECRET_KEY set,
+                    ignored otherwise.
       responses:
         '200':
           description: Account verified and signed in (AUTH_AUTO_VERIFY_EMAIL only)
@@ -45,8 +51,20 @@ paths:
                 required: [status]
                 properties:
                   status: {type: string, enum: [verification_sent]}
+        '400':
+          description: >-
+            Captcha missing or failed (code captcha_failed; only when TURNSTILE_SECRET_KEY is set),
+            or a temporary email domain (code email_not_allowed)
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
         '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
         '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+        '503':
+          description: The captcha check could not be reached (code auth_unavailable); try again shortly
+          content:
+            application/problem+json:
+              schema: {$ref: './core.yaml#/components/schemas/Problem'}
   /auth/verify-email:
     post:
       operationId: verifyEmail

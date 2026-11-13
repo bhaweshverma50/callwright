@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from redis.asyncio import Redis
 
 from app.auth import idp as idp_mod
+from app.auth.captcha import verify_captcha
+from app.auth.disposable import check_email_allowed
 from app.auth.idp import IdentityProvider, IdpSession
 from app.core.auth import TokenClaims, revoke_session
 from app.core.config import Settings
@@ -62,13 +64,17 @@ class AuthService:
         if not result.allowed:
             raise too_many_requests(result.retry_after_s, "Too many emails requested. Try again later.")
 
-    async def register(self, email: str, password: str, ip: str) -> IdpSession | None:
+    async def register(
+        self, email: str, password: str, ip: str, captcha_token: str | None = None
+    ) -> IdpSession | None:
         """Create the account. Returns a session only with AUTH_AUTO_VERIFY_EMAIL (demo hosting):
         the account is confirmed at once and signed in through the normal sign-in path, which
         also bootstraps the workspace. Otherwise, or when that sign-in does not succeed (the
         email belongs to an account this password does not open, or the IdP still wants the
         email link), the caller answers ``verification_sent`` as usual."""
         await self._email_rate_limit(ip)
+        check_email_allowed(self.settings, email)
+        await verify_captcha(self.settings, captcha_token, ip)
         auto_verify = self.settings.auth_auto_verify_email
         try:
             await self.idp.sign_up(email, password, confirmed=auto_verify)
@@ -106,7 +112,7 @@ class AuthService:
         except idp_mod.IdpUnavailable as exc:
             raise _idp_down() from exc
         await bootstrap_workspace(
-            self.db, self.settings, subject=session.user.subject, email=session.user.email
+            self.db, self.settings, subject=session.user.subject, email=session.user.email, redis=self.redis
         )
         return session
 
@@ -143,7 +149,11 @@ class AuthService:
         await failures.clear(akey)
         if session.user.email_confirmed:
             await bootstrap_workspace(
-                self.db, self.settings, subject=session.user.subject, email=session.user.email
+                self.db,
+                self.settings,
+                subject=session.user.subject,
+                email=session.user.email,
+                redis=self.redis,
             )
         return session
 

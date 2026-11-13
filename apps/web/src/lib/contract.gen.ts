@@ -3717,6 +3717,9 @@ export const bodyLimits = {
     "password": {
       "minLength": 10,
       "maxLength": 128
+    },
+    "captcha_token": {
+      "maxLength": 4096
     }
   },
   "POST /auth/verify-email": {

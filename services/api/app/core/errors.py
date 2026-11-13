@@ -282,6 +282,7 @@ _DESCRIPTIONS = {
     409: "Conflict",
     422: "Validation failed",
     429: "Rate limited",
+    503: "Service unavailable",
 }
 
 

@@ -13,6 +13,8 @@ import { MIN_PASSWORD, PasswordStrength } from "./PasswordStrength";
 import { demoHints } from "../../lib/demoHints";
 import { AUTH_PAGES, DASHBOARD_PATH } from "../../lib/paths";
 import { bodyLimits } from "../../lib/contract.gen";
+import { env } from "../../lib/env";
+import { Turnstile } from "./Turnstile";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -27,9 +29,18 @@ export function Register() {
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
   const hints = demoHints();
+  const siteKey = env.turnstileSiteKey;
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   const signUp = useMutation({
-    mutationFn: () => register(email.trim(), password),
+    mutationFn: () => register(email.trim(), password, captcha ?? undefined),
+    onError: () => {
+      // A token works once: ask for a fresh one before the next try.
+      if (!siteKey) return;
+      setCaptcha(null);
+      setCaptchaReset((n) => n + 1);
+    },
     onSuccess: (result) => {
       if (result.status !== "signed_in") return;
       startSession(result);
@@ -48,6 +59,7 @@ export function Register() {
     e.preventDefault();
     setTouched(true);
     if (!EMAIL.test(email.trim()) || password.length < MIN_PASSWORD) return;
+    if (siteKey && !captcha) return;
     signUp.mutate();
   };
 
@@ -145,7 +157,16 @@ export function Register() {
             />
           )}
         </Field>
-        <Button type="submit" variant="primary" size="lg" pending={signUp.isPending} className="mt-1 w-full" icon={<UserPlus aria-hidden />}>
+        {siteKey && <Turnstile siteKey={siteKey} onToken={setCaptcha} resetKey={captchaReset} />}
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          pending={signUp.isPending}
+          disabled={Boolean(siteKey) && !captcha}
+          className="mt-1 w-full"
+          icon={<UserPlus aria-hidden />}
+        >
           Create account
         </Button>
         <p className="text-[12px] leading-relaxed text-fg-3">

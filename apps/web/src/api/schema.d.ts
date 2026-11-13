@@ -7776,6 +7776,8 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     password: string;
+                    /** @description Cloudflare Turnstile token. Required when the API has TURNSTILE_SECRET_KEY set, ignored otherwise. */
+                    captcha_token?: string;
                 };
             };
         };
@@ -7801,8 +7803,26 @@ export interface operations {
                     };
                 };
             };
+            /** @description Captcha missing or failed (code captcha_failed; only when TURNSTILE_SECRET_KEY is set), or a temporary email domain (code email_not_allowed) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
+            /** @description The captcha check could not be reached (code auth_unavailable); try again shortly */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     verifyEmail: {

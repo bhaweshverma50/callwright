@@ -6,8 +6,8 @@ export function signIn(email: string, password: string) {
   return unwrap(api.POST("/auth/sign-in", { body: { email, password } }));
 }
 
-export function register(email: string, password: string) {
-  return unwrap(api.POST("/auth/register", { body: { email, password } }));
+export function register(email: string, password: string, captchaToken?: string) {
+  return unwrap(api.POST("/auth/register", { body: { email, password, ...(captchaToken ? { captcha_token: captchaToken } : {}) } }));
 }
 
 export function resendVerification(email: string) {
