@@ -1,10 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { resendVerification, signIn } from "../../api/auth";
 import { isApiError } from "../../api/errors";
 import { fieldErrors, problemMessage, problemText } from "../../api/problems";
-import { startSession, useSignedIn } from "../../api/session";
+import { endSession, startSession, useSignedIn } from "../../api/session";
+import { dateLabel } from "../../lib/format";
 import { safeNext } from "../../lib/paths";
 import { LogIn } from "lucide-react";
 import { Button, Field, FormAlert, Input } from "../../components";
@@ -14,6 +15,11 @@ import { GoogleButton } from "./GoogleButton";
 import { demoHints } from "../../lib/demoHints";
 import { rememberSignIn } from "../../lib/lastSignIn";
 import { LastUsed } from "./LastUsed";
+
+/** The scheduled erase date the delete-account dialog passes along (`?deletion=<ISO time>`), or null for anything else. */
+function deletionDate(value: string | null): string | null {
+  return value && !Number.isNaN(Date.parse(value)) ? value : null;
+}
 
 function retryText(seconds?: number) {
   if (!seconds) return "in a few minutes";
@@ -28,6 +34,7 @@ export function Login() {
   const navigate = useNavigate();
   const signedIn = useSignedIn();
   const next = safeNext(params.get("next"));
+  const deletion = deletionDate(params.get("deletion"));
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const cooldown = useCooldown(60);
@@ -46,7 +53,12 @@ export function Login() {
     onSuccess: () => cooldown.restart(),
   });
 
-  if (signedIn && !login.isPending && !login.isSuccess) return <Navigate to={next} replace />;
+  // Arriving from "Delete account": the server has ended every session, so drop this device's too.
+  useEffect(() => {
+    if (deletion && signedIn) endSession();
+  }, [deletion, signedIn]);
+
+  if (signedIn && !deletion && !login.isPending && !login.isSuccess) return <Navigate to={next} replace />;
 
   const err = login.error;
   const code = isApiError(err) ? err.code : undefined;
@@ -70,6 +82,11 @@ export function Login() {
         </>
       }
     >
+      {deletion && !err && (
+        <FormAlert tone="info">
+          Your account is scheduled for deletion on {dateLabel(deletion)}. Sign in before then and choose Keep my account to cancel.
+        </FormAlert>
+      )}
       {params.get("reset") === "1" && !err && <FormAlert tone="info">Your password was changed. Sign in with the new one.</FormAlert>}
       {err &&
         (code === "email_unverified" ? (

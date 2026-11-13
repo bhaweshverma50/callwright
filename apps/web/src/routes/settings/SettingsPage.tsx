@@ -4,7 +4,7 @@ import { fieldErrors, problemMessage } from "../../api/problems";
 import { qk, updateWorkspace, useMe } from "../../api/queries";
 import type { Me, Workspace } from "../../api/types";
 import { GearSix } from "@phosphor-icons/react";
-import { Building2, CircleAlert, Cloud, Disc, Gauge, Mail, PenLine, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { Building2, CircleAlert, Cloud, Disc, Gauge, PenLine, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Button,
@@ -21,6 +21,7 @@ import {
   toast,
 } from "../../components";
 import { Link } from "react-router";
+import { AccountPanel, DeleteAccountPanel } from "./AccountPanel";
 import { bodyLimits } from "../../lib/contract.gen";
 import { CONNECTIONS_PATH } from "../../lib/paths";
 
@@ -194,7 +195,7 @@ function SettingsForm({ me }: { me: Me }) {
         >
           <p className="text-[13px] text-fg-3">Connect Google once, then add Drive folders as sources on any knowledge base.</p>
         </Panel>
-        <Panel title="Limits and account" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
+        <Panel title="Limits" description="Contact support to change these." icon={<ShieldCheck />} bodyClassName="p-0">
           <PanelRows as="dl">
             <InfoRow
               icon={<Gauge />}
@@ -203,12 +204,11 @@ function SettingsForm({ me }: { me: Me }) {
             >
               <span className="font-mono tnum">{me.workspace.concurrency_limit}</span> at once
             </InfoRow>
-            <InfoRow icon={<Mail />} label="Account email" title={me.user.email}>
-              {me.user.email}
-            </InfoRow>
           </PanelRows>
         </Panel>
       </div>
+      <AccountPanel me={me} />
+      <DeleteAccountPanel me={me} />
     </div>
   );
 }

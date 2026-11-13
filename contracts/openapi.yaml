@@ -45,6 +45,65 @@ tags:
 - name: whatsapp-public
 - name: workspaces
 paths:
+  /account/deletion:
+    post:
+      operationId: scheduleAccountDeletion
+      tags:
+      - workspaces
+      summary: Schedule deletion of the account and workspace in 30 days
+      description: 'Owner only. `confirm_workspace_name` must equal the workspace name exactly (422 otherwise).
+        Re-authenticates: an account with a password sends `password` (wrong is 401 invalid_credentials,
+        throttled like sign-in); an account created through Google sends `confirm_email`. Ends every session
+        and emails a confirmation. While scheduled, sign-in works but every route except `GET /me`, `DELETE
+        /account/deletion`, sign-out and refresh answers 403 with code `account_deletion_scheduled`. After
+        the date the account''s data is erased; the remaining balance is forfeited.'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - confirm_workspace_name
+              properties:
+                confirm_workspace_name:
+                  type: string
+                password:
+                  type: string
+                  maxLength: 128
+                confirm_email:
+                  type: string
+                  format: email
+      responses:
+        '202':
+          description: Deletion scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      x-spec: 001-platform-foundation
+    delete:
+      operationId: cancelAccountDeletion
+      tags:
+      - workspaces
+      summary: Keep the account (cancel a scheduled deletion)
+      description: Allowed while the account is locked for deletion. Idempotent.
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Deletion cancelled (or none was scheduled)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-spec: 001-platform-foundation
   /admin/pricing/versions:
     get:
       operationId: listPricingVersions
@@ -1384,6 +1443,55 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      x-spec: 001-platform-foundation
+  /auth/password:
+    post:
+      operationId: changePassword
+      tags:
+      - auth
+      summary: Change the password while signed in
+      description: Checks the current password (a wrong one is 401 invalid_credentials and counts toward
+        the per-account sign-in failure throttle, so it can be 429), sets the new one and ends every session,
+        this one included. The response is a fresh session for the caller. A "Your password was changed"
+        email is sent. The new password must differ from the current one (422, pointer /new_password,
+        code same_as_current).
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - current_password
+              - new_password
+              properties:
+                current_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                new_password:
+                  type: string
+                  minLength: 10
+                  maxLength: 128
+      responses:
+        '200':
+          description: Password changed; the session returned replaces the caller's
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Not signed in, or the current password is wrong (code invalid_credentials)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
       x-spec: 001-platform-foundation
@@ -9754,6 +9862,18 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    AccountDeletion:
+      type: object
+      required:
+      - requested_at
+      - scheduled_at
+      properties:
+        requested_at:
+          type: string
+          format: date-time
+        scheduled_at:
+          type: string
+          format: date-time
     ActiveCallsProblem:
       allOf:
       - $ref: '#/components/schemas/Problem'
@@ -19528,6 +19648,7 @@ components:
       - email
       - email_verified
       - is_admin
+      - has_password
       properties:
         id:
           $ref: '#/components/schemas/UserId'
@@ -19538,6 +19659,16 @@ components:
           type: boolean
         is_admin:
           type: boolean
+        has_password:
+          type: boolean
+          description: False for an account created through Google sign-in that never set a password
+        deletion_scheduled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: When the account will be erased; null unless deletion is scheduled (the account
+            is locked meanwhile)
     UserId:
       type: string
       pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$

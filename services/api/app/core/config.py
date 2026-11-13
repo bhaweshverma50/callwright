@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     allow_auto_verify_in_production: bool = False
     supabase_url: str | None = None
     supabase_anon_key: SecretStr | None = None
+    # Deleting an erased account's Supabase user (admin API). Without it the erase job keeps the
+    # account scheduled and logs an error rather than leave a login behind.
+    supabase_service_role_key: SecretStr | None = None
     # Signup abuse limits, all off when unset. TURNSTILE_SECRET_KEY makes POST /auth/register
     # require a Cloudflare Turnstile token. SMTP_HOST makes the local IdP email its verification
     # and reset links (the in-memory outbox stays).

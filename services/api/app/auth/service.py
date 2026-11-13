@@ -12,8 +12,10 @@ import hashlib
 import logging
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import httpx
+from fastapi import Request
 from redis.asyncio import Redis
 
 from app.auth import google as google_mod
@@ -24,7 +26,7 @@ from app.auth.idp import IdentityProvider, IdpSession
 from app.core.auth import TokenClaims, revoke_session
 from app.core.config import Settings
 from app.core.db import Database
-from app.core.errors import ProblemError, too_many_requests, unauthorized
+from app.core.errors import ProblemError, field_error, too_many_requests, unauthorized, validation_failed
 from app.core.rate_limit import FailureCounter, RateLimiter
 from app.workspaces.service import bootstrap_workspace
 
@@ -160,6 +162,95 @@ class AuthService:
             )
         return session
 
+    async def _guard_password_failures(self, email: str, ip: str) -> None:
+        """The sign-in failure throttle, applied to checks of a signed-in user's password."""
+        failures = self.failures
+        count, ttl = await failures.count(account_key(email))
+        if count >= self.settings.login_fail_limit:
+            raise too_many_requests(ttl, f"Too many wrong passwords. Try again in {_minutes(ttl)}.")
+        ip_count, ip_ttl = await failures.count(ip_key(ip))
+        if ip_count >= self.settings.login_fail_ip_limit:
+            raise too_many_requests(ip_ttl, f"Too many wrong passwords. Try again in {_minutes(ip_ttl)}.")
+
+    async def _wrong_password(self, email: str, ip: str) -> ProblemError:
+        window = self.settings.login_fail_window_s
+        await self.failures.add(account_key(email), window)
+        await self.failures.add(ip_key(ip), window)
+        return ProblemError(401, "invalid_credentials", "Wrong password", "The password is not correct.")
+
+    async def has_password(self, subject: str) -> bool:
+        try:
+            return await self.idp.has_password(subject)
+        except idp_mod.IdpError:
+            logger.warning("could not read whether the account has a password", exc_info=True)
+            return True
+
+    async def reauthenticate(self, subject: str, email: str, password: str, ip: str) -> None:
+        """Check the signed-in user's password for a sensitive action; a wrong one counts toward
+        the sign-in failure throttle (401 ``invalid_credentials``, 429 once throttled)."""
+        await self._guard_password_failures(email, ip)
+        try:
+            await self.idp.verify_password(subject, email, password)
+        except idp_mod.InvalidCredentials:
+            raise await self._wrong_password(email, ip) from None
+        except idp_mod.IdpRateLimited as exc:
+            raise too_many_requests(60, "Too many attempts. Try again shortly.") from exc
+        except idp_mod.IdpUnavailable as exc:
+            raise _idp_down() from exc
+
+    async def change_password(
+        self,
+        access_token: str,
+        claims: TokenClaims,
+        email: str,
+        current_password: str,
+        new_password: str,
+        ip: str,
+    ) -> IdpSession:
+        """Set a new password and end every session, this one included; the caller gets a fresh
+        session. Mails the account owner that the password changed."""
+        if new_password == current_password:
+            raise validation_failed(
+                [
+                    field_error(
+                        "/new_password",
+                        "same_as_current",
+                        "Choose a password different from your current one.",
+                    )
+                ]
+            )
+        await self._guard_password_failures(email, ip)
+        try:
+            session, revoked = await self.idp.change_password(
+                access_token, claims, email, current_password, new_password
+            )
+        except idp_mod.InvalidCredentials:
+            raise await self._wrong_password(email, ip) from None
+        except idp_mod.IdpRateLimited as exc:
+            raise too_many_requests(60, "Too many attempts. Try again shortly.") from exc
+        except idp_mod.IdpUnavailable as exc:
+            raise _idp_down() from exc
+        except idp_mod.IdpError as exc:
+            raise ProblemError(
+                422,
+                "password_rejected",
+                "Password not accepted",
+                "That password was not accepted. Choose a different one.",
+            ) from exc
+        expires_at = int(time.time()) + self.settings.auth_access_token_ttl_s
+        for session_id in {*revoked, claims.session_id}:
+            await revoke_session(self.redis, session_id, expires_at=expires_at)
+        when = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+        await self.idp.notify(
+            email,
+            "password_changed",
+            "Your Callwright password was changed",
+            f"The password for your Callwright account was changed on {when}, and every other "
+            "device was signed out.\n\nIf this wasn't you, reset your password right away: "
+            f"{self.settings.web_base_url.rstrip('/')}/forgot-password\n",
+        )
+        return session
+
     async def _google_gate(self, ip: str) -> idp_mod.LocalIdentityProvider:
         """Per-IP rate limit; 404 unless Google sign-in is on (it needs the local IdP)."""
         if not self.settings.google_signin_enabled or not isinstance(self.idp, idp_mod.LocalIdentityProvider):
@@ -228,6 +319,11 @@ class AuthService:
         expires_at = int(time.time()) + self.settings.auth_access_token_ttl_s
         for session_id in revoked:
             await revoke_session(self.redis, session_id, expires_at=expires_at)
+
+
+def auth_service(request: Request) -> AuthService:
+    state = request.app.state
+    return AuthService(state.settings, state.db, state.redis, state.idp, getattr(state, "google_http", None))
 
 
 def _minutes(seconds: int) -> str:

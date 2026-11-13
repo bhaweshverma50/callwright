@@ -14,6 +14,7 @@ import hmac
 import time
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated, Any
 
 import jwt
@@ -94,6 +95,7 @@ class Principal:
     is_admin: bool
     session_id: str
     token_expires_at: int
+    deletion_scheduled_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,7 @@ class SubjectRow:
     email: str
     email_verified: bool
     is_admin: bool
+    deletion_scheduled_at: datetime | None = None
 
 
 async def resolve_subject(db: Database, subject: str) -> SubjectRow | None:
@@ -110,7 +113,7 @@ async def resolve_subject(db: Database, subject: str) -> SubjectRow | None:
         row = (
             await session.execute(
                 text(
-                    "select user_id, workspace_id, email, email_verified, is_admin "
+                    "select user_id, workspace_id, email, email_verified, is_admin, deletion_scheduled_at "
                     "from app_resolve_subject(:sub)"
                 ),
                 {"sub": subject},
@@ -124,6 +127,7 @@ async def resolve_subject(db: Database, subject: str) -> SubjectRow | None:
         email=row.email,
         email_verified=bool(row.email_verified),
         is_admin=bool(row.is_admin),
+        deletion_scheduled_at=row.deletion_scheduled_at,
     )
 
 
@@ -150,9 +154,7 @@ async def current_claims(request: Request) -> TokenClaims:
     return claims
 
 
-async def current_principal(
-    request: Request, claims: Annotated[TokenClaims, Depends(current_claims)]
-) -> Principal:
+async def _principal(request: Request, claims: TokenClaims, *, allow_scheduled_deletion: bool) -> Principal:
     row = await resolve_subject(request.app.state.db, claims.subject)
     if row is None:
         # A valid signature for a user that no longer exists (deleted account, reset database):
@@ -162,6 +164,14 @@ async def current_principal(
         raise ProblemError(
             403, "email_unverified", "Email not verified", "Verify your email address to continue."
         )
+    if row.deletion_scheduled_at is not None and not allow_scheduled_deletion:
+        raise ProblemError(
+            403,
+            "account_deletion_scheduled",
+            "Account scheduled for deletion",
+            "This account is scheduled for deletion. Keep the account to use it again.",
+            extra={"deletion_scheduled_at": row.deletion_scheduled_at.isoformat()},
+        )
     principal = Principal(
         user_id=row.user_id,
         workspace_id=row.workspace_id,
@@ -170,10 +180,27 @@ async def current_principal(
         is_admin=row.is_admin,
         session_id=claims.session_id,
         token_expires_at=claims.expires_at,
+        deletion_scheduled_at=row.deletion_scheduled_at,
     )
     request.state.principal = principal
     trace.get_current_span().set_attribute("workspace_id", principal.workspace_id)
     return principal
+
+
+async def current_principal(
+    request: Request, claims: Annotated[TokenClaims, Depends(current_claims)]
+) -> Principal:
+    """The signed-in user. While the account is scheduled for deletion this refuses with 403
+    ``account_deletion_scheduled``: every route depends on this, so the lock is enforced here and
+    only ``scheduled_principal`` (``GET /me`` and cancelling the deletion) lets it through."""
+    return await _principal(request, claims, allow_scheduled_deletion=False)
+
+
+async def scheduled_principal(
+    request: Request, claims: Annotated[TokenClaims, Depends(current_claims)]
+) -> Principal:
+    """Like ``current_principal`` but also for an account scheduled for deletion."""
+    return await _principal(request, claims, allow_scheduled_deletion=True)
 
 
 async def require_admin(principal: Annotated[Principal, Depends(current_principal)]) -> Principal:
@@ -198,4 +225,5 @@ def principal_tx(request: Request, principal: Principal) -> AbstractAsyncContext
 
 CurrentClaims = Annotated[TokenClaims, Depends(current_claims)]
 CurrentPrincipal = Annotated[Principal, Depends(current_principal)]
+ScheduledPrincipal = Annotated[Principal, Depends(scheduled_principal)]
 AdminPrincipal = Annotated[Principal, Depends(require_admin)]

@@ -137,6 +137,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the password while signed in
+         * @description Checks the current password (a wrong one is 401 invalid_credentials and counts toward the per-account sign-in failure throttle, so it can be 429), sets the new one and ends every session, this one included. The response is a fresh session for the caller. A "Your password was changed" email is sent. The new password must differ from the current one (422, pointer /new_password, code same_as_current).
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/config": {
         parameters: {
             query?: never;
@@ -404,6 +424,30 @@ export interface paths {
         head?: never;
         /** Settings page save (FR-017); only the fields sent change */
         patch: operations["updateCurrentWorkspace"];
+        trace?: never;
+    };
+    "/account/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule deletion of the account and workspace in 30 days
+         * @description Owner only. `confirm_workspace_name` must equal the workspace name exactly (422 otherwise). Re-authenticates: an account with a password sends `password` (wrong is 401 invalid_credentials, throttled like sign-in); an account created through Google sends `confirm_email`. Ends every session and emails a confirmation. While scheduled, sign-in works but every route except `GET /me`, `DELETE /account/deletion`, sign-out and refresh answers 403 with code `account_deletion_scheduled`. After the date the account's data is erased; the remaining balance is forfeited.
+         */
+        post: operations["scheduleAccountDeletion"];
+        /**
+         * Keep the account (cancel a scheduled deletion)
+         * @description Allowed while the account is locked for deletion. Idempotent.
+         */
+        delete: operations["cancelAccountDeletion"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/agents/{agent_id}/versions": {
@@ -4136,6 +4180,13 @@ export interface components {
             email: string;
             email_verified: boolean;
             is_admin: boolean;
+            /** @description False for an account created through Google sign-in that never set a password */
+            has_password: boolean;
+            /**
+             * Format: date-time
+             * @description When the account will be erased; null unless deletion is scheduled (the account is locked meanwhile)
+             */
+            deletion_scheduled_at?: string | null;
         };
         Workspace: {
             id: components["schemas"]["WorkspaceId"];
@@ -4151,6 +4202,12 @@ export interface components {
             user: components["schemas"]["User"];
             workspace: components["schemas"]["Workspace"];
             balance_usd: components["schemas"]["MoneyUsd"];
+        };
+        AccountDeletion: {
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            scheduled_at: string;
         };
         /** @enum {string} */
         VersionSource: "create" | "save" | "restore" | "template" | "duplicate" | "flow_publish" | "test";
@@ -8553,6 +8610,44 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    current_password: string;
+                    new_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password changed; the session returned replaces the caller's */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Not signed in, or the current password is wrong (code invalid_credentials) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     getAuthConfig: {
         parameters: {
             query?: never;
@@ -9025,6 +9120,57 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    scheduleAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirm_workspace_name: string;
+                    password?: string;
+                    /** Format: email */
+                    confirm_email?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Deletion scheduled */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletion"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cancelAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deletion cancelled (or none was scheduled) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listAgentVersions: {

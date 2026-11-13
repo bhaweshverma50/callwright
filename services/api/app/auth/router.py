@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request, Response
 from app.auth.idp import IdpSession
 from app.auth.schemas import (
     AuthConfig,
+    ChangePasswordRequest,
     EmailRequest,
     GoogleCompleteRequest,
     GoogleStartResponse,
@@ -20,8 +21,8 @@ from app.auth.schemas import (
     SignInRequest,
     TokenHashRequest,
 )
-from app.auth.service import AuthService
-from app.core.auth import CurrentClaims, bearer_token
+from app.auth.service import auth_service
+from app.core.auth import CurrentClaims, CurrentPrincipal, bearer_token
 from app.core.client_ip import client_ip
 from app.core.errors import problem_responses
 from app.core.money import SIX
@@ -29,9 +30,7 @@ from app.core.money import SIX
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _service(request: Request) -> AuthService:
-    state = request.app.state
-    return AuthService(state.settings, state.db, state.redis, state.idp, getattr(state, "google_http", None))
+_service = auth_service
 
 
 def _session(session: IdpSession) -> Session:
@@ -95,6 +94,23 @@ async def refresh(body: RefreshRequest, request: Request) -> Session:
 async def sign_out(request: Request, claims: CurrentClaims) -> Response:
     await _service(request).sign_out(bearer_token(request), claims)
     return Response(status_code=204)
+
+
+@router.post("/password", response_model=Session, responses=problem_responses(401, 422, 429))
+async def change_password(
+    body: ChangePasswordRequest, request: Request, claims: CurrentClaims, principal: CurrentPrincipal
+) -> Session:
+    """Signed in: set a new password. Every session ends; the response is a fresh one."""
+    return _session(
+        await _service(request).change_password(
+            bearer_token(request),
+            claims,
+            principal.email,
+            body.current_password,
+            body.new_password,
+            client_ip(request),
+        )
+    )
 
 
 @router.post("/password-reset", status_code=202, response_class=Response, responses=problem_responses(429))

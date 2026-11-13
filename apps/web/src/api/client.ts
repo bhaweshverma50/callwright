@@ -27,6 +27,14 @@ const REFRESH: keyof paths = "/auth/refresh";
 const PUBLIC_AUTH_ENDPOINTS: (keyof paths)[] = ["/auth/sign-in", "/auth/register", REFRESH, "/auth/verify-email", "/auth/password-reset"];
 const isPublicAuthCall = (url: string) => PUBLIC_AUTH_ENDPOINTS.some((p) => url.includes(p));
 
+async function isWrongPassword(res: Response): Promise<boolean> {
+  const body: unknown = await res
+    .clone()
+    .json()
+    .catch(() => null);
+  return typeof body === "object" && body !== null && (body as { code?: unknown }).code === "invalid_credentials";
+}
+
 let refreshing: Promise<boolean> | null = null;
 
 async function refreshOnce(): Promise<boolean> {
@@ -71,6 +79,9 @@ export async function sendAuthorized(send: (token: string | null) => Promise<Res
   };
   const res = await attempt();
   if (res.status !== 401 || isPublicAuthCall(url) || !session.isSignedIn()) return res;
+  // A wrong password on a signed-in action (change password, delete account) is not an expired
+  // session: refreshing and sending it again would count a second failed attempt.
+  if (await isWrongPassword(res)) return res;
   if (await refreshOnce()) return attempt();
   endSession();
   return res;

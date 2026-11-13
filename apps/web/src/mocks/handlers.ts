@@ -62,6 +62,26 @@ function currentUser(request: Request): MockUser | null {
   return db().users.find((u) => u.id === id) ?? null;
 }
 
+/** 429 once the account has used up its failed attempts (sign-in and password checks share the count). */
+function throttled(email: string) {
+  const f = db().failures[email.toLowerCase()];
+  if (f && f.count >= MAX_FAILED_SIGN_INS && Date.now() - f.first < FAILED_SIGN_IN_WINDOW_MS) {
+    return problem(429, "too_many_attempts", "Too many sign-in attempts", {
+      retry_after_s: Math.ceil((f.first + FAILED_SIGN_IN_WINDOW_MS - Date.now()) / 1000),
+    });
+  }
+  return null;
+}
+
+function wrongPassword(email: string) {
+  const key = email.toLowerCase();
+  const f = db().failures[key];
+  const prev = f && Date.now() - f.first < FAILED_SIGN_IN_WINDOW_MS ? f : { count: 0, first: Date.now() };
+  db().failures[key] = { count: prev.count + 1, first: prev.first };
+  save();
+  return problem(401, "invalid_credentials", "Wrong password");
+}
+
 const ONBOARDING_STATUSES: OnboardingStatus[] = ["not_started", "in_progress", "skipped", "completed"];
 
 /** Saved preferences, or the defaults a user who never saved anything gets. */
@@ -246,7 +266,15 @@ export const handlers = [
     }
     let user = db().users.find((u) => u.email === MOCK_GOOGLE_EMAIL);
     if (!user) {
-      user = { id: mockId("usr"), email: MOCK_GOOGLE_EMAIL, password: mockId("pw"), email_verified: true, is_admin: false, workspace_id: null };
+      user = {
+        id: mockId("usr"),
+        email: MOCK_GOOGLE_EMAIL,
+        password: mockId("pw"),
+        email_verified: true,
+        is_admin: false,
+        workspace_id: null,
+        google_only: true,
+      };
       db().users.push(user);
     }
     user.email_verified = true;
@@ -289,8 +317,63 @@ export const handlers = [
     if (!t || t.used || t.expires < Date.now() || token_hash === EXPIRED_TOKEN) return problem(400, "link_invalid", "Link invalid, used or expired");
     if (new_password.length < 10) return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
     const user = db().users.find((u) => u.email === t.email);
-    if (user) user.password = new_password;
+    if (user) {
+      user.password = new_password;
+      user.google_only = false;
+    }
     t.used = true;
+    save();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Change password while signed in: a wrong current password counts toward the sign-in throttle.
+  http.post(url("/auth/password"), async ({ request }) => {
+    const user = currentUser(request);
+    if (!user) return unauthorized();
+    const { current_password = "", new_password = "" } = (await request.json()) as { current_password?: string; new_password?: string };
+    await delay(300);
+    const blocked = throttled(user.email);
+    if (blocked) return blocked;
+    if (new_password === current_password)
+      return validation([{ pointer: "/new_password", code: "same_as_current", message: "Choose a password different from your current one." }]);
+    if (new_password.length < 10) return validation([{ pointer: "/new_password", code: "too_short", message: "Use at least 10 characters." }]);
+    if (user.password !== current_password) return wrongPassword(user.email);
+    user.password = new_password;
+    user.google_only = false;
+    for (const [t, id] of Object.entries(db().sessions)) if (id === user.id) delete db().sessions[t];
+    save();
+    return json<Session>(issueSession(user));
+  }),
+
+  // Delete account: schedules the erase in 30 days and ends every session; cancelling keeps it.
+  http.post(url("/account/deletion"), async ({ request }) => {
+    const user = currentUser(request);
+    const ws = user && workspaceOf(user);
+    if (!user || !ws) return unauthorized();
+    const body = (await request.json()) as { confirm_workspace_name?: string; password?: string; confirm_email?: string };
+    await delay(350);
+    if (body.confirm_workspace_name !== ws.name)
+      return validation([{ pointer: "/confirm_workspace_name", code: "mismatch", message: "Type the workspace name exactly as shown." }]);
+    if (user.google_only) {
+      if ((body.confirm_email ?? "").trim().toLowerCase() !== user.email)
+        return validation([{ pointer: "/confirm_email", code: "mismatch", message: "Type your account email to confirm." }]);
+    } else {
+      if (!body.password) return validation([{ pointer: "/password", code: "required", message: "Enter your password." }]);
+      const blocked = throttled(user.email);
+      if (blocked) return blocked;
+      if (user.password !== body.password) return wrongPassword(user.email);
+    }
+    const requested = new Date();
+    user.deletion_scheduled_at = new Date(requested.getTime() + 30 * 86_400_000).toISOString();
+    for (const [t, id] of Object.entries(db().sessions)) if (id === user.id) delete db().sessions[t];
+    save();
+    return json({ requested_at: requested.toISOString(), scheduled_at: user.deletion_scheduled_at }, 202);
+  }),
+
+  http.delete(url("/account/deletion"), ({ request }) => {
+    const user = currentUser(request);
+    if (!user) return unauthorized();
+    delete user.deletion_scheduled_at;
     save();
     return new HttpResponse(null, { status: 204 });
   }),
@@ -302,7 +385,14 @@ export const handlers = [
     if (!user || !ws) return unauthorized();
     settlePending();
     const me: Me = {
-      user: { id: user.id, email: user.email, email_verified: user.email_verified, is_admin: user.is_admin },
+      user: {
+        id: user.id,
+        email: user.email,
+        email_verified: user.email_verified,
+        is_admin: user.is_admin,
+        has_password: !user.google_only,
+        deletion_scheduled_at: user.deletion_scheduled_at ?? null,
+      },
       workspace: ws,
       balance_usd: microsToDecimal(balanceOf(db(), ws.id), 6),
     };

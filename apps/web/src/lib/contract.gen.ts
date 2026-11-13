@@ -3896,6 +3896,11 @@ export const bodyLimits = {
       "maxLength": 80
     }
   },
+  "POST /account/deletion": {
+    "password": {
+      "maxLength": 128
+    }
+  },
   "POST /admin/pricing/versions": {
     "notes": {
       "maxLength": 500
@@ -3955,6 +3960,16 @@ export const bodyLimits = {
     "state": {
       "minLength": 1,
       "maxLength": 256
+    }
+  },
+  "POST /auth/password": {
+    "current_password": {
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "new_password": {
+      "minLength": 10,
+      "maxLength": 128
     }
   },
   "POST /auth/password-reset/confirm": {

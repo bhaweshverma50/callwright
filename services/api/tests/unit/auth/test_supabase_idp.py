@@ -112,6 +112,68 @@ async def test_password_reset_confirm_verifies_updates_and_signs_out() -> None:
     assert json.loads(seen[0].content) == {"type": "recovery", "token_hash": "hash-2"}
 
 
+async def test_change_password_verifies_updates_and_ends_other_sessions() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json=SESSION)
+        return httpx.Response(200 if request.method == "PUT" else 204, json={})
+
+    adapter, seen = _adapter(handler)
+    claims = TokenClaims("uuid-1", "ops@example.com", "sess", 0)
+    session, revoked = await adapter.change_password(
+        "old-at", claims, "ops@example.com", "old-pw-1234", "new-pw-123456"
+    )
+    assert session.access_token == "at" and revoked == []
+    assert [(r.method, r.url.path) for r in seen] == [
+        ("POST", "/auth/v1/token"),
+        ("PUT", "/auth/v1/user"),
+        ("POST", "/auth/v1/logout"),
+    ]
+    assert json.loads(seen[0].content) == {"email": "ops@example.com", "password": "old-pw-1234"}
+    assert json.loads(seen[1].content) == {"password": "new-pw-123456"}
+    assert seen[2].url.params["scope"] == "others"
+    assert seen[2].headers["authorization"] == "Bearer at"
+
+
+async def test_change_password_wrong_current_or_rejected_new() -> None:
+    claims = TokenClaims("uuid-1", None, "sess", 0)
+    wrong, _ = _adapter(lambda r: httpx.Response(400, json={"error_code": "invalid_credentials"}))
+    with pytest.raises(idp.InvalidCredentials):
+        await wrong.change_password("at", claims, "ops@example.com", "bad", "new-pw-123456")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json=SESSION)
+        return httpx.Response(422, json={"error_code": "weak_password"})
+
+    weak, _ = _adapter(handler)
+    with pytest.raises(idp.IdpError):
+        await weak.change_password("at", claims, "ops@example.com", "old-pw-1234", "new-pw-123456")
+
+
+async def test_delete_user_uses_the_service_role_key_and_ignores_missing_users() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(404, json={})
+
+    client = httpx.AsyncClient(
+        base_url="https://proj.supabase.co/auth/v1", transport=httpx.MockTransport(handler)
+    )
+    settings = make_settings(
+        auth_provider="supabase",
+        supabase_url="https://proj.supabase.co",
+        supabase_service_role_key=SecretStr("service-key"),
+    )
+    await idp.SupabaseIdentityProvider(settings, client).delete_user("uuid-1")
+    assert (seen[0].method, seen[0].url.path) == ("DELETE", "/auth/v1/admin/users/uuid-1")
+    assert seen[0].headers["authorization"] == "Bearer service-key"
+    keyless, _ = _adapter(lambda r: httpx.Response(200))
+    with pytest.raises(idp.IdpError):
+        await keyless.delete_user("uuid-1")
+
+
 def test_build_idp_selects_adapter() -> None:
     settings = make_settings(auth_provider="supabase", supabase_url="https://proj.supabase.co")
     assert isinstance(idp.build_idp(settings, None), idp.SupabaseIdentityProvider)  # type: ignore[arg-type]

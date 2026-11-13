@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import hmac
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib.parse import quote, urlencode
@@ -167,6 +168,28 @@ class S3ObjectStore:
             ExpiresIn=expires_s,
         )
         return url
+
+
+async def delete_recordings(settings: Settings, keys: Sequence[str]) -> None:
+    """Delete call recordings from the recordings bucket (S3 mode; the fake store holds none).
+
+    Raises when S3 refuses any key, so the caller (the account erase job) retries rather than
+    treat the recordings as gone. Deleting a missing key is not an error.
+    """
+    if settings.storage_mode != "s3" or not keys:
+        return
+    access = recordings_s3(settings)
+    client = _s3_client(access.endpoint, access.region, access.access_key, access.secret_key)
+    bucket = settings.recordings_bucket
+
+    def run() -> None:
+        for start in range(0, len(keys), 1000):
+            batch = [{"Key": key} for key in keys[start : start + 1000]]
+            result = client.delete_objects(Bucket=bucket, Delete={"Objects": batch, "Quiet": True})
+            if result.get("Errors"):
+                raise RuntimeError(f"{len(result['Errors'])} recording(s) could not be deleted")
+
+    await asyncio.to_thread(run)
 
 
 def build_store(settings: Settings) -> ObjectStore:

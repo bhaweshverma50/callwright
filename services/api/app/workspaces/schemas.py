@@ -15,6 +15,8 @@ class UserOut(BaseModel):
     email: str
     email_verified: bool
     is_admin: bool
+    has_password: bool
+    deletion_scheduled_at: datetime | None = None
 
 
 class WorkspaceOut(BaseModel):
@@ -38,6 +40,8 @@ class MeOut(BaseModel):
                 email=view.user.email,
                 email_verified=view.user.email_verified_at is not None,
                 is_admin=view.user.is_admin,
+                has_password=view.has_password,
+                deletion_scheduled_at=view.user.deletion_scheduled_at,
             ),
             workspace=WorkspaceOut.model_validate(view.workspace, from_attributes=True),
             balance_usd=fmt6(view.balance_usd),

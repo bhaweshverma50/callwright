@@ -93,6 +93,7 @@ class OutboxMessage:
     link: str
     token_hash: str
     sent_at: datetime
+    body: str = ""
 
 
 class IdentityProvider(Protocol):
@@ -120,6 +121,30 @@ class IdentityProvider(Protocol):
         (when known) so their access tokens can be blocked until expiry."""
         ...
 
+    async def has_password(self, subject: str) -> bool:
+        """False for an account created through Google sign-in that never set a password."""
+        ...
+
+    async def verify_password(self, subject: str, email: str, password: str) -> None:
+        """Raises ``InvalidCredentials`` unless ``password`` is the account's current one."""
+        ...
+
+    async def change_password(
+        self, access_token: str, claims: TokenClaims, email: str, current_password: str, new_password: str
+    ) -> tuple[IdpSession, list[str]]:
+        """Verify the current password (``InvalidCredentials``), set the new one and end every
+        existing session, the caller's included. Returns a fresh session for the caller and the
+        ended session ids (when known) so their access tokens can be blocked until expiry."""
+        ...
+
+    async def delete_user(self, subject: str) -> None:
+        """Remove the account's login. A missing user is not an error (the erase job re-runs)."""
+        ...
+
+    async def notify(self, to: str, kind: str, subject: str, body: str) -> None:
+        """Email an account notice. Never raises: the action it reports has already happened."""
+        ...
+
 
 def _mask_email(address: str) -> str:
     local, _, domain = address.partition("@")
@@ -139,6 +164,18 @@ def _send_smtp(settings: Settings, to: str, subject: str, body: str) -> None:
         if settings.smtp_username and settings.smtp_password:
             smtp.login(settings.smtp_username, settings.smtp_password.get_secret_value())
         smtp.send_message(message)
+
+
+async def deliver_notice(settings: Settings, to: str, kind: str, subject: str, body: str) -> None:
+    """Send a notice by SMTP when configured, else log it for development. Never raises."""
+    if not settings.smtp_host:
+        logger.warning("[dev mail] to=%s subject=%r kind=%s", _mask_email(to), subject, kind)
+        return
+    try:
+        await asyncio.to_thread(_send_smtp, settings, to, subject, body)
+    except Exception as exc:
+        # The exception text can echo the message, so log its type only.
+        logger.warning("could not email %s to %s (%s)", kind, _mask_email(to), type(exc).__name__)
 
 
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
@@ -367,8 +404,9 @@ class LocalIdentityProvider:
             created = (
                 await s.execute(
                     text(
-                        "insert into local_idp.users (id, email, password_hash, email_confirmed_at) "
-                        "values (:id, :e, :p, now()) on conflict (email) do nothing returning id"
+                        "insert into local_idp.users "
+                        "(id, email, password_hash, email_confirmed_at, password_set) "
+                        "values (:id, :e, :p, now(), false) on conflict (email) do nothing returning id"
                     ),
                     {"id": user_id, "e": email, "p": unusable},
                 )
@@ -387,8 +425,8 @@ class LocalIdentityProvider:
                 if row.email_confirmed_at is None:
                     await s.execute(
                         text(
-                            "update local_idp.users set password_hash = :p, email_confirmed_at = now() "
-                            "where id = :id"
+                            "update local_idp.users set password_hash = :p, email_confirmed_at = now(), "
+                            "password_set = false where id = :id"
                         ),
                         {"p": unusable, "id": user_id},
                     )
@@ -456,7 +494,7 @@ class LocalIdentityProvider:
         async with self.db.transaction() as s:
             await s.execute(
                 text(
-                    "update local_idp.users set password_hash = :p, "
+                    "update local_idp.users set password_hash = :p, password_set = true, "
                     "email_confirmed_at = coalesce(email_confirmed_at, now()) where id = :id"
                 ),
                 {"p": hash_password(new_password), "id": row.id},
@@ -471,6 +509,63 @@ class LocalIdentityProvider:
                 )
             ).scalars()
             return [str(r) for r in revoked]
+
+    async def has_password(self, subject: str) -> bool:
+        async with self.db.transaction() as s:
+            row = (
+                await s.execute(
+                    text("select password_set from local_idp.users where id = :id"), {"id": subject}
+                )
+            ).first()
+        return True if row is None else bool(row.password_set)
+
+    async def _password_hash(self, subject: str) -> str | None:
+        async with self.db.transaction() as s:
+            row = (
+                await s.execute(
+                    text("select password_hash from local_idp.users where id = :id"), {"id": subject}
+                )
+            ).first()
+        return None if row is None else str(row.password_hash)
+
+    async def verify_password(self, subject: str, email: str, password: str) -> None:
+        stored = await self._password_hash(subject)
+        if stored is None:
+            check_password(password, _DUMMY_HASH)
+            raise InvalidCredentials()
+        if not check_password(password, stored):
+            raise InvalidCredentials()
+
+    async def change_password(
+        self, access_token: str, claims: TokenClaims, email: str, current_password: str, new_password: str
+    ) -> tuple[IdpSession, list[str]]:
+        await self.verify_password(claims.subject, email, current_password)
+        async with self.db.transaction() as s:
+            await s.execute(
+                text("update local_idp.users set password_hash = :p, password_set = true where id = :id"),
+                {"p": hash_password(new_password), "id": claims.subject},
+            )
+            revoked = (
+                await s.execute(
+                    text(
+                        "update local_idp.sessions set revoked_at = now() "
+                        "where user_id = :id and revoked_at is null returning id"
+                    ),
+                    {"id": claims.subject},
+                )
+            ).scalars()
+            revoked_ids = [str(r) for r in revoked]
+        return await self._new_session(claims.subject, email), revoked_ids
+
+    async def delete_user(self, subject: str) -> None:
+        async with self.db.transaction() as s:
+            for table in ("one_time_tokens", "sessions"):
+                await s.execute(text(f"delete from local_idp.{table} where user_id = :id"), {"id": subject})  # noqa: S608
+            await s.execute(text("delete from local_idp.users where id = :id"), {"id": subject})
+
+    async def notify(self, to: str, kind: str, subject: str, body: str) -> None:
+        self.outbox.append(OutboxMessage(to.lower(), kind, "", "", datetime.now(UTC), body))
+        await deliver_notice(self.settings, to, kind, subject, body)
 
     def latest_message(self, to: str, kind: str) -> OutboxMessage | None:
         for message in reversed(self.outbox):
@@ -490,6 +585,12 @@ class SupabaseIdentityProvider:
             raise ValueError("SUPABASE_URL is required")
         anon = settings.supabase_anon_key.get_secret_value() if settings.supabase_anon_key else ""
         self.web_base_url = settings.web_base_url.rstrip("/")
+        self.settings = settings
+        self._service_key = (
+            settings.supabase_service_role_key.get_secret_value()
+            if settings.supabase_service_role_key
+            else None
+        )
         self._client = client or httpx.AsyncClient(
             base_url=f"{settings.supabase_url.rstrip('/')}/auth/v1", timeout=10.0
         )
@@ -600,6 +701,51 @@ class SupabaseIdentityProvider:
             raise IdpError(f"password update failed ({update.status_code})")
         await self._post("/logout", bearer=session.access_token, params={"scope": "global"})
         return []
+
+    async def has_password(self, subject: str) -> bool:
+        return True  # Google sign-in needs the local identity provider; Supabase accounts all have one
+
+    async def verify_password(self, subject: str, email: str, password: str) -> None:
+        session = await self.sign_in(email, password)
+        # The check opened a session of its own; end it so it does not linger.
+        await self._post("/logout", bearer=session.access_token, params={"scope": "local"})
+
+    async def change_password(
+        self, access_token: str, claims: TokenClaims, email: str, current_password: str, new_password: str
+    ) -> tuple[IdpSession, list[str]]:
+        # Signing in verifies the current password and gives a bearer for the update; once the
+        # password is set every other session (the caller's old one too) is ended globally.
+        try:
+            session = await self.sign_in(email, current_password)
+        except EmailNotConfirmed as exc:
+            raise InvalidCredentials() from exc
+        headers = dict(self._headers) | {"Authorization": f"Bearer {session.access_token}"}
+        try:
+            update = await self._client.put("/user", json={"password": new_password}, headers=headers)
+        except httpx.HTTPError as exc:
+            raise IdpUnavailable(str(exc)) from exc
+        if update.status_code >= 500:
+            raise IdpUnavailable(f"identity provider returned {update.status_code}")
+        if update.status_code >= 400:
+            raise IdpError(f"password update failed ({update.status_code})")
+        await self._post("/logout", bearer=session.access_token, params={"scope": "others"})
+        return session, []
+
+    async def delete_user(self, subject: str) -> None:
+        if self._service_key is None:
+            raise IdpError("SUPABASE_SERVICE_ROLE_KEY is not set; cannot delete the identity provider user")
+        headers = {"apikey": self._service_key, "Authorization": f"Bearer {self._service_key}"}
+        try:
+            response = await self._client.delete(f"/admin/users/{quote(subject)}", headers=headers)
+        except httpx.HTTPError as exc:
+            raise IdpUnavailable(str(exc)) from exc
+        if response.status_code >= 500:
+            raise IdpUnavailable(f"identity provider returned {response.status_code}")
+        if response.status_code >= 400 and response.status_code != 404:
+            raise IdpError(f"user delete failed ({response.status_code})")
+
+    async def notify(self, to: str, kind: str, subject: str, body: str) -> None:
+        await deliver_notice(self.settings, to, kind, subject, body)
 
 
 def build_idp(settings: Settings, db: Database) -> LocalIdentityProvider | SupabaseIdentityProvider:

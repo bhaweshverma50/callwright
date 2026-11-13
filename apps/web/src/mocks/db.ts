@@ -30,6 +30,10 @@ export interface MockUser {
   email_verified: boolean;
   is_admin: boolean;
   workspace_id: string | null;
+  /** Created through Google sign-in and never set a password. Optional: states saved before account settings lack it. */
+  google_only?: boolean;
+  /** When the account will be erased (ISO time); set while deletion is scheduled. */
+  deletion_scheduled_at?: string;
 }
 export interface UsageEvent {
   workspace_id: string;

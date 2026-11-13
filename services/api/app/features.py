@@ -9,6 +9,7 @@ import inspect
 from arq.cron import CronJob
 from fastapi import APIRouter
 
+from app.account.install import FEATURE as account
 from app.agents.install import FEATURE as agents
 from app.analysis_vars.install import FEATURE as analysis_vars
 from app.analytics_chat.install import FEATURE as analytics_chat
@@ -56,6 +57,7 @@ from app.workspaces.install import FEATURE as workspaces
 # Router order is mount order.
 FEATURES: tuple[Feature, ...] = (
     auth,
+    account,
     workspaces,
     billing,
     pricing,

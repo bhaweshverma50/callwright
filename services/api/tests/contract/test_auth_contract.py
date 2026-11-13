@@ -122,3 +122,52 @@ async def test_password_reset_202_and_confirm_204_400_422(client: httpx.AsyncCli
         )
     )
     assert used.status_code == 400
+
+
+async def test_change_password_200_401_422_429(app: FastAPI) -> None:
+    async with make_client(app, "10.9.0.7") as client:
+        account = await signup(client, app)
+        new = "another-long-pass-3"
+        bad = check(
+            await client.post(
+                "/v1/auth/password",
+                json={"current_password": PASSWORD, "new_password": PASSWORD},
+                headers=account.headers,
+            )
+        )
+        assert bad.status_code == 422
+        assert (
+            check(
+                await client.post(
+                    "/v1/auth/password", json={"current_password": PASSWORD, "new_password": new}
+                )
+            ).status_code
+            == 401
+        )
+        for _ in range(5):
+            wrong = check(
+                await client.post(
+                    "/v1/auth/password",
+                    json={"current_password": "wrong-pass-x", "new_password": new},
+                    headers=account.headers,
+                )
+            )
+            assert wrong.status_code == 401
+        limited = check(
+            await client.post(
+                "/v1/auth/password",
+                json={"current_password": PASSWORD, "new_password": new},
+                headers=account.headers,
+            )
+        )
+        assert limited.status_code == 429
+    async with make_client(app, "10.9.0.8") as client:
+        other = await signup(client, app)
+        ok = check(
+            await client.post(
+                "/v1/auth/password",
+                json={"current_password": PASSWORD, "new_password": new},
+                headers=other.headers,
+            )
+        )
+        assert ok.status_code == 200 and ok.json()["token_type"] == "bearer"

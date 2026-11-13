@@ -179,16 +179,17 @@ class MeView:
     user: User
     workspace: Workspace
     balance_usd: Decimal
+    has_password: bool = True
 
 
-async def get_me(db: Database, principal: Principal) -> MeView:
+async def get_me(db: Database, principal: Principal, *, has_password: bool = True) -> MeView:
     async with db.transaction(workspace_id=principal.workspace_id, user_id=principal.user_id) as session:
         user = (await session.execute(select(User).where(User.id == principal.user_id))).scalar_one()
         workspace = (
             await session.execute(select(Workspace).where(Workspace.id == principal.workspace_id))
         ).scalar_one()
         balance = await billing.get_balance(session, principal.workspace_id)
-    return MeView(user, workspace, balance)
+    return MeView(user, workspace, balance, has_password)
 
 
 async def update_workspace(

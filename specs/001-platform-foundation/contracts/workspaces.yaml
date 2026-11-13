@@ -45,6 +45,49 @@ paths:
               schema: {$ref: '#/components/schemas/Workspace'}
         '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
         '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+  /account/deletion:
+    post:
+      operationId: scheduleAccountDeletion
+      tags: [workspaces]
+      summary: Schedule deletion of the account and workspace in 30 days
+      description: >-
+        Owner only. `confirm_workspace_name` must equal the workspace name exactly (422 otherwise).
+        Re-authenticates: an account with a password sends `password` (wrong is 401
+        invalid_credentials, throttled like sign-in); an account created through Google sends
+        `confirm_email`. Ends every session and emails a confirmation. While scheduled, sign-in
+        works but every route except `GET /me`, `DELETE /account/deletion`, sign-out and refresh
+        answers 403 with code `account_deletion_scheduled`. After the date the account's data is
+        erased; the remaining balance is forfeited.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm_workspace_name]
+              properties:
+                confirm_workspace_name: {type: string}
+                password: {type: string, maxLength: 128}
+                confirm_email: {type: string, format: email}
+      responses:
+        '202':
+          description: Deletion scheduled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AccountDeletion'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
+        '422': {$ref: './core.yaml#/components/responses/ValidationFailed'}
+        '429': {$ref: './core.yaml#/components/responses/TooManyRequests'}
+    delete:
+      operationId: cancelAccountDeletion
+      tags: [workspaces]
+      summary: Keep the account (cancel a scheduled deletion)
+      description: Allowed while the account is locked for deletion. Idempotent.
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: 'Deletion cancelled (or none was scheduled)'}
+        '401': {$ref: './core.yaml#/components/responses/Unauthorized'}
 components:
   securitySchemes:
     bearerAuth:
@@ -54,12 +97,19 @@ components:
   schemas:
     User:
       type: object
-      required: [id, email, email_verified, is_admin]
+      required: [id, email, email_verified, is_admin, has_password]
       properties:
         id: {$ref: './core.yaml#/components/schemas/UserId'}
         email: {type: string, format: email}
         email_verified: {type: boolean}
         is_admin: {type: boolean}
+        has_password:
+          type: boolean
+          description: False for an account created through Google sign-in that never set a password
+        deletion_scheduled_at:
+          type: [string, 'null']
+          format: date-time
+          description: When the account will be erased; null unless deletion is scheduled (the account is locked meanwhile)
     Workspace:
       type: object
       required: [id, name, concurrency_limit, recording_default, created_at]
@@ -79,3 +129,9 @@ components:
         user: {$ref: '#/components/schemas/User'}
         workspace: {$ref: '#/components/schemas/Workspace'}
         balance_usd: {$ref: './core.yaml#/components/schemas/MoneyUsd'}
+    AccountDeletion:
+      type: object
+      required: [requested_at, scheduled_at]
+      properties:
+        requested_at: {type: string, format: date-time}
+        scheduled_at: {type: string, format: date-time}

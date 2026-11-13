@@ -9,11 +9,9 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from app.billing import service
 from app.billing.models import CallCost, CreditTransaction
-from app.core.ids import new_id
 from app.pricing import engine
 from app.usage.models import UsageEvent
 from tests.conftest import Account
@@ -161,7 +159,13 @@ async def test_older_call_keeps_its_catalog_version(
     assert reread is not None and reread.catalog_version == 1
 
 
-async def test_charge_needs_a_real_call(app: FastAPI, account: Account) -> None:
-    """``call_costs.call_id`` references ``calls`` since the wave 2 integration (s003_0002)."""
-    with pytest.raises(IntegrityError):
-        await _charge(app, _usage(account.workspace_id, new_id("call")))
+async def test_call_costs_outlive_their_calls() -> None:
+    """``call_costs.call_id`` referenced ``calls`` (s003_0002) until s024_0001 dropped it: erasing an
+    account deletes its calls but keeps the cost rows (billing records) under the tombstone workspace."""
+    from tests.runtime_support import owner_sql
+
+    refs = owner_sql(
+        "select count(*) from pg_constraint where conrelid = 'call_costs'::regclass "
+        "and confrelid = 'calls'::regclass"
+    )
+    assert refs == [(0,)]

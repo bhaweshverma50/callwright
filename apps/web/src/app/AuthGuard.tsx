@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { isApiError } from "../api/errors";
 import { useMe } from "../api/queries";
+import { AccountDeletionScheduled } from "./AccountDeletionScheduled";
 import { FullPageLoader } from "../components";
 import { endSession, useSignedIn } from "../api/session";
 import { AUTH_PAGES, loginPathFor } from "../lib/paths";
@@ -35,5 +36,8 @@ export function AuthGuard() {
   if (unverified) return <Navigate to={AUTH_PAGES.verifyEmail} replace />;
   if (rejected) return <FullPageLoader label="Signing you out" />;
   if (me.isPending) return <FullPageLoader label="Checking your session" />;
+  // The API refuses everything else for an account scheduled for deletion, so the app does not render.
+  const scheduledAt = me.data?.user.deletion_scheduled_at;
+  if (me.data && scheduledAt) return <AccountDeletionScheduled me={me.data} scheduledAt={scheduledAt} />;
   return <Outlet />;
 }

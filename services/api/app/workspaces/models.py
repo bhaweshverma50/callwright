@@ -21,6 +21,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, unique=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deletion_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -29,7 +31,8 @@ class Workspace(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String(80))
-    owner_user_id: Mapped[str] = mapped_column(String, unique=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String, unique=True)
     concurrency_limit: Mapped[int] = mapped_column(Integer, default=5)
     recording_default: Mapped[bool] = mapped_column(Boolean, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
