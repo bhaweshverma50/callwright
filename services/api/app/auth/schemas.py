@@ -54,6 +54,7 @@ class Session(BaseModel):
 
 class AuthConfig(BaseModel):
     google_signin: bool
+    trial_credit_usd: str
 
 
 class GoogleStartResponse(BaseModel):

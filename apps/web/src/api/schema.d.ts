@@ -8115,6 +8115,8 @@ export interface operations {
                     "application/json": {
                         /** @description True when "Continue with Google" is available (GOOGLE_SIGNIN_* set and AUTH_PROVIDER=local) */
                         google_signin: boolean;
+                        /** @description Credit a new workspace starts with (TRIAL_CREDIT_USD); one per mailbox, within a daily budget */
+                        trial_credit_usd: components["schemas"]["MoneyUsd"];
                     };
                 };
             };

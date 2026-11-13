@@ -294,10 +294,12 @@ async def test_endpoints_are_rate_limited_per_ip(
 
 
 async def test_off_without_credentials(web: httpx.AsyncClient, app: FastAPI) -> None:
-    assert (await web.get("/v1/auth/config")).json() == {"google_signin": False}
+    off = (await web.get("/v1/auth/config")).json()
+    assert off == {"google_signin": False, "trial_credit_usd": "5.000000"}
     assert (await web.post("/v1/auth/google/start")).status_code == 404
     assert (await web.post("/v1/auth/google/complete", json={"code": "c", "state": "s"})).status_code == 404
 
 
 async def test_config_reports_google_signin(web: httpx.AsyncClient, google: Google) -> None:
-    assert (await web.get("/v1/auth/config")).json() == {"google_signin": True}
+    on = (await web.get("/v1/auth/config")).json()
+    assert on == {"google_signin": True, "trial_credit_usd": "5.000000"}

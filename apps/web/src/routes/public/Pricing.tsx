@@ -2,7 +2,8 @@ import { Link } from "react-router";
 import { Button, COMPONENT_ICONS, COMPONENT_LABELS, CostBreakdownCard, Skeleton, TalkMinutes } from "../../components";
 import { PricingCalculator } from "./PricingCalculator";
 import { REFERENCE_CALL, useReferenceBreakdown } from "../../api/pricing";
-import { formatUsd, TRIAL_CREDIT, TRIAL_CREDIT_MICROS } from "../../lib/money";
+import { formatUsd } from "../../lib/money";
+import { useTrialCredit } from "../../api/auth";
 
 const PARTS: { c: keyof typeof COMPONENT_LABELS; text: string }[] = [
   { c: "stt", text: "Turns the caller's speech into text, per minute of call." },
@@ -14,6 +15,7 @@ const PARTS: { c: keyof typeof COMPONENT_LABELS; text: string }[] = [
 
 /** Public pricing (T073, FR-013): the chain calculator first, then how the price is built. */
 export function Pricing() {
+  const trial = useTrialCredit();
   const reference = useReferenceBreakdown();
   const llm = reference?.lines.find((l) => l.component === "llm");
   return (
@@ -25,13 +27,15 @@ export function Pricing() {
         Build the chain your agent uses. The price per minute is the sum of its links plus the platform fee, and the same engine prices your real
         calls.
       </p>
-      <p className="mt-3 text-[14px] text-fg-3">
-        {TRIAL_CREDIT} of trial credit is about{" "}
-        <span className="font-mono text-fg-2 tnum">
-          <TalkMinutes micros={TRIAL_CREDIT_MICROS} />
-        </span>{" "}
-        minutes on the default chain.
-      </p>
+      {trial ? (
+        <p className="mt-3 text-[14px] text-fg-3">
+          {formatUsd(trial)} of trial credit is about{" "}
+          <span className="font-mono text-fg-2 tnum">
+            <TalkMinutes micros={trial} />
+          </span>{" "}
+          minutes on the default chain.
+        </p>
+      ) : null}
 
       <div className="mt-12">
         <PricingCalculator />

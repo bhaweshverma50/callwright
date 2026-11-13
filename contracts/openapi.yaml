@@ -1283,11 +1283,16 @@ paths:
                 type: object
                 required:
                 - google_signin
+                - trial_credit_usd
                 properties:
                   google_signin:
                     type: boolean
                     description: True when "Continue with Google" is available (GOOGLE_SIGNIN_* set and
                       AUTH_PROVIDER=local)
+                  trial_credit_usd:
+                    $ref: '#/components/schemas/MoneyUsd'
+                    description: Credit a new workspace starts with (TRIAL_CREDIT_USD); one per mailbox,
+                      within a daily budget
       x-spec: 001-platform-foundation
   /auth/google/complete:
     post:

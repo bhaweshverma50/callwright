@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Button, COMPONENT_LABELS, Reveal, RevealItem, Skeleton, TalkMinutes } from "../../components";
-import { formatUsd, toMicros, TRIAL_CREDIT, TRIAL_CREDIT_MICROS } from "../../lib/money";
+import { formatUsd, toMicros } from "../../lib/money";
+import { useTrialCredit } from "../../api/auth";
 import { ChainDemo } from "./home/ChainDemo";
 import { ProductVideo } from "./home/ProductVideo";
 import { ProviderStrip } from "./home/ProviderStrip";
@@ -62,6 +63,7 @@ function Stacked({ id, title, intro, children }: { id: string; title: string; in
 
 /** Public home (T044, FR-016). Product visuals are real components fed by the pricing engine. */
 export function Home() {
+  const trial = useTrialCredit();
   const entries = useCatalogEntries();
   return (
     <>
@@ -89,11 +91,17 @@ export function Home() {
             </RevealItem>
             <RevealItem>
               <p className="mt-6 text-[14px] text-fg-3">
-                New workspaces start with {TRIAL_CREDIT}, about{" "}
-                <span className="font-mono text-fg-2 tnum">
-                  <TalkMinutes micros={TRIAL_CREDIT_MICROS} />
-                </span>{" "}
-                minutes of calls.
+                {trial ? (
+                  <>
+                    New workspaces start with {formatUsd(trial)}, about{" "}
+                    <span className="font-mono text-fg-2 tnum">
+                      <TalkMinutes micros={trial} />
+                    </span>{" "}
+                    minutes of calls.
+                  </>
+                ) : (
+                  "Pay per minute, billed per second. No card needed to start."
+                )}
               </p>
             </RevealItem>
           </Reveal>
@@ -164,7 +172,13 @@ export function Home() {
       <section aria-labelledby="start">
         <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:py-28">
           <h2 id="start" className="max-w-[20ch] text-balance font-display text-[30px] leading-[1.1] tracking-[-0.03em] text-fg sm:text-[40px]">
-            Your first {formatUsd(TRIAL_CREDIT_MICROS, { places: 0 })} is about <TalkMinutes micros={TRIAL_CREDIT_MICROS} /> minutes of calls.
+            {trial ? (
+              <>
+                Your first {formatUsd(trial)} is about <TalkMinutes micros={trial} /> minutes of calls.
+              </>
+            ) : (
+              "Pay only for the minutes your agents talk."
+            )}
           </h2>
           <p className="mt-4 max-w-[52ch] text-[16px] leading-relaxed text-fg-2">
             No card needed until you add funds. Calls are billed per second from your balance.

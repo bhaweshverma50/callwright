@@ -230,7 +230,7 @@ export const handlers = [
 
   // "Continue with Google": the mock skips Google and sends the browser straight to the callback.
   // The state is stateless (a page load between start and complete would lose module memory).
-  http.get(url("/auth/config"), () => json({ google_signin: true })),
+  http.get(url("/auth/config"), () => json({ google_signin: true, trial_credit_usd: "5.000000" })),
 
   http.post(url("/auth/google/start"), () => {
     const callback = new URL("/auth/google/callback", globalThis.location?.origin ?? "http://localhost");

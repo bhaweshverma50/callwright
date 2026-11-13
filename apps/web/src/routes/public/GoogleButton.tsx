@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getAuthConfig, startGoogleSignIn } from "../../api/auth";
+import { authConfigQuery, startGoogleSignIn } from "../../api/auth";
 import { rememberGoogleFlow } from "../../api/googleFlow";
 import { problemMessage } from "../../api/problems";
 import { Button, FormAlert } from "../../components";
@@ -28,7 +28,7 @@ function GoogleMark() {
  * `next` is the page to open once signed in.
  */
 export function GoogleButton({ next }: { next?: string }) {
-  const config = useQuery({ queryKey: ["auth", "config"], queryFn: getAuthConfig, staleTime: 5 * 60_000, retry: false });
+  const config = useQuery(authConfigQuery);
   const start = useMutation({
     mutationFn: startGoogleSignIn,
     onSuccess: ({ authorization_url }) => {

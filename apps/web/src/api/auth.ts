@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { toMicros } from "../lib/money";
 import { api, unwrap } from "./client";
 import { endSession } from "./session";
 
@@ -13,6 +15,17 @@ export function register(email: string, password: string, captchaToken?: string)
 /** Public sign-in options; `google_signin` says whether "Continue with Google" is on. */
 export function getAuthConfig() {
   return unwrap(api.GET("/auth/config"));
+}
+
+export const authConfigQuery = { queryKey: ["auth", "config"] as const, queryFn: getAuthConfig, staleTime: 5 * 60_000, retry: false };
+
+/**
+ * The credit a new workspace starts with, from the server (it differs per deployment), in micros.
+ * Null while loading or when it cannot be read: callers then name no amount rather than a wrong one.
+ */
+export function useTrialCredit(): bigint | null {
+  const config = useQuery(authConfigQuery);
+  return config.data?.trial_credit_usd ? toMicros(config.data.trial_credit_usd) : null;
 }
 
 /** The Google URL to send the browser to; the caller keeps `state` to check on the way back. */

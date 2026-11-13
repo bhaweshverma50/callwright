@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Request, Response
 
 from app.auth.idp import IdpSession
@@ -22,6 +24,7 @@ from app.auth.service import AuthService
 from app.core.auth import CurrentClaims, bearer_token
 from app.core.client_ip import client_ip
 from app.core.errors import problem_responses
+from app.core.money import SIX
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -110,7 +113,11 @@ async def confirm_password_reset(body: ResetConfirmRequest, request: Request) ->
 
 @router.get("/config", response_model=AuthConfig)
 async def auth_config(request: Request) -> AuthConfig:
-    return AuthConfig(google_signin=request.app.state.settings.google_signin_enabled)
+    settings = request.app.state.settings
+    return AuthConfig(
+        google_signin=settings.google_signin_enabled,
+        trial_credit_usd=str(Decimal(settings.trial_credit_usd).quantize(SIX)),
+    )
 
 
 @router.post("/google/start", response_model=GoogleStartResponse, responses=problem_responses(404, 429))
