@@ -502,3 +502,18 @@ Runbook:
   and nothing was archived while access was lost.
 - **A sync is held for a mass archive**: only the knowledge base owner should decide (Archive them
   or Keep them on the source). Do not confirm on their behalf.
+
+## Account deletion (s024)
+
+- Settings > Delete account schedules erasure 30 days out (`users.deletion_scheduled_at`). While
+  scheduled, every API route except `GET /me`, sign-out, refresh and `DELETE /v1/account/deletion`
+  answers 403 `account_deletion_scheduled`, and call admission refuses every call with the same code,
+  so the workspace spends no credit. Keep my account clears it.
+- Cron `erase_due_accounts` (jobs worker, hourly at :17) erases due accounts one at a time: Google
+  grants revoked, SIP numbers and WhatsApp channels released, stored files deleted, the IdP user
+  removed, then every workspace-scoped table emptied (`app_erase_workspace`). Billing ledger tables
+  (`credit_transactions`, `usage_events`, `checkout_sessions`, `call_costs`) stay under a tombstone
+  workspace named `[deleted]`. The Redis `trial_claimed:<email>` key is kept, so re-signup gets no trial.
+- An account whose SIP release or recordings delete fails stays scheduled and is retried next hour;
+  the recordings bucket credentials need `DeleteObject`. A Supabase deployment also needs
+  `SUPABASE_SERVICE_ROLE_KEY` on the worker (production runs the local IdP and does not).

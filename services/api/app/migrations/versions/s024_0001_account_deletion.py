@@ -12,6 +12,7 @@
   jobs worker's admin role. The erase deletes every row of every table that has a
   ``workspace_id`` column (found in the catalog, so a table added later is covered without a code
   change), children before parents, except the ledger tables above.
+* ``app_workspace_deletion_scheduled()``: call admission refuses calls while deletion is scheduled.
 * ``local_idp.users.password_set``: false for accounts created through Google sign-in.
 
 Revision ID: s024_0001
@@ -60,6 +61,18 @@ def upgrade() -> None:
     $$;
     REVOKE ALL ON FUNCTION app_resolve_subject(text) FROM PUBLIC;
     GRANT EXECUTE ON FUNCTION app_resolve_subject(text) TO callwright_app;
+
+    -- Call admission refuses every call (inbound, outbound, test) while the owner's deletion is
+    -- scheduled, so a locked account spends no credit; cancelling restores calls with nothing lost.
+    CREATE FUNCTION app_workspace_deletion_scheduled(p_workspace_id text)
+    RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+      SELECT coalesce((SELECT u.deletion_scheduled_at IS NOT NULL
+                         FROM workspaces w JOIN users u ON u.id = w.owner_user_id
+                        WHERE w.id = p_workspace_id), false)
+    $$;
+    REVOKE ALL ON FUNCTION app_workspace_deletion_scheduled(text) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION app_workspace_deletion_scheduled(text) TO callwright_app;
 
     -- Accounts whose grace period is over (ids only; the worker then works per account).
     CREATE FUNCTION account_erasure_due(p_limit int)

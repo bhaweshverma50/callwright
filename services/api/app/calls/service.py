@@ -74,6 +74,7 @@ LIVE_CHANNELS = frozenset({"sip_inbound", "sip_outbound", "whatsapp"})
 # Refusal codes: problem status, problem code, disconnect reason (FR-008, contract sessions.yaml).
 REFUSALS: dict[str, tuple[int, str]] = {
     "email_unverified": (403, "error"),
+    "account_deletion_scheduled": (403, "error"),
     "agent_not_published": (409, "error"),
     "flow_not_compiled": (409, "error"),
     "unsupported_vendor": (422, "error"),
@@ -84,6 +85,9 @@ REFUSALS: dict[str, tuple[int, str]] = {
 }
 _DETAILS = {
     "email_unverified": "Verify your email address before placing calls.",
+    "account_deletion_scheduled": (
+        "This account is scheduled for deletion, so it takes no calls. Choose Keep my account to restore it."
+    ),
     "agent_not_published": "This agent has no published version.",
     "flow_not_compiled": "This flow has no compiled graph. Fix the problems the flow builder lists.",
     "unsupported_vendor": "The agent uses a speech or language vendor the platform does not support.",
@@ -240,6 +244,14 @@ async def _email_verified(session: AsyncSession, workspace_id: str) -> bool:
     )
 
 
+async def _deletion_scheduled(session: AsyncSession, workspace_id: str) -> bool:
+    return bool(
+        (
+            await session.execute(text("select app_workspace_deletion_scheduled(:ws)"), {"ws": workspace_id})
+        ).scalar()
+    )
+
+
 def _replayed_refusal(call: Call) -> Refusal:
     diagnostic = call.diagnostic or "error"
     code = diag.parse(diagnostic).code
@@ -323,6 +335,8 @@ async def admit_in_session(
     snapshot, refused = await _resolve_version(session, request)
     if not await _email_verified(session, request.workspace_id):
         refused = refusal("email_unverified")
+    if refused is None and await _deletion_scheduled(session, request.workspace_id):
+        refused = refusal("account_deletion_scheduled")
     if refused is None and snapshot is not None:
         refused = await _checks(session, request, snapshot, catalog)
     if refused is None and request.declined:
