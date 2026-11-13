@@ -389,3 +389,32 @@ booked and the job then hung for a minute on shutdown.
 - Deploy: API (`deploy.sh ... build api`, no migration: starter default, validation, language
   options for flows), voice image (`build-voice`, roll `voice` and `textsim`), Vercel (End node
   editor). No new settings.
+
+## 15. Signup abuse protections
+
+Anyone can script signups and spend each new workspace's trial credit on paid vendor calls. Four
+protections exist, all off (or harmless) until configured. Set secrets in Secret Manager (name =
+env var, `setup` binds them, `deploy.sh` mounts optional ones that exist) and plain settings in the
+shell that runs `deploy.sh ... api`.
+
+- **Daily trial-credit budget**: `TRIAL_CREDIT_DAILY_BUDGET_USD=25` caps the trial credit granted
+  per UTC day across all new workspaces. Past the cap, new workspaces start at $0 (logged). Redis
+  down while this is set also grants nothing. Unset or 0 means unlimited. No migration.
+- **Captcha (Cloudflare Turnstile)**: create a widget in the Cloudflare dashboard (Turnstile), put
+  its secret in the `TURNSTILE_SECRET_KEY` secret, and set `VITE_TURNSTILE_SITE_KEY` to the site key
+  in Vercel (build-time, so redeploy the web app). `POST /auth/register` then needs `captcha_token`
+  (400 `captcha_failed`; 503 if Cloudflare is unreachable). Unset means no check.
+- **Real verification emails**: `SMTP_HOST` (for example `smtp.gmail.com`), `SMTP_PORT` (587,
+  STARTTLS), `SMTP_USERNAME`, `SMTP_FROM`, and the `SMTP_PASSWORD` secret. A Gmail app password
+  works (Google account, 2-step verification, App passwords). The local IdP then emails each
+  verification and reset link as well as keeping the dev outbox. Send failures are logged with the
+  address masked and never fail registration; the user can press resend.
+- **Disposable domains**: registration refuses throwaway email domains
+  (`BLOCK_DISPOSABLE_EMAIL`, on by default; list in `services/api/app/auth/disposable_domains.txt`,
+  refreshed monthly by the `disposable-domains` workflow). `EXTRA_BLOCKED_EMAIL_DOMAINS=a.com,b.com`
+  adds more without a code change.
+
+Keep `AUTH_AUTO_VERIFY_EMAIL=true` until SMTP is confirmed working (register, then check the
+inbox). Only then set `AUTH_AUTO_VERIFY_EMAIL=false`; with it off, an account cannot sign in or
+get its trial credit until the emailed link is opened. The deploy script still sets it to true,
+so change the line in `step_api` at that point.

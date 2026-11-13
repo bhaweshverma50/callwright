@@ -13,16 +13,19 @@ Two adapters implement ``IdentityProvider``:
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
 import logging
 import secrets
+import smtplib
 import time
 import uuid
 from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from typing import Any, Protocol
 
 import httpx
@@ -117,6 +120,26 @@ class IdentityProvider(Protocol):
         ...
 
 
+def _mask_email(address: str) -> str:
+    local, _, domain = address.partition("@")
+    return f"{local[:1]}***@{domain}"
+
+
+def _send_smtp(settings: Settings, to: str, subject: str, body: str) -> None:
+    """Blocking SMTP send with STARTTLS (call through ``asyncio.to_thread``)."""
+    message = EmailMessage()
+    message["From"] = settings.smtp_from or settings.smtp_username or "noreply@localhost"
+    message["To"] = to
+    message["Subject"] = subject
+    message.set_content(body)
+    assert settings.smtp_host is not None
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:
+        smtp.starttls()
+        if settings.smtp_username and settings.smtp_password:
+            smtp.login(settings.smtp_username, settings.smtp_password.get_secret_value())
+        smtp.send_message(message)
+
+
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
 
 
@@ -153,6 +176,7 @@ class LocalIdentityProvider:
         self.issuer = settings.auth_jwt_issuer
         self.ttl = settings.auth_access_token_ttl_s
         self.web_base_url = settings.web_base_url.rstrip("/")
+        self.settings = settings
         self.outbox: deque[OutboxMessage] = deque(maxlen=200)
 
     def _access_token(self, subject: str, email: str, session_id: str) -> str:
@@ -202,7 +226,21 @@ class LocalIdentityProvider:
         link = f"{self.web_base_url}/{path}?token_hash={raw}"
         self.outbox.append(OutboxMessage(email, kind, link, raw, datetime.now(UTC)))
         subject = "Verify your email" if kind == "verify_email" else "Reset your password"
-        logger.warning("[dev mail] to=%s subject=%r link=%s", email, subject, link)
+        if self.settings.smtp_host:
+            await self._email(email, subject, kind, link)
+        else:
+            logger.warning("[dev mail] to=%s subject=%r link=%s", email, subject, link)
+
+    async def _email(self, to: str, subject: str, kind: str, link: str) -> None:
+        """Send the outbox message by SMTP. Never raises: the caller already answered
+        ``verification_sent`` and the user can ask for the link again."""
+        action = "verify your email address" if kind == "verify_email" else "reset your password"
+        body = f"Open this link to {action}:\n\n{link}\n\nIf you did not ask for this, ignore this email.\n"
+        try:
+            await asyncio.to_thread(_send_smtp, self.settings, to, subject, body)
+        except Exception as exc:
+            # The exception text can echo the message, so log its type only.
+            logger.warning("could not email %s to %s (%s)", kind, _mask_email(to), type(exc).__name__)
 
     async def _user_by_email(self, email: str) -> Any:
         async with self.db.transaction() as s:
