@@ -165,7 +165,7 @@ export function ConnectionCard({ connection: c }: { connection: Connection }) {
     >
       <PanelRows as="dl">
         <InfoRow icon={<ShieldCheck />} label="Access">
-          <span className="flex flex-wrap items-center gap-1.5">
+          <span className="flex flex-wrap items-center justify-end gap-1.5">
             {driveGranted && <Badge icon={<Database />}>{SCOPE_LABELS[DRIVE_SCOPE]}</Badge>}
             {c.sheets_access ? (
               <Badge icon={<Table2 />}>Sheets</Badge>
