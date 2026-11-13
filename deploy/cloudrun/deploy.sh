@@ -280,6 +280,7 @@ print(next((e.get("value", "") for e in env if e["name"] == "LIVEKIT_SIP_HOST"),
   # Hosted demo defaults (Brevo SMTP, $5 of trial credit a day); export one as empty to drop it.
   : "${SMTP_HOST=smtp-relay.brevo.com}" "${SMTP_PORT=587}" "${SMTP_USERNAME=b53f68001@smtp-brevo.com}"
   : "${SMTP_FROM=Callwright <mail@bhawesh.dev>}" "${TRIAL_CREDIT_DAILY_BUDGET_USD=5.00}"
+  : "${GOOGLE_SIGNIN_CLIENT_ID=397506365372-83ftph63eb8t96pf8cg9apsekdpdfcl2.apps.googleusercontent.com}"
   for name in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_FROM TRIAL_CREDIT_DAILY_BUDGET_USD EXTRA_BLOCKED_EMAIL_DOMAINS \
     GOOGLE_SIGNIN_CLIENT_ID; do
     [ -n "${!name:-}" ] && env+="|$name=${!name}"
