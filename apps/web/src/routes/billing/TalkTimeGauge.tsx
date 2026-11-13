@@ -62,8 +62,8 @@ export function TalkTimeGauge({ balanceUsd, loading }: { balanceUsd: string | un
 
   return (
     <section aria-labelledby="talk-time" className="relative h-full overflow-hidden rounded-feature border border-line bg-surface shadow-2">
-      <div className="relative grid h-full content-center items-center gap-6 px-5 py-6 sm:px-8 md:grid-cols-[260px_minmax(0,1fr)] md:gap-10">
-        <div className="relative mx-auto w-[240px] md:w-[260px]">
+      <div className="relative grid h-full content-center items-center gap-6 px-5 py-5 sm:px-7 md:grid-cols-[240px_minmax(0,1fr)] md:gap-10">
+        <div className="relative mx-auto w-[220px] md:w-[240px]">
           <Arc fill={facts?.fill ?? 0} low={low} />
           <div className="absolute inset-x-0 bottom-1 flex flex-col items-center">
             <span className="text-[13px] text-fg-3">about</span>

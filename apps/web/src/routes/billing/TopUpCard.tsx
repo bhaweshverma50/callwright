@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, ExternalLink, Lock } from "lucide-react";
+import { CreditCard, Lock } from "lucide-react";
 import { useRef, useState, type FormEvent, type Ref } from "react";
 import { idempotencyKey } from "../../lib/idempotency";
 import { fieldErrors, problemMessage } from "../../api/problems";
@@ -68,99 +68,109 @@ export function TopUpCard({
   const minutes = check.ok && perMinuteMicros ? talkMinutes(check.micros, perMinuteMicros) : null;
 
   return (
-    <Panel title="Add funds" description="Paid by card through secure hosted checkout." icon={<CreditCard />} className={className}>
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <div role="group" aria-label="Preset amounts" className="grid grid-cols-4 gap-2">
-          {PRESETS.map((p) => {
-            const value = `${p}.00`;
-            return (
-              <Chip
-                key={p}
-                className="justify-center px-2"
-                selected={check.ok && check.normalized === value}
-                onClick={() => {
-                  setAmount(value);
-                  setTouched(true);
-                  checkout.reset();
-                }}
-              >
-                {formatUsd(p, { places: 0 })}
-              </Chip>
-            );
-          })}
-        </div>
-
-        <Field
-          label="Amount"
-          error={serverFieldError ?? (showError ? reason : null)}
-          hint={
-            minutes !== null ? (
-              <>
-                About <span className="font-mono text-fg-2 tnum">{minutes.toLocaleString()}</span> minutes of calls on your current stack.
-              </>
-            ) : (
-              `${TOP_UP_RANGE}, in whole cents.`
-            )
-          }
+    <Panel
+      title="Add funds"
+      description="Paid by card through secure hosted checkout. Credit appears once the payment is confirmed."
+      icon={<CreditCard />}
+      className={className}
+    >
+      {/* Narrow card: presets above the amount. Wide card (the stacked layout below xl): amount and pay
+          button on the left, presets on the same line to the right, so nothing stretches across the page. */}
+      <div className="@container">
+        <form
+          onSubmit={onSubmit}
+          noValidate
+          className="grid grid-cols-[minmax(0,1fr)] gap-3.5 @[40rem]:grid-cols-[minmax(0,26rem)_auto] @[40rem]:justify-between @[40rem]:gap-x-8"
         >
-          {({ id, describedBy, invalid }) => (
-            <Input
-              ref={inputRef}
-              id={id}
-              prefix="$"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0.00"
-              inputSize="lg"
-              className="font-mono tnum"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                checkout.reset();
-              }}
-              onBlur={() => setTouched(true)}
-              aria-describedby={describedBy}
-              aria-invalid={invalid}
-            />
-          )}
-        </Field>
-
-        {formError && (
-          <p role="alert" className="text-[13px] text-danger-text">
-            {formError}
-          </p>
-        )}
-
-        <Tooltip content={disabledWhy ?? ""} enabled={Boolean(disabledWhy)}>
-          {/* A wrapper keeps the tooltip reachable while the button itself is disabled. */}
-          <span
-            tabIndex={disabledWhy ? 0 : -1}
-            className="block rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            aria-describedby={disabledWhy ? "topup-why" : undefined}
+          <div
+            role="group"
+            aria-label="Preset amounts"
+            className="grid grid-cols-4 gap-2 @[40rem]:col-start-2 @[40rem]:row-start-1 @[40rem]:mt-[26px] @[40rem]:flex"
           >
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              disabled={!check.ok}
-              pending={checkout.isPending}
-              icon={<Lock aria-hidden />}
-            >
-              {label}
-            </Button>
-          </span>
-        </Tooltip>
-        {disabledWhy && (
-          <p id="topup-why" className="sr-only">
-            {disabledWhy}
-          </p>
-        )}
-        <p className="flex items-start gap-2 text-[13px] leading-relaxed text-fg-3">
-          <ExternalLink className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          You return here after paying. Credit appears once the payment is confirmed.
-        </p>
-      </form>
+            {PRESETS.map((p) => {
+              const value = `${p}.00`;
+              return (
+                <Chip
+                  key={p}
+                  className="justify-center px-2 @[40rem]:min-w-[72px] @[40rem]:px-3"
+                  selected={check.ok && check.normalized === value}
+                  onClick={() => {
+                    setAmount(value);
+                    setTouched(true);
+                    checkout.reset();
+                  }}
+                >
+                  {formatUsd(p, { places: 0 })}
+                </Chip>
+              );
+            })}
+          </div>
+
+          <Field
+            className="@[40rem]:col-start-1 @[40rem]:row-start-1"
+            label="Amount"
+            error={serverFieldError ?? (showError ? reason : null)}
+            hint={
+              minutes !== null ? (
+                <>
+                  About <span className="font-mono text-fg-2 tnum">{minutes.toLocaleString()}</span> minutes of calls on your current stack.
+                </>
+              ) : (
+                `${TOP_UP_RANGE}, in whole cents.`
+              )
+            }
+          >
+            {({ id, describedBy, invalid }) => (
+              // The pay button sits on the amount's line, so the card stays as short as the balance beside it.
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    ref={inputRef}
+                    id={id}
+                    prefix="$"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder="0.00"
+                    className="font-mono tnum"
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      checkout.reset();
+                    }}
+                    onBlur={() => setTouched(true)}
+                    aria-describedby={describedBy}
+                    aria-invalid={invalid}
+                  />
+                </div>
+                <Tooltip content={disabledWhy ?? ""} enabled={Boolean(disabledWhy)}>
+                  {/* A wrapper keeps the tooltip reachable while the button itself is disabled. */}
+                  <span
+                    tabIndex={disabledWhy ? 0 : -1}
+                    className="block rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    aria-describedby={disabledWhy ? "topup-why" : undefined}
+                  >
+                    <Button type="submit" variant="primary" disabled={!check.ok} pending={checkout.isPending} icon={<Lock aria-hidden />}>
+                      {label}
+                    </Button>
+                  </span>
+                </Tooltip>
+              </div>
+            )}
+          </Field>
+
+          {formError && (
+            <p role="alert" className="text-[13px] text-danger-text @[40rem]:col-span-2">
+              {formError}
+            </p>
+          )}
+
+          {disabledWhy && (
+            <p id="topup-why" className="sr-only">
+              {disabledWhy}
+            </p>
+          )}
+        </form>
+      </div>
     </Panel>
   );
 }
