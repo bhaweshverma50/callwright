@@ -1,0 +1,55 @@
+name: labels
+
+# pull_request_target so PRs from forks get a token that can label. Safe because no step checks
+# out or runs the PR's code: labeler reads its config from main, and the title only reaches the
+# script through env.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  labels:
+    name: labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: true
+
+      - name: Type and size from the title and diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          ADDED: ${{ github.event.pull_request.additions }}
+          DELETED: ${{ github.event.pull_request.deletions }}
+        run: |
+          add=() remove=()
+
+          type=$(printf '%s' "$TITLE" | sed -nE 's/^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .*/\1/p')
+          [ "$type" = build ] && type=ci
+          for t in feat fix perf refactor docs test ci chore revert; do
+            if [ "$t" = "$type" ]; then add+=("type: $t"); else remove+=("type: $t"); fi
+          done
+          if printf '%s' "$TITLE" | grep -Eq '^[a-z]+(\([a-z0-9-]+\))?!: '; then add+=(breaking); else remove+=(breaking); fi
+
+          # ponytail: counts generated files and lockfiles too; reviewers judge the real size.
+          n=$((ADDED + DELETED))
+          if   [ "$n" -lt 50 ];   then size=XS
+          elif [ "$n" -lt 200 ];  then size=S
+          elif [ "$n" -lt 800 ];  then size=M
+          elif [ "$n" -lt 2000 ]; then size=L
+          else size=XL; fi
+          for s in XS S M L XL; do
+            if [ "$s" = "$size" ]; then add+=("size: $s"); else remove+=("size: $s"); fi
+          done
+
+          args=()
+          for l in "${add[@]}"; do args+=(--add-label "$l"); done
+          for l in "${remove[@]}"; do args+=(--remove-label "$l"); done
+          gh pr edit "$PR" "${args[@]}"

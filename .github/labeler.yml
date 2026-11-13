@@ -1,0 +1,34 @@
+# Area labels from changed paths (actions/labeler v5). Type and size labels come from labels.yml.
+"area: api":
+  - changed-files:
+      - any-glob-to-any-file: services/api/**
+"area: web":
+  - changed-files:
+      - any-glob-to-any-file: apps/web/**
+"area: voice-worker":
+  - changed-files:
+      - any-glob-to-any-file: services/voice-worker/**
+"area: contracts":
+  - changed-files:
+      - any-glob-to-any-file: [contracts/**, specs/*/contracts/**, packages/contract/**]
+"area: migrations":
+  - changed-files:
+      - any-glob-to-any-file: services/api/app/migrations/**
+"area: deploy":
+  - changed-files:
+      - any-glob-to-any-file: deploy/**
+"area: specs":
+  - changed-files:
+      - any-glob-to-any-file: [specs/**, .specify/**]
+"area: ci":
+  - changed-files:
+      - any-glob-to-any-file: [.github/**, Makefile]
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - services/api/app/auth/**
+          - services/api/app/billing/**
+          - services/api/app/core/auth.py
+          - services/api/app/core/secrets.py
+          - services/api/app/migrations/**
+          - deploy/**
