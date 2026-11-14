@@ -92,9 +92,9 @@ printf %s "$VALUE" | gcloud secrets versions add NAME --data-file=- --account "$
 
 | Secret | Used by | Value |
 |---|---|---|
-| `DATABASE_URL` | API, migrate job, VM worker | pooled app role URL (above) |
-| `DATABASE_ADMIN_URL` | API, migrate job, VM worker | pooled admin role URL |
-| `DATABASE_OWNER_URL` | migrate job | session `postgres` URL |
+| `DATABASE_URL` | API, migrate job, VM worker | app role URL (above; Cloud SQL private IP, direct 5432) |
+| `DATABASE_ADMIN_URL` | API, migrate job, VM worker | admin role URL (same host) |
+| `DATABASE_OWNER_URL` | migrate job | `postgres` URL (same host; DDL needs a session connection) |
 | `REDIS_URL` | API | `redis://:<REDIS_PASSWORD url-encoded>@10.160.0.2:6379/0` (the VM's Redis over Direct VPC egress) |
 | `REDIS_PASSWORD` | VM (exists) | Redis password; keep `REDIS_URL` in step |
 | `AUTH_JWT_SECRET` | API, VM worker | 48+ random characters (`openssl rand -base64 48`) |
@@ -169,7 +169,7 @@ gcloud run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-a
 The API reaches Redis on the VM's internal address through Direct VPC egress
 (`--network default --subnet default --vpc-egress private-ranges-only`); the VM firewall rule
 `callwright-rtc-internal` already allows tcp 6379 from internal ranges, which include the
-subnet Cloud Run egresses from. Public traffic (Supabase, LiveKit over `wss://rtc.bhawesh.dev`)
+subnet Cloud Run egresses from. Private-range traffic (Redis, Cloud SQL at 10.54.32.3) takes the VPC; public traffic (LiveKit over `wss://rtc.bhawesh.dev`)
 keeps the default internet path.
 
 ## 4. API environment
