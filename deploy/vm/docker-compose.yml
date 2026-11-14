@@ -3,10 +3,19 @@
 # by deploy/vm/render-env.sh from Secret Manager (see deploy/vm/README.md).
 # Every service restarts on its own after the VM boots (restart: unless-stopped, docker enabled
 # at boot by install-idle.sh); the VM powers itself off when idle (idle-shutdown.sh).
+# Every container's log is capped at 3 x 10 MB. Uncapped, the lab PBX logged each internet
+# scanner's failed SIP REGISTER until the disk filled (2026-11-11), which killed textsim.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   caddy:
     image: caddy:2.8.4
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -16,6 +25,7 @@ services:
   livekit:
     image: livekit/livekit-server:v1.13.3
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     command: --config /etc/livekit.yaml
     volumes:
@@ -26,6 +36,7 @@ services:
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     # Reachable on the VPC (firewall allows tcp:6379 only from internal ranges) with a password.
     command: ["redis-server", "--port", "6379", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
@@ -38,6 +49,7 @@ services:
   worker:
     image: ${API_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/api:latest}
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     env_file: worker.env
     environment:
@@ -52,6 +64,7 @@ services:
     image: ${EGRESS_IMAGE:-livekit/egress:v1.14.1}
     profiles: ["recording"]
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     cap_add:
       - SYS_ADMIN
@@ -73,6 +86,7 @@ services:
   voice: &voice
     image: ${VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     env_file: voice.env
     stop_grace_period: 3900s
@@ -96,6 +110,7 @@ services:
   textsim:
     image: ${VOICE_IMAGE:-asia-south1-docker.pkg.dev/callwright-dev/callwright/voice-worker:latest}
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     env_file: voice.env
     environment:
@@ -115,6 +130,7 @@ services:
     image: ${SIP_IMAGE:-livekit/sip:v1.2.0}
     profiles: ["telephony"]
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     # The image's entrypoint passes --config=/sip/config.yaml, which beats SIP_CONFIG_FILE.
     volumes:
@@ -132,12 +148,14 @@ services:
     image: callwright-lab-pbx
     profiles: ["lab"]
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     volumes:
       - ./lab-pbx/pjsip.conf:/etc/asterisk/pjsip.conf:ro
       - ./lab-pbx/extensions.conf:/etc/asterisk/extensions.conf:ro
       - ./lab-pbx/rtp.conf:/etc/asterisk/rtp.conf:ro
       - ./lab-pbx/modules.conf:/etc/asterisk/modules.conf:ro
+      - ./lab-pbx/logger.conf:/etc/asterisk/logger.conf:ro
     depends_on:
       - sip
 
