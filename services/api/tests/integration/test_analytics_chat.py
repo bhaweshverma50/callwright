@@ -318,9 +318,11 @@ async def test_most_expensive_call(client: httpx.AsyncClient, seeded_calls: Seed
     answer = await _answer(
         client, seeded_calls.a.headers, "which was the most expensive call in the last 90 days"
     )
+    # The seed has calls tied on cost: break ties the way the assistant does (newest first),
+    # or Postgres may return either and the test fails at random.
     top = owner_sql(
         """select id from calls where workspace_id = %s and origin in ('live', 'test')
-             and cost_total_usd is not null order by cost_total_usd desc limit 1""",
+             and cost_total_usd is not null order by cost_total_usd desc, created_at desc limit 1""",
         (seeded_calls.a.workspace_id,),
     )[0][0]
     assert answer["table"]["rows"][0]["call_id"] == top
