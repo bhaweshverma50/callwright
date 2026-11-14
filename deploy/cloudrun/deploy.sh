@@ -187,6 +187,7 @@ step_migrate() {
   gc run jobs deploy callwright-migrate --region "$REGION" --image "$IMAGE" \
     --service-account "$SA" --args migrate --tasks 1 --max-retries 0 --task-timeout 900s \
     --cpu 1 --memory 512Mi --set-env-vars LOG_JSON=true \
+    --network default --subnet default --vpc-egress private-ranges-only \
     --set-secrets "$(secrets_flag "${MIGRATE_SECRETS[@]}")"
   gc run jobs execute callwright-migrate --region "$REGION" --wait
 }

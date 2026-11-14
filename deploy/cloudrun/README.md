@@ -7,7 +7,7 @@ Hosted demo topology:
 | API (`callwright-api`) | Cloud Run service, asia-south1, scale to zero | image `services/api/Dockerfile`, `ROLE=api` |
 | Migrations (`callwright-migrate`) | Cloud Run job | same image, `ROLE=migrate`: `alembic upgrade head`, then the templates sync |
 | Redis, LiveKit, jobs worker, voice worker | VM `callwright-rtc` (asia-south1-a, internal 10.160.0.2) | `deploy/vm`; powers off after 15 idle minutes, the API wakes it |
-| Postgres + pgvector | Supabase | app and admin roles through the transaction pooler, migrations over a session connection |
+| Postgres + pgvector | Cloud SQL `callwright-pg` (PG 17, db-f1-micro, private IP 10.54.32.3 on `default`) | app, admin and owner roles direct on 5432 with `sslmode=require`; reached over Direct VPC egress (API and migrate job) and from the VM |
 | Web | Vercel, https://callwright-one.vercel.app | `VITE_API_BASE_URL` points at the API |
 
 One image serves every role. The role comes from the first container argument or `ROLE`
@@ -27,7 +27,16 @@ PROJECT=callwright-dev
 REGION=asia-south1
 ```
 
-## 1. Supabase (once)
+## 1. Database (once)
+
+Hosted on Cloud SQL since 2026-11-14 (moved off Supabase; final Supabase dumps are in
+`gs://callwright-dev-db-backups/supabase-final-2026-11-14/`). Cloud SQL's `postgres` lacks
+BYPASSRLS by default: run `ALTER ROLE postgres BYPASSRLS` once, then the bootstrap below over the
+instance's IP (temporarily add a public IP with your address authorised, then `--no-assign-ip`).
+The `postgres` password is in the `CLOUDSQL_POSTGRES_PASSWORD` secret. The Supabase steps below
+still apply to a Supabase database.
+
+### Supabase
 
 1. Do not enable `vector` from the dashboard (it would land in schema `extensions`): the
    bootstrap script installs `citext` and `vector` in schema `public`, where the RLS lookup
@@ -65,6 +74,10 @@ REGION=asia-south1
    Add `?sslmode=require` if you want TLS enforced (it is translated per driver). A pooler on
    another port can be marked with `?pgbouncer=true`. Check the custom roles log in through the
    pooler (`psql "<DATABASE_URL>" -c 'select current_user'`) before deploying.
+
+   Current values (Cloud SQL, no pooler): all three secrets use
+   `postgresql://<role>:<pw>@10.54.32.3:5432/postgres?sslmode=require` with role
+   `callwright_app`, `callwright_admin` or `postgres`.
 
 ## 2. Secrets (Secret Manager, once per value)
 
