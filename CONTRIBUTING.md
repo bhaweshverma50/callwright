@@ -1,6 +1,6 @@
 # Contributing
 
-Live demo: https://callwright-one.vercel.app. Setup and deploy steps are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
+Live demo: https://callwright.bhawesh.dev. Setup and deploy steps are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Pull requests
 

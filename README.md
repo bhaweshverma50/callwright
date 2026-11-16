@@ -11,7 +11,7 @@ Callwright is a platform for voice agents that take phone and web calls. You cho
 
 [![ci](https://github.com/bhaweshverma50/callwright/actions/workflows/ci.yml/badge.svg)](https://github.com/bhaweshverma50/callwright/actions/workflows/ci.yml)
 
-[Hosted demo](https://callwright-one.vercel.app) ·
+[Hosted demo](https://callwright.bhawesh.dev) ·
 [Docs](docs/OPERATIONS.md) ·
 [Architecture](research/architecture.md) ·
 [Specs](specs/)

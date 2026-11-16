@@ -5,7 +5,7 @@
 # check; voice.env feeds the voice worker. .env pins API_IMAGE and VOICE_IMAGE for compose.
 #
 # Non-secret settings can be overridden when running it, for example
-#   CW_ENV=staging CW_WEB_BASE_URL=https://callwright-one.vercel.app \
+#   CW_ENV=staging CW_WEB_BASE_URL=https://callwright.bhawesh.dev \
 #   CW_API_BASE_URL=https://callwright-api-xxxx.a.run.app CW_VOICE_IMAGE=<image> ./render-env.sh
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -105,7 +105,7 @@ REDIS_URL_ENCODED_PASSWORD="$(python3 -c 'import sys, urllib.parse; print(urllib
 {
   line ENV "${CW_ENV:-staging}"
   line LOG_JSON true
-  line WEB_BASE_URL "${CW_WEB_BASE_URL:-https://callwright-one.vercel.app}"
+  line WEB_BASE_URL "${CW_WEB_BASE_URL:-https://callwright.bhawesh.dev}"
   line API_BASE_URL "$CW_API_BASE_URL"
   line AUTH_PROVIDER "${CW_AUTH_PROVIDER:-local}"
   line STRIPE_MODE "${CW_STRIPE_MODE:-fake}"

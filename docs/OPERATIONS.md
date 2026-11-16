@@ -8,7 +8,7 @@ Last updated 2026-10-27.
 
 | Piece | Where | Notes |
 |---|---|---|
-| Web app | Vercel, https://callwright-one.vercel.app (personal scope `bhaweshverma50s-projects`) | `apps/web`, Vite + React |
+| Web app | Cloud Run `callwright-web`, asia-southeast1, https://callwright.bhawesh.dev (domain mapping; DNS on Cloudflare) | `apps/web`, Vite + React, served by `apps/web/server.mjs` |
 | API | Cloud Run `callwright-api`, asia-south1, scales to zero | `services/api`, one image for `api`, `worker`, `migrate` |
 | Migrations | Cloud Run job `callwright-migrate` | same image, `ROLE=migrate` |
 | Realtime VM | `callwright-rtc` (e2-medium, asia-south1-a, static IP 34.180.13.164, internal 10.160.0.2) | Caddy, LiveKit 1.13.3, Redis, jobs worker, voice worker, livekit-sip, lab PBX (`deploy/vm`) |
@@ -53,8 +53,8 @@ gcloud compute ssh callwright-rtc --zone $ZONE --account $ACCOUNT --project $PRO
    && sudo docker compose pull worker textsim && sudo docker compose up -d worker textsim \
    && sudo ./roll-voice.sh && sudo docker image prune -af"
 
-# Web
-cd apps/web && vercel deploy --prod --scope bhaweshverma50s-projects
+# Web (VITE_* build values come from the git-ignored apps/web/.env.production.local)
+cd apps/web && gcloud run deploy callwright-web --source . --project $PROJECT --region asia-southeast1
 ```
 
 What `deploy.sh api` sends to Cloud Run (it replaces the whole env each time, so anything not in
@@ -426,7 +426,7 @@ domain check but keeps the per-IP rate limit (`GOOGLE_SIGNIN_RATE_LIMIT_PER_HOUR
    type External. Scopes: `openid`, `email` and `profile` only (they need no Google verification).
    While the app is in Testing, only listed test users can sign in; publish it to let anyone in.
 2. Credentials, Create credentials, OAuth client ID, type Web application. Authorized redirect URIs:
-   `https://callwright-one.vercel.app/auth/google/callback` and
+   `https://callwright.bhawesh.dev/auth/google/callback` and
    `http://localhost:5180/auth/google/callback` (the API builds it from `WEB_BASE_URL`).
 3. Put the client secret in Secret Manager as `GOOGLE_SIGNIN_CLIENT_SECRET` (`deploy.sh ... setup`
    binds it; `deploy.sh ... api` mounts it once it exists). Export the client id in the shell that

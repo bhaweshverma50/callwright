@@ -1,0 +1,8 @@
+# Upload for `gcloud run deploy --source`. Unlike .gitignore, this keeps
+# .env.production.local: the build needs its VITE_* values.
+.gcloudignore
+node_modules
+dist
+.vercel
+test-results
+playwright-report

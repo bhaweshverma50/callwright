@@ -8,7 +8,7 @@ Hosted demo topology:
 | Migrations (`callwright-migrate`) | Cloud Run job | same image, `ROLE=migrate`: `alembic upgrade head`, then the templates sync |
 | Redis, LiveKit, jobs worker, voice worker | VM `callwright-rtc` (asia-south1-a, internal 10.160.0.2) | `deploy/vm`; powers off after 15 idle minutes, the API wakes it |
 | Postgres + pgvector | Supabase | app and admin roles through the transaction pooler, migrations over a session connection |
-| Web | Vercel, https://callwright-one.vercel.app | `VITE_API_BASE_URL` points at the API |
+| Web | Cloud Run `callwright-web` (asia-southeast1), https://callwright.bhawesh.dev | `VITE_API_BASE_URL` points at the API |
 
 One image serves every role. The role comes from the first container argument or `ROLE`
 (`api` by default); `worker` runs arq plus a health listener on `PORT` (used on the VM, port 8191);
@@ -151,7 +151,7 @@ gcloud run deploy callwright-api --region "$REGION" --image "$IMAGE" --service-a
   --allow-unauthenticated --port 8080 --cpu 1 --memory 512Mi --concurrency 40 \
   --min-instances 0 --max-instances 3 --timeout 60s --cpu-boost \
   --network default --subnet default --vpc-egress private-ranges-only \
-  --set-env-vars "^@^ENV=staging@CORS_ORIGINS=https://callwright-one.vercel.app@..." \
+  --set-env-vars "^@^ENV=staging@CORS_ORIGINS=https://callwright.bhawesh.dev@..." \
   --set-secrets "DATABASE_URL=DATABASE_URL:latest,..." --account "$ACCOUNT" --project "$PROJECT"
 ```
 
@@ -168,8 +168,8 @@ keeps the default internet path.
 | `ENV` | `staging` (hosted, not production: refuses dev secrets, allows the demo adapters below) | no |
 | `LOG_JSON` | `true` | no |
 | `API_BASE_URL` | the service URL (set by `deploy.sh` after the first deploy) | no |
-| `WEB_BASE_URL` | `https://callwright-one.vercel.app` | no |
-| `CORS_ORIGINS` | `https://callwright-one.vercel.app` (comma separated list) | no |
+| `WEB_BASE_URL` | `https://callwright.bhawesh.dev` | no |
+| `CORS_ORIGINS` | `https://callwright.bhawesh.dev` (comma separated list) | no |
 | `TRUSTED_PROXY_HOPS` | `1` (client IP for throttles from the right of X-Forwarded-For) | no |
 | `AUTH_PROVIDER` | `local` | no |
 | `AUTH_AUTO_VERIFY_EMAIL` | `true` (no mail delivery: register signs straight in; refused with `ENV=prod` unless `ALLOW_AUTO_VERIFY_IN_PRODUCTION=true`) | no |

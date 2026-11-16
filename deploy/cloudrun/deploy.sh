@@ -44,7 +44,7 @@ SA="$SA_NAME@$PROJECT.iam.gserviceaccount.com"
 VM_NAME="${VM_NAME:-callwright-rtc}"
 VM_ZONE="${VM_ZONE:-asia-south1-a}"
 VM_STARTER_ROLE="callwrightVmStarter"
-WEB_ORIGIN="${WEB_ORIGIN:-https://callwright-one.vercel.app}"
+WEB_ORIGIN="${WEB_ORIGIN:-https://callwright.bhawesh.dev}"
 LIVEKIT_URL="${LIVEKIT_URL:-wss://rtc.bhawesh.dev}"
 # Homepage playground (app/demo): published agents in the demo workspace (playground@bhawesh.dev,
 # credentials in ~/.config/callwright/demo-account.json). DEMO_WORKSPACE_ID= (empty) turns it off.
