@@ -419,7 +419,8 @@ shows trigger "first" with the skipped files and their reasons.
   successful sync and its next scheduled sync.
 - **FR-024**: Processing synced files MUST be charged as knowledge ingestion (005 FR-040). Files
   not processed again MUST NOT be charged. Scheduled syncs MUST pause while the workspace has no
-  credit.
+  credit, and while the owner's account is scheduled for deletion (they resume if the owner keeps
+  the account).
 - **FR-025**: Adding, reconnecting and removing connections, and adding and removing sources, MUST
   be recorded with who did it and when.
 
