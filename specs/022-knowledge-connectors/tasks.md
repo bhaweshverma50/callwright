@@ -239,6 +239,7 @@ source activity visible.
 - [X] T101 Web: specific messages for connector codes, refresh after a sync, no Replace for synced documents, every archived page, archived error state
 - [X] T102 Invariants I1 to I6 in `data-model.md`, checked over random multi-sync sequences in `tests/integration/test_sync_invariants.py`
 - [X] T103 Beta allowlist `CONNECTORS_WORKSPACES`, kill switch `CONNECTORS_SYNC_PAUSED` / Redis `connectors:sync_paused`, `metric=kb_sync_run` log line, spec sections How it works, Operations, Rollout and compliance, Later, and the runbook in `docs/OPERATIONS.md`
+- [X] T106 Scheduled syncs stop while the owner's account is scheduled for deletion (checked again hourly, resume on Keep my account) in `sync.py`, `tests/integration/test_sync_account_deletion.py`
 - [ ] T104 Measure first-sync time for 200 files and the SC-001 edit-to-searchable time against real Google on the hosted stack; record in `quickstart-results.md`
 - [ ] T105 Decide data retention after access is lost (spec "Rollout and compliance") and implement it
 

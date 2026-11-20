@@ -508,7 +508,8 @@ Runbook:
 - Settings > Delete account schedules erasure 30 days out (`users.deletion_scheduled_at`). While
   scheduled, every API route except `GET /me`, sign-out, refresh and `DELETE /v1/account/deletion`
   answers 403 `account_deletion_scheduled`, and call admission refuses every call with the same code,
-  so the workspace spends no credit. Keep my account clears it.
+  so the workspace spends no credit. Scheduled Drive syncs are skipped too (checked again hourly), so
+  nothing more is fetched from the owner's Drive. Keep my account clears it and syncs resume.
 - Cron `erase_due_accounts` (jobs worker, hourly at :17) erases due accounts one at a time: Google
   grants revoked, SIP numbers and WhatsApp channels released, stored files deleted, the IdP user
   removed, then every workspace-scoped table emptied (`app_erase_workspace`). Billing ledger tables

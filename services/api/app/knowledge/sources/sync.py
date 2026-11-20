@@ -63,6 +63,7 @@ MAX_ERRORS = 500
 STALE_AFTER = timedelta(minutes=10)
 HEARTBEAT_S = 60.0
 NO_CREDIT_RETRY = timedelta(minutes=60)
+DELETION_RETRY = timedelta(minutes=60)
 # Per-file temporary Google failures in a row before the run gives up (Google is likely down).
 MAX_TEMPORARY_STREAK = 3
 
@@ -176,6 +177,26 @@ async def has_credit(db: Database, workspace_id: str, source_id: str) -> bool:
             src.state, src.attention_reason = "needs_attention", "no_credit"
             src.next_sync_at = now() + NO_CREDIT_RETRY
         return False
+
+
+async def deletion_scheduled(db: Database, workspace_id: str, source_id: str) -> bool:
+    """Scheduled syncs stop while the owner's account waits to be deleted, like calls do: a
+    locked account fetches nothing from Drive and spends no credit. Every route is locked, so
+    the source's state is left alone; it is checked again in an hour, and syncing resumes on
+    its own once the owner keeps the account. The erase job removes the source otherwise."""
+    async with db.transaction(workspace_id=workspace_id) as session:
+        scheduled = bool(
+            (
+                await session.execute(
+                    text("select app_workspace_deletion_scheduled(:ws)"), {"ws": workspace_id}
+                )
+            ).scalar()
+        )
+        if scheduled:
+            src = await session.get(KnowledgeSource, source_id)
+            if src is not None:
+                src.next_sync_at = now() + DELETION_RETRY
+        return scheduled
 
 
 async def claim(db: Database, workspace_id: str, source_id: str, trigger: str) -> Claimed | None:
@@ -324,6 +345,8 @@ async def run_sync(deps: SyncDeps, source_id: str, trigger: str, run_id: str | N
     Returns the run id, or None when another sync holds the source."""
     workspace_id = await workspace_of(deps.db, source_id)
     if workspace_id is None:
+        return None
+    if trigger == "scheduled" and await deletion_scheduled(deps.db, workspace_id, source_id):
         return None
     if trigger == "scheduled" and not await has_credit(deps.db, workspace_id, source_id):
         return None
